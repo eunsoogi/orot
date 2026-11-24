@@ -1,16 +1,27 @@
 import { createConsentGeneration } from '../agent/execution/consentGeneration';
-import { ACCESSIBLE, getGenericPassword, setGenericPassword } from 'react-native-keychain';
+import {
+  ACCESSIBLE,
+  getGenericPassword,
+  setGenericPassword,
+} from 'react-native-keychain';
 import { createConsentAuthority } from '../agent/execution/consentAuthority';
-import { settingsConsentSlots, type SettingsConsentSlot } from './settingsConsentStorage';
+import {
+  settingsConsentSlots,
+  type SettingsConsentSlot,
+} from './settingsConsentStorage';
 
-const authorities = new Map<SettingsConsentSlot, ReturnType<typeof createConsentAuthority>>();
+const authorities = new Map<
+  SettingsConsentSlot,
+  ReturnType<typeof createConsentAuthority>
+>();
 
 /** One captured writer/queue per fixed settings slot. Do not create independent
  * owners for the same Keychain item: Keychain provides no compare-and-set operation.
  * Tombstones remain after SQLCipher cleanup so a failed cleanup cannot restore consent.
  * This item contains only random generations/status, never account secrets or payloads. */
 export function settingsConsentAuthority(slot: SettingsConsentSlot) {
-  if (!settingsConsentSlots.includes(slot)) throw new Error('Invalid consent slot');
+  if (!settingsConsentSlots.includes(slot))
+    throw new Error('Invalid consent slot');
   const existing = authorities.get(slot);
   if (existing) return existing;
   const service = `com.orot.mobile.settings-consent-authority.v1.${slot}`;
@@ -24,7 +35,8 @@ export function settingsConsentAuthority(slot: SettingsConsentSlot) {
           if (value.username !== 'settings-consent-authority')
             throw new Error('Canonical Live health authority is unavailable');
           const raw: unknown = JSON.parse(value.password);
-          if (raw == null) throw new Error('Canonical Live health authority is unavailable');
+          if (raw == null)
+            throw new Error('Canonical Live health authority is unavailable');
           return raw;
         }
         try {

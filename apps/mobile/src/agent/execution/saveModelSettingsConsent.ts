@@ -1,12 +1,21 @@
 import { settingsConsentRecipient } from './settingsConsentRecipient';
-import { canDiscloseDirectPhoto, type DirectPhotoOption } from './directPhotoConsentScope';
+import {
+  canDiscloseDirectPhoto,
+  type DirectPhotoOption,
+} from './directPhotoConsentScope';
 import {
   liveVoiceModelId,
   liveVoiceProviderId,
   liveVoiceRecipient,
 } from './liveVoiceSettingsIdentity';
-import { settingsSearchGrants, type SettingsSearchChoices } from './settingsSearchGrants';
-import type { ProviderSelection, ProviderSelectionStore } from '../../providers/selection/types';
+import {
+  settingsSearchGrants,
+  type SettingsSearchChoices,
+} from './settingsSearchGrants';
+import type {
+  ProviderSelection,
+  ProviderSelectionStore,
+} from '../../providers/selection/types';
 import type { SettingsConsentSlot } from '../../storage/settingsConsentStorage';
 import { settingsConsentAuthority } from '../../storage/settingsConsentAuthority';
 import { settingsConsentRepository } from '../../storage/settingsConsentRepository';
@@ -40,7 +49,8 @@ export async function saveModelSettingsConsent(input: {
   // Only the explicit model-settings action can commit this exact Live media grant.
   if (
     (input.selection.providerId === liveVoiceProviderId ||
-      (input.slot === 'voice' && input.selection.modelId === liveVoiceModelId)) &&
+      (input.slot === 'voice' &&
+        input.selection.modelId === liveVoiceModelId)) &&
     (input.slot !== 'voice' ||
       !input.remote ||
       input.selection.providerId !== liveVoiceProviderId ||
@@ -59,10 +69,16 @@ export async function saveModelSettingsConsent(input: {
     canDiscloseDirectPhoto(photo);
   const authority = settingsConsentAuthority(input.slot);
   const prior = await input.store.load();
-  if (input.signal.aborted || !input.isCurrent()) throw new Error('Settings decision cancelled');
-  if (!input.remote && !(input.slot === 'conversation' && input.search?.medical)) {
+  if (input.signal.aborted || !input.isCurrent())
+    throw new Error('Settings decision cancelled');
+  if (
+    !input.remote &&
+    !(input.slot === 'conversation' && input.search?.medical)
+  ) {
     const previousAuthority = await authority.current();
-    const previousCredential = prior ? await settingsConsentCredential(prior.providerId) : null;
+    const previousCredential = prior
+      ? await settingsConsentCredential(prior.providerId)
+      : null;
     // A local choice leaves the external authority suspended, including across restart.
     const suspension = await authority.suspend();
     try {
@@ -75,7 +91,9 @@ export async function saveModelSettingsConsent(input: {
           .restore(
             suspension,
             previousAuthority,
-            async () => previousCredential.isCurrent() && same(await input.store.load(), prior),
+            async () =>
+              previousCredential.isCurrent() &&
+              same(await input.store.load(), prior),
           )
           .catch(() => false);
       }
@@ -83,7 +101,10 @@ export async function saveModelSettingsConsent(input: {
     }
     return;
   }
-  const credential = await settingsConsentCredential(input.selection.providerId, true);
+  const credential = await settingsConsentCredential(
+    input.selection.providerId,
+    true,
+  );
   if (!credential || !credential.isCurrent())
     throw new Error('Account permission identity unavailable');
   const grants = await settingsConsentRepository();
@@ -91,7 +112,7 @@ export async function saveModelSettingsConsent(input: {
     slot: input.slot,
     authority,
     grants,
-    makeGrant: (generation) => ({
+    makeGrant: generation => ({
       version: 1,
       catalogVersion: SETTINGS_CONSENT_CATALOG_VERSION,
       identity: {
@@ -100,9 +121,13 @@ export async function saveModelSettingsConsent(input: {
         authorityGeneration: generation,
         credentialEpoch: credential.epoch,
       },
-      permissions: settingsPermissionsForFeature(slot, input.selection.providerId, photoApproved),
+      permissions: settingsPermissionsForFeature(
+        slot,
+        input.selection.providerId,
+        photoApproved,
+      ),
     }),
-    additionalGrants: (generation) =>
+    additionalGrants: generation =>
       input.slot === 'conversation'
         ? settingsSearchGrants(
             {
@@ -115,12 +140,17 @@ export async function saveModelSettingsConsent(input: {
           )
         : [],
     saveSelection: () => input.store.save(input.selection),
-    isSelectionCurrent: async () => same(await input.store.load(), input.selection),
-    isPreviousSelectionCurrent: async () => same(await input.store.load(), prior),
+    isSelectionCurrent: async () =>
+      same(await input.store.load(), input.selection),
+    isPreviousSelectionCurrent: async () =>
+      same(await input.store.load(), prior),
     isCredentialCurrent: async () => {
       const value = await settingsConsentCredential(input.selection.providerId);
       return Boolean(
-        value && value.epoch === credential.epoch && value.isCurrent() && credential.isCurrent(),
+        value &&
+        value.epoch === credential.epoch &&
+        value.isCurrent() &&
+        credential.isCurrent(),
       );
     },
     isRequestCurrent: input.isCurrent,

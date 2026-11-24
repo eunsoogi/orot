@@ -1,10 +1,19 @@
 import type { bindCanonicalLiveHealthRun } from './bindCanonicalLiveHealthRun';
-import { createVoiceStopReceipts, type CaptureVoiceEndReceipt } from './voiceStopReceipts';
-import type { RealtimeToolNative, RealtimeToolRequest } from './realtimeToolRequests';
+import {
+  createVoiceStopReceipts,
+  type CaptureVoiceEndReceipt,
+} from './voiceStopReceipts';
+import type { RealtimeToolRequest } from './realtimeToolRequests';
+import type {
+  NativeRealtimeVoice,
+  RealtimeTranscript,
+} from './nativeRealtimeVoiceTypes';
 import { NativeEventEmitter, NativeModules, Platform } from 'react-native';
-import { captureObservedVoiceCloseAuthority, splitLiveVoiceClose } from './observedVoiceCaptions';
+import {
+  captureObservedVoiceCloseAuthority,
+  splitLiveVoiceClose,
+} from './observedVoiceCaptions';
 import type { VoicePhase } from './voiceTurn';
-import type { Preferences } from '../voiceSettings/liveVoicePreferences';
 import {
   hasLiveVoiceRuntime,
   hasRealtimeVoiceRuntime,
@@ -16,33 +25,10 @@ export { nativeLiveManagedTools } from './nativeLiveManagedTools';
 const pendingCleanup = createVoiceStopReceipts();
 const openingCalls = new Map<string, { cancelled: boolean }>();
 
-export interface RealtimeTranscript {
-  callId: string;
-  itemId: string;
-  role: 'user' | 'assistant';
-  text: string;
-}
-export interface NativeRealtimeVoice {
-  open(
-    id: string,
-    model: string,
-    key: string,
-    language: string,
-    enableTools?: boolean,
-    preferences?: Preferences,
-    isCurrent?: () => boolean,
-  ): Promise<void>;
-  tools?: RealtimeToolNative;
-  stop(id: string, graceful?: boolean): Promise<void>;
-  pause(id: string): Promise<void>;
-  resume(id: string): Promise<void>;
-  interrupt(id: string): Promise<void>;
-  onState(listener: (id: string, phase: VoicePhase) => void): () => void;
-  onTranscript(listener: (event: RealtimeTranscript) => void): () => void;
-  onSystemCall?(listener: (callId: string, active: boolean) => void): () => void;
-  onPaused?(listener: (id: string) => void): () => void;
-  onInterrupted(listener: (id: string) => void): () => void;
-}
+export type {
+  NativeRealtimeVoice,
+  RealtimeTranscript,
+} from './nativeRealtimeVoiceTypes';
 
 /** Only transcripts/status cross the event bridge; native code owns PCM and transport. */
 export function nativeRealtimeVoice(): NativeRealtimeVoice | null {
@@ -64,7 +50,12 @@ export function nativeLiveVoice(
   responsesGrant?: (callId: string) => LiveResponsesGrantIdentity | null,
   canonicalRegistration?: (callId: string) => CanonicalRegistration | undefined,
 ): NativeRealtimeVoice | null {
-  return nativeOwnedVoice(true, captureEnd, responsesGrant, canonicalRegistration);
+  return nativeOwnedVoice(
+    true,
+    captureEnd,
+    responsesGrant,
+    canonicalRegistration,
+  );
 }
 
 function nativeOwnedVoice(
@@ -73,12 +64,17 @@ function nativeOwnedVoice(
   responsesGrant?: (callId: string) => LiveResponsesGrantIdentity | null,
   canonicalRegistration?: (callId: string) => CanonicalRegistration | undefined,
 ): NativeRealtimeVoice | null {
-  const module = Platform.OS === 'ios' ? NativeModules.VoiceRealtimeModule : null;
+  const module =
+    Platform.OS === 'ios' ? NativeModules.VoiceRealtimeModule : null;
   if (!(live ? hasLiveVoiceRuntime() : hasRealtimeVoiceRuntime())) return null;
   const events = new NativeEventEmitter(module);
-  const subscribe = (name: string, listener: (event: Record<string, unknown>) => void) => {
+  const subscribe = (
+    name: string,
+    listener: (event: Record<string, unknown>) => void,
+  ) => {
     const sub = events.addListener(name, (event: unknown) => {
-      if (event && typeof event === 'object') listener(event as Record<string, unknown>);
+      if (event && typeof event === 'object')
+        listener(event as Record<string, unknown>);
     });
     return () => sub.remove();
   };
@@ -100,8 +96,9 @@ function nativeOwnedVoice(
           ? module.closeLiveCall(id)
           : module.stopRealtimeCall(id),
       previous?.receive &&
-        ((result) => {
-          const close = live && graceful ? splitLiveVoiceClose(result, id) : undefined;
+        (result => {
+          const close =
+            live && graceful ? splitLiveVoiceClose(result, id) : undefined;
           return previous.receive?.(
             close?.duration ?? result,
             previous.captionsCurrent() ? close?.captions : undefined,
@@ -112,11 +109,20 @@ function nativeOwnedVoice(
     if (voiceEnd === previous) voiceEnd = undefined;
   };
   return {
-    open: async (id, model, key, language, enableTools = false, preferences, isCurrent) => {
+    open: async (
+      id,
+      model,
+      key,
+      language,
+      enableTools = false,
+      preferences,
+      isCurrent,
+    ) => {
       const opening = { cancelled: false };
       openingCalls.set(id, opening);
       try {
-        for (const previous of pendingCleanup.pendingIds()) await stop(previous);
+        for (const previous of pendingCleanup.pendingIds())
+          await stop(previous);
         if (opening.cancelled) throw new Error('Voice call cancelled');
         if (live) {
           if (!preferences || enableTools || !isCurrent?.())
@@ -130,7 +136,9 @@ function nativeOwnedVoice(
           await module.openLiveCall(id, model, key, {
             language: 'auto',
             voice: preferences.voice,
-            ...(grant ? { responsesGrant: grant, ...canonicalRegistration?.(id) } : {}),
+            ...(grant
+              ? { responsesGrant: grant, ...canonicalRegistration?.(id) }
+              : {}),
           });
         } else {
           await module.openRealtimeCall(id, model, key, language, enableTools);
@@ -146,10 +154,10 @@ function nativeOwnedVoice(
           tools: {
             cancel: (id: string) => module.cancelRealtimeTools(id),
             onToolCall: (listener: (request: RealtimeToolRequest) => void) =>
-              subscribe('VoiceRealtimeToolCall', (event) => {
+              subscribe('VoiceRealtimeToolCall', event => {
                 if (
                   ['callId', 'responseId', 'toolCallId', 'inputItemId'].every(
-                    (key) =>
+                    key =>
                       typeof event[key] === 'string' &&
                       /^[A-Za-z0-9_-]{1,128}$/.test(event[key] as string),
                   )
@@ -157,8 +165,11 @@ function nativeOwnedVoice(
                   listener(event as unknown as RealtimeToolRequest);
               }),
             onToolCancelled: (listener: (id: string, tool: string) => void) =>
-              subscribe('VoiceRealtimeToolCancelled', (event) => {
-                if (typeof event.callId === 'string' && typeof event.toolCallId === 'string')
+              subscribe('VoiceRealtimeToolCancelled', event => {
+                if (
+                  typeof event.callId === 'string' &&
+                  typeof event.toolCallId === 'string'
+                )
                   listener(event.callId, event.toolCallId);
               }),
             resolveToolCall: (request: RealtimeToolRequest, output: string) =>
@@ -172,19 +183,21 @@ function nativeOwnedVoice(
         }
       : {}),
     stop,
-    pause: (id) => module.pauseRealtimeCall(id),
-    resume: (id) => module.resumeRealtimeCall(id),
-    interrupt: (id) => module.interruptRealtimeOutput(id),
-    onState: (listener) =>
-      subscribe('VoiceRealtimeState', (event) => {
+    pause: id => module.pauseRealtimeCall(id),
+    resume: id => module.resumeRealtimeCall(id),
+    interrupt: id => module.interruptRealtimeOutput(id),
+    onState: listener =>
+      subscribe('VoiceRealtimeState', event => {
         if (
           typeof event.callId === 'string' &&
-          ['authorizing', 'listening', 'processing', 'speaking'].includes(String(event.phase))
+          ['authorizing', 'listening', 'processing', 'speaking'].includes(
+            String(event.phase),
+          )
         )
           listener(event.callId, event.phase as VoicePhase);
       }),
-    onTranscript: (listener) =>
-      subscribe('VoiceRealtimeTranscript', (event) => {
+    onTranscript: listener =>
+      subscribe('VoiceRealtimeTranscript', event => {
         if (
           typeof event.callId === 'string' &&
           typeof event.itemId === 'string' &&
@@ -193,21 +206,24 @@ function nativeOwnedVoice(
         )
           listener(event as unknown as RealtimeTranscript);
       }),
-    onSystemCall: (listener) =>
-      subscribe('VoiceRealtimeSystemCall', (event) => {
-        if (typeof event.callId === 'string' && typeof event.active === 'boolean')
+    onSystemCall: listener =>
+      subscribe('VoiceRealtimeSystemCall', event => {
+        if (
+          typeof event.callId === 'string' &&
+          typeof event.active === 'boolean'
+        )
           listener(event.callId, event.active);
       }),
     ...(live
       ? {
           onPaused: (listener: (id: string) => void) =>
-            subscribe('VoiceRealtimePaused', (event) => {
+            subscribe('VoiceRealtimePaused', event => {
               if (typeof event.callId === 'string') listener(event.callId);
             }),
         }
       : {}),
-    onInterrupted: (listener) =>
-      subscribe('VoiceRealtimeInterrupted', (event) => {
+    onInterrupted: listener =>
+      subscribe('VoiceRealtimeInterrupted', event => {
         if (typeof event.callId === 'string') listener(event.callId);
       }),
   };

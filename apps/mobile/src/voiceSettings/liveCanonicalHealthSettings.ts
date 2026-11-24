@@ -2,8 +2,14 @@ import { commitSettingsConsent } from '../agent/execution/commitSettingsConsent'
 import { SETTINGS_CONSENT_CATALOG_VERSION } from '../agent/execution/settingsConsentCatalog';
 import { settingsConsentAuthority } from '../storage/settingsConsentAuthority';
 import { settingsConsentRepository } from '../storage/settingsConsentRepository';
-import { liveResponsesProviderId, liveResponsesRecipient } from './liveResponsesSettingsIdentity';
-import { loadLiveResponsesSettings, type LiveResponsesSettings } from './liveResponsesSettings';
+import {
+  liveResponsesProviderId,
+  liveResponsesRecipient,
+} from './liveResponsesSettingsIdentity';
+import {
+  loadLiveResponsesSettings,
+  type LiveResponsesSettings,
+} from './liveResponsesSettings';
 import {
   canonicalHealthBinding,
   canonicalHealthPolicy,
@@ -21,7 +27,10 @@ export const canonicalHealthPermission = {
   sourceKinds: ['personal_record'],
 } as const;
 
-const matches = (left: CanonicalHealthBinding, right: CanonicalHealthBinding | undefined) =>
+const matches = (
+  left: CanonicalHealthBinding,
+  right: CanonicalHealthBinding | undefined,
+) =>
   !!right &&
   left.version === right.version &&
   left.capability === right.capability &&
@@ -40,7 +49,8 @@ async function loadActiveCompanion(
   expectedGeneration: string,
 ) {
   const active = await owned.current();
-  if (!active || active.generation !== expectedGeneration || !base.current()) return;
+  if (!active || active.generation !== expectedGeneration || !base.current())
+    return;
   const fence = owned.witness(active.generation);
   const current = () => base.current() && fence();
   const expected = canonicalHealthBinding(
@@ -48,7 +58,8 @@ async function loadActiveCompanion(
     base.nativeGrant,
     base.credentialEpoch,
   );
-  if (!matches(expected, await readCanonicalHealthBinding()) || !current()) return;
+  if (!matches(expected, await readCanonicalHealthBinding()) || !current())
+    return;
   const store = await settingsConsentRepository();
   const grant = await store.read(canonicalHealthSlot);
   if (
@@ -60,7 +71,8 @@ async function loadActiveCompanion(
     grant.identity.modelId !== expected.backendModel ||
     grant.identity.credentialEpoch !== expected.credentialEpoch ||
     grant.identity.authorityGeneration !== expected.generation ||
-    JSON.stringify(grant.permissions) !== JSON.stringify([canonicalHealthPermission])
+    JSON.stringify(grant.permissions) !==
+      JSON.stringify([canonicalHealthPermission])
   )
     return;
   return {
@@ -89,7 +101,8 @@ export async function readCanonicalLiveHealthStartup(
     if (!base.current()) return { kind: 'unavailable' };
     const owned = authority();
     const state = await owned.reviewState();
-    if (!state || !state.current() || !base.current()) return { kind: 'unavailable' };
+    if (!state || !state.current() || !base.current())
+      return { kind: 'unavailable' };
     const current = () => state.current() && base.current();
     if (state.kind === 'revoked') return { kind: 'off', current };
     if (state.kind === 'unset') {
@@ -139,8 +152,10 @@ export async function saveCanonicalLiveHealthSettings(input: {
   ) => Promise<boolean>;
 }) {
   const base = await loadLiveResponsesSettings();
-  if (base.kind !== 'active') throw new Error('Live Responses consent is unavailable');
-  const current = () => !input.signal.aborted && input.current() && base.current();
+  if (base.kind !== 'active')
+    throw new Error('Live Responses consent is unavailable');
+  const current = () =>
+    !input.signal.aborted && input.current() && base.current();
   if (
     !current() ||
     !(await input.confirm(
@@ -162,7 +177,11 @@ export async function saveCanonicalLiveHealthSettings(input: {
     authority: authority(),
     grants,
     makeGrant(generation) {
-      binding = canonicalHealthBinding(generation, base.nativeGrant, base.credentialEpoch);
+      binding = canonicalHealthBinding(
+        generation,
+        base.nativeGrant,
+        base.credentialEpoch,
+      );
       return {
         version: 1,
         catalogVersion: SETTINGS_CONSENT_CATALOG_VERSION,
@@ -177,11 +196,14 @@ export async function saveCanonicalLiveHealthSettings(input: {
       };
     },
     async saveSelection() {
-      if (!binding || !current()) throw new Error('Canonical health selection retired');
+      if (!binding || !current())
+        throw new Error('Canonical health selection retired');
       await writeCanonicalHealthBinding(binding);
     },
     isSelectionCurrent: async () =>
-      !!binding && matches(binding, await readCanonicalHealthBinding()) && current(),
+      !!binding &&
+      matches(binding, await readCanonicalHealthBinding()) &&
+      current(),
     isPreviousSelectionCurrent: async () => false,
     async isCredentialCurrent() {
       const next = await loadLiveResponsesSettings(base.credentialEpoch);
@@ -206,12 +228,21 @@ export async function revokeCanonicalLiveHealthSettings() {
 export async function readCanonicalLiveHealthChoice(backend: string) {
   try {
     const base = await loadLiveResponsesSettings();
-    if (base.kind !== 'active' || base.nativeGrant.backendModel !== backend) return;
+    if (base.kind !== 'active' || base.nativeGrant.backendModel !== backend)
+      return;
     const state = await readCanonicalLiveHealthStartup(base);
     if (state.kind === 'unavailable') return;
     return state.kind === 'off'
-      ? { enabled: false as const, current: state.current, ownerCurrent: base.current }
-      : { enabled: true as const, current: state.companion.current, ownerCurrent: base.current };
+      ? {
+          enabled: false as const,
+          current: state.current,
+          ownerCurrent: base.current,
+        }
+      : {
+          enabled: true as const,
+          current: state.companion.current,
+          ownerCurrent: base.current,
+        };
   } catch {
     return undefined;
   }

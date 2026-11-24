@@ -1,8 +1,9 @@
-import { bindCanonicalLiveHealthRun } from './bindCanonicalLiveHealthRun';
 import {
-  loadCanonicalLiveHealthSettings,
-  readCanonicalLiveHealthStartup,
-} from '../voiceSettings/liveCanonicalHealthSettings';
+  bindCanonicalLiveHealthRun,
+  matchesCanonicalLiveHealthOwner,
+  type CanonicalLiveHealthSelection,
+} from './bindCanonicalLiveHealthRun';
+import { readCanonicalLiveHealthStartup } from '../voiceSettings/liveCanonicalHealthSettings';
 import { AppState } from 'react-native';
 import { conversationExecutionNative } from '../ragConversation/conversationExecutionNative';
 import { loadLiveCallSettings } from '../voiceSettings/liveVoicePreferencesKeychain';
@@ -21,7 +22,7 @@ export function liveResponsesConversationRun(input: {
 }) {
   const native = nativeLiveManagedTools();
   const protection = native ? conversationExecutionNative() : null;
-  let mode: NonNullable<Awaited<ReturnType<typeof loadCanonicalLiveHealthSettings>>> | undefined;
+  let mode: CanonicalLiveHealthSelection | undefined;
   let enabledModeCurrent: (() => boolean) | undefined;
   let companion: ReturnType<typeof bindCanonicalLiveHealthRun>;
   let protectionRevoked = false;
@@ -30,7 +31,8 @@ export function liveResponsesConversationRun(input: {
   let grant: Extract<LiveResponsesSettings, { kind: 'active' }> | null = null;
   let unwatch: (() => void) | undefined;
   let callId: string | undefined;
-  let challenge: { callId: string; challengeId: string; abort: AbortController } | undefined;
+  let challenge:
+    { callId: string; challengeId: string; abort: AbortController } | undefined;
   const clear = () => {
     ++revision;
     companion?.retire();
@@ -57,7 +59,7 @@ export function liveResponsesConversationRun(input: {
     AppState.currentState === 'active' &&
     input.current() &&
     grant?.current() === true;
-  const protectedSubscription = protection?.subscribe((event) => {
+  const protectedSubscription = protection?.subscribe(event => {
     if (
       (event.kind === 'protectedData' && !event.available) ||
       AppState.currentState === 'background'
@@ -69,18 +71,24 @@ export function liveResponsesConversationRun(input: {
   const execute =
     native && protection?.bridgeAvailable === true
       ? createLiveResponsesHealthToolExecutor({
-          isChallengeCurrent: (call) =>
-            current() && callId === call.callId && challenge?.challengeId === call.challengeId,
+          isChallengeCurrent: call =>
+            current() &&
+            callId === call.callId &&
+            challenge?.challengeId === call.challengeId,
           async resolveOwner(call) {
             const selected = grant;
             if (!selected || !current() || callId !== call.callId) return null;
-            const receipt = await loadLiveResponsesSettings(selected.credentialEpoch);
+            const receipt = await loadLiveResponsesSettings(
+              selected.credentialEpoch,
+            );
             if (
               receipt.kind !== 'active' ||
               grant !== selected ||
               !current() ||
-              receipt.nativeGrant.generation !== selected.nativeGrant.generation ||
-              receipt.nativeGrant.backendModel !== selected.nativeGrant.backendModel
+              receipt.nativeGrant.generation !==
+                selected.nativeGrant.generation ||
+              receipt.nativeGrant.backendModel !==
+                selected.nativeGrant.backendModel
             )
               return null;
             return {
@@ -89,7 +97,8 @@ export function liveResponsesConversationRun(input: {
               recipient: 'OpenAI Responses (Live)',
               resultKind: 'health_aggregate',
               credentialEpoch: receipt.credentialEpoch,
-              current: () => grant === selected && current() && receipt.current(),
+              current: () =>
+                grant === selected && current() && receipt.current(),
             };
           },
           protectedDataAvailable: () => protection.protectedDataAvailable(),
@@ -117,7 +126,9 @@ export function liveResponsesConversationRun(input: {
           },
           // Audio-only startup must not initialize protected local evidence storage.
           openData: async () =>
-            (await import('../aiFeatures/integration/localData')).openAiFeatureLocalData(),
+            (
+              await import('../aiFeatures/integration/localData')
+            ).openAiFeatureLocalData(),
           holdDelivery: native.holdDelivery,
           settle: native.settle,
         })
@@ -125,7 +136,7 @@ export function liveResponsesConversationRun(input: {
   const stopEvents =
     execute &&
     native?.subscribe(
-      (incoming) => {
+      incoming => {
         if (!current() || callId !== incoming.callId || challenge) return;
         if (mode) {
           companion?.accept(incoming);
@@ -147,7 +158,10 @@ export function liveResponsesConversationRun(input: {
           companion?.cancel(cancelledCall, id);
           return;
         }
-        if (challenge?.callId === cancelledCall && challenge.challengeId === id) {
+        if (
+          challenge?.callId === cancelledCall &&
+          challenge.challengeId === id
+        ) {
           challenge.abort.abort();
           challenge = undefined;
         }
@@ -162,7 +176,9 @@ export function liveResponsesConversationRun(input: {
       const credentials = await loadLiveCallSettings();
       // Older native modules cannot make this mode available; their existing audio path stays intact.
       if (!native) return credentials;
-      const selected = await loadLiveResponsesSettings(credentials.credentialEpoch);
+      const selected = await loadLiveResponsesSettings(
+        credentials.credentialEpoch,
+      );
       if (revision !== ownedRevision || selected.kind === 'unavailable')
         throw new Error('Live delegation unavailable');
       if (selected.kind === 'active') {
@@ -178,20 +194,22 @@ export function liveResponsesConversationRun(input: {
         unwatch = detach;
         if (native.canonicalAvailable) {
           const startup = await readCanonicalLiveHealthStartup(selected);
-          if (startup.kind === 'unavailable') throw new Error('Live delegation unavailable');
-          const candidate = startup.kind === 'active' ? startup.companion : undefined;
+          if (startup.kind === 'unavailable')
+            throw new Error('Live delegation unavailable');
+          const candidate =
+            startup.kind === 'active' ? startup.companion : undefined;
           if (revision !== ownedRevision || grant !== selected || !current())
             throw new Error('Live delegation unavailable');
           if (
             candidate &&
-            (!candidate.current() ||
-              candidate.binding.legacyGeneration !== selected.nativeGrant.generation ||
-              candidate.binding.credentialEpoch !== selected.credentialEpoch ||
-              candidate.binding.backendModel !== selected.nativeGrant.backendModel)
+            !matchesCanonicalLiveHealthOwner(candidate, selected)
           )
             throw new Error('Live delegation unavailable');
           mode = candidate;
-          enabledModeCurrent = startup.kind === 'off' ? startup.current : startup.companion.current;
+          enabledModeCurrent =
+            startup.kind === 'off'
+              ? startup.current
+              : startup.companion.current;
         }
       }
       return credentials;
