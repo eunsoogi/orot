@@ -21,6 +21,7 @@ final class NavigationGlassSurfaceView: UIView {
     }
 
     var lastPageMetricsKey = ""
+    var lastContextualBackResolution: String?
     @objc var isPageDock: Bool = false {
         didSet { updatePresentation() }
     }
@@ -218,6 +219,7 @@ final class NavigationGlassSurfaceView: UIView {
         railPlacementConstraints[6].constant = contextualRailTop(
             hostHeight: host.bounds.height,
             mountedToWindow: host === windowRailHost,
+            observe: true,
         )
         railPlacementConstraints[7].constant = -railBottomInset
         rootBar.setVerticalLayout(usesRightRail)

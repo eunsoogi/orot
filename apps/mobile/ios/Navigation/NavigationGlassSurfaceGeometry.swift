@@ -2,25 +2,47 @@ import UIKit
 
 extension NavigationGlassSurfaceView {
     /// Pins only an admitted window-owned right Back, keeping the old insets for local and left renderers.
-    func contextualRailTop(hostHeight: CGFloat, mountedToWindow: Bool) -> CGFloat {
+    func contextualRailTop(hostHeight: CGFloat, mountedToWindow: Bool, observe: Bool = false) -> CGFloat {
         let hasBack = renderedActions.contains { $0.id == "back" }
         let hasRootTabs = renderedActions.contains(where: \.rootTab)
         let end = hostHeight - railBottomInset
-        if layoutMode == "right", mountedToWindow, !isPageDock, hasBack,
-           railBackTopInset.isFinite, railBackTopInset >= 0
-        {
-            // Non-root controls share a flexible spacer after Back, preserving their bottom anchor.
-            let required = hasRootTabs
-                ? rootBar.railHeight + NavigationRootGlassBar.contextualBackGroupHeight
-                : CGFloat(renderedActions.count) * (48 + innerActions.spacing)
-            if railBackTopInset + required <= end {
-                return railBackTopInset
+        var resolution: String?
+        defer {
+            if observe { observeContextualBackResolution(resolution) }
+        }
+        if layoutMode == "right", !isPageDock, hasBack {
+            resolution = "local-host"
+        }
+        if resolution != nil, mountedToWindow {
+            if !railBackTopInset.isFinite || railBackTopInset < 0 {
+                resolution = "missing-top"
+            } else {
+                // Non-root controls share a flexible spacer after Back, preserving their bottom anchor.
+                let required = hasRootTabs
+                    ? rootBar.railHeight + NavigationRootGlassBar.contextualBackGroupHeight
+                    : CGFloat(renderedActions.count) * (48 + innerActions.spacing)
+                if railBackTopInset + required <= end {
+                    resolution = "pinned"
+                    return railBackTopInset
+                }
+                resolution = "insufficient-fit"
             }
         }
         // Without the right-window contract, keep Back above existing bottom-anchored root tabs.
         return layoutMode != "bottom" && hasRootTabs && hasBack
             ? end - rootBar.railHeight - NavigationRootGlassBar.contextualBackGroupHeight
             : railTopInset
+    }
+
+    /// Emit only distinct fixed categories on the normal explicit local diagnostic launch.
+    private func observeContextualBackResolution(_ resolution: String?) {
+        guard ProcessInfo.processInfo.arguments.contains("-OROT_PROVIDER_DIAGNOSTICS"),
+              resolution != lastContextualBackResolution
+        else { return }
+        lastContextualBackResolution = resolution
+        if let resolution {
+            NSLog("OROT_NAVIGATION_RIGHT_BACK resolution=%@", resolution)
+        }
     }
 
     /// Invalidate both native labels and exported metrics when the system text size changes.
