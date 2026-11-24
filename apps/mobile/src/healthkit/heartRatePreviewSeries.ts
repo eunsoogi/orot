@@ -1,5 +1,6 @@
 import type { HealthObservation } from '@orot/domain';
 import { t } from '../i18n';
+import { summarizeSparseHeartRates } from '../ui/charts/summarizeSparseHeartRates';
 import type { ChartPoint, ChartSeries } from '../ui/charts/types';
 import { provenanceLabel } from './healthRecordsDetailPresentation';
 import { selectHealthRecordPreviewRanks } from './healthRecordPreview';
@@ -25,6 +26,7 @@ export function heartRatePreviewSeries(
   input: readonly Measurement[],
   records: ReadonlyMap<string, HealthObservation>,
   partial: boolean,
+  groupSparse: boolean,
 ): ChartSeries[] {
   const grouped = new Map<
     string,
@@ -56,15 +58,21 @@ export function heartRatePreviewSeries(
         ...(partial ? { partial: true } : {}),
       })),
     }));
+  const displayed =
+    groupSparse && unit === 'count/min'
+      ? summarizeSparseHeartRates(series)
+      : series;
   // Preserve all sources on selected days while bounding distinct tick dates.
   const selectedDays = new Set(
     selectHealthRecordPreviewRanks(
       [
-        ...new Set(series.flatMap(item => item.points.map(point => point.x))),
+        ...new Set(
+          displayed.flatMap(item => item.points.map(point => point.x)),
+        ),
       ].sort(),
     ),
   );
-  return series.flatMap(item => {
+  return displayed.flatMap(item => {
     const points = item.points.filter(point => selectedDays.has(point.x));
     return points.length ? [{ ...item, points }] : [];
   });
