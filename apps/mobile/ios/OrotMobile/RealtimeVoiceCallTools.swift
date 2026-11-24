@@ -29,13 +29,16 @@ extension RealtimeVoiceCall {
     func enqueueManagedToolFrames(
         _ frames: [[String: Any]], callID: String, sessionID: String, socketEpoch: UUID,
         approvedCurrent: @escaping () -> Bool,
+        ticket: LiveNativeResultDispatchAuthority.Ticket? = nil,
     ) -> Bool {
         let owns = { [weak self] in
             guard let self else { return false }
             return id == callID && liveSessionID == sessionID && liveSocketEpoch == socketEpoch
                 && token != nil && ready && !paused && foreground() && liveIsCurrent()
         }
-        return socket.sendManagedToolFrames(frames) { owns() && approvedCurrent() && owns() }
+        let current = { owns() && approvedCurrent() && owns() }
+        if let ticket { return socket.sendTicketedToolFrames(frames, current: current, ticket: ticket) }
+        return socket.sendManagedToolFrames(frames, current: current)
     }
 
     /// A legacy reply is one-shot, with an independently approved exact JS output.
@@ -75,6 +78,7 @@ final class LiveResponsesToolBridge {
     func retire() {
         guard !retired else { return }
         retired = true
+        admission.retireDispatch?()
         received.removeAll()
         let stop = cancel
         cancel = nil
@@ -83,7 +87,7 @@ final class LiveResponsesToolBridge {
     }
 
     func receive(_ envelope: [String: Any], owner: Owner, current: @escaping () -> Bool,
-                 send: @escaping ([[String: Any]], @escaping () -> Bool) -> Void)
+                 send: @escaping ([[String: Any]], @escaping () -> Bool, LiveNativeResultDispatchAuthority.Ticket?) -> Void)
     {
         guard !retired, current(), admission.backendAllowed() else { retire(); return }
         guard self.owner == nil || self.owner == owner else { retire(); return }
@@ -202,7 +206,7 @@ final class LiveResponsesToolBridge {
     }
 
     private func runBatch(_ results: [(Request, String)], current: @escaping () -> Bool,
-                          send: @escaping ([[String: Any]], @escaping () -> Bool) -> Void)
+                          send: @escaping ([[String: Any]], @escaping () -> Bool, LiveNativeResultDispatchAuthority.Ticket?) -> Void)
     {
         guard !retired, current(), admission.backendAllowed() else { retire(); return }
         if results.count == pending.count {
@@ -218,7 +222,9 @@ final class LiveResponsesToolBridge {
                  "item": ["type": "function_call_output", "call_id": request.functionID, "output": value]]
             }
             frames.append(["type": "response.create", "event_id": UUID().uuidString])
-            send(frames, permitted)
+            let ticket = results.count == 1 ? admission.dispatchTicket?(results[0].0, results[0].1) : nil
+            guard admission.dispatchTicket == nil || ticket != nil else { retire(); return }
+            send(frames, permitted, ticket)
             return
         }
         let request = pending[results.count]

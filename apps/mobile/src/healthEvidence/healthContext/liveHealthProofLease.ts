@@ -17,14 +17,17 @@ export function createLiveHealthProofLease(
       active = false;
       epoch.dispose();
     };
+    const current = () => {
+      if (!active || !epoch.current() || !owns(database)) {
+        dispose();
+        return false;
+      }
+      return true;
+    };
     return {
-      current() {
-        if (!active || !epoch.current() || !owns(database)) {
-          dispose();
-          return false;
-        }
-        return true;
-      },
+      current,
+      beforeDispatch: (retire: () => void) =>
+        current() ? epoch.beforeDispatch(retire) : undefined,
       dispose,
     };
   };

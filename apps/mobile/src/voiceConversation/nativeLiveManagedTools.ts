@@ -7,12 +7,45 @@ export function nativeLiveManagedTools() {
   const module =
     Platform.OS === 'ios' ? NativeModules.VoiceRealtimeModule : null;
   if (
+    typeof module?.claimLiveResponsesResult !== 'function' ||
+    typeof module?.retireLiveResponsesResult !== 'function' ||
     typeof module?.settleLiveResponsesToolCall !== 'function' ||
     typeof module?.revokeLiveResponsesGrant !== 'function'
   )
     return null;
   const events = new NativeEventEmitter(module);
   return {
+    holdDelivery(
+      call: LiveManagedHealthCall,
+      beforeDispatch: (retire: () => void) => (() => void) | undefined,
+      signal: AbortSignal,
+    ) {
+      const retire = () => {
+        if (
+          module.retireLiveResponsesResult(call.callId, call.challengeId) !==
+          true
+        )
+          throw new Error('Native result retirement unavailable');
+      };
+      if (signal.aborted) return;
+      const unregister = beforeDispatch(retire);
+      if (!unregister) return;
+      let claimed = false;
+      try {
+        claimed =
+          module.claimLiveResponsesResult(call.callId, call.challengeId) ===
+          true;
+        if (!claimed) return;
+      } finally {
+        if (!claimed) unregister();
+      }
+      signal.addEventListener('abort', retire, { once: true });
+      return () => {
+        signal.removeEventListener('abort', retire);
+        retire();
+        unregister();
+      };
+    },
     settle: (callId: string, challengeId: string, result: string | null) =>
       module.settleLiveResponsesToolCall(
         callId,

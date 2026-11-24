@@ -116,6 +116,7 @@ export function liveResponsesConversationRun(input: {
             (
               await import('../aiFeatures/integration/localData')
             ).openAiFeatureLocalData(),
+          holdDelivery: native.holdDelivery,
           settle: native.settle,
         })
       : null;
