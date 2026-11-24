@@ -27,7 +27,21 @@ const allOverviewMetrics: readonly OverviewMetric[] = [
 function readyOverviewMetrics(selection: readonly OverviewMetric[]) {
   const metrics: Partial<Record<OverviewMetric, OverviewMetricProjection>> = {};
   selection.forEach(metric => {
-    metrics[metric] = createMetric(metric);
+    const projection = createMetric(metric);
+    const from = Date.parse('2026-10-13T23:00:00Z');
+    const to = Date.parse('2026-10-14T01:00:00Z');
+    metrics[metric] =
+      metric === 'sleep'
+        ? {
+            ...projection,
+            sleepEpisode: {
+              from,
+              to,
+              asleepMinutes: 120,
+              intervals: [{ stage: 'core', start: from, end: to }],
+            },
+          }
+        : projection;
   });
   return {
     selection,
@@ -82,6 +96,17 @@ test.each([2, 3, 4])(
     // An ordinary iPhone's measured content must keep each metric on its own row.
     expect(selection.map(cardWidth)).toEqual(Array(count).fill(348));
     for (const metric of selection) {
+      if (metric === 'sleep') {
+        const timeline = within(
+          screen.getByTestId('overview-sleep-stage-timeline'),
+        );
+        expect(
+          timeline.getByTestId('overview-sleep-interval-core').props
+            .accessibilityLabel,
+        ).toMatch(/코어.*부터.*까지/u);
+        expect(screen.queryByTestId('overview-metric-chart-sleep')).toBeNull();
+        continue;
+      }
       const chart = within(
         screen.getByTestId(`overview-metric-chart-${metric}`),
       );

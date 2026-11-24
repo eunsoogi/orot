@@ -13,7 +13,7 @@ jest.mock('react-native-chart-kit/v2', () => ({
 const mocked = jest.mocked(useOverviewMetrics);
 
 test.each([
-  ['sleep', '해당 날짜 기록 합계', 'min', 70.4, '1시간 10분', 'min'],
+  ['sleep', '수면 시간', 'min', 70.4, '1시간 10분', 'min'],
   [
     'heartRate',
     '해당 날짜 측정 평균',
@@ -73,14 +73,15 @@ test.each([
     expect(
       screen.queryByTestId(`overview-metric-chart-${metric}-selected-point`),
     ).toBeNull();
-    expect(
-      screen.getByTestId(`overview-metric-chart-${metric}-plot`).props
-        .accessibilityLabel,
-    ).toContain('출처: 건강 기록');
-    expect(
-      screen.getByTestId(`overview-metric-chart-${metric}-plot`).props
-        .accessibilityLabel,
-    ).toContain(formattedValue);
+    if (metric === 'sleep') {
+      expect(screen.queryByTestId('overview-sleep-stage-timeline')).toBeNull();
+      expect(screen.getByText('기록된 수면 단계가 없어요.')).toBeVisible();
+    } else {
+      const label = screen.getByTestId(`overview-metric-chart-${metric}-plot`)
+        .props.accessibilityLabel;
+      expect(label).toContain('출처: 건강 기록');
+      expect(label).toContain(formattedValue);
+    }
     expect(projection.latest?.value).toBe(measuredValue);
     expect(projection.unit).toBe(unit);
     expect(screen.queryByText(/Synthetic Watch App|Asia\/Seoul/u)).toBeNull();
