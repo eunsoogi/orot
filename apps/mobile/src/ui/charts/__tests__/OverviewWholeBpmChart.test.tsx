@@ -9,7 +9,7 @@ import { formatChartValue, formatRangeAxisValue } from '../format';
 
 test('uses integer BPM axis labels without changing other axis precision', () => {
   expect(formatRangeAxisValue(125.00000000000001, true)).toBe('125 BPM');
-  expect(formatRangeAxisValue(60.2, true)).toBe('60');
+  expect(formatRangeAxisValue(60.2, true)).toBe('60 BPM');
   expect(formatRangeAxisValue(60.2, false)).toBe('60.2');
 });
 
