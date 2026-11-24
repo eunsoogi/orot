@@ -86,10 +86,10 @@ test('retires the previous credential catalog and its unapplied draft while the 
   await fireEvent.press(
     await screen.findByTestId('live-responses-backend-gpt-6-sol'),
   );
-  expect(screen.getByTestId('live-responses-enable')).toBeEnabled();
+  expect(screen.getByTestId('voice-settings-save')).toBeEnabled();
 
   await act(async () => notifyAccountChange());
-  expect(screen.getByTestId('live-responses-enable')).toBeEnabled();
+  expect(screen.getByTestId('voice-settings-save')).toBeEnabled();
 
   let resolveStatus!: (status: {
     connected: boolean;
@@ -105,7 +105,7 @@ test('retires the previous credential catalog and its unapplied draft while the 
     notifyAccountChange();
   });
   expect(screen.queryByTestId('live-responses-setting')).toBeNull();
-  expect(screen.queryByTestId('live-responses-enable')).toBeNull();
+  expect(screen.getByTestId('voice-settings-save')).toBeDisabled();
   await fireEvent.press(tab('speech'));
   expect(screen.queryByTestId('voice-model-gpt-live-1.1')).toBeNull();
   await fireEvent.press(tab('tools'));
@@ -118,7 +118,7 @@ test('retires the previous credential catalog and its unapplied draft while the 
     ids: ['gpt-live-1.1', 'gpt-6-sol'],
   });
   await act(async () => resolveStatus({ connected: true, revision: 2 }));
-  expect(await screen.findByTestId('live-responses-enable')).toBeDisabled();
+  expect(await screen.findByTestId('voice-settings-save')).toBeDisabled();
   await fireEvent.press(tab('speech'));
   await fireEvent.press(refresh());
   await screen.findByTestId('voice-model-gpt-live-1.1');
@@ -128,7 +128,51 @@ test('retires the previous credential catalog and its unapplied draft while the 
     'accessibilityState',
     expect.objectContaining({ selected: false }),
   );
-  expect(row('gpt-6-luna')).toBeDisabled();
-  expect(screen.getByTestId('live-responses-enable')).toBeDisabled();
+  expect(screen.queryByTestId('live-responses-backend-gpt-6-luna')).toBeNull();
+  expect(screen.getByTestId('voice-settings-save')).toBeDisabled();
   expect(voiceSettingsStore.discoverModels).toHaveBeenCalledTimes(2);
+});
+
+test('lists only freshly discovered supported tool choices and explains empty and stale catalogs', async () => {
+  jest.mocked(voiceSettingsStore.discoverModels).mockResolvedValueOnce({
+    revision: 1,
+    ids: ['gpt-live-1.1', 'gpt-unrelated'],
+  });
+  jest.mocked(loadLiveResponsesSettings).mockResolvedValue({ kind: 'off' });
+  await render(<VoiceSettingsPanel />);
+  const refresh = () => screen.getByTestId('voice-model-refresh');
+  await waitFor(() => expect(refresh()).toBeEnabled());
+  await fireEvent.press(refresh());
+  await screen.findByTestId('voice-model-gpt-live-1.1');
+  await fireEvent.press(tab('tools'));
+  expect(
+    screen.getByText(/사용할 수 있는 도구 호출 모델이 없어요/),
+  ).toBeTruthy();
+  expect(screen.queryAllByTestId(/^live-responses-backend-/)).toHaveLength(0);
+  expect(screen.getByTestId('voice-settings-save')).toBeDisabled();
+  jest.mocked(voiceSettingsStore.discoverModels).mockResolvedValueOnce({
+    revision: 1,
+    ids: ['gpt-6-sol', 'gpt-unrelated'],
+  });
+  await fireEvent.press(refresh());
+  await fireEvent.press(
+    await screen.findByTestId('live-responses-backend-gpt-6-sol'),
+  );
+  expect(screen.queryAllByTestId(/^live-responses-backend-/)).toHaveLength(1);
+  expect(screen.getByTestId('voice-settings-save')).toBeEnabled();
+
+  let fail!: (reason: Error) => void;
+  jest.mocked(voiceSettingsStore.discoverModels).mockReturnValueOnce(
+    new Promise((_resolve, reject) => {
+      fail = reject;
+    }),
+  );
+  await fireEvent.press(refresh());
+  expect(screen.queryAllByTestId(/^live-responses-backend-/)).toHaveLength(0);
+  expect(screen.getByTestId('voice-settings-save')).toBeDisabled();
+  await act(async () => fail(new Error('network')));
+  expect(screen.queryAllByTestId(/^live-responses-backend-/)).toHaveLength(0);
+  expect(screen.getByTestId('voice-settings-save')).toBeDisabled();
+  expect(voiceSettingsStore.discoverModels).toHaveBeenCalledTimes(3);
+  expect(saveLiveResponsesSettings).not.toHaveBeenCalled();
 });

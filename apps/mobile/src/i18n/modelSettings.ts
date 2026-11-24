@@ -39,7 +39,9 @@ export const modelSettingsKo = {
   'modelSettings.liveResponsesTitle': '도구 호출 모델',
   'modelSettings.liveResponsesDescription':
     '음성 대화 모델과 별도로 이 통화의 도구 요청을 처리해요. gpt-6-luna를 권장해요.',
-  'modelSettings.liveResponsesEnable': '선택한 도구 호출 모델 사용',
+  'modelSettings.saveToolModel': '저장',
+  'modelSettings.liveResponsesCatalogEmpty':
+    '이 계정에서 사용할 수 있는 도구 호출 모델이 없어요.',
   'modelSettings.liveResponsesDisable': '음성 대화 도구 끄기',
   'modelSettings.liveResponsesSelectVoice':
     '도구 호출 모델을 사용하려면 먼저 OpenAI API 음성 모델을 적용해 주세요.',

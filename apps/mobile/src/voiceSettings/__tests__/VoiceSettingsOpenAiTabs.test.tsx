@@ -5,7 +5,10 @@ import {
   waitFor,
   within,
 } from '@testing-library/react-native';
+import { StyleSheet } from 'react-native';
+import { providerCatalogContentInset } from '../../layout/providerSettingsPresentation';
 import { VoiceSettingsPanel } from '../VoiceSettingsPanel';
+import { VoiceSettingsDockFixture } from '../testSupport/VoiceSettingsDockFixture';
 import { voiceSettingsStore } from '../voiceSettingsStore';
 import { createLiveVoicePreferenceStore } from '../liveVoicePreferenceStore';
 import {
@@ -102,11 +105,20 @@ test('the OpenAI-only sub-tabs separate choice and approval, keep drafts, and re
     saved = input.backendModel;
   });
   const props = voicePreferences();
-  const view = await render(<VoiceSettingsPanel livePreferences={props} />);
+  const view = await render(
+    <VoiceSettingsDockFixture livePreferences={props} />,
+  );
   await screen.findByTestId('live-voice-voice');
   const local = within(screen.getByTestId('voice-model-group-local'));
   expect(local.getByTestId('voice-model-apple-system-speech')).toBeTruthy();
   expect(local.queryByTestId('openai-voice-model-tabs')).toBeNull();
+  expect(
+    StyleSheet.flatten(
+      screen.getByTestId('openai-voice-model-tabs').parent?.props.style,
+    ),
+  ).toMatchObject({
+    paddingHorizontal: providerCatalogContentInset,
+  });
   expect(tab('speech')).toHaveTextContent('음성 모델');
   expect(tab('tools')).toHaveTextContent('도구 호출 모델');
   expect(screen.queryByTestId('live-responses-setting')).toBeNull();
@@ -125,6 +137,10 @@ test('the OpenAI-only sub-tabs separate choice and approval, keep drafts, and re
   expect(screen.queryByTestId('live-voice-voice')).toBeNull();
   expect(screen.queryByTestId('live-voice-language')).toBeNull();
   expect(screen.queryByTestId('voice-settings-save')).toBeNull();
+  expect(screen.queryByTestId('live-responses-enable')).toBeNull();
+  expect(screen.getAllByText('도구 호출 모델')).toHaveLength(1);
+  expect(screen.queryByText(/gpt-6-luna를 권장/)).toBeNull();
+  expect(screen.getByTestId('voice-settings-shared-dock-save')).toBeDisabled();
   expect(row('gpt-6-luna').props.accessibilityState).toMatchObject({
     selected: true,
     disabled: false,
@@ -155,7 +171,7 @@ test('the OpenAI-only sub-tabs separate choice and approval, keep drafts, and re
   expect(screen.queryByTestId('inference-disclosure-recipient')).toBeNull();
 
   const apply = () =>
-    fireEvent.press(screen.getByTestId('live-responses-enable'));
+    fireEvent.press(screen.getByTestId('voice-settings-shared-dock-save'));
   await apply();
   expect(
     await screen.findByTestId('inference-disclosure-recipient'),
@@ -178,7 +194,7 @@ test('the OpenAI-only sub-tabs separate choice and approval, keep drafts, and re
   expect(write).not.toHaveBeenCalled();
   await view.unmount();
 
-  await render(<VoiceSettingsPanel livePreferences={props} />);
+  await render(<VoiceSettingsDockFixture livePreferences={props} />);
   expect(await screen.findByTestId('voice-current-model')).toHaveTextContent(
     /GPT-Live-1\.1/,
   );

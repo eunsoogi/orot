@@ -5,11 +5,11 @@ import { APPLE_PCC_MODEL_ID } from '../providers/selection/privateCloudCompute';
 import { t } from '../i18n';
 import { ModelSelectionSummary } from '../layout/ModelSelectionSummary';
 import { View } from 'react-native';
-import { useState, type ComponentProps } from 'react';
+import { useRef, useState, type ComponentProps } from 'react';
 import { AppText as Text } from '../layout/AppText';
 import { AppButton as Button } from '../layout/AppButton';
 import { providerSettingsStyles as styles } from '../layout/providerSettingsPresentation';
-import { useNavigationRouteActions } from '../navigation/useNavigationRouteActions';
+import { useVoiceSettingsRouteSave } from './useVoiceSettingsRouteSave';
 import { useVoiceCatalog } from './useVoiceCatalog';
 import { useVoiceSelection } from './useVoiceSelection';
 import {
@@ -40,15 +40,13 @@ export function VoiceSettingsPanel({
   const { voice } = useModelSettingsServices();
   const [apiTab, setApiTab] = useState<OpenAiVoiceModelTab>('speech');
   const [toolBusy, setToolBusy] = useState(false);
+  const [toolCanSave, setToolCanSave] = useState(false);
+  const toolSave = useRef<(() => void) | null>(null);
   const catalog = useVoiceCatalog();
   const selection = useVoiceSelection(catalog);
   const liveAvailable = hasLiveVoiceRuntime();
   const { mode, model, savedModel, savedMode, busy, failedLoad, message } =
     selection;
-  const toolModels =
-    mode === savedMode && model === savedModel && !busy && catalog.fresh
-      ? catalog.toolIds
-      : [];
   const canApproveNew = catalog.fresh && catalog.ids.includes(model);
   const disabled =
     busy ||
@@ -76,28 +74,25 @@ export function VoiceSettingsPanel({
     save: selection.save,
     store: livePreferences?.store ?? liveVoicePreferencesKeychain,
   });
+  const speechTab = apiTab === 'speech';
+  // One navigation action commits only the visible draft; an approval cannot apply the other pane.
+  const saveDisabled = speechTab
+    ? disabled || prefsBusy || toolBusy
+    : !toolCanSave || busy || prefsBusy || toolBusy;
+  const saveLabel = speechTab
+    ? t('modelSettings.confirmVoice')
+    : t('modelSettings.saveToolModel');
   const requestSave = () => {
-    confirmSave();
+    if (!saveDisabled) (speechTab ? confirmSave : toolSave.current)?.();
   };
-  const hasDock = useNavigationRouteActions(
-    [
-      {
-        id: 'confirm-voice-model',
-        label: t('modelSettings.confirmVoice'),
-        accessibilityLabel: t('modelSettings.confirmVoice'),
-        testID: 'voice-settings-save',
-        systemImageName: 'checkmark',
-        disabled: disabled || prefsBusy,
-        busy: busy || prefsBusy,
-        onPress: requestSave,
-      },
-    ],
-    active && apiTab === 'speech',
-  );
-  const displayedChoice = voiceModels.find(
-    item => item.mode === mode && item.id === model,
-  );
-  const showingDraft = model !== savedModel || mode !== savedMode;
+  const hasDock = useVoiceSettingsRouteSave({
+    active,
+    label: saveLabel,
+    disabled: saveDisabled,
+    busy: busy || prefsBusy || toolBusy,
+    onPress: requestSave,
+  });
+  const displayedChoice = voiceModels.find(item => item.id === model);
   const choices = (connection: 'local' | 'openai-api') =>
     voiceModels
       .filter(
@@ -127,7 +122,7 @@ export function VoiceSettingsPanel({
       {savedModel !== null && !failedLoad ? (
         <ModelSelectionSummary
           label={t(
-            showingDraft
+            model !== savedModel || mode !== savedMode
               ? 'modelSettings.selectedAiPrefix'
               : 'modelSettings.currentSelection',
           )}
@@ -208,7 +203,9 @@ export function VoiceSettingsPanel({
               active={apiTab === 'tools'}
               onBusyChange={setToolBusy}
               ownerRevision={catalog.revision}
-              allowedModels={toolModels}
+              allowedModels={catalog.fresh ? catalog.toolIds : []}
+              saveRef={toolSave}
+              onSaveStateChange={setToolCanSave}
             />
           ) : (
             <Text style={styles.detail}>
@@ -221,27 +218,31 @@ export function VoiceSettingsPanel({
           )
         }
       />
-      {active && apiTab === 'speech' ? (
+      {active ? (
         <View style={styles.section}>
-          {mode === 'openai-api' && (!liveAvailable || model !== liveModel) ? (
+          {speechTab &&
+          mode === 'openai-api' &&
+          (!liveAvailable || model !== liveModel) ? (
             <Text accessibilityRole="alert">
               {t('modelSettings.liveVoiceUnavailableNoFallback')}
             </Text>
           ) : null}
-          {!hasDock && active ? (
+          {!hasDock ? (
             <Button
-              title={t('modelSettings.confirmVoice')}
+              title={saveLabel}
               testID="voice-settings-save"
-              disabled={disabled || prefsBusy}
+              disabled={saveDisabled}
               onPress={requestSave}
             />
           ) : null}
-          {prefsFailed ? (
+          {speechTab && prefsFailed ? (
             <Text accessibilityRole="alert">
               {t('modelSettings.liveVoicePreferenceSaveFailed')}
             </Text>
           ) : null}
-          {message ? <Text accessibilityRole="alert">{message}</Text> : null}
+          {speechTab && message ? (
+            <Text accessibilityRole="alert">{message}</Text>
+          ) : null}
         </View>
       ) : null}
     </View>

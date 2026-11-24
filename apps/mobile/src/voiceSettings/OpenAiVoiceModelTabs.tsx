@@ -2,6 +2,10 @@ import type { ReactNode } from 'react';
 import { Pressable, StyleSheet, View } from 'react-native';
 import { t } from '../i18n';
 import { AppText as Text } from '../layout/AppText';
+import {
+  modelSettingsPageGap,
+  providerCatalogContentInset,
+} from '../layout/providerSettingsPresentation';
 import { sectionTabStyles as tabs } from '../layout/sectionTabPresentation';
 
 const choices = ['speech', 'tools'] as const;
@@ -22,7 +26,7 @@ export function OpenAiVoiceModelTabs({
   readonly tools: ReactNode;
 }) {
   return (
-    <>
+    <View style={styles.inset}>
       <View testID="openai-voice-model-tabs" style={tabs.tabs}>
         {choices.map(tab => (
           <Pressable
@@ -58,8 +62,15 @@ export function OpenAiVoiceModelTabs({
           {tab === 'speech' ? speech : tools}
         </View>
       ))}
-    </>
+    </View>
   );
 }
 
-const styles = StyleSheet.create({ hidden: { display: 'none' } });
+const styles = StyleSheet.create({
+  inset: {
+    paddingHorizontal: providerCatalogContentInset,
+    paddingBottom: providerCatalogContentInset,
+    gap: modelSettingsPageGap,
+  },
+  hidden: { display: 'none' },
+});
