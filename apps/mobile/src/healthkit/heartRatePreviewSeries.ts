@@ -3,9 +3,12 @@ import { t } from '../i18n';
 import type { ChartPoint, ChartSeries } from '../ui/charts/types';
 import { provenanceLabel } from './healthRecordsDetailPresentation';
 import { selectHealthRecordPreviewRanks } from './healthRecordPreview';
+import { disjointDiscreteHeartRatePoints } from './disjointDiscreteHeartRatePoints';
+import { discreteHeartRateRangeOnLocalDay } from './discreteHeartRateRangeOnLocalDay';
 import { heartRateDayBuckets } from './heartRateInstantBuckets';
 
 type Measurement = { id: string; effectiveAt: string; amount: number };
+type Point = ChartPoint & { value: number; endAt?: string };
 
 function sourceIdentity(record: HealthObservation | undefined, id: string) {
   const source = record?.provenance.source;
@@ -26,10 +29,7 @@ export function heartRatePreviewSeries(
   records: ReadonlyMap<string, HealthObservation>,
   partial: boolean,
 ): ChartSeries[] {
-  const grouped = new Map<
-    string,
-    { label: string; measurements: (ChartPoint & { value: number })[] }
-  >();
+  const grouped = new Map<string, { label: string; measurements: Point[] }>();
   for (const item of input) {
     const record = records.get(item.id);
     const id = sourceIdentity(record, item.id);
@@ -37,10 +37,13 @@ export function heartRatePreviewSeries(
       ? provenanceLabel(record)
       : t('healthRecords.sourceUnavailable');
     const bucket = grouped.get(id) ?? { label: source, measurements: [] };
+    const range = record && discreteHeartRateRangeOnLocalDay(record);
     bucket.measurements.push({
       x: item.effectiveAt,
+      endAt: record?.endedAt,
       value: item.amount,
       source,
+      ...(range ? { range } : {}),
     });
     grouped.set(id, bucket);
   }
@@ -51,7 +54,9 @@ export function heartRatePreviewSeries(
       label: group.label,
       unit,
       style: 'primary',
-      points: heartRateDayBuckets(group.measurements).map(point => ({
+      points: heartRateDayBuckets(
+        disjointDiscreteHeartRatePoints(group.measurements),
+      ).map(point => ({
         ...point,
         ...(partial ? { partial: true } : {}),
       })),

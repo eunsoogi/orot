@@ -28,7 +28,8 @@ export interface ImportCommonObservationsOptions {
   readonly healthKit: Pick<
     HealthKitNativeModule,
     'requestReadAuthorizations' | 'querySampleChanges'
-  >;
+  > &
+    Partial<Pick<HealthKitNativeModule, 'querySamples'>>;
   readonly repository: CommonObservationRepository;
   readonly now: () => string;
   readonly rememberForAutoSync?: boolean;
@@ -87,6 +88,9 @@ async function importSelectedFeatures(
         authorization: authorizationForFeature(authorization, feature),
         healthKit: options.healthKit,
         repository: options.repository,
+        ...(options.healthKit.querySamples
+          ? { refreshDerivedSamples: options.healthKit.querySamples }
+          : {}),
         now: options.now,
         ...(options.rememberForAutoSync
           ? { rememberForAutoSync: true as const }

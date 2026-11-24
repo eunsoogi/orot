@@ -116,3 +116,77 @@ test('stored overview choices keep exact source, BPM and type without reading un
     fixture.close();
   }
 });
+
+test('verified summaries count exact local-day quantities without borrowing midnight or overlapping extrema', async () => {
+  const f = openSqliteTestDatabase(':memory:');
+  try {
+    await runMigrations(f.database);
+    const repo = createRecordRepository(f.database);
+    const feature = 'restingHeartRate' as const;
+    const reportAt = new Date(2035, 0, 16, 20);
+    const mk = (
+      id: string,
+      hour: number,
+      endHour: number,
+      bpm: number,
+      summary?: {
+        minimum: number;
+        maximum: number;
+        mean: number;
+        count: number;
+      },
+    ) => {
+      const startDate = new Date(2035, 0, 15, hour).toISOString();
+      const endDate = new Date(2035, 0, 15, endHour).toISOString();
+      const mapped = mapCommonObservationSample(
+        feature,
+        healthKitSample(feature, {
+          id,
+          value: bpm,
+          startDate,
+          endDate,
+          ...(summary ? { heartRateSampleSummary: summary } : {}),
+        }),
+      );
+      if (mapped.status !== 'mapped')
+        throw new Error('Invalid synthetic source');
+      return toCommonObservationRecord(mapped.observation, startDate);
+    };
+    const sample = { minimum: 50, maximum: 81, mean: 61.25, count: 4 };
+    const exact = mk('one-container', 7, 8, 61.25, sample);
+    const scalar = mk('one-scalar', 13, 13, 70);
+    const crossing = mk('cross-midnight', 23, 24, 70, {
+      minimum: 48,
+      maximum: 99,
+      mean: 70,
+      count: 4,
+    });
+    for (const value of [exact, scalar, crossing])
+      await repo.put('health_observation', value);
+    await saveOverviewMetricSelection(repo, ['sleep', 'restingHeartRate']);
+    const read = () =>
+      loadSelectedOverviewSnapshot(
+        f.database,
+        reportAt,
+        new AbortController().signal,
+      );
+    const result = await read();
+    expect(result.chart.metrics.restingHeartRate?.latest.value).toBeCloseTo(
+      385 / 6,
+    );
+    expect(result.chart.metrics.restingHeartRate?.days.at(-2)?.range).toEqual({
+      minimum: 50,
+      maximum: 81,
+      samples: 6,
+    });
+    await repo.put('health_observation', mk('overlap', 8, 9, 68));
+    const overlap = await read();
+    expect(overlap.chart.metrics.restingHeartRate?.days.at(-2)?.range).toEqual({
+      minimum: 61.25,
+      maximum: 70,
+      samples: 4,
+    });
+  } finally {
+    f.close();
+  }
+});

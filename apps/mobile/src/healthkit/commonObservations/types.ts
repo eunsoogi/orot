@@ -33,6 +33,7 @@ export interface MappedCommonObservation {
   readonly observationKind: 'measurement';
   readonly concept: CommonObservationConcept;
   readonly value: CommonObservationQuantityValue;
+  readonly heartRateSampleSummary?: HealthKitSampleSnapshot['heartRateSampleSummary'];
   readonly sourceSampleId: string;
   readonly typeIdentifier: string;
   readonly startDate: string;

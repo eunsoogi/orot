@@ -144,3 +144,21 @@ public extension HealthKitModule {
         }
     }
 }
+
+extension HealthKitBoundary {
+    /// Discrete HealthKit series expose actual statistics. Never expand a scalar
+    /// Apple resting/walking estimate or read any separate raw heart-rate type.
+    static func derivedHeartRateSampleSummary(_ sample: HKQuantitySample, unit: HKUnit) -> [String: Any]? {
+        guard [HKQuantityTypeIdentifier.restingHeartRate.rawValue,
+               HKQuantityTypeIdentifier.walkingHeartRateAverage.rawValue].contains(sample.quantityType.identifier),
+              let discrete = sample as? HKDiscreteQuantitySample, (2 ... 1_000_000).contains(discrete.count) else { return nil }
+        let minimum = discrete.minimumQuantity.doubleValue(for: unit)
+        let maximum = discrete.maximumQuantity.doubleValue(for: unit)
+        let mean = discrete.averageQuantity.doubleValue(for: unit)
+        guard [minimum, maximum, mean].allSatisfy({ $0.isFinite && $0 > 0 }),
+              minimum <= mean, mean <= maximum else { return nil }
+        return ["value": mean, "heartRateSampleSummary": [
+            "minimum": minimum, "maximum": maximum, "mean": mean, "count": discrete.count,
+        ]]
+    }
+}

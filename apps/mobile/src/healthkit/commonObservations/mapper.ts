@@ -1,3 +1,4 @@
+import { discreteDerivedHeartRateSummary } from './discreteDerivedHeartRateSummary';
 import { parseRecord } from '@orot/storage';
 import type { RecordMap } from '@orot/storage';
 import type {
@@ -129,6 +130,10 @@ export function mapCommonObservationSample(
     return { status: 'skipped', reason: 'invalidValue' };
   }
   const device = deviceMetadata(sample.device);
+  const heartRateSampleSummary = discreteDerivedHeartRateSummary(
+    feature,
+    sample,
+  );
 
   return {
     status: 'mapped',
@@ -153,6 +158,7 @@ export function mapCommonObservationSample(
             workoutActivityName: sample.workoutActivityName,
           }
         : {}),
+      ...(heartRateSampleSummary ? { heartRateSampleSummary } : {}),
       sourceSampleId: sample.id,
       typeIdentifier: sample.typeIdentifier,
       startDate: sample.startDate,
@@ -206,6 +212,9 @@ export function toCommonObservationRecord(
     observationKind: observation.observationKind,
     concept: observation.concept,
     value: observation.value,
+    ...(observation.heartRateSampleSummary
+      ? { heartRateSampleSummary: observation.heartRateSampleSummary }
+      : {}),
     ...(observation.workoutActivityType !== undefined
       ? {
           workout: {

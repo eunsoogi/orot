@@ -109,6 +109,12 @@ export interface HealthKitSampleSnapshot {
   readonly device?: HealthKitDeviceSnapshot;
   // value/unit are converted to Orot's query unit; HealthKit does not expose the entry display unit.
   readonly value?: number;
+  readonly heartRateSampleSummary?: {
+    readonly minimum: number;
+    readonly maximum: number;
+    readonly mean: number;
+    readonly count: number;
+  };
   readonly unit?: string;
   readonly sourceRepresentation?: HealthKitQuantitySourceRepresentation;
   /** Actual active workout duration, not elapsed wall-clock time. */
