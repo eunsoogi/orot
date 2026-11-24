@@ -1,11 +1,18 @@
-import { useEffect, useRef, useState } from 'react';
+import {
+  useEffect,
+  useImperativeHandle,
+  useLayoutEffect,
+  useRef,
+  useState,
+  type Ref,
+} from 'react';
 import { View } from 'react-native';
 import { useInferenceConsent } from '../agent/execution/useInferenceConsent';
 import { useSettingsDisclosure } from '../agent/execution/useSettingsDisclosure';
 import { t } from '../i18n';
 import { AppButton } from '../layout/AppButton';
 import { AppText as Text } from '../layout/AppText';
-import { providerSettingsStyles as styles } from '../layout/providerSettingsPresentation';
+import { modelSettingsPageGap } from '../layout/providerSettingsPresentation';
 import { createRealtimeSettingsPermission } from '../voiceConversation/createRealtimeSettingsPermission';
 import { ProviderModelChoiceRow } from '../providers/selection/ProviderModelChoiceRow';
 import { ModelSelectionSummary } from '../layout/ModelSelectionSummary';
@@ -18,13 +25,13 @@ import {
 } from './liveResponsesSettings';
 import {
   type LiveResponsesBackend,
-  liveResponsesBackends,
   liveResponsesProviderId,
   liveResponsesRecipient,
 } from './liveResponsesSettingsIdentity';
 
 /** An explicit, separately disclosed Settings action; choosing GPT-Live or
  * saving its voice options never turns on Responses delegation. */
+const modelRows = { gap: modelSettingsPageGap };
 const backendNames: Readonly<Record<LiveResponsesBackend, string>> = {
   'gpt-6-luna': 'GPT-6 Luna',
   'gpt-6-sol': 'GPT-6 Sol',
@@ -34,10 +41,14 @@ export function LiveResponsesSettingsPanel({
   active,
   allowedModels,
   onBusyChange,
+  onSaveStateChange,
+  saveRef,
   ownerRevision,
 }: {
   readonly active: boolean;
   readonly onBusyChange: (busy: boolean) => void;
+  readonly onSaveStateChange: (canSave: boolean) => void;
+  readonly saveRef: Ref<() => void>;
   readonly allowedModels: readonly LiveResponsesBackend[];
   readonly ownerRevision: number;
 }) {
@@ -53,8 +64,11 @@ export function LiveResponsesSettingsPanel({
   const [reload, setReload] = useState(0);
   const lifetime = useRef<AbortController | null>(null);
   const operation = useRef<object | null>(null);
-  const allowedRef = useRef(allowedModels);
-  allowedRef.current = allowedModels;
+  const availability = useRef({ active, allowedModels });
+  availability.current = { active, allowedModels };
+  const selectable = (model: LiveResponsesBackend) =>
+    availability.current.active &&
+    availability.current.allowedModels.includes(model);
 
   useEffect(() => {
     const owner = new AbortController();
@@ -98,7 +112,7 @@ export function LiveResponsesSettingsPanel({
       operation.current ||
       (enable &&
         (!backend ||
-          !allowedRef.current.includes(backend) ||
+          !selectable(backend) ||
           backend === saved ||
           (status !== 'off' && status !== 'active')))
     )
@@ -115,8 +129,12 @@ export function LiveResponsesSettingsPanel({
     const audio = createRealtimeSettingsPermission(consent, true);
     try {
       if (enable && backend) {
-        if (!(await audio.authorize(liveModel, () => {})) || !current()) {
-          if (current()) setFailed(true);
+        if (
+          !(await audio.authorize(liveModel, () => {})) ||
+          !current() ||
+          !availability.current.active
+        ) {
+          if (current() && availability.current.active) setFailed(true);
           return;
         }
         const approved = await confirmDisclosure(
@@ -132,7 +150,7 @@ export function LiveResponsesSettingsPanel({
           },
           owner.signal,
         );
-        const maySave = () => current() && allowedRef.current.includes(backend);
+        const maySave = () => current() && selectable(backend);
         if (!approved || !maySave() || !audio.current()) return;
         await saveLiveResponsesSettings({
           backendModel: backend,
@@ -168,14 +186,22 @@ export function LiveResponsesSettingsPanel({
     }
   };
 
+  const canSave =
+    active &&
+    !busy &&
+    !!draft &&
+    draft !== saved &&
+    (status === 'off' || status === 'active') &&
+    allowedModels.includes(draft);
+  useLayoutEffect(() => {
+    onSaveStateChange(canSave);
+    return () => onSaveStateChange(false);
+  }, [canSave, onSaveStateChange]);
+  // The shared action still rechecks ownership and disclosure in change.
+  useImperativeHandle(saveRef, () => () => change(true));
+
   return (
-    <View style={styles.section} testID="live-responses-setting">
-      <Text accessibilityRole="header" style={styles.heading}>
-        {t('modelSettings.liveResponsesTitle')}
-      </Text>
-      <Text style={styles.detail}>
-        {t('modelSettings.liveResponsesDescription')}
-      </Text>
+    <View style={modelRows} testID="live-responses-setting">
       {status === 'active' && saved ? (
         <ModelSelectionSummary
           label={t('modelSettings.currentSelection')}
@@ -183,47 +209,27 @@ export function LiveResponsesSettingsPanel({
           testID="live-responses-active-model"
         />
       ) : null}
-      {status === 'off' || status === 'active' ? (
-        <>
-          {liveResponsesBackends.map(model => (
+      {status === 'off' || status === 'active'
+        ? allowedModels.map(model => (
             <ProviderModelChoiceRow
               key={model}
               testID={`live-responses-backend-${model}`}
               title={backendNames[model]}
               detail={model}
               selected={(draft ?? saved) === model}
-              disabled={!active || busy || !allowedModels.includes(model)}
+              disabled={!active || busy}
               onPress={() => {
-                if (
-                  active &&
-                  !operation.current &&
-                  allowedRef.current.includes(model)
-                )
-                  setDraft(model);
+                if (!operation.current && selectable(model)) setDraft(model);
               }}
             />
-          ))}
-          <AppButton
-            title={t('modelSettings.liveResponsesEnable')}
-            testID="live-responses-enable"
-            disabled={
-              !active ||
-              busy ||
-              !draft ||
-              draft === saved ||
-              !allowedModels.includes(draft)
-            }
-            onPress={() => {
-              change(true);
-            }}
-          />
-        </>
-      ) : null}
-      {status === 'loading' ? (
+          ))
+        : null}
+      {status === 'loading' && (
         <Text accessibilityRole="status">
           {t('modelSettings.liveVoicePreferenceLoading')}
         </Text>
-      ) : status === 'active' || status === 'unavailable' ? (
+      )}
+      {(status === 'active' || status === 'unavailable') && (
         <AppButton
           title={t('modelSettings.liveResponsesDisable')}
           testID="live-responses-disable"
@@ -232,7 +238,7 @@ export function LiveResponsesSettingsPanel({
             change(false);
           }}
         />
-      ) : null}
+      )}
       {(status === 'unavailable' || failed) && (
         <Text accessibilityRole="alert">
           {t('modelSettings.liveResponsesUnavailable')}

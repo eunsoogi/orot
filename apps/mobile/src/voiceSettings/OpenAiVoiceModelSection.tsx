@@ -27,8 +27,15 @@ export function OpenAiVoiceModelSection({
         />
         <OpenAiVoiceModelTabs {...tabs} />
       </View>
-      {catalog.message &&
-      catalog.message !== t('modelSettings.refreshAccountModels') ? (
+      {catalog.fresh &&
+      tabs.selected === 'tools' &&
+      catalog.toolIds.length === 0 ? (
+        <Text accessibilityRole="status" style={styles.secondary}>
+          {t('modelSettings.liveResponsesCatalogEmpty')}
+        </Text>
+      ) : catalog.message &&
+        catalog.message !== t('modelSettings.refreshAccountModels') &&
+        (tabs.selected === 'speech' || !catalog.fresh) ? (
         <Text accessibilityRole="status" style={styles.secondary}>
           {catalog.message}
         </Text>
