@@ -27,15 +27,21 @@ const activeToolLimit = 16;
 export function createConversationBackgroundStatus(input: {
   signal: AbortSignal;
   current: () => boolean;
+  canTrackProvider?: () => boolean;
   report: (stage: ConversationBackgroundStage) => void;
 }) {
   const providers = new Map<symbol, () => void>();
   const tools = new Map<string, { accepted: boolean }>();
   let timer: ReturnType<typeof setTimeout> | undefined;
   let closed = false;
+  let awaitingProviderGrant = false;
   let toolRun: string | undefined;
   let highestStartedOrder = -1;
   const alive = () => !closed && !input.signal.aborted && input.current();
+  const providerTrackable = () =>
+    !closed &&
+    !input.signal.aborted &&
+    (awaitingProviderGrant ? input.canTrackProvider?.() === true : alive());
   const send = (stage: ConversationBackgroundStage) => {
     if (!alive()) return false;
     try {
@@ -50,6 +56,7 @@ export function createConversationBackgroundStatus(input: {
     timer = undefined;
   };
   const suspend = () => {
+    awaitingProviderGrant = false;
     clear();
     for (const detach of providers.values()) detach();
     providers.clear();
@@ -64,7 +71,12 @@ export function createConversationBackgroundStatus(input: {
 
   const tick = () => {
     clear();
-    if (providers.size && send('provider_waiting') && providers.size)
+    if (
+      !awaitingProviderGrant &&
+      providers.size &&
+      send('provider_waiting') &&
+      providers.size
+    )
       timer = setTimeout(tick, statusIntervalMs);
   };
   const toolKey = (event: ConversationBackgroundToolIdentity) =>
@@ -73,8 +85,22 @@ export function createConversationBackgroundStatus(input: {
     checkpointed: () => send('checkpointed'),
     suspend,
     close,
+    // Keep ownership through a deferred submission, but emit no provider status or timer until its grant.
+    deferProviderReporting() {
+      awaitingProviderGrant = true;
+      clear();
+    },
+    grantProviderReporting() {
+      if (!awaitingProviderGrant) return;
+      awaitingProviderGrant = false;
+      if (providers.size) tick();
+    },
     beginProvider(signal?: AbortSignal) {
-      if (!alive() || signal?.aborted || providers.size >= activeToolLimit)
+      if (
+        !providerTrackable() ||
+        signal?.aborted ||
+        providers.size >= activeToolLimit
+      )
         return;
       const owner = Symbol();
       const detach = () => signal?.removeEventListener('abort', finish);
@@ -82,12 +108,12 @@ export function createConversationBackgroundStatus(input: {
         detach();
         if (!providers.delete(owner) || providers.size > 0) return;
         clear();
-        send('provider_finished');
+        if (!awaitingProviderGrant) send('provider_finished');
       };
       providers.set(owner, detach);
-      if (providers.size === 1) tick();
+      if (providers.size === 1 && !awaitingProviderGrant) tick();
       // The initial report can synchronously retire the owner or this invocation.
-      if (!providers.has(owner) || !alive() || signal?.aborted) {
+      if (!providers.has(owner) || !providerTrackable() || signal?.aborted) {
         finish();
         return;
       }

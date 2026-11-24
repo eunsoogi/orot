@@ -44,17 +44,18 @@ export function adoptContinuedConversationLease(
   const executionId = entry.executionId;
   entry.backgroundStatus?.close();
   const reportStatus = execution?.reportStatus;
+  const eligible = () =>
+    current() &&
+    entry.executionId === executionId &&
+    release.admitted &&
+    entry.continuedRefused !== executionId &&
+    !entry.waitingForDecision;
   const status =
     reportStatus &&
     createConversationBackgroundStatus({
       signal: entry.controller.signal,
-      current: () =>
-        current() &&
-        entry.executionId === executionId &&
-        release.admitted &&
-        entry.continuedRequested === true &&
-        entry.continuedRefused !== executionId &&
-        !entry.waitingForDecision,
+      current: () => eligible() && entry.continuedRequested === true,
+      canTrackProvider: eligible,
       report: stage => reportStatus.call(execution, executionId, stage),
     });
   entry.backgroundStatus = status;
@@ -134,6 +135,7 @@ function observeContinuedOpportunity(
     if (!entry.continuedRequested) return;
     entry.continuedRequested = false;
     entry.continuedDeferred = true;
+    entry.backgroundStatus?.deferProviderReporting();
   } else if (event === 'continuation-foreground') {
     if (!entry.continuedDeferred) return;
     entry.continuedDeferred = false;
@@ -142,6 +144,8 @@ function observeContinuedOpportunity(
     // Scheduler refusal/grant is a real attempt, not a foreground retry permit.
     entry.continuedDeferred = false;
     entry.continuedRequested = true;
+    if (event === 'continued-granted')
+      entry.backgroundStatus?.grantProviderReporting();
   }
 }
 
