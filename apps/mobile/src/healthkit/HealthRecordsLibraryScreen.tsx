@@ -115,12 +115,12 @@ export function HealthRecordsLibraryScreen({
     revision,
     inputRevision: 0,
   });
-  const importLabel = t('healthRecords.importHealthData');
+  const healthSettingsLabel = t('healthRecords.openHealthDataSettings');
   const hasDock = useNavigationRouteActions([
     {
-      id: 'open-health-import',
-      label: importLabel,
-      accessibilityLabel: importLabel,
+      id: 'open-health-data-settings',
+      label: healthSettingsLabel,
+      accessibilityLabel: healthSettingsLabel,
       testID: 'health-records-open-health-import',
       systemImageName: 'arrow.down',
       onPress: onOpenHealthImport,
@@ -156,7 +156,7 @@ export function HealthRecordsLibraryScreen({
                     <AppButton
                       onPress={onOpenHealthImport}
                       testID="health-records-open-health-import"
-                      title={t('healthRecords.importHealthData')}
+                      title={t('healthRecords.openHealthDataSettings')}
                     />
                   ) : null
                 }

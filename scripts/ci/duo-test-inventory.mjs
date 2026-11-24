@@ -50,7 +50,7 @@ export const duoTests = [
   'OrotUITests/RecordingExportUITests/testActualAudioShareDismissalCleansTemporaryFilesAndPreservesSource',
   'OrotUITests/RecordsHubUITests/testRecordsLaneSurvivesOrientationAndAppearanceChangesAtDefaultAndLargeText',
   'OrotUITests/RecordsHubUITests/testHealthRecordTypeAndPeriodSurviveOrientationChanges',
-  'OrotUITests/HealthImportDuoUITests/testHealthRecordsLibraryOpensTheUnifiedImportRoute',
+  'OrotUITests/HealthImportDuoUITests/testHealthRecordsLibraryOpensHealthDataSettings',
   'OrotUITests/HealthImportDuoUITests/testSyntheticHealthLibraryAndDetailKeepContentBoundariesAtBothTextSizes',
   'OrotUITests/HealthImportDuoUITests/testHealthDataSettingsReflowKeepsSelectionAndPermissionDisclosure',
   'OrotUITests/DiseaseHypothesesDuoUITests/testDuoReflowPreservesSelectedEvidenceAndSummaryActions',

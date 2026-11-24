@@ -8,7 +8,7 @@ final class HealthImportDuoUITests: OrotFailFastTestCase {
     }
 
     @MainActor
-    func testHealthRecordsLibraryOpensTheUnifiedImportRoute() throws {
+    func testHealthRecordsLibraryOpensHealthDataSettings() throws {
         let app = XCUIApplication()
         app.launchArguments = ["-OROT_TEST_PROFILE", "core", "-AppleLanguages", "(en)", "-AppleLocale", "en_US"] + AppearanceUITestConditions.observationArguments
         app.launch()
@@ -28,16 +28,14 @@ final class HealthImportDuoUITests: OrotFailFastTestCase {
         tap(app, "records-open-health-library")
         NavigationUITestConditions.route(app, markers: ["health-records-title"])
         tap(app, "health-records-open-health-import")
-        NavigationUITestConditions.route(app, markers: ["unified-import-scroll"])
-        XCTAssertTrue(node(app, "unified-import-source-selection").exists, app.debugDescription)
-        XCTAssertTrue(node(app, "unified-import-activity").exists, app.debugDescription)
-        assertSupportingContentStaysInMeasuredRegions(app)
+        NavigationUITestConditions.route(app, markers: ["health-data-scroll"])
+        XCTAssertTrue(node(app, "health-data-permission-status").exists, app.debugDescription)
+        XCTAssertTrue(node(app, "health-data-title").exists, app.debugDescription)
         _ = try AppearanceUITestConditions.select(false, returningTo: app, testCase: self, captureOriginal: { appearance = $0 })
-        tap(app, "unified-import-toggle-heartRate")
-        capture(app, "health-import-library-light")
+        capture(app, "health-data-library-light")
         _ = try AppearanceUITestConditions.select(true, returningTo: app, testCase: self)
-        XCTAssertTrue(node(app, "unified-import-toggle-heartRate").exists, app.debugDescription)
-        capture(app, "health-import-library-dark")
+        XCTAssertTrue(node(app, "health-data-permission-status").exists, app.debugDescription)
+        capture(app, "health-data-library-dark")
 
         try NavigationUITestConditions.tapNavigation(app, "navigation-back")
         NavigationUITestConditions.route(app, markers: ["health-records-title"])

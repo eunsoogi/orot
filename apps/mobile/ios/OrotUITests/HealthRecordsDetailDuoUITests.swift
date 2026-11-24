@@ -39,14 +39,14 @@ extension HealthImportDuoUITests {
             waitForLibraryReturn(app, departing: "health-records-detail-scroll")
             XCTAssertTrue(healthDetailNode(app, "health-record-filter-heart_rate").isSelected)
             try HealthRecordsBoundaryUITestConditions.tap(app, identifier: "health-records-open-health-import", owners: [.init(identifier: "health-records-scroll")], testCase: self)
-            NavigationUITestConditions.route(app, markers: ["unified-import-scroll"])
-            XCTAssertTrue(healthDetailNode(app, "unified-import-source-selection").exists)
-            XCTAssertTrue(healthDetailNode(app, "unified-import-activity").exists)
-            // Observe entry and return without requesting authorization, selecting a source or starting an import.
-            try NavigationGeometryUITestConditions.captureChildBoundary(app, viewportIDs: ["unified-import-scroll"], name: "health-import-entry-\(size)", testCase: self)
-            XCTAssertFalse(libraryIsActive(app, departing: "unified-import-scroll"))
+            NavigationUITestConditions.route(app, markers: ["health-data-scroll"])
+            XCTAssertTrue(healthDetailNode(app, "health-data-permission-status").exists)
+            XCTAssertTrue(healthDetailNode(app, "health-data-title").exists)
+            // Observe entry and return without changing Health Data settings or starting a sync.
+            try NavigationGeometryUITestConditions.captureChildBoundary(app, viewportIDs: ["health-data-scroll"], name: "health-data-entry-\(size)", testCase: self)
+            XCTAssertFalse(libraryIsActive(app, departing: "health-data-scroll"))
             try NavigationUITestConditions.tapNavigation(app, "navigation-back")
-            waitForLibraryReturn(app, departing: "unified-import-scroll")
+            waitForLibraryReturn(app, departing: "health-data-scroll")
             XCTAssertTrue(healthDetailNode(app, "health-record-filter-heart_rate").isSelected)
         }
     }

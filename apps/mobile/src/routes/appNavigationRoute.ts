@@ -12,7 +12,6 @@ export type AppNavigationRoute =
   | 'generated-report-detail'
   | 'generated-report-source'
   | 'recording-review'
-  | 'unified-import'
   | 'health-records'
   | 'health-records-detail'
   | 'manual-history'
