@@ -87,8 +87,12 @@ export const inferenceConsentReceipts: InferenceConsentReceipts = {
 export async function resetInferenceConsentReceipts() {
   beginConsentReset();
   // Durable tombstones precede either SQL cleanup. Failed cleanup cannot revive grants.
+  // Start each revocation synchronously, but collect even a synchronous owner
+  // failure as a rejection so every other queued write stays observed.
   await Promise.all(
-    settingsConsentSlots.map(slot => settingsConsentAuthority(slot).revoke()),
+    settingsConsentSlots.map(async slot =>
+      settingsConsentAuthority(slot).revoke(),
+    ),
   );
   await (await settingsConsentRepository()).clear();
   await inferenceConsentReceipts.clear();
