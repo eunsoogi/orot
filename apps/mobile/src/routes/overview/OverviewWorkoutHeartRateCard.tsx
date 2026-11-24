@@ -8,14 +8,19 @@ import { useOverviewWorkoutPeriodHeartRate } from './useOverviewWorkoutPeriodHea
 export function OverviewWorkoutHeartRateCard({
   width,
   active,
+  embedded,
 }: {
   readonly width: number | undefined;
   readonly active: boolean;
+  readonly embedded?: boolean;
 }) {
   const state = useOverviewWorkoutPeriodHeartRate(active);
   return (
     <View
-      style={[styles.card, { width: width ?? '100%' }]}
+      style={[
+        embedded ? styles.heartMetric : styles.card,
+        { width: width ?? '100%' },
+      ]}
       testID="overview-metric-workoutHeartRate"
     >
       <Text accessibilityRole="header" style={styles.title}>

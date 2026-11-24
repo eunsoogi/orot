@@ -45,7 +45,11 @@ function metricGrid() {
 
 function cardWidth(metric: OverviewMetric) {
   return StyleSheet.flatten(
-    screen.getByTestId(`overview-metric-${metric}`).props.style,
+    screen.getByTestId(
+      metric === 'heartRate'
+        ? 'overview-heart-panel'
+        : `overview-metric-${metric}`,
+    ).props.style,
   )?.width;
 }
 
