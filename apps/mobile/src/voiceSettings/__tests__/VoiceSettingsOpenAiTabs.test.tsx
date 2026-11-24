@@ -223,7 +223,13 @@ test('the OpenAI catalog card contains all refreshed voice controls', async () =
   expect(await inside.findByTestId('voice-model-gpt-live-1.1')).toBeVisible();
   expect(await inside.findByTestId('live-voice-language')).toBeVisible();
   expect(inside.getByTestId('live-voice-voice')).toBeVisible();
-  expect(inside.getByTestId('voice-tool-model-gpt-6-sol')).toBeVisible();
+  const tool = inside.getByTestId('voice-tool-model-gpt-6-sol');
+  const luna = inside.getByTestId('voice-tool-model-gpt-6-luna');
+  expect(within(tool).getByText('GPT-6 Sol')).toBeVisible();
+  expect(within(tool).getByText('gpt-6-sol')).toBeVisible();
+  expect(within(luna).getByText('GPT-6 Luna')).toBeVisible();
+  expect(within(luna).getByText('gpt-6-luna')).toBeVisible();
+  expect(inside.queryByText('gpt-unrelated')).toBeNull();
   const footer = inside.getByText(t('modelSettings.modelListNotice'));
   expect(footer).toBeVisible();
   expect(footer.props.accessibilityRole).toBe('status');

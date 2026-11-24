@@ -1,10 +1,9 @@
-import { Pressable, View } from 'react-native';
-import { AppSymbol } from '../layout/AppSymbol';
-import { AppText as Text } from '../layout/AppText';
-import { appColors } from '../layout/appColors';
-import { providerSettingsStyles as styles } from '../layout/providerSettingsPresentation';
+import { t } from '../i18n';
+import { ProviderModelChoiceRow } from '../providers/selection/ProviderModelChoiceRow';
+import { savedChatGPTModelLabel } from '../providers/selection/knownChatGPTModelLabel';
 import type { LiveResponsesBackend } from './liveResponsesSettingsIdentity';
 
+/** Share Conversation's title and ID presentation without changing Voice eligibility. */
 export function OpenAiVoiceToolOptions({
   models,
   selected,
@@ -17,28 +16,17 @@ export function OpenAiVoiceToolOptions({
   choose: (model: LiveResponsesBackend) => void;
 }) {
   return models.map(model => (
-    <Pressable
+    <ProviderModelChoiceRow
       key={model}
-      accessibilityRole="radio"
-      accessibilityState={{ selected: selected === model, disabled }}
-      disabled={disabled}
-      style={styles.option}
       testID={`voice-tool-model-${model}`}
+      title={
+        savedChatGPTModelLabel(model) ?? t('modelSettings.modelNameUnknown')
+      }
+      detail={model}
+      icon="wrench.and.screwdriver"
+      selected={selected === model}
+      disabled={disabled}
       onPress={() => choose(model)}
-    >
-      <View style={styles.icon}>
-        <AppSymbol
-          name="wrench.and.screwdriver"
-          color={appColors.primaryText}
-        />
-      </View>
-      <View style={styles.copy}>
-        <Text style={styles.title}>{model}</Text>
-      </View>
-      <AppSymbol
-        name={selected === model ? 'checkmark.circle.fill' : 'circle'}
-        color={appColors.text}
-      />
-    </Pressable>
+    />
   ));
 }

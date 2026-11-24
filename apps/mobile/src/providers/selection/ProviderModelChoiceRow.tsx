@@ -18,7 +18,7 @@ export function ProviderModelChoiceRow({
   readonly testID: string;
   readonly title: string;
   readonly detail?: string;
-  readonly icon?: 'sparkles' | 'brain';
+  readonly icon?: 'sparkles' | 'brain' | 'wrench.and.screwdriver';
   readonly blockedMessage?: string | null;
   readonly selected: boolean;
   readonly disabled: boolean;
