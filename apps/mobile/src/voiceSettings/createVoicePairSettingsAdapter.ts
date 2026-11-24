@@ -91,7 +91,6 @@ export function createVoicePairSettingsAdapter(input: {
         model: pair.speechModel,
         pairAwaitingActivation: witness?.() !== true,
         pairPresentationCurrent: witness,
-        pairPresentationCurrent: witness,
       };
     },
     async captureVoicePairPublication(

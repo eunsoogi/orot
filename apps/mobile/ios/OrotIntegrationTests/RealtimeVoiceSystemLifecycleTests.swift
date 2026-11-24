@@ -6,7 +6,7 @@ import XCTest
 
 /// Injected system lifecycle events exercise capture gates without starting CallKit or audio.
 extension RealtimeVoiceLifecycleTests {
-    func testPairNativeAdmissionRequiresProtectedPublicationWitnessAndBothAuthorities() throws {
+    private func assertPairNativeAdmissionRequiresProtectedPublicationWitnessAndBothAuthorities() throws {
         let response = String(repeating: "a", count: 64)
         let epoch = String(repeating: "b", count: 64)
         let audio = String(repeating: "c", count: 64)
@@ -23,10 +23,12 @@ extension RealtimeVoiceLifecycleTests {
             if account == "voice-settings" {
                 var record: [String: Any] = ["mode": "local", "apiKey": "synthetic", "credentialEpoch": epoch,
                                              "pairCandidates": candidates]
-                if let witness { record["effectiveResponsesGeneration"] = witness }
+                record["effectiveResponsesGeneration"] = witness
                 return record
             }
-            guard account == "settings-consent-authority" else { return nil }
+            guard account == "settings-consent-authority" else {
+                return nil
+            }
             return service.hasSuffix(".voice")
                 ? ["version": 1, "generation": audio, "status": audioStatus]
                 : ["version": 1, "generation": response, "status": "active"]
@@ -93,6 +95,7 @@ extension RealtimeVoiceLifecycleTests {
     }
 
     func testDeniedAsyncOpeningClearsOwnedCallBeforeBridgeRejection() async throws {
+        try assertPairNativeAdmissionRequiresProtectedPublicationWitnessAndBothAuthorities()
         let audio = Audio(), socket = Socket()
         let rejected = expectation(description: "opening rejected after permission denial")
         let ownership = AudioSessionOwnership(configure: { _, _, _ in }, setActive: { _ in })

@@ -11,11 +11,7 @@ import { voiceSettingsKeychainRecord } from './voiceSettingsKeychainRecord';
 import { createVoicePairSettingsAdapter } from './createVoicePairSettingsAdapter';
 import type { SettingsVoicePairSelection } from '../storage/settingsVoicePairSelection';
 
-import type {
-  VoiceMode,
-  VoiceSettings,
-  StoredVoiceSettings,
-} from './voiceSettingsTypes';
+import type { VoiceMode, VoiceSettings } from './voiceSettingsTypes';
 
 /** Connection-local credential owner. Production supplies its unchanged service and
  * mutation owners; synthetic native tests supply an admitted UUID service only. */
