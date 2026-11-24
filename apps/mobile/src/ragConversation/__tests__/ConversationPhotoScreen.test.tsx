@@ -55,9 +55,7 @@ test('legacy prepared originals stay scoped to their owner without sending', asy
     screen.getByTestId('rag-conversation-input'),
     '합성 질문',
   );
-  await act(() => {
-    void store.photoDrafts.select(store.getSnapshot().activeId);
-  });
+  await act(() => store.photoDrafts.select(store.getSnapshot().activeId));
   await waitFor(() =>
     expect(screen.getByTestId('conversation-photo-preview')).toBeTruthy(),
   );
@@ -102,13 +100,15 @@ test('the other session enables its picker when a pending picker is cancelled', 
       <Screen />
     </ConversationSessionsProvider>,
   );
+  let selection!: ReturnType<typeof store.photoDrafts.select>;
   await act(() => {
-    void store.photoDrafts.select(store.getSnapshot().activeId);
+    selection = store.photoDrafts.select(store.getSnapshot().activeId);
   });
   await act(() => store.create());
   expect(store.photoDrafts.isPicking()).toBe(true);
   await act(async () => {
     finish(null);
+    await selection;
   });
   await waitFor(() => expect(store.photoDrafts.isPicking()).toBe(false));
   await view.unmount();
@@ -132,9 +132,7 @@ test('a photo remains available for undo and is retired when that undo is replac
     </ConversationSessionsProvider>,
   );
   const first = store.getSnapshot().activeId;
-  await act(() => {
-    void store.photoDrafts.select(store.getSnapshot().activeId);
-  });
+  await act(() => store.photoDrafts.select(store.getSnapshot().activeId));
   await waitFor(() =>
     expect(screen.getByTestId('conversation-photo-preview')).toBeTruthy(),
   );
@@ -181,8 +179,9 @@ test('a picker result arriving after session finalization is retired', async () 
   const first = store.getSnapshot().activeId;
   const discard = jest.mocked(medicalDocumentImportService.discardDocument);
   discard.mockClear();
+  let selection!: ReturnType<typeof store.photoDrafts.select>;
   await act(() => {
-    void store.photoDrafts.select(store.getSnapshot().activeId);
+    selection = store.photoDrafts.select(store.getSnapshot().activeId);
   });
   await act(() => store.remove(first));
   await act(() => store.remove(store.getSnapshot().activeId));
@@ -193,6 +192,7 @@ test('a picker result arriving after session finalization is retired', async () 
       contentHash: `sha256:${'a'.repeat(64)}`,
       sections: [],
     });
+    await selection;
   });
   await waitFor(() =>
     expect(discard).toHaveBeenCalledWith(
