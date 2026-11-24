@@ -4,6 +4,85 @@
     /// Explicit test-host only. All transport/audio/permission ports are synthetic;
     /// malformed opt-in stays denied and can never fall through to live defaults.
     enum SettingsConsentRealtimeFixture {
+        struct CanonicalQueueOwner {
+            let socket: RealtimeVoiceSocket
+            let mailbox: RealtimeVoiceCanonicalHealthMailbox
+            let admission: LiveResponsesAdmission
+            let claim: (String) -> Bool
+        }
+
+        /// Private native fixture selector. Product module options cannot reach
+        /// this entry: it requires the current UI-test launch and UUID namespace.
+        static func canonicalQueueFixture(
+            identifier: String,
+            baseline: [String: String],
+            companion: [String: Any],
+            declaration: [String: Any],
+            owns: @escaping (RealtimeVoiceCanonicalHealthMailbox.Request) -> Bool,
+            callID: String,
+            task: @escaping () -> RealtimeVoiceSocketTask,
+            emit: @escaping (String, [String: Any]) -> Void,
+        ) -> CanonicalQueueOwner? {
+            guard admitted, let namespace = canonicalNamespace(identifier),
+                  RealtimeVoiceToolLease.validID(callID),
+                  let base = LiveResponsesSettingsGrant(baseline),
+                  let cap = RealtimeVoiceCanonicalHealthAdmission(companion)
+            else { return nil }
+            let key = "synthetic-live-" + identifier
+            let read = { (service: String, account: String) -> [String: Any]? in
+                guard admitted, canonicalNamespace(identifier) == namespace,
+                      let alias = canonicalServiceAlias(service, account)
+                else { return nil }
+                // Aliases are never resolved through a product Keychain service.
+                return RealtimeVoiceCanonicalHealthAdmission.read(
+                    namespace + "." + alias, "synthetic-settings-consent",
+                )
+            }
+            guard cap.configuration(declaration, base: base, key: key, read: read) != nil else { return nil }
+            let authority = LiveNativeResultDispatchAuthority()
+            let mailbox = RealtimeVoiceCanonicalHealthMailbox(
+                call: callID, baseline: base, capability: cap, authority: authority, key: key, read: read,
+                owns: { admitted && canonicalNamespace(identifier) == namespace && owns($0) },
+                emit: emit,
+            )
+            let socket = RealtimeVoiceSocket(endpoint: RealtimeVoiceSocketEndpoint(networklessTask: task))
+            return CanonicalQueueOwner(
+                socket: socket, mailbox: mailbox,
+                admission: mailbox.bridge(backendModel: base.backendModel, declaration: declaration),
+                claim: { challengeID in
+                    admitted && canonicalNamespace(identifier) == namespace &&
+                        authority.claim(call: callID, challenge: challengeID)
+                },
+            )
+        }
+
+        static func canonicalNamespace(_ identifier: String, launched: String? = UserDefaults.standard.string(forKey: "OROT_SETTINGS_CONSENT_FIXTURE")) -> String? {
+            let prefix = "test-settings-consent-"
+            guard let launched, launched.lowercased() == identifier, identifier == identifier.lowercased(),
+                  identifier.hasPrefix(prefix),
+                  let uuid = UUID(uuidString: String(identifier.dropFirst(prefix.count))),
+                  identifier == prefix + uuid.uuidString.lowercased()
+            else { return nil }
+            return "com.orot.test." + identifier
+        }
+
+        static func canonicalServiceAlias(_ service: String, _ account: String) -> String? {
+            switch (service, account) {
+            case ("com.orot.mobile.settings-consent-authority.v1.voice", "settings-consent-authority"):
+                "authority-voice"
+            case ("com.orot.mobile.settings-consent-authority.v1.voice-responses", "settings-consent-authority"):
+                "authority-voice-responses"
+            case ("com.orot.mobile.settings-consent-authority.v1.voice-responses-health-context", "settings-consent-authority"):
+                "authority-voice-responses-health-context"
+            case ("com.orot.mobile.voice-settings.v1", "voice-settings"):
+                "canonical-synthetic-voice-settings"
+            case ("com.orot.mobile.live-health-context.v2", "live-health-context"):
+                "canonical-synthetic-health-binding"
+            default:
+                nil
+            }
+        }
+
         static let socket = Socket()
         static let audio = Audio()
         static var readyEvents = 0

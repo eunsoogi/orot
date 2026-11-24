@@ -1,3 +1,8 @@
+import {
+  NativeCanonicalQueueFixtureControls,
+  type CanonicalQueueFixture,
+} from './NativeCanonicalQueueFixtureControls';
+import { createCanonicalSettingsConsentFixture } from './settingsConsentCanonicalHealthFixture';
 import '../src/agent/polyfills';
 import { SettingsConsentBoundaryEntry } from './SettingsConsentBoundaryEntry';
 import { useEffect, useState } from 'react';
@@ -12,7 +17,12 @@ import { createSettingsConsentUiServices } from './settingsConsentUiServices';
 import { SettingsConsentNativeProbe } from './SettingsConsentNativeProbe';
 
 /** No normal App or credential singleton is started by this explicit test-only route. */
-function SettingsConsentNativeEntry() {
+function SettingsConsentNativeEntry({
+  canonical = false,
+}: {
+  canonical?: boolean;
+}) {
+  const [queue, setQueue] = useState<CanonicalQueueFixture | null>(null);
   const [input, setInput] = useState<ReturnType<
     typeof createSettingsConsentUiServices
   > | null>(null);
@@ -30,6 +40,14 @@ function SettingsConsentNativeEntry() {
         !NativeModules.OrotTestControl
       )
         throw new Error('Explicit native synthetic settings route required');
+      if (
+        canonical &&
+        (launch.OROT_SETTINGS_CONSENT_BOUNDARIES !== 'synthetic' ||
+          launch.OROT_SETTINGS_CONSENT_CANONICAL_QUEUE !== 'synthetic' ||
+          typeof NativeModules.VoiceRealtimeModule
+            ?.settingsConsentCanonicalQueueProbe !== 'function')
+      )
+        throw new Error('Explicit synthetic queue fixture required');
       const identifier = consentFixtureIdentity(
         launch.OROT_SETTINGS_CONSENT_FIXTURE,
       );
@@ -51,6 +69,15 @@ function SettingsConsentNativeEntry() {
         return;
       }
       setInput(createSettingsConsentUiServices(store));
+      if (canonical)
+        setQueue({
+          identifier,
+          coordinator: createCanonicalSettingsConsentFixture({
+            database: store.database,
+            native: store,
+          }),
+          owner: () => current,
+        });
     };
     prepare().catch(() => {
       if (current) setStatus('synthetic-preparation-failed');
@@ -59,10 +86,11 @@ function SettingsConsentNativeEntry() {
       current = false;
       close?.();
     };
-  }, []);
+  }, [canonical]);
   return (
     <SafeAreaProvider>
       <SafeAreaView style={styles.root}>
+        {queue ? <NativeCanonicalQueueFixtureControls fixture={queue} /> : null}
         {input ? (
           <SettingsConsentNativeProbe input={input} />
         ) : (
@@ -76,6 +104,13 @@ const styles = StyleSheet.create({ root: { flex: 1 } });
 AppRegistry.registerComponent(appName, () => {
   const manager = NativeModules.SettingsManager;
   const launch = manager?.settings ?? manager?.getConstants?.().settings ?? {};
+  if (
+    Object.prototype.hasOwnProperty.call(
+      launch,
+      'OROT_SETTINGS_CONSENT_CANONICAL_QUEUE',
+    )
+  )
+    return () => <SettingsConsentNativeEntry canonical />;
   // Presence, not truthiness: malformed boundary opt-in cannot enter the normal fixture.
   return Object.prototype.hasOwnProperty.call(
     launch,

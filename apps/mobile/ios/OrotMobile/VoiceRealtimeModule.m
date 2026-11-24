@@ -35,5 +35,8 @@ RCT_EXTERN_METHOD(cancelRealtimeTools : (NSString *)identifier resolver : (RCTPr
 #if defined(OROT_TESTS) && TARGET_OS_SIMULATOR
 RCT_EXTERN_METHOD(settingsConsentSnapshot : (BOOL)lateEvent resolver : (RCTPromiseResolveBlock)
                       resolve rejecter : (RCTPromiseRejectBlock)reject)
+RCT_EXTERN_METHOD(settingsConsentCanonicalQueueProbe : (NSString *)
+                      identifier scenario : (NSString *)scenario resolver : (RCTPromiseResolveBlock)
+                          resolve rejecter : (RCTPromiseRejectBlock)reject)
 #endif
 @end

@@ -1,3 +1,8 @@
+import type { SettingsVoicePairSelection } from '../src/storage/settingsVoicePairSelection';
+import {
+  parseCanonicalHealthBinding,
+  type CanonicalHealthBinding,
+} from '../src/voiceSettings/liveCanonicalHealthBinding';
 import { IOS_LIBRARY_PATH, isSQLCipher, open } from '@op-engineering/op-sqlite';
 import {
   ACCESSIBLE,
@@ -84,6 +89,39 @@ export async function openSettingsConsentNativeStore(
       read: () => read('authority-voice-responses'),
       write: (value: unknown) => write('authority-voice-responses', value),
     },
+    canonicalHealthAuthority: {
+      read: () => read('authority-voice-responses-health-context'),
+      write: (value: unknown) =>
+        write('authority-voice-responses-health-context', value),
+    },
+    // This mirrors an already committed synthetic SQL pair/companion. It never
+    // creates a grant and does not access normal credential services.
+    async stageCanonicalNativeWitness(input: {
+      pair: SettingsVoicePairSelection;
+      companion: CanonicalHealthBinding;
+      current: () => boolean;
+    }) {
+      const { pair, current } = input;
+      const companion = parseCanonicalHealthBinding(input.companion);
+      if (
+        !current() ||
+        !companion ||
+        companion.legacyGeneration !== pair.responsesGeneration ||
+        companion.credentialEpoch !== pair.credentialEpoch ||
+        companion.backendModel !== pair.backendModel ||
+        pair.speechModel !== 'gpt-live-1.1'
+      )
+        return false;
+      await write('canonical-synthetic-health-binding', companion);
+      if (!current()) return false;
+      await write('canonical-synthetic-voice-settings', {
+        apiKey: 'synthetic-live-' + name,
+        credentialEpoch: pair.credentialEpoch,
+        effectiveResponsesGeneration: pair.responsesGeneration,
+        pairCandidates: [{ pair }],
+      });
+      return current();
+    },
     selection(slot: ConsentFixtureSlot): ProviderSelectionStore {
       const suffix = `selection-${slotName(slot)}`;
       return {
@@ -124,6 +162,12 @@ export async function openSettingsConsentNativeStore(
       await resetGenericPassword({
         service: service('authority-voice-responses'),
       });
+      for (const suffix of [
+        'authority-voice-responses-health-context',
+        'canonical-synthetic-health-binding',
+        'canonical-synthetic-voice-settings',
+      ])
+        await resetGenericPassword({ service: service(suffix) });
       await resetGenericPassword({ service: service('recovery-credential') });
       await resetGenericPassword({ service: service('database-key') });
     },
