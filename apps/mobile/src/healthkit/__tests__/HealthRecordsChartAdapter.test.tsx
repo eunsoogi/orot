@@ -200,18 +200,26 @@ test('passes measured values, timestamps, provenance and partial coverage to the
 });
 
 test('Records summarizes a whole loaded heart bucket before selecting preview marks', async () => {
-  const instant = '2035-01-05T00:00:00Z';
+  const chartDay = '2035-01-05';
   const input = Array.from({ length: 13 }, (_, index) => {
     const member = index >= 4 && index <= 6;
-    const day = index < 4 ? index + 1 : index - 1;
+    const day = member ? 5 : index < 4 ? index + 1 : index - 1;
     const record = healthObservation(
       String(index).padStart(2, '0'),
       'heart_rate',
-      member ? instant : `2035-01-${String(day).padStart(2, '0')}T00:00:00Z`,
+      new Date(2035, 0, day, member ? index + 4 : 8).toISOString(),
     );
-    if (record.value.kind !== 'quantity') throw new Error('Expected quantity');
+    if (record.value.kind !== 'quantity' || !record.provenance.source)
+      throw new Error('Expected a quantity and its source');
     return {
       ...record,
+      provenance: {
+        ...record.provenance,
+        source: {
+          ...record.provenance.source,
+          sourceIdentifier: 'synthetic.fixture.watch',
+        },
+      },
       value: { ...record.value, amount: [60, 61, 120][index - 4] ?? 72 },
     };
   });
@@ -231,13 +239,14 @@ test('Records summarizes a whole loaded heart bucket before selecting preview ma
     screen.getByTestId('chart-data').props.children,
   ) as ChartData;
   expect(data.coverage.status).toBe('partial');
-  const bucket = data.series[0]?.points.find(point => point.x === instant);
+  const bucket = data.series[0]?.points.find(point => point.x === chartDay);
   expect(bucket?.range).toEqual({ minimum: 60, maximum: 120, samples: 3 });
   expect(bucket?.value).toBeCloseTo(80.33, 2);
   expect(data.series[0]?.points).toHaveLength(11);
+  expect(bucket?.partial).toBe(true);
   expect(
-    screen.getByText(
+    screen.queryByText(
       '표시한 시각의 범위와 평균은 불러온 측정값만으로 계산했어요.',
     ),
-  ).toBeTruthy();
+  ).toBeNull();
 });
