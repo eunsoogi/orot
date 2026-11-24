@@ -1,10 +1,13 @@
 import { stageLiveResponsesResult } from './stageLiveResponsesResult';
-import type { JsonObject } from '@orot/model-runtime';
 import type { AiFeatureLocalData } from '../aiFeatures/integration/localData';
 import { LocalEvidenceReferenceRegistry } from '../aiFeatures/integration/evidenceRegistry';
 import { bindHealthContextTool } from '../aiFeatures/integration/bindHealthContextTool';
 import { jsonByteLength } from '../aiFeatures/integration/evidenceUtils';
 import { liveHeartRateAggregate } from './liveHeartRateAggregate';
+import {
+  measureLiveHealth as timed,
+  measureLiveHealthSync as timedSync,
+} from './liveHealthLatency';
 export type LiveManagedHealthCall = Readonly<{
   callId: string;
   sessionId: string | number;
@@ -123,7 +126,7 @@ export function createLiveResponsesHealthToolExecutor(input: {
       const scope =
         call.name === 'orot_health_context' ? parseScope(call.args) : undefined;
       if (!scope) return;
-      const owner = await input.resolveOwner(call);
+      const owner = await timed('grant_lookup', () => input.resolveOwner(call));
       if (
         !owner ||
         owner.backend !== 'openai-live-responses' ||
@@ -143,47 +146,51 @@ export function createLiveResponsesHealthToolExecutor(input: {
         input.protectedDataCurrent() === true &&
         captured.current() === true &&
         latest.current() === true;
-      const reproof = async () => {
-        if (
-          !current() ||
-          (await input.protectedDataAvailable()) !== true ||
-          !current()
-        )
-          return false;
-        const fresh = await input.resolveOwner(call);
-        if (
-          !fresh ||
-          !identity(fresh).every((key, index) => key === keys[index]) ||
-          !current()
-        )
-          return false;
-        latest = Object.freeze({ ...fresh });
-        return current();
-      };
+      const reproof = () =>
+        timed('owner_reproof', async () => {
+          if (
+            !current() ||
+            (await input.protectedDataAvailable()) !== true ||
+            !current()
+          )
+            return false;
+          const fresh = await input.resolveOwner(call);
+          if (
+            !fresh ||
+            !identity(fresh).every((key, index) => key === keys[index]) ||
+            !current()
+          )
+            return false;
+          latest = Object.freeze({ ...fresh });
+          return current();
+        });
       if (!(await reproof())) return;
       const authority = Object.freeze({ call, owner: captured, scope, signal });
-      if ((await input.confirm(authority)) !== true || !(await reproof()))
-        return;
-      const data = await input.openData();
+      const confirmed = await timed('local_confirmation', () =>
+        input.confirm(authority),
+      );
+      if (confirmed !== true || !(await reproof())) return;
+      const data = await timed('data_open', () => input.openData());
       if (!current()) return;
       const registry = new LocalEvidenceReferenceRegistry();
       const candidate = bindHealthContextTool(data, registry, 'rag');
-      const args: JsonObject = {
+      const parsed = candidate?.parseInput({
         topics: [scope.topic],
         days: scope.days,
         detail: 'summary',
-      };
-      const parsed = candidate?.parseInput(args);
-      if (!candidate || !parsed || !current()) return;
-      const result = await candidate.search({
-        operationRunId: call.responseId,
-        operationKey: call.toolCallId,
-        input: parsed,
-        allowedScope: { sourceKinds: ['personal_record'] },
-        resultLimit: 1,
-        maxPayloadBytes: maxResultBytes,
-        signal,
       });
+      if (!candidate || !parsed || !current()) return;
+      const result = await timed('evidence_lookup', () =>
+        candidate.search({
+          operationRunId: call.responseId,
+          operationKey: call.toolCallId,
+          input: parsed,
+          allowedScope: { sourceKinds: ['personal_record'] },
+          resultLimit: 1,
+          maxPayloadBytes: maxResultBytes,
+          signal,
+        }),
+      );
       if (
         !current() ||
         'status' in result ||
@@ -194,9 +201,8 @@ export function createLiveResponsesHealthToolExecutor(input: {
         )
       )
         return;
-      const payload = liveHeartRateAggregate(
-        result.items[0]!.content,
-        scope.days,
+      const payload = timedSync('result_projection', () =>
+        liveHeartRateAggregate(result.items[0]!.content, scope.days),
       );
       if (
         !payload ||
@@ -205,7 +211,9 @@ export function createLiveResponsesHealthToolExecutor(input: {
       )
         return;
       const output = JSON.stringify(payload);
-      const authorized = await input.authorizeResult(authority, output);
+      const authorized = await timed('result_confirmation', () =>
+        input.authorizeResult(authority, output),
+      );
       if (!authorized || !authorized() || !(await reproof())) return;
       const proof = data.borrowLiveHealthProof?.();
       if (!proof) return;
@@ -215,11 +223,16 @@ export function createLiveResponsesHealthToolExecutor(input: {
         signal,
         proof,
         current: () => current() && authorized(),
-        reproveSource: () => registry.revalidateEvidence(result.items, signal),
+        reproveSource: () =>
+          timed('source_reproof', () =>
+            registry.revalidateEvidence(result.items, signal),
+          ),
       }).admit(approved => {
         // The native bridge retains its one-result guard.
         started = false;
-        return input.settle(call.callId, call.challengeId, approved);
+        return timed('native_handoff', () =>
+          input.settle(call.callId, call.challengeId, approved),
+        );
       });
     } catch {
       // Protected read/approval failures cannot produce a provider result or imply consent.

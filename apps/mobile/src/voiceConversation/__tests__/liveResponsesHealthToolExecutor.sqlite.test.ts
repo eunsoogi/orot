@@ -1,3 +1,4 @@
+import { NativeModules } from 'react-native';
 import { createLiveResponsesHealthToolExecutor } from '../liveResponsesHealthToolExecutor';
 import { call, fixture } from '../testSupport/liveResponsesProtectedFixture';
 
@@ -170,6 +171,55 @@ test('the admitted health read uses the canonical adapter without constructing u
       meanOfRecordedDailyMeans: 72,
     });
   } finally {
+    f.close();
+  }
+});
+
+test('opt-in trace separates protected health lookup, exact confirmation and native handoff without content', async () => {
+  const f = await fixture();
+  const report = jest.fn();
+  const holder = NativeModules.OrotProviderDiagnostics;
+  let milliseconds = 101;
+  const clock = jest
+    .spyOn(performance, 'now')
+    .mockImplementation(() => milliseconds);
+  NativeModules.OrotProviderDiagnostics = { enabled: true, report };
+  try {
+    const execute = createLiveResponsesHealthToolExecutor({
+      ...f.input,
+      async confirm() {
+        milliseconds += 20;
+        return true;
+      },
+      async authorizeResult() {
+        milliseconds += 157;
+        return () => true;
+      },
+      async settle(...args) {
+        milliseconds += 4;
+        return f.input.settle(...args);
+      },
+    });
+    await execute(call, f.controller.signal);
+    expect(f.settle).toHaveBeenCalledTimes(1);
+    expect(report.mock.calls).toEqual(
+      expect.arrayContaining([
+        ['live_health', 'local_confirmation', '20'],
+        ['live_health', 'evidence_lookup', '0'],
+        ['live_health', 'result_projection', '0'],
+        ['live_health', 'result_confirmation', '157'],
+        ['live_health', 'source_reproof', '0'],
+        ['live_health', 'native_handoff', '4'],
+      ]),
+    );
+    expect(report.mock.calls.every(args => args.length === 3)).toBe(true);
+    expect(JSON.stringify(report.mock.calls)).not.toContain(call.challengeId);
+    expect(JSON.stringify(report.mock.calls)).not.toContain(
+      'synthetic-health-id',
+    );
+  } finally {
+    clock.mockRestore();
+    NativeModules.OrotProviderDiagnostics = holder;
     f.close();
   }
 });
