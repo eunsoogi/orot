@@ -3,7 +3,13 @@ import { View } from 'react-native';
 import type { HealthObservation } from '@orot/domain';
 import { AppText as Text } from '../layout/AppText';
 import { t } from '../i18n';
-import { ChartPlot, type ChartData, type ChartMetric } from '../ui/charts';
+import {
+  ChartPlot,
+  type ChartData,
+  type ChartMetric,
+  type ChartSeries,
+} from '../ui/charts';
+import { heartRatePreviewSeries } from './heartRatePreviewSeries';
 import { formatRecordedAt } from '../recording/formatRecordedAt';
 import { provenanceLabel } from './healthRecordsDetailPresentation';
 import type { HealthObservationCategory } from './healthRecordsLibraryModel';
@@ -12,11 +18,7 @@ import {
   healthRecordPeriodTitle,
 } from './healthRecordsLibraryModel';
 import { buildHealthChartSeries } from './healthRecordsChartModel';
-import {
-  heartRateDayBuckets,
-  heartRateInstantBuckets,
-} from './heartRateInstantBuckets';
-import { selectHealthRecordPreviewRanks } from './healthRecordPreview';
+import { heartRateInstantBuckets } from './heartRateInstantBuckets';
 
 const metrics: Partial<Record<HealthObservationCategory, ChartMetric>> = {
   blood_pressure: 'bloodPressure',
@@ -28,7 +30,7 @@ const metrics: Partial<Record<HealthObservationCategory, ChartMetric>> = {
   body_mass: 'bodyMass',
 };
 
-/** Adapts saved observations by recorded unit; heart rate summarizes only already-admitted coincident instants. */
+/** Adapts saved observations by recorded unit; heart-rate previews preserve exact source cohorts. */
 export function HealthRecordsLineChart({
   category,
   observations,
@@ -84,44 +86,45 @@ export function HealthRecordsLineChart({
           pointsByUnit.set(point.unit, unitPoints);
         }
         const isDiastolic = item.key.endsWith('diastolic');
-        return [...pointsByUnit].map(([unit, unitPoints]) => {
-          const measurements = unitPoints.map(point => ({
-            x: point.effectiveAt,
-            value: point.amount,
-            source: records.get(point.id)
-              ? provenanceLabel(records.get(point.id)!)
-              : t('healthRecords.sourceUnavailable'),
-          }));
-          // Page boundaries can cut through an instant. Never describe the
-          // resulting stats as covering records beyond the observed page.
-          const buckets = previewRange
-            ? heartRateDayBuckets(measurements)
-            : category === 'heart_rate'
-              ? heartRateInstantBuckets(measurements)
-              : measurements;
-          return {
-            // Separate units keep both plotted scales and selected details faithful to each record.
-            id: `${
-              category === 'blood_pressure'
-                ? isDiastolic
-                  ? 'diastolic'
-                  : 'systolic'
-                : (metrics[category] ?? 'measurement')
-            }-${encodeURIComponent(unit)}`,
-            label: item.label,
-            unit,
-            style:
-              category === 'blood_pressure' && isDiastolic
-                ? 'secondary'
-                : 'primary',
-            points: previewRange
-              ? selectHealthRecordPreviewRanks(buckets).map(point => ({
-                  ...point,
-                  ...(hasMore ? { partial: true } : {}),
-                }))
-              : buckets,
-          };
-        });
+        return [...pointsByUnit].flatMap(
+          ([unit, unitPoints]): ChartSeries[] => {
+            if (previewRange) {
+              return heartRatePreviewSeries(unit, unitPoints, records, hasMore);
+            }
+            const measurements = unitPoints.map(point => ({
+              x: point.effectiveAt,
+              value: point.amount,
+              source: records.get(point.id)
+                ? provenanceLabel(records.get(point.id)!)
+                : t('healthRecords.sourceUnavailable'),
+            }));
+            // Page boundaries can cut through an instant. Never describe the
+            // resulting stats as covering records beyond the observed page.
+            const buckets =
+              category === 'heart_rate'
+                ? heartRateInstantBuckets(measurements)
+                : measurements;
+            return [
+              {
+                // Separate units keep both plotted scales and selected details faithful to each record.
+                id: `${
+                  category === 'blood_pressure'
+                    ? isDiastolic
+                      ? 'diastolic'
+                      : 'systolic'
+                    : (metrics[category] ?? 'measurement')
+                }-${encodeURIComponent(unit)}`,
+                label: item.label,
+                unit,
+                style:
+                  category === 'blood_pressure' && isDiastolic
+                    ? 'secondary'
+                    : 'primary',
+                points: buckets,
+              },
+            ];
+          },
+        );
       }),
     };
   }, [category, observations, series, hasMore, loadState, previewRange]);
@@ -133,7 +136,7 @@ export function HealthRecordsLineChart({
       <ChartPlot
         data={data}
         compact={preview}
-        hideDetails={preview}
+        hideDetails={previewRange}
         barTooltip={previewRange}
         width={width}
         height={200}

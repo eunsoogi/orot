@@ -52,23 +52,52 @@ export function chartRangeGeometry(
   const y = (value: number) =>
     pad + plotHeight * (min === max ? 0.5 : (max - value) / span);
   const plotWidth = width - 2 * pad - axisLabelWidth;
+  const grouped = new Map<number, number>();
+  if (axis === 'day') {
+    for (const item of measured) {
+      grouped.set(item.time, (grouped.get(item.time) ?? 0) + 1);
+    }
+  }
+  const groupSize = Math.max(1, ...grouped.values());
+  const days = [...grouped.keys()].sort((a, b) => a - b);
+  const minGap = days
+    .slice(1)
+    .reduce(
+      (gap, day, index) => Math.min(gap, day - days[index]!),
+      last - first,
+    );
+  const availableGroupWidth =
+    first === last
+      ? plotWidth * 0.5
+      : (plotWidth * minGap) / (last - first + minGap);
+  const spacing =
+    groupSize > 1 ? Math.min(22, availableGroupWidth / groupSize) : 0;
+  const inset = ((groupSize - 1) * spacing) / 2;
   const x = (value: number) =>
-    pad + plotWidth * (first === last ? 0.5 : (value - first) / (last - first));
+    pad +
+    inset +
+    (plotWidth - 2 * inset) *
+      (first === last ? 0.5 : (value - first) / (last - first));
+  const nextInGroup = new Map<number, number>();
   const stroke = Math.min(
     9,
     Math.max(2, plotWidth / Math.max(entries.length, 1) / 2),
   );
   return {
-    marks: measured.map(({ point, entry, index, time: at }) => ({
-      series: entry,
-      index,
-      x: x(at),
-      high: y(point.range.maximum),
-      low: y(point.range.minimum),
-      mean: y(point.value),
-      sourceX: point.x,
-      stroke,
-    })),
+    marks: measured.map(({ point, entry, index, time: at }) => {
+      const offset = nextInGroup.get(at) ?? 0;
+      nextInGroup.set(at, offset + 1);
+      return {
+        series: entry,
+        index,
+        x: x(at) + (offset - ((grouped.get(at) ?? 1) - 1) / 2) * spacing,
+        high: y(point.range.maximum),
+        low: y(point.range.minimum),
+        mean: y(point.value),
+        sourceX: point.x,
+        stroke: spacing ? Math.min(stroke, Math.max(1, spacing / 2)) : stroke,
+      };
+    }),
     ticks: first === last ? [first] : [first, last],
     valueTicks: (min === max ? [min] : [min, max]).map(value => ({
       value,
