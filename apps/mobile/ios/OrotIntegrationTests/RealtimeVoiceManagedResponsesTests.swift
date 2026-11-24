@@ -1,9 +1,10 @@
 import Foundation
 @testable import Orot
 import XCTest
-
 extension RealtimeVoiceLifecycleTests {
     func testAdmittedLiveCallExecutesOneTypedToolAndUsesOnlyItsSameSocket() async throws {
+        try RealtimeVoiceNativeRegistryAssertions.assertAudioOnlySessionAdvertisesNoToolsOrRecordAccess()
+        try RealtimeVoiceNativeRegistryAssertions.assertExactOwnedRegistryMatchesWireAndRejectsUnknownOrRevokedAdmission()
         for (mute, backend) in [(false, "gpt-6-luna"), (true, "gpt-6-sol")] {
             let generation = String(repeating: "a", count: 64)
             let epoch = String(repeating: "b", count: 64)
@@ -102,7 +103,6 @@ extension RealtimeVoiceLifecycleTests {
             }
         }
     }
-
     func testManagedReadNeverStartsOnNullOrMismatchedDelegationAndLateResultCannotCrossStop() async throws {
         for mode in ["null", "wrong", "stop", "new-speech", "second-call", "conflicting-replay", "conflicting-scope"] {
             let socket = ManagedResponseFixtureSocket()
