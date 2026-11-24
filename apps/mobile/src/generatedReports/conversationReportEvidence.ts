@@ -6,6 +6,7 @@ import { savedPossibilityNarrativeParts } from '../ragConversation/savedPossibil
 import { projectSavedArchivedCitations } from '../ragConversation/savedArchivedCitations';
 import { createConversationArtifactStorage } from '../storage/conversationArtifactStorage';
 import type { GeneratedReportDetail, GeneratedReportRow } from './types';
+import { savedReportPublicCitationUrl } from './savedReportPublicCitation';
 
 /** Bind the already selected answer to its exact durable lease. No source
  * lookup or provider work is started by projecting compact pill metadata. */
@@ -84,9 +85,10 @@ export async function readConversationReportEvidence(
   const citations = projectSavedArchivedCitations(references).filter(item => {
     const ref = references[item.ordinal];
     return (
-      item.kind === 'personal_record' &&
       ref &&
-      matches.get(stableJson(ref)) === 1
+      matches.get(stableJson(ref)) === 1 &&
+      (item.kind === 'personal_record' ||
+        savedReportPublicCitationUrl(item, ref) !== undefined)
     );
   });
   return {
