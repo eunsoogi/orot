@@ -21,17 +21,33 @@ export function admitConversationA2UIPresentation(
   raw: unknown,
   answer: string,
 ): ConversationA2UINode | undefined {
+  if (typeof raw !== 'string' || raw.length > conversationA2UIFrameLimit)
+    return undefined;
+  const paragraphs = conversationA2UIProse(answer);
+  if (!paragraphs) return undefined;
+  const state = applyConversationA2UIFrame(null, raw, draftId);
+  if (state?.status !== 'ready' || !state.root) return undefined;
+  const expected = paragraphs;
+  let position = 0;
+  function matches(node: ConversationA2UINode): boolean {
+    if (node.component === 'Text')
+      return node.variant === 'body' && node.text === expected[position++];
+    return node.children.every(matches);
+  }
+  return matches(state.root) && position === paragraphs.length
+    ? state.root
+    : undefined;
+}
+
+/** Only whole unchanged plain paragraphs can own a read-only surface. */
+export function conversationA2UIProse(answer: string) {
   if (
-    typeof raw !== 'string' ||
-    raw.length > conversationA2UIFrameLimit ||
     !answer ||
     /[\r<>#*`_~[\]]|\b(?:https?:|www\.)|(?:^|\n)(?:[ \t]|[-+>] |\d+[.)] )/u.test(
       answer,
     )
   )
     return undefined;
-  const state = applyConversationA2UIFrame(null, raw, draftId);
-  if (state?.status !== 'ready' || !state.root) return undefined;
   const paragraphs = answer.split('\n\n');
   if (
     paragraphs.some(
@@ -42,13 +58,5 @@ export function admitConversationA2UIPresentation(
     )
   )
     return undefined;
-  let position = 0;
-  function matches(node: ConversationA2UINode): boolean {
-    if (node.component === 'Text')
-      return node.variant === 'body' && node.text === paragraphs[position++];
-    return node.children.every(matches);
-  }
-  return matches(state.root) && position === paragraphs.length
-    ? state.root
-    : undefined;
+  return paragraphs;
 }

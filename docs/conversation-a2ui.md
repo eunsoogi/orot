@@ -21,7 +21,10 @@ grounding, permissions and navigation keep their existing pathways.
   entries), path length (6 segments) and displayed text (8,192 UTF-16 code
   units total). It rejects foreign catalogs, functions, RPCs, actions,
   arbitrary navigation, URLs as UI props, external content and data sync.
-- The product does not consume incremental provider surface frames or save
-  structured surfaces. A stopped or reopened conversation retains only its
-  existing app-owned reply representations. No new endpoint, request,
-  persisted format, or transfer is introduced.
+- A completed ordinary reply may retain its bounded layout (component arrangement
+  only) on its exact owned protected turn. The archive never stores provider
+  frames, component IDs, additional prose, actions or catalog URLs. On reopen,
+  the display-only archive restores each Text leaf from the same durable
+  accepted answer; unsupported or corrupt layout falls back to ordinary text.
+  The product does not consume incremental provider surface frames. No new
+  endpoint, request, or transfer is introduced.

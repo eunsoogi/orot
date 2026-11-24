@@ -83,6 +83,9 @@ export function conversationSavedHistoryDisplayOption(
               createdAt: row.createdAt,
               question: row.question,
               answer: row.answer,
+              ...(row.archivedA2UIPresentation
+                ? { archivedA2UIPresentation: row.archivedA2UIPresentation }
+                : {}),
               ...(row.directPhoto ? { directPhoto: true } : {}),
               ...(row.savedPossibilityNarrative
                 ? { savedPossibilityNarrative: true as const }

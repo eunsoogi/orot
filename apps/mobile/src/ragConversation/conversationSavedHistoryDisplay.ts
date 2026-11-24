@@ -19,6 +19,7 @@ export type SavedHistoryDisplayRow = {
       readonly kind: 'answer';
       readonly question: string;
       readonly answer: string;
+      readonly archivedA2UIPresentation?: DisplayMessage['archivedA2UIPresentation'];
       readonly directPhoto?: true;
       readonly savedPossibilityNarrative?: true;
       readonly archivedCitationTarget?: import('./useArchivedCitationOpen').ArchivedCitationTarget;
@@ -136,6 +137,12 @@ export function savedHistoryTranscript(
         id: answerId,
         role: 'assistant',
         content: row.kind === 'answer' ? row.answer : '',
+        ...(row.kind === 'answer' &&
+        !incomplete &&
+        !directPhoto &&
+        row.archivedA2UIPresentation
+          ? { archivedA2UIPresentation: row.archivedA2UIPresentation }
+          : {}),
         ...(directPhoto ? { directPhotoReply: true } : {}),
         ...(row.kind === 'answer' &&
         row.savedPossibilityNarrative &&

@@ -1,3 +1,4 @@
+import type { ArchivedA2UILayout } from './conversationA2UIArchive';
 import type { ConversationEntryContext } from '../aiFeatures/integration/conversationIntent';
 import type { EvidenceReference } from '@orot/agent-runtime';
 import type { ConversationArtifactSource } from './conversationArtifactSources';
@@ -14,6 +15,8 @@ export interface ConversationRetentionCandidate {
   readonly question: string;
   readonly submittedInput?: import('./conversationSubmittedInput').ConversationSubmittedInput;
   readonly answer: string;
+  /** Local layout only; not provider history or authority. */
+  readonly archivedA2UILayout?: ArchivedA2UILayout;
   readonly proactiveMemory?: true;
   readonly providerId: string;
   readonly modelId: string;

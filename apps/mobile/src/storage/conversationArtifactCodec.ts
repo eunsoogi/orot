@@ -1,3 +1,4 @@
+import { recoverArchiveLayout } from './conversationArchiveA2UI';
 import { validHistoricalDialogueParents } from './conversationHistoricalDialogue';
 import { parseConversationMessageDelivery } from '../ragConversation/conversationMessageDelivery';
 import { validConversationReportTarget } from './conversationReportTarget';
@@ -224,6 +225,8 @@ export function decodeConversationArtifact(
     )
       return null;
     if (value.proactiveMemory !== true) delete value.proactiveMemory;
+    // A damaged optional presentation never makes an accepted answer unreadable.
+    if (!recoverArchiveLayout(value)) delete value.archivedA2UILayout;
     // Bad optional receipts must not make a valid answer impossible to save.
     const delivery = parseConversationMessageDelivery(value.delivery);
     delete value.delivery;
