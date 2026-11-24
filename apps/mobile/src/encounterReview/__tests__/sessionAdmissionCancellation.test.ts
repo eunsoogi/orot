@@ -1,6 +1,12 @@
 import { openLocalAgentMemoryDatabase } from '../../storage/secureDatabase';
 import { sqliteReviewFixture, sourceId } from '../__fixtures__/sqliteReview';
 
+// Hoist the native boundary mock before the direct import is evaluated.
+jest.mock('../../storage/secureDatabase', () => ({
+  openLocalStorage: jest.fn(),
+  openLocalAgentMemoryDatabase: jest.fn(),
+}));
+
 const fixture = sqliteReviewFixture();
 
 function heldOpen() {
