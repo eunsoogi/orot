@@ -1,4 +1,8 @@
 import {
+  canDiscloseDirectPhoto,
+  directPhotoConsentScope,
+} from './directPhotoConsentScope';
+import {
   liveVoiceAudioPurpose,
   liveVoiceResultPurpose,
   voiceSettingsIdentity,
@@ -85,7 +89,11 @@ export async function resolveSettingsConsentTarget(
       : resolveSelectedAiProvider());
     if (
       value.status !== 'ready' ||
-      (!value.remoteProcessing && domain !== 'medical-search')
+      (!value.remoteProcessing && domain !== 'medical-search') ||
+      (purpose === directPhotoConsentScope.purpose &&
+        (slot !== 'conversation' ||
+          domain !== 'model' ||
+          !canDiscloseDirectPhoto(value.option)))
     )
       return null;
     selected = {

@@ -6,6 +6,8 @@ import type { CommonObservationRepository } from './sync';
 
 const sampleTypes: Record<CommonObservationFeature, string> = {
   heartRate: 'HKQuantityTypeIdentifierHeartRate',
+  restingHeartRate: 'HKQuantityTypeIdentifierRestingHeartRate',
+  walkingHeartRateAverage: 'HKQuantityTypeIdentifierWalkingHeartRateAverage',
   steps: 'HKQuantityTypeIdentifierStepCount',
   bodyMass: 'HKQuantityTypeIdentifierBodyMass',
   workouts: 'HKWorkoutTypeIdentifier',
@@ -13,6 +15,8 @@ const sampleTypes: Record<CommonObservationFeature, string> = {
 
 const sampleUnits: Record<CommonObservationFeature, string> = {
   heartRate: 'count/min',
+  restingHeartRate: 'count/min',
+  walkingHeartRateAverage: 'count/min',
   steps: 'count',
   bodyMass: 'kg',
   workouts: 'min',

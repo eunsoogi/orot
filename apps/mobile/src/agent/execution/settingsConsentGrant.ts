@@ -1,3 +1,10 @@
+import {
+  directPhotoPermission,
+  directPhotoScopePayload,
+  isDirectPhotoPlanPair,
+  isDirectPhotoConsentScope,
+  isExactDirectPhotoPermission,
+} from './directPhotoConsentScope';
 import type { OutboundProcessingRequest } from '@orot/agent-runtime';
 import { isLiveVoiceAudioScope } from './liveVoiceSettingsIdentity';
 import { isLiveResponsesContextScope } from '../../voiceSettings/liveResponsesSettingsIdentity';
@@ -43,6 +50,7 @@ const allowedSourceKinds = (
   value: unknown,
 ): value is readonly string[] =>
   isLiveVoiceAudioScope(purpose, policy) ||
+  isDirectPhotoConsentScope(purpose, policy) ||
   isLiveResponsesContextScope(purpose, policy)
     ? emptyArray(value)
     : strings(value);
@@ -135,6 +143,7 @@ export function settingsGrantCoversRequest(
       request.allowedScope.sourceKinds,
     ) ||
     ((isLiveVoiceAudioScope(scope.purpose, scope.policyVersion) ||
+      isDirectPhotoConsentScope(scope.purpose, scope.policyVersion) ||
       isLiveResponsesContextScope(scope.purpose, scope.policyVersion)) &&
       request.allowedScope.sourceIds !== undefined &&
       !emptyArray(request.allowedScope.sourceIds))
@@ -153,6 +162,16 @@ export function settingsGrantCoversRequest(
     request.recipient !== identity.recipient
   )
     return false;
+  if (scope.purpose === directPhotoPermission.purpose)
+    return (
+      request.payload === directPhotoScopePayload &&
+      isDirectPhotoPlanPair(identity.providerId, identity.modelId) &&
+      isExactDirectPhotoPermission({
+        ...scope,
+        sourceKinds: request.allowedScope.sourceKinds,
+      }) &&
+      parsed.permissions.some(isExactDirectPhotoPermission)
+    );
   if (
     scope.purpose === 'public_web_search' &&
     !isReusablePublicWebQuery(request)

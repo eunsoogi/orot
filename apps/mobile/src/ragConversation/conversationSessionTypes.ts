@@ -20,6 +20,9 @@ type Retention = ReturnType<typeof createConversationSessionRetention>;
 export interface ConversationSessionOptions {
   readonly useProtectedPromptHistory?: boolean;
   readonly ordinaryMemory?: import('./ordinaryConversationMemoryTask').OrdinaryConversationMemoryPort;
+  readonly writeDirectPhotoReply?: ReturnType<
+    typeof import('../storage/conversationDirectPhotoReplies').createDirectPhotoReplyWriter
+  >;
   readonly readSavedHistoryDisplay?: import('./conversationSavedHistoryDisplay').ReadSavedHistoryDisplay;
   readonly readPlainContextPage?: ReturnType<
     typeof import('../storage/plainConversationContext').createPlainConversationContextReader

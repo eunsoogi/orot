@@ -1,3 +1,8 @@
+import { settingsConsentRecipient } from './settingsConsentRecipient';
+import {
+  canDiscloseDirectPhoto,
+  type DirectPhotoOption,
+} from './directPhotoConsentScope';
 import {
   liveVoiceModelId,
   liveVoiceProviderId,
@@ -29,6 +34,7 @@ const same = (a: ProviderSelection | null, b: ProviderSelection | null) =>
 export async function saveModelSettingsConsent(input: {
   slot: SettingsConsentSlot;
   search?: SettingsSearchChoices;
+  reviewedPhotoOption?: DirectPhotoOption;
   selection: ProviderSelection;
   recipient: string;
   remote: boolean;
@@ -50,6 +56,15 @@ export async function saveModelSettingsConsent(input: {
       input.recipient !== liveVoiceRecipient)
   )
     throw new Error('Invalid Live voice consent scope');
+  const photo = input.reviewedPhotoOption;
+  const photoApproved =
+    input.slot === 'conversation' &&
+    input.remote &&
+    photo !== undefined &&
+    photo.provider.id === input.selection.providerId &&
+    photo.modelId === input.selection.modelId &&
+    input.recipient === settingsConsentRecipient(input.selection.providerId) &&
+    canDiscloseDirectPhoto(photo);
   const authority = settingsConsentAuthority(input.slot);
   const prior = await input.store.load();
   if (input.signal.aborted || !input.isCurrent())
@@ -107,6 +122,7 @@ export async function saveModelSettingsConsent(input: {
       permissions: settingsPermissionsForFeature(
         input.slot,
         input.selection.providerId,
+        photoApproved,
       ),
     }),
     additionalGrants: generation =>

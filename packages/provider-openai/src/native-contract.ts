@@ -5,6 +5,8 @@ export interface ChatGPTPlanModelDescriptor {
   readonly displayName: string;
   /** Locally validated transport eligibility, not a guarantee of account authorization. */
   readonly supportsMidTurnSteering?: boolean;
+  /** Positive, exact transport/model capability only. Slug resemblance is not evidence. */
+  readonly supportsDirectPhoto?: boolean;
 }
 
 export interface ChatGPTPlanMessage {
@@ -44,6 +46,12 @@ export interface ChatGPTPlanRequest {
   readonly messages: readonly ChatGPTPlanInputMessage[];
   readonly tools?: readonly ChatGPTPlanToolDefinition[];
   readonly toolChoice?: 'required';
+}
+
+/** One private image request. There is deliberately no tool, history, URL or shared transport field. */
+export interface ChatGPTPlanDirectPhotoRequest {
+  readonly model: string;
+  readonly directPhoto: Readonly<{ text: string; jpegBase64: string }>;
 }
 
 /** Public queries have no message/history or function-tool channel. */
@@ -118,6 +126,12 @@ export interface ChatGPTPlanNativeBridge {
     requestId: string,
     issuedClientID: string,
     request: ChatGPTPlanRequest,
+  ): Promise<void>;
+  /** Separate admitted transport; ordinary text start must not accept images. */
+  startPhotoResponse?(
+    requestId: string,
+    issuedClientID: string,
+    request: ChatGPTPlanDirectPhotoRequest,
   ): Promise<void>;
   /** Opt-in same-connection Responses WebSocket path; never automatic SSE replay. */
   startSteerableResponse?(

@@ -79,10 +79,15 @@ test('keeps the run when leaving is declined and cancels only after confirmed sh
   ).toBeTruthy();
   await fireEvent.press(screen.getByTestId('unified-import-toggle-healthKit'));
   for (const feature of healthKitFeatures) {
-    expect(
-      screen.getByTestId(`unified-import-toggle-${feature}`).props
-        .accessibilityState.checked,
-    ).toBe(true);
+    // The new derived Apple measurements are never selected by the legacy bulk toggle.
+    const explicit =
+      feature === 'restingHeartRate' || feature === 'walkingHeartRateAverage';
+    const toggle = () => screen.getByTestId(`unified-import-toggle-${feature}`);
+    expect(toggle().props.accessibilityState.checked).toBe(!explicit);
+    if (explicit) {
+      await fireEvent.press(toggle());
+      expect(toggle().props.accessibilityState.checked).toBe(true);
+    }
   }
   expect(authorize).not.toHaveBeenCalled();
   await fireEvent.press(screen.getByTestId('unified-import-start'));

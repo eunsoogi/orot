@@ -23,6 +23,17 @@ const sampleDefinitions: Record<
     concept: 'heart_rate',
     unit: 'count/min',
   },
+  // Apple's derived observations are never inferred from raw BPM or activity overlaps.
+  restingHeartRate: {
+    typeIdentifier: 'HKQuantityTypeIdentifierRestingHeartRate',
+    concept: 'resting_heart_rate',
+    unit: 'count/min',
+  },
+  walkingHeartRateAverage: {
+    typeIdentifier: 'HKQuantityTypeIdentifierWalkingHeartRateAverage',
+    concept: 'walking_heart_rate_average',
+    unit: 'count/min',
+  },
   steps: {
     typeIdentifier: 'HKQuantityTypeIdentifierStepCount',
     concept: 'step_count',

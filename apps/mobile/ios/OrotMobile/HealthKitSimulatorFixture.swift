@@ -94,6 +94,12 @@
             case "heartRate":
                 return [sample("synthetic-heart-rate", "HKQuantityTypeIdentifierHeartRate", start, end,
                                value: 72, unit: "count/min")]
+            case "restingHeartRate":
+                return [sample("synthetic-resting-heart-rate", "HKQuantityTypeIdentifierRestingHeartRate", start, end,
+                               value: 60, unit: "count/min")]
+            case "walkingHeartRateAverage":
+                return [sample("synthetic-walking-heart-rate", "HKQuantityTypeIdentifierWalkingHeartRateAverage", start, end,
+                               value: 95, unit: "count/min")]
             case "sleep":
                 var sleep = sample("synthetic-sleep", "HKCategoryTypeIdentifierSleepAnalysis", start, end)
                 sleep["categoryValue"] = 1

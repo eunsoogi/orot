@@ -17,6 +17,8 @@ export const unifiedImportProbeCopy: HealthKitImportScreenCopy = {
     bloodPressure: '혈압',
     sleep: '수면',
     heartRate: '심박수',
+    restingHeartRate: '안정 시 심박수',
+    walkingHeartRateAverage: '걷기 평균 심박수',
     steps: '걸음 수',
     bodyMass: '체중',
   },

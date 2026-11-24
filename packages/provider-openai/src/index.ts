@@ -1,8 +1,10 @@
 export { createChatGPTPlanProvider, listChatGPTPlanModels } from './provider';
+export { chatGPTPlanDirectPhoto, isBoundedInlineJPEG } from './direct-photo';
 export type { ChatGPTPlanModel, ChatGPTPlanProviderOptions } from './provider';
 export type {
   ChatGPTPlanModelDescriptor,
   ChatGPTPlanNativeBridge,
+  ChatGPTPlanDirectPhotoRequest,
   ChatGPTPlanNativeError,
   ChatGPTPlanNativeEvent,
   ChatGPTPlanNativeToolCall,

@@ -83,6 +83,7 @@ export function conversationSavedHistoryDisplayOption(
               createdAt: row.createdAt,
               question: row.question,
               answer: row.answer,
+              ...(row.directPhoto ? { directPhoto: true } : {}),
               ...(row.savedPossibilityNarrative
                 ? { savedPossibilityNarrative: true as const }
                 : {}),

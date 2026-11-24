@@ -1,9 +1,15 @@
 import type { HealthObservation } from '@orot/domain';
+import type { AppleDerivedHeartRateCategory } from '@orot/storage';
+import {
+  appleDerivedHeartRateCategories,
+  classifyAppleDerivedHeartRate,
+} from '@orot/storage';
 import { t } from '../i18n';
 
 export type HealthRecordCategory =
   | 'blood_pressure'
   | 'heart_rate'
+  | AppleDerivedHeartRateCategory
   | 'steps'
   | 'body_mass'
   | 'workouts'
@@ -22,6 +28,7 @@ export type HealthRecordPeriod =
 const categoryOrder: readonly HealthRecordCategory[] = [
   'blood_pressure',
   'heart_rate',
+  ...appleDerivedHeartRateCategories,
   'steps',
   'body_mass',
   'workouts',
@@ -67,6 +74,10 @@ export function healthRecordCategoryTitle(
       return t('healthRecords.category.blood_pressure');
     case 'heart_rate':
       return t('healthRecords.category.heart_rate');
+    case 'resting_heart_rate':
+      return t('healthkit.commonObservations.restingHeartRate');
+    case 'walking_heart_rate_average':
+      return t('healthkit.commonObservations.walkingHeartRateAverage');
     case 'steps':
       return t('healthRecords.category.steps');
     case 'body_mass':
@@ -107,6 +118,8 @@ export function classifyHealthObservation(
   ) {
     return 'blood_pressure';
   }
+  const derived = classifyAppleDerivedHeartRate(observation);
+  if (derived) return derived;
   switch (observation.concept) {
     case 'heart_rate':
       return 'heart_rate';

@@ -198,7 +198,7 @@ export function ConversationMessage({
               staticText={message.savedHistoryDisplayOnly}
               selectable={copyMenus === undefined}
               allowReport={
-                !message.streaming &&
+                !(message.directPhotoReply || message.streaming) &&
                 !message.incomplete &&
                 !message.historyUnavailable
               }

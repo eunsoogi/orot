@@ -91,7 +91,7 @@ test('shows a bounded preview without requesting older records', async () => {
   );
 
   // A dense current month must not delay first paint until every page arrives.
-  expect(loader).toHaveBeenCalledTimes(7);
+  expect(loader).toHaveBeenCalledTimes(9);
   expect(screen.getByTestId('health-record-chart-blood_pressure')).toBeTruthy();
   expect(screen.queryByText('아직 불러오지 않은 기록이 있어요.')).toBeNull();
   await fireEvent.press(screen.getByTestId('health-record-filter-heart_rate'));
@@ -99,7 +99,7 @@ test('shows a bounded preview without requesting older records', async () => {
   expect(screen.getByTestId('health-record-chart-heart_rate')).toBeTruthy();
   await fireEvent(screen.getByTestId('health-records-scroll'), 'endReached');
   await fireEvent(screen.getByTestId('health-records-scroll'), 'endReached');
-  expect(loader).toHaveBeenCalledTimes(7);
+  expect(loader).toHaveBeenCalledTimes(9);
   expect(loader.mock.calls.every(([cursor]) => cursor === null)).toBe(true);
 });
 
@@ -179,7 +179,7 @@ test('ignores repeated end events while initial category reads are pending', asy
   );
   await fireEvent(screen.getByTestId('health-records-scroll'), 'endReached');
   await fireEvent(screen.getByTestId('health-records-scroll'), 'endReached');
-  expect(loader).toHaveBeenCalledTimes(7);
+  expect(loader).toHaveBeenCalledTimes(9);
   expect(loader.mock.calls.every(([after]) => after === null)).toBe(true);
   await act(async () => next.resolve({ records: [], nextCursor: null }));
 });

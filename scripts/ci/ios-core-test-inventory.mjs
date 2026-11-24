@@ -94,6 +94,9 @@ export const coreTests = [
   ...fixtureIsolationTests,
   ...recordingPersistenceTests,
   ...medicalDocumentCoreTests,
+  // Standalone synthetic photo normalization does not read the system photo library.
+  'OrotIntegrationTests/ConversationPhotoNormalizerTests/testNoTextGeometryImportsWithBakedOrientationAndNoGPSorExif',
+  'OrotIntegrationTests/ConversationPhotoNormalizerTests/testRejectsEmptyMalformedAndOversizedInput',
   'OrotIntegrationTests/RecordingMeteringBoundaryTests/testRecorderErrorsHopToTheOwnedQueueAndIgnoreStaleSessions',
   'OrotIntegrationTests/RecordingMeteringBoundaryTests/testNotificationOccurrencePrecedesQueueDeliveryWithoutChangingActiveCaptureProtection',
   'OrotIntegrationTests/HermesDomainIntegrationTests/testHostExecutesHermesOperations',

@@ -28,6 +28,7 @@ export type ConversationHistoryPresentation = {
   | (ArchivedConversationPresentationMetadata & {
       readonly status: 'complete' | 'partial';
       readonly answer: string;
+      readonly directPhoto?: true;
       readonly savedPossibilityNarrative?: true;
       readonly healthSummary?: HealthSummaryResult;
       readonly dailyReport?: NonNullable<ConversationArtifact['dailyReport']>;

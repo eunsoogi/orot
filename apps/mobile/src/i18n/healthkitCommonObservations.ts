@@ -9,6 +9,14 @@ export const commonObservationsKo = {
     '선택한 기록만 이 기기의 암호화된 저장소에 보관하고 외부로 전송하지 않아요.',
   'healthkit.commonObservations.import': '선택한 기록 가져오기',
   'healthkit.commonObservations.heartRate': '심박수',
+  'healthkit.commonObservations.restingHeartRate': '안정 시 심박수 (건강 앱)',
+  'healthkit.commonObservations.walkingHeartRateAverage':
+    '걷기 평균 심박수 (건강 앱)',
+  'healthkit.commonObservations.derivedHeartRateMean':
+    '불러온 측정값 {samples}개의 평균: {mean}회/분',
+  'healthkit.commonObservations.derivedHeartRateDates':
+    '측정 기간: {start} ~ {end}',
+  'healthkit.commonObservations.derivedHeartRateSources': '출처: {sources}',
   'healthkit.commonObservations.steps': '걸음 수',
   'healthkit.commonObservations.bodyMass': '체중',
   'healthkit.commonObservations.status.idle':

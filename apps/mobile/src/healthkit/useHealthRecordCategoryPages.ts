@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import type { HealthObservation } from '@orot/domain';
+import { appleDerivedHeartRateCategories } from '@orot/storage';
 import type {
   HealthObservationCursor,
   HealthObservationPageLoader,
@@ -17,6 +18,7 @@ import {
 export const observationCategories: readonly HealthObservationCategory[] = [
   'blood_pressure',
   'heart_rate',
+  ...appleDerivedHeartRateCategories,
   'steps',
   'body_mass',
   'workouts',

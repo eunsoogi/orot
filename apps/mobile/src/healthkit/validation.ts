@@ -18,6 +18,8 @@ const sampleKindByFeature: Record<
   bloodPressure: ['bloodPressure'],
   sleep: ['sleep'],
   heartRate: ['heartRate'],
+  restingHeartRate: ['restingHeartRate'],
+  walkingHeartRateAverage: ['walkingHeartRateAverage'],
   steps: ['steps'],
   bodyMass: ['bodyMass'],
   workouts: ['workouts'],

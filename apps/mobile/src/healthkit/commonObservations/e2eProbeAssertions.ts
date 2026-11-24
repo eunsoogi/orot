@@ -44,6 +44,8 @@ export const commonObservationProbeFeatures: readonly CommonObservationFeature[]
 
 export const commonObservationProbeSampleIds = {
   heartRate: 'synthetic-heart-rate',
+  restingHeartRate: 'synthetic-resting-heart-rate',
+  walkingHeartRateAverage: 'synthetic-walking-heart-rate',
   steps: 'synthetic-steps',
   bodyMass: 'synthetic-body-mass',
   workouts: 'synthetic-workout',
@@ -51,6 +53,8 @@ export const commonObservationProbeSampleIds = {
 
 const sampleTypes: Readonly<Record<CommonObservationFeature, string>> = {
   heartRate: 'HKQuantityTypeIdentifierHeartRate',
+  restingHeartRate: 'HKQuantityTypeIdentifierRestingHeartRate',
+  walkingHeartRateAverage: 'HKQuantityTypeIdentifierWalkingHeartRateAverage',
   steps: 'HKQuantityTypeIdentifierStepCount',
   bodyMass: 'HKQuantityTypeIdentifierBodyMass',
   workouts: 'HKWorkoutTypeIdentifier',
@@ -59,7 +63,11 @@ const sampleTypes: Readonly<Record<CommonObservationFeature, string>> = {
 export async function verifyCommonObservationReadPlans(
   native: CommonObservationsProbeModule,
 ): Promise<void> {
-  for (const feature of commonObservationProbeFeatures) {
+  for (const feature of [
+    ...commonObservationProbeFeatures,
+    'restingHeartRate',
+    'walkingHeartRateAverage',
+  ] as const) {
     const plan = await native.inspectReadAuthorizationPlan(feature);
     assertProbe(
       plan.availability === 'available',

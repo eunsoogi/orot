@@ -58,10 +58,11 @@ public final class MedicalDocumentImportModule: NSObject, UIDocumentPickerDelega
     }
 
     @objc(pickMedicalDocumentPhoto:rejecter:)
-    public func pickMedicalDocumentPhoto(
-        _ resolve: @escaping RCTPromiseResolveBlock,
-        rejecter reject: @escaping RCTPromiseRejectBlock,
-    ) {
+    public func pickMedicalDocumentPhoto(_ resolve: @escaping RCTPromiseResolveBlock, rejecter reject: @escaping RCTPromiseRejectBlock) {
+        pickPhoto(.document, resolve: resolve, reject: reject)
+    }
+
+    func pickPhoto(_ mode: MedicalDocumentPhotoPicker.Mode, resolve: @escaping RCTPromiseResolveBlock, reject: @escaping RCTPromiseRejectBlock) {
         DispatchQueue.main.async {
             guard self.pendingPromise == nil, !self.photoPicker.isActive,
                   let presenter = Self.activePresenter()
@@ -69,7 +70,7 @@ public final class MedicalDocumentImportModule: NSObject, UIDocumentPickerDelega
                 reject("IMPORT_FAILED", "The photo picker is unavailable.", nil)
                 return
             }
-            self.photoPicker.present(from: presenter) { result in
+            self.photoPicker.present(from: presenter, mode: mode) { result in
                 switch result {
                 case let .success(document): resolve(document as Any? ?? NSNull())
                 case let .failure(error): MedicalDocumentImportErrorMapper.reject(reject, error: error)

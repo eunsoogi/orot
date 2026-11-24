@@ -5,7 +5,6 @@ import { existsSync, readFileSync, readdirSync } from 'node:fs';
 import { iosTestInventory } from '../ios-test-inventory.mjs';
 import { explicitIosDiagnosticSelectors } from './ios-test-explicit-diagnostics.mjs';
 import { swiftSuiteExtensions } from './swift-suite-extensions.mjs';
-
 function assertTestMethodDeclared(identifier) {
   const [target, suite, method] = identifier.split('/');
   const base = `apps/mobile/ios/${target}/${suite}`;
@@ -36,7 +35,7 @@ test('separate Core and Speech runners cover every registered boundary without d
   // Target boundaries stop dependent UI work while preserving the full original inventory.
   // Root navigation runs in Core; blood-pressure speech stays explicitly selectable on Duo.
   for (const [profile, integrationCount, uiCount] of [
-    ['core', 127, 15],
+    ['core', 129, 15],
     ['speech', 6, 1],
   ]) {
     const all = iosTestInventory(profile);
@@ -58,6 +57,14 @@ test('separate Core and Speech runners cover every registered boundary without d
     assert.ok(integration.every((id) => id.startsWith('OrotIntegrationTests/')));
     assert.ok(ui.every((id) => id.startsWith('OrotUITests/')));
   }
+  for (const identifier of [
+    'OrotIntegrationTests/ConversationPhotoNormalizerTests/testNoTextGeometryImportsWithBakedOrientationAndNoGPSorExif',
+    'OrotIntegrationTests/ConversationPhotoNormalizerTests/testRejectsEmptyMalformedAndOversizedInput',
+  ])
+    assert.equal(
+      iosTestInventory('core', 'integration').filter((value) => value === identifier).length,
+      1,
+    );
   assert.equal(iosTestInventory('speech', 'preparation').length, 1);
   const authentication = iosTestInventory('core', 'authentication');
   assert.deepEqual(authentication, [
@@ -141,7 +148,6 @@ test('each profile declares unique existing cases and every test method is sched
   }
   assert.throws(() => iosTestInventory('unknown'));
 });
-
 function swiftTestMethodsInDeclaration(source, suite, kind, withPositions = false) {
   const code = maskSwiftCommentsAndStrings(source);
   const declaration =
@@ -158,14 +164,12 @@ function swiftTestMethodsInDeclaration(source, suite, kind, withPositions = fals
     .filter((match) => swiftBraceDepth(body, match.index) === 0)
     .map((match) => (withPositions ? openIndex + 1 + match.index : match[1]));
 }
-
 function maskSwiftCommentsAndStrings(source) {
   return source.replace(
     /#"(?:\\.|[^"\\])*"#|"(?:\\.|[^"\\])*"|\/\*[\s\S]*?\*\/|\/\/[^\n]*/g,
     (value) => value.replace(/[^\n]/g, ' '),
   );
 }
-
 function swiftBraceDepth(source, end) {
   let depth = 0;
   for (let index = 0; index < end; index += 1) {
