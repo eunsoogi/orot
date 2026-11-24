@@ -88,9 +88,24 @@ test('saved Live shows the saved catalog preference, with the adjacent option co
   expect(language).toBeTruthy();
   expect(view.getByText('한국어')).toBeTruthy();
   expect(view.getByText('노을 · 한국어')).toBeTruthy();
+  const pane = view.getByTestId('openai-voice-model-pane-speech');
+  const shellInset =
+    StyleSheet.flatten(pane.parent?.props.style).paddingHorizontal ?? 0;
+  const boxInset = StyleSheet.flatten(group.props.style).paddingHorizontal;
+  for (const closed of [button, view.getByTestId('live-voice-voice')]) {
+    expect(closed.props.accessibilityState.expanded).toBe(false);
+    const rowStyle = StyleSheet.flatten(closed.props.style);
+    expect(rowStyle.minHeight).toBe(44);
+    expect(shellInset + boxInset + rowStyle.paddingHorizontal).toBe(
+      providerCatalogContentInset,
+    );
+  }
+  await fireEvent.press(button);
+  const expanded = view.getByRole('radio', { name: '한국어' });
   expect(
-    StyleSheet.flatten(group.props.style).paddingHorizontal +
-      StyleSheet.flatten(button.props.style).paddingHorizontal,
+    shellInset +
+      boxInset +
+      StyleSheet.flatten(expanded.props.style).paddingHorizontal,
   ).toBe(providerCatalogContentInset);
   expect(StyleSheet.flatten(group.props.style).paddingBottom).toBe(8);
 });

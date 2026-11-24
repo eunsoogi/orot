@@ -3,8 +3,6 @@ import { AppText as Text } from '../layout/AppText';
 import { AppSymbol } from '../layout/AppSymbol';
 import { appColors } from '../layout/appColors';
 import { providerSettingsStyles as styles } from '../layout/providerSettingsPresentation';
-import { t } from '../i18n';
-import { voiceConversationCapability } from '../voiceConversation/voiceConversationCapability';
 import type { voiceModels } from './voiceModels';
 
 /** Voice and language choices share layout, not provider capabilities or selection logic. */
@@ -19,10 +17,6 @@ export function VoiceModelOption({
   readonly disabled: boolean;
   readonly onPress: () => void;
 }) {
-  const capability = voiceConversationCapability({
-    mode: item.mode,
-    model: item.id,
-  });
   return (
     <Pressable
       accessibilityRole="radio"
@@ -41,15 +35,7 @@ export function VoiceModelOption({
       <View style={styles.copy}>
         <Text style={styles.title}>{item.title}</Text>
         {item.mode === 'openai-api' ? (
-          <>
-            <Text style={styles.detail}>{item.id}</Text>
-            <Text style={styles.detail}>{item.detail}</Text>
-          </>
-        ) : null}
-        {capability.mode === 'live-audio-only' ? (
-          <Text style={styles.detail}>
-            {t('modelSettings.liveVoiceToolsUnavailable')}
-          </Text>
+          <Text style={styles.detail}>{item.id}</Text>
         ) : null}
       </View>
       <AppSymbol

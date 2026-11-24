@@ -26,8 +26,11 @@ export function OpenAiVoiceModelTabs({
   readonly tools: ReactNode;
 }) {
   return (
-    <View style={styles.inset}>
-      <View testID="openai-voice-model-tabs" style={tabs.tabs}>
+    <View style={styles.panes}>
+      <View
+        testID="openai-voice-model-tabs"
+        style={[tabs.tabs, styles.tabInset]}
+      >
         {choices.map(tab => (
           <Pressable
             key={tab}
@@ -67,8 +70,9 @@ export function OpenAiVoiceModelTabs({
 }
 
 const styles = StyleSheet.create({
-  inset: {
-    paddingHorizontal: providerCatalogContentInset,
+  // Only the selector aligns to the account content. Model cards own their inset.
+  tabInset: { marginHorizontal: providerCatalogContentInset },
+  panes: {
     paddingBottom: providerCatalogContentInset,
     gap: modelSettingsPageGap,
   },
