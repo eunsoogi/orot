@@ -19,6 +19,15 @@ final class OrotProviderDiagnostics: NSObject {
 
     @objc func report(_ feature: String, stage: String, outcome: String) {
         guard ProcessInfo.processInfo.arguments.contains("-OROT_PROVIDER_DIAGNOSTICS") else { return }
+        if feature == "live_health" {
+            // Never accept text, request identifiers, source identities, or provider/audio payloads.
+            let stages = ["grant_lookup", "owner_reproof", "local_confirmation", "data_open", "evidence_lookup",
+                          "result_projection", "result_confirmation", "source_reproof", "native_handoff"]
+            guard stages.contains(stage), let elapsed = Int(outcome), (0 ... 300_000).contains(elapsed),
+                  String(elapsed) == outcome else { return }
+            NSLog("OROT_PROVIDER_DIAGNOSTIC layer=app feature=live_health stage=%@ elapsed_ms=%d", stage, elapsed)
+            return
+        }
         if stage.hasPrefix("daily_report_data_") {
             // Detailed Daily Report timing accepts no dynamic stage or content.
             let stages = [
