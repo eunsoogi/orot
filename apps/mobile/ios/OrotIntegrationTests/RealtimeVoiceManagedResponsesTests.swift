@@ -104,7 +104,7 @@ extension RealtimeVoiceLifecycleTests {
     }
 
     func testManagedReadNeverStartsOnNullOrMismatchedDelegationAndLateResultCannotCrossStop() async throws {
-        for mode in ["null", "wrong", "stop", "new-speech"] {
+        for mode in ["null", "wrong", "stop", "new-speech", "second-call"] {
             let socket = ManagedResponseFixtureSocket()
             let configured = expectation(description: "test-only Live config \(mode)")
             socket.configured = { configured.fulfill() }
@@ -126,8 +126,13 @@ extension RealtimeVoiceLifecycleTests {
             if entered == nil {
                 if mode == "null" {
                     events[1]["delegation_id"] = NSNull()
-                } else {
+                } else if mode == "wrong" {
                     events[1]["delegation_id"] = "other-delegation"
+                } else {
+                    let item = ["type": "function_call", "call_id": "function-b", "name": "orot_reviewed_memory",
+                                "arguments": #"{"query":"synthetic-only"}"#]
+                    events.insert(["type": "response.event", "event_id": "second-item-event", "delegation_id": "delegation-a",
+                                   "event": ["type": "response.output_item.done", "item": item]], at: events.count - 1)
                 }
             }
             for event in events {
@@ -142,15 +147,16 @@ extension RealtimeVoiceLifecycleTests {
             if mode == "new-speech" {
                 socket.received?(["type": "session.input_transcript.delta", "event_id": "new-speech-event",
                                   "start_ms": 6, "end_ms": 7, "delta": "synthetic"])
-            } else {
+            } else if mode != "second-call" {
                 try call.stop("fixture-call")
             }
             late?("{\"status\":\"stale\"}")
             let turn = expectation(description: "held callback drained \(mode)")
             DispatchQueue.main.async { turn.fulfill() }
             await fulfillment(of: [turn], timeout: 2)
+            XCTAssertEqual(hits, entered == nil ? 0 : 1)
             XCTAssertTrue(socket.managed.isEmpty)
-            if mode == "new-speech" {
+            if mode == "new-speech" || mode == "second-call" {
                 try call.stop("fixture-call")
             }
         }

@@ -50,8 +50,8 @@ extension RealtimeVoiceCall {
     }
 }
 
-/// A bounded batch of calls to one registered parameterless app tool. Do not guess how to
-/// continue incomplete or ambiguous work; no old Realtime event enables this port.
+/// Permit one independently approved local tool result per delegation. Do not
+/// continue an incomplete or ambiguous response; legacy Realtime cannot use this port.
 final class LiveResponsesToolBridge {
     typealias Owner = LiveResponsesAdmission.Owner
     typealias Request = LiveResponsesAdmission.Request
@@ -149,7 +149,9 @@ final class LiveResponsesToolBridge {
                 }
                 return
             }
-            guard pending.count < 8 else { retire(); return }
+            // An earlier result's protected source is not re-proved after another
+            // independent challenge. Reject a second call before any approval/read.
+            guard pending.isEmpty else { retire(); return }
             pending.append(request)
             return
         }
