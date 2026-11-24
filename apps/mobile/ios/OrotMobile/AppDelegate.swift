@@ -6,7 +6,12 @@ import UserNotifications
 
 @main
 class AppDelegate: UIResponder, UIApplicationDelegate {
-    var window: UIWindow?
+    var window: UIWindow? {
+        didSet {
+            guard let oldValue, oldValue !== window else { return }
+            NotificationCenter.default.post(name: ConversationNativeSceneOwnership.windowReplaced, object: oldValue)
+        }
+    }
 
     var reactNativeDelegate: ReactNativeDelegate?
     var reactNativeFactory: RCTReactNativeFactory?

@@ -9,7 +9,7 @@ trap 'rm -rf "$tmp"' EXIT
 # Exercise the exact Foundation-only production ownership policy without booting UIKit.
 {
   printf 'import Foundation\n'
-  sed -n '/^struct ConversationShortLeaseBook</,/^func observeConversationBackgroundFixtureFailure/{ /^func observeConversationBackgroundFixtureFailure/!p; }' "$source"
+  sed -n '/^struct ConversationShortLeaseBook</,/^func conversationLeaseTerminalEvent/{ /^func conversationLeaseTerminalEvent/!p; }' "$source"
   cat <<'SWIFT'
 var registry = ConversationShortLeaseBook<Int>()
 let old = UUID(), current = UUID()

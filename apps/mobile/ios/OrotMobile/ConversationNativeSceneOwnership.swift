@@ -19,24 +19,51 @@ final class ConversationNativeSceneOwnership {
         scene = nil
     }
 
+    var hasCurrentWindow: Bool {
+        guard let window, let scene else { return false }
+        return window === (UIApplication.shared.delegate as? AppDelegate)?.window &&
+            window.windowScene === scene
+    }
+
     var hasVisibleForegroundOwner: Bool {
         guard UIApplication.shared.isProtectedDataAvailable,
               let window,
-              window === (UIApplication.shared.delegate as? AppDelegate)?.window,
+              hasCurrentWindow,
               !window.isHidden, window.alpha > 0,
               window.rootViewController?.viewIfLoaded?.window === window,
-              let scene, window.windowScene === scene
+              let scene
         else { return false }
         return scene.activationState == .foregroundActive || scene.activationState == .foregroundInactive
     }
 
-    func observeBackground(_ center: NotificationCenter, handler: @escaping () -> Void) -> NSObjectProtocol {
-        center.addObserver(forName: UIScene.didEnterBackgroundNotification, object: nil, queue: .main) { [weak self] notification in
-            guard let scene = notification.object as? UIWindowScene, scene === self?.scene,
+    static let windowReplaced = Notification.Name("OrotConversationOwningWindowReplaced")
+
+    func observeLifecycle(
+        _ center: NotificationCenter,
+        background: @escaping () -> Void,
+        detach: @escaping () -> Void,
+    ) -> [NSObjectProtocol] {
+        let entered = center.addObserver(forName: UIScene.didEnterBackgroundNotification, object: nil, queue: .main) { [weak self] notification in
+            guard let self, let scene = notification.object as? UIWindowScene, scene === self.scene,
                   scene.activationState == .background
             else { return }
-            handler()
+            if hasCurrentWindow {
+                background()
+            } else {
+                detach()
+            }
         }
+        let disconnected = center.addObserver(forName: UIScene.didDisconnectNotification, object: nil, queue: .main) { [weak self] notification in
+            guard let self, let scene = notification.object as? UIWindowScene, scene === self.scene else { return }
+            detach()
+        }
+        let replaced = center.addObserver(forName: Self.windowReplaced, object: nil, queue: .main) { [weak self] notification in
+            guard let self, let window = notification.object as? UIWindow, window === self.window,
+                  !hasCurrentWindow
+            else { return }
+            detach()
+        }
+        return [entered, disconnected, replaced]
     }
 
     func hasShortLease(_ requestId: String) -> Bool {
@@ -98,6 +125,14 @@ enum ConversationLeaseOwnership {
     }
 }
 
+func conversationLeaseTerminalEvent(_ module: ConversationExecutionModule, requestId: String, ownerDetached: Bool) -> [String: Any] {
+    if ownerDetached {
+        return ["kind": "expired", "requestId": requestId, "reason": "lease-check-failed"]
+    }
+    observeConversationBackgroundFixtureFailure(module)
+    return ["kind": "expired", "requestId": requestId]
+}
+
 func observeConversationBackgroundFixtureFailure(_ module: ConversationExecutionModule) {
     #if OROT_TESTS && targetEnvironment(simulator)
         if let token = UserDefaults.standard.string(forKey: "OROT_TEST_BACKGROUND_TOKEN") {
@@ -126,6 +161,11 @@ func observeConversationBackgroundFixtureFailure(_ module: ConversationExecution
 private let conversationProcessInstance = UUID().uuidString
 
 extension ConversationExecutionModule {
+    @objc(protectedDataAvailable:rejecter:)
+    func protectedDataAvailable(_ resolve: RCTPromiseResolveBlock, reject _: RCTPromiseRejectBlock) {
+        resolve(UIApplication.shared.isProtectedDataAvailable)
+    }
+
     @objc(processIdentity:rejecter:)
     func processIdentity(_ resolve: RCTPromiseResolveBlock, reject _: RCTPromiseRejectBlock) {
         // Recovery assumes the single iOS application process, not an extension or

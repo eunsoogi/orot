@@ -38,18 +38,18 @@ final class ConversationExecutionModule: RCTEventEmitter {
             observeConversationExecution(.foreground)
             publish(["kind": "continuation-foreground"])
         })
-        observers.append(nativeOwnership.observeBackground(center, handler: { [weak self] in self?.rearmOwnedRequests() }))
+        observers += nativeOwnership.observeLifecycle(center,
+                                                      background: { [weak self] in self?.rearmOwnedRequests() },
+                                                      detach: { [weak self] in self?.detachOwnedRequests() })
         for name in [UIApplication.protectedDataWillBecomeUnavailableNotification,
                      UIApplication.protectedDataDidBecomeAvailableNotification]
         {
             observers.append(center.addObserver(forName: name, object: nil, queue: .main) { [weak self] notification in
                 // The will-unavailable notification precedes the getter changing to false.
                 let available = notification.name == UIApplication.protectedDataDidBecomeAvailableNotification
-                #if OROT_TESTS && targetEnvironment(simulator)
-                    if !available, let token = UserDefaults.standard.string(forKey: "OROT_TEST_BACKGROUND_TOKEN") {
-                        self?.signalBackgroundFailure(token)
-                    }
-                #endif
+                if !available, let self {
+                    observeConversationBackgroundFixtureFailure(self)
+                }
                 self?.publish(["kind": "protectedData", "available": available])
             })
         }
@@ -69,7 +69,12 @@ final class ConversationExecutionModule: RCTEventEmitter {
 
     @objc(begin:resolver:rejecter:)
     func begin(_ requestId: String, resolve: RCTPromiseResolveBlock, reject _: RCTPromiseRejectBlock) {
-        guard !requestId.isEmpty, !requests.contains(requestId) else { resolve(false); return }
+        guard !requestId.isEmpty else { resolve(false); return }
+        let duplicate = requests.contains(requestId)
+        if !requests.isEmpty, !nativeOwnership.hasCurrentWindow {
+            detachOwnedRequests()
+        }
+        guard !duplicate else { resolve(false); return }
         if requests.isEmpty {
             nativeOwnership.bindWindow()
         }
@@ -103,11 +108,16 @@ final class ConversationExecutionModule: RCTEventEmitter {
         }
     }
 
-    private func expireRequest(_ requestId: String) {
+    private func detachOwnedRequests() {
+        for id in Array(requests) {
+            expireRequest(id, ownerDetached: true)
+        }
+    }
+
+    private func expireRequest(_ requestId: String, ownerDetached: Bool = false) {
         guard requests.contains(requestId) else { return }
-        observeConversationBackgroundFixtureFailure(self)
         endLease(requestId)
-        publish(["kind": "expired", "requestId": requestId])
+        publish(conversationLeaseTerminalEvent(self, requestId: requestId, ownerDetached: ownerDetached))
     }
 
     /// Admit durably owned foreground work; provider authorization remains independent.
@@ -228,11 +238,6 @@ final class ConversationExecutionModule: RCTEventEmitter {
             (continued.removeValue(forKey: requestId) as? ConversationContinuedProcessing)?.finish(success: success)
         }
         nativeOwnership.finishShortLease(requestId)
-    }
-
-    @objc(protectedDataAvailable:rejecter:)
-    func protectedDataAvailable(_ resolve: RCTPromiseResolveBlock, reject _: RCTPromiseRejectBlock) {
-        resolve(UIApplication.shared.isProtectedDataAvailable)
     }
 
     override func invalidate() {
