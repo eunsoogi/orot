@@ -28,7 +28,9 @@ export async function loadHealthSummaryOpeningData(
   let data: AiFeatureLocalData | undefined;
   let failed = false;
   try {
-    data = await (observe ? loadWhileCurrent(load, signal) : load());
+    data = await (observe
+      ? observeHealthSummaryWhileCurrent(load, signal)
+      : load());
   } catch {
     failed = true;
   }
@@ -47,11 +49,11 @@ export async function loadHealthSummaryOpeningData(
   return data;
 }
 
-/** Stop retires this reply, not the protected database opener shared by other requests. */
-async function loadWhileCurrent(
-  load: () => Promise<AiFeatureLocalData>,
+/** Stop retires this request's wait, not an already-started shared/local operation. */
+export async function observeHealthSummaryWhileCurrent<T>(
+  run: () => Promise<T>,
   signal: AbortSignal,
-): Promise<AiFeatureLocalData | undefined> {
+): Promise<T | undefined> {
   if (signal.aborted) return;
   let stop = () => {};
   const cancelled = new Promise<undefined>(resolve => {
@@ -59,12 +61,11 @@ async function loadWhileCurrent(
     signal.addEventListener('abort', stop, { once: true });
   });
   try {
-    // Install both paths before invoking the adapter. Late rejection is observed
-    // by the race, while another request can continue using the shared opener.
-    const opened = Promise.resolve().then(() =>
-      signal.aborted ? undefined : load(),
+    // Observe late rejections without waiting for retired ownership.
+    const operation = Promise.resolve().then(() =>
+      signal.aborted ? undefined : run(),
     );
-    return await Promise.race([opened, cancelled]);
+    return await Promise.race([operation, cancelled]);
   } finally {
     signal.removeEventListener('abort', stop);
   }

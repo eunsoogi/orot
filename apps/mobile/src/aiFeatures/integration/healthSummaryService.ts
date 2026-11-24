@@ -1,4 +1,7 @@
-import { loadHealthSummaryOpeningData } from './healthSummaryOpeningPreflight';
+import {
+  loadHealthSummaryOpeningData,
+  observeHealthSummaryWhileCurrent,
+} from './healthSummaryOpeningPreflight';
 import { conversationConsentScope } from './conversationBackgroundProvider';
 import { conversationReceiptSelection } from './conversationReceiptSelection';
 import { startContextualConversationOpening } from './contextualConversationOpening';
@@ -113,8 +116,7 @@ export function createHealthSummaryService(input: {
       tools: [bound.tool],
       consentPurpose: 'symptom_summary',
     });
-    // This workflow can read only its bound health period. Do not request
-    // reviewed-memory consent or advertise a memory scope it cannot use.
+    // This workflow cannot read or request consent for reviewed memory.
     const execution = {
       ...baseExecution,
       execution: {
@@ -137,7 +139,8 @@ export function createHealthSummaryService(input: {
       allowedScope: execution.execution.allowedScope,
     });
     try {
-      await opening.done;
+      // The optional reviewed journal cannot hold a stopped Summary open.
+      await observeHealthSummaryWhileCurrent(() => opening.done, signal);
     } finally {
       opening.dispose();
     }
