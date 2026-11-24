@@ -24,7 +24,11 @@ export async function finishConversationWorkflow(
   if (history === 'cancelled' || input.signal.aborted)
     return { status: 'failure', kind: 'cancelled' };
   if (history === 'rejected')
-    return { status: 'failure', kind: 'retrieval_failed' };
+    return {
+      status: 'failure',
+      kind: 'retrieval_failed',
+      discardUnverifiedDraft: true,
+    };
   const continuation = input.generated.choose(input.outcome);
   input.observer?.onArtifactContinuation?.(continuation);
   const fallback = conversationFallbackOutcome(

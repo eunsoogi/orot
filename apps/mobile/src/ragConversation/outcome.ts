@@ -50,6 +50,8 @@ export type RagConversationOutcome =
   | {
       readonly status: 'failure';
       readonly kind: RagConversationFailureKind;
+      /** Final evidence admission rejected after dispatch: no opaque body may survive. */
+      readonly discardUnverifiedDraft?: true;
       /** Safe retry, refresh, or evidence-review guidance for a saved-question preflight failure. */
       readonly visitQuestionRecovery?: VisitQuestionPreflightRecovery;
     }

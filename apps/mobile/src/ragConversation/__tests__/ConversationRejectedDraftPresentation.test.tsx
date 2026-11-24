@@ -5,9 +5,15 @@ import { getRagConversationFailureCopy } from '../copy';
 import type { ConversationSender } from '../conversationSessionTypes';
 import { Transcript } from '../testSupport/savedHistoryDisplayFixture';
 
-test.each(['validation_failed', 'provider_refused'] as const)(
-  'keeps an approved opening without treating a terminal %s as interrupted model work',
-  async kind => {
+test.each([
+  { kind: 'validation_failed' },
+  { kind: 'provider_refused' },
+  { kind: 'stale_evidence' },
+  { kind: 'retrieval_failed', discardUnverifiedDraft: true },
+] as const)(
+  'keeps an approved opening without treating terminal $kind as interrupted model work',
+  async failure => {
+    const { kind } = failure;
     const store = createConversationSessions();
     const id = store.getSnapshot().activeId;
     const question = 'Synthetic typed request';
@@ -33,7 +39,7 @@ test.each(['validation_failed', 'provider_refused'] as const)(
       });
       // A test at the session boundary: a typed terminal result, not a native
       // expiry, Stop, or an inference about what actually happened on device.
-      return { status: 'failure', kind };
+      return { status: 'failure', ...failure };
     });
     const view = await render(<Transcript store={store} />);
     try {
