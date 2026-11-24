@@ -81,6 +81,7 @@ export function AppearanceEditor({
     >
       <SafeAreaLayout
         scrollable
+        outerScrollIndicator={initial !== undefined}
         scrollTestID="assistant-appearance-scroll"
         scrollContentStyle={styles.content}
       >
