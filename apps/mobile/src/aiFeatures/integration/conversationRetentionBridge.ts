@@ -1,3 +1,4 @@
+import { storeConversationA2UILayout } from '../../ragConversation/conversationA2UIArchive';
 import type { HistoricalDialogueParent } from '../../ragConversation/conversationRetention';
 import { observeConversationFinalization as finalize } from '../../ragConversation/conversationFinalizationDiagnostics';
 import type { ConversationEntryContext } from './conversationIntent';
@@ -99,8 +100,24 @@ export function createConversationRetentionBridge(input: {
         );
         if (citations.some(reference => !reference) || signal.aborted)
           throw new Error('Answer capture was cancelled.');
+        const archivedA2UILayout =
+          outcome.a2uiPresentation &&
+          !outcome.completion &&
+          !input.submittedInput &&
+          !input.entryContext?.dailyReport &&
+          (!input.entryContext ||
+            input.entryContext.intent === 'conversation') &&
+          !outcome.healthSummary &&
+          !outcome.visitQuestions &&
+          citations.length === 0
+            ? storeConversationA2UILayout(
+                outcome.a2uiPresentation,
+                outcome.answer,
+              )
+            : undefined;
         return {
           question: input.question,
+          ...(archivedA2UILayout ? { archivedA2UILayout } : {}),
           ...(input.submittedInput
             ? { submittedInput: input.submittedInput }
             : {}),

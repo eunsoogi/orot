@@ -36,6 +36,8 @@ export interface DisplayMessage extends RagConversationMessage {
   readonly citations?: readonly EvidenceReference[];
   /** Live completed answer only. The retained reply and Copy still use content. */
   readonly a2uiPresentation?: import('./conversationA2UI').ConversationA2UINode;
+  /** Only the protected, owning archive display reader can supply this. */
+  readonly archivedA2UIPresentation?: import('./conversationA2UI').ConversationA2UINode;
   readonly healthSources?: import('./conversationHealthDeletion').HealthSourceDependencies;
   /** Reviewed early reply, separate from validated answer text and provider history. */
   readonly initialResponse?: {

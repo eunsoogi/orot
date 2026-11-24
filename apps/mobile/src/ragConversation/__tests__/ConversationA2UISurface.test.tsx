@@ -1,3 +1,4 @@
+import { restoreConversationA2UILayout } from '../conversationA2UIArchive';
 import {
   fireEvent,
   render,
@@ -176,4 +177,40 @@ test('invalid controls and unchanged product report templates cannot be overridd
     screen.getAllByRole('header').map(node => node.props.children),
   ).toEqual([template.title, ...template.sections]);
   expect(screen.queryByText(plainLink)).toBeNull();
+});
+
+test('renders the owned restored layout in the original bubble, never another row or a stale archive', async () => {
+  const accepted = 'Accepted one.\n\nAccepted two.';
+  const root = restoreConversationA2UILayout(
+    { version: 1, tree: ['Row', 0, 0] },
+    accepted,
+  )!;
+  const message = {
+    ...defaultMessage,
+    content: accepted,
+    restoredHistory: true as const,
+    savedHistoryDisplayOnly: true as const,
+    archivedA2UIPresentation: root,
+  };
+  const owned = {
+    messageId: message.id,
+    root,
+    origin: 'owned-archive' as const,
+  };
+  const view = await render(bubble(message, owned));
+  expect(
+    within(screen.getByTestId('conversation-a2ui-row')).getByText(
+      'Accepted one.',
+    ),
+  ).toBeTruthy();
+  expect(
+    within(screen.getByTestId('conversation-a2ui-row')).getByText(
+      'Accepted two.',
+    ),
+  ).toBeTruthy();
+  expect(screen.queryByRole('button')).toBeNull();
+  await view.rerender(bubble({ ...message, id: 42 }, owned));
+  expect(screen.queryByTestId('conversation-a2ui-row')).toBeNull();
+  await view.rerender(bubble({ ...message, historyUnavailable: true }, owned));
+  expect(screen.queryByTestId('conversation-a2ui-row')).toBeNull();
 });

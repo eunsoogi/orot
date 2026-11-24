@@ -1,3 +1,4 @@
+import { recoverArchiveLayout } from './conversationArchiveA2UI';
 import { t } from '../i18n';
 import type { StoredSteeringInstruction } from './conversationSteeringStorage';
 import {
@@ -30,6 +31,7 @@ export type ConversationHistoryPresentation = {
       readonly answer: string;
       readonly directPhoto?: true;
       readonly savedPossibilityNarrative?: true;
+      readonly archivedA2UIPresentation?: import('../ragConversation/conversationA2UI').ConversationA2UINode;
       readonly healthSummary?: HealthSummaryResult;
       readonly dailyReport?: NonNullable<ConversationArtifact['dailyReport']>;
       readonly savedCitations?: readonly SavedArchivedCitation[];
@@ -151,9 +153,15 @@ export function decodeOwnedArchiveRow(
     validConversationReportTarget(value.dailyReport)
       ? (value.dailyReport as NonNullable<ConversationArtifact['dailyReport']>)
       : undefined;
+  // A legacy artifact without the exact completed request/completion pair never gains a surface.
+  const archivedA2UIPresentation =
+    row.request_id === row.id && row.completion_id === row.id
+      ? recoverArchiveLayout(value)
+      : undefined;
   return {
     value,
     presentation: {
+      ...(archivedA2UIPresentation ? { archivedA2UIPresentation } : {}),
       id: row.id,
       sessionId,
       createdAt: value.createdAt,

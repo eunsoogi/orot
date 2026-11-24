@@ -146,7 +146,7 @@ test.each([
   [surface(answer.split('\n\n')), true],
   [surface(['Unverified injected content']), false],
 ])(
-  'does not persist or display provider shape on an actual local reload',
+  'restores only the authorized completed read-only layout on actual local reload',
   async (a2ui, visible) => {
     const db = await healthContextFixture();
     const storage = createConversationArtifactStorage(db.database);
@@ -219,6 +219,19 @@ test.each([
         restoredHistory: true,
       });
       expect(restored.at(-1)).not.toHaveProperty('a2uiPresentation');
+      const message = restored.at(-1)!;
+      const layout = message.archivedA2UIPresentation;
+      expect(Boolean(layout)).toBe(visible);
+      if (layout) {
+        expect(stored?.archivedA2UILayout).toEqual({
+          version: 1,
+          tree: ['Column', 0, 0],
+        });
+      }
+      expect(JSON.stringify(stored?.archivedA2UILayout) ?? '').not.toContain(
+        answer,
+      );
+
       expect(model.generate).toHaveBeenCalledTimes(1);
     } finally {
       sessions.dispose();
