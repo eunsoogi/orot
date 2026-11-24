@@ -1,5 +1,5 @@
 import { useIsFocused } from '@react-navigation/native';
-import { useState } from 'react';
+import { Fragment, useState } from 'react';
 import { Pressable, useWindowDimensions, View } from 'react-native';
 import { AppText as Text } from '../../layout/AppText';
 import { AppButton } from '../../layout/AppButton';
@@ -8,6 +8,7 @@ import type { ChartStatus } from '../../ui/charts';
 import {
   isOverviewDerivedHeartRate,
   isOverviewSnapshotMetric,
+  type OverviewMetricChoice,
 } from './metricSelection';
 import { useOverviewMetrics } from './useOverviewMetrics';
 import { overviewMetricStyles as styles } from './overviewMetricStyles';
@@ -22,19 +23,26 @@ import {
 } from './overviewMetricLayout';
 import { OverviewRecentHealthChange } from './OverviewRecentHealthChange';
 import { formatOverviewMetricValue } from './metricFormatting';
+import {
+  OverviewHeartPanel,
+  groupOverviewCardSelection,
+} from './OverviewHeartPanel';
 import { OverviewWorkoutHeartRateCard } from './OverviewWorkoutHeartRateCard';
 
 /** The standalone association card owns its focus separately from projected charts. */
 function FocusedWorkoutHeartRate({
   width,
+  embedded,
 }: {
   readonly width: number | '100%';
+  readonly embedded?: boolean;
 }) {
   const focused = useIsFocused();
   return (
     <OverviewWorkoutHeartRateCard
       width={typeof width === 'number' ? width : undefined}
       active={focused}
+      embedded={embedded}
     />
   );
 }
@@ -50,9 +58,10 @@ export function OverviewMetrics({ onEdit }: { readonly onEdit?: () => void }) {
       data.metrics[metric]?.comparison ? [data.metrics[metric]!] : [],
     )
     .slice(0, 2);
+  const cards = groupOverviewCardSelection(data.selection);
   const gridLayout = resolveOverviewMetricGridLayout(
     gridWidth,
-    data.selection.length,
+    cards.length,
     fontScale,
   );
   const recentChangeLayout = resolveOverviewRecentChangeLayout(
@@ -76,6 +85,43 @@ export function OverviewMetrics({ onEdit }: { readonly onEdit?: () => void }) {
       : data.state === 'stale'
         ? 'stale'
         : undefined;
+  const metricCard = (
+    metric: OverviewMetricChoice,
+    width: number | '100%',
+    heartPlacement?: 'featured' | 'supporting',
+  ) => {
+    if (metric === 'workoutHeartRate')
+      return (
+        <FocusedWorkoutHeartRate
+          width={width}
+          embedded={Boolean(heartPlacement)}
+        />
+      );
+    return data.metrics[metric] ? (
+      <OverviewMetricCard
+        metric={data.metrics[metric]!}
+        width={width}
+        chartStatus={chartStatus}
+        heartPlacement={heartPlacement}
+      />
+    ) : (
+      <OverviewMetricChartPlaceholder
+        metric={metric}
+        status={placeholderStatus}
+        width={width}
+        heartPlacement={heartPlacement}
+        emptyMessage={
+          data.state === 'ready'
+            ? metric !== 'sleep' &&
+              !isOverviewDerivedHeartRate(metric) &&
+              data.quantityTruncated
+              ? t('overview.metricTruncated')
+              : t('overview.metricWindowEmpty')
+            : undefined
+        }
+      />
+    );
+  };
   const canShowComparisons =
     data.state === 'ready' ||
     data.state === 'refreshing' ||
@@ -118,35 +164,29 @@ export function OverviewMetrics({ onEdit }: { readonly onEdit?: () => void }) {
             setGridWidth(current => (current === width ? current : width));
           }}
         >
-          {data.selection.map(metric =>
-            metric === 'workoutHeartRate' ? (
-              <FocusedWorkoutHeartRate
-                key={metric}
-                width={gridLayout.cardWidth}
-              />
-            ) : data.metrics[metric] ? (
-              <OverviewMetricCard
-                key={metric}
-                metric={data.metrics[metric]!}
-                width={gridLayout.cardWidth}
-                chartStatus={chartStatus}
-              />
-            ) : (
-              <OverviewMetricChartPlaceholder
-                key={metric}
-                metric={metric}
-                status={placeholderStatus}
-                width={gridLayout.cardWidth}
-                emptyMessage={
-                  data.state === 'ready'
-                    ? metric !== 'sleep' &&
-                      !isOverviewDerivedHeartRate(metric) &&
-                      data.quantityTruncated
-                      ? t('overview.metricTruncated')
-                      : t('overview.metricWindowEmpty')
-                    : undefined
+          {cards.map(card =>
+            card.kind === 'heart' ? (
+              <OverviewHeartPanel
+                key="heart-panel"
+                choices={card.choices}
+                width={
+                  card.choices.length === 1 ? gridLayout.cardWidth : '100%'
+                }
+                measuredWidth={
+                  card.choices.length === 1 &&
+                  typeof gridLayout.cardWidth === 'number'
+                    ? gridLayout.cardWidth
+                    : gridWidth
+                }
+                fontScale={fontScale}
+                renderMetric={(metric, placement) =>
+                  metricCard(metric, '100%', placement)
                 }
               />
+            ) : (
+              <Fragment key={card.metric}>
+                {metricCard(card.metric, gridLayout.cardWidth)}
+              </Fragment>
             ),
           )}
         </View>

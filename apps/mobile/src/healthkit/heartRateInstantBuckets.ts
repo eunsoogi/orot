@@ -43,24 +43,28 @@ function combineHeartRateBuckets(
       sources: Set<string>;
     }
   >();
-  for (const { x, value, source } of measurements) {
+  for (const { x, value, source, range } of measurements) {
     if (!Number.isFinite(Date.parse(x)) || !Number.isFinite(value)) continue;
     const instant = bucketKey(x);
     const bucket = buckets.get(instant);
+    const sampleRange = day ? range : undefined;
+    const count = sampleRange?.samples ?? 1;
+    const low = sampleRange?.minimum ?? value;
+    const high = sampleRange?.maximum ?? value;
     if (bucket) {
-      bucket.minimum = Math.min(bucket.minimum, value);
-      bucket.maximum = Math.max(bucket.maximum, value);
-      bucket.count++;
+      bucket.minimum = Math.min(bucket.minimum, low);
+      bucket.maximum = Math.max(bucket.maximum, high);
+      bucket.count += count;
       // Each newly admitted measurement contributes once (never average bucket means).
-      bucket.mean += (value - bucket.mean) / bucket.count;
+      bucket.mean += (value - bucket.mean) * (count / bucket.count);
       bucket.sources.add(source);
     } else {
       buckets.set(instant, {
         x: day ? instant : x,
-        minimum: value,
-        maximum: value,
+        minimum: low,
+        maximum: high,
         mean: value,
-        count: 1,
+        count,
         sources: new Set([source]),
       });
     }

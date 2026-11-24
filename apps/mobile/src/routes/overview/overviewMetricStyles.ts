@@ -45,6 +45,9 @@ export const overviewMetricStyles = StyleSheet.create({
   },
   /** Preserve the card's spacing when headline content is grouped for accessibility. */
   metricSummary: { gap: overviewMetricCardGap },
+  heartMetric: { gap: overviewMetricCardGap },
+  heartNumber: { fontSize: 26 },
+  heartSupportingNumber: { fontSize: 17 },
   recentChange: { alignSelf: 'stretch', maxWidth: '100%' },
   recentChangeRow: {
     flexDirection: 'row',
