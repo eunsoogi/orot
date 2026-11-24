@@ -27,6 +27,7 @@ extension RealtimeVoiceLifecycleTests {
     }
 
     func testUnfinishedLiveTranscriptAndDelegationNeverEmitRecordsOrToolRequests() async throws {
+        verifyObservedCallCaptionsRequireTheExactCorrelatedClose()
         let audio = Audio(), socket = Socket()
         var emitted: [String] = []
         let call = RealtimeVoiceCall(audio: audio, socket: socket,
@@ -140,6 +141,7 @@ extension RealtimeVoiceLifecycleTests {
 
     /// Exercise the exact production encoder and queued authority without opening a socket.
     func testManagedToolQueueRequiresExactFrameKindsAndFreshEgressPermit() {
+        XCTAssertNoThrow(try verifyManagedCaptionCloseDropsUnsentFramesAndRejectsPartialToolWrites())
         var authority = true
         let permit = LiveQueuedToolPermit(current: { authority })
         let frames = syntheticManagedToolFrames()

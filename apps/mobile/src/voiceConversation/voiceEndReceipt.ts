@@ -6,7 +6,11 @@ export type CompletedVoiceDuration = {
 export function createVoiceEndReceipt(input: {
   readonly callId: string;
   readonly isCurrent: () => boolean;
-  readonly retain: (duration: CompletedVoiceDuration) => Promise<void>;
+  readonly retain: (
+    duration: CompletedVoiceDuration,
+    observedCaptions?: unknown,
+    captionWriteCurrent?: () => boolean,
+  ) => Promise<void>;
 }) {
   const { callId, isCurrent, retain } = input;
   let settled = false;
@@ -14,7 +18,11 @@ export function createVoiceEndReceipt(input: {
     discard() {
       settled = true;
     },
-    accept(event: unknown) {
+    accept(
+      event: unknown,
+      observedCaptions?: unknown,
+      captionWriteCurrent?: () => boolean,
+    ) {
       if (
         settled ||
         !event ||
@@ -34,7 +42,10 @@ export function createVoiceEndReceipt(input: {
         return;
       settled = true;
       if (!isCurrent()) return;
-      return retain({ durationSeconds: value.durationSeconds });
+      const duration = { durationSeconds: value.durationSeconds };
+      return observedCaptions === undefined
+        ? retain(duration)
+        : retain(duration, observedCaptions, captionWriteCurrent);
     },
   };
 }

@@ -148,15 +148,34 @@ final class VoiceRealtimeModule: RCTEventEmitter {
     }
 
     private func stop(_ identifier: String, graceful: Bool, resolve: @escaping RCTPromiseResolveBlock, reject: @escaping RCTPromiseRejectBlock) {
-        DispatchQueue.main.async {
+        DispatchQueue.main.async { [self] in
             do {
-                try self.call.stop(identifier, graceful: graceful)
-                if self.active == identifier {
-                    self.responsesMailbox?.revoke()
-                    self.responsesMailbox = nil
-                    self.active = nil
+                let waitsForClose = graceful && call.id == identifier
+                var pendingDuration: [String: Any]?
+                let capture: (([String: Any]?) -> Void)? = waitsForClose ? { [weak self] captions in
+                    DispatchQueue.main.async {
+                        let duration = pendingDuration
+                        if let duration, let captions, self?.active == nil {
+                            resolve(["kind": "live_observed_close", "duration": duration, "captions": captions])
+                        } else {
+                            resolve(duration)
+                        }
+                    }
+                } : nil
+                try call.stop(identifier, graceful: graceful, retireMailbox: { [self] in
+                    if active == identifier {
+                        responsesMailbox?.revoke()
+                    }
+                }, observedClose: capture)
+                if active == identifier {
+                    responsesMailbox?.revoke()
+                    responsesMailbox = nil
+                    active = nil
                 }
-                resolve(self.call.connectedDuration.take(identifier))
+                pendingDuration = call.connectedDuration.take(identifier)
+                if !waitsForClose {
+                    resolve(pendingDuration)
+                }
             } catch { reject("VOICE_CLEANUP_FAILED", "Audio could not be released.", nil) }
         }
     }

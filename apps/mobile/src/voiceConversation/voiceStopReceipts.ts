@@ -1,4 +1,8 @@
-type Receive = (event: unknown) => Promise<void> | undefined;
+type Receive = (
+  event: unknown,
+  observedCaptions?: unknown,
+  captionWriteCurrent?: () => boolean,
+) => Promise<void> | undefined;
 
 export type CaptureVoiceEndReceipt = (callId: string) => Receive | undefined;
 

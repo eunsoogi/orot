@@ -14,6 +14,19 @@ protocol RealtimeSocketPort: AnyObject {
     func discardInput()
     func close()
     func finishLive(sessionID: String)
+    func prepareManagedCaptionClose(sessionID: String) -> Bool
+    func finishObservedLive(sessionID: String, completion: @escaping (Bool) -> Void)
+}
+
+extension RealtimeSocketPort {
+    func prepareManagedCaptionClose(sessionID _: String) -> Bool {
+        false
+    }
+
+    func finishObservedLive(sessionID: String, completion: @escaping (Bool) -> Void) {
+        finishLive(sessionID: sessionID)
+        completion(false)
+    }
 }
 
 extension RealtimeVoiceSocket {
@@ -21,6 +34,12 @@ extension RealtimeVoiceSocket {
         writes.enumerated().compactMap { index, write in
             (sending && index == 0) || !write.isInput ? write : nil
         }
+    }
+
+    /// nil keeps the terminal receive open; false is a cleanup receipt only.
+    static func captionTerminalReceipt(_ event: [String: Any], closing: (sessionID: String, command: String, sent: Bool)) -> Bool? {
+        guard closing.sent, matchesClose(event, sessionID: closing.sessionID, command: closing.command) else { return nil }
+        return LiveObservedCaptionBuffer.acknowledged(event, sessionID: closing.sessionID, command: closing.command)
     }
 
     static func matchesClose(_ event: [String: Any], sessionID: String, command: String) -> Bool {
@@ -45,5 +64,36 @@ struct RealtimeSocketWrite {
         self.text = text
         self.isInput = isInput
         self.permit = permit
+    }
+}
+
+/// An issued permit can outlive a removed first frame of a batch. Closing may
+/// never retain one. A previously handed ordinary write can finish, but nothing
+/// queued is resubmitted after reservation.
+struct LiveCaptionTerminalQueue {
+    let retained: [RealtimeSocketWrite]
+    let bytes: Int
+    let retireDiscarded: () -> Void
+
+    static func prepare(_ writes: [RealtimeSocketWrite], sending: Bool) -> Self? {
+        guard !sending || !writes.isEmpty,
+              !writes.contains(where: { $0.permit?.issued == true }),
+              !sending || writes.first?.permit == nil else { return nil }
+        let retained = Array(writes.prefix(sending ? 1 : 0))
+        let discarded = writes.dropFirst(retained.count)
+        return .init(retained: retained, bytes: retained.reduce(0) { $0 + $1.text.utf8.count }) {
+            discarded.forEach { $0.permit?.ticket?.retire() }
+        }
+    }
+}
+
+/// A graceful caption reservation never makes ordinary transport reentrant.
+struct LiveCaptionTerminalState {
+    var prepared: String?
+    var completion: ((Bool) -> Void)?
+
+    mutating func retire() -> ((Bool) -> Void)? {
+        defer { self = Self() }
+        return completion
     }
 }

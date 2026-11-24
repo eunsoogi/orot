@@ -13,6 +13,7 @@ final class RealtimeVoiceCall {
     let tools = RealtimeVoiceToolLease()
     let systemCall: VoiceSystemCallPort?
     let connectedDuration = VoiceConnectedDuration()
+    var observedCaptions = LiveObservedCaptionBuffer()
     var systemCallOwner: UUID?
     var systemCallPending = false
     var systemCallActive = false
@@ -161,41 +162,6 @@ final class RealtimeVoiceCall {
             ready = true; timer?.invalidate(); timer = nil
             let callback = opening; opening = nil; callback?(.success(())); state("listening")
         } catch { fail() }
-    }
-
-    func stop(_ identifier: String, graceful: Bool = false) throws {
-        guard id == identifier else { return }
-        let finalSession = graceful && !managedResponsesTransport && (ready || paused) && liveIsCurrent() ? liveSessionID : nil
-        liveSessionID = nil
-        ready = false; paused = false; liveSocketEpoch = nil; liveStartID = nil; liveUnmuteID = nil; liveExpiresAt = nil
-        liveExpiryTimer?.invalidate(); liveExpiryTimer = nil; captureEpoch = UUID(); lifecycleEpoch = UUID(); pending = nil; timer?.invalidate(); timer = nil
-        connectingCue?.cancel()
-        cancelTools(); tools.enabled = false
-        retireManagedResponses()
-        managedResponsesTransport = false
-        if finalSession == nil {
-            socket.close()
-        }
-        connectedDuration.markStopped(identifier)
-        audio.stop(); endSystemCall()
-        let callback = opening; opening = nil
-        // Let the bridge observe that this owner is cleared before rejecting its open.
-        // If release fails, the retained owner remains available for an explicit stop retry.
-        defer { callback?(.failure(Failure.stopped)) }
-        do {
-            if let token {
-                try ownership.release(token); self.token = nil
-            }
-        } catch {
-            if finalSession != nil {
-                socket.close()
-            }
-            throw error
-        }
-        if let finalSession {
-            socket.finishLive(sessionID: finalSession)
-        }
-        id = nil; item = nil; response = nil; ignoredResponses.removeAll(); awaitingInputCommit = false
     }
 
     /// Clear the background allowance before tearing down the system call or releasing audio.

@@ -1,11 +1,11 @@
 import type { DisplayMessage } from './conversationDisplayMessage';
-import type { RetainedConversationTask } from './conversationTaskState';
+import type { VoiceMarkerPresentation } from './ConversationHistoryProps';
 import type { VoiceEndTaskCard } from '../storage/conversationTaskCardCodec';
 
-type Marker = RetainedConversationTask & { readonly task: VoiceEndTaskCard };
+type Marker = VoiceMarkerPresentation & { readonly task: VoiceEndTaskCard };
 type Key = { readonly createdAt: string; readonly id: string };
 
-function marker(card: RetainedConversationTask): card is Marker {
+function marker(card: VoiceMarkerPresentation): card is Marker {
   return card.task.kind === 'voice_end';
 }
 
@@ -28,7 +28,7 @@ function firstMatch<T>(items: readonly T[], atOrAfter: (item: T) => boolean) {
 /** Insert local markers without admitting them as model rows or reordering ordinary rows. */
 export function conversationVoiceEndPlacement(
   messages: readonly DisplayMessage[],
-  cards: readonly RetainedConversationTask[] | undefined,
+  cards: readonly VoiceMarkerPresentation[] | undefined,
 ) {
   const markers = cards?.filter(marker).sort(compare);
   if (!markers?.length) return undefined;

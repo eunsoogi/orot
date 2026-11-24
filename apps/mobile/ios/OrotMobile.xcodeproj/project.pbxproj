@@ -410,6 +410,9 @@
 		9B6FABDF3DF22BD34E800544 /* RealtimeVoiceAudio.swift in Sources */ = {isa = PBXBuildFile; fileRef = 267C792BEF189082393E1837 /* RealtimeVoiceAudio.swift */; };
 		CE2068000000000000000003 /* RealtimeVoiceConnectingCue.swift in Sources */ = {isa = PBXBuildFile; fileRef = CE2068000000000000000004 /* RealtimeVoiceConnectingCue.swift */; };
 		1113A6544E30C3384BCBC06B /* RealtimeVoiceCall.swift in Sources */ = {isa = PBXBuildFile; fileRef = E1E7E1C0677D54DE47D10208 /* RealtimeVoiceCall.swift */; };
+		207120712071207120712076 /* LiveObservedCaptionBuffer.swift in Sources */ = {isa = PBXBuildFile; fileRef = 207020702070207020702075 /* LiveObservedCaptionBuffer.swift */; };
+		207120712071207120712074 /* LiveSocketSessionDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = 207020702070207020702073 /* LiveSocketSessionDelegate.swift */; };
+		207120712071207120712072 /* RealtimeVoiceCallStop.swift in Sources */ = {isa = PBXBuildFile; fileRef = 207020702070207020702071 /* RealtimeVoiceCallStop.swift */; };
 		0755E89CA4DAFDA2A7697E13 /* VoiceRealtimeModule.m in Sources */ = {isa = PBXBuildFile; fileRef = 6DE51D3EDD32E9F459E0BC75 /* VoiceRealtimeModule.m */; };
 		F93400000000000000000001 /* NavigationFadeIntegrationTests.m in Sources */ = {isa = PBXBuildFile; fileRef = F93400000000000000000002 /* NavigationFadeIntegrationTests.m */; };
 		115BE8D311B5487645581E58 /* NativeCacheOwnerFixture.mm in Sources */ = {isa = PBXBuildFile; fileRef = AC540315FC86070B3EED130F /* NativeCacheOwnerFixture.mm */; settings = {COMPILER_FLAGS = "$(OROT_NATIVE_CACHE_TEST_FLAGS)"; }; };
@@ -839,6 +842,9 @@
 		B741AA00000000000000000D /* VoiceDuplexCallCoordinator.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = VoiceDuplexCallCoordinator.swift; path = OrotMobile/VoiceDuplexCallCoordinator.swift; sourceTree = "<group>"; };
 		6DE51D3EDD32E9F459E0BC75 /* VoiceRealtimeModule.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; name = VoiceRealtimeModule.m; path = OrotMobile/VoiceRealtimeModule.m; sourceTree = "<group>"; };
 		E1E7E1C0677D54DE47D10208 /* RealtimeVoiceCall.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = RealtimeVoiceCall.swift; path = OrotMobile/RealtimeVoiceCall.swift; sourceTree = "<group>"; };
+		207020702070207020702075 /* LiveObservedCaptionBuffer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = LiveObservedCaptionBuffer.swift; path = OrotMobile/LiveObservedCaptionBuffer.swift; sourceTree = "<group>"; };
+		207020702070207020702073 /* LiveSocketSessionDelegate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = LiveSocketSessionDelegate.swift; path = OrotMobile/LiveSocketSessionDelegate.swift; sourceTree = "<group>"; };
+		207020702070207020702071 /* RealtimeVoiceCallStop.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = RealtimeVoiceCallStop.swift; path = OrotMobile/RealtimeVoiceCallStop.swift; sourceTree = "<group>"; };
 		91CE52EE3566B42004FC3685 /* VoiceRealtimeModule.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = VoiceRealtimeModule.swift; path = OrotMobile/VoiceRealtimeModule.swift; sourceTree = "<group>"; };
 		A61E5B7C402F492C803DF202 /* SettingsConsentRealtimeFixture.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = SettingsConsentRealtimeFixture.swift; path = OrotMobile/SettingsConsentRealtimeFixture.swift; sourceTree = "<group>"; };
 		267C792BEF189082393E1837 /* RealtimeVoiceAudio.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = RealtimeVoiceAudio.swift; path = OrotMobile/RealtimeVoiceAudio.swift; sourceTree = "<group>"; };
@@ -896,6 +902,9 @@
 				CE1131000000000000000002 /* VoiceSystemCallLifecycle.swift */,
 				CE1178000000000000000002 /* VoiceDuplexPorts.swift */,
 				E1E7E1C0677D54DE47D10208 /* RealtimeVoiceCall.swift */,
+				207020702070207020702075 /* LiveObservedCaptionBuffer.swift */,
+				207020702070207020702073 /* LiveSocketSessionDelegate.swift */,
+				207020702070207020702071 /* RealtimeVoiceCallStop.swift */,
 				41E6911C62CADEA6C14E15AF /* RealtimeVoiceCallLifecycle.swift */,
 				F0C5E2B537DA5D2494BD14FF /* RealtimeVoiceCallEvents.swift */,
 				CB1180000000000000000004 /* RealtimeVoiceCallTools.swift */,
@@ -1658,6 +1667,9 @@
 				CE1131000000000000000001 /* VoiceSystemCallLifecycle.swift in Sources */,
 				CE1178000000000000000001 /* VoiceDuplexPorts.swift in Sources */,
 				1113A6544E30C3384BCBC06B /* RealtimeVoiceCall.swift in Sources */,
+				207120712071207120712076 /* LiveObservedCaptionBuffer.swift in Sources */,
+				207120712071207120712074 /* LiveSocketSessionDelegate.swift in Sources */,
+				207120712071207120712072 /* RealtimeVoiceCallStop.swift in Sources */,
 				BCAC2A2B2A95E636B5C9C15E /* RealtimeVoiceCallLifecycle.swift in Sources */,
 				765B8D5B2F4B561748A82885 /* RealtimeVoiceCallEvents.swift in Sources */,
 				CB1180000000000000000003 /* RealtimeVoiceCallTools.swift in Sources */,

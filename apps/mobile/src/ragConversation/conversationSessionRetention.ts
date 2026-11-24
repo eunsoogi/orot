@@ -1,3 +1,4 @@
+import { createConversationRetentionReadActions } from './conversationRetentionReadActions';
 import { refreshConversationRetentionLease } from './refreshConversationRetentionLease';
 import type { createConversationArtifactStorage } from '../storage/conversationArtifactStorage';
 import {
@@ -93,11 +94,7 @@ export function createConversationSessionRetention(input: {
         ? { id: slot.id, version: slot.version }
         : null;
     },
-    async readCommittedCompletion(
-      identity: import('../storage/conversationCompletionReader').ConversationCompletionIdentity,
-    ) {
-      return (await input.openStorage()).readCommittedCompletion(identity);
-    },
+    ...createConversationRetentionReadActions(input.openStorage, slots),
     prepareRemoval(id: number) {
       const slot = slots.get(id);
       if (!slot) return;
@@ -168,6 +165,8 @@ export function createConversationSessionRetention(input: {
         createdAt: string;
         expectedRevision: number | null;
         task: import('../storage/conversationTaskCards').ConversationTaskCard;
+        observedVoiceCaptions?: unknown;
+        captionWriteCurrent?: () => boolean;
       },
       signal: AbortSignal,
       expectedVoiceLease?: { readonly id: string; readonly version: number },

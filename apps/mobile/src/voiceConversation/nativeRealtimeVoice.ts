@@ -7,6 +7,10 @@ import type {
   RealtimeToolRequest,
 } from './realtimeToolRequests';
 import { NativeEventEmitter, NativeModules, Platform } from 'react-native';
+import {
+  captureObservedVoiceCloseAuthority,
+  splitLiveVoiceClose,
+} from './observedVoiceCaptions';
 import type { VoicePhase } from './voiceTurn';
 import type { Preferences } from '../voiceSettings/liveVoicePreferences';
 import {
@@ -88,7 +92,12 @@ function nativeOwnedVoice(
     return () => sub.remove();
   };
   let voiceEnd:
-    { id: string; receive: ReturnType<CaptureVoiceEndReceipt> } | undefined;
+    | {
+        id: string;
+        receive: ReturnType<CaptureVoiceEndReceipt>;
+        captionsCurrent: () => boolean;
+      }
+    | undefined;
   const stop = async (id: string, graceful = false) => {
     const opening = openingCalls.get(id);
     if (opening) opening.cancelled = true;
@@ -99,7 +108,16 @@ function nativeOwnedVoice(
         live && graceful && typeof module.closeLiveCall === 'function'
           ? module.closeLiveCall(id)
           : module.stopRealtimeCall(id),
-      previous?.receive,
+      previous?.receive &&
+        (result => {
+          const close =
+            live && graceful ? splitLiveVoiceClose(result, id) : undefined;
+          return previous.receive?.(
+            close?.duration ?? result,
+            previous.captionsCurrent() ? close?.captions : undefined,
+            previous.captionsCurrent,
+          );
+        }),
     );
     if (voiceEnd === previous) voiceEnd = undefined;
   };
@@ -122,7 +140,11 @@ function nativeOwnedVoice(
         if (live) {
           if (!preferences || enableTools || !isCurrent?.())
             throw new Error('Expected audio-only Live settings');
-          voiceEnd = { id, receive: captureEnd?.(id) };
+          voiceEnd = {
+            id,
+            receive: captureEnd?.(id),
+            captionsCurrent: captureObservedVoiceCloseAuthority(),
+          };
           const grant = responsesGrant?.(id);
           await module.openLiveCall(id, model, key, {
             language: 'auto',

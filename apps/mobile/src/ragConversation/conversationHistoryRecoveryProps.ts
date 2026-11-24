@@ -11,7 +11,12 @@ export function conversationHistoryRecoveryProps(
     ConversationSessions,
     'loadOlderHistory' | 'synchronizeModel' | 'retryRestore'
   > &
-    Partial<Pick<ConversationSessions, 'toolSourceSessionId'>>,
+    Partial<
+      Pick<
+        ConversationSessions,
+        'toolSourceSessionId' | 'getSnapshot' | 'readExplicitPriorVoiceContext'
+      >
+    >,
   active = true,
 ) {
   // Initial canonical lookup has no durable session yet. A send-time model
@@ -22,9 +27,44 @@ export function conversationHistoryRecoveryProps(
     !session.preparingSend;
   return {
     savedHistoryDisplay: visibleSavedHistoryDisplay(session, active),
-    voiceEndCards: session.taskCards?.filter(
-      card => card.task.kind === 'voice_end',
-    ),
+    voiceEndCards: session.taskCards
+      ?.filter(card => card.task.kind === 'voice_end')
+      .map(card => {
+        if (
+          !active ||
+          !card.hasObservedVoiceCaptions ||
+          !store.readExplicitPriorVoiceContext
+        )
+          return card;
+        return {
+          ...card,
+          observedQuote: (signal: AbortSignal) =>
+            store.readExplicitPriorVoiceContext!({
+              session: session.id,
+              marker: card.id,
+              signal,
+              isExplicitSelectionCurrent: () => {
+                const snapshot = store.getSnapshot?.();
+                const selected = snapshot?.sessions.find(
+                  item => item.id === snapshot.activeId,
+                );
+                return (
+                  selected?.id === session.id &&
+                  !selected.quarantined &&
+                  !selected.restoring &&
+                  Boolean(
+                    selected.taskCards?.some(
+                      item =>
+                        item.id === card.id &&
+                        item.revision === card.revision &&
+                        item.hasObservedVoiceCaptions,
+                    ),
+                  )
+                );
+              },
+            }),
+        };
+      }),
     // Blocking/quarantine and send/save activity are not history restoration.
     restoringHistory: Boolean(
       active &&

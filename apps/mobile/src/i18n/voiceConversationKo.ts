@@ -6,6 +6,15 @@ export const voiceConversationKo = {
   'ragConversation.voice.resume': '다시 듣기',
   'ragConversation.voice.interrupt': '답변 중단하고 말하기',
   'ragConversation.voice.endCall': '음성 대화 종료',
+  'ragConversation.voice.showObservedCaptions': '저장된 자막 보기',
+  'ragConversation.voice.hideObservedCaptions': '자막 닫기',
+  'ragConversation.voice.loadingObservedCaptions': '자막을 불러오는 중',
+  'ragConversation.voice.unavailableObservedCaptions':
+    '자막을 불러올 수 없어요.',
+  'ragConversation.voice.observedCaptionsNotice':
+    '통화 중 확인된 일부 자막입니다. 전체 전사는 아닙니다.',
+  'ragConversation.voice.observedUser': '나',
+  'ragConversation.voice.observedAssistant': 'AI',
   'ragConversation.voice.endedDuration': '{minutes}분 {seconds}초',
   'ragConversation.voice.localPipeline':
     '음성은 기기에서 글자로 바꾸고, 선택한 AI의 답변을 기기 음성으로 읽어요.',

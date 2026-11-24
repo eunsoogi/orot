@@ -1,6 +1,7 @@
+import { assertOrder } from '../testSupport/assertSyntheticTranscriptOrder';
 import { useSyncExternalStore } from 'react';
-import { act, render } from '@testing-library/react-native';
-import { Text } from 'react-native';
+import { act, fireEvent, render, waitFor } from '@testing-library/react-native';
+import { AppState, Text } from 'react-native';
 import { runMigrations } from '@orot/storage';
 import {
   join,
@@ -95,14 +96,6 @@ const openConversation = (path: string) => {
   };
 };
 
-function assertOrder(tree: string, ...markers: string[]) {
-  markers.reduce((previous, marker) => {
-    const position = tree.indexOf(marker);
-    expect(position).toBeGreaterThan(previous);
-    return position;
-  }, -1);
-}
-
 test('same-owner completed voice duration belongs above the choices before and after a real storage reopen', async () => {
   const directory = mkdtempSync(join(tmpdir(), 'orot-voice-history-'));
   const path = join(directory, 'conversation.sqlite');
@@ -183,3 +176,73 @@ test('same-owner completed voice duration belongs above the choices before and a
     rmSync(directory, { recursive: true, force: true });
   }
 }, 20000);
+
+test('the actual restored duration marker reads only its exact local captions after an explicit tap', async () => {
+  const directory = mkdtempSync(join(tmpdir(), 'orot-voice-captions-'));
+  const path = join(directory, 'conversation.sqlite');
+  const first = openConversation(path);
+  const live = 'live-18000000-1';
+  const previousAppState = AppState.currentState;
+  AppState.currentState = 'active';
+  try {
+    await runMigrations(first.connection.database);
+    await first.storage.createSession(
+      durableId,
+      await first.storage.currentGeneration(),
+    );
+    const id = await first.store.attachExisting(durableId, 0, at(0));
+    await first.store.captureVoiceEnd(id, live)?.(
+      { callId: live, durationSeconds: 27 },
+      {
+        callId: live,
+        status: 'observed_incomplete',
+        lines: [
+          {
+            order: 1,
+            role: 'assistant',
+            text: 'Synthetic exact prior Live caption',
+          },
+        ],
+      },
+      () => true,
+    );
+    await first.store.captureVoiceEnd(
+      id,
+      callId,
+    )?.({ callId, durationSeconds: 13 });
+  } finally {
+    first.close();
+  }
+
+  const reopened = openConversation(path);
+  const cold = await render(<Transcript store={reopened.store} />);
+  try {
+    await act(async () => {
+      await reopened.store.attachExisting(durableId, 0, at(0));
+    });
+    expect(cold.getAllByTestId('conversation-voice-end-marker')).toHaveLength(
+      2,
+    );
+    expect(cold.queryByText(/Synthetic exact prior Live caption/)).toBeNull();
+    expect(
+      cold.getAllByRole('button', { name: '저장된 자막 보기' }),
+    ).toHaveLength(1);
+    await fireEvent.press(
+      cold.getByRole('button', { name: '저장된 자막 보기' }),
+    );
+    await waitFor(() =>
+      expect(cold.getByText(/Synthetic exact prior Live caption/)).toBeTruthy(),
+    );
+    expect(
+      cold.getByText('통화 중 확인된 일부 자막입니다. 전체 전사는 아닙니다.'),
+    ).toBeTruthy();
+    await fireEvent.press(cold.getByRole('button', { name: '자막 닫기' }));
+    expect(cold.queryByText(/Synthetic exact prior Live caption/)).toBeNull();
+    expect(reopened.needsNoStrictRestore).not.toHaveBeenCalled();
+  } finally {
+    AppState.currentState = previousAppState;
+    await cold.unmount();
+    reopened.close();
+    rmSync(directory, { recursive: true, force: true });
+  }
+});

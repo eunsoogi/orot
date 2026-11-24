@@ -1,14 +1,20 @@
 import { StyleSheet, View, DynamicColorIOS, Platform } from 'react-native';
+import {
+  ConversationObservedVoiceQuote,
+  type ReadObservedVoiceQuote,
+} from './ConversationObservedVoiceQuote';
 import { t } from '../i18n';
 import { AppSymbol } from '../layout/AppSymbol';
 import { AppText } from '../layout/AppText';
 import { appColors } from '../layout/appColors';
 import type { VoiceEndTaskCard } from '../storage/conversationTaskCardCodec';
 
-/** A local timeline marker, not a user or assistant message. It has no actions. */
+/** A local timeline marker, not a user or assistant message. An exact local caption read is optional. */
 export function ConversationVoiceEndMarker({
   task,
+  readObserved,
 }: {
+  readonly readObserved?: ReadObservedVoiceQuote;
   readonly task: VoiceEndTaskCard;
 }) {
   const title = t('ragConversation.voice.endCall');
@@ -18,7 +24,7 @@ export function ConversationVoiceEndMarker({
   });
   return (
     <View
-      accessible
+      accessible={!readObserved}
       accessibilityRole="text"
       accessibilityLabel={`${title}, ${duration}`}
       testID="conversation-voice-end-marker"
@@ -28,6 +34,9 @@ export function ConversationVoiceEndMarker({
       <View style={styles.copy}>
         <AppText style={styles.title}>{title}</AppText>
         <AppText style={styles.duration}>{duration}</AppText>
+        {readObserved ? (
+          <ConversationObservedVoiceQuote read={readObserved} />
+        ) : null}
       </View>
     </View>
   );
