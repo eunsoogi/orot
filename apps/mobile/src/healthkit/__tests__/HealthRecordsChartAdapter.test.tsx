@@ -35,7 +35,6 @@ test.each([
     expect(data.series[0]?.points[0]?.x).toBe(record.effectiveAt);
   },
 );
-
 test('preserves labeled pressure series with unit-qualified identities and non-color line styles', async () => {
   const observations = mapBloodPressureCorrelation(
     correlation('pressure'),
@@ -74,7 +73,6 @@ test('preserves labeled pressure series with unit-qualified identities and non-c
     ['수축기', 'systolic-mmHg'],
   ]);
 });
-
 test('keeps unit groups separate and drops invalid values and dates', async () => {
   const original = healthObservation(
     'original',
@@ -113,7 +111,6 @@ test('keeps unit groups separate and drops invalid values and dates', async () =
     plots.map(plot => plot.series[0]?.points.map(point => point.value)),
   ).toEqual([[70], [154]]);
 });
-
 test('retains both samples at a coincident instant and updates coverage on refresh', async () => {
   const record = healthObservation('one', 'heart_rate', '2026-10-01T00:00:00Z');
   if (record.value.kind !== 'quantity') throw new Error('Expected quantity');
