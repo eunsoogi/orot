@@ -116,6 +116,45 @@ test.each(['inactive', 'background'] as const)(
   },
 );
 
+test('a native active return supersedes a parked false check before AppState catches up', async () => {
+  const f = await fixture();
+  try {
+    expect(f.adapter.isActive).toHaveBeenCalledTimes(1);
+    expect(f.journal.enqueue).toHaveBeenCalledTimes(1);
+    // UIKit and the execution bridge reported active again before the RN
+    // inactive/active events reached JS. The pending result is from before return.
+    f.emit({ kind: 'continuation-foreground' });
+    f.heldCheck.open(false);
+    await flush();
+    expect(f.adapter.isActive).toHaveBeenCalledTimes(2);
+    expect(f.interrupt).not.toHaveBeenCalled();
+    f.write.open(true);
+    await f.pending;
+    expect(f.read().draft).toBe('');
+    expect(f.journal.enqueue).toHaveBeenCalledTimes(1);
+  } finally {
+    f.write.open(false);
+    f.close();
+  }
+});
+
+test('a native active return still checks actual current ownership', async () => {
+  const f = await fixture();
+  try {
+    jest.mocked(f.adapter.isActive).mockResolvedValueOnce(false);
+    f.emit({ kind: 'continuation-foreground' });
+    f.heldCheck.open(false);
+    await flush();
+    expect(f.adapter.isActive).toHaveBeenCalledTimes(2);
+    expect(f.interrupt).toHaveBeenCalledTimes(1);
+    expect(f.interrupt).toHaveBeenCalledWith('lease-check-failed');
+  } finally {
+    f.write.open(false);
+    await f.pending;
+    f.close();
+  }
+});
+
 test('a verified current loss or matching native expiration retains its real meaning', async () => {
   const current = await fixture();
   current.heldCheck.open(false);
