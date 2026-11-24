@@ -32,6 +32,8 @@ export interface DisplayMessage extends RagConversationMessage {
   /** Run-local source readers must never fall back to another request's aliases. */
   readonly sourceOwner?: import('../aiFeatures/integration/coldConversationSourceResolvers').ColdConversationSourceOwner;
   readonly citations?: readonly EvidenceReference[];
+  /** Live completed answer only. The retained reply and Copy still use content. */
+  readonly a2uiPresentation?: import('./conversationA2UI').ConversationA2UINode;
   readonly healthSources?: import('./conversationHealthDeletion').HealthSourceDependencies;
   /** Reviewed early reply, separate from validated answer text and provider history. */
   readonly initialResponse?: {

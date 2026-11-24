@@ -46,7 +46,7 @@ export function ConversationTranscriptMessages({
   readonly onLayout: ComponentProps<typeof ReplyMessageContainer>['onLayout'];
   readonly messageProps: Omit<
     ComponentProps<typeof ConversationMessage>,
-    'message' | 'copyScope'
+    'message' | 'copyScope' | 'verifiedA2UI'
   > & { readonly copyingAllowed?: boolean };
 }) {
   const { copyingAllowed, ...renderMessage } = messageProps;
@@ -126,6 +126,11 @@ export function ConversationTranscriptMessages({
           }
           beforeAnswer={bubbleRows(before)}
           {...renderMessage}
+          verifiedA2UI={
+            message.a2uiPresentation
+              ? { messageId: message.id, root: message.a2uiPresentation }
+              : undefined
+          }
         />
         {bubbleRows(after)}
         <GeneratedReportBookmark message={message} />

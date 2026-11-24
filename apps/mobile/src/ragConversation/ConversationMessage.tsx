@@ -19,6 +19,7 @@ import { HealthSummaryCard } from './HealthSummaryCard';
 import type { ResolveConversationToolSource } from './ConversationToolEventSources';
 import { t } from '../i18n';
 import { styles } from './ConversationScreen.styles';
+import * as a2ui from './conversationA2UISelection';
 import type { DisplayMessage } from './conversationDisplayMessage';
 export type { DisplayMessage } from './conversationDisplayMessage';
 export function ConversationMessage({
@@ -36,8 +37,10 @@ export function ConversationMessage({
   resolveToolSource,
   resolveColdToolSource,
   renderVisitQuestions,
+  verifiedA2UI,
 }: {
   readonly message: DisplayMessage;
+  readonly verifiedA2UI?: a2ui.VerifiedConversationA2UI;
   readonly beforeAnswer?: ReactNode;
   readonly onContinueCold?: (requestId: string) => void;
   readonly coldResumeBusy?: boolean;
@@ -193,6 +196,7 @@ export function ConversationMessage({
           {message.content ? (
             <ConversationMessageText
               content={message.content}
+              verifiedA2UI={a2ui.select(suppliedMessage, verifiedA2UI)}
               savedPossibilityNarrative={message.savedPossibilityNarrative}
               user={user}
               staticText={message.savedHistoryDisplayOnly}

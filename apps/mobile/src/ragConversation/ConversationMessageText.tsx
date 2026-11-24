@@ -2,6 +2,8 @@ import { SavedPossibilityNarrative } from './SavedPossibilityNarrative';
 import { savedPossibilityNarrativeParts } from './savedPossibilityNarrativeParts';
 import { ConversationReportText } from './ConversationReportText';
 import { parseConversationReport } from './conversationReportTemplate';
+import { ConversationA2UISurface } from './ConversationA2UISurface';
+import type { ConversationA2UINode } from './conversationA2UI';
 import { memo } from 'react';
 import { AppText } from '../layout/AppText';
 import { AiResponseText } from '../layout/AiResponseText';
@@ -14,6 +16,7 @@ import { styles } from './ConversationScreen.styles';
 export const ConversationMessageText = memo(
   function RenderConversationMessageText({
     content,
+    verifiedA2UI,
     user,
     testID,
     allowReport = false,
@@ -22,6 +25,7 @@ export const ConversationMessageText = memo(
     selectable = true,
   }: {
     readonly content: string;
+    readonly verifiedA2UI?: ConversationA2UINode;
     readonly user: boolean;
     readonly testID?: string;
     readonly allowReport?: boolean;
@@ -51,6 +55,10 @@ export const ConversationMessageText = memo(
           selectable={selectable}
         />
       );
+    // Explicit reports and retained narratives above keep their native design.
+    // The surrounding bubble still owns any verified sources and copy menu.
+    if (verifiedA2UI)
+      return <ConversationA2UISurface root={verifiedA2UI} testID={testID} />;
     const Text = user || staticText ? AppText : AiResponseText;
     return (
       <Text
