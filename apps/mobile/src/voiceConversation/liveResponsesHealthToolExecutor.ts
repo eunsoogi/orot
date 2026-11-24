@@ -1,3 +1,4 @@
+import { stageLiveResponsesResult } from './stageLiveResponsesResult';
 import type { JsonObject } from '@orot/model-runtime';
 import type { AiFeatureLocalData } from '../aiFeatures/integration/localData';
 import { LocalEvidenceReferenceRegistry } from '../aiFeatures/integration/evidenceRegistry';
@@ -221,15 +222,17 @@ export function createLiveResponsesHealthToolExecutor(input: {
       const output = JSON.stringify(payload);
       const authorized = await input.authorizeResult(authority, output);
       if (!authorized || !authorized() || !(await reproof())) return;
-      // Source reproof is the final await before handoff. Native rechecks the same one-use challenge.
-      if (
-        !(await registry.revalidateEvidence(result.items, signal)) ||
-        !current() ||
-        !authorized()
-      )
-        return;
-      started = false;
-      await input.settle(call.callId, call.challengeId, output);
+      const staged = stageLiveResponsesResult({
+        output,
+        signal,
+        current: () => current() && authorized(),
+        reproveSource: () => registry.revalidateEvidence(result.items, signal),
+      });
+      await staged.admit(approved => {
+        // No additional JS await separates the last check from native admission.
+        started = false;
+        return input.settle(call.callId, call.challengeId, approved);
+      });
     } catch {
       // Protected read/approval failures cannot produce a provider result or imply consent.
     } finally {
