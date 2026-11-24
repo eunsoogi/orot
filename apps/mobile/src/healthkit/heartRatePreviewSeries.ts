@@ -10,10 +10,12 @@ type Measurement = { id: string; effectiveAt: string; amount: number };
 function sourceIdentity(record: HealthObservation | undefined, id: string) {
   const source = record?.provenance.source;
   if (!source?.sourceIdentifier) return JSON.stringify(['unknown', id]);
+  // A product identifier can be shared by devices with different recorded models.
   return JSON.stringify([
     source.system,
     source.sourceIdentifier,
-    source.productType ?? source.device?.model ?? null,
+    source.productType ?? null,
+    source.device?.model ?? null,
   ]);
 }
 

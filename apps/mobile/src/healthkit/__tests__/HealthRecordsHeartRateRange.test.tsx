@@ -102,7 +102,7 @@ test('keeps preview line measurements opt-in and adjustable', async () => {
   );
 });
 
-test('keeps different sensors independently selectable at the same day', async () => {
+test('keeps records from different device models separately selectable', async () => {
   const day = (hour: number) => new Date(2035, 0, 1, hour).toISOString();
   const a = healthObservation('watch-one', 'heart_rate', day(8));
   if (a.value.kind !== 'quantity' || !a.provenance.source)
@@ -121,7 +121,9 @@ test('keeps different sensors independently selectable at the same day', async (
       source: {
         ...a.provenance.source!,
         sourceName: name,
-        sourceIdentifier: name,
+        sourceIdentifier: 'synthetic.shared',
+        productType: 'synthetic.product',
+        device: { ...a.provenance.source!.device, model: name },
       },
     },
     value: { ...a.value, kind: 'quantity' as const, amount, unit: 'count/min' },
