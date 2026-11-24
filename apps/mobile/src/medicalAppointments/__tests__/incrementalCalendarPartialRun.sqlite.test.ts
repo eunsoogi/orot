@@ -157,15 +157,13 @@ test.each(['edit', 'delete', 'wipe'] as const)(
       const current = events.slice();
       const decide = provider();
       const good = provider();
-      decide
-        .mockImplementationOnce(good)
-        .mockResolvedValueOnce(
-          providerSuccess({
-            text: 'invalid second batch',
-            toolCalls: [],
-            finishReason: 'complete',
-          }),
-        );
+      decide.mockImplementationOnce(good).mockResolvedValueOnce(
+        providerSuccess({
+          text: 'invalid second batch',
+          toolCalls: [],
+          finishReason: 'complete',
+        }),
+      );
       const options = input(events, {
         bridge: native(current),
         provider: makeProvider(decide),
