@@ -19,6 +19,8 @@ export function NativeCanonicalQueueFixtureControls({
   fixture: CanonicalQueueFixture;
 }) {
   const [status, setStatus] = useState('ready');
+  const [invocations, setInvocations] = useState(0);
+  const [completed, setCompleted] = useState(0);
   const review = useRef<((approved: boolean) => void) | undefined>(undefined);
   const running = useRef<AbortController | undefined>(undefined);
   useEffect(
@@ -41,9 +43,11 @@ export function NativeCanonicalQueueFixtureControls({
     };
     try {
       const ok = scenario
-        ? await fixture.coordinator.invoke(request, () =>
-            runCanonicalSettingsQueueProbe(fixture.identifier, scenario),
-          )
+        ? await fixture.coordinator.invoke(request, () => {
+            // Count only real calls across the test-only native boundary.
+            setInvocations(count => count + 1);
+            return runCanonicalSettingsQueueProbe(fixture.identifier, scenario);
+          })
         : await fixture.coordinator.approve({
             ...request,
             confirm: () =>
@@ -63,6 +67,8 @@ export function NativeCanonicalQueueFixtureControls({
     } catch {
       if (request.owner()) setStatus('rejected');
     } finally {
+      if (request.owner() && !controller.signal.aborted)
+        setCompleted(count => count + 1);
       if (running.current === controller) running.current = undefined;
       review.current = undefined;
     }
@@ -70,6 +76,8 @@ export function NativeCanonicalQueueFixtureControls({
   return (
     <View>
       <Text testID="settings-canonical-queue-status">{status}</Text>
+      <Text testID="settings-canonical-queue-invocations">{invocations}</Text>
+      <Text testID="settings-canonical-queue-completed">{completed}</Text>
       <Button
         testID="settings-canonical-queue-review"
         title="Review synthetic health tool"
