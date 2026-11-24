@@ -49,8 +49,8 @@ test.each([
         height: props.height,
       })),
     ).toEqual([
-      { metric: 'sleep', status: chartState, height: 112 },
-      { metric: 'heartRate', status: chartState, height: 112 },
+      { metric: 'sleep', status: chartState, height: 176 },
+      { metric: 'heartRate', status: chartState, height: 176 },
     ]);
 
     if (state === 'failed') {
