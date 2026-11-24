@@ -4,7 +4,8 @@ import { beginConversationExecutionLease } from '../conversationExecutionLease';
 
 test('a missing iOS bridge interrupts on background instead of claiming an extension', async () => {
   expect(NativeModules.ConversationExecutionModule).toBeUndefined();
-  let change: ((value: import('react-native').AppStateStatus) => void) | undefined;
+  let change:
+    ((value: import('react-native').AppStateStatus) => void) | undefined;
   const remove = jest.fn();
   const subscribe = jest
     .spyOn(AppState, 'addEventListener')
@@ -15,7 +16,11 @@ test('a missing iOS bridge interrupts on background instead of claiming an exten
   try {
     const adapter = conversationExecutionNative()!;
     const interrupt = jest.fn();
-    const end = await beginConversationExecutionLease(adapter, 'request', interrupt);
+    const end = await beginConversationExecutionLease(
+      adapter,
+      'request',
+      interrupt,
+    );
     expect(await adapter.protectedDataAvailable()).toBeNull();
     change!('background');
     expect(interrupt).toHaveBeenCalledWith('bridge-unavailable');
@@ -39,18 +44,34 @@ test('native execution events are forwarded only when their payload is valid', (
       return { remove: jest.fn() };
     });
   const listener = jest.fn();
-  const state = jest.spyOn(AppState, 'addEventListener').mockReturnValue({ remove: jest.fn() });
+  const state = jest
+    .spyOn(AppState, 'addEventListener')
+    .mockReturnValue({ remove: jest.fn() });
   try {
     const unsubscribe = conversationExecutionNative()!.subscribe(listener);
     emit!({ kind: 'expired', requestId: 'request' });
-    emit!({ kind: 'expired', requestId: 'detached-owner', reason: 'lease-check-failed' });
-    emit!({ kind: 'expired', requestId: 'malformed', reason: 'bridge-unavailable' });
+    emit!({
+      kind: 'expired',
+      requestId: 'detached-owner',
+      reason: 'lease-check-failed',
+    });
+    emit!({
+      kind: 'expired',
+      requestId: 'malformed',
+      reason: 'bridge-unavailable',
+    });
     emit!({ kind: 'protectedData', available: false });
     emit!({ kind: 'expired', requestId: 12 });
     emit!({ kind: 'protectedData', available: 'false' });
     expect(listener.mock.calls).toEqual([
       [{ kind: 'expired', requestId: 'request' }],
-      [{ kind: 'expired', requestId: 'detached-owner', reason: 'lease-check-failed' }],
+      [
+        {
+          kind: 'expired',
+          requestId: 'detached-owner',
+          reason: 'lease-check-failed',
+        },
+      ],
       [{ kind: 'protectedData', available: false }],
     ]);
     unsubscribe();

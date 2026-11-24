@@ -36,7 +36,8 @@ export function decodeConversationRecoveryReason(
 }
 export type ConversationContinuedState =
   'continued-granted' | 'continued-refused' | 'continued-deferred-inactive';
-export type ContinuationOpportunity = ConversationContinuedState | 'continuation-foreground';
+export type ContinuationOpportunity =
+  ConversationContinuedState | 'continuation-foreground';
 export type ConversationExecutionEvent =
   | {
       readonly kind: 'pause-requested';
@@ -120,7 +121,11 @@ export async function beginConversationExecutionLease(
   // A boolean ownership loss is not proof that iOS expired the lease.
   const unavailable = (stage: 'startup' | 'foreground') => {
     if (closed || interrupted) return;
-    report(stage === 'startup' ? 'startup-lease-unavailable' : 'foreground-lease-unavailable');
+    report(
+      stage === 'startup'
+        ? 'startup-lease-unavailable'
+        : 'foreground-lease-unavailable',
+    );
     notify('lease-check-failed');
   };
   let reconciling = false;
@@ -166,9 +171,14 @@ export async function beginConversationExecutionLease(
       reconciling = false;
     }
   };
-  const unsubscribe = adapter.subscribe((event) => {
+  const unsubscribe = adapter.subscribe(event => {
     if (event.kind === 'pause-requested') pause.receive(event);
-    if (event.kind === 'continued' && event.requestId === requestId && !closed && !interrupted) {
+    if (
+      event.kind === 'continued' &&
+      event.requestId === requestId &&
+      !closed &&
+      !interrupted
+    ) {
       // A now-granted task replaces the sampled short-lease opportunity.
       if (event.state === 'continued-granted') pause.invalidate();
       report(event.state);
@@ -186,7 +196,8 @@ export async function beginConversationExecutionLease(
       if (event.reason === undefined) report('native-expiration');
       notify(event.reason ?? 'expired');
     }
-    if (event.kind === 'protectedData' && !event.available) notify('protected-data');
+    if (event.kind === 'protectedData' && !event.available)
+      notify('protected-data');
     if (event.kind === 'foreground') {
       pause.invalidate();
       report('foreground');
@@ -209,13 +220,19 @@ export async function beginConversationExecutionLease(
     }
   });
   try {
-    if ((await adapter.protectedDataAvailable()) === false) notify('protected-data');
+    if ((await adapter.protectedDataAvailable()) === false)
+      notify('protected-data');
     if (!interrupted) {
       acquired = await adapter.begin(requestId);
       report(acquired ? 'acquired' : 'denied');
       if (!acquired)
-        notify(adapter.bridgeAvailable === false ? 'bridge-unavailable' : 'lease-denied');
-      else if ((await adapter.protectedDataAvailable()) === false) notify('protected-data');
+        notify(
+          adapter.bridgeAvailable === false
+            ? 'bridge-unavailable'
+            : 'lease-denied',
+        );
+      else if ((await adapter.protectedDataAvailable()) === false)
+        notify('protected-data');
       else if (!(await adapter.isActive(requestId))) unavailable('startup');
     }
   } catch {
