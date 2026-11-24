@@ -150,6 +150,5 @@ async function assertOwner(executor: SqlExecutor, generation: number) {
   const owner = await executor.execute(
     'SELECT generation FROM calendar_classification_generation WHERE singleton = 1',
   );
-  if (owner.rows[0]?.generation !== generation)
-    throw new Error('Calendar cache owner changed.');
+  if (owner.rows[0]?.generation !== generation) throw new Error('Calendar cache owner changed.');
 }

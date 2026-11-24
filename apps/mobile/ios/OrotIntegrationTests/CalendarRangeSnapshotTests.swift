@@ -21,7 +21,7 @@ final class CalendarRangeSnapshotTests: XCTestCase {
         }
     }
 
-    func testClassificationRevisionChangesForRecurrenceStatusAndFloatingSemantics() throws {
+    private func assertClassificationRevisionChangesForRecurrenceStatusAndFloatingSemantics() throws {
         func revision(
             _ snapshot: [String: Any],
             status: String = "confirmed",
@@ -82,5 +82,6 @@ final class CalendarRangeSnapshotTests: XCTestCase {
         XCTAssertTrue(query["resultLimit"] is NSNull)
         let empty = EventKitCalendarSnapshot.rangeSnapshot(start: start, end: end, access: "fullAccess") { [] }
         XCTAssertEqual((empty["query"] as? [String: Any])?["complete"] as? Bool, true)
+        try assertClassificationRevisionChangesForRecurrenceStatusAndFloatingSemantics()
     }
 }

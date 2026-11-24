@@ -124,7 +124,7 @@ enum EventKitCalendarSnapshot {
         // account/calendar ID, title, or time just to remember a decision.
         let occurrence = (floatingOccurrenceAt as? String) ?? (occurrenceDate as? String)
         let recurring = event.isDetached || !(event.recurrenceRules ?? []).isEmpty
-        if (!recurring || occurrence != nil), let calendar = event.calendar,
+        if !recurring || occurrence != nil, let calendar = event.calendar,
            let source = calendar.source, !calendar.calendarIdentifier.isEmpty,
            !source.sourceIdentifier.isEmpty,
            let key = classificationDigest([source.sourceIdentifier, calendar.calendarIdentifier, identifier, occurrence ?? "single"]),
