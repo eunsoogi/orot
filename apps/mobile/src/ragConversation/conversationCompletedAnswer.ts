@@ -14,6 +14,7 @@ export function conversationCompletedAnswer(input: {
   userMessageId: number;
   restorePromptToComposer: boolean;
   retainedTurnId?: string;
+  openingOwnerId?: string;
   retentionUnavailable?: boolean;
   dailyReport?: ConversationSession['dailyReport'];
   copy: { noEvidence: string; insufficient: string };
@@ -74,6 +75,8 @@ export function conversationCompletedAnswer(input: {
         role: 'assistant',
         content: '',
         initialResponse: opening,
+        // Pair only the already visible opening with its identical archive row.
+        rejectedOpeningTurnId: input.openingOwnerId,
         incomplete: true,
       });
     update(id, { pendingMessage: null, messages });
