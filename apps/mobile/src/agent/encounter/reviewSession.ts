@@ -90,7 +90,7 @@ export function createEncounterReviewSessions(
         throw new Error('Invalid session encoding.');
       return decodeSession(stored.checkpoint, sourceId);
     },
-    async begin(): Promise<ReviewSession> {
+    async begin(signal?: AbortSignal): Promise<ReviewSession> {
       // Secure randomness is supplied by the app's existing native crypto polyfill.
       const bytes = crypto.getRandomValues(new Uint8Array(16));
       const attempt = Array.from(bytes, byte =>
@@ -101,14 +101,19 @@ export function createEncounterReviewSessions(
         sourceId,
         threadId: key(sourceId) + ':' + attempt,
       };
-      await storage.saveCheckpoint(key(sourceId), '', {
-        checkpointId: 'session',
-        parentCheckpointId: null,
-        checkpointType: 'json',
-        checkpoint: encoder.encode(JSON.stringify(session)),
-        metadataType: 'json',
-        metadata: encoder.encode('{}'),
-      });
+      await storage.saveCheckpoint(
+        key(sourceId),
+        '',
+        {
+          checkpointId: 'session',
+          parentCheckpointId: null,
+          checkpointType: 'json',
+          checkpoint: encoder.encode(JSON.stringify(session)),
+          metadataType: 'json',
+          metadata: encoder.encode('{}'),
+        },
+        signal,
+      );
       return session;
     },
   };

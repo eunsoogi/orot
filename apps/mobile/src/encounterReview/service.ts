@@ -192,7 +192,14 @@ export function createEncounterReviewService(
       const { discovery } = await sessions(sourceId);
       // A stop while storage opens must not replace the last discoverable review.
       if (signal.aborted) return { status: 'cancelled' };
-      const session = await discovery.begin();
+      let session: Awaited<ReturnType<typeof discovery.begin>>;
+      try {
+        session = await discovery.begin(signal);
+      } catch (error) {
+        if (signal.aborted) return { status: 'cancelled' };
+        throw error;
+      }
+      if (signal.aborted) return { status: 'cancelled' };
       // Keep the source-bound checkpoint thread; only its verified nonce becomes the workflow ID.
       const executionId = discovery.executionId(session);
       let denied = false;
