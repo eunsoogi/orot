@@ -14,6 +14,15 @@ const jestOnlyPaths = new Set([
   'apps/mobile/src/externalMedicalEvidence/__tests__/LiteratureRouteLifecycle.test.tsx',
 ]);
 
+// This controller mounts only under the explicitly gated synthetic Settings queue route.
+const canonicalSettingsQueueFixture = 'apps/mobile/e2e/NativeCanonicalQueueFixtureControls.tsx';
+const canonicalSettingsQueueTest = {
+  source: 'apps/mobile/ios/OrotUITests/SettingsConsentUITests.swift',
+  identifier:
+    'OrotUITests/SettingsConsentUITests/testExplicitThreeTabGrantsAndRevocationSurviveProcessRestart',
+  profile: 'provider-selection',
+};
+
 function maintainedNativeImpact(path) {
   const match = /^apps\/mobile\/ios\/(OrotUITests|OrotIntegrationTests)\/([^/]+)\.swift$/.exec(
     path,
@@ -46,6 +55,27 @@ export function verifyFocusedCandidateImpact(paths, selection) {
       throw new Error(`Candidate shared impact is unknown: ${path}`);
     if (jestOnlyPaths.has(path)) {
       impacts.push({ path, reason: 'jest-only', cohorts: [] });
+      continue;
+    }
+    if (path === canonicalSettingsQueueFixture) {
+      const owner = canonicalSettingsQueueTest;
+      const tasks = (maintainedNativeImpact(owner.source) ?? []).filter(
+        (task) => task.profile === owner.profile && task.identifiers.includes(owner.identifier),
+      );
+      if (
+        !tasks.length ||
+        selection.profile !== owner.profile ||
+        selected.size !== 1 ||
+        !selected.has(owner.identifier)
+      )
+        throw new Error(
+          `Candidate selection does not cover ${path}: canonical-settings-queue-fixture`,
+        );
+      impacts.push({
+        path,
+        reason: 'canonical-settings-queue-fixture',
+        cohorts: [...new Set(tasks.map((task) => task.cohort))],
+      });
       continue;
     }
     const impact = iosTestImpactForPath(path);
