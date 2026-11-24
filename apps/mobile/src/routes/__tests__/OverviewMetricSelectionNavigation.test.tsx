@@ -73,9 +73,6 @@ jest.mock('../SavedRecordingsRoute', () => ({
   SavedRecordingsRoute: () => null,
 }));
 jest.mock('../../recording/RecordingScreen', () => () => null);
-jest.mock('../../healthkit/unifiedImport/UnifiedImportRoute', () => ({
-  UnifiedImportRoute: () => null,
-}));
 jest.mock('../../appointments/AppointmentsScreen', () => () => null);
 jest.mock('../../memory/SavedMemoryDetail', () => ({
   SavedMemoryDetail: () => null,

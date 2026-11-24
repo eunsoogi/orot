@@ -38,7 +38,6 @@ export const appContentLayoutOwner: NavigationRouteLayoutPolicy<string> = (
     route.name === 'medical-document-detail' ||
     // Backup status and iCloud recovery guidance use the screen's measured regions as one layout.
     route.name === 'settings-backup' ||
-    route.name === 'unified-import' ||
     route.name === 'visit-questions' ||
     // Literature search measures query and selected-source panels across the usable regions.
     route.name === 'external-evidence' ||

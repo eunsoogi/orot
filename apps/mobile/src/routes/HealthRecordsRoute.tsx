@@ -31,15 +31,14 @@ export function HealthRecordsRoute({
   selection,
 }: HealthRecordsRouteProps) {
   const navigation = useContext(NavigationContext);
-  const importPending = useRef(false);
+  const healthSettingsPending = useRef(false);
   const [refreshRevision, setRefreshRevision] = useState(0);
   useEffect(
     () =>
       navigation?.addListener('focus', () => {
-        // The retained library refreshes local storage after import return, including
-        // cancellation. Neither selection nor the native scroll owner is remounted.
-        if (importPending.current) {
-          importPending.current = false;
+        // Refresh saved values after returning without remounting the library or its scroll owner.
+        if (healthSettingsPending.current) {
+          healthSettingsPending.current = false;
           setRefreshRevision(value => value + 1);
         }
       }),
@@ -76,7 +75,7 @@ export function HealthRecordsRoute({
       />
     );
   }
-  // The library reuses the existing manual-import route and preserves its coordinator boundary.
+  // Push the same Health Data route used by Settings, without switching the root tab.
   return (
     <HealthRecordsLibraryScreen
       loadMedicationData={loadMedicationData}
@@ -84,7 +83,9 @@ export function HealthRecordsRoute({
       onBack={actions.onBack}
       refreshRevision={refreshRevision}
       onOpenHealthImport={() => {
-        importPending.current = actions.push('unified-import') !== null;
+        if (!healthSettingsPending.current)
+          healthSettingsPending.current =
+            actions.push('settings-health-data') !== null;
       }}
       onOpenDetail={detail => {
         onSelectionChange(detail);

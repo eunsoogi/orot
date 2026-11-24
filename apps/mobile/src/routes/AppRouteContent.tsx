@@ -9,7 +9,6 @@ import { RecordingReviewRoute } from './RecordingReviewRoute';
 import RecordingScreen from '../recording/RecordingScreen';
 import { transcriptEvidenceService } from '../transcription/transcriptEvidenceService';
 import { t } from '../i18n';
-import { UnifiedImportRoute } from '../healthkit/unifiedImport/UnifiedImportRoute';
 import { RouteLoadError } from './RouteLoadError';
 import OverviewRoute from './OverviewRoute';
 import { SavedRecordingsRoute } from './SavedRecordingsRoute';
@@ -134,10 +133,6 @@ export function AppRouteContent({
         <AppointmentQuestionRoutes
           {...{ actions, selectTab, loadSavedVisitQuestions }}
         />
-      );
-    case 'unified-import':
-      return (
-        <UnifiedImportRoute onBack={actions.onBack} safeAreaHandledByParent />
       );
     case 'saved-memory-detail':
       return (

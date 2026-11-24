@@ -43,7 +43,7 @@ test('Duo remains opt-in with its exact native test inventory', () => {
   const healthLibraryReflow =
     'OrotUITests/RecordsHubUITests/testHealthRecordTypeAndPeriodSurviveOrientationChanges';
   const healthImportLibrary =
-    'OrotUITests/HealthImportDuoUITests/testHealthRecordsLibraryOpensTheUnifiedImportRoute';
+    'OrotUITests/HealthImportDuoUITests/testHealthRecordsLibraryOpensHealthDataSettings';
   const healthDataSettingsReflow =
     'OrotUITests/HealthImportDuoUITests/testHealthDataSettingsReflowKeepsSelectionAndPermissionDisclosure';
   const diseaseHypothesesReflow =

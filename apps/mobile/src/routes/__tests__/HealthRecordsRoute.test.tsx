@@ -73,7 +73,7 @@ test('routes the medication summary action to its separate dose-event detail lis
   ).toHaveTextContent(/Synthetic medication/u);
 });
 
-test('opens the existing unified import route from the health records library', async () => {
+test('opens the canonical Health Data settings route from the health records library', async () => {
   const navigation = actions('health-records');
   const push = jest.spyOn(navigation, 'push');
   await render(
@@ -90,12 +90,16 @@ test('opens the existing unified import route from the health records library', 
   await fireEvent.press(
     await screen.findByTestId('health-records-open-health-import'),
   );
-  expect(push).toHaveBeenCalledWith('unified-import');
+  await fireEvent.press(
+    screen.getByTestId('health-records-open-health-import'),
+  );
+  expect(push).toHaveBeenCalledTimes(1);
+  expect(push).toHaveBeenCalledWith('settings-health-data');
 });
 
-test('import return refreshes stored results without remounting the library or changing its filter', async () => {
+test('return from Health Data refreshes stored results without remounting the library or changing its filter', async () => {
   let onFocus = () => {};
-  // Model the native retained scene's focus event; the import continues to own its writes.
+  // Model the native retained scene's focus event; the settings screen continues to own its writes.
   const focusNavigation = {
     addListener: (_event: string, listener: () => void) => {
       onFocus = listener;
@@ -126,6 +130,7 @@ test('import return refreshes stored results without remounting the library or c
   );
   await fireEvent.press(screen.getByTestId('health-record-filter-heart_rate'));
   const page = screen.getByTestId('health-records-scroll');
+  const before = loadObservations.mock.calls.length;
   await fireEvent.press(
     screen.getByTestId('health-records-open-health-import'),
   );
@@ -139,7 +144,8 @@ test('import return refreshes stored results without remounting the library or c
   expect(
     await screen.findByTestId('health-record-chart-heart_rate'),
   ).toBeTruthy();
-  expect(loadObservations).toHaveBeenCalledTimes(18);
+  const refreshed = loadObservations.mock.calls.length;
+  expect(refreshed).toBeGreaterThan(before);
   await act(async () => onFocus());
-  expect(loadObservations).toHaveBeenCalledTimes(18);
+  expect(loadObservations).toHaveBeenCalledTimes(refreshed);
 });

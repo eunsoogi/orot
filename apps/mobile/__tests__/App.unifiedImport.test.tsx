@@ -5,6 +5,8 @@ import {
 } from '@orot/storage';
 import { fireEvent, render, waitFor } from '@testing-library/react-native';
 import App from '../App';
+import { configureLocalHealthKitAutoSync } from '../src/healthkit/autoSyncLocal';
+import { importLocalCommonObservations } from '../src/healthkit/commonObservations/importLocal';
 import { createAppleSelectionOption } from '../src/providers/selection/options';
 import * as classificationWorkflow from '../src/medicalAppointments/classificationWorkflow';
 import { medicalAppointmentCopy } from '../src/medicalAppointments/copy.ko';
@@ -148,6 +150,36 @@ test('keeps imported records in Records and reclassifies a saved appointment onl
     expect(view.queryByTestId('records-open-blood-pressure')).toBeNull();
     expect(view.queryByTestId('unified-import-start')).toBeNull();
 
+    await fireEvent.press(view.getByTestId('records-open-health-library'));
+    const filter = await view.findByTestId('health-record-filter-heart_rate');
+    await fireEvent.press(filter);
+    expect(
+      view.getByTestId('health-record-filter-heart_rate').props
+        .accessibilityState?.selected,
+    ).toBe(true);
+    await fireEvent.press(
+      view.getByTestId('health-records-open-health-import'),
+    );
+    expect(await view.findByTestId('health-data-title')).toBeTruthy();
+    expect(view.queryByTestId('unified-import-start')).toBeNull();
+    await fireEvent.press(view.getByTestId('navigation-back'));
+    expect(
+      (await view.findByTestId('health-record-filter-heart_rate')).props
+        .accessibilityState?.selected,
+    ).toBe(true);
+    expect(view.queryByTestId('health-data-title')).toBeNull();
+
+    await fireEvent.press(view.getByTestId('navigation-back'));
+    await fireEvent.press(await view.findByTestId('navigation-tab-settings'));
+    await fireEvent.press(await view.findByTestId('settings-open-health-data'));
+    expect(await view.findByTestId('health-data-title')).toBeTruthy();
+    await fireEvent.press(view.getByTestId('navigation-back'));
+    expect(await view.findByTestId('settings-title')).toBeTruthy();
+    expect(configureLocalHealthKitAutoSync).not.toHaveBeenCalled();
+    expect(importLocalCommonObservations).not.toHaveBeenCalled();
+    expect(requestEventAccess).not.toHaveBeenCalled();
+
+    await fireEvent.press(view.getByTestId('navigation-tab-records'));
     await fireEvent.press(view.getByTestId('records-section-schedule'));
     await fireEvent.press(view.getByTestId('open-medical-appointments'));
     expect(
