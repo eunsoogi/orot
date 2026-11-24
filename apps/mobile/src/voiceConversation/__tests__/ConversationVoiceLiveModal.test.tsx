@@ -7,6 +7,7 @@ jest.mock('../../voiceSettings/voiceSettingsStore', () => ({
 }));
 jest.mock('../nativeRealtimeVoice', () => ({
   nativeLiveVoice: () => ({}),
+  nativeLiveManagedTools: () => null,
 }));
 jest.mock('../createRealtimeSettingsPermission', () => ({
   createRealtimeSettingsPermission: () => ({

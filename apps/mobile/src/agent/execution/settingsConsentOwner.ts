@@ -64,7 +64,8 @@ export async function resolveSettingsConsentTarget(
   },
   purpose?: string,
 ): Promise<SettingsConsentOwner | null> {
-  if (target.signal.aborted) return null;
+  // Live Responses has its own exact device-bound receipt, never a generic text route.
+  if (target.signal.aborted || slot === 'voice-responses') return null;
   const selectionCurrent =
     slot === 'voice'
       ? voiceSelectionMutation.capture()

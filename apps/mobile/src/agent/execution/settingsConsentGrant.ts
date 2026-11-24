@@ -7,6 +7,7 @@ import {
 } from './directPhotoConsentScope';
 import type { OutboundProcessingRequest } from '@orot/agent-runtime';
 import { isLiveVoiceAudioScope } from './liveVoiceSettingsIdentity';
+import { isLiveResponsesContextScope } from '../../voiceSettings/liveResponsesSettingsIdentity';
 import { isReusablePublicWebQuery } from './publicWebQuery';
 
 /** A credential epoch is a non-secret, durable identity, never a key or token digest. */
@@ -49,7 +50,8 @@ const allowedSourceKinds = (
   value: unknown,
 ): value is readonly string[] =>
   isLiveVoiceAudioScope(purpose, policy) ||
-  isDirectPhotoConsentScope(purpose, policy)
+  isDirectPhotoConsentScope(purpose, policy) ||
+  isLiveResponsesContextScope(purpose, policy)
     ? emptyArray(value)
     : strings(value);
 const record = (value: unknown): value is Record<string, unknown> =>
@@ -141,7 +143,8 @@ export function settingsGrantCoversRequest(
       request.allowedScope.sourceKinds,
     ) ||
     ((isLiveVoiceAudioScope(scope.purpose, scope.policyVersion) ||
-      isDirectPhotoConsentScope(scope.purpose, scope.policyVersion)) &&
+      isDirectPhotoConsentScope(scope.purpose, scope.policyVersion) ||
+      isLiveResponsesContextScope(scope.purpose, scope.policyVersion)) &&
       request.allowedScope.sourceIds !== undefined &&
       !emptyArray(request.allowedScope.sourceIds))
   )

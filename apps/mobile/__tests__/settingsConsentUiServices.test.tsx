@@ -19,6 +19,7 @@ jest.mock(
 jest.mock('../src/voiceSettings/voiceRuntimeCapability', () => ({
   ...jest.requireActual('../src/voiceSettings/voiceRuntimeCapability'),
   hasLiveVoiceRuntime: () => true,
+  hasLiveResponsesRuntime: () => false,
 }));
 
 // The real screen and tab panels use synthetic services, not application singletons.

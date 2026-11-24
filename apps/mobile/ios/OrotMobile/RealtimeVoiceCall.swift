@@ -35,6 +35,8 @@ final class RealtimeVoiceCall {
     var liveExpiresAt: Date?
     var liveSessionID: String?
     var liveExpiryTimer: Timer?
+    var managedResponses: LiveResponsesToolBridge?
+    var managedResponsesTransport = false
     var captureEpoch = UUID()
     var lifecycleEpoch = UUID()
     var awaitingInputCommit = false
@@ -60,7 +62,7 @@ final class RealtimeVoiceCall {
         })
         for name in [UIApplication.didEnterBackgroundNotification, UIApplication.protectedDataWillBecomeUnavailableNotification, AVAudioSession.interruptionNotification, AVAudioSession.routeChangeNotification] {
             observers.append(NotificationCenter.default.addObserver(forName: name, object: nil, queue: .main) { [weak self] _ in
-                if name == UIApplication.didEnterBackgroundNotification, self?.systemCallActive == true {
+                if name == UIApplication.didEnterBackgroundNotification, self?.systemCallActive == true, self?.managedResponsesTransport == false {
                     return
                 }
                 if name == AVAudioSession.routeChangeNotification {
@@ -148,11 +150,13 @@ final class RealtimeVoiceCall {
 
     func stop(_ identifier: String, graceful: Bool = false) throws {
         guard id == identifier else { return }
-        let finalSession = graceful && (ready || paused) && liveIsCurrent() ? liveSessionID : nil
+        let finalSession = graceful && !managedResponsesTransport && (ready || paused) && liveIsCurrent() ? liveSessionID : nil
         liveSessionID = nil
         ready = false; paused = false; liveSocketEpoch = nil; liveStartID = nil; liveUnmuteID = nil; liveExpiresAt = nil
         liveExpiryTimer?.invalidate(); liveExpiryTimer = nil; captureEpoch = UUID(); lifecycleEpoch = UUID(); pending = nil; timer?.invalidate(); timer = nil
         cancelTools(); tools.enabled = false
+        retireManagedResponses()
+        managedResponsesTransport = false
         if finalSession == nil {
             socket.close()
         }

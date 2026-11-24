@@ -137,4 +137,96 @@ extension RealtimeVoiceLifecycleTests {
         }
         XCTAssertFalse(lease.enabled)
     }
+
+    /// Exercise the exact production encoder and queued authority without opening a socket.
+    func testManagedToolQueueRequiresExactFrameKindsAndFreshEgressPermit() {
+        var authority = true
+        let permit = LiveQueuedToolPermit(current: { authority })
+        let frames = syntheticManagedToolFrames()
+        let queued = permit.prepare(frames)
+        XCTAssertEqual(queued?.count, 2)
+        XCTAssertTrue(queued?.allSatisfy { $0.permit === permit && !$0.isInput } ?? false)
+        let first = queued?.first.flatMap { try? JSONSerialization.jsonObject(with: Data($0.text.utf8)) }
+        let item = (first as? [String: Any])?["item"] as? [String: String]
+        XCTAssertEqual(item?["output"], "synthetic")
+        XCTAssertEqual(item?["call_id"], "fixture-call")
+        XCTAssertTrue(permit.authorizeHandoff())
+        permit.issued = true
+        authority = false
+        XCTAssertFalse(permit.authorizeHandoff(), "The queued continuation cannot cross revocation")
+        authority = true
+        XCTAssertFalse(permit.authorizeHandoff(), "An expired permit cannot be revived")
+        XCTAssertTrue(permit.issued)
+        XCTAssertNil(LiveQueuedToolPermit(current: { false }).prepare(frames))
+
+        var invalid = frames
+        invalid[0]["type"] = "conversation.item.create"
+        XCTAssertNil(LiveQueuedToolPermit(current: { true }).prepare(invalid))
+        var duplicate = frames
+        duplicate.insert(frames[0], at: 1)
+        XCTAssertNil(LiveQueuedToolPermit(current: { true }).prepare(duplicate))
+        XCTAssertNil(LiveQueuedToolPermit(current: { true }).prepare(Array(frames.prefix(1))))
+    }
+
+    func testManagedToolPortCannotBorrowAnotherLiveCallEpochOrResumeStaleQueue() throws {
+        let socket = HeldManagedSocket()
+        let owner = AudioSessionOwnership(configure: { _, _, _ in }, setActive: { _ in })
+        let call = RealtimeVoiceCall(audio: Audio(), socket: socket, ownership: owner,
+                                     permission: { _ in XCTFail("No microphone permission") },
+                                     foreground: { true }, emit: { _, _ in })
+        let epoch = UUID()
+        let token = try owner.reserve()
+        defer { try? owner.release(token) }
+        call.token = token
+        call.ready = true
+        call.id = "current-call"
+        call.liveSessionID = "current-session"
+        call.liveSocketEpoch = epoch
+        call.liveExpiresAt = Date().addingTimeInterval(30)
+        let frames = syntheticManagedToolFrames()
+        func enqueue(_ callID: String, _ sessionID: String, _ socketEpoch: UUID) -> Bool {
+            call.enqueueManagedToolFrames(frames, callID: callID, sessionID: sessionID,
+                                          socketEpoch: socketEpoch, approvedCurrent: { true })
+        }
+        XCTAssertFalse(enqueue("other-call", "current-session", epoch))
+        XCTAssertFalse(enqueue("current-call", "other-session", epoch))
+        XCTAssertFalse(enqueue("current-call", "current-session", UUID()))
+        XCTAssertTrue(enqueue("current-call", "current-session", epoch))
+        XCTAssertTrue(socket.held?.authorizeHandoff() ?? false)
+        call.paused = true
+        XCTAssertFalse(socket.held?.authorizeHandoff() ?? true)
+        call.paused = false
+        XCTAssertFalse(socket.held?.authorizeHandoff() ?? true)
+    }
+
+    private func syntheticManagedToolFrames() -> [[String: Any]] {
+        [
+            ["type": "response.item.create", "event_id": UUID().uuidString,
+             "item": ["type": "function_call_output", "call_id": "fixture-call", "output": "synthetic"]],
+            ["type": "response.create", "event_id": UUID().uuidString],
+        ]
+    }
+}
+
+private final class HeldManagedSocket: RealtimeSocketPort {
+    var received: (([String: Any]) -> Void)?
+    var failed: (() -> Void)?
+    var held: LiveQueuedToolPermit?
+
+    func open(model _: String, key _: String) {
+        XCTFail("No provider connection")
+    }
+
+    func send(_: [String: Any]) {
+        XCTFail("No generic output")
+    }
+
+    func discardInput() {}
+    func close() {}
+    func sendManagedToolFrames(_ frames: [[String: Any]], current: @escaping () -> Bool) -> Bool {
+        let permit = LiveQueuedToolPermit(current: current)
+        guard permit.prepare(frames) != nil else { return false }
+        held = permit
+        return true
+    }
 }

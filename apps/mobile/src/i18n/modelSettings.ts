@@ -34,7 +34,20 @@ export const modelSettingsKo = {
   'modelSettings.liveVoiceConsentNotice':
     '같은 계정과 모델로 음성 대화를 시작할 때 다시 묻지 않아요. 모델 설정에서 동의를 변경할 수 있어요.',
   'modelSettings.liveVoiceToolsUnavailable':
-    'GPT Live 통화에서는 기록·기억, 검색, 기록 수정 도구를 사용하지 않아요.',
+    '기본 음성 모드에서는 도구를 사용하지 않아요.',
+  'modelSettings.liveResponsesTitle': '도구 호출용 모델',
+  'modelSettings.liveResponsesDescription':
+    '음성 대화 모델과 별도로 이 통화의 도구 요청을 처리해요. gpt-6-luna를 권장해요.',
+  'modelSettings.liveResponsesEnable': '선택한 도구 호출용 모델 사용',
+  'modelSettings.liveResponsesDisable': '음성 대화 도구 끄기',
+  'modelSettings.liveResponsesUnavailable':
+    '음성 대화 도구 설정을 확인하지 못했어요.',
+  'modelSettings.liveResponsesConsentTitle':
+    '음성 대화에 OpenAI Responses를 사용할까요?',
+  'modelSettings.liveResponsesConsentScope':
+    'OpenAI가 이 통화와 관련된 대화 내용을 {model}로 처리해요. 앱은 요청하고 승인한 기간의 일반 심박수를 기기에서 집계해요. 3일 이상에 걸쳐 측정값이 3개 이상일 때만 반올림한 평균과 표본 수를 계산하며, 그 결과를 별도로 확인하고 동의한 경우에만 전송해요. 개별 수치, 측정 시각, 메모, 투약 정보와 이전 대화를 앱이 자동으로 첨부하지 않아요.',
+  'modelSettings.liveResponsesConsentNotice':
+    '기존 OpenAI API 계정을 사용하며 음성 통화와 별도로 API 사용료가 발생할 수 있어요. 설정에서 언제든 끌 수 있어요.',
   'modelSettings.liveVoiceProcessing':
     'OpenAI Live API에서 음성 대화를 처리해요.',
   'modelSettings.liveVoiceUnselected': '선택',

@@ -5,16 +5,13 @@ protocol RealtimeSocketPort: AnyObject {
     var received: (([String: Any]) -> Void)? { get set }
     var failed: (() -> Void)? { get set }
     func open(model: String, key: String)
+    func admitResponsesTransport(_ current: @escaping () -> Bool) -> Bool
     func send(_ event: [String: Any])
+    func sendManagedToolFrames(_ frames: [[String: Any]], current: @escaping () -> Bool) -> Bool
+    func discardManagedToolFrames() -> Bool
     func discardInput()
     func close()
     func finishLive(sessionID: String)
-}
-
-extension RealtimeSocketPort {
-    func finishLive(sessionID _: String) {
-        close()
-    }
 }
 
 /// A redirect must never carry a user's BYOK credential to a second destination.
@@ -35,14 +32,17 @@ final class RealtimeVoiceSocket: RealtimeSocketPort {
     private var epoch = 0
     private var closing: (sessionID: String, command: String, sent: Bool)?
     private var closeDeadline: DispatchWorkItem?
+    var responsesTransportCurrent: (() -> Bool)?
     var received: (([String: Any]) -> Void)?
     var failed: (() -> Void)?
 
     func open(model: String, key: String) {
         if closing != nil {
+            let current = responsesTransportCurrent
             close()
+            responsesTransportCurrent = current
         }
-        guard model == "gpt-live-1.1", socket == nil else { failed?(); return }
+        guard model == "gpt-live-1.1", socket == nil, responsesTransportCurrent?() != false else { failed?(); return }
         var request = URLRequest(url: URL(string: "wss://api.openai.com/v1/live/sessions")!)
         request.setValue("Bearer \(key)", forHTTPHeaderField: "Authorization")
         let task = session.webSocketTask(with: request)
@@ -53,7 +53,8 @@ final class RealtimeVoiceSocket: RealtimeSocketPort {
     }
 
     func send(_ event: [String: Any]) {
-        guard closing == nil else { return }
+        // Protected Live results must not fall back to the unguarded control/audio queue.
+        guard closing == nil, !["response.item.create", "response.create"].contains(event["type"] as? String ?? "") else { return }
         guard socket != nil, let data = try? JSONSerialization.data(withJSONObject: event),
               let string = String(data: data, encoding: .utf8) else { failed?(); return }
         guard bytes + data.count <= 512 * 1024 else { failed?(); return }
@@ -62,10 +63,45 @@ final class RealtimeVoiceSocket: RealtimeSocketPort {
         flush()
     }
 
+    /// Queue acceptance is not a provider receipt. Never reconnect or use a fallback transport.
+    func sendManagedToolFrames(_ frames: [[String: Any]], current: @escaping () -> Bool) -> Bool {
+        guard closing == nil, let task = socket else { return false }
+        let currentEpoch = epoch
+        let permit = LiveQueuedToolPermit(current: current)
+        guard let writes = permit.prepare(frames), epoch == currentEpoch, socket === task, closing == nil,
+              !queue.contains(where: { $0.permit != nil }) else { return false }
+        let size = writes.reduce(0) { $0 + $1.text.utf8.count }
+        guard bytes + size <= 512 * 1024 else { return false }
+        bytes += size
+        queue.append(contentsOf: writes)
+        flush()
+        return true
+    }
+
     private func flush() {
         guard !sending, let task = socket, let message = queue.first else { return }
-        sending = true
         let current = epoch
+        guard responsesTransportCurrent?() != false else { transportFailed(); return }
+        guard epoch == current, socket === task, !sending else { return }
+        if let permit = message.permit {
+            let allowed = permit.authorizeHandoff()
+            // Authority lookup may retire this exact socket or clear its queue synchronously.
+            guard epoch == current, socket === task, !sending, queue.first?.permit === permit else { return }
+            guard allowed else {
+                queue.removeAll { $0.permit === permit }
+                bytes = queue.reduce(0) { $0 + $1.text.utf8.count }
+                // Once a partial batch reached URLSession, never guess that its continuation
+                // is safe or retry it. Terminate through the existing transport failure owner.
+                if permit.issued {
+                    transportFailed()
+                } else {
+                    flush()
+                }
+                return
+            }
+            permit.issued = true
+        }
+        sending = true
         task.send(.string(message.text)) { [weak self] error in
             DispatchQueue.main.async {
                 guard let self else { return }
@@ -109,6 +145,15 @@ final class RealtimeVoiceSocket: RealtimeSocketPort {
                 }
             }
         }
+    }
+
+    /// Remove protected frames before later events can resume this queue. A partial handoff is not replayable.
+    func discardManagedToolFrames() -> Bool {
+        let retained = sending ? 1 : 0
+        let uncertain = queue.dropFirst(retained).contains { $0.permit?.issued == true }
+        queue = Array(queue.prefix(retained)) + queue.dropFirst(retained).filter { $0.permit == nil }
+        bytes = queue.reduce(0) { $0 + $1.text.utf8.count }
+        return uncertain
     }
 
     /// Mute drops unsent audio while preserving ordered control messages. A write already handed
@@ -179,7 +224,7 @@ final class RealtimeVoiceSocket: RealtimeSocketPort {
         epoch += 1
         closeDeadline?.cancel(); closeDeadline = nil; closing = nil
         socket?.cancel(with: .normalClosure, reason: nil)
-        socket = nil
+        socket = nil; responsesTransportCurrent = nil
         queue.removeAll(); bytes = 0; sending = false
     }
 
@@ -190,4 +235,11 @@ final class RealtimeVoiceSocket: RealtimeSocketPort {
 struct RealtimeSocketWrite {
     let text: String
     let isInput: Bool
+    let permit: LiveQueuedToolPermit?
+
+    init(text: String, isInput: Bool, permit: LiveQueuedToolPermit? = nil) {
+        self.text = text
+        self.isInput = isInput
+        self.permit = permit
+    }
 }

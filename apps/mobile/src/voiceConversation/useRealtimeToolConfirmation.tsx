@@ -9,6 +9,7 @@ import { disclosureStyles as styles } from '../agent/execution/InferenceDisclosu
 
 export interface RealtimeToolConfirmationRequest {
   readonly text: string;
+  readonly use?: 'live-local-read' | 'live-outbound-result';
   readonly recipient: string;
   readonly model: string;
   readonly signal: AbortSignal;
@@ -20,7 +21,7 @@ interface Pending {
 }
 
 /** Only a visible, current request may authorize delegation. The caller owns the call/item lease. */
-export function useRealtimeToolConfirmation() {
+export function useRealtimeToolConfirmation(inline = false) {
   const pending = useRef<Pending | null>(null);
   const mounted = useRef(false);
   const [request, setRequest] =
@@ -81,67 +82,92 @@ export function useRealtimeToolConfirmation() {
       finish(false);
     };
   }, [finish]);
-  const node = request ? (
-    <NavigationModal
-      visible={closing !== request}
-      onDismiss={() => finish(closing === request, request)}
-      presentationStyle="pageSheet"
-      allowSwipeDismissal
-      testID="realtime-tool-confirmation-modal"
-      onRequestClose={() => finish(false, request)}
-    >
-      <SafeAreaProvider style={styles.backdrop}>
-        <SafeAreaView style={styles.panel}>
-          <ScrollView contentContainerStyle={styles.content}>
-            <AppText accessibilityRole="header" style={styles.title}>
-              {t('realtimeToolConsent.title')}
-            </AppText>
-            <AppText style={styles.label}>
-              {t('realtimeToolConsent.recognized')}
-            </AppText>
-            <AppText
-              selectable
-              testID="realtime-tool-confirmation-text"
-              style={styles.value}
-            >
-              {request.text}
-            </AppText>
-            <AppText>
-              {t('realtimeToolConsent.recipient', {
-                recipient: request.recipient,
-              })}
-            </AppText>
-            <AppText>
-              {t('realtimeToolConsent.model', { model: request.model })}
-            </AppText>
-            <AppText>{t('realtimeToolConsent.effects')}</AppText>
-            <AppText>{t('realtimeToolConsent.correction')}</AppText>
-            <AppText>{t('realtimeToolConsent.resultBoundary')}</AppText>
-            <View style={styles.footer}>
-              <AppButton
-                title={t('realtimeToolConsent.allow')}
-                testID="realtime-tool-confirmation-allow"
-                onPress={() => {
-                  // Do not open a subsequent approval while UIKit is still dismissing this sheet.
-                  if (
-                    AppState.currentState !== 'active' ||
-                    request.signal.aborted
-                  )
-                    finish(false, request);
-                  else setClosing(request);
-                }}
-              />
-              <AppButton
-                variant="neutral"
-                title={t('realtimeToolConsent.cancel')}
-                testID="realtime-tool-confirmation-cancel"
-                onPress={() => finish(false, request)}
-              />
-            </View>
-          </ScrollView>
-        </SafeAreaView>
-      </SafeAreaProvider>
-    </NavigationModal>
+  const contents = request ? (
+    <>
+      <AppText accessibilityRole="header" style={styles.title}>
+        {request.use === 'live-local-read'
+          ? t('realtimeToolConsent.liveReadTitle')
+          : request.use === 'live-outbound-result'
+            ? t('realtimeToolConsent.liveResultTitle')
+            : t('realtimeToolConsent.title')}
+      </AppText>
+      <AppText style={styles.label}>
+        {request.use === 'live-local-read'
+          ? t('realtimeToolConsent.liveReadLabel')
+          : request.use === 'live-outbound-result'
+            ? t('realtimeToolConsent.liveResultLabel')
+            : t('realtimeToolConsent.recognized')}
+      </AppText>
+      <AppText
+        selectable
+        testID="realtime-tool-confirmation-text"
+        style={styles.value}
+      >
+        {request.text}
+      </AppText>
+      <AppText>
+        {t('realtimeToolConsent.recipient', {
+          recipient: request.recipient,
+        })}
+      </AppText>
+      <AppText>
+        {t('realtimeToolConsent.model', { model: request.model })}
+      </AppText>
+      {!request.use && (
+        <>
+          <AppText>{t('realtimeToolConsent.effects')}</AppText>
+          <AppText>{t('realtimeToolConsent.correction')}</AppText>
+          <AppText>{t('realtimeToolConsent.resultBoundary')}</AppText>
+        </>
+      )}
+      {request.use === 'live-local-read' && (
+        <AppText>{t('realtimeToolConsent.liveReadBoundary')}</AppText>
+      )}
+      <View style={styles.footer}>
+        <AppButton
+          title={t('realtimeToolConsent.allow')}
+          testID="realtime-tool-confirmation-allow"
+          onPress={() => {
+            // Do not open a subsequent approval while UIKit is still dismissing this sheet.
+            if (AppState.currentState !== 'active' || request.signal.aborted)
+              finish(false, request);
+            else if (inline) finish(true, request);
+            else setClosing(request);
+          }}
+        />
+        <AppButton
+          variant="neutral"
+          title={t('realtimeToolConsent.cancel')}
+          testID="realtime-tool-confirmation-cancel"
+          onPress={() => finish(false, request)}
+        />
+      </View>
+    </>
   ) : null;
+  const node =
+    request && contents ? (
+      inline ? (
+        <View style={styles.content} testID="live-tool-confirmation-inline">
+          {contents}
+        </View>
+      ) : (
+        <NavigationModal
+          visible={closing !== request}
+          onDismiss={() => finish(closing === request, request)}
+          presentationStyle="pageSheet"
+          allowSwipeDismissal
+          testID="realtime-tool-confirmation-modal"
+          onRequestClose={() => finish(false, request)}
+        >
+          <SafeAreaProvider style={styles.backdrop}>
+            <SafeAreaView style={styles.panel}>
+              <ScrollView contentContainerStyle={styles.content}>
+                {contents}
+              </ScrollView>
+            </SafeAreaView>
+          </SafeAreaProvider>
+        </NavigationModal>
+      )
+    ) : null;
   return { confirm, node };
 }

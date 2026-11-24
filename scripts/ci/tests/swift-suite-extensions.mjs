@@ -3,6 +3,7 @@ export const swiftSuiteExtensions = new Map([
   ['OrotUITests/ClassificationReaderGeometryUITests.swift', 'AppointmentConsentUITests'],
   ['OrotUITests/ClassificationStagesUITests.swift', 'AppointmentConsentUITests'],
   ['OrotIntegrationTests/RealtimeVoiceToolLifecycleTests.swift', 'RealtimeVoiceLifecycleTests'],
+  ['OrotIntegrationTests/RealtimeVoiceManagedResponsesTests.swift', 'RealtimeVoiceLifecycleTests'],
   ['OrotIntegrationTests/RealtimeVoiceSystemLifecycleTests.swift', 'RealtimeVoiceLifecycleTests'],
   ['OrotUITests/HealthRecordsDetailDuoUITests.swift', 'HealthImportDuoUITests'],
   ['OrotUITests/SettingsBackupDuoUITests.swift', 'RootNavigationUITests'],

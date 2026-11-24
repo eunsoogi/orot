@@ -10,6 +10,7 @@ jest.mock('../e2e/settingsCredentialNativeFixture', () => ({
 }));
 jest.mock('../src/voiceConversation/nativeRealtimeVoice', () => ({
   nativeLiveVoice: jest.fn(),
+  nativeLiveManagedTools: () => null,
 }));
 jest.mock(
   'react-native-safe-area-context',

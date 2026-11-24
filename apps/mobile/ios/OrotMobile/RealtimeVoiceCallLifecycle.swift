@@ -12,7 +12,9 @@ extension RealtimeVoiceCall {
         }
     }
 
-    func open(_ identifier: String, model: String, key: String, language: String, voice: String = "default", enableTools: Bool = false, completion: @escaping (Result<Void, Error>) -> Void) {
+    func open(_ identifier: String, model: String, key: String, language: String, voice: String = "default", enableTools: Bool = false,
+              managedAdmission: LiveResponsesAdmission? = nil, completion: @escaping (Result<Void, Error>) -> Void)
+    {
         guard id == nil, !identifier.isEmpty, model == "gpt-live-1.1", ["auto", "ko", "en"].contains(language),
               Self.liveVoices.contains(voice), !enableTools,
               !key.isEmpty, !key.contains("\n"), !key.contains("\r") else { completion(.failure(Failure.unavailable)); return }
@@ -41,9 +43,26 @@ extension RealtimeVoiceCall {
                         guard let self, liveSocketEpoch == epoch else { return }
                         fail()
                     }
+                    var event = Self.configuration(model: model, language: language, voice: voice)
+                    if let managedAdmission {
+                        guard let configuration = managedAdmission.configuration(),
+                              var session = event["session"] as? [String: Any],
+                              socket.admitResponsesTransport({ [weak self] in
+                                  guard let self else { return false }
+                                  return id == identifier && liveSocketEpoch == epoch && foreground() && managedAdmission.backendAllowed()
+                              }) else { fail(); return }
+                        managedResponsesTransport = true
+                        session["delegation"] = configuration
+                        event["session"] = session
+                        managedResponses = LiveResponsesToolBridge(admission: managedAdmission) { [weak self] in
+                            guard let self, liveSocketEpoch == epoch else { return }
+                            if socket.discardManagedToolFrames() {
+                                fail()
+                            }
+                        }
+                    }
                     socket.open(model: model, key: key)
                     guard id == identifier, lifecycleEpoch == epoch else { return }
-                    var event = Self.configuration(model: model, language: language, voice: voice)
                     event["event_id"] = startID
                     socket.send(event)
                 }
@@ -89,6 +108,8 @@ extension RealtimeVoiceCall {
         // A pending call has no confirmed session to mute, so close rather than send an out-of-order control.
         guard liveIsCurrent() else { try stop(identifier); return }
         guard !paused || opening != nil else { return }
+        retireManagedResponses()
+        guard liveIsCurrent() else { return }
         paused = true; liveUnmuteID = nil; ready = false; captureEpoch = UUID(); lifecycleEpoch = UUID()
         pending = nil; timer?.invalidate(); timer = nil
         let callback = opening; opening = nil
@@ -126,5 +147,94 @@ extension RealtimeVoiceCall {
                 self?.fail()
             }
         }
+    }
+}
+
+extension RealtimeSocketPort {
+    func admitResponsesTransport(_: @escaping () -> Bool) -> Bool {
+        false
+    }
+
+    func sendManagedToolFrames(_: [[String: Any]], current _: @escaping () -> Bool) -> Bool {
+        false
+    }
+
+    func discardManagedToolFrames() -> Bool {
+        false
+    }
+
+    func finishLive(sessionID _: String) {
+        close()
+    }
+}
+
+/// Module-owned one-use challenge. Only the active RN policy runner receives it, and neither
+/// incoming event IDs nor a stock tool reply can settle it. Cancellation never returns data.
+final class LiveResponsesMailbox {
+    let grant: LiveResponsesSettingsGrant
+    private let identifier: String, key: String
+    private let emit: (String, [String: Any]) -> Void
+    private var pending: (id: String, request: LiveResponsesAdmission.Request, finish: (String?) -> Void)?
+    private var approved: [(LiveResponsesAdmission.Request, String)] = []
+    private var revoked = false
+
+    init(identifier: String, grant: LiveResponsesSettingsGrant, key: String, emit: @escaping (String, [String: Any]) -> Void) {
+        self.identifier = identifier; self.grant = grant; self.key = key; self.emit = emit
+    }
+
+    func admission() -> LiveResponsesAdmission {
+        LiveResponsesAdmission(
+            backendModel: grant.backendModel,
+            functionName: "orot_health_context",
+            backendAllowed: { [weak self] in self?.current() == true },
+            mayRun: { [weak self] in self?.identifier == $0.owner.callID && self?.current() == true },
+            approve: { _, finish in finish(true); return {} }, // RN authorizes each exact request before any read.
+            execute: { [weak self] in self?.begin($0, finish: $1) ?? {} },
+            mayDisclose: { [weak self] request, output in
+                guard let self, current() else { return false }
+                return approved.contains { $0.0 == request && $0.1 == output }
+            },
+        )
+    }
+
+    private func current() -> Bool {
+        !revoked && grant.isCurrent(key: key)
+    }
+
+    private func begin(_ request: LiveResponsesAdmission.Request, finish: @escaping (String?) -> Void) -> (() -> Void) {
+        guard pending == nil, current(), request.owner.callID == identifier, request.name == "orot_health_context",
+              let topic = request.topic, let days = request.days,
+              LiveResponsesAdmission.healthTopics.contains(topic), (3 ... 31).contains(days) else { finish(nil); return {} }
+        let id = UUID().uuidString
+        pending = (id, request, finish)
+        let arguments = "{\"topic\":\"\(topic)\",\"days\":\(days)}"
+        emit("VoiceRealtimeManagedToolCall", ["callId": identifier, "sessionId": request.owner.sessionID, "challengeId": id,
+                                              "toolCallId": request.functionID, "responseId": request.responseID,
+                                              "delegationId": request.delegationID, "name": request.name, "args": arguments])
+        return { [weak self] in self?.cancel(id) }
+    }
+
+    func settle(_ id: String, output: String?) -> Bool {
+        guard let pending, pending.id == id, current() else { return false }
+        self.pending = nil
+        let accepted = output.flatMap { LiveResponsesAdmission.validAggregate($0, days: pending.request.days) ? $0 : nil }
+        if let accepted {
+            approved.append((pending.request, accepted))
+        }
+        pending.finish(accepted)
+        return output == nil || accepted != nil
+    }
+
+    func revoke() {
+        revoked = true; approved.removeAll()
+        if let id = pending?.id {
+            cancel(id)
+        }
+    }
+
+    private func cancel(_ id: String) {
+        guard pending?.id == id else { return }
+        pending = nil
+        emit("VoiceRealtimeManagedToolCancelled", ["callId": identifier, "challengeId": id])
     }
 }

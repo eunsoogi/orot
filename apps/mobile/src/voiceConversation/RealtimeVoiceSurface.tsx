@@ -19,6 +19,7 @@ export function RealtimeVoiceSurface({
   model,
   transcripts,
   toolConfirmation,
+  inlineToolConfirmation = false,
   disabled,
   statusExternallyRendered,
   start,
@@ -37,6 +38,7 @@ export function RealtimeVoiceSurface({
   model: string;
   transcripts: RealtimeTranscript[];
   toolConfirmation: ReactNode;
+  inlineToolConfirmation?: boolean;
   disabled: boolean;
   statusExternallyRendered: boolean;
   start: () => void;
@@ -48,7 +50,7 @@ export function RealtimeVoiceSurface({
 }) {
   return (
     <>
-      {toolConfirmation}
+      {!inlineToolConfirmation && toolConfirmation}
       <VoiceConversationScreen
         key={state.identity?.turnId ?? 'idle'}
         manualFinish={false}
@@ -65,6 +67,7 @@ export function RealtimeVoiceSurface({
           text: item.text,
         }))}
         identity={<VoiceCallIdentity />}
+        toolConfirmation={inlineToolConfirmation ? toolConfirmation : null}
         onEnd={stop}
         onMute={mute}
         onResume={resume}

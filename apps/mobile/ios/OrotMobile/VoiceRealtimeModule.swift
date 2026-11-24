@@ -26,12 +26,13 @@ final class VoiceRealtimeModule: RCTEventEmitter {
     #endif
 
     private var active: String?
+    private var responsesMailbox: LiveResponsesMailbox?
     override static func requiresMainQueueSetup() -> Bool {
         true
     }
 
     override func supportedEvents() -> [String]! {
-        ["VoiceRealtimeState", "VoiceRealtimeTranscript", "VoiceRealtimeInterrupted", "VoiceRealtimeSystemCall", "VoiceRealtimePaused", "VoiceRealtimeToolCall", "VoiceRealtimeToolCancelled"]
+        ["VoiceRealtimeState", "VoiceRealtimeTranscript", "VoiceRealtimeInterrupted", "VoiceRealtimeSystemCall", "VoiceRealtimePaused", "VoiceRealtimeToolCall", "VoiceRealtimeToolCancelled", "VoiceRealtimeManagedToolCall", "VoiceRealtimeManagedToolCancelled"]
     }
 
     @objc(openLiveCall:model:apiKey:options:resolver:rejecter:)
@@ -40,20 +41,58 @@ final class VoiceRealtimeModule: RCTEventEmitter {
     {
         DispatchQueue.main.async {
             guard self.active == nil else { reject("VOICE_BUSY", "Voice is already active.", nil); return }
-            guard options.count == 2, let language = options["language"] as? String, let voice = options["voice"] as? String else {
+            guard Set(options.allKeys.compactMap { $0 as? String }).isSubset(of: ["language", "voice", "responsesGrant"]),
+                  let language = options["language"] as? String, let voice = options["voice"] as? String
+            else {
                 reject("VOICE_LIVE_FAILED", "Live voice is unavailable.", nil); return
             }
+            var admission: LiveResponsesAdmission?
+            if let request = options["responsesGrant"] {
+                guard let grant = LiveResponsesSettingsGrant(request), grant.isCurrent(key: apiKey) else {
+                    reject("VOICE_LIVE_FAILED", "Live voice is unavailable.", nil); return
+                }
+                let mailbox = LiveResponsesMailbox(identifier: identifier, grant: grant, key: apiKey) { [weak self] event, body in
+                    self?.sendEvent(withName: event, body: body)
+                }
+                self.responsesMailbox = mailbox
+                admission = mailbox.admission()
+            }
             self.active = identifier
-            self.call.open(identifier, model: model, key: apiKey, language: language, voice: voice) { result in
+            self.call.open(identifier, model: model, key: apiKey, language: language, voice: voice, managedAdmission: admission) { result in
                 switch result {
                 case .success: resolve(nil)
                 case .failure:
                     if self.call.id == nil, self.active == identifier {
+                        self.responsesMailbox = nil
                         self.active = nil
                     }
                     reject("VOICE_LIVE_FAILED", "Live voice is unavailable.", nil)
                 }
             }
+        }
+    }
+
+    @objc(settleLiveResponsesToolCall:challengeId:output:resolver:rejecter:)
+    func settleLiveResponsesToolCall(_ identifier: String, challengeId: String, output: String?,
+                                     resolver resolve: @escaping RCTPromiseResolveBlock, rejecter _: @escaping RCTPromiseRejectBlock)
+    {
+        DispatchQueue.main.async {
+            resolve(self.active == identifier && self.responsesMailbox?.settle(challengeId, output: output) == true)
+        }
+    }
+
+    @objc(revokeLiveResponsesGrant:generation:resolver:rejecter:)
+    func revokeLiveResponsesGrant(_ grantID: String, generation: String,
+                                  resolver resolve: @escaping RCTPromiseResolveBlock, rejecter _: @escaping RCTPromiseRejectBlock)
+    {
+        DispatchQueue.main.async {
+            if let mailbox = self.responsesMailbox, mailbox.grant.grantID == grantID,
+               mailbox.grant.generation == generation
+            {
+                mailbox.revoke()
+                self.call.fail()
+            }
+            resolve(nil)
         }
     }
 
@@ -95,6 +134,7 @@ final class VoiceRealtimeModule: RCTEventEmitter {
             do {
                 try self.call.stop(identifier, graceful: graceful)
                 if self.active == identifier {
+                    self.responsesMailbox = nil
                     self.active = nil
                 }
                 resolve(self.call.connectedDuration.take(identifier))

@@ -32,6 +32,7 @@ jest.mock(
 );
 jest.mock('../voiceRuntimeCapability', () => ({
   hasLiveVoiceRuntime: jest.fn(() => false),
+  hasLiveResponsesRuntime: () => false,
 }));
 beforeEach(() => {
   jest.clearAllMocks();

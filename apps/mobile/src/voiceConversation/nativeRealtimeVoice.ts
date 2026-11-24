@@ -14,6 +14,8 @@ import {
   hasRealtimeVoiceRuntime,
 } from '../voiceSettings/voiceRuntimeCapability';
 
+export { nativeLiveManagedTools } from './nativeLiveManagedTools';
+
 // Survives screen disposal: a failed release must be retried before any newer call opens.
 const pendingCleanup = createVoiceStopReceipts();
 const openingCalls = new Map<string, { cancelled: boolean }>();
@@ -53,15 +55,23 @@ export function nativeRealtimeVoice(): NativeRealtimeVoice | null {
   return nativeOwnedVoice(false);
 }
 
+export type LiveResponsesGrantIdentity = Readonly<{
+  backendModel: string;
+  grantID: string;
+  generation: string;
+}>;
+
 export function nativeLiveVoice(
   captureEnd?: CaptureVoiceEndReceipt,
+  responsesGrant?: (callId: string) => LiveResponsesGrantIdentity | null,
 ): NativeRealtimeVoice | null {
-  return nativeOwnedVoice(true, captureEnd);
+  return nativeOwnedVoice(true, captureEnd, responsesGrant);
 }
 
 function nativeOwnedVoice(
   live: boolean,
   captureEnd?: CaptureVoiceEndReceipt,
+  responsesGrant?: (callId: string) => LiveResponsesGrantIdentity | null,
 ): NativeRealtimeVoice | null {
   const module =
     Platform.OS === 'ios' ? NativeModules.VoiceRealtimeModule : null;
@@ -113,9 +123,11 @@ function nativeOwnedVoice(
           if (!preferences || enableTools || !isCurrent?.())
             throw new Error('Expected audio-only Live settings');
           voiceEnd = { id, receive: captureEnd?.(id) };
+          const grant = responsesGrant?.(id);
           await module.openLiveCall(id, model, key, {
             language: 'auto',
             voice: preferences.voice,
+            ...(grant ? { responsesGrant: grant } : {}),
           });
         } else {
           await module.openRealtimeCall(id, model, key, language, enableTools);

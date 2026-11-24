@@ -7,8 +7,8 @@ jest.mock(
   () => require('react-native-safe-area-context/jest/mock').default,
 );
 let controller: ReturnType<typeof useRealtimeToolConfirmation>;
-function Harness() {
-  controller = useRealtimeToolConfirmation();
+function Harness({ inline = false }: { inline?: boolean }) {
+  controller = useRealtimeToolConfirmation(inline);
   return controller.node;
 }
 let stateChanged: (state: AppStateStatus) => void;
@@ -157,4 +157,35 @@ it('does not approve when cancellation wins during the native dismissal transiti
   expect(await decision).toBe(false);
   await act(() => lateDismiss());
   expect(controller.node).toBeNull();
+});
+
+it('presents separately approved Live read and exact outbound payload inline without a second modal', async () => {
+  await render(<Harness inline />);
+  for (const [use, text, header] of [
+    [
+      'live-local-read',
+      '{"topic":"measurements","days":7}',
+      '이 건강 기록을 조회할까요?',
+    ],
+    [
+      'live-outbound-result',
+      '{"synthetic":65}',
+      '이 집계 결과를 AI에 보낼까요?',
+    ],
+  ] as const) {
+    let decision!: Promise<boolean>;
+    await act(() => {
+      decision = controller.confirm({ ...input(), text, use });
+    });
+    expect(screen.getByTestId('live-tool-confirmation-inline')).toBeTruthy();
+    expect(screen.queryByTestId('realtime-tool-confirmation-modal')).toBeNull();
+    expect(screen.getByText(header)).toBeTruthy();
+    expect(
+      screen.getByTestId('realtime-tool-confirmation-text').props.children,
+    ).toBe(text);
+    await fireEvent.press(
+      screen.getByTestId('realtime-tool-confirmation-allow'),
+    );
+    expect(await decision).toBe(true);
+  }
 });

@@ -7,6 +7,7 @@ import { voiceSettingsStore } from '../voiceSettingsStore';
 
 jest.mock('../voiceRuntimeCapability', () => ({
   hasLiveVoiceRuntime: () => true,
+  hasLiveResponsesRuntime: () => false,
 }));
 jest.mock('../voiceSettingsStore', () => ({
   voiceSettingsStore: {

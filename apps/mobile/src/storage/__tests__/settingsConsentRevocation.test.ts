@@ -1,5 +1,9 @@
 import { openSqliteTestDatabase } from '../../../../../packages/storage/__tests__/sqliteTestDatabase';
-import { createSettingsConsentStorage } from '../settingsConsentStorage';
+import {
+  createSettingsConsentStorage,
+  settingsConsentSlots,
+  type SettingsConsentSlot,
+} from '../settingsConsentStorage';
 import { settingsConsentRepository } from '../settingsConsentRepository';
 import { settingsConsentAuthority } from '../settingsConsentAuthority';
 import {
@@ -33,7 +37,7 @@ async function fixture() {
   let sequence = 0;
   const states = new Map<string, ConsentAuthorityState>();
   let failWrite = false;
-  const create = (slot: string) =>
+  const create = (slot: SettingsConsentSlot) =>
     createConsentAuthority(
       {
         read: async () => states.get(slot) ?? null,
@@ -45,7 +49,7 @@ async function fixture() {
       () => (++sequence).toString(16).padStart(64, '0'),
     );
   const owners = new Map(
-    ['conversation', 'calendar', 'voice'].map(slot => [slot, create(slot)]),
+    settingsConsentSlots.map(slot => [slot, create(slot)]),
   );
   jest
     .mocked(settingsConsentAuthority)
@@ -53,7 +57,7 @@ async function fixture() {
   jest.mocked(settingsConsentRepository).mockResolvedValue(grants);
   for (const [slot, owner] of owners) {
     const active = await owner.activate();
-    await grants.stage(slot as 'conversation', active.generation, {
+    await grants.stage(slot, active.generation, {
       version: 1,
       catalogVersion: 'model-settings-v1',
       identity: {
@@ -72,11 +76,7 @@ async function fixture() {
         },
       ],
     });
-    await grants.activate(
-      slot as 'conversation',
-      active.generation,
-      () => true,
-    );
+    await grants.activate(slot, active.generation, () => true);
   }
   const legacyClear = jest
     .spyOn(inferenceConsentReceipts, 'clear')
@@ -109,12 +109,13 @@ test('SQL cleanup failure cannot resurrect grants after a recreated authority ow
     await expect(resetting).rejects.toThrow('Synthetic cleanup failure');
     expect(canReuseConsent()).toBe(false);
     expect(await f.grants.read('conversation')).not.toBeNull();
-    for (const slot of ['conversation', 'calendar', 'voice'])
+    for (const slot of settingsConsentSlots)
       expect(await f.create(slot).current()).toBeNull();
     expect(f.legacyClear).not.toHaveBeenCalled();
     await resetInferenceConsentReceipts();
     expect(canReuseConsent()).toBe(true);
-    expect(await f.grants.read('conversation')).toBeNull();
+    for (const slot of settingsConsentSlots)
+      expect(await f.grants.read(slot)).toBeNull();
     expect(f.legacyClear).toHaveBeenCalledTimes(1);
   } finally {
     f.connection.close();
@@ -129,10 +130,46 @@ test('first durable tombstone failure reports failure and blocks this process, w
       'Synthetic Keychain write failure',
     );
     expect(canReuseConsent()).toBe(false);
-    expect(await f.owners.get('conversation')!.current()).toBeNull();
     // Native persistence failed: a separately recreated owner can still see the old state.
-    expect(await f.create('conversation').current()).not.toBeNull();
-    expect(await f.grants.read('conversation')).not.toBeNull();
+    for (const slot of settingsConsentSlots) {
+      expect(await f.owners.get(slot)!.current()).toBeNull();
+      expect(await f.create(slot).current()).not.toBeNull();
+      expect(await f.grants.read(slot)).not.toBeNull();
+    }
+    expect(f.legacyClear).not.toHaveBeenCalled();
+  } finally {
+    f.connection.close();
+  }
+});
+
+test('a synchronous owner failure still starts the other revocations and skips cleanup', async () => {
+  const f = await fixture();
+  try {
+    const conversation = f.owners.get('conversation')!;
+    const voiceResponses = f.owners.get('voice-responses')!;
+    const before = await conversation.current();
+    const lastBefore = await voiceResponses.current();
+    const firstWitness = conversation.witness(before!.generation);
+    const lastWitness = voiceResponses.witness(lastBefore!.generation);
+    const cleanup = jest.spyOn(f.grants, 'clear');
+    const ownerError = new Error('Synthetic authority owner failure');
+    jest.mocked(settingsConsentAuthority).mockImplementation(slot => {
+      if (slot === 'calendar') throw ownerError;
+      return f.owners.get(slot)!;
+    });
+    f.fail();
+
+    const outcome = resetInferenceConsentReceipts().catch(
+      (error: unknown) => error,
+    );
+    expect(firstWitness()).toBe(false);
+    expect(lastWitness()).toBe(false);
+    expect(await outcome).toBe(ownerError);
+    expect(canReuseConsent()).toBe(false);
+    expect(await conversation.current()).toBeNull();
+    expect(await voiceResponses.current()).toBeNull();
+    expect(await f.grants.read('voice-responses')).not.toBeNull();
+    expect(cleanup).not.toHaveBeenCalled();
     expect(f.legacyClear).not.toHaveBeenCalled();
   } finally {
     f.connection.close();

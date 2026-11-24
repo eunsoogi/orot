@@ -32,6 +32,7 @@ jest.mock(
 );
 jest.mock('../voiceRuntimeCapability', () => ({
   hasLiveVoiceRuntime: () => true,
+  hasLiveResponsesRuntime: () => false,
 }));
 function Fixture() {
   const { host, actions } = useNavigationPrimaryActionHost('models');
