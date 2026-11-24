@@ -35,7 +35,7 @@ function imported(
   return toCommonObservationRecord(mapped.observation, at);
 }
 
-test('stored overview choices keep exact source, BPM and type without reading unselected derived metrics', async () => {
+test('grouped heart selection keeps exact source and type; no heart choice reads no derived metrics', async () => {
   const fixture = openSqliteTestDatabase(':memory:');
   try {
     const { database } = fixture;
@@ -56,35 +56,40 @@ test('stored overview choices keep exact source, BPM and type without reading un
       },
     ])
       await repository.put('health_observation', record);
-    // Existing installation fallback remains the same; derived metrics are opt-in.
+    // Existing fallback uses the single durable Heart choice.
     expect(await loadOverviewMetricSelection(repository)).toEqual([
       'sleep',
       'heartRate',
     ]);
     const signal = new AbortController().signal;
-    const { chart: defaultRead } = await loadSelectedOverviewSnapshot(
+    await saveOverviewMetricSelection(repository, ['sleep', 'steps']);
+    const { chart: withoutHeart } = await loadSelectedOverviewSnapshot(
       database,
       now,
       signal,
     );
-    expect(defaultRead.metrics.restingHeartRate).toBeUndefined();
-    expect(defaultRead.metrics.walkingHeartRate).toBeUndefined();
+    expect(withoutHeart.metrics.restingHeartRate).toBeUndefined();
+    expect(withoutHeart.metrics.walkingHeartRate).toBeUndefined();
 
-    const selected = [
-      'walkingHeartRate',
-      'workoutHeartRate',
-      'heartRate',
-      'restingHeartRate',
-    ] as const;
-    await saveOverviewMetricSelection(repository, selected);
-    const saved = await loadOverviewMetricSelection(repository);
-    expect(saved).toEqual(selected);
+    const selected = ['heartRate'] as const;
+    await repository.putSyncCheckpoint({
+      key: 'home:metric-selection:v1',
+      value: JSON.stringify([
+        'walkingHeartRate',
+        'workoutHeartRate',
+        'heartRate',
+        'restingHeartRate',
+      ]),
+      updatedAt: at,
+    });
+    expect(await loadOverviewMetricSelection(repository)).toEqual(selected);
     const { selection, chart } = await loadSelectedOverviewSnapshot(
       database,
       now,
       signal,
     );
     expect(selection).toEqual(selected);
+    expect(chart.metrics.heartRate).toBeDefined();
     expect(chart.metrics).not.toHaveProperty('workoutHeartRate');
     expect(chart.metrics.restingHeartRate).toMatchObject({
       metric: 'restingHeartRate',
@@ -163,7 +168,7 @@ test('verified summaries count exact local-day quantities without borrowing midn
     });
     for (const value of [exact, scalar, crossing])
       await repo.put('health_observation', value);
-    await saveOverviewMetricSelection(repo, ['sleep', 'restingHeartRate']);
+    await saveOverviewMetricSelection(repo, ['sleep', 'heartRate']);
     const read = () =>
       loadSelectedOverviewSnapshot(
         f.database,
