@@ -31,18 +31,16 @@ test.each([
         'INSERT INTO cold_source_revision VALUES (1)',
       );
       f.updateSession({
-        messages: f
-          .session()
-          .messages.map(message =>
-            message.id === -2
-              ? {
-                  ...message,
-                  content: oldOpaque,
-                  initialResponse: reviewed,
-                  previousOutputs: [oldOpaque],
-                }
-              : message,
-          ),
+        messages: f.session().messages.map(message =>
+          message.id === -2
+            ? {
+                ...message,
+                content: oldOpaque,
+                initialResponse: reviewed,
+                previousOutputs: [oldOpaque],
+              }
+            : message,
+        ),
       });
       const resume = jest
         .spyOn(f.cold, 'resume')
