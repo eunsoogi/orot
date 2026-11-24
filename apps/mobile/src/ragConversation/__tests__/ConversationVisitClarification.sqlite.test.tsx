@@ -20,6 +20,7 @@ import {
   retainedHistoryTurns,
 } from '../conversationHistoryPayload';
 import { ConversationHistory } from '../ConversationHistory';
+import { savedHistoryTranscript } from '../conversationSavedHistoryDisplay';
 import {
   committedVisitNeighbor,
   seedCommittedVisitNeighbor,
@@ -30,20 +31,17 @@ import {
   createConversationSessions,
   type ConversationSessions,
 } from '../conversationSessions';
-
 jest.mock('../../aiFeatures/integration/visitQuestionsRouteOperations', () => ({
   defaultVisitQuestionRouteOperations: {
     loadAppointment: jest.fn(async () => ({ id: 'synthetic-appointment' })),
     generate: jest.fn(),
   },
 }));
-
 const at = '2026-11-22T01:00:00.000Z';
 const question = '다음 진료에서 물어볼 질문을 준비해 주세요.';
 const opening = '질문을 함께 준비해 볼게요.';
 const clarification = t('visitQuestions.conversation.clarifyGoal');
 const warning = t('conversationInterruption.provider-failed');
-
 function Transcript({ store }: { store: ConversationSessions }) {
   const state = useSyncExternalStore(store.subscribe, store.getSnapshot);
   const session = state.sessions.find(item => state.activeId === item.id)!;
@@ -59,7 +57,6 @@ function Transcript({ store }: { store: ConversationSessions }) {
     />
   );
 }
-
 /** The actual approved opening uses a non-streaming fixture; the visit operation returns a typed local decision. */
 test.each(['committed', 'write-failed'] as const)(
   'shows only committed clarification without creating answer evidence or model history: %s',
@@ -190,13 +187,11 @@ test.each(['committed', 'write-failed'] as const)(
         defaultVisitQuestionRouteOperations.generate,
       ).toHaveBeenCalledTimes(1);
       const [owner] = (await storage.listSessions()).items;
-      expect(owner).toBeDefined();
       await mounted.unmount();
       mounted = undefined;
       store.dispose();
       store = undefined;
       db.close();
-
       db = openSqliteTestDatabase(file);
       const reopened = createConversationArtifactStorage(db.database);
       await reopened.interruptRecoveredRequests();
@@ -212,6 +207,11 @@ test.each(['committed', 'write-failed'] as const)(
         expect(mounted.getAllByText(clarification)).toHaveLength(1);
         expect(mounted.getByText(opening)).toBeTruthy();
         expect(mounted.queryByText(/^이전 요청의 결과/)).toBeNull();
+        const cold = store.getSnapshot().sessions.at(-1)?.savedHistoryDisplay;
+        const joined = savedHistoryTranscript(cold!, live);
+        expect(joined.filter(row => row.content === question)).toHaveLength(1);
+        const bubbles = joined.filter(m => m.initialResponse?.text === opening);
+        expect(bubbles).toHaveLength(1);
       }
       expect(mounted.queryByText('UNREVIEWED_MODEL_TEXT')).toBeNull();
       expect(conversationHistoryPayload(live, 'Unrelated next prompt')).toEqual(
