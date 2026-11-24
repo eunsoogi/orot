@@ -10,6 +10,7 @@ import {
 import { appColors } from '../layout/appColors';
 import { AdaptiveColumns } from '../layout/AdaptiveColumns';
 import { t } from '../i18n';
+import { useNavigationEdgeVerticalScroll } from '../navigation/navigationEdgeScroll';
 import { useNavigationContentInset } from '../navigation/useNavigationContentInset';
 import { useNavigationLeaveStateRegistration } from '../navigation';
 import type { CalendarAutoSyncActions } from '../calendar/useCalendarAutoSync';
@@ -37,6 +38,10 @@ export function SettingsSyncStatusRoute({
   readonly onConfigureHealthData?: () => void;
 }) {
   const inset = useNavigationContentInset();
+  // This page owns the scroll viewport; the panels retain their readable inset.
+  const edge = useNavigationEdgeVerticalScroll({
+    trailingPadding: inset.paddingRight ?? styles.container.paddingHorizontal,
+  });
   const [selected, setSelected] = useState<readonly HealthKitAutoSyncFeature[]>(
     [],
   );
@@ -121,8 +126,9 @@ export function SettingsSyncStatusRoute({
 
   return (
     <ScrollView
-      contentContainerStyle={[styles.container, inset]}
-      style={styles.scroll}
+      {...edge.indicatorProps}
+      contentContainerStyle={[styles.container, inset, edge.contentStyle]}
+      style={[styles.scroll, edge.scrollViewStyle]}
       testID="settings-sync-status-scroll"
     >
       <AdaptiveColumns

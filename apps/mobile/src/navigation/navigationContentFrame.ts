@@ -1,8 +1,9 @@
 import { createContext, useContext } from 'react';
-import type {
-  NavigationGeometryRect,
-  NavigationGeometrySnapshot,
-  NavigationReservedRegion,
+import {
+  navigationSystemTopBarBottom,
+  type NavigationGeometryRect,
+  type NavigationGeometrySnapshot,
+  type NavigationReservedRegion,
 } from './navigationGeometry';
 import {
   navigationSideLane,
@@ -15,6 +16,7 @@ export interface NavigationContentFrame {
   readonly viewportFrame: NavigationGeometryRect;
   readonly reservedRegions: readonly NavigationReservedRegion[];
   readonly side: 'bottom' | 'left' | 'right';
+  readonly systemIndicatorAtTop?: true;
   /** The actual UIKit control frame is unavailable until the mounted surface reports layout. */
   readonly navigationFrame: NavigationGeometryRect | null;
   readonly availableContentFrame: NavigationGeometryRect;
@@ -39,9 +41,14 @@ export function resolveNavigationContentFrame(
     measuredViewport ?? geometry.viewportBounds ?? geometry.windowBounds;
   const safe = geometry.safeAreaFrame;
   // Candidate admission remains independent: observed bottom fallback must not latch the rail off.
+  const systemTop = navigationSystemTopBarBottom(geometry);
   const side =
-    geometry.navigationSide ??
-    (layout.placement === 'bottom' ? 'bottom' : (layout.railSide ?? 'right'));
+    systemTop !== null
+      ? 'bottom'
+      : (geometry.navigationSide ??
+        (layout.placement === 'bottom'
+          ? 'bottom'
+          : (layout.railSide ?? 'right')));
   const lane =
     side === 'bottom' ? 0 : navigationSideLane(geometry, side).laneWidth;
   const x = Math.max(
@@ -56,7 +63,7 @@ export function resolveNavigationContentFrame(
       geometry.windowBounds.width -
       (side === 'right' ? lane : 0),
   );
-  const y = Math.max(viewport.y, safe.y);
+  const y = Math.max(viewport.y, safe.y, systemTop ?? viewport.y);
   // Routed surfaces draw through the home area; final content and fixed controls
   // consume shared end clearance. A keyboard-contracted host stays authoritative.
   const bottom = scrollsUnderBottomSafeArea
@@ -67,7 +74,11 @@ export function resolveNavigationContentFrame(
     viewportFrame: viewport,
     reservedRegions: geometry.reservedRegions,
     side,
-    navigationFrame: geometry.navigationFrame ?? null,
+    ...(systemTop !== null ? { systemIndicatorAtTop: true as const } : {}),
+    navigationFrame:
+      systemTop !== null && geometry.navigationSide !== 'bottom'
+        ? null
+        : (geometry.navigationFrame ?? null),
     availableContentFrame: {
       x,
       y,

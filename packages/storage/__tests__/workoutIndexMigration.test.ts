@@ -1,3 +1,4 @@
+import { rewindBeforeMemoryMetadata } from './historicalMigrationSupport';
 import { createRecordRepository, runMigrations } from '../src';
 import { openSqliteTestDatabase } from './sqliteTestDatabase';
 import { healthObservation } from './localQueryTestSupport';
@@ -15,14 +16,14 @@ test('upgrades version sixteen without rewriting observations and uses the worko
     await database.execute(
       "CREATE INDEX health_observations_library_idx ON health_observations ((json_extract(payload_json, '$.concept')))",
     );
-    await database.execute('PRAGMA user_version = 16');
+    await rewindBeforeMemoryMetadata(database, 16);
     const before = (
       await database.execute('SELECT payload_json FROM health_observations WHERE id = ?', [
         workout.id,
       ])
     ).rows;
     await runMigrations(database);
-    expect((await database.execute('PRAGMA user_version')).rows[0]?.user_version).toBe(18);
+    expect((await database.execute('PRAGMA user_version')).rows[0]?.user_version).toBe(19);
     expect(
       (
         await database.execute('SELECT payload_json FROM health_observations WHERE id = ?', [

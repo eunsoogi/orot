@@ -9,7 +9,6 @@ export type ConversationInterruptionReason =
   | 'bridge-unavailable'
   | 'lease-denied'
   | 'lease-check-failed';
-
 export type ConversationRecoveryReason =
   | ConversationInterruptionReason
   | ConversationCheckpointPauseReason
@@ -35,12 +34,10 @@ export function decodeConversationRecoveryReason(
     ? (value as ConversationRecoveryReason)
     : undefined;
 }
-
 export type ConversationContinuedState =
   'continued-granted' | 'continued-refused' | 'continued-deferred-inactive';
 export type ContinuationOpportunity =
   ConversationContinuedState | 'continuation-foreground';
-
 export type ConversationExecutionEvent =
   | {
       readonly kind: 'pause-requested';
@@ -214,6 +211,9 @@ export async function beginConversationExecutionLease(
     // Recheck after foregrounding in case suspension delayed the expiration event.
     if (event.kind === 'foreground' && acquired) reconcile();
     if (event.kind === 'continuation-foreground' && acquired) {
+      // UIKit already observed a new activation. The corresponding RN phase
+      // events can arrive later, so fence a parked boolean lease sample now.
+      foregroundVisit++;
       pause.invalidate();
       report('continuation-foreground');
       reconcile(true);

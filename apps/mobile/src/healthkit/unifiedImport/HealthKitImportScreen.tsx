@@ -7,6 +7,7 @@ import { AppSymbol } from '../../layout/AppSymbol';
 import { VerticalPageSections as AdaptiveColumns } from '../../layout/VerticalPageSections';
 import { appColors } from '../../layout/appColors';
 import { t } from '../../i18n';
+import { useNavigationEdgeVerticalScroll } from '../../navigation/navigationEdgeScroll';
 import { useNavigationContentInset } from '../../navigation/useNavigationContentInset';
 import { NavigationPrimaryActionContext } from '../../navigation/useNavigationPrimaryAction';
 import { useNavigationRouteActions } from '../../navigation/useNavigationRouteActions';
@@ -65,6 +66,10 @@ export function HealthKitImportScreen({
     onRunStarted,
   );
   const inset = useNavigationContentInset();
+  // This ScrollView owns the route; the source and activity panels are its children.
+  const edge = useNavigationEdgeVerticalScroll({
+    trailingPadding: inset.paddingRight ?? styles.container.padding,
+  });
   const hasSharedNavigation =
     useContext(NavigationPrimaryActionContext) !== null;
   const [candidateSaving, setCandidateSaving] = useState(false);
@@ -111,8 +116,9 @@ export function HealthKitImportScreen({
 
   return (
     <ScrollView
-      contentContainerStyle={[styles.container, inset]}
-      style={styles.scroll}
+      {...edge.indicatorProps}
+      contentContainerStyle={[styles.container, inset, edge.contentStyle]}
+      style={[styles.scroll, edge.scrollViewStyle]}
       testID="unified-import-scroll"
     >
       {/* Keep page identity and fallback actions inside their measured usable regions. */}

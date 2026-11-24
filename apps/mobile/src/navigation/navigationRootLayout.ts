@@ -2,6 +2,7 @@ import { createContext } from 'react';
 import { rootTabItems } from './rootTabs';
 import {
   createNavigationGeometrySnapshot,
+  navigationSystemTopBarBottom,
   type NavigationGeometrySnapshot,
 } from './navigationGeometry';
 import { resolveNavigationSystemSide } from './navigationSystemSide';
@@ -111,7 +112,11 @@ export function navigationSideLane(
 export function resolveNavigationRootLayout(
   geometry: NavigationGeometrySnapshot | null,
 ): NavigationRootLayout {
-  if (!geometry || !hasNavigationDuoGeometry(geometry))
+  if (
+    !geometry ||
+    navigationSystemTopBarBottom(geometry) !== null ||
+    !hasNavigationDuoGeometry(geometry)
+  )
     return BOTTOM_NAVIGATION_ROOT_LAYOUT;
   const window = geometry.windowBounds;
   const viewport = geometry.viewportBounds ?? window;

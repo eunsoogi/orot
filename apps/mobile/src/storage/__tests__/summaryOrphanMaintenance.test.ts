@@ -66,7 +66,9 @@ async function scenario(
       'INSERT INTO conversation_artifact_sources VALUES(?,?,?)',
       ['turn', 'generated_summary', 'orphan'],
     );
-    await f.database.execute('INSERT INTO agent_memory_records VALUES(?,?)', [
+    const insertMemory =
+      'INSERT INTO agent_memory_records (id, record_json) VALUES (?, ?)';
+    await f.database.execute(insertMemory, [
       memoryId,
       JSON.stringify({
         id: memoryId,

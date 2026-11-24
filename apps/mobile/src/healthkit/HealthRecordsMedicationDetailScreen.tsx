@@ -6,7 +6,7 @@ import { t } from '../i18n';
 import { AdaptiveColumns } from '../layout/AdaptiveColumns';
 import { useNavigationLeaveStateRegistration } from '../navigation';
 import type { NavigationLeaveState } from '../navigation';
-import { useNavigationContentInset } from '../navigation/useNavigationContentInset';
+import { HealthRecordsDetailScrollLane } from './HealthRecordsDetailScrollLane';
 import type { HealthRecordsDetailSelection } from './healthRecordsLibraryModel';
 import { HealthRecordsDetailHeader } from './HealthRecordsDetailHeader';
 import { HealthRecordsMedicationRecordRow } from './HealthRecordsMedicationRecordRow';
@@ -44,7 +44,6 @@ export function HealthRecordsMedicationDetailScreen({
   onSelectionChange,
   selection,
 }: HealthRecordsMedicationDetailScreenProps) {
-  const navigationInset = useNavigationContentInset();
   const { cursor, data, loadState, reload, revision, rows } =
     useHealthRecordsMedicationDetailData(selection.period, loadMedicationData);
   const [selectedMedicationId, setSelectedMedicationId] = useState<
@@ -94,120 +93,129 @@ export function HealthRecordsMedicationDetailScreen({
   return (
     <AdaptiveColumns
       primary={
-        <SectionList
-          sections={sections}
-          stickySectionHeadersEnabled={false}
-          keyExtractor={item =>
-            item.kind === 'option'
-              ? 'option-' + item.value.id
-              : 'dose-' + item.value.doseEvent.id
-          }
-          contentContainerStyle={[styles.container, navigationInset]}
-          ListHeaderComponent={
-            <HealthRecordsDetailHeader
-              title={t('healthRecords.medicationDetailTitle')}
-              hasSharedNavigation={hasSharedNavigation}
-              loadState={loadState}
-              onBack={onBack}
-              onRetry={onRetry}
-              onSelectionChange={onSelectionChange}
-              recordCount={rows.length}
-              observationCount={rows.length}
-              hasMore={cursor !== null}
-              selection={selection}
-            />
-          }
-          renderItem={({ item, index }) =>
-            item.kind === 'option' ? (
-              <HealthRecordsMedicationOptionRow
-                option={item.value}
-                index={index}
-                selected={item.value.id === selectedMedication?.id}
-                onSelect={setSelectedMedicationId}
-              />
-            ) : (
-              <HealthRecordsMedicationRecordRow
-                index={index}
-                row={item.value}
-              />
-            )
-          }
-          renderSectionHeader={({ section }) =>
-            section.key === 'history' ? (
-              <HealthRecordsMedicationHistoryHeader
-                selected={selectedMedication}
-              />
-            ) : null
-          }
-          renderSectionFooter={({ section }) =>
-            section.key === 'options' &&
-            options.length === 0 &&
-            !cursor &&
-            loadState === 'ready' ? (
-              <Text testID="health-records-detail-empty">
-                {t('healthRecords.detailEmpty')}
-              </Text>
-            ) : section.key === 'history' &&
-              selectedMedication !== null &&
-              selectedRows.length === 0 &&
-              loadState === 'ready' ? (
-              // Pages are globally time-ordered; an absent selected medication is
-              // only genuinely empty once the storage cursor is exhausted.
-              <Text
-                testID={
-                  cursor
-                    ? 'health-records-medication-history-pending'
-                    : 'health-records-medication-history-empty'
-                }
-              >
-                {t(
-                  cursor
-                    ? 'healthRecords.moreAvailable'
-                    : 'healthRecords.detailEmpty',
-                )}
-              </Text>
-            ) : null
-          }
-          ListFooterComponent={
-            cursor ? (
-              loadState === 'loading' ? (
-                <Text testID="health-records-detail-loading">
-                  {t('healthRecords.loading')}
-                </Text>
-              ) : (
-                <View style={styles.header}>
-                  {loadState === 'failed' ? (
-                    <Text
-                      accessibilityRole="alert"
-                      style={styles.error}
-                      testID="health-records-detail-error"
-                    >
-                      {t('healthRecords.error')}
-                    </Text>
-                  ) : null}
-                  <AppButton
-                    onPress={loadState === 'failed' ? onRetry : onLoadMore}
-                    testID={
-                      loadState === 'failed'
-                        ? 'health-records-detail-retry'
-                        : 'health-records-detail-more'
-                    }
-                    title={t(
-                      loadState === 'failed'
-                        ? 'healthRecords.retry'
-                        : 'healthRecords.loadOlder',
-                    )}
-                    variant="secondary"
+        <HealthRecordsDetailScrollLane>
+          {({ edge, navigationInset }) => (
+            <SectionList
+              {...edge.indicatorProps}
+              sections={sections}
+              stickySectionHeadersEnabled={false}
+              keyExtractor={item =>
+                item.kind === 'option'
+                  ? 'option-' + item.value.id
+                  : 'dose-' + item.value.doseEvent.id
+              }
+              contentContainerStyle={[
+                styles.container,
+                navigationInset,
+                edge.contentStyle,
+              ]}
+              ListHeaderComponent={
+                <HealthRecordsDetailHeader
+                  title={t('healthRecords.medicationDetailTitle')}
+                  hasSharedNavigation={hasSharedNavigation}
+                  loadState={loadState}
+                  onBack={onBack}
+                  onRetry={onRetry}
+                  onSelectionChange={onSelectionChange}
+                  recordCount={rows.length}
+                  observationCount={rows.length}
+                  hasMore={cursor !== null}
+                  selection={selection}
+                />
+              }
+              renderItem={({ item, index }) =>
+                item.kind === 'option' ? (
+                  <HealthRecordsMedicationOptionRow
+                    option={item.value}
+                    index={index}
+                    selected={item.value.id === selectedMedication?.id}
+                    onSelect={setSelectedMedicationId}
                   />
-                </View>
-              )
-            ) : undefined
-          }
-          onEndReached={onLoadMore}
-          onEndReachedThreshold={0.5}
-          style={styles.panelScroll}
-          testID="health-records-detail-scroll"
-        />
+                ) : (
+                  <HealthRecordsMedicationRecordRow
+                    index={index}
+                    row={item.value}
+                  />
+                )
+              }
+              renderSectionHeader={({ section }) =>
+                section.key === 'history' ? (
+                  <HealthRecordsMedicationHistoryHeader
+                    selected={selectedMedication}
+                  />
+                ) : null
+              }
+              renderSectionFooter={({ section }) =>
+                section.key === 'options' &&
+                options.length === 0 &&
+                !cursor &&
+                loadState === 'ready' ? (
+                  <Text testID="health-records-detail-empty">
+                    {t('healthRecords.detailEmpty')}
+                  </Text>
+                ) : section.key === 'history' &&
+                  selectedMedication !== null &&
+                  selectedRows.length === 0 &&
+                  loadState === 'ready' ? (
+                  // Pages are globally time-ordered; an absent selected medication is
+                  // only genuinely empty once the storage cursor is exhausted.
+                  <Text
+                    testID={
+                      cursor
+                        ? 'health-records-medication-history-pending'
+                        : 'health-records-medication-history-empty'
+                    }
+                  >
+                    {t(
+                      cursor
+                        ? 'healthRecords.moreAvailable'
+                        : 'healthRecords.detailEmpty',
+                    )}
+                  </Text>
+                ) : null
+              }
+              ListFooterComponent={
+                cursor ? (
+                  loadState === 'loading' ? (
+                    <Text testID="health-records-detail-loading">
+                      {t('healthRecords.loading')}
+                    </Text>
+                  ) : (
+                    <View style={styles.header}>
+                      {loadState === 'failed' ? (
+                        <Text
+                          accessibilityRole="alert"
+                          style={styles.error}
+                          testID="health-records-detail-error"
+                        >
+                          {t('healthRecords.error')}
+                        </Text>
+                      ) : null}
+                      <AppButton
+                        onPress={loadState === 'failed' ? onRetry : onLoadMore}
+                        testID={
+                          loadState === 'failed'
+                            ? 'health-records-detail-retry'
+                            : 'health-records-detail-more'
+                        }
+                        title={t(
+                          loadState === 'failed'
+                            ? 'healthRecords.retry'
+                            : 'healthRecords.loadOlder',
+                        )}
+                        variant="secondary"
+                      />
+                    </View>
+                  )
+                ) : undefined
+              }
+              onEndReached={onLoadMore}
+              onEndReachedThreshold={0.5}
+              style={[styles.panelScroll, edge.scrollViewStyle]}
+              testID="health-records-detail-scroll"
+            />
+          )}
+        </HealthRecordsDetailScrollLane>
       }
       routeKey="health-records-medication-detail"
       testID="health-records-medication-detail-layout"

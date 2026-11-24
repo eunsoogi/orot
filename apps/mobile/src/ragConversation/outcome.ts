@@ -21,11 +21,18 @@ export type RagConversationFailureKind =
   | 'budget_exceeded'
   | 'unavailable';
 
+/** Only a completed protected answer supplies this archive lookup identity. */
+export type CommittedConversationCitations = {
+  readonly target: import('./useArchivedCitationOpen').ArchivedCitationTarget;
+  readonly citations: readonly import('./savedArchivedCitations').SavedArchivedCitation[];
+};
+
 export type RagConversationOutcome =
   | { readonly status: 'no_evidence' }
   | {
       readonly status: 'answer';
       readonly answer: string;
+      readonly committedRecordingCitations?: CommittedConversationCitations;
       readonly proactiveMemory?: true;
       readonly dailyReport?: import('./conversationDisplayMessage').DisplayMessage['dailyReport'];
       readonly completion?: 'partial';

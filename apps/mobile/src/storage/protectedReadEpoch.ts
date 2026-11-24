@@ -1,6 +1,7 @@
 import type { SqlDatabase } from '@orot/storage';
 
 type Epoch = {
+  readonly ownerIdentity: object;
   active: number;
   mutation: number;
   pending: number;
@@ -25,6 +26,7 @@ export function protectedSqlRead(query: string): boolean {
  * Any possible mutation/control that enters during a witness invalidates before dispatch. */
 export function guardedNativeDatabase<T extends SqlDatabase>(native: T): T {
   const epoch: Epoch = {
+    ownerIdentity: {},
     active: 0,
     mutation: 0,
     pending: 0,
@@ -215,4 +217,11 @@ export function awaitIndependentReadSettlement(
     listeners.add(settled);
     signal?.addEventListener('abort', cancelled, { once: true });
   });
+}
+
+/** Identity only; aliases for one guarded connection share it, reopened connections do not. */
+export function protectedDatabaseOwnerIdentity(
+  owner: SqlDatabase,
+): object | undefined {
+  return epochs.get(owner)?.ownerIdentity;
 }

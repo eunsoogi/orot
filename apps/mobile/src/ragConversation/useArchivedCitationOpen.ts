@@ -3,8 +3,7 @@ import { Linking } from 'react-native';
 import type { SavedArchivedCitation } from './savedArchivedCitations';
 import type { EvidenceReference } from '@orot/agent-runtime';
 import type { ColdConversationSourceOwner } from '../aiFeatures/integration/coldConversationSourceResolvers';
-import { isSafeEuropePmcArticleUrl } from '../aiFeatures/integration/articleLinks';
-import { publicWebSources } from '../externalMedicalEvidence/publicWebSources';
+import { archivedCitationOriginalUrl } from './archivedCitationOriginalUrl';
 
 export type ArchivedCitationTarget = Readonly<{
   sessionId: string;
@@ -74,23 +73,8 @@ export function useArchivedCitationOpen(
         onOpenSource(selected.reference, selected.owner);
         return;
       }
-      if (citation.kind === 'public_web') {
-        const url = publicWebSources(selected.reference)?.[
-          citation.publicOrdinal ?? 0
-        ]?.url;
-        if (!url) return onLinkError();
-        await Linking.openURL(url);
-        return;
-      }
-      const locator = selected.reference.locator;
-      const url =
-        locator &&
-        typeof locator === 'object' &&
-        'originalUrl' in locator &&
-        typeof locator.originalUrl === 'string'
-          ? locator.originalUrl
-          : '';
-      if (!isSafeEuropePmcArticleUrl(url)) return onLinkError();
+      const url = archivedCitationOriginalUrl(citation, selected.reference);
+      if (!url) return onLinkError();
       await Linking.openURL(url);
     } catch {
       if (!signal.aborted) onLinkError();

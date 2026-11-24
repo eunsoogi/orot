@@ -13,6 +13,8 @@ export type RecentRecordingMetadata =
   | { status: 'ready'; durationMs: number | null }
   | { status: 'unavailable' | 'protected' | 'missing' };
 
+const METADATA_REFRESH_WAIT_MS = 10_000;
+
 /** The route can refresh presentation only. It cannot start playback, re-index or transcribe. */
 export function RecentRecordingMetadataRefresh({
   id,
@@ -84,6 +86,7 @@ export function RecentRecordingMetadataRefresh({
       );
     if (!lease || !owns() || lease.stopRead) return;
     const retired = Symbol('retired');
+    const expired = Symbol('expired');
     let ended = false;
     let stop: () => void = () => {};
     const cancellation = new Promise<typeof retired>(resolve => {
@@ -93,6 +96,11 @@ export function RecentRecordingMetadataRefresh({
       };
     });
     lease.stopRead = stop;
+    // Bound feedback, not the shared database operation. A late result stays retired.
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    const timeout = new Promise<typeof expired>(resolve => {
+      timer = setTimeout(() => resolve(expired), METADATA_REFRESH_WAIT_MS);
+    });
     const still = () => owns() && lease.stopRead === stop && !ended;
     const read = async (): Promise<RecentRecordingMetadata> => {
       const native = conversationExecutionNative();
@@ -101,6 +109,7 @@ export function RecentRecordingMetadataRefresh({
         return { status: 'protected' };
       if (!still()) return { status: 'unavailable' };
       const source = await readSelectedRecentRecording(id);
+      if (!still()) return { status: 'unavailable' };
       if ((await native.protectedDataAvailable()) !== true)
         return { status: 'protected' };
       if (!still()) return { status: 'unavailable' };
@@ -109,11 +118,15 @@ export function RecentRecordingMetadataRefresh({
         : { status: 'missing' };
     };
     try {
-      const value = await Promise.race([read(), cancellation]);
-      if (value !== retired && still()) latest.current.publish(value);
+      const value = await Promise.race([read(), cancellation, timeout]);
+      if (value !== retired && still())
+        latest.current.publish(
+          value === expired ? { status: 'unavailable' } : value,
+        );
     } catch {
       if (still()) latest.current.publish({ status: 'unavailable' });
     } finally {
+      if (timer !== undefined) clearTimeout(timer);
       ended = true;
       if (lease.stopRead === stop) lease.stopRead = undefined;
     }

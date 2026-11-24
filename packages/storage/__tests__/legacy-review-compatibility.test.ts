@@ -1,3 +1,4 @@
+import { rewindBeforeMemoryMetadata } from './historicalMigrationSupport';
 import { createLangGraphCheckpointStorage, openEncryptedStorage } from '../src';
 import {
   createDatabase,
@@ -65,12 +66,12 @@ it('upgrades and reopens legacy review data and deletes only its source-linked c
       metadataType: 'empty',
       metadata: new Uint8Array(),
     });
-    await database.execute('PRAGMA user_version = 10');
+    await rewindBeforeMemoryMetadata(database, 10);
     await database.closeAsync?.();
     database = createDatabase(path);
     const reopened = await openEncryptedStorage(options(database));
     const restored = createLangGraphCheckpointStorage(database);
-    expect((await database.execute('PRAGMA user_version')).rows[0].user_version).toBe(18);
+    expect((await database.execute('PRAGMA user_version')).rows[0].user_version).toBe(19);
     expect(await reopened.sourceRecords.get(sourceId)).toMatchObject({ id: sourceId });
     expect((await restored.loadCheckpoint(thread, ''))?.checkpoint).toEqual(
       new Uint8Array([1, 2, 3]),

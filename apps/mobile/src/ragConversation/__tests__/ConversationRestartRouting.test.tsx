@@ -17,6 +17,7 @@ import { useConversationSessions } from '../ConversationSessionsContext';
 import type { ConversationScreenProps } from '../ConversationScreenProps';
 
 jest.mock('../ConversationSessionsContext', () => ({
+  ...jest.requireActual('../ConversationSessionsContext'),
   useConversationSessions: jest.fn(),
 }));
 

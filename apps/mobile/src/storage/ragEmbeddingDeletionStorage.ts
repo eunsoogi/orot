@@ -6,11 +6,16 @@ import {
   readSelectedSymptomQuarantine,
 } from './agentMemorySymptomQuarantine';
 
-const EMBEDDINGS_TABLE = 'rag_embeddings';
-const EMBEDDING_MODELS_TABLE = 'rag_embedding_models';
-const EMBEDDING_SOURCES_TABLE = 'rag_embedding_sources';
-const REMOVED_CHUNKS_TABLE = 'rag_embedding_removed_chunks';
-const REMOVED_SOURCES_TABLE = 'rag_embedding_removed_sources';
+import { EMBEDDING_MODELS_TABLE } from './ragEmbeddingModel';
+import {
+  createEmbeddingSchemaIfAbsent,
+  embeddingSchema,
+  EMBEDDINGS_TABLE,
+  EMBEDDING_SOURCES_TABLE,
+  REMOVED_CHUNKS_TABLE,
+  REMOVED_SOURCES_TABLE,
+} from './ragEmbeddingSchemaShape';
+
 const LOCAL_RECORD_TABLES_SQL = Object.values(STORAGE_TABLES)
   .map(({ table }) => `SELECT id FROM ${table}`)
   .join(' UNION ALL ');
@@ -19,20 +24,20 @@ export async function ensureRagEmbeddingDeletionSchema(
   executor: SqlExecutor,
 ): Promise<void> {
   await executor.execute(
-    `CREATE TABLE IF NOT EXISTS ${REMOVED_CHUNKS_TABLE} (chunk_id TEXT PRIMARY KEY NOT NULL)`,
+    createEmbeddingSchemaIfAbsent(embeddingSchema.removedChunks),
   );
   await executor.execute(
-    `CREATE TABLE IF NOT EXISTS ${REMOVED_SOURCES_TABLE} (source_record_id TEXT PRIMARY KEY NOT NULL)`,
+    createEmbeddingSchemaIfAbsent(embeddingSchema.removedSources),
   );
   const sourceMap = await executor.execute(
     "SELECT name FROM sqlite_master WHERE type = 'table' AND name = ?",
     [EMBEDDING_SOURCES_TABLE],
   );
   await executor.execute(
-    `CREATE TABLE IF NOT EXISTS ${EMBEDDING_SOURCES_TABLE} (chunk_id TEXT NOT NULL, source_record_id TEXT NOT NULL, PRIMARY KEY (chunk_id, source_record_id))`,
+    createEmbeddingSchemaIfAbsent(embeddingSchema.sources),
   );
   await executor.execute(
-    `CREATE INDEX IF NOT EXISTS rag_embedding_sources_source_idx ON ${EMBEDDING_SOURCES_TABLE} (source_record_id, chunk_id)`,
+    createEmbeddingSchemaIfAbsent(embeddingSchema.sourceIndex),
   );
   if (sourceMap.rows.length === 0) {
     // Unmapped rows are disposable cache; durable tombstones are reserved for explicit deletion.

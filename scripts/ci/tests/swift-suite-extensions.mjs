@@ -13,4 +13,5 @@ export const swiftSuiteExtensions = new Map([
   ['OrotUITests/ProviderSelectionDuoUITests.swift', 'RootNavigationUITests'],
   ['OrotUITests/AppointmentNextVisitUITests.swift', 'AppointmentsUITests'],
   ['OrotUITests/AppointmentIdentityDuoUITests.swift', 'AppointmentsUITests'],
+  ['OrotUITests/AppointmentEdgeScrollUITests.swift', 'AppointmentsUITests'],
 ]);

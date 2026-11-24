@@ -22,7 +22,6 @@ import type { RagConversationRunOptions } from '../../ragConversation/service';
 import type { loadConversationHistory } from './conversationHistorySources';
 import type { createConversationRetentionBridge } from './conversationRetentionBridge';
 import { emptyConversationSnapshot } from './conversationEntryTargets';
-
 /** Preserve source fences and the actual preflight budget for this invocation. */
 export function conversationRunWorkflow<
   T extends {
@@ -68,7 +67,10 @@ export function conversationRunInvocation(
     onApprovalWait,
     onModelApprovalWait:
       checkpointOnly && onApprovalWait
-        ? (waiting: boolean) => onApprovalWait(waiting, 'checkpoint-only')
+        ? (waiting: boolean) => {
+            onApprovalWait(waiting, 'checkpoint-only');
+            return 'checkpoint-only' as const;
+          }
         : undefined,
     onProgress: observer?.onProgress,
     onToolEvent: observer?.onToolEvent,
@@ -81,7 +83,6 @@ export function conversationRunInvocation(
     signal,
   };
 }
-
 /** Keep history and selected evidence lineage attached to the responder input. */
 export function conversationRunRequest(input: {
   readonly continuation?: RagConversationRunOptions['continuation'];
@@ -151,7 +152,6 @@ function receiptDiagnosticsEnabled() {
     return false;
   }
 }
-
 type ReceiptStage = Extract<Stage, `conversation_receipt_${string}`>;
 
 /** Native timestamps on fixed stage labels are for isolated, opt-in attempts.

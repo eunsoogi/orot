@@ -15,6 +15,7 @@ import { ConversationReportText } from '../ragConversation/ConversationReportTex
 import { ConversationSources } from '../ragConversation/ConversationSources';
 import { SavedPossibilityNarrative } from '../ragConversation/SavedPossibilityNarrative';
 import { savedPossibilityNarrativeParts } from '../ragConversation/savedPossibilityNarrativeParts';
+import type { SavedArchivedCitation } from '../ragConversation/savedArchivedCitations';
 import { GeneratedVisitQuestions } from './GeneratedVisitQuestions';
 
 const doNotOpenLiveSource = () => {};
@@ -27,6 +28,7 @@ export function GeneratedReportContent({
   readonly detail: GeneratedReportDetail;
   readonly onOpenCitation?: (
     selection: GeneratedReportCitationSelection,
+    citation: SavedArchivedCitation,
   ) => void;
 }) {
   const sources = detail.conversationSources;
@@ -104,10 +106,10 @@ export function GeneratedReportContent({
           archived={{
             citations: sources.citations,
             open: citation =>
-              onOpenCitation({
-                target: sources.target,
-                ordinal: citation.ordinal,
-              }),
+              onOpenCitation(
+                { target: sources.target, ordinal: citation.ordinal },
+                citation,
+              ),
           }}
         />
       ) : null}
