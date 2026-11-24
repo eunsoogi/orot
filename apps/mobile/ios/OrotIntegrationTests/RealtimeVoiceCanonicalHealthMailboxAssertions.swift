@@ -94,5 +94,102 @@ extension RealtimeVoiceLifecycleTests {
         wait(for: [denied], timeout: 1)
         XCTAssertEqual(settled, [false])
         _ = mailbox.begin(request) { XCTAssertNil($0) }
+        #if OROT_TESTS && targetEnvironment(simulator)
+            try assertCanonicalResultUsesActualSocketQueue()
+        #endif
     }
 }
+
+#if OROT_TESTS && targetEnvironment(simulator)
+    extension RealtimeVoiceLifecycleTests {
+        private func assertCanonicalResultUsesActualSocketQueue() throws {
+            for disposition in ["allow", "revoked", "replaced"] {
+                let fixture = Fixture()
+                let companion = try XCTUnwrap(RealtimeVoiceCanonicalHealthAdmission(fixture.options))
+                let authority = LiveNativeResultDispatchAuthority()
+                let original = NetworklessLiveSocketTask(), successor = NetworklessLiveSocketTask()
+                var taskCount = 0, owned = true
+                let endpoint = RealtimeVoiceSocketEndpoint(networklessTask: {
+                    taskCount += 1
+                    return taskCount == 1 ? original : successor
+                })
+                let socket = RealtimeVoiceSocket(endpoint: endpoint)
+                defer { socket.close() }
+                let request = RealtimeVoiceCanonicalHealthMailbox.Request(
+                    call: "call", session: "session", epoch: UUID(), response: "response",
+                    delegation: "delegation", function: "function", rawArguments: #"{"days":7}"#,
+                )
+                var challenge: String?, response: String?
+                let mailbox = RealtimeVoiceCanonicalHealthMailbox(
+                    call: request.call, baseline: fixture.baseline, capability: companion,
+                    authority: authority, key: fixture.key, read: fixture.read,
+                    owns: { owned && $0 == request }, emit: { _, body in challenge = body["challengeId"] as? String },
+                )
+                socket.open(model: "gpt-live-1.1", key: fixture.key)
+                XCTAssertEqual(original.resumes, 1)
+                _ = mailbox.begin(request) { response = $0 }
+                let challengeID = try XCTUnwrap(challenge)
+                XCTAssertTrue(authority.claim(call: request.call, challenge: challengeID))
+                let exact = #"{"tool":"local-health-context","items":[{"evidenceId":"source","evidenceRevision":"one","content":"synthetic"}]}"#
+                let settled = expectation(description: disposition)
+                var ack: [Bool] = []
+                mailbox.settle(challengeID, output: exact) { value in ack.append(value); settled.fulfill() }
+                XCTAssertEqual(response, exact)
+                let ticket = try XCTUnwrap(mailbox.dispatchTicket(for: request, exact: exact))
+                let frames: [[String: Any]] = [
+                    ["type": "response.item.create", "event_id": "output",
+                     "item": ["type": "function_call_output", "call_id": request.function, "output": exact]],
+                    ["type": "response.create", "event_id": "continuation"],
+                ]
+                XCTAssertTrue(socket.sendTicketedToolFrames(frames, current: {
+                    mailbox.dispatchTicket(for: request, exact: exact) === ticket
+                }, ticket: ticket))
+                XCTAssertEqual(original.messages.count, 1)
+                let output = try XCTUnwrap(original.messages.first)
+                let json = try XCTUnwrap(JSONSerialization.jsonObject(with: Data(output.utf8)) as? [String: Any])
+                XCTAssertEqual(json["type"] as? String, "response.item.create")
+                XCTAssertEqual((json["item"] as? [String: String])?["output"], exact)
+                XCTAssertEqual(ack, [])
+                if disposition == "revoked" {
+                    owned = false
+                    mailbox.revoke()
+                } else if disposition == "replaced" {
+                    socket.close()
+                    socket.open(model: "gpt-live-1.1", key: fixture.key)
+                }
+                original.completeFirst()
+                wait(for: [settled], timeout: 1)
+                XCTAssertEqual(ack, [disposition == "allow"])
+                XCTAssertEqual(original.messages.count, disposition == "allow" ? 2 : 1)
+                if disposition == "allow" {
+                    let second = try XCTUnwrap(original.messages.last)
+                    let value = try XCTUnwrap(JSONSerialization.jsonObject(with: Data(second.utf8)) as? [String: String])
+                    XCTAssertEqual(value["type"], "response.create")
+                }
+                XCTAssertTrue(successor.messages.isEmpty)
+            }
+        }
+    }
+
+    private final class NetworklessLiveSocketTask: RealtimeVoiceSocketTask {
+        var resumes = 0
+        var messages: [String] = []
+        var completions: [@Sendable (Error?) -> Void] = []
+
+        func resume() {
+            resumes += 1
+        }
+
+        func send(_ message: URLSessionWebSocketTask.Message, completionHandler: @escaping @Sendable (Error?) -> Void) {
+            guard case let .string(payload) = message else { XCTFail("Unexpected nontext frame"); return }
+            messages.append(payload)
+            completions.append(completionHandler)
+        }
+
+        func receive(completionHandler _: @escaping @Sendable (Result<URLSessionWebSocketTask.Message, Error>) -> Void) {}
+        func cancel(with _: URLSessionWebSocketTask.CloseCode, reason _: Data?) {}
+        func completeFirst() {
+            completions.removeFirst()(nil)
+        }
+    }
+#endif

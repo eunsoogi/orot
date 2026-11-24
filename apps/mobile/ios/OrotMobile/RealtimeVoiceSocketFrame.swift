@@ -97,3 +97,53 @@ struct LiveCaptionTerminalState {
         return completion
     }
 }
+
+/** The real queue owns one reference-identity task per epoch. The host-only
+ * constructor substitutes only the physical submission and receive boundary. */
+protocol RealtimeVoiceSocketTask: AnyObject {
+    func resume()
+    @preconcurrency func send(_ message: URLSessionWebSocketTask.Message, completionHandler: @escaping @Sendable (Error?) -> Void)
+    @preconcurrency func receive(completionHandler: @escaping @Sendable (Result<URLSessionWebSocketTask.Message, Error>) -> Void)
+    func cancel(with closeCode: URLSessionWebSocketTask.CloseCode, reason: Data?)
+}
+
+extension URLSessionWebSocketTask: RealtimeVoiceSocketTask {}
+
+final class RealtimeVoiceSocketEndpoint {
+    private let session: URLSession?
+    #if OROT_TESTS && targetEnvironment(simulator)
+        private let fixture: (() -> RealtimeVoiceSocketTask)?
+    #endif
+
+    init() {
+        session = URLSession(configuration: .ephemeral, delegate: LiveSocketSessionDelegate(), delegateQueue: nil)
+        #if OROT_TESTS && targetEnvironment(simulator)
+            fixture = nil
+        #endif
+    }
+
+    #if OROT_TESTS && targetEnvironment(simulator)
+        init(networklessTask: @escaping () -> RealtimeVoiceSocketTask) {
+            session = nil
+            fixture = networklessTask
+        }
+    #endif
+
+    func task(key: String) -> RealtimeVoiceSocketTask? {
+        #if OROT_TESTS && targetEnvironment(simulator)
+            if let fixture {
+                return fixture()
+            }
+        #endif
+        guard let session else { return nil }
+        var request = URLRequest(url: URL(string: "wss://api.openai.com/v1/live/sessions")!)
+        request.setValue("Bearer \(key)", forHTTPHeaderField: "Authorization")
+        let task = session.webSocketTask(with: request)
+        task.maximumMessageSize = 1024 * 1024
+        return task
+    }
+
+    func invalidateAndCancel() {
+        session?.invalidateAndCancel()
+    }
+}
