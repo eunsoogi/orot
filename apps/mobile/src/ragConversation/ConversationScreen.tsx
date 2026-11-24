@@ -1,4 +1,3 @@
-import { composerSendWithReportBookmark } from './explicitDailyReportBookmark';
 import { entryIntentSender } from './entryIntentSender';
 import { ConversationScreenHeader } from './ConversationScreenHeader';
 import { conversationHistoryRecoveryProps } from './conversationHistoryRecoveryProps';
@@ -7,7 +6,7 @@ import { useConversationPresentationSnapshot } from './useConversationPresentati
 import { useMemo } from 'react';
 import { useContinuousConversationEntry } from './useContinuousConversationEntry';
 import { useConversationSessions } from './ConversationSessionsContext';
-import { ConversationSteeringComposer } from './ConversationSteeringComposer';
+import { ConversationRecordingComposer } from './ConversationRecordingComposer';
 import { ConversationWorkspace } from './ConversationWorkspace';
 import { styles } from './ConversationScreen.styles';
 import { KeyboardAvoidingView, Platform, View } from 'react-native';
@@ -137,7 +136,7 @@ export function ConversationScreen({
           isEntryCurrent={isEntryCurrent}
           routeKey={navigationRouteKey}
           composer={
-            <ConversationSteeringComposer
+            <ConversationRecordingComposer
               {...composer}
               photo={photo}
               isEntryCurrent={isEntryCurrent}
@@ -149,14 +148,14 @@ export function ConversationScreen({
               maximumInputHeight={composerLayout.maximumInputHeight}
               preflightError={preflightError}
               onChangeText={value => store.setDraft(id, value)}
-              onSend={composerSendWithReportBookmark(
-                store,
-                id,
-                isEntryCurrent,
-                onSend,
-                prepareVisitQuestions,
-              )}
-              onCancel={() => store.cancel(id)}
+              routeKey={navigationRouteKey}
+              isEntryCurrent={isEntryCurrent}
+              modelRevision={voiceSelection?.revision}
+              ordinaryEntry={
+                !entryContext || entryContext.intent === 'conversation'
+              }
+              send={onSend}
+              prepare={prepareVisitQuestions}
             />
           }
         >

@@ -6,6 +6,7 @@ export const conversationToolLabelKeys = {
   'save-past-health-history': 'saveHistory',
   'local-personal-records': 'records',
   'local-reviewed-memory': 'memory',
+  'local-saved-recording-transcript': 'recordingTranscript',
   'local-generated-artifacts': 'summaries',
   'local-conversation-artifacts': 'conversations',
   'local-research-artifacts': 'research',

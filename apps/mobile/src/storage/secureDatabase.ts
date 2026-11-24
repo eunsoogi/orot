@@ -32,6 +32,7 @@ import { setupVisitQuestionPeriods } from './visitQuestionPeriods';
 import { agentMemoryDatabaseFacade } from './agentMemoryDatabaseFacade';
 import { createSymptomSummaryStorage } from './symptomSummaryStorage';
 
+import { bindTranscriptCorrectionVisibility } from './transcriptCorrectionVisibility';
 const DATABASE_NAME = 'orot-secure.db';
 const KEYCHAIN_SERVICE = 'com.orot.mobile.database-encryption-key.v1';
 const KEYCHAIN_ACCOUNT = 'database';
@@ -118,6 +119,7 @@ export function openLocalStorage(): Promise<RecordRepository> {
       } catch {
         // BackupStatusRecovery retries and reports this without rotating the SQLCipher key.
       }
+      let repositoryOwner: DB | undefined;
       const records = await openEncryptedStorage({
         name: DATABASE_NAME,
         keyStore,
@@ -135,15 +137,18 @@ export function openLocalStorage(): Promise<RecordRepository> {
           );
           database = observeSharedDatabase(guarded);
           aliasProtectedReadEpoch(guarded, database);
-          return database;
+          repositoryOwner = database;
+          return repositoryOwner;
         },
       });
       // Install derived-period deletion guards before any caller receives a writer, including after restore.
-      if (!database) throw new Error('The encrypted database is not open.');
-      await database.transaction(setupVisitQuestionPeriods);
+      if (!repositoryOwner)
+        throw new Error('The encrypted database is not open.');
+      const owner = repositoryOwner;
+      await owner.transaction(setupVisitQuestionPeriods);
       // Upgrade retained-summary deletion guards before any repository can remove a source.
-      await createSymptomSummaryStorage(database).list();
-      return records;
+      await createSymptomSummaryStorage(owner).list();
+      return bindTranscriptCorrectionVisibility(records, owner);
     })().catch(error => {
       // The smoke probe opts in so a storage failure is diagnosable without exposing details in normal app launches.
       if (shouldLogStorageDiagnostics()) {
@@ -171,6 +176,15 @@ export async function openLocalAgentMemoryDatabase(): Promise<SqlDatabase> {
   await openLocalStorage();
   if (!database) throw new Error('The encrypted database is not open.');
   return agentMemoryDatabaseFacade(database);
+}
+
+/** Compare the exact captured facade synchronously without opening storage. */
+export function isCurrentLocalAgentMemoryDatabase(owner: SqlDatabase): boolean {
+  return (
+    database !== null &&
+    opening !== null &&
+    agentMemoryDatabaseFacade(database) === owner
+  );
 }
 
 export async function openLocalAppointmentRepository(): Promise<AppointmentRepository> {
@@ -202,27 +216,9 @@ export async function getCipherVersion(): Promise<string | null> {
 export async function verifyWrongKeyRejected(): Promise<boolean> {
   const credentials = await getGenericPassword({ service: KEYCHAIN_SERVICE });
   if (credentials === false) return false;
-  const key = credentials.password;
-  const wrongKey = (key[0] === '0' ? '1' : '0') + key.slice(1);
-  let probe: DB | null = null;
-  try {
-    probe = open({
-      name: DATABASE_NAME,
-      encryptionKey: wrongKey,
-      failOnCreate: true,
-      readOnly: true,
-    });
-    await probe.execute('SELECT count(*) AS schema_count FROM sqlite_master');
-    return false;
-  } catch {
-    return true;
-  } finally {
-    try {
-      await probe?.closeAsync();
-    } catch {
-      // The wrong-key check must not change the storage result.
-    }
-  }
+  const { verifyDatabaseRejectsWrongKey } =
+    await import('./secureDatabaseVerification');
+  return verifyDatabaseRejectsWrongKey(DATABASE_NAME, credentials.password);
 }
 
 export async function prepareLegacyStorageForE2e(

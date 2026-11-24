@@ -12,6 +12,7 @@ export function ConversationSteeringComposer({
   session,
   store,
   isEntryCurrent,
+  renderTrailingAction,
   ...props
 }: Omit<
   ComponentProps<typeof ConversationComposer>,
@@ -20,6 +21,9 @@ export function ConversationSteeringComposer({
   session: ConversationSession;
   store: ConversationSessions;
   isEntryCurrent?: () => boolean;
+  renderTrailingAction?: (
+    photoOwned: boolean,
+  ) => ComponentProps<typeof ConversationComposer>['trailingAction'];
 }) {
   return (
     <ConversationDirectPhotoComposer
@@ -27,6 +31,7 @@ export function ConversationSteeringComposer({
       session={session}
       store={store}
       isEntryCurrent={isEntryCurrent}
+      renderTrailingAction={renderTrailingAction}
       composer={{
         ...props,
         value: session.draft,

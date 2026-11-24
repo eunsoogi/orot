@@ -1,3 +1,4 @@
+import { rewindBeforeMemoryMetadata } from './historicalMigrationSupport';
 import { createRecordRepository, listRecentSourcePage, runMigrations } from '../src';
 import { openSqliteTestDatabase } from './sqliteTestDatabase';
 
@@ -107,9 +108,9 @@ test('version 17 upgrade only installs the recent seek index and preserves exist
     await records.put('source_record', original);
     // V18 adds only this index; remove it to reproduce the prior V17 schema exactly.
     await f.database.execute('DROP INDEX source_records_recent_page_idx');
-    await f.database.execute('PRAGMA user_version = 17');
+    await rewindBeforeMemoryMetadata(f.database, 17);
     await runMigrations(f.database);
-    expect((await f.database.execute('PRAGMA user_version')).rows).toEqual([{ user_version: 18 }]);
+    expect((await f.database.execute('PRAGMA user_version')).rows).toEqual([{ user_version: 19 }]);
     expect(await records.sourceRecords.get(original.id)).toEqual(original);
     await expect(listRecentSourcePage(f.database)).resolves.toEqual([
       {

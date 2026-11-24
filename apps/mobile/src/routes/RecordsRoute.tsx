@@ -15,6 +15,7 @@ import { useMedicalDocumentImport } from '../medicalDocuments/useMedicalDocument
 import type { MedicalDocumentImportService } from '../medicalDocuments/medicalDocumentImportService';
 import { useRecordsSourcePaging } from './RecordsSourcePagingContext';
 import { RecordsRecentSources } from './RecordsRecentSources';
+import { RecentMaterialReadinessContext } from './RecentMaterialReadinessContext';
 import { hubSpacing } from '../layout/hubSpacing';
 import { useNavigationRouteScrollPosition } from '../navigation/NavigationRouteScrollView';
 import { RecordsRouteEntries } from './RecordsRouteEntries';
@@ -93,6 +94,7 @@ export function RecordsRoute({
   useRecordsDetailVisibility(sourceDetail !== null);
   const routeScrollPosition = useNavigationRouteScrollPosition();
   const hasHubBanner = useContext(RecordsHubHeadingContext);
+  const recentMaterialReadyLease = useContext(RecentMaterialReadinessContext);
   useEffect(() => {
     // Source invalidation closes detail before file cleanup settles.
     if (activity === 'deleting' && !sourceDetail)
@@ -201,6 +203,7 @@ export function RecordsRoute({
           {!showAllRecent ? <LegacySymptomData /> : null}
           <RecordsRecentSources
             showAll={showAllRecent}
+            recentMaterialReadyLease={recentMaterialReadyLease}
             pagedAudio={pagedAudio}
             pagedDocuments={pagedDocuments}
             onViewAll={onOpenRecentRecords}

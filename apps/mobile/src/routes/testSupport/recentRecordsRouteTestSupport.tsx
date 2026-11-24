@@ -1,3 +1,4 @@
+import type { ComponentType, PropsWithChildren } from 'react';
 import type { ConversationExecutionAdapter } from '../../ragConversation/conversationExecutionLease';
 import type { RecordRepository } from '@orot/storage';
 import type { RecordingSourceRecord } from '../../recording/recordingTypes';
@@ -78,6 +79,7 @@ export function renderRecords(
   controller: ReturnType<typeof createNavigationController<AppNavigationRoute>>,
   props: ReturnType<typeof recentRouteProps>,
   indexed = false,
+  wrapper?: ComponentType<PropsWithChildren>,
 ) {
   return render(
     <RecordsSourcePaging.Provider value={indexed}>
@@ -104,6 +106,7 @@ export function renderRecords(
         </NavigationRouteAdapter>
       </RecordSourceNavigationProvider>
     </RecordsSourcePaging.Provider>,
+    { wrapper },
   );
 }
 

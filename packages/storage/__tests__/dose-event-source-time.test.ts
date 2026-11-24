@@ -1,3 +1,4 @@
+import { rewindBeforeMemoryMetadata } from './historicalMigrationSupport';
 import { createRecordRepository, runMigrations } from '../src';
 import type { RecordMap } from '../src';
 import { openSqliteTestDatabase } from './sqliteTestDatabase';
@@ -40,7 +41,7 @@ describe('dose-event source-time migration', () => {
       await database.execute(
         'CREATE INDEX dose_events_effective_at_idx ON dose_events (effective_at)',
       );
-      await database.execute('PRAGMA user_version = 4');
+      await rewindBeforeMemoryMetadata(database, 4);
 
       await runMigrations(database);
       const repository = createRecordRepository(database);
@@ -58,7 +59,7 @@ describe('dose-event source-time migration', () => {
 
       expect(await repository.get('dose_event', existingDose.id)).toEqual(existingDose);
       expect(await repository.get('dose_event', importedDose.id)).toEqual(importedDose);
-      expect((await database.execute('PRAGMA user_version')).rows[0]?.user_version).toBe(18);
+      expect((await database.execute('PRAGMA user_version')).rows[0]?.user_version).toBe(19);
       expect(
         (
           await database.execute(

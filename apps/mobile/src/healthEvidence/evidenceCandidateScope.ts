@@ -6,7 +6,7 @@ import type { RecordKind, SqlValue } from '@orot/storage';
 
 export interface EvidenceCandidateScope {
   /** A model-selected overview changes bounded selection, never source/time authorization. */
-  readonly selection?: 'health_overview';
+  readonly selection?: 'health_overview' | 'saved_recording_transcript';
   /** Internal local source IDs; provider-facing aliases must be resolved before this boundary. */
   readonly sourceIds?: readonly string[];
   readonly timeRange?: {

@@ -69,6 +69,12 @@ export type RagConversationObserver = Pick<
   readonly suppressContextualOpening?: true;
   /** Local-only storage permission; available only to the live request owner. */
   readonly admitDailyReportMemory?: import('./conversationDailyReportMemoryJobs').DailyReportMemoryObserver;
+  /** Local, turn-owned selection from an explicit recording action; never populated by model input or persisted. */
+  readonly selectedRecordingTranscript?: {
+    readonly sourceId: string;
+    readonly signal: AbortSignal;
+    readonly isCurrent: () => boolean;
+  };
   readonly conversationScope?: string;
   readonly retentionSession?: { readonly id: string; readonly version: number };
   /** The checkpoint and explicit photo consent are owned by this specific turn. */
@@ -93,6 +99,7 @@ export type RagConversationObserver = Pick<
   };
   /** Durable request identity, distinct from a transient UI response number. */
   readonly retentionRequestId?: string;
+  readonly retentionRequestCreatedAt?: string;
   /** The continuous session binds dispatch to its already selected model, without granting consent. */
   readonly expectedConversationModel?: {
     readonly providerId: string;

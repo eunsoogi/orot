@@ -18,17 +18,28 @@ export function ConversationDirectPhotoComposer({
   session,
   store,
   isEntryCurrent,
+  renderTrailingAction,
 }: {
   readonly composer: Props;
   readonly session: ConversationSession;
   readonly store: ConversationSessions;
   readonly isEntryCurrent?: () => boolean;
+  readonly renderTrailingAction?: (
+    photoOwned: boolean,
+  ) => Props['trailingAction'];
 }) {
   const direct = useConversationDirectPhoto(session, store, isEntryCurrent);
   const { photo } = composer;
   const { image, picking, sending, message } = direct.state;
   if (!direct.available || !photo)
-    return <ConversationComposer {...composer} />;
+    return (
+      <ConversationComposer
+        {...composer}
+        trailingAction={
+          renderTrailingAction?.(false) ?? composer.trailingAction
+        }
+      />
+    );
   const selected = Boolean(image || picking || sending || message);
   const useImagePicker = photo.status === 'empty';
   const photoOverride: Props['photo'] = {
@@ -50,6 +61,9 @@ export function ConversationDirectPhotoComposer({
       <ConversationComposer
         {...composer}
         photo={photoOverride}
+        trailingAction={
+          renderTrailingAction?.(selected) ?? composer.trailingAction
+        }
         busy={composer.busy || Boolean(sending)}
         onSteer={sending ? undefined : composer.onSteer}
         onCancel={sending ? direct.remove : composer.onCancel}
@@ -60,6 +74,7 @@ export function ConversationDirectPhotoComposer({
             {useImagePicker &&
             !composer.busy &&
             !composer.disabled &&
+            !photo.pickerDisabled &&
             !picking &&
             !sending ? (
               <Pressable

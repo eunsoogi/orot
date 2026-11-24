@@ -72,6 +72,7 @@ const visualSessionRetention: NonNullable<
     if (signal.aborted) throw new Error('Conversation is unavailable.');
     return {
       toolMessageId: 'conversation-visual-tool-message',
+      requestCreatedAt: new Date(0).toISOString(),
       ordinaryMemorySource: () => undefined,
       admitDailyReportMemory() {
         return undefined;
