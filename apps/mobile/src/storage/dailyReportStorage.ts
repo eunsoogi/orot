@@ -5,10 +5,8 @@ import {
 } from '../aiFeatures/integration/dailyReportSystemCalendar';
 import { createManualHistoryRepository, type SqlDatabase } from '@orot/storage';
 import { stableJson } from '../aiFeatures/integration/evidenceUtils';
-import {
-  ensureHealthContextGeneration,
-  readHealthContextGeneration,
-} from '../healthEvidence/healthContext/generation';
+import { readHealthContextGeneration } from '../healthEvidence/healthContext/generation';
+import { prepareDailyReportGeneration } from '../healthEvidence/healthContext/dailyReportGenerationPreparation';
 import { createSymptomSummaryStorage } from './symptomSummaryStorage';
 import { assertRetainedRecordsCurrent } from './retainedRecordFreshness';
 import {
@@ -38,9 +36,7 @@ function ensureDailyReportSchema(database: SqlDatabase): Promise<void> {
   if (existing) return existing;
   const ready: Promise<void> = (async () => {
     await createSymptomSummaryStorage(database).prepareRetentionGuards();
-    await database.transaction(async tx => {
-      await ensureHealthContextGeneration(tx);
-    });
+    await prepareDailyReportGeneration(database);
   })().catch(error => {
     if (dailyReportSchemaReady.get(database) === ready)
       dailyReportSchemaReady.delete(database);
