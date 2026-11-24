@@ -40,6 +40,7 @@ it.each([
         await time(other, later);
         if (state === 'payload-mismatch') await time(chosen, timestamp, later);
         let held = false;
+        let queuedMutation: Promise<unknown> | undefined;
         const hold = async () => {
           const out = await proveSelectedRecordingTimestamp({
             database,
@@ -84,7 +85,9 @@ it.each([
           if (state === 'selected-edited') await time(chosen, later);
           if (state === 'new-collision') await time(other, timestamp);
           if (state === 'queued-collision')
-            void Promise.resolve().then(() => time(other, timestamp));
+            queuedMutation = Promise.resolve().then(() =>
+              time(other, timestamp),
+            );
           return state !== 'native-locked';
         });
         const guarded = guardSelectedRecordingProvider(
@@ -99,6 +102,7 @@ it.each([
           await iterator.next();
           await iterator.return?.();
         }
+        await queuedMutation;
         const actual = method === 'generate' ? generate : streamStarted;
         expect(actual).toHaveBeenCalledTimes(state === 'valid' ? 1 : 0);
         expect(held).toBe(false);

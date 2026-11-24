@@ -80,12 +80,17 @@ export function liveConversationObservers(
     owner.activeSelection?.(id) === reportSelection;
   const execution = owner.lifetime.executionObserver(controller);
   const saveLocalClarification = retained?.completeLocalClarification;
-  const scope = owner.conversationScope(id);
-  const lease = owner.retention?.activeLease(id);
+  const recordingScope = owner.conversationScope(id);
+  const recordingLease = owner.retention?.activeLease(id);
   const recordingClarification = recordingClarificationForLiveTurn(owner, id, {
     question: request.question,
-    key: lease
-      ? JSON.stringify([scope, lease.id, lease.version, reportSelection])
+    key: recordingLease
+      ? JSON.stringify([
+          recordingScope,
+          recordingLease.id,
+          recordingLease.version,
+          reportSelection,
+        ])
       : undefined,
     current: () =>
       current() &&
@@ -95,9 +100,9 @@ export function liveConversationObservers(
       !photoInput &&
       !session.entryIntent &&
       !session.dailyReport &&
-      owner.conversationScope(id) === scope &&
-      owner.retention?.activeLease(id)?.id === lease?.id &&
-      owner.retention?.activeLease(id)?.version === lease?.version,
+      owner.conversationScope(id) === recordingScope &&
+      owner.retention?.activeLease(id)?.id === recordingLease?.id &&
+      owner.retention?.activeLease(id)?.version === recordingLease?.version,
     protectedCurrent: currentRecordingProtection,
     subscribeInvalidation(invalidate) {
       const app = AppState.addEventListener('change', state => {

@@ -84,7 +84,7 @@ it.each(['valid', 'stale', 'denied', 'revoked', 'recipient-changed'] as const)(
         let phase = 'ask';
         let modelAuthorize = 0;
         const fake = publicEvidenceFixture();
-        const generate = jest.fn(async (req: LanguageModelRequest) => {
+        const generate = jest.fn(async (_req: LanguageModelRequest) => {
           if (phase === 'ask')
             return providerSuccess({
               text: '',
