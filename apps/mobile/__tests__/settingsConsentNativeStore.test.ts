@@ -67,6 +67,47 @@ test('native resource names and cleanup remain within the exact synthetic UUID',
   await created.recoveryCredential.write('synthetic-recovery-epoch');
   const tools = { version: 1, status: 'active', generation: 'a'.repeat(64) };
   await created.voiceResponsesAuthority.write(tools);
+  const binding = {
+    version: 2 as const,
+    capability: 'canonical-health-context-result-v2' as const,
+    generation: 'b'.repeat(64),
+    grantID: 'b'.repeat(64) + '-model',
+    legacyGeneration: tools.generation,
+    credentialEpoch: 'c'.repeat(64),
+    backendModel: 'gpt-6-sol' as const,
+  };
+  const pair = {
+    version: 1 as const,
+    speechModel: 'gpt-live-1.1' as const,
+    backendModel: binding.backendModel,
+    credentialEpoch: binding.credentialEpoch,
+    voiceGeneration: 'd'.repeat(64),
+    responsesGeneration: tools.generation,
+  };
+  await expect(
+    created.stageCanonicalNativeWitness({
+      pair,
+      companion: binding,
+      current: () => false,
+    }),
+  ).resolves.toBe(false);
+  expect(
+    values.has(`com.orot.test.${id}.canonical-synthetic-health-binding`),
+  ).toBe(false);
+  await created.canonicalHealthAuthority.write({
+    ...tools,
+    generation: binding.generation,
+  });
+  await expect(
+    created.stageCanonicalNativeWitness({
+      pair,
+      companion: binding,
+      current: () => true,
+    }),
+  ).resolves.toBe(true);
+  expect(
+    values.has(`com.orot.test.${id}.canonical-synthetic-voice-settings`),
+  ).toBe(true);
   created.close();
   const reopened = await openSettingsConsentNativeStore(id, false);
   expect(await reopened.selection('conversation').load()).toEqual({
@@ -85,7 +126,7 @@ test('native resource names and cleanup remain within the exact synthetic UUID',
     expect(options?.service).toMatch(
       new RegExp(`^com\\.orot\\.test\\.${id}\\.`),
     );
-  // The additional recovery epoch is owned by this UUID, not an app credential.
+  // Every old and newly mirrored fixture row is owned by this UUID, not an app credential.
   expect(
     jest
       .mocked(resetGenericPassword)
@@ -99,6 +140,9 @@ test('native resource names and cleanup remain within the exact synthetic UUID',
       'selection-calendar',
       'authority-voice',
       'authority-voice-responses',
+      'authority-voice-responses-health-context',
+      'canonical-synthetic-health-binding',
+      'canonical-synthetic-voice-settings',
       'selection-voice',
       'recovery-credential',
       'database-key',
@@ -106,7 +150,7 @@ test('native resource names and cleanup remain within the exact synthetic UUID',
       .map(suffix => `com.orot.test.${id}.${suffix}`)
       .sort(),
   );
-  expect(resetGenericPassword).toHaveBeenCalledTimes(9);
+  expect(resetGenericPassword).toHaveBeenCalledTimes(12);
   expect(jest.mocked(open).mock.results[1].value.delete).toHaveBeenCalledTimes(
     1,
   );

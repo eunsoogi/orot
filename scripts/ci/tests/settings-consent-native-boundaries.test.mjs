@@ -33,6 +33,19 @@ test('synthetic GPT-Live bridge is compiler gated and cannot select live transpo
   );
 });
 
+test('canonical queue test export remains inside the same simulator-only bridge boundary', () => {
+  const bridge = read('ios/OrotMobile/VoiceRealtimeModule.m');
+  const selector = 'RCT_EXTERN_METHOD(settingsConsentCanonicalQueueProbe';
+  const guard = /#if defined\(OROT_TESTS\) && TARGET_OS_SIMULATOR\n([^#]+)\n#endif/u;
+  const scoped = bridge.match(guard)?.[1];
+  assert.ok(scoped?.includes(selector));
+  assert.equal(bridge.split(selector).length, 2);
+  const fixture = read('ios/OrotMobile/SettingsConsentCanonicalQueueProbe.swift');
+  assert.match(fixture, /^#if OROT_TESTS && targetEnvironment\(simulator\)/u);
+  assert.match(fixture, /SettingsConsentRealtimeFixture\.admitted/u);
+  assert.match(fixture, /"OROT_SETTINGS_CONSENT_CANONICAL_QUEUE"\) == "synthetic"/u);
+});
+
 test('registered journey retains original assertions and adds independent credential and bridge receipts', () => {
   const source = read('ios/OrotUITests/SettingsConsentUITests.swift');
   for (const value of [
