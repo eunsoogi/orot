@@ -1,7 +1,6 @@
 import { useLayoutEffect, useState } from 'react';
-import { AppState } from 'react-native';
 import { createRecordRepository } from '@orot/storage';
-import { watchSavedReportNativeProtection } from '../../generatedReports/savedReportNativeProtection';
+import { conversationExecutionNative } from '../../ragConversation/conversationExecutionNative';
 import { loadWorkoutPeriodCohort } from '../../healthkit/workoutPeriodCohort';
 import {
   readWorkoutPeriodHeartRate,
@@ -15,6 +14,16 @@ import { acquireIndependentReadEpoch } from '../../storage/protectedReadEpoch';
 
 type State = WorkoutPeriodResult | { status: 'loading' };
 const unavailable = { status: 'unavailable' } as const;
+const briefInactiveMs = 5_000;
+type Epoch = ReturnType<typeof acquireIndependentReadEpoch>;
+type ReadOwner = {
+  abort: AbortController;
+  epoch?: Epoch;
+  foreground?: (isActive: boolean) => void;
+  settled?: boolean;
+  reconfirming?: boolean;
+  usable?: () => boolean;
+};
 
 declare const require: (
   path: '../../storage/secureDatabase',
@@ -23,7 +32,6 @@ declare const require: (
   'openLocalAgentMemoryDatabase' | 'isCurrentLocalAgentMemoryDatabase'
 >;
 
-/** Same seven local chart days as the other Overview cards, with today partial. */
 function workoutPeriod(now: Date) {
   const from = new Date(now);
   from.setHours(0, 0, 0, 0);
@@ -31,62 +39,88 @@ function workoutPeriod(now: Date) {
   return { fromInclusive: from.toISOString(), toExclusive: now.toISOString() };
 }
 
-/** Mount only when the user has opted into this metric and the route is focused.
- * Inactive, locked, deleted, or superseded results never reach the card.
+/** Brief inactive transitions suspend publication, not an owned same-window read.
+ * Background, lock, deletion, or a changed protected owner drops the snapshot.
  */
 export function useOverviewWorkoutPeriodHeartRate(active: boolean): State {
   const [state, setState] = useState<State>(unavailable);
   useLayoutEffect(() => {
-    if (!active) {
+    const native = active ? conversationExecutionNative() : null;
+    if (!native?.bridgeAvailable) {
       setState(unavailable);
       return;
     }
+    const protection = native;
+    const phase = () => protection.currentPhase?.() ?? 'unknown';
     let mounted = true;
-    let task: AbortController | undefined;
+    let task: ReadOwner | undefined;
     let boundary: ReturnType<typeof setTimeout> | undefined;
+    let inactiveSince: number | undefined;
+    function dropTask() {
+      const retired = task;
+      task = undefined;
+      retired?.foreground?.(false);
+      retired?.abort.abort();
+      retired?.epoch?.dispose();
+      if (mounted) setState(unavailable);
+    }
     function retire() {
       clearTimeout(boundary);
       boundary = undefined;
-      task?.abort();
-      task = undefined;
-      if (mounted) setState(unavailable);
+      dropTask();
+    }
+    const current = (target: ReadOwner) =>
+      mounted && task === target && !target.abort.signal.aborted;
+    const waitForForeground = (target: ReadOwner) => {
+      if (!current(target)) return Promise.resolve(false);
+      if (phase() === 'active') return Promise.resolve(true);
+      if (phase() !== 'inactive') return Promise.resolve(false);
+      return new Promise<boolean>(resolve => {
+        target.foreground = resolve;
+      });
+    };
+    async function confirm(target: ReadOwner) {
+      while (await waitForForeground(target)) {
+        if (!current(target)) return false;
+        const available = await protection.protectedDataAvailable();
+        if (!current(target) || available !== true) return false;
+        if (phase() === 'active') return true;
+      }
+      return false;
     }
     async function start() {
-      retire();
+      if (!mounted || task || phase() !== 'active') return;
       const now = new Date();
-      // Match Overview’s next wall-clock midnight, not a fixed 24-hour delay.
-      // The next window must evict today’s old result even during continuous focus.
       const midnight = new Date(
         now.getFullYear(),
         now.getMonth(),
         now.getDate() + 1,
       );
+      const zone = Intl.DateTimeFormat().resolvedOptions().timeZone;
+      const target: ReadOwner = { abort: new AbortController() };
+      task = target;
+      clearTimeout(boundary);
       boundary = setTimeout(
-        () => start(),
+        () => {
+          retire();
+          start();
+        },
         Math.max(1, midnight.getTime() - now.getTime()),
       );
-      const abort = new AbortController();
-      task = abort;
-      const current = () => mounted && task === abort && !abort.signal.aborted;
-      const protection = watchSavedReportNativeProtection(abort.signal, () => {
-        if (current()) retire();
-      });
-      if (!protection || !current()) {
-        if (current()) retire();
-        return;
-      }
       setState({ status: 'loading' });
-      let epoch: ReturnType<typeof acquireIndependentReadEpoch>;
       try {
-        if (!(await protection.confirm()) || !current()) return;
+        if (!(await confirm(target))) return;
         const storage = require('../../storage/secureDatabase');
         const database = await storage.openLocalAgentMemoryDatabase();
-        if (!current()) return;
-        epoch = acquireIndependentReadEpoch(database);
+        if (!current(target)) return;
+        target.epoch = acquireIndependentReadEpoch(database);
         const admitted = () =>
-          current() &&
+          current(target) &&
+          Date.now() < midnight.getTime() &&
+          zone === Intl.DateTimeFormat().resolvedOptions().timeZone &&
           storage.isCurrentLocalAgentMemoryDatabase(database) &&
-          epoch?.current() === true;
+          target.epoch?.current() === true;
+        target.usable = admitted;
         if (!admitted()) return;
         const period = workoutPeriod(now);
         const cohort = await loadWorkoutPeriodCohort(
@@ -94,43 +128,74 @@ export function useOverviewWorkoutPeriodHeartRate(active: boolean): State {
           period,
           admitted,
         );
-        if (
-          !cohort ||
-          !admitted() ||
-          !(await protection.confirm()) ||
-          !admitted()
-        )
+        if (!cohort || !admitted() || !(await confirm(target)) || !admitted())
           return;
         const result = await readWorkoutPeriodHeartRate(
           period,
           cohort,
-          abort.signal,
+          target.abort.signal,
         );
-        if (admitted() && (await protection.confirm()) && admitted())
-          setState(result);
+        if (!(await confirm(target)) || !admitted() || phase() !== 'active')
+          return;
+        target.settled =
+          result.status === 'available' || result.status === 'emptyVisible';
+        if (target.settled) setState(result);
       } catch {
         // An incomplete or rejected protected read never publishes an average.
       } finally {
-        epoch?.dispose();
-        if (current())
-          setState(previous =>
-            previous.status === 'loading' ? unavailable : previous,
-          );
+        if (current(target) && !target.settled) dropTask();
       }
     }
-    const visibility = AppState.addEventListener('change', phase => {
-      if (phase === 'active') start();
-      else retire();
+    function foreground() {
+      if (phase() !== 'active') return;
+      const wasInactive = inactiveSince !== undefined;
+      const pausedFor =
+        inactiveSince === undefined ? 0 : Date.now() - inactiveSince;
+      inactiveSince = undefined;
+      if (task && (pausedFor > briefInactiveMs || task.usable?.() === false))
+        retire();
+      const target = task;
+      if (!target) {
+        start();
+        return;
+      }
+      const ready = target.foreground;
+      target.foreground = undefined;
+      ready?.(true);
+      if (target.settled && wasInactive && !target.reconfirming) {
+        target.reconfirming = true;
+        confirm(target)
+          .then(
+            valid => {
+              if (current(target) && (!valid || target.usable?.() !== true))
+                retire();
+            },
+            () => {
+              if (current(target)) retire();
+            },
+          )
+          .finally(() => {
+            target.reconfirming = false;
+          });
+      }
+    }
+    const unsubscribeProtection = protection.subscribe(event => {
+      if (event.kind === 'protectedData' && !event.available) retire();
+      else if (event.kind === 'protectedData' || event.kind === 'foreground')
+        foreground();
+      else if (event.kind === 'phase') {
+        if (phase() === 'inactive') inactiveSince ??= Date.now();
+        else if (phase() === 'active') foreground();
+        else retire();
+      }
     });
     const unsubscribeClear = subscribeLocalDataClear(retire);
     const unsubscribeDelete = subscribeLocalSourceDeletion(retire);
-    // The native protected-data watcher admits foreground reads; cached JS
-    // AppState may still report unknown on the first mounted frame.
     start();
     return () => {
       mounted = false;
       retire();
-      visibility.remove();
+      unsubscribeProtection();
       unsubscribeClear();
       unsubscribeDelete();
     };

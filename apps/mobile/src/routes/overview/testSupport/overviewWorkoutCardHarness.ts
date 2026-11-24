@@ -68,6 +68,7 @@ export async function setup() {
     .mocked(isCurrentLocalAgentMemoryDatabase)
     .mockImplementation(owner => owner === guarded && currentOwner);
   let protectedData = true;
+  let phase: 'active' | 'inactive' | 'background' = 'active';
   let protectedProbe: (() => Promise<boolean>) | undefined;
   const subscribers = new Set<(event: ProtectionEvent) => void>();
   jest.mocked(conversationExecutionNative).mockReturnValue({
@@ -81,7 +82,7 @@ export async function setup() {
     async isActive() {
       throw new Error('Unexpected execution lease');
     },
-    currentPhase: () => 'active',
+    currentPhase: () => phase,
     protectedDataAvailable: async () =>
       protectedProbe ? protectedProbe() : protectedData,
     subscribe: listener => {
@@ -149,6 +150,13 @@ export async function setup() {
     cancelWorkoutPeriodHeartRate,
     requestReadAuthorizations,
     querySamples,
+    transition(next: typeof phase) {
+      phase = next;
+      for (const subscriber of subscribers)
+        subscriber(
+          next === 'active' ? { kind: 'foreground' } : { kind: 'phase' },
+        );
+    },
     revoke() {
       protectedData = false;
       for (const subscriber of subscribers)

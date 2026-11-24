@@ -44,9 +44,9 @@ enum WorkoutPeriodHealthKitProducer {
         let deadline = DispatchTime.now() + .seconds(15)
         func active() -> Bool {
             DispatchTime.now() < deadline && !Task.isCancelled && isCurrent() && UIApplication.shared.isProtectedDataAvailable &&
-                UIApplication.shared.applicationState == .active
+                UIApplication.shared.applicationState != .background
         }
-        guard active(), HKHealthStore.isHealthDataAvailable(),
+        guard UIApplication.shared.applicationState == .active, active(), HKHealthStore.isHealthDataAvailable(),
               period.start < period.end, completeCohort.count <= maxWorkouts,
               Set(completeCohort.map(\.id)).count == completeCohort.count
         else { return .unavailable }
@@ -67,6 +67,7 @@ enum WorkoutPeriodHealthKitProducer {
             var parentCounts: [UUID: Int] = [:]
             var parentWindows: [UUID: Set<Accumulator.Window>] = [:]
             var parentSource: [UUID: String] = [:]
+            var singletons: [UUID: HKQuantitySample] = [:]
             var digestParts: [String] = []
             var memberships = 0
             for imported in completeCohort {
@@ -96,10 +97,13 @@ enum WorkoutPeriodHealthKitProducer {
                 memberships += parents.count
                 for sample in parents {
                     let identity = sourceDigest(sample)
-                    guard sample.count > 0,
+                    guard let route = Accumulator.retrievalRoute(quantityCount: sample.count),
                           parentCounts[sample.uuid].map({ $0 == sample.count }) ?? true,
                           parentSource[sample.uuid].map({ $0 == identity }) ?? true
                     else { return .unavailable }
+                    if route == .singleton {
+                        singletons[sample.uuid] = sample
+                    }
                     parentCounts[sample.uuid] = sample.count
                     parentSource[sample.uuid] = identity
                     parentWindows[sample.uuid, default: []].insert(clipped)
@@ -118,28 +122,21 @@ enum WorkoutPeriodHealthKitProducer {
             var accumulator = Accumulator(parents: parentCounts.mapValuesWithKeys { key, count in
                 .init(quantityCount: count, eligibleWindows: parentWindows[key] ?? [])
             })
-            let query = HKQuantitySeriesSampleQueryDescriptor(
-                predicate: .quantitySample(type: heartRate,
-                                           predicate: HKQuery.predicateForObjects(with: Set(parentCounts.keys))),
-                options: .includeSample,
-            )
             let unit = HKUnit.count().unitDivided(by: .minute())
             var first: Date?
             var last: Date?
             var seen = 0
             var verifiedSources = Set<UUID>()
-            for try await entry in query.results(for: store) {
-                guard active(), seen < expected, let parent = entry.sample, parent.quantityType == heartRate,
+            func accept(_ parent: HKQuantitySample, start: Date, end: Date, bpm: Double, route: Accumulator.RetrievalRoute) -> Bool {
+                guard active(), seen < expected, parent.quantityType == heartRate,
+                      Accumulator.retrievalRoute(quantityCount: parent.count) == route,
                       let windows = parentWindows[parent.uuid], parentCountMatches(parent, parentCounts),
                       let source = parentSource[parent.uuid]
-                else { return .unavailable }
+                else { return false }
                 if verifiedSources.insert(parent.uuid).inserted, source != sourceDigest(parent) {
-                    return .unavailable
+                    return false
                 }
                 seen += 1
-                let start = entry.dateInterval.start
-                let end = entry.dateInterval.end
-                let bpm = entry.quantity.doubleValue(for: unit)
                 accumulator.accept(parentID: parent.uuid, start: start, end: end, bpm: bpm)
                 if windows.contains(where: { $0.contains(start: start, end: end) }) {
                     first = first.map { min($0, start) } ?? start
@@ -147,6 +144,27 @@ enum WorkoutPeriodHealthKitProducer {
                     // Keep multiplicity, including multiple identical values from one series.
                     digestParts.append(stableFields([parent.uuid.uuidString, source,
                                                      dateKey(start), dateKey(end), String(bpm.bitPattern)]))
+                }
+                return true
+            }
+            // Apple's first-party workout path reads count-one samples directly; only
+            // condensed series are expanded. Both routes feed the same membership fence.
+            for singleton in singletons.values {
+                guard accept(singleton, start: singleton.startDate, end: singleton.endDate,
+                             bpm: singleton.quantity.doubleValue(for: unit), route: .singleton)
+                else { return .unavailable }
+            }
+            let seriesIDs = Set(parentCounts.keys).subtracting(singletons.keys)
+            if !seriesIDs.isEmpty {
+                let query = HKQuantitySeriesSampleQueryDescriptor(
+                    predicate: .quantitySample(type: heartRate, predicate: HKQuery.predicateForObjects(with: seriesIDs)),
+                    options: .includeSample,
+                )
+                for try await entry in query.results(for: store) {
+                    guard let parent = entry.sample,
+                          accept(parent, start: entry.dateInterval.start, end: entry.dateInterval.end,
+                                 bpm: entry.quantity.doubleValue(for: unit), route: .series)
+                    else { return .unavailable }
                 }
             }
             guard active(), seen == expected else { return .unavailable }
