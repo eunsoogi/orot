@@ -35,6 +35,8 @@ const expectedReadTypes: Record<
   ],
   sleep: ['HKCategoryTypeIdentifierSleepAnalysis'],
   heartRate: ['HKQuantityTypeIdentifierHeartRate'],
+  restingHeartRate: ['HKQuantityTypeIdentifierRestingHeartRate'],
+  walkingHeartRateAverage: ['HKQuantityTypeIdentifierWalkingHeartRateAverage'],
   steps: ['HKQuantityTypeIdentifierStepCount'],
   workouts: ['HKWorkoutTypeIdentifier'],
   bodyMass: ['HKQuantityTypeIdentifierBodyMass'],
@@ -64,6 +66,16 @@ const sampleTypeCases: ReadonlyArray<{
     feature: 'heartRate',
     sampleKind: 'heartRate',
     expected: 'HKQuantityTypeIdentifierHeartRate',
+  },
+  {
+    feature: 'restingHeartRate',
+    sampleKind: 'restingHeartRate',
+    expected: 'HKQuantityTypeIdentifierRestingHeartRate',
+  },
+  {
+    feature: 'walkingHeartRateAverage',
+    sampleKind: 'walkingHeartRateAverage',
+    expected: 'HKQuantityTypeIdentifierWalkingHeartRateAverage',
   },
   {
     feature: 'steps',

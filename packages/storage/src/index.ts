@@ -95,3 +95,10 @@ export { localQueryTimestampKey, localQueryTimestampKeyExpression } from './loca
 export type { HealthMedicationPage, HealthMedicationPageRequest } from './healthMedicationPages';
 
 export { insertManualHistoryEntry, readManualHistoryEntry } from './manualHistoryPersistence';
+
+export {
+  appleDerivedHeartRateCategories,
+  classifyAppleDerivedHeartRate,
+  isAppleDerivedHeartRateCategory,
+} from './appleDerivedHeartRate';
+export type { AppleDerivedHeartRateCategory } from './appleDerivedHeartRate';

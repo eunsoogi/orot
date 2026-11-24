@@ -35,7 +35,7 @@ enum HealthKitBoundary {
     }
 
     static func isSupported(_ feature: String) -> Bool {
-        guard ["medications", "bloodPressure", "sleep", "heartRate", "steps", "bodyMass", "workouts"].contains(feature) else {
+        guard ["medications", "bloodPressure", "sleep", "heartRate", "restingHeartRate", "walkingHeartRateAverage", "steps", "bodyMass", "workouts"].contains(feature) else {
             return false
         }
         if feature == "medications" {
@@ -51,6 +51,7 @@ enum HealthKitBoundary {
         switch (feature, kind) {
         case ("medications", "medicationDoseEvents"), ("bloodPressure", "bloodPressure"),
              ("sleep", "sleep"), ("heartRate", "heartRate"), ("steps", "steps"),
+             ("restingHeartRate", "restingHeartRate"), ("walkingHeartRateAverage", "walkingHeartRateAverage"),
              ("bodyMass", "bodyMass"), ("workouts", "workouts"):
             true
         default:
@@ -72,6 +73,10 @@ enum HealthKitBoundary {
             return HKObjectType.categoryType(forIdentifier: .sleepAnalysis)
         case "heartRate":
             return HKObjectType.quantityType(forIdentifier: .heartRate)
+        case "restingHeartRate":
+            return HKObjectType.quantityType(forIdentifier: .restingHeartRate)
+        case "walkingHeartRateAverage":
+            return HKObjectType.quantityType(forIdentifier: .walkingHeartRateAverage)
         case "steps":
             return HKObjectType.quantityType(forIdentifier: .stepCount)
         case "workouts":
@@ -180,7 +185,9 @@ enum HealthKitBoundary {
 
     private static func unit(for identifier: String) -> HKUnit {
         switch identifier {
-        case HKQuantityTypeIdentifier.heartRate.rawValue: HKUnit.count().unitDivided(by: .minute())
+        case HKQuantityTypeIdentifier.heartRate.rawValue, HKQuantityTypeIdentifier.restingHeartRate.rawValue,
+             HKQuantityTypeIdentifier.walkingHeartRateAverage.rawValue:
+            HKUnit.count().unitDivided(by: .minute())
         case HKQuantityTypeIdentifier.stepCount.rawValue: .count()
         case HKQuantityTypeIdentifier.bodyMass.rawValue: .gramUnit(with: .kilo)
         case HKQuantityTypeIdentifier.bloodPressureSystolic.rawValue, HKQuantityTypeIdentifier.bloodPressureDiastolic.rawValue:

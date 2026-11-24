@@ -1,5 +1,9 @@
 import { useEffect, useRef, useState } from 'react';
-import { healthKitFeatures, type HealthKitFeature } from '../types';
+import {
+  healthKitBulkImportFeatures,
+  healthKitFeatures,
+  type HealthKitFeature,
+} from '../types';
 import type { UnifiedImportCoordinator } from './HealthKitImportScreen';
 import type {
   UnifiedImportMeasurement,
@@ -54,12 +58,18 @@ export function useUnifiedImportScreen(
 
   function toggleHealthKit() {
     resetResult();
-    setSelected(
-      current =>
-        new Set(
-          current.size === healthKitFeatures.length ? [] : healthKitFeatures,
-        ),
-    );
+    setSelected(current => {
+      const next = new Set(current);
+      // Previously selected derived types are independent of this legacy bulk choice.
+      const clear = healthKitBulkImportFeatures.every(feature =>
+        next.has(feature),
+      );
+      for (const feature of healthKitBulkImportFeatures) {
+        if (clear) next.delete(feature);
+        else next.add(feature);
+      }
+      return next;
+    });
   }
 
   function toggleEventKit() {

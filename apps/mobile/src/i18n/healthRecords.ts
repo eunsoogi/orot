@@ -10,6 +10,16 @@ export const healthRecordsKo = {
   'healthRecords.workout.cardio': '유산소 운동',
   'healthRecords.workout.interval': '인터벌 운동',
   'healthRecords.workout.minutes': '{minutes}분',
+  'healthRecords.workoutHeartRate.check': '운동에 연결된 심박수 확인',
+  'healthRecords.workoutHeartRate.scope':
+    '건강 앱에서 이 운동에 연결되고 운동 시간 안에 기록된 심박수만 확인해요.',
+  'healthRecords.workoutHeartRate.summary':
+    '운동 시간 안의 연결 심박수: 평균 {mean} bpm, 범위 {minimum}–{maximum} bpm',
+  'healthRecords.workoutHeartRate.notAvailable':
+    '이 운동에 연결된 심박수를 확인할 수 없어요. 건강 데이터 읽기 설정을 확인해 주세요.',
+  'healthRecords.workoutHeartRate.reading': '이 운동의 심박수를 불러오는 중…',
+  'healthRecords.workoutHeartRate.failed':
+    '이 운동의 심박수를 불러오지 못했어요. 다시 시도해 주세요.',
   'healthRecords.category.workouts': '운동 기록',
   'records.openHealthLibrary': '가져온 건강 기록 보기',
   'healthRecords.title': '건강 기록',

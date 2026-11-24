@@ -4,7 +4,11 @@ import { AppText as Text } from '../../layout/AppText';
 import { AppSymbol } from '../../layout/AppSymbol';
 import { CheckboxIndicator } from '../../layout/CheckboxIndicator';
 import { appColors } from '../../layout/appColors';
-import { healthKitFeatures, type HealthKitFeature } from '../types';
+import {
+  healthKitBulkImportFeatures,
+  healthKitFeatures,
+  type HealthKitFeature,
+} from '../types';
 import type { HealthKitImportScreenCopy } from './HealthKitImportScreen';
 import { unifiedImportStyles as styles } from './unifiedImportStyles';
 
@@ -22,12 +26,13 @@ export function HealthKitProviderCard({
   readonly onToggle: () => void;
   readonly onToggleFeature: (feature: HealthKitFeature) => void;
 }) {
-  const checked =
-    selected.size === healthKitFeatures.length
-      ? true
-      : selected.size === 0
-        ? false
-        : 'mixed';
+  const checked = healthKitBulkImportFeatures.every(feature =>
+    selected.has(feature),
+  )
+    ? true
+    : healthKitBulkImportFeatures.some(feature => selected.has(feature))
+      ? 'mixed'
+      : false;
   return (
     <View style={styles.card}>
       <Pressable

@@ -1,3 +1,7 @@
+import {
+  defaultHealthObservationCountSql,
+  defaultObservationEvidence,
+} from './defaultObservationEvidence';
 import { visitPeriodEvidenceAvailable } from '../storage/visitPeriodEvidencePolicy';
 import { STORAGE_TABLES } from '@orot/storage';
 import type { RecordKind, SqlDatabase, SqlExecutor } from '@orot/storage';
@@ -67,8 +71,8 @@ async function readDependencies(
       const batch = kindIds.slice(offset, offset + 100);
       const result = await executor.execute(
         `SELECT id, payload_json,
-          length(CAST(payload_json AS BLOB)) AS payload_bytes FROM ${STORAGE_TABLES[kind].table}
-          WHERE id IN (${batch.map(() => '?').join(', ')})`,
+          length(CAST(payload_json AS BLOB)) AS payload_bytes FROM ${STORAGE_TABLES[kind].table} r
+          WHERE id IN (${batch.map(() => '?').join(', ')}) ${defaultObservationEvidence(kind)}`,
         [...batch],
       );
       for (const row of result.rows) {
@@ -83,13 +87,14 @@ async function readDependencies(
   return dependencies;
 }
 
-// Standalone scalar counts preserve SQLite's fast Count opcode; a UNION ALL
-// of tagged aggregates looks similar in EXPLAIN QUERY PLAN but scans each index.
+// Use one native statement. Unfiltered kinds keep SQLite's scalar Count path;
+// health observations subtract only the fenced Apple-derived namespaces.
 const candidateCatalogCountSql =
   'SELECT ' +
-  HEALTH_EVIDENCE_RECORD_KINDS.map(
-    kind =>
-      `(SELECT count(*) AS total FROM ${STORAGE_TABLES[kind].table}) AS ${kind}`,
+  HEALTH_EVIDENCE_RECORD_KINDS.map(kind =>
+    kind === 'health_observation'
+      ? `(${defaultHealthObservationCountSql()}) AS ${kind}`
+      : `(SELECT count(*) AS total FROM ${STORAGE_TABLES[kind].table}) AS ${kind}`,
   ).join(', ');
 
 /** Searches every stored kind natively, then transfers only a small, diversified candidate window. */

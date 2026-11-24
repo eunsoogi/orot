@@ -20,6 +20,16 @@ export const healthRecordCategoryPresentation: Record<
     color: appColors.pink,
     background: appColors.pinkSoft,
   },
+  resting_heart_rate: {
+    symbol: 'heart',
+    color: appColors.pink,
+    background: appColors.pinkSoft,
+  },
+  walking_heart_rate_average: {
+    symbol: 'figure.walk',
+    color: appColors.pink,
+    background: appColors.pinkSoft,
+  },
   workouts: {
     symbol: 'figure.run',
     color: appColors.green,

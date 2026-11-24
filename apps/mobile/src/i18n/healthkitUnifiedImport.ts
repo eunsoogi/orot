@@ -22,6 +22,10 @@ export const healthkitUnifiedImportKo = {
   'healthkit.unifiedImport.feature.bloodPressure': '혈압',
   'healthkit.unifiedImport.feature.sleep': '수면',
   'healthkit.unifiedImport.feature.heartRate': '심박수',
+  'healthkit.unifiedImport.feature.restingHeartRate':
+    '안정 시 심박수 (건강 앱)',
+  'healthkit.unifiedImport.feature.walkingHeartRateAverage':
+    '걷기 평균 심박수 (건강 앱)',
   'healthkit.unifiedImport.feature.steps': '걸음 수',
   'healthkit.unifiedImport.feature.bodyMass': '체중',
   'healthkit.unifiedImport.featureStatus.notSelected': '선택되지 않음',

@@ -1,4 +1,6 @@
 import { workoutActivityLabel } from './workoutPresentation';
+import { WorkoutHeartRateAction } from './WorkoutHeartRateAction';
+import { importedWorkoutUUID } from './workoutHeartRate';
 import { useState } from 'react';
 import { StyleSheet, View, useWindowDimensions } from 'react-native';
 import type { HealthObservation } from '@orot/domain';
@@ -93,6 +95,7 @@ export function HealthRecordsDetailRecordRow({
   }
   const category = classifyHealthObservation(row.observation);
   const sourceValueUnavailable = hasUnavailableSourceValue(row.observation);
+  const workoutId = importedWorkoutUUID(row.observation);
   return (
     <View style={styles.record} testID={'health-record-row-' + index}>
       <Text
@@ -118,6 +121,13 @@ export function HealthRecordsDetailRecordRow({
       >
         {provenanceLabel(row.observation)}
       </Text>
+      {workoutId ? (
+        <WorkoutHeartRateAction
+          key={row.observation.id}
+          recordId={row.observation.id}
+          workoutId={workoutId}
+        />
+      ) : null}
       {sourceValueUnavailable ? (
         <Text
           style={styles.sourceNote}
