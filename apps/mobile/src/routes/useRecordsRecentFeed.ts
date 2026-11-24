@@ -49,13 +49,16 @@ export function useRecordsRecentFeed(props: RecordsRecentSourcesProps) {
     if (!recentMaterialReadyLease) return undefined;
     const lease = recentMaterialReadyLease;
     return {
-      load: (
-        before?: Parameters<typeof loadRecentMaterial>[0],
-        options?: Parameters<typeof readProtectedRecentMaterialPage>[2],
-      ) => {
-        if (!options) throw new Error('Missing protected Records request.');
-        return readProtectedRecentMaterialPage(lease, before, options);
-      },
+      load: Object.assign(
+        (
+          before?: Parameters<typeof loadRecentMaterial>[0],
+          options?: Parameters<typeof readProtectedRecentMaterialPage>[2],
+        ) => {
+          if (!options) throw new Error('Missing protected Records request.');
+          return readProtectedRecentMaterialPage(lease, before, options);
+        },
+        { sourceIsCurrent: () => lease.isCurrent() },
+      ),
       subscribe: (current: () => boolean, invalidate: () => void) =>
         subscribeAgentMemoryVisibility(
           lease.database,
@@ -137,8 +140,7 @@ export function useRecordsRecentFeed(props: RecordsRecentSourcesProps) {
     }
   }
   useNavigationRouteRefresh(showAll && active && streams.length > 0, refresh);
-  // Publishing below an unresolved cursor can show an old file ahead of an
-  // unseen newer report. Keep the certified prefix and one common visible depth.
+  // Keep a certified common prefix; unresolved cursors can hide newer rows.
   const certified = certifiedRecentPrefix(records, [
     ...(onOpenReport ? [recentStreamFrontier(reports, 'material')] : []),
     ...(pagedAudio || pagedDocuments

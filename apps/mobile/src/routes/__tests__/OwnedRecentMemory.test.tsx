@@ -102,3 +102,83 @@ test('owned readiness reveals saved Memory in both Records routes and a commit r
     f.close();
   }
 });
+
+test('return from Provider Settings does not report a retired Memory owner as a load error', async () => {
+  AppState.currentState = 'active';
+  jest.mocked(conversationExecutionNative).mockReturnValue(recentTestExecution);
+  const f = openInterleavableRecentSourceDatabase();
+  const database = guardedNativeDatabase(f.database);
+  const memory = new SqlCipherAgentMemoryStorage(database);
+  const id = 'synthetic-owned-memory';
+  const rowKey = 'records-recent-source-memory:agent:' + id;
+  let publish!: (ready?: RecentMaterialReadyLease) => void;
+  let current = true;
+  function Ownership({ children }: PropsWithChildren) {
+    const [ready, setReady] = useState<RecentMaterialReadyLease>();
+    publish = setReady;
+    return (
+      <RecentMaterialReadinessContext.Provider value={ready}>
+        {children}
+      </RecentMaterialReadinessContext.Provider>
+    );
+  }
+  try {
+    await runMigrations(database);
+    await memory.append({
+      id,
+      text: 'Synthetic private memory text',
+      vector: new Float32Array([1]),
+      tags: [],
+      entities: [],
+      importance: 0.5,
+      createdAt: Date.parse('2026-11-24T01:00:00Z'),
+      reinforcements: 0,
+      meta: {
+        memoryKey: id,
+        kind: 'preference',
+        provenance: { sourceIds: [], reviewState: 'user_confirmed' },
+      },
+    });
+    const controller = createNavigationController<AppNavigationRoute>('root');
+    const view = await renderRecords(
+      controller,
+      recentRouteProps(),
+      true,
+      Ownership,
+    );
+    try {
+      expect(screen.queryByTestId(rowKey)).toBeNull();
+      await act(async () => {
+        publish({ database, isCurrent: () => current });
+      });
+      expect(await screen.findByTestId(rowKey)).toBeTruthy();
+      expect(screen.queryByText('Synthetic private memory text')).toBeNull();
+
+      await act(async () => {
+        controller.push('settings-provider');
+      });
+      expect(controller.getSnapshot().currentRoute.name).toBe(
+        'settings-provider',
+      );
+      // Native readiness revokes the old owner synchronously; React can still
+      // have that lease in context when back navigation remounts Records.
+      current = false;
+      await act(async () => {
+        await controller.requestBack();
+        await new Promise<void>(resolve => setImmediate(resolve));
+      });
+      expect(controller.getSnapshot().currentRoute.name).toBe('root');
+      expect(screen.queryByTestId('records-recent-sources-error')).toBeNull();
+
+      await act(async () => {
+        publish({ database, isCurrent: () => true });
+      });
+      expect(await screen.findByTestId(rowKey)).toBeTruthy();
+      expect(screen.queryByTestId('records-recent-sources-error')).toBeNull();
+    } finally {
+      await act(async () => view.unmount());
+    }
+  } finally {
+    f.close();
+  }
+});
