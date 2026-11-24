@@ -1,3 +1,4 @@
+import { readOverviewSleepEpisode } from './readOverviewSleepEpisode';
 import { t } from '../../i18n';
 import {
   localQueryTimestampKey,
@@ -223,11 +224,17 @@ export async function projectOverviewMetricSnapshot(
             row.sensor === series?.source &&
             row.unit !== unit,
         ));
-    if (result)
+    if (result) {
+      const sleepEpisode =
+        metric === 'sleep' && sleepTime && selection.includes('sleep')
+          ? await readOverviewSleepEpisode(tx, sleepTime, window)
+          : undefined;
+      const projection = sleepEpisode ? { ...result, sleepEpisode } : result;
       results[metric] =
         (metric === 'sleep' && !sleepSourcesCompatible) || incompatibleQuantity
-          ? { ...result, comparison: null }
-          : result;
+          ? { ...projection, comparison: null }
+          : projection;
+    }
   }
   return { metrics: results, quantityTruncated };
 }

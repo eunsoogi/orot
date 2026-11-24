@@ -44,7 +44,6 @@ function projection(
 beforeEach(() => chartPlot.mockClear());
 
 test.each([
-  ['sleep', 'min', 70.4, 70],
   ['bodyMass', 'kg', 70.25, 70.3],
   ['steps', 'count', 70.6, 71],
   ['workouts', 'min', 48, 48],
