@@ -31,9 +31,8 @@ extension RealtimeVoiceCall {
                 guard allowed else { self.fail(); return }
                 let begin = { [weak self] in
                     guard let self else { return }
-                    guard id == identifier, lifecycleEpoch == epoch else { return }
+                    guard id == identifier, lifecycleEpoch == epoch, liveSocketEpoch != epoch else { return }
                     let startID = UUID().uuidString
-                    liveStartID = startID
                     liveSocketEpoch = epoch
                     socket.received = { [weak self] event in
                         guard let self, liveSocketEpoch == epoch else { return }
@@ -65,8 +64,7 @@ extension RealtimeVoiceCall {
                     }
                     socket.open(model: model, key: key)
                     guard id == identifier, lifecycleEpoch == epoch else { return }
-                    event["event_id"] = startID
-                    socket.send(event)
+                    sendStartWithConnectingCue(event, startID: startID, identifier: identifier, epoch: epoch)
                 }
                 if self.foreground() {
                     begin()

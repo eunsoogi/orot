@@ -7,6 +7,7 @@ final class RealtimeVoiceCall {
     enum Failure: Error { case unavailable, stopped }
     // Module-internal state is shared only with the lifecycle and event extensions.
     let audio: RealtimeAudioPort
+    let connectingCue: RealtimeConnectingCuePort?
     let socket: RealtimeSocketPort
     let ownership: AudioSessionOwnership
     let tools = RealtimeVoiceToolLease()
@@ -45,13 +46,14 @@ final class RealtimeVoiceCall {
 
     init(audio: RealtimeAudioPort = RealtimeVoiceAudio(), socket: RealtimeSocketPort = RealtimeVoiceSocket(),
          ownership: AudioSessionOwnership = .shared, systemCall: VoiceSystemCallPort? = nil,
+         connectingCue: RealtimeConnectingCuePort? = nil,
          permission: @escaping (@escaping (Bool) -> Void) -> Void = RealtimeVoiceCall.requestPermission,
          foreground: @escaping () -> Bool = { UIApplication.shared.applicationState == .active },
          emit: @escaping (String, [String: Any]) -> Void)
     {
         self.audio = audio; self.socket = socket; self.ownership = ownership
         self.permission = permission; self.foreground = foreground; self.systemCall = systemCall
-        self.emit = emit
+        self.emit = emit; self.connectingCue = connectingCue
         audio.drained = { [weak self] in
             guard let self else { return }
             guard ready, !paused else { return }
@@ -166,6 +168,7 @@ final class RealtimeVoiceCall {
         liveSessionID = nil
         ready = false; paused = false; liveSocketEpoch = nil; liveStartID = nil; liveUnmuteID = nil; liveExpiresAt = nil
         liveExpiryTimer?.invalidate(); liveExpiryTimer = nil; captureEpoch = UUID(); lifecycleEpoch = UUID(); pending = nil; timer?.invalidate(); timer = nil
+        connectingCue?.cancel()
         cancelTools(); tools.enabled = false
         retireManagedResponses()
         managedResponsesTransport = false
@@ -228,12 +231,12 @@ final class RealtimeVoiceCall {
         timer?.invalidate()
         liveExpiryTimer?.invalidate()
         let audio = audio, socket = socket, owned = token, ownership = ownership, systemCall = systemCall, systemCallOwner = systemCallOwner
-        let tool = tools.invalidate(), callID = id, emit = emit
+        let tool = tools.invalidate(), callID = id, emit = emit, cue = connectingCue
         DispatchQueue.main.async {
             if let tool, let callID {
                 emit("VoiceRealtimeToolCancelled", ["callId": callID, "toolCallId": tool])
             }
-            socket.close(); audio.stop()
+            cue?.cancel(); socket.close(); audio.stop()
             if let systemCallOwner {
                 systemCall?.end(owner: systemCallOwner)
             }
