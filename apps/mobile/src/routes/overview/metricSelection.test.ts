@@ -2,7 +2,9 @@ import { MemoryObservationRepository } from '../../healthkit/commonObservations/
 import { createRecordRepository, runMigrations } from '@orot/storage';
 import { createHealthEvidenceTestDatabase } from '../../healthEvidence/localEvidenceTestSupport';
 import {
-  overviewMetrics,
+  overviewMetricChoices,
+  snapshotOverviewMetricSelection,
+  validateOverviewMetricSelection,
   loadOverviewMetricSelection,
   saveOverviewMetricSelection,
 } from './metricSelection';
@@ -65,7 +67,7 @@ test('restores ordered choices after closing and reopening SQLite', async () => 
     await runMigrations(first.database);
     await saveOverviewMetricSelection(
       createRecordRepository(first.database),
-      overviewMetrics,
+      overviewMetricChoices,
     );
     first.close();
     const reopened = createHealthEvidenceTestDatabase(path);
@@ -73,11 +75,40 @@ test('restores ordered choices after closing and reopening SQLite', async () => 
       await runMigrations(reopened.database);
       await expect(
         loadOverviewMetricSelection(createRecordRepository(reopened.database)),
-      ).resolves.toEqual(overviewMetrics);
+      ).resolves.toEqual(overviewMetricChoices);
     } finally {
       reopened.close();
     }
   } finally {
     rmSync(directory, { recursive: true, force: true });
   }
+});
+
+test('coalesces legacy heart picks at the earliest slot without changing non-heart order', () => {
+  expect(
+    validateOverviewMetricSelection([
+      'steps',
+      'walkingHeartRate',
+      'sleep',
+      'workoutHeartRate',
+      'heartRate',
+    ]),
+  ).toEqual(['steps', 'heartRate', 'sleep']);
+  expect(
+    validateOverviewMetricSelection(['walkingHeartRate', 'restingHeartRate']),
+  ).toEqual(['heartRate']);
+  expect(validateOverviewMetricSelection(['heartRate'])).toEqual(['heartRate']);
+  expect(
+    snapshotOverviewMetricSelection(['steps', 'heartRate', 'sleep']),
+  ).toEqual([
+    'steps',
+    'heartRate',
+    'restingHeartRate',
+    'walkingHeartRate',
+    'sleep',
+  ]);
+  expect(snapshotOverviewMetricSelection(['steps', 'sleep'])).toEqual([
+    'steps',
+    'sleep',
+  ]);
 });

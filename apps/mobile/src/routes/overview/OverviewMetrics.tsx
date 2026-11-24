@@ -1,4 +1,3 @@
-import { useIsFocused } from '@react-navigation/native';
 import { Fragment, useState } from 'react';
 import { Pressable, useWindowDimensions, View } from 'react-native';
 import { AppText as Text } from '../../layout/AppText';
@@ -6,7 +5,6 @@ import { AppButton } from '../../layout/AppButton';
 import { t } from '../../i18n';
 import type { ChartStatus } from '../../ui/charts';
 import {
-  isOverviewDerivedHeartRate,
   isOverviewSnapshotMetric,
   type OverviewMetricChoice,
 } from './metricSelection';
@@ -27,26 +25,6 @@ import {
   OverviewHeartPanel,
   groupOverviewCardSelection,
 } from './OverviewHeartPanel';
-import { OverviewWorkoutHeartRateCard } from './OverviewWorkoutHeartRateCard';
-
-/** The standalone association card owns its focus separately from projected charts. */
-function FocusedWorkoutHeartRate({
-  width,
-  embedded,
-}: {
-  readonly width: number | '100%';
-  readonly embedded?: boolean;
-}) {
-  const focused = useIsFocused();
-  return (
-    <OverviewWorkoutHeartRateCard
-      width={typeof width === 'number' ? width : undefined}
-      active={focused}
-      embedded={embedded}
-    />
-  );
-}
-
 /** Shows saved calendar-day metrics; an isolated route owns uncommitted edits. */
 export function OverviewMetrics({ onEdit }: { readonly onEdit?: () => void }) {
   const data = useOverviewMetrics();
@@ -86,35 +64,23 @@ export function OverviewMetrics({ onEdit }: { readonly onEdit?: () => void }) {
         ? 'stale'
         : undefined;
   const metricCard = (
-    metric: OverviewMetricChoice,
+    metric: Exclude<OverviewMetricChoice, 'workoutHeartRate'>,
     width: number | '100%',
-    heartPlacement?: 'featured' | 'supporting',
   ) => {
-    if (metric === 'workoutHeartRate')
-      return (
-        <FocusedWorkoutHeartRate
-          width={width}
-          embedded={Boolean(heartPlacement)}
-        />
-      );
     return data.metrics[metric] ? (
       <OverviewMetricCard
         metric={data.metrics[metric]!}
         width={width}
         chartStatus={chartStatus}
-        heartPlacement={heartPlacement}
       />
     ) : (
       <OverviewMetricChartPlaceholder
         metric={metric}
         status={placeholderStatus}
         width={width}
-        heartPlacement={heartPlacement}
         emptyMessage={
           data.state === 'ready'
-            ? metric !== 'sleep' &&
-              !isOverviewDerivedHeartRate(metric) &&
-              data.quantityTruncated
+            ? metric !== 'sleep' && data.quantityTruncated
               ? t('overview.metricTruncated')
               : t('overview.metricWindowEmpty')
             : undefined
@@ -164,30 +130,19 @@ export function OverviewMetrics({ onEdit }: { readonly onEdit?: () => void }) {
             setGridWidth(current => (current === width ? current : width));
           }}
         >
-          {cards.map(card =>
-            card.kind === 'heart' ? (
+          {cards.map(metric =>
+            metric === 'heartRate' ? (
               <OverviewHeartPanel
-                key="heart-panel"
-                choices={card.choices}
-                width={
-                  card.choices.length === 1 ? gridLayout.cardWidth : '100%'
-                }
-                measuredWidth={
-                  card.choices.length === 1 &&
-                  typeof gridLayout.cardWidth === 'number'
-                    ? gridLayout.cardWidth
-                    : gridWidth
-                }
-                fontScale={fontScale}
-                renderMetric={(metric, placement) =>
-                  metricCard(metric, '100%', placement)
-                }
+                key={metric}
+                width={gridLayout.cardWidth}
+                metrics={data.metrics}
+                state={data.state}
               />
-            ) : (
-              <Fragment key={card.metric}>
-                {metricCard(card.metric, gridLayout.cardWidth)}
+            ) : isOverviewSnapshotMetric(metric) ? (
+              <Fragment key={metric}>
+                {metricCard(metric, gridLayout.cardWidth)}
               </Fragment>
-            ),
+            ) : null,
           )}
         </View>
       </View>

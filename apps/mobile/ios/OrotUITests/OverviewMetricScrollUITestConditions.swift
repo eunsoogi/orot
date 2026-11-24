@@ -102,7 +102,7 @@ enum OverviewMetricScrollUITestConditions {
         navigation: NavigationUITestConditions.NavigationAction,
         testCase: XCTestCase,
     ) {
-        for identifier in ["overview-metric-sleep", "overview-metric-heartRate"] {
+        for identifier in ["overview-metric-sleep", "overview-heart-panel"] {
             let card = UITestConditions.element(app, identifier)
             XCTAssertTrue(card.waitForAppearance())
             revealCard(card, in: app, homeScroll: homeScroll, navigationOcclusion: navigation.toolbar)

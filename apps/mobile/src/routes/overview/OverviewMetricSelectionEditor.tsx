@@ -36,9 +36,11 @@ export function OverviewMetricSelectionEditor({
   readonly title: (metric: OverviewMetric) => string;
 }) {
   const choiceTitle = (metric: OverviewMetricChoice) =>
-    metric === 'workoutHeartRate'
-      ? t('healthRecords.workoutHeartRate.overviewTitle')
-      : title(metric);
+    metric === 'heartRate'
+      ? t('overview.heartPanel')
+      : metric === 'workoutHeartRate'
+        ? t('healthRecords.workoutHeartRate.overviewTitle')
+        : title(metric);
   const drag = useOverviewMetricDrag(selection, saving, onMove);
   const choices = [
     ...selection,

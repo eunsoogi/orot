@@ -12,7 +12,7 @@ import { overviewMetricTitle } from './OverviewMetricCard';
 import { OverviewMetrics } from './OverviewMetrics';
 import { useOverviewMetrics } from './useOverviewMetrics';
 import {
-  isOverviewSnapshotMetric,
+  snapshotOverviewMetricSelection,
   loadOverviewMetricSelection,
   saveOverviewMetricSelection,
   type OverviewMetricChoice,
@@ -27,17 +27,12 @@ jest.mock('../../storage/secureDatabase', () => ({
   openLocalStorage: jest.fn(),
 }));
 
-test('keeps workout association separate in the editor, saved order, and actual Overview grid', async () => {
+test('keeps one heart choice in the editor and associates workout only in the grouped card', async () => {
   const lane = openSqliteTestDatabase(':memory:');
   try {
     await runMigrations(lane.database);
     const repository = createRecordRepository(lane.database);
-    const selected: OverviewMetricChoice[] = [
-      'sleep',
-      'restingHeartRate',
-      'workoutHeartRate',
-      'walkingHeartRate',
-    ];
+    const selected: OverviewMetricChoice[] = ['sleep', 'heartRate'];
     let moved: OverviewMetricChoice[] | null = null;
     const editor = await render(
       <OverviewMetricSelectionEditor
@@ -55,28 +50,24 @@ test('keeps workout association separate in the editor, saved order, and actual 
         title={overviewMetricTitle}
       />,
     );
-    expect(screen.getByRole('checkbox', { name: '운동 심박수' })).toBeChecked();
+    expect(screen.getByRole('checkbox', { name: '심박수' })).toBeChecked();
     await fireEvent(
-      screen.getByRole('adjustable', { name: '운동 심박수 순서 변경' }),
+      screen.getByRole('adjustable', { name: '심박수 순서 변경' }),
       'accessibilityAction',
       { nativeEvent: { actionName: 'decrement' } },
     );
-    expect(moved).toEqual([
-      'sleep',
-      'workoutHeartRate',
-      'restingHeartRate',
-      'walkingHeartRate',
-    ]);
+    expect(moved).toEqual(['heartRate', 'sleep']);
     expect(openLocalStorage).not.toHaveBeenCalled();
     await editor.unmount();
 
     await saveOverviewMetricSelection(repository, moved!);
     const persisted = await loadOverviewMetricSelection(repository);
     expect(persisted).toEqual(moved);
-    expect(persisted.filter(isOverviewSnapshotMetric)).toEqual([
-      'sleep',
+    expect(snapshotOverviewMetricSelection(persisted)).toEqual([
+      'heartRate',
       'restingHeartRate',
       'walkingHeartRate',
+      'sleep',
     ]);
     jest.mocked(useOverviewMetrics).mockReturnValue({
       selection: persisted,

@@ -5,6 +5,10 @@ import type { OverviewMetric } from './metricSelection';
 import type { OverviewMetricProjection } from './metricProjection';
 
 jest.mock('./useOverviewMetrics');
+jest.mock('@react-navigation/native', () => ({
+  ...jest.requireActual('@react-navigation/native'),
+  useIsFocused: () => false,
+}));
 jest.mock('react-native-chart-kit/v2', () => ({
   ChartKitProvider: ({ children }: { children: React.ReactNode }) => children,
   LineChart: () => null,
@@ -55,6 +59,16 @@ test.each([
 
     await render(<OverviewMetrics />);
 
+    if (metric === 'heartRate') {
+      expect(screen.getByText(formattedValue)).toBeVisible();
+      expect(screen.getByText('평균 심박수')).toBeVisible();
+      expect(screen.queryByText(/Synthetic Watch App|Asia\/Seoul/u)).toBeNull();
+      expect(
+        screen.queryByTestId('overview-metric-chart-heartRate'),
+      ).toBeNull();
+      expect(projection.latest.value).toBe(measuredValue);
+      return;
+    }
     const summary = screen.getByTestId(`overview-metric-summary-${metric}`);
     expect(summary.props.accessibilityLabel).toContain(statistic);
     expect(summary.props.accessibilityLabel).toContain(`${formattedValue}.`);

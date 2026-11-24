@@ -15,6 +15,10 @@ import {
 } from './overviewMetricLayoutFixtures';
 
 jest.mock('./useOverviewMetrics');
+jest.mock('@react-navigation/native', () => ({
+  ...jest.requireActual('@react-navigation/native'),
+  useIsFocused: () => false,
+}));
 const mocked = jest.mocked(useOverviewMetrics);
 
 const allOverviewMetrics: readonly OverviewMetric[] = [
@@ -86,6 +90,12 @@ test.each([2, 3, 4])(
     // An ordinary iPhone's measured content must keep each metric on its own row.
     expect(selection.map(cardWidth)).toEqual(Array(count).fill(348));
     for (const metric of selection) {
+      if (metric === 'heartRate') {
+        expect(
+          screen.queryByTestId('overview-metric-chart-heartRate'),
+        ).toBeNull();
+        continue;
+      }
       const chart = within(
         screen.getByTestId(`overview-metric-chart-${metric}`),
       );
