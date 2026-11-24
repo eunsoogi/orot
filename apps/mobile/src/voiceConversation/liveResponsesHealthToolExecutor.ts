@@ -106,7 +106,15 @@ export function createLiveResponsesHealthToolExecutor(input: {
         call.name === 'orot_health_context'
           ? parseLiveHealthRequestScope(call.args)
           : undefined;
-      if (!scope) return;
+      const challengeProtected = () =>
+        challengeCurrent() && input.protectedDataCurrent() === true;
+      const confirmProtection = async (current: () => boolean) =>
+        current() &&
+        (await input.protectedDataAvailable()) === true &&
+        current();
+      // Proof the native boundary before fetching the initial receipt; held
+      // later approvals still require a new receipt after each protection check.
+      if (!scope || !(await confirmProtection(challengeProtected))) return;
       const owner = await timed('grant_lookup', () => input.resolveOwner(call));
       if (
         !owner ||
@@ -123,18 +131,12 @@ export function createLiveResponsesHealthToolExecutor(input: {
       const keys = identity(captured);
       let latest = captured;
       const current = () =>
-        challengeCurrent() &&
-        input.protectedDataCurrent() === true &&
+        challengeProtected() &&
         captured.current() === true &&
         latest.current() === true;
       const reproof = () =>
         timed('owner_reproof', async () => {
-          if (
-            !current() ||
-            (await input.protectedDataAvailable()) !== true ||
-            !current()
-          )
-            return false;
+          if (!(await confirmProtection(current))) return false;
           const fresh = await input.resolveOwner(call);
           if (
             !fresh ||
@@ -145,7 +147,7 @@ export function createLiveResponsesHealthToolExecutor(input: {
           latest = Object.freeze({ ...fresh });
           return current();
         });
-      if (!(await reproof())) return;
+      if (!current()) return;
       const authority = Object.freeze({ call, owner: captured, scope, signal });
       const confirmed = await timed('local_confirmation', () =>
         input.confirm(authority),
