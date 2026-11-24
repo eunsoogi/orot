@@ -5,107 +5,23 @@ import {
   screen,
   waitFor,
 } from '@testing-library/react-native';
-import { NativeModules } from 'react-native';
-import { createRecordRepository, runMigrations } from '@orot/storage';
-import { openSqliteTestDatabase } from '../../../../../packages/storage/__tests__/sqliteTestDatabase';
-import { openLocalStorage } from '../../storage/secureDatabase';
+import { openLocalAgentMemoryDatabase } from '../../storage/secureDatabase';
 import { notifyLocalSourceDeleted } from '../../storage/localDataClearEvents';
-import { conversationExecutionNative } from '../../ragConversation/conversationExecutionNative';
-import { healthKitSample } from '../../healthkit/commonObservations/testSupport';
-import {
-  mapCommonObservationSample,
-  toCommonObservationRecord,
-} from '../../healthkit/commonObservations/mapper';
 import { OverviewWorkoutHeartRateCard } from './OverviewWorkoutHeartRateCard';
+import {
+  setup,
+  one,
+  two,
+  values,
+} from './testSupport/overviewWorkoutCardHarness';
 
 jest.mock('../../storage/secureDatabase', () => ({
-  openLocalStorage: jest.fn(),
+  openLocalAgentMemoryDatabase: jest.fn(),
+  isCurrentLocalAgentMemoryDatabase: jest.fn(),
 }));
 jest.mock('../../ragConversation/conversationExecutionNative', () => ({
   conversationExecutionNative: jest.fn(),
 }));
-type Protection = NonNullable<ReturnType<typeof conversationExecutionNative>>;
-type ProtectionEvent = Parameters<Parameters<Protection['subscribe']>[0]>[0];
-const one = 'B09CB262-D06E-485C-A600-BEEA45828A97';
-const two = 'FE6E3FEA-0BCA-402B-BED3-E2838C9F4B1F';
-const values = { status: 'available', minimum: 60, mean: 90, maximum: 130 };
-const original = NativeModules.HealthKitModule;
-
-function fixture(id: string, hoursAgo: number) {
-  const start = new Date(Date.now() - hoursAgo * 3600000).toISOString();
-  const end = new Date(Date.parse(start) + 60000).toISOString();
-  const mapped = mapCommonObservationSample(
-    'workouts',
-    healthKitSample('workouts', {
-      id,
-      startDate: start,
-      endDate: end,
-    }),
-  );
-  if (mapped.status !== 'mapped') throw new Error('Broken synthetic workout.');
-  return toCommonObservationRecord(mapped.observation, end);
-}
-
-async function setup() {
-  const { database, close } = openSqliteTestDatabase(':memory:');
-  await runMigrations(database);
-  const repository = createRecordRepository(database);
-  const first = fixture(one, 1);
-  const second = fixture(two, 2);
-  await repository.put('health_observation', first);
-  await repository.put('health_observation', second);
-  await repository.put('health_observation', { ...first, id: 'forged' });
-  const pages = jest.spyOn(repository, 'listHealthObservationPage');
-  jest.mocked(openLocalStorage).mockResolvedValue(repository);
-  let protectedData = true;
-  const subscribers = new Set<(event: ProtectionEvent) => void>();
-  jest.mocked(conversationExecutionNative).mockReturnValue({
-    bridgeAvailable: true,
-    async begin() {
-      throw new Error('Unexpected execution lease');
-    },
-    end() {
-      throw new Error('Unexpected execution lease');
-    },
-    async isActive() {
-      throw new Error('Unexpected execution lease');
-    },
-    currentPhase: () => 'active',
-    protectedDataAvailable: async () => protectedData,
-    subscribe: listener => {
-      subscribers.add(listener);
-      return () => subscribers.delete(listener);
-    },
-  });
-  const queryWorkoutHeartRate = jest.fn(async (_id: string) => values);
-  const requestReadAuthorizations = jest.fn();
-  const querySamples = jest.fn();
-  NativeModules.HealthKitModule = {
-    queryWorkoutHeartRate,
-    requestReadAuthorizations,
-    querySamples,
-  };
-  return {
-    close,
-    repository,
-    first,
-    second,
-    pages,
-    queryWorkoutHeartRate,
-    requestReadAuthorizations,
-    querySamples,
-    revoke() {
-      protectedData = false;
-      for (const subscriber of subscribers)
-        subscriber({ kind: 'protectedData', available: false });
-    },
-  };
-}
-
-afterEach(() => {
-  NativeModules.HealthKitModule = original;
-  jest.clearAllMocks();
-});
 
 const picker = () => screen.getByTestId('overview-workout-heart-rate-choose');
 const option = (i: number) =>
@@ -118,16 +34,16 @@ test('loads only an explicit bounded workout page and reads only the selected as
     const view = await render(
       <OverviewWorkoutHeartRateCard active width={302} />,
     );
-    expect(openLocalStorage).not.toHaveBeenCalled();
+    expect(openLocalAgentMemoryDatabase).not.toHaveBeenCalled();
     expect(lane.queryWorkoutHeartRate).not.toHaveBeenCalled();
     await fireEvent.press(picker());
     const selected = await option(1);
-    expect(lane.pages).toHaveBeenCalledTimes(1);
-    expect(lane.pages).toHaveBeenCalledWith(null, 20, {
-      category: 'workouts',
-      fromInclusive: expect.any(String),
-      toInclusive: expect.any(String),
-    });
+    const pages = lane.statements.mock.calls.filter(
+      ([sql]) =>
+        sql.includes('FROM health_observations') && sql.includes('LIMIT'),
+    );
+    expect(pages).toHaveLength(1);
+    expect(pages[0]?.[1]).toEqual(expect.arrayContaining([21]));
     expect(
       screen.queryByTestId('overview-workout-heart-rate-option-2'),
     ).toBeNull();
@@ -210,6 +126,75 @@ test('a captured choice deleted before native admission never calls native', asy
     await lane.repository.delete('health_observation', lane.first.id);
     await fireEvent.press(selected);
     await waitFor(() => expect(result()).toBeNull());
+    expect(lane.queryWorkoutHeartRate).not.toHaveBeenCalled();
+    await view.unmount();
+  } finally {
+    lane.close();
+  }
+});
+
+test.each(['reimport', 'repository replacement'])(
+  'rejects a %s during the last delayed protected-data confirmation',
+  async change => {
+    const lane = await setup();
+    try {
+      let releaseNative!: (value: typeof values) => void;
+      lane.queryWorkoutHeartRate.mockReturnValueOnce(
+        new Promise(resolve => {
+          releaseNative = resolve;
+        }),
+      );
+      const view = await render(
+        <OverviewWorkoutHeartRateCard active width={undefined} />,
+      );
+      await fireEvent.press(picker());
+      const tapped = fireEvent.press(await option(0));
+      await waitFor(() =>
+        expect(lane.queryWorkoutHeartRate).toHaveBeenCalledWith(one),
+      );
+      const gate = lane.holdSecondProbe();
+      releaseNative(values);
+      await gate.entered;
+      if (change === 'reimport') {
+        await lane.repository.put('health_observation', {
+          ...lane.first,
+          endedAt: new Date(
+            Date.parse(lane.first.endedAt!) + 30000,
+          ).toISOString(),
+        });
+      } else lane.replaceOwner();
+      await act(async () => {
+        gate.release(true);
+        await tapped;
+      });
+      expect(result()).toBeNull();
+      expect(lane.queryWorkoutHeartRate).toHaveBeenCalledTimes(1);
+      await view.unmount();
+    } finally {
+      lane.close();
+    }
+  },
+);
+
+test('a reimport during delayed pre-native confirmation sends no UUID to native', async () => {
+  const lane = await setup();
+  try {
+    const view = await render(
+      <OverviewWorkoutHeartRateCard active width={undefined} />,
+    );
+    await fireEvent.press(picker());
+    const gate = lane.holdSecondProbe();
+    const tapped = fireEvent.press(await option(0));
+    await gate.entered;
+    await lane.repository.put('health_observation', {
+      ...lane.first,
+      endedAt: new Date(Date.parse(lane.first.endedAt!) + 30000).toISOString(),
+    });
+    await act(async () => {
+      gate.release(true);
+      await tapped;
+    });
+    expect(result()).toBeNull();
     expect(lane.queryWorkoutHeartRate).not.toHaveBeenCalled();
     await view.unmount();
   } finally {

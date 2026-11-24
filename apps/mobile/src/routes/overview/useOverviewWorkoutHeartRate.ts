@@ -1,6 +1,10 @@
 import { useCallback, useLayoutEffect, useRef, useState } from 'react';
 import { AppState } from 'react-native';
-import type { RecordRepository } from '@orot/storage';
+import {
+  createRecordRepository,
+  type RecordRepository,
+  type SqlDatabase,
+} from '@orot/storage';
 import { watchSavedReportNativeProtection as watchNativeProtection } from '../../generatedReports/savedReportNativeProtection';
 import {
   readWorkoutHeartRate,
@@ -10,6 +14,7 @@ import {
   subscribeLocalDataClear,
   subscribeLocalSourceDeletion,
 } from '../../storage/localDataClearEvents';
+import { acquireIndependentReadEpoch } from '../../storage/protectedReadEpoch';
 import {
   loadOverviewWorkoutCandidates,
   sameWorkoutCandidate,
@@ -27,19 +32,23 @@ type State =
       result: WorkoutHeartRate;
     };
 
-declare const require: (path: string) => {
-  openLocalStorage: () => Promise<RecordRepository>;
-};
+declare const require: (
+  path: '../../storage/secureDatabase',
+) => Pick<
+  typeof import('../../storage/secureDatabase'),
+  'openLocalAgentMemoryDatabase' | 'isCurrentLocalAgentMemoryDatabase'
+>;
 
-// Mirror Overview: do not initialize the native SQLite module just to mount a card.
-function openRepository() {
-  return require('../../storage/secureDatabase').openLocalStorage();
+// The existing facade exposes the same guarded owner without close/key access.
+function workoutStorage() {
+  return require('../../storage/secureDatabase');
 }
 
 type Protection = NonNullable<ReturnType<typeof watchNativeProtection>>;
 type Session = {
   readonly abort: AbortController;
   readonly protection: Protection;
+  database?: SqlDatabase;
   repository?: RecordRepository;
   pending: boolean;
   page?: CandidatePage;
@@ -104,24 +113,35 @@ export function useOverviewWorkoutHeartRate(active: boolean) {
     const session: Session = { abort, protection, pending: true };
     owner.current = session;
     setState({ status: 'loading' });
+    let epoch: ReturnType<typeof acquireIndependentReadEpoch>;
     try {
       if (!(await protection.confirm()) || !current(session)) return;
-      const repository = await openRepository();
+      const storage = workoutStorage();
+      const database = await storage.openLocalAgentMemoryDatabase();
       if (!current(session)) return;
-      const page = await loadOverviewWorkoutCandidates(repository, new Date());
-      if (!current(session)) return;
-      const sameOwner = (await openRepository()) === repository;
-      if (!(await protection.confirm()) || !current(session)) return;
-      if (!sameOwner) {
+      epoch = acquireIndependentReadEpoch(database);
+      const admitted = () =>
+        current(session) &&
+        storage.isCurrentLocalAgentMemoryDatabase(database) &&
+        epoch?.current();
+      if (!admitted()) {
         clear();
         return;
       }
+      const repository = createRecordRepository(database);
+      const page = await loadOverviewWorkoutCandidates(repository, new Date());
+      if (!(await protection.confirm()) || !admitted()) {
+        if (current(session)) clear();
+        return;
+      }
+      session.database = database;
       session.repository = repository;
       session.page = page;
       setState({ status: 'choosing', ...page });
     } catch {
       if (current(session)) clear('failed');
     } finally {
+      epoch?.dispose();
       session.pending = false;
     }
   }
@@ -129,48 +149,58 @@ export function useOverviewWorkoutHeartRate(active: boolean) {
   async function select(selection: OverviewWorkoutCandidate) {
     const session = owner.current;
     const repository = session?.repository;
+    const database = session?.database;
     if (
       !session ||
       !repository ||
+      !database ||
       !current(session) ||
       session.pending ||
       !session.page?.candidates.includes(selection)
     )
       return;
+    const storage = workoutStorage();
+    const epoch = acquireIndependentReadEpoch(database);
+    const admitted = () =>
+      current(session) &&
+      storage.isCurrentLocalAgentMemoryDatabase(database) &&
+      epoch?.current();
+    if (!admitted()) {
+      epoch?.dispose();
+      clear();
+      return;
+    }
     session.pending = true;
     setState({ status: 'reading', selection });
     const verify = async () => {
-      if (
-        !current(session) ||
-        !(await session.protection.confirm()) ||
-        !current(session) ||
-        (await openRepository()) !== repository ||
-        !current(session)
-      )
+      if (!admitted() || !(await session.protection.confirm()) || !admitted())
         return false;
       const now = await repository.get(
         'health_observation',
         selection.record.id,
       );
+      // The same writer epoch is checked after every await, including the final
+      // foreground confirmation; a normal reimport is not a deletion event.
       return (
-        current(session) &&
+        admitted() &&
         sameWorkoutCandidate(selection, now) &&
         (await session.protection.confirm()) &&
-        current(session)
+        admitted()
       );
     };
     try {
-      if (!(await verify()) || !current(session)) {
+      if (!(await verify()) || !admitted()) {
         if (current(session)) clear();
         return;
       }
       const result = await readWorkoutHeartRate(selection.uuid);
-      if ((await verify()) && current(session)) {
+      if ((await verify()) && admitted()) {
         setState({ status: 'result', selection, result });
       } else if (current(session)) clear();
     } catch {
       if (current(session)) clear('failed');
     } finally {
+      epoch?.dispose();
       session.pending = false;
     }
   }
