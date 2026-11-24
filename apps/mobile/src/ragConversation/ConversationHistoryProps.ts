@@ -6,6 +6,12 @@ import type { ConversationActivitySnapshot } from './conversationActivity';
 import type { ConversationSession } from './conversationSessionTypes';
 import type { ReplyFocusHandle } from '../replyNotifications/replyFocus';
 
+export type VoiceMarkerPresentation = NonNullable<
+  ConversationSession['taskCards']
+>[number] & {
+  readonly observedQuote?: import('./ConversationObservedVoiceQuote').ReadObservedVoiceQuote;
+};
+
 /** Inputs shared by the transcript, activity indicator, and retained reply focus. */
 export interface ConversationHistoryProps {
   readonly onContinueCold?: (requestId: string) => void;
@@ -15,7 +21,7 @@ export interface ConversationHistoryProps {
   readonly restoringHistory?: boolean;
   readonly messages: readonly DisplayMessage[];
   readonly savedHistoryDisplay?: ConversationSession['savedHistoryDisplay'];
-  readonly voiceEndCards?: ConversationSession['taskCards'];
+  readonly voiceEndCards?: readonly VoiceMarkerPresentation[];
   readonly pendingMessage: ConversationSession['pendingMessage'];
   readonly error: string;
   readonly onOpenSource: (

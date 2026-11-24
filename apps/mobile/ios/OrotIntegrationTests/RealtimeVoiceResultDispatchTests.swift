@@ -87,3 +87,46 @@ extension RealtimeVoiceLifecycleTests {
         wait(for: [terminal], timeout: 1)
     }
 }
+
+extension RealtimeVoiceLifecycleTests {
+    func verifyObservedCallCaptionsRequireTheExactCorrelatedClose() {
+        let owned = LiveObservedCaptionBuffer.Owner(call: "live-1-1", session: "session", epoch: UUID())
+        let replaced = LiveObservedCaptionBuffer.Owner(call: "live-1-2", session: "session", epoch: UUID())
+        var buffer = LiveObservedCaptionBuffer()
+        buffer.append(["type": "session.input_transcript.delta", "event_id": "first", "delta": "test input"], owner: owned)
+        buffer.append(["type": "session.output_transcript.delta", "event_id": "foreign", "delta": "foreign"], owner: replaced)
+        buffer.append(["type": "session.output_transcript.delta", "event_id": "first", "delta": "duplicate"], owner: owned)
+        buffer.append(["type": "session.output_transcript.delta", "event_id": "second", "delta": "test output"], owner: owned)
+        let saved = buffer.take(owned)
+        XCTAssertEqual(saved?["status"] as? String, "observed_incomplete")
+        XCTAssertEqual((saved?["lines"] as? [[String: Any]])?.compactMap { $0["role"] as? String }, ["user", "assistant"])
+        XCTAssertNil(buffer.take(owned))
+        var close: [String: Any] = [
+            "type": "session.closed", "event_id": "closed", "client_event_id": "expected",
+            "reason": "close_requested", "session": ["id": owned.session, "model": "gpt-live-1.1"],
+        ]
+        XCTAssertTrue(LiveObservedCaptionBuffer.acknowledged(close, sessionID: owned.session, command: "expected"))
+        XCTAssertFalse(LiveObservedCaptionBuffer.acknowledged(close, sessionID: "replaced", command: "expected"))
+        close.removeValue(forKey: "client_event_id")
+        XCTAssertFalse(LiveObservedCaptionBuffer.acknowledged(close, sessionID: owned.session, command: "expected"))
+    }
+
+    func verifyManagedCaptionCloseDropsUnsentFramesAndRejectsPartialToolWrites() throws {
+        let authority = LiveNativeResultDispatchAuthority()
+        let ticket = authority.begin(call: "call", challenge: "challenge")
+        XCTAssertTrue(ticket.claim())
+        XCTAssertTrue(ticket.bind { _ in })
+        let permit = LiveQueuedToolPermit(current: { true }, ticket: ticket)
+        let sending = RealtimeSocketWrite(text: "already handed", isInput: true)
+        let protected = RealtimeSocketWrite(text: "queued protected", isInput: false, permit: permit)
+        let queued = RealtimeSocketWrite(text: "queued ordinary", isInput: true)
+        XCTAssertNil(LiveCaptionTerminalQueue.prepare([protected, queued], sending: true))
+        permit.issued = true
+        XCTAssertNil(LiveCaptionTerminalQueue.prepare([sending, protected], sending: true))
+        permit.issued = false
+        let prepared = try XCTUnwrap(LiveCaptionTerminalQueue.prepare([sending, protected, queued], sending: true))
+        XCTAssertEqual(prepared.retained.map(\.text), [sending.text])
+        prepared.retireDiscarded()
+        XCTAssertFalse(ticket.submit { XCTFail("A retired ticket must not submit") })
+    }
+}

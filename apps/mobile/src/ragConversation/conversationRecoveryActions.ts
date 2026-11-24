@@ -20,6 +20,8 @@ export function conversationRecoveryActions(input: {
   const { options, find, update, restoration, taskRefresh, disposed } = input;
   const owners = new Map<number, symbol>();
   return {
+    readExplicitPriorVoiceContext:
+      options.retention?.readExplicitPriorVoiceContext,
     refreshRecovery: recoveryFor(options, find, update, disposed),
     retryRestore: (id: number, signal?: AbortSignal) =>
       disposed()

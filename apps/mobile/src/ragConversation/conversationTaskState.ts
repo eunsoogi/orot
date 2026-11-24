@@ -1,4 +1,7 @@
-import { createVoiceEndReceipt } from '../voiceConversation/voiceEndReceipt';
+import {
+  captureConversationVoiceEnd,
+  type VoiceEndOwnership,
+} from './captureConversationVoiceEnd';
 import type { ConversationTaskCard } from '../storage/conversationTaskCards';
 import type {
   ConversationSession,
@@ -10,6 +13,7 @@ export interface RetainedConversationTask {
   readonly createdAt: string;
   readonly revision: number;
   readonly task: ConversationTaskCard;
+  readonly hasObservedVoiceCaptions?: true;
   readonly liveAfterMessageId?: number | null;
 }
 
@@ -32,54 +36,11 @@ export function createConversationTaskState(input: {
     queues.clear();
   };
   const tasks = {
-    captureVoiceEnd(
-      sessionId: number,
-      callId: string,
-    ): ((event: unknown) => Promise<void> | undefined) | undefined {
-      const owner = input.find(sessionId);
-      if (
-        !input.valid() ||
-        input.activeId() !== sessionId ||
-        !owner ||
-        owner.quarantined ||
-        owner.restoring ||
-        owner.restoreFailed
-      )
-        return;
-      const controller = voiceOwners.get(sessionId) ?? new AbortController();
-      // An abort stays false across remove/undo, even for a previously empty session.
-      voiceOwners.set(sessionId, controller);
-      const { signal } = controller;
-      const lease = input.retention?.activeLease(sessionId);
-      const current = () => {
-        const session = input.find(sessionId);
-        return (
-          input.valid() &&
-          !signal.aborted &&
-          Boolean(session) &&
-          !session?.quarantined &&
-          session?.createdAt === owner.createdAt
-        );
-      };
-      return createVoiceEndReceipt({
-        callId,
-        isCurrent: current,
-        retain: duration =>
-          tasks.save(
-            sessionId,
-            `voice-end:${callId}`,
-            { kind: 'voice_end', ...duration },
-            undefined,
-            {
-              current,
-              lease: lease ?? undefined,
-              signal,
-              createdAt: new Date().toISOString(),
-              afterMessage: input.find(sessionId)?.messages.at(-1)?.id ?? null,
-            },
-          ),
-      }).accept;
-    },
+    captureVoiceEnd: captureConversationVoiceEnd({
+      ...input,
+      voiceOwners,
+      save: (...args): Promise<void> => tasks.save(...args),
+    }),
     invalidateVoiceEnd(id: number) {
       voiceOwners.get(id)?.abort();
       voiceOwners.delete(id);
@@ -128,13 +89,7 @@ export function createConversationTaskState(input: {
       cardId: string,
       task: ConversationTaskCard,
       expectedCardRevision?: number,
-      voice?: {
-        current: () => boolean;
-        lease?: { readonly id: string; readonly version: number };
-        signal: AbortSignal;
-        createdAt: string;
-        afterMessage: number | null;
-      },
+      voice?: VoiceEndOwnership,
     ) {
       // Freeze the requested identifiers before queued asynchronous work can start.
       const requested = JSON.parse(
@@ -201,6 +156,9 @@ export function createConversationTaskState(input: {
                   createdAt,
                   expectedRevision: revision,
                   task: nextTask,
+                  ...(voice?.observedVoiceCaptions
+                    ? { observedVoiceCaptions: voice.observedVoiceCaptions }
+                    : {}),
                 },
                 controller.signal,
                 voice?.lease,

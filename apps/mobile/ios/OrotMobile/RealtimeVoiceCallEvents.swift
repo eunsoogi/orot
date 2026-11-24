@@ -27,6 +27,12 @@ extension RealtimeVoiceCall {
 
     func receive(_ event: [String: Any]) {
         guard id != nil, let type = event["type"] as? String else { return }
+        if (type == "session.input_transcript.delta" || type == "session.output_transcript.delta"),
+           let call = id, let session = liveSessionID, let epoch = liveSocketEpoch,
+           ready, !paused, token != nil, foreground(), liveIsCurrent()
+        {
+            observedCaptions.append(event, owner: .init(call: call, session: session, epoch: epoch))
+        }
         switch type {
         case "session.started":
             guard let startID = liveStartID, !paused,
@@ -60,7 +66,7 @@ extension RealtimeVoiceCall {
             else { return }
             do { try audio.append(data); state("speaking") } catch { fail() }
         default:
-            // Transcript deltas are not finalized turns; never persist or bind them to the old tool lease.
+            // Caption collection remains independent of the managed response lease.
             break
         }
     }

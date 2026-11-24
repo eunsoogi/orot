@@ -60,7 +60,11 @@ export function ConversationTranscriptMessages({
     placement
       ?.get(before)
       ?.map(card => (
-        <ConversationVoiceEndMarker key={card.id} task={card.task} />
+        <ConversationVoiceEndMarker
+          key={card.id}
+          task={card.task}
+          readObserved={card.observedQuote}
+        />
       ));
   // Keep the same keyed choice block across first live append and older prepends.
   // Markers preceding the first live turn belong on the history side of the divider.
@@ -127,15 +131,9 @@ export function ConversationTranscriptMessages({
           beforeAnswer={bubbleRows(before)}
           {...renderMessage}
           verifiedA2UI={
-            message.archivedA2UIPresentation
-              ? {
-                  messageId: message.id,
-                  root: message.archivedA2UIPresentation,
-                  origin: 'owned-archive',
-                }
-              : message.a2uiPresentation
-                ? { messageId: message.id, root: message.a2uiPresentation }
-                : undefined
+            message.a2uiPresentation
+              ? { messageId: message.id, root: message.a2uiPresentation }
+              : undefined
           }
         />
         {bubbleRows(after)}

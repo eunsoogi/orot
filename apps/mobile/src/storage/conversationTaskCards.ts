@@ -1,3 +1,5 @@
+import { createObservedVoiceCaptionReader } from './conversationVoiceObservedCaptionStorage';
+import { decodeRetainedConversationTaskRow } from './decodeRetainedConversationTaskRow';
 import {
   setupConversationVoiceEndMarkers,
   writeConversationVoiceEndMarker,
@@ -72,6 +74,7 @@ export function createConversationTaskCardStorage(
       throw new Error('Conversation session is unavailable.');
   }
   return {
+    ...createObservedVoiceCaptionReader(database, ensure, requireSession),
     async writeTaskCard(input: {
       sessionId: string;
       sessionVersion: number;
@@ -79,6 +82,7 @@ export function createConversationTaskCardStorage(
       createdAt: string;
       expectedRevision: number | null;
       task: ConversationTaskCard;
+      observedVoiceCaptions?: unknown;
       signal?: AbortSignal;
     }) {
       if (
@@ -100,6 +104,8 @@ export function createConversationTaskCardStorage(
         encoded.length <= 4096 ? parseTask(JSON.parse(encoded)) : null;
       if (
         !task ||
+        (input.observedVoiceCaptions !== undefined &&
+          task.kind !== 'voice_end') ||
         !voiceEndTaskIdentityMatches(input.id, task) ||
         (task.kind === 'voice_end' && input.expectedRevision !== null)
       )
@@ -194,12 +200,13 @@ export function createConversationTaskCardStorage(
         createdAt: string;
         revision: number;
         task: ConversationTaskCard;
+        hasObservedVoiceCaptions?: true;
       }[] = [];
       await database.transaction(async tx => {
         await requireSession(tx, sessionId, version);
         const result = await tx.execute(
-          `SELECT id, created_at, revision, task_json FROM conversation_task_cards WHERE session_id = ?${selected.clause}
-           UNION ALL SELECT id, created_at, 1, json_object('kind', 'voice_end', 'durationSeconds', duration_seconds) FROM conversation_voice_end_markers WHERE session_id = ?${selected.clause}
+          `SELECT id, created_at, revision, task_json, 0 AS has_captions FROM conversation_task_cards WHERE session_id = ?${selected.clause}
+           UNION ALL SELECT id, created_at, 1, json_object('kind', 'voice_end', 'durationSeconds', duration_seconds), EXISTS (SELECT 1 FROM conversation_voice_observed_captions c WHERE c.session_id = conversation_voice_end_markers.session_id AND c.marker_id = conversation_voice_end_markers.id) FROM conversation_voice_end_markers WHERE session_id = ?${selected.clause}
            ORDER BY created_at, id`,
           [
             sessionId,
@@ -208,33 +215,7 @@ export function createConversationTaskCardStorage(
             ...selected.parameters,
           ],
         );
-        cards = result.rows.map(row => {
-          const task =
-            typeof row.task_json === 'string' && row.task_json.length <= 4096
-              ? parseTask(JSON.parse(row.task_json))
-              : null;
-          if (
-            !task ||
-            typeof row.id !== 'string' ||
-            !row.id ||
-            row.id.length > 200 ||
-            !voiceEndTaskIdentityMatches(row.id, task) ||
-            (task.kind === 'voice_end' && row.revision !== 1) ||
-            typeof row.created_at !== 'string' ||
-            !Number.isFinite(Date.parse(row.created_at)) ||
-            new Date(row.created_at).toISOString() !== row.created_at ||
-            typeof row.revision !== 'number' ||
-            !Number.isSafeInteger(row.revision) ||
-            row.revision < 1
-          )
-            throw new Error('Invalid retained task card.');
-          return {
-            id: row.id,
-            createdAt: row.created_at,
-            revision: row.revision,
-            task,
-          };
-        });
+        cards = result.rows.map(decodeRetainedConversationTaskRow);
       });
       return cards;
     },

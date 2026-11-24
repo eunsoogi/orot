@@ -1,3 +1,7 @@
+import {
+  setupObservedVoiceCaptions,
+  writeObservedVoiceCaptions,
+} from './conversationVoiceObservedCaptionStorage';
 import type { SqlDatabase, SqlExecutor } from '@orot/storage';
 import { assertConversationNotCancelled } from './conversationArtifactCancellation';
 import type { VoiceEndTaskCard } from './conversationTaskCardCodec';
@@ -13,6 +17,7 @@ export async function setupConversationVoiceEndMarkers(tx: SqlExecutor) {
   await tx.execute(
     'CREATE TRIGGER IF NOT EXISTS conversation_voice_end_markers_session_removed AFTER DELETE ON conversation_artifact_sessions BEGIN DELETE FROM conversation_voice_end_markers WHERE session_id = OLD.id; END',
   );
+  await setupObservedVoiceCaptions(tx);
 }
 
 /** The same transaction checks the live protected session and immutable exact marker. */
@@ -23,6 +28,7 @@ export async function writeConversationVoiceEndMarker(
     id: string;
     createdAt: string;
     signal?: AbortSignal;
+    observedVoiceCaptions?: unknown;
   },
   task: VoiceEndTaskCard,
   requireSession: (tx: SqlExecutor) => Promise<void>,
@@ -50,7 +56,16 @@ export async function writeConversationVoiceEndMarker(
         [input.sessionId, input.id, input.createdAt, task.durationSeconds],
       );
     }
+    await writeObservedVoiceCaptions(tx, input, Boolean(existing));
     assertConversationNotCancelled(input.signal);
   });
-  return { id: input.id, createdAt, revision: 1, task };
+  return {
+    id: input.id,
+    createdAt,
+    revision: 1,
+    task,
+    ...(input.observedVoiceCaptions !== undefined
+      ? { hasObservedVoiceCaptions: true as const }
+      : {}),
+  };
 }
