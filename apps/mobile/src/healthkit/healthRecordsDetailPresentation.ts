@@ -1,6 +1,10 @@
 import type { HealthObservation } from '@orot/domain';
 import { formatWorkoutMinutes } from './workoutPresentation';
 import { t } from '../i18n';
+import {
+  formatHeartRateBpm,
+  isHeartRateDisplayUnit,
+} from '../i18n/heartRateDisplay';
 
 /** Uses original quantity data only when storage says that representation is available. */
 export function displayedQuantity(
@@ -18,7 +22,17 @@ export function displayRecordValue(observation: HealthObservation): string {
   const quantity = displayedQuantity(observation);
   if (observation.concept === 'workout_duration' && quantity?.unit === 'min')
     return formatWorkoutMinutes(quantity.amount);
-  if (quantity) return quantity.amount + ' ' + quantity.unit;
+  if (quantity) {
+    const concept = observation.concept;
+    if (
+      (concept === 'heart_rate' ||
+        concept === 'resting_heart_rate' ||
+        concept === 'walking_heart_rate_average') &&
+      isHeartRateDisplayUnit(quantity.unit)
+    )
+      return formatHeartRateBpm(quantity.amount);
+    return quantity.amount + ' ' + quantity.unit;
+  }
   switch (observation.value.kind) {
     case 'text':
       return observation.value.text;

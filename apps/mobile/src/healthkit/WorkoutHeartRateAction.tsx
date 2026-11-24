@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { AppState, View } from 'react-native';
 import { t } from '../i18n';
+import { formatHeartRateBpm } from '../i18n/heartRateDisplay';
 import { AppButton } from '../layout/AppButton';
 import { AppText as Text } from '../layout/AppText';
 import {
@@ -76,7 +77,6 @@ export function WorkoutHeartRateAction({
     }
   }
   if (state.status === 'retired') return null;
-  const amount = new Intl.NumberFormat('ko-KR', { maximumFractionDigits: 1 });
   return (
     <View>
       <AppButton
@@ -91,9 +91,9 @@ export function WorkoutHeartRateAction({
       {state.status === 'available' ? (
         <Text>
           {t('healthRecords.workoutHeartRate.summary', {
-            minimum: amount.format(state.minimum),
-            mean: amount.format(state.mean),
-            maximum: amount.format(state.maximum),
+            minimum: formatHeartRateBpm(state.minimum, false),
+            mean: formatHeartRateBpm(state.mean),
+            maximum: formatHeartRateBpm(state.maximum),
           })}
         </Text>
       ) : state.status === 'reading' ? (

@@ -47,8 +47,11 @@ test('workout category selection supplies one owned month read without replacing
       const date = [part('year'), part('month'), part('day')].join('-');
       return {
         ...resultFor(native),
+        mean: 120.99,
         timeZone,
-        days: [{ date, sampleCount: 5, minimum: 60, mean: 120, maximum: 180 }],
+        days: [
+          { date, sampleCount: 5, minimum: 60, mean: 120.99, maximum: 180 },
+        ],
       };
     });
     const loader: HealthObservationPageLoader = Object.assign(
@@ -78,7 +81,7 @@ test('workout category selection supplies one owned month read without replacing
     await fireEvent.press(screen.getByTestId('health-record-filter-all'));
     expect(lane.queryWorkoutPeriodHeartRate).not.toHaveBeenCalled();
     await fireEvent.press(screen.getByTestId('health-record-filter-workouts'));
-    await waitFor(() => expect(screen.getByText('평균 120 bpm')).toBeTruthy());
+    await waitFor(() => expect(screen.getByText('평균 120 BPM')).toBeTruthy());
     expect(lane.queryWorkoutPeriodHeartRate).toHaveBeenCalledTimes(1);
     expect(lane.queryWorkoutHeartRate).not.toHaveBeenCalled();
     expect(lane.requestReadAuthorizations).not.toHaveBeenCalled();
@@ -96,7 +99,7 @@ test('workout category selection supplies one owned month read without replacing
     });
     const points = heart?.data.series[0]?.points ?? [];
     expect(points.filter(point => point.value !== null)).toMatchObject([
-      { value: 120, range: { minimum: 60, maximum: 180, samples: 5 } },
+      { value: 120.99, range: { minimum: 60, maximum: 180, samples: 5 } },
     ]);
     expect(points.length).toBeGreaterThan(27);
     expect(points.length).toBeLessThanOrEqual(33);
@@ -104,15 +107,15 @@ test('workout category selection supplies one owned month read without replacing
       focused = false;
       listeners.get('blur')?.();
     });
-    expect(screen.queryByText('평균 120 bpm')).toBeNull();
+    expect(screen.queryByText('평균 120 BPM')).toBeNull();
     await act(() => {
       focused = true;
       listeners.get('focus')?.();
     });
-    await waitFor(() => expect(screen.getByText('평균 120 bpm')).toBeTruthy());
+    await waitFor(() => expect(screen.getByText('평균 120 BPM')).toBeTruthy());
     expect(lane.queryWorkoutPeriodHeartRate).toHaveBeenCalledTimes(1);
     await act(() => lane.revoke());
-    expect(screen.queryByText('평균 120 bpm')).toBeNull();
+    expect(screen.queryByText('평균 120 BPM')).toBeNull();
     await view.unmount();
   } finally {
     AppState.currentState = prior;

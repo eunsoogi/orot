@@ -1,12 +1,14 @@
+import {
+  formatHeartRateBpm,
+  isHeartRateDisplayUnit,
+} from '../../i18n/heartRateDisplay';
 import { formatHealthDuration } from '../../i18n/healthDuration';
 import { formatNumber, t, type TranslationKey } from '../../i18n';
 import { isOverviewHeartRate, type OverviewMetric } from './metricSelection';
 
 type OverviewMetricUnitTranslationKey = Extract<
   TranslationKey,
-  | 'overview.metricUnit.minutes'
-  | 'overview.metricUnit.countPerMinute'
-  | 'overview.metricUnit.steps'
+  'overview.metricUnit.minutes' | 'overview.metricUnit.steps'
 >;
 
 // A unit is localized only when the metric and its canonical unit establish its meaning.
@@ -17,9 +19,6 @@ const localizedUnitKeys: Partial<
   >
 > = {
   sleep: { min: 'overview.metricUnit.minutes' },
-  heartRate: { 'count/min': 'overview.metricUnit.countPerMinute' },
-  restingHeartRate: { 'count/min': 'overview.metricUnit.countPerMinute' },
-  walkingHeartRate: { 'count/min': 'overview.metricUnit.countPerMinute' },
   steps: { count: 'overview.metricUnit.steps' },
 };
 
@@ -42,6 +41,8 @@ export function formatOverviewMetricValue(
   value: number,
   unit: string,
 ): string {
+  if (isOverviewHeartRate(metric) && isHeartRateDisplayUnit(unit))
+    return formatHeartRateBpm(value);
   const duration = formatHealthDuration(metric, value, unit);
   if (duration !== undefined) return duration;
   const unitKeys = localizedUnitKeys[metric];
@@ -51,10 +52,7 @@ export function formatOverviewMetricValue(
   if (!unitKey)
     return `${formatNumber(value, { maximumFractionDigits: 1 })} ${unit}`;
 
-  const wholeValue =
-    metric === 'sleep' ||
-    metric === 'steps' ||
-    (isOverviewHeartRate(metric) && unit === 'count/min');
+  const wholeValue = metric === 'sleep' || metric === 'steps';
   const displayedValue = wholeValue ? Math.round(value) : value;
   const maximumFractionDigits = wholeValue ? 0 : 1;
   return `${formatNumber(displayedValue, { maximumFractionDigits })}${t(unitKey)}`;

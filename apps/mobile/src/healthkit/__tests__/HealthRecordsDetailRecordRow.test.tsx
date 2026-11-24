@@ -108,7 +108,7 @@ test('states when the saved record has no source or original value metadata', as
   ).toBe('수축기 120 mmHg');
 });
 
-test('uses an available original quantity for a non-pressure observation', async () => {
+test('presents the original equivalent heart rate as truncated BPM without changing provenance', async () => {
   const source = healthObservation(
     'detail-heart-rate',
     'heart_rate',
@@ -125,7 +125,7 @@ test('uses an available original quantity for a non-pressure observation', async
     },
     value: {
       ...source.value,
-      sourceRepresentation: { status: 'available', amount: 72, unit: 'bpm' },
+      sourceRepresentation: { status: 'available', amount: 72.99, unit: 'bpm' },
     },
   };
   const row = buildHealthRecordsDetailRows(
@@ -139,7 +139,7 @@ test('uses an available original quantity for a non-pressure observation', async
   await render(<HealthRecordsDetailRecordRow index={0} row={row} />);
 
   expect(screen.getByTestId('health-record-row-0-value')).toHaveTextContent(
-    '72 bpm',
+    '72 BPM',
   );
   expect(screen.getByTestId('health-record-row-0-source')).toHaveTextContent(
     '건강 앱 · Synthetic watch',

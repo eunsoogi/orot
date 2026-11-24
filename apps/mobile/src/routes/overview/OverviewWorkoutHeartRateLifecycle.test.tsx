@@ -23,13 +23,13 @@ test('brief inactive transition retains the same proved period and coalesces dup
     const view = await render(
       <OverviewWorkoutHeartRateCard active width={302} />,
     );
-    await waitFor(() => expect(result()).toHaveTextContent('평균 120 bpm'));
+    await waitFor(() => expect(result()).toHaveTextContent('평균 120 BPM'));
     await act(async () => {
       lane.transition('inactive');
       lane.transition('active');
       lane.transition('active');
     });
-    expect(result()).toHaveTextContent('평균 120 bpm');
+    expect(result()).toHaveTextContent('평균 120 BPM');
     expect(lane.queryWorkoutPeriodHeartRate).toHaveBeenCalledTimes(1);
     expect(lane.cancelWorkoutPeriodHeartRate).not.toHaveBeenCalled();
     await view.unmount();
@@ -64,7 +64,7 @@ test('a parked native reply stays unshown while inactive and publishes on active
       lane.transition('active');
       lane.transition('active');
     });
-    await waitFor(() => expect(result()).toHaveTextContent('평균 120 bpm'));
+    await waitFor(() => expect(result()).toHaveTextContent('평균 120 BPM'));
     expect(lane.queryWorkoutPeriodHeartRate).toHaveBeenCalledTimes(1);
     expect(lane.cancelWorkoutPeriodHeartRate).not.toHaveBeenCalled();
     await view.unmount();
@@ -79,14 +79,14 @@ test('true background clears a proven amount and resumes with one fresh query on
     const view = await render(
       <OverviewWorkoutHeartRateCard active width={302} />,
     );
-    await waitFor(() => expect(result()).toHaveTextContent('평균 120 bpm'));
+    await waitFor(() => expect(result()).toHaveTextContent('평균 120 BPM'));
     await act(async () => lane.transition('background'));
     expect(result()).not.toHaveTextContent('120');
     await act(async () => {
       lane.transition('active');
       lane.transition('active');
     });
-    await waitFor(() => expect(result()).toHaveTextContent('평균 120 bpm'));
+    await waitFor(() => expect(result()).toHaveTextContent('평균 120 BPM'));
     expect(lane.queryWorkoutPeriodHeartRate).toHaveBeenCalledTimes(2);
     await view.unmount();
   } finally {
@@ -139,7 +139,7 @@ test('only a committed workout import re-queries the focused empty period', asyn
         ]),
       });
     });
-    await waitFor(() => expect(result()).toHaveTextContent('평균 120 bpm'));
+    await waitFor(() => expect(result()).toHaveTextContent('평균 120 BPM'));
     await act(async () => {
       lane.transition('active');
       lane.transition('active');

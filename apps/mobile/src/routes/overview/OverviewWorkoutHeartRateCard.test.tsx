@@ -27,7 +27,7 @@ test('displays the direct period average only on the opted-in visible card and n
     );
     expect(openLocalAgentMemoryDatabase).not.toHaveBeenCalled();
     await view.rerender(<OverviewWorkoutHeartRateCard active width={302} />);
-    await waitFor(() => expect(result()).toHaveTextContent('평균 120 bpm'));
+    await waitFor(() => expect(result()).toHaveTextContent('평균 120 BPM'));
     expect(screen.queryByRole('button', { name: '운동 선택하기' })).toBeNull();
     expect(lane.queryWorkoutPeriodHeartRate).toHaveBeenCalledTimes(1);
     const request = lane.queryWorkoutPeriodHeartRate.mock.calls[0]![0];
@@ -165,7 +165,7 @@ test('refreshes a continuously visible card once at local midnight and clears it
     const view = await render(
       <OverviewWorkoutHeartRateCard active width={undefined} />,
     );
-    await waitFor(() => expect(result()).toHaveTextContent('평균 120 bpm'));
+    await waitFor(() => expect(result()).toHaveTextContent('평균 120 BPM'));
     expect(lane.queryWorkoutPeriodHeartRate).toHaveBeenCalledTimes(1);
     const initial = lane.queryWorkoutPeriodHeartRate.mock.calls[0]![0];
     await act(() => jest.advanceTimersByTimeAsync(500));

@@ -23,7 +23,7 @@ test.each([
     '해당 날짜 측정 평균',
     'count/min',
     70.25,
-    '70회/분',
+    '70 BPM',
     'count/min',
   ],
   ['bodyMass', '해당 날짜 마지막 측정', 'kg', 70.25, '70.3 kg', null],

@@ -30,11 +30,18 @@ const state = () => ({
           date: '2026-10-14',
           partial: false,
           value: 70,
-          range: { minimum: 60, maximum: 90, samples: 3 },
+          range: { minimum: 60.99, maximum: 90.99, samples: 3 },
         },
       ],
     },
-    restingHeartRate: createMetric('restingHeartRate'),
+    restingHeartRate: {
+      ...createMetric('restingHeartRate'),
+      latest: { date: '2026-10-14', value: 61.99 },
+    },
+    walkingHeartRate: {
+      ...createMetric('walkingHeartRate'),
+      latest: { date: '2026-10-14', value: 102.99 },
+    },
   },
   quantityTruncated: false,
   state: 'ready' as const,
@@ -49,17 +56,29 @@ const resize = (width: number) =>
 
 test('renders one chartless card with independently labeled real values at narrow and wide widths', async () => {
   mocked.mockReturnValue(state());
-  workout.mockReturnValue({ status: 'loading' });
+  workout.mockReturnValue({
+    status: 'available',
+    minimum: 70.99,
+    mean: 118.99,
+    maximum: 141.99,
+    sampleCount: 3,
+    firstSampleAtMs: 111,
+    lastSampleAtMs: 222,
+    membershipRevision: 'v1:' + '0'.repeat(64),
+  });
   await render(<OverviewMetrics />);
   for (const width of [338, 760]) {
     await resize(width);
     const panel = within(screen.getByTestId('overview-heart-panel'));
     expect(panel.getByRole('header', { name: '심박수' })).toBeVisible();
     expect(panel.getByText('평균 심박수')).toBeVisible();
-    expect(panel.getByText('범위 60–90회/분')).toBeVisible();
+    expect(panel.getByText('범위 60–90 BPM')).toBeVisible();
     expect(panel.getByText('안정 시 심박수')).toBeVisible();
     expect(panel.getByText('걷기 평균 심박수')).toBeVisible();
     expect(panel.getByText('운동 심박수')).toBeVisible();
+    expect(panel.getByText('61 BPM')).toBeVisible();
+    expect(panel.getByText('102 BPM')).toBeVisible();
+    expect(panel.getByText('평균 118 BPM')).toBeVisible();
     expect(panel.queryAllByTestId(/^overview-metric-chart-/u)).toHaveLength(0);
   }
 });

@@ -2,7 +2,9 @@ import { formatOverviewMetricValue } from './metricFormatting';
 
 test.each([
   ['sleep', 70.4, 'min', '1시간 10분'],
-  ['heartRate', 70.25, 'count/min', '70회/분'],
+  ['heartRate', 70.99, 'count/min', '70 BPM'],
+  ['restingHeartRate', 61.9, 'count/min', '61 BPM'],
+  ['walkingHeartRate', 105.99, 'bpm', '105 BPM'],
   ['bodyMass', 70.25, 'kg', '70.3 kg'],
   ['steps', 70.6, 'count', '71걸음'],
 ] as const)(
