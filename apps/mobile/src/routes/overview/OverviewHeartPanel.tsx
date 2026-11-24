@@ -1,64 +1,111 @@
-import type { ReactNode } from 'react';
+import { useIsFocused } from '@react-navigation/native';
 import { StyleSheet, View } from 'react-native';
 import { AppText as Text } from '../../layout/AppText';
 import { AppSymbol } from '../../layout/AppSymbol';
 import { appColors } from '../../layout/appColors';
-import { t } from '../../i18n';
-import type { OverviewMetricChoice } from './metricSelection';
+import { formatNumber, t } from '../../i18n';
+import {
+  coalesceOverviewHeartSelection,
+  type OverviewMetricChoice,
+} from './metricSelection';
+import type { OverviewMetricProjection } from './metricProjection';
+import { formatOverviewMetricValue } from './metricFormatting';
+import { OverviewWorkoutHeartRateCard } from './OverviewWorkoutHeartRateCard';
 import { overviewMetricStyles as overview } from './overviewMetricStyles';
 
-type HeartChoice = Extract<
-  OverviewMetricChoice,
-  'heartRate' | 'restingHeartRate' | 'walkingHeartRate' | 'workoutHeartRate'
->;
-type Card =
-  | { kind: 'heart'; choices: readonly HeartChoice[] }
-  | { kind: 'metric'; metric: Exclude<OverviewMetricChoice, HeartChoice> };
+export function groupOverviewCardSelection(
+  selection: readonly OverviewMetricChoice[],
+) {
+  return coalesceOverviewHeartSelection(selection);
+}
 
-function isHeartChoice(metric: OverviewMetricChoice): metric is HeartChoice {
+type HeartReading = 'heartRate' | 'restingHeartRate' | 'walkingHeartRate';
+type State = 'loading' | 'ready' | 'refreshing' | 'stale' | 'failed';
+
+function title(metric: HeartReading) {
+  switch (metric) {
+    case 'heartRate':
+      return t('overview.metricHeartRate');
+    case 'restingHeartRate':
+      return t('healthkit.commonObservations.restingHeartRate');
+    case 'walkingHeartRate':
+      return t('healthkit.commonObservations.walkingHeartRateAverage');
+  }
+}
+function unavailable(state: State) {
+  if (state === 'failed') return t('overview.metricError');
+  if (state === 'loading' || state === 'refreshing')
+    return t('healthRecords.loading');
+  return t('overview.metricEmpty');
+}
+
+function HeartReadingValue({
+  metric,
+  value,
+  state,
+}: {
+  readonly metric: HeartReading;
+  readonly value?: OverviewMetricProjection;
+  readonly state: State;
+}) {
+  const primary = metric === 'heartRate';
+  const range =
+    primary && value?.days.find(day => day.date === value.latest.date)?.range;
+  const whole = (amount: number) =>
+    formatNumber(amount, { maximumFractionDigits: 0 });
   return (
-    metric === 'heartRate' ||
-    metric === 'restingHeartRate' ||
-    metric === 'walkingHeartRate' ||
-    metric === 'workoutHeartRate'
+    <View
+      testID={`overview-metric-${metric}`}
+      style={primary ? styles.featured : styles.subrow}
+    >
+      <View style={!primary && styles.readingLine}>
+        <Text style={overview.cardTitle}>{title(metric)}</Text>
+        <Text
+          style={
+            value
+              ? primary
+                ? overview.heartNumber
+                : overview.heartSupportingNumber
+              : overview.detail
+          }
+        >
+          {value
+            ? formatOverviewMetricValue(metric, value.latest.value, value.unit)
+            : unavailable(state)}
+        </Text>
+      </View>
+      {value ? <Text style={overview.detail}>{value.latest.date}</Text> : null}
+      {value && range && range.minimum !== range.maximum ? (
+        <Text style={overview.detail}>
+          {t('overview.heartPanelRange', {
+            minimum: whole(range.minimum),
+            maximum: formatOverviewMetricValue(
+              metric,
+              range.maximum,
+              value.unit,
+            ),
+          })}
+        </Text>
+      ) : null}
+    </View>
   );
 }
 
-/** Group at the first selected heart slot. Do not rewrite preferences or enable an excluded metric. */
-export function groupOverviewCardSelection(
-  selection: readonly OverviewMetricChoice[],
-): Card[] {
-  const choices = selection.filter(isHeartChoice);
-  return selection.flatMap<Card>(metric => {
-    if (!isHeartChoice(metric)) return [{ kind: 'metric', metric }];
-    return metric === choices[0] ? [{ kind: 'heart', choices }] : [];
-  });
-}
-
-/** Only layout groups these readings. Each child keeps its own source, calendar
- * range, protection lifetime, chart gestures and VoiceOver points. */
+/** Each compact text reading keeps its own metric and original period; no charts or mixed sources. */
 export function OverviewHeartPanel({
-  choices,
   width,
-  measuredWidth,
-  fontScale,
-  renderMetric,
+  metrics,
+  state,
 }: {
-  readonly choices: readonly HeartChoice[];
   readonly width: number | '100%';
-  readonly measuredWidth: number;
-  readonly fontScale: number;
-  readonly renderMetric: (
-    metric: HeartChoice,
-    placement: 'featured' | 'supporting',
-  ) => ReactNode;
+  readonly metrics: Partial<Record<HeartReading, OverviewMetricProjection>>;
+  readonly state: State;
 }) {
-  const featured = choices.includes('heartRate');
-  const supporting = choices.filter(item => item !== 'heartRate');
-  // Reserve each chart's full readable width and preserve ordered reading/interaction.
-  const sideBySide =
-    supporting.length > 1 && measuredWidth >= 680 * Math.max(1, fontScale);
-  const subrowWidth = sideBySide ? (measuredWidth - 28 - 12) / 2 : '100%';
+  const focused = useIsFocused();
+  // The provisional default selection is not authority for a native workout read.
+  const active =
+    focused &&
+    (state === 'ready' || state === 'refreshing' || state === 'stale');
   return (
     <View
       style={[overview.card, overview.gridCard, styles.panel, { width }]}
@@ -70,19 +117,28 @@ export function OverviewHeartPanel({
           {t('overview.heartPanel')}
         </Text>
       </View>
-      {featured ? renderMetric('heartRate', 'featured') : null}
-      {supporting.length ? (
-        <View
-          testID="overview-heart-subrows"
-          style={[styles.subrows, sideBySide && styles.sideBySide]}
-        >
-          {supporting.map(metric => (
-            <View key={metric} style={{ width: subrowWidth }}>
-              {renderMetric(metric, 'supporting')}
-            </View>
-          ))}
-        </View>
-      ) : null}
+      <HeartReadingValue
+        metric="heartRate"
+        value={metrics.heartRate}
+        state={state}
+      />
+      <View testID="overview-heart-subrows" style={styles.subrows}>
+        <HeartReadingValue
+          metric="restingHeartRate"
+          value={metrics.restingHeartRate}
+          state={state}
+        />
+        <HeartReadingValue
+          metric="walkingHeartRate"
+          value={metrics.walkingHeartRate}
+          state={state}
+        />
+        <OverviewWorkoutHeartRateCard
+          width={undefined}
+          active={active}
+          embedded
+        />
+      </View>
     </View>
   );
 }
@@ -95,6 +151,14 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: 8,
   },
-  subrows: { width: '100%', flexDirection: 'column', gap: 12 },
-  sideBySide: { flexDirection: 'row', flexWrap: 'wrap' },
+  featured: { gap: 4 },
+  subrow: { gap: 3 },
+  readingLine: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    alignItems: 'baseline',
+    justifyContent: 'space-between',
+    columnGap: 8,
+  },
+  subrows: { width: '100%', gap: 12 },
 });

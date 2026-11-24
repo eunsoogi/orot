@@ -136,7 +136,9 @@ async function mountOverview(
     expect(
       await screen.findByTestId('overview-metric-selection-screen'),
     ).toBeTruthy();
-    expect(await screen.findByText('지표를 2개 이상 선택하세요.')).toBeTruthy();
+    expect(
+      await screen.findByText(/지표를 2개 이상 선택하세요\./u),
+    ).toBeTruthy();
     expect(screen.queryByTestId('overview-metric-grid')).toBeNull();
     expect(screen.getAllByTestId('navigation-route-scroll')).toHaveLength(1);
   };
@@ -159,7 +161,7 @@ test('separate editor discards Cancel and saves all five ordered cards into the 
     expect(loadOverviewMetrics).toHaveBeenCalledTimes(metricLoads);
     expectMetricEditorInsets();
     await fireEvent.press(choice('sleep'));
-    expect(save()).toBeDisabled();
+    expect(save()).toBeEnabled();
     await fireEvent.press(choice('bodyMass'));
     expect(save()).toBeEnabled();
     await fireEvent.press(cancel());

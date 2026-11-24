@@ -12,7 +12,7 @@ import { OverviewMetricSelectionEditor } from './OverviewMetricSelectionEditor';
 import { overviewMetricStyles as styles } from './overviewMetricStyles';
 import {
   loadOverviewMetricSelection,
-  minimumOverviewMetricCount,
+  canSaveOverviewMetricSelection,
   saveOverviewMetricSelection,
   type OverviewMetricChoice,
 } from './metricSelection';
@@ -102,7 +102,7 @@ export function OverviewMetricSelectionRoute({
   const cancel = async () => {
     if (current() && !savingRef.current) await actions.onBack();
   };
-  const canSave = Boolean(draft && draft.length >= minimumOverviewMetricCount);
+  const canSave = Boolean(draft && canSaveOverviewMetricSelection(draft));
   const save = async () => {
     if (!current() || savingRef.current || !draft || !canSave) return;
     savingRef.current = true;

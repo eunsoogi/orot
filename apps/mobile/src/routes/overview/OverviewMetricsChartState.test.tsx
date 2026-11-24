@@ -10,6 +10,10 @@ import type { OverviewMetricProjection } from './metricProjection';
 import { useOverviewMetrics } from './useOverviewMetrics';
 
 jest.mock('./useOverviewMetrics');
+jest.mock('@react-navigation/native', () => ({
+  ...jest.requireActual('@react-navigation/native'),
+  useIsFocused: () => false,
+}));
 jest.mock('react-native-chart-kit/v2', () => ({
   ChartKitProvider: ({ children }: { children: React.ReactNode }) => children,
   LineChart: () => null,
@@ -41,20 +45,17 @@ test.each([
     await render(<OverviewMetrics />);
 
     expect(screen.getByTestId('overview-metric-grid')).toBeTruthy();
-    expect(chartPlot).toHaveBeenCalledTimes(2);
+    expect(chartPlot).toHaveBeenCalledTimes(1);
     expect(
       chartPlot.mock.calls.map(([props]) => ({
         metric: props.data.metric,
         status: props.data.coverage.status,
         height: props.height,
       })),
-    ).toEqual([
-      { metric: 'sleep', status: chartState, height: 176 },
-      { metric: 'heartRate', status: chartState, height: 176 },
-    ]);
+    ).toEqual([{ metric: 'sleep', status: chartState, height: 176 }]);
 
     if (state === 'failed') {
-      expect(screen.getByRole('alert')).toHaveTextContent(
+      expect(screen.getAllByRole('alert')[0]).toHaveTextContent(
         '건강 기록을 불러오지 못했어요.',
       );
       await fireEvent.press(screen.getByRole('button', { name: '다시 시도' }));
@@ -132,9 +133,9 @@ test('renders the shared empty state while preserving the Home no-history explan
   await render(<OverviewMetrics />);
 
   expect(screen.getAllByText('최근 14일과 오늘에 기록이 없어요.')).toHaveLength(
-    2,
+    1,
   );
   expect(
     chartPlot.mock.calls.map(([props]) => props.data.coverage.status),
-  ).toEqual(['empty', 'empty']);
+  ).toEqual(['empty']);
 });

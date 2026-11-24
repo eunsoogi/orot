@@ -4,9 +4,7 @@ import {
   screen,
   within,
 } from '@testing-library/react-native';
-import { StyleSheet } from 'react-native';
 import { OverviewMetrics } from './OverviewMetrics';
-import { groupOverviewCardSelection } from './OverviewHeartPanel';
 import { useOverviewMetrics } from './useOverviewMetrics';
 import { useOverviewWorkoutPeriodHeartRate } from './useOverviewWorkoutPeriodHeartRate';
 import { createMetric } from './overviewMetricLayoutFixtures';
@@ -19,14 +17,7 @@ jest.mock('@react-navigation/native', () => ({
   useIsFocused: () => true,
 }));
 
-const selected = [
-  'sleep',
-  'restingHeartRate',
-  'steps',
-  'heartRate',
-  'workoutHeartRate',
-  'walkingHeartRate',
-] as const;
+const selected = ['sleep', 'heartRate', 'steps'] as const;
 const state = () => ({
   selection: selected as readonly OverviewMetricChoice[],
   metrics: {
@@ -36,9 +27,9 @@ const state = () => ({
       ...createMetric('heartRate'),
       days: [
         {
-          date: '2035-01-01',
+          date: '2026-10-14',
           partial: false,
-          value: 75,
+          value: 70,
           range: { minimum: 60, maximum: 90, samples: 3 },
         },
       ],
@@ -56,91 +47,40 @@ const shell = () => screen.getByTestId('overview-metric-grid');
 const resize = (width: number) =>
   fireEvent(shell(), 'layout', { nativeEvent: { layout: { width } } });
 
-test('locates one heart group at its earliest selected position without changing persisted choices', () => {
-  expect(groupOverviewCardSelection(selected)).toEqual([
-    { kind: 'metric', metric: 'sleep' },
-    {
-      kind: 'heart',
-      choices: [
-        'restingHeartRate',
-        'heartRate',
-        'workoutHeartRate',
-        'walkingHeartRate',
-      ],
-    },
-    { kind: 'metric', metric: 'steps' },
-  ]);
-  expect(groupOverviewCardSelection(['sleep', 'steps'])).toEqual([
-    { kind: 'metric', metric: 'sleep' },
-    { kind: 'metric', metric: 'steps' },
-  ]);
-});
-
-test('shows independent native and derived rows in one card and reflows them with text scaling', async () => {
-  const viewport = jest.spyOn(require('react-native'), 'useWindowDimensions');
-  viewport.mockReturnValue({ width: 390, height: 800, scale: 3, fontScale: 1 });
-  const data = state();
-  mocked.mockReturnValue(data);
+test('renders one chartless card with independently labeled real values at narrow and wide widths', async () => {
+  mocked.mockReturnValue(state());
   workout.mockReturnValue({ status: 'loading' });
-  const { rerender } = await render(<OverviewMetrics />);
-  await resize(338);
-  const panel = within(screen.getByTestId('overview-heart-panel'));
-  expect(panel.getByRole('header', { name: '심박수' })).toBeVisible();
-  expect(
-    panel.getByTestId('overview-metric-summary-heartRate').props
-      .accessibilityLabel,
-  ).toContain('평균 심박수');
-  expect(
-    panel.getByTestId('overview-metric-chart-heartRate-plot').props
-      .accessibilityLabel,
-  ).toContain('최저');
-  expect(
-    panel.getByTestId('overview-metric-summary-restingHeartRate').props
-      .accessibilityLabel,
-  ).toContain('안정 시 심박수');
-  expect(
-    panel.getByTestId('overview-metric-summary-walkingHeartRate').props
-      .accessibilityLabel,
-  ).toContain('걷기');
-  expect(panel.getAllByTestId('overview-metric-workoutHeartRate')).toHaveLength(
-    1,
-  );
-  expect(
-    StyleSheet.flatten(panel.getByTestId('overview-heart-subrows').props.style)
-      .flexDirection,
-  ).toBe('column');
-  await resize(760);
-  expect(
-    StyleSheet.flatten(panel.getByTestId('overview-heart-subrows').props.style)
-      .flexDirection,
-  ).toBe('row');
-  viewport.mockReturnValue({
-    width: 390,
-    height: 800,
-    scale: 3,
-    fontScale: 1.4,
-  });
-  await rerender(<OverviewMetrics />);
-  expect(
-    StyleSheet.flatten(panel.getByTestId('overview-heart-subrows').props.style)
-      .flexDirection,
-  ).toBe('column');
-  expect(data.save).not.toHaveBeenCalled();
-  viewport.mockRestore();
+  await render(<OverviewMetrics />);
+  for (const width of [338, 760]) {
+    await resize(width);
+    const panel = within(screen.getByTestId('overview-heart-panel'));
+    expect(panel.getByRole('header', { name: '심박수' })).toBeVisible();
+    expect(panel.getByText('평균 심박수')).toBeVisible();
+    expect(panel.getByText('범위 60–90회/분')).toBeVisible();
+    expect(panel.getByText('안정 시 심박수')).toBeVisible();
+    expect(panel.getByText('걷기 평균 심박수')).toBeVisible();
+    expect(panel.getByText('운동 심박수')).toBeVisible();
+    expect(panel.queryAllByTestId(/^overview-metric-chart-/u)).toHaveLength(0);
+  }
 });
 
-test('keeps unrelated cards and does not mount any excluded heart rows or native workout hook', async () => {
+test('does not mount a heart card or workout read when heart is unselected', async () => {
   workout.mockClear();
-  mocked.mockReturnValue({
-    ...state(),
-    selection: ['sleep', 'restingHeartRate'],
-  });
+  mocked.mockReturnValue({ ...state(), selection: ['sleep', 'steps'] });
   await render(<OverviewMetrics />);
   expect(screen.getByTestId('overview-metric-sleep')).toBeVisible();
-  const panel = within(screen.getByTestId('overview-heart-panel'));
-  expect(panel.getByTestId('overview-metric-restingHeartRate')).toBeVisible();
-  expect(panel.queryByTestId('overview-metric-heartRate')).toBeNull();
-  expect(panel.queryByTestId('overview-metric-walkingHeartRate')).toBeNull();
-  expect(panel.queryByTestId('overview-metric-workoutHeartRate')).toBeNull();
+  expect(screen.queryByTestId('overview-heart-panel')).toBeNull();
   expect(workout).not.toHaveBeenCalled();
+});
+
+test('provisional defaults never enable a native workout read before owned metrics load', async () => {
+  workout.mockClear();
+  workout.mockReturnValue({ status: 'unavailable' });
+  mocked.mockReturnValue({ ...state(), state: 'loading' });
+  const { rerender } = await render(<OverviewMetrics />);
+  expect(workout).toHaveBeenCalledWith(false);
+  expect(workout).not.toHaveBeenCalledWith(true);
+  mocked.mockReturnValue(state());
+  await rerender(<OverviewMetrics />);
+  expect(workout).toHaveBeenCalledWith(true);
 });

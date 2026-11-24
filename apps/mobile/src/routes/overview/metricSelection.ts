@@ -11,11 +11,48 @@ export const overviewMetrics = [
 ] as const;
 export type OverviewMetric = (typeof overviewMetrics)[number];
 export const overviewMetricChoices = [
-  ...overviewMetrics,
-  'workoutHeartRate',
+  'sleep',
+  'heartRate',
+  'bodyMass',
+  'steps',
+  'workouts',
 ] as const;
-/** Workout heart rate is selectable but is not a projected local snapshot metric. */
-export type OverviewMetricChoice = (typeof overviewMetricChoices)[number];
+export type OverviewMetricChoice = OverviewMetric | 'workoutHeartRate';
+
+export function coalesceOverviewHeartSelection(
+  selection: readonly OverviewMetricChoice[],
+): OverviewMetricChoice[] {
+  const result: OverviewMetricChoice[] = [];
+  for (const metric of selection) {
+    const choice =
+      metric === 'workoutHeartRate' || isOverviewHeartRate(metric)
+        ? 'heartRate'
+        : metric;
+    if (!result.includes(choice)) result.push(choice);
+  }
+  return result;
+}
+
+export function canSaveOverviewMetricSelection(
+  selection: readonly OverviewMetricChoice[],
+): boolean {
+  return (
+    selection.length >= minimumOverviewMetricCount ||
+    (selection.length === 1 && selection[0] === 'heartRate')
+  );
+}
+
+export function snapshotOverviewMetricSelection(
+  selection: readonly OverviewMetricChoice[],
+): OverviewMetric[] {
+  return selection.flatMap(metric =>
+    metric === 'heartRate'
+      ? ['heartRate', 'restingHeartRate', 'walkingHeartRate']
+      : metric === 'workoutHeartRate'
+        ? []
+        : [metric],
+  );
+}
 export function isOverviewSnapshotMetric(
   metric: OverviewMetricChoice,
 ): metric is OverviewMetric {
@@ -44,12 +81,15 @@ export function validateOverviewMetricSelection(
 ): OverviewMetricChoice[] {
   if (
     !Array.isArray(value) ||
-    value.length < minimumOverviewMetricCount ||
-    value.some(metric => !overviewMetricChoices.includes(metric)) ||
+    !canSaveOverviewMetricSelection(value) ||
+    value.some(
+      metric =>
+        metric !== 'workoutHeartRate' && !overviewMetrics.includes(metric),
+    ) ||
     new Set(value).size !== value.length
   )
     throw new Error('Invalid Home metric selection.');
-  return value as OverviewMetricChoice[];
+  return coalesceOverviewHeartSelection(value as OverviewMetricChoice[]);
 }
 
 export async function loadOverviewMetricSelection(
