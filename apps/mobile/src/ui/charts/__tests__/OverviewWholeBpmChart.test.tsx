@@ -52,9 +52,7 @@ test.each(['heartRate', 'restingHeartRate', 'walkingHeartRate'] as const)(
   '%s keeps fractional data but presents whole BPM',
   kind => {
     const chart = overviewMetricChartData({ ...metric, metric: kind });
-    expect(formatOverviewMetricValue(kind, 104.5, metric.unit)).toBe(
-      '104 BPM',
-    );
+    expect(formatOverviewMetricValue(kind, 104.5, metric.unit)).toBe('104 BPM');
     expect(chart.presentation).toBe('whole-bpm-overview');
     expect(chart.series[0]?.points.map(point => point.value)).toEqual([
       66.51,
@@ -67,12 +65,8 @@ test.each(['heartRate', 'restingHeartRate', 'walkingHeartRate'] as const)(
       maximum: 90.3,
       samples: 3,
     });
-    expect(formatChartValue('bodyMass', 68.75, 'kg')).toBe(
-      '68.75 kg',
-    );
-    expect(formatChartValue('heartRate', 104.5, 'count/min')).toBe(
-      '104 BPM',
-    );
+    expect(formatChartValue('bodyMass', 68.75, 'kg')).toBe('68.75 kg');
+    expect(formatChartValue('heartRate', 104.5, 'count/min')).toBe('104 BPM');
   },
 );
 
