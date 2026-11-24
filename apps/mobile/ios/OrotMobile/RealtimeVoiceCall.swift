@@ -65,11 +65,17 @@ final class RealtimeVoiceCall {
                 guard let self else { return }
                 if name == UIApplication.didEnterBackgroundNotification {
                     let stage = VoiceSystemCallLifecycle.backgroundStage(systemCallActive: systemCallActive, managed: managedResponsesTransport)
-                    if id != nil { VoiceSystemCallLifecycle.report(stage) }
-                    if stage == .backgroundContinued { return }
+                    if id != nil {
+                        VoiceSystemCallLifecycle.report(stage)
+                    }
+                    if stage == .backgroundContinued {
+                        return
+                    }
                 } else if name == AVAudioSession.routeChangeNotification {
                     guard ready, routeSignature != currentRoute() else { return }
-                    if id != nil { VoiceSystemCallLifecycle.report(.routeChanged) }
+                    if id != nil {
+                        VoiceSystemCallLifecycle.report(.routeChanged)
+                    }
                 } else if id != nil {
                     VoiceSystemCallLifecycle.report(name == AVAudioSession.interruptionNotification
                         ? VoiceSystemCallLifecycle.interruptionStage(note) : .protectedDataLost)

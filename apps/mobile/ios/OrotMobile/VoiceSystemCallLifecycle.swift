@@ -68,6 +68,7 @@ final class VoiceSystemCallLifecycle: NSObject, VoiceSystemCallPort, CXProviderD
         guard systemCallActive else { return .backgroundUnownedStopped }
         return managed ? .backgroundManagedStopped : .backgroundContinued
     }
+
     private var provider: CXProvider
     private let controller = CXCallController()
     private var uuid: UUID?
@@ -168,14 +169,18 @@ final class VoiceSystemCallLifecycle: NSObject, VoiceSystemCallPort, CXProviderD
 
     func provider(_ provider: CXProvider, didDeactivate _: AVAudioSession) {
         if provider === self.provider {
-            if uuid != nil { Self.report(.deactivated) }
+            if uuid != nil {
+                Self.report(.deactivated)
+            }
             finish(notify: true)
         }
     }
 
     func providerDidReset(_ provider: CXProvider) {
         if provider === self.provider {
-            if uuid != nil { Self.report(.reset) }
+            if uuid != nil {
+                Self.report(.reset)
+            }
             finish(notify: true)
         }
     }
