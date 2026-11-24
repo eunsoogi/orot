@@ -43,7 +43,6 @@ extension RealtimeVoiceCall {
         return socket.sendManagedToolFrames(frames, current: current)
     }
 
-    /// A legacy reply is one-shot, with an independently approved exact JS output.
     func resolveTool(_ identifier: String, toolCallID: String, responseID: String, output: String) -> Bool {
         guard id == identifier, !paused, ready, token != nil else { return false }
         guard foreground() else { cancelTools(); return false }
@@ -201,8 +200,12 @@ final class LiveResponsesToolBridge {
     private func toolRequest(_ item: [String: Any], owner: Owner, delegationID: String, responseID: String) -> Request? {
         guard item["type"] as? String == "function_call", let name = item["name"] as? String,
               registry.allows(name), let functionID = item["call_id"] as? String,
-              RealtimeVoiceToolLease.validID(functionID), let arguments = item["arguments"] as? String,
-              let fields = Self.arguments(arguments, tool: name) else { return nil }
+              RealtimeVoiceToolLease.validID(functionID), let arguments = item["arguments"] as? String
+        else { return nil }
+        if name == RealtimeVoiceCanonicalHealthAdmission.name {
+            return Request.canonicalHealth(owner, delegationID, responseID, functionID, arguments)
+        }
+        guard let fields = Self.arguments(arguments, tool: name) else { return nil }
         return Request(owner: owner, delegationID: delegationID, responseID: responseID, functionID: functionID,
                        name: name, query: fields["query"] as? String, topic: fields["topic"] as? String, days: fields["days"] as? Int)
     }

@@ -15,6 +15,8 @@
 		CB1180000000000000000005 /* RealtimeVoiceToolLifecycleTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = CB1180000000000000000006 /* RealtimeVoiceToolLifecycleTests.swift */; };
 		CB1180000000000000000015 /* RealtimeVoiceManagedResponsesTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = CB1180000000000000000016 /* RealtimeVoiceManagedResponsesTests.swift */; };
 		CE40B88A1C1A471D963A8A37 /* RealtimeVoiceResultDispatchTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = B7086AE11C5646CEB98BCAD8 /* RealtimeVoiceResultDispatchTests.swift */; };
+		E73A4A9DC65F411B8186B013 /* RealtimeVoiceCanonicalHealthMailboxAssertions.swift in Sources */ = {isa = PBXBuildFile; fileRef = E73A4A9DC65F411B8186A013 /* RealtimeVoiceCanonicalHealthMailboxAssertions.swift */; };
+		E73A4A9DC65F411B8186B012 /* RealtimeVoiceCanonicalHealthAdmissionAssertions.swift in Sources */ = {isa = PBXBuildFile; fileRef = E73A4A9DC65F411B8186A012 /* RealtimeVoiceCanonicalHealthAdmissionAssertions.swift */; };
 		960E5E6DE6E89DFC8C020E76 /* RealtimeVoiceNativeRegistryAssertions.swift in Sources */ = {isa = PBXBuildFile; fileRef = 89CCD422DF2A60D55DEABEA2 /* RealtimeVoiceNativeRegistryAssertions.swift */; };
 		CE1178000000000000000003 /* VoiceDuplexSystemLifecycleTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = CE1178000000000000000004 /* VoiceDuplexSystemLifecycleTests.swift */; };
 		CE1131000000000000000001 /* VoiceSystemCallLifecycle.swift in Sources */ = {isa = PBXBuildFile; fileRef = CE1131000000000000000002 /* VoiceSystemCallLifecycle.swift */; };
@@ -31,6 +33,8 @@
 		CB1180000000000000000003 /* RealtimeVoiceCallTools.swift in Sources */ = {isa = PBXBuildFile; fileRef = CB1180000000000000000004 /* RealtimeVoiceCallTools.swift */; };
 		B6C8E7BDC20CD24E8395499B /* LiveNativeToolRegistry.swift in Sources */ = {isa = PBXBuildFile; fileRef = 74BF394607A18502B912271E /* LiveNativeToolRegistry.swift */; };
 		5C4F70F3EE4C4DBD93D0DCE0 /* RealtimeVoiceResultDispatchAuthority.swift in Sources */ = {isa = PBXBuildFile; fileRef = B42B5940143246ACB22BCEC3 /* RealtimeVoiceResultDispatchAuthority.swift */; };
+		E73A4A9DC65F411B8186B011 /* RealtimeVoiceCanonicalHealthMailbox.swift in Sources */ = {isa = PBXBuildFile; fileRef = E73A4A9DC65F411B8186A011 /* RealtimeVoiceCanonicalHealthMailbox.swift */; };
+		E73A4A9DC65F411B8186B010 /* RealtimeVoiceCanonicalHealthAdmission.swift in Sources */ = {isa = PBXBuildFile; fileRef = E73A4A9DC65F411B8186A010 /* RealtimeVoiceCanonicalHealthAdmission.swift */; };
 		F40DFDA44E25442F829B17D7 /* RealtimeVoiceResponsesMailbox.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9F244E5C3A124BFC92A5929D /* RealtimeVoiceResponsesMailbox.swift */; };
 		A32CEFB009D745E0AD3A3D1A /* RealtimeVoiceSocketFrame.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1A4DE0BF65DE4917856558B9 /* RealtimeVoiceSocketFrame.swift */; };
 		CB1180000000000000000001 /* RealtimeVoiceToolLease.swift in Sources */ = {isa = PBXBuildFile; fileRef = CB1180000000000000000002 /* RealtimeVoiceToolLease.swift */; };
@@ -446,6 +450,8 @@
 		CB1180000000000000000006 /* RealtimeVoiceToolLifecycleTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RealtimeVoiceToolLifecycleTests.swift; sourceTree = "<group>"; };
 		CB1180000000000000000016 /* RealtimeVoiceManagedResponsesTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RealtimeVoiceManagedResponsesTests.swift; sourceTree = "<group>"; };
 		B7086AE11C5646CEB98BCAD8 /* RealtimeVoiceResultDispatchTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RealtimeVoiceResultDispatchTests.swift; sourceTree = "<group>"; };
+		E73A4A9DC65F411B8186A013 /* RealtimeVoiceCanonicalHealthMailboxAssertions.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RealtimeVoiceCanonicalHealthMailboxAssertions.swift; sourceTree = "<group>"; };
+		E73A4A9DC65F411B8186A012 /* RealtimeVoiceCanonicalHealthAdmissionAssertions.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RealtimeVoiceCanonicalHealthAdmissionAssertions.swift; sourceTree = "<group>"; };
 		89CCD422DF2A60D55DEABEA2 /* RealtimeVoiceNativeRegistryAssertions.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RealtimeVoiceNativeRegistryAssertions.swift; sourceTree = "<group>"; };
 		CE1178000000000000000004 /* VoiceDuplexSystemLifecycleTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VoiceDuplexSystemLifecycleTests.swift; sourceTree = "<group>"; };
 		CE1131000000000000000002 /* VoiceSystemCallLifecycle.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = VoiceSystemCallLifecycle.swift; path = OrotMobile/VoiceSystemCallLifecycle.swift; sourceTree = "<group>"; };
@@ -462,6 +468,8 @@
 		CB1180000000000000000004 /* RealtimeVoiceCallTools.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OrotMobile/RealtimeVoiceCallTools.swift; sourceTree = "<group>"; };
 		74BF394607A18502B912271E /* LiveNativeToolRegistry.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OrotMobile/LiveNativeToolRegistry.swift; sourceTree = "<group>"; };
 		B42B5940143246ACB22BCEC3 /* RealtimeVoiceResultDispatchAuthority.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OrotMobile/RealtimeVoiceResultDispatchAuthority.swift; sourceTree = "<group>"; };
+		E73A4A9DC65F411B8186A011 /* RealtimeVoiceCanonicalHealthMailbox.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OrotMobile/RealtimeVoiceCanonicalHealthMailbox.swift; sourceTree = "<group>"; };
+		E73A4A9DC65F411B8186A010 /* RealtimeVoiceCanonicalHealthAdmission.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OrotMobile/RealtimeVoiceCanonicalHealthAdmission.swift; sourceTree = "<group>"; };
 		9F244E5C3A124BFC92A5929D /* RealtimeVoiceResponsesMailbox.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OrotMobile/RealtimeVoiceResponsesMailbox.swift; sourceTree = "<group>"; };
 		1A4DE0BF65DE4917856558B9 /* RealtimeVoiceSocketFrame.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OrotMobile/RealtimeVoiceSocketFrame.swift; sourceTree = "<group>"; };
 		CB1180000000000000000002 /* RealtimeVoiceToolLease.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OrotMobile/RealtimeVoiceToolLease.swift; sourceTree = "<group>"; };
@@ -910,6 +918,8 @@
 				CB1180000000000000000004 /* RealtimeVoiceCallTools.swift */,
 				74BF394607A18502B912271E /* LiveNativeToolRegistry.swift */,
 				B42B5940143246ACB22BCEC3 /* RealtimeVoiceResultDispatchAuthority.swift */,
+				E73A4A9DC65F411B8186A011 /* RealtimeVoiceCanonicalHealthMailbox.swift */,
+				E73A4A9DC65F411B8186A010 /* RealtimeVoiceCanonicalHealthAdmission.swift */,
 				9F244E5C3A124BFC92A5929D /* RealtimeVoiceResponsesMailbox.swift */,
 				1A4DE0BF65DE4917856558B9 /* RealtimeVoiceSocketFrame.swift */,
 				CB1180000000000000000002 /* RealtimeVoiceToolLease.swift */,
@@ -1148,6 +1158,8 @@
 				CB1180000000000000000006 /* RealtimeVoiceToolLifecycleTests.swift */,
 				CB1180000000000000000016 /* RealtimeVoiceManagedResponsesTests.swift */,
 				B7086AE11C5646CEB98BCAD8 /* RealtimeVoiceResultDispatchTests.swift */,
+				E73A4A9DC65F411B8186A013 /* RealtimeVoiceCanonicalHealthMailboxAssertions.swift */,
+				E73A4A9DC65F411B8186A012 /* RealtimeVoiceCanonicalHealthAdmissionAssertions.swift */,
 				89CCD422DF2A60D55DEABEA2 /* RealtimeVoiceNativeRegistryAssertions.swift */,
 				CE1178000000000000000004 /* VoiceDuplexSystemLifecycleTests.swift */,
 				BF536F275C819E8584C568C6 /* RealtimeVoiceLifecycleTests.swift */,
@@ -1675,6 +1687,8 @@
 				CB1180000000000000000003 /* RealtimeVoiceCallTools.swift in Sources */,
 				B6C8E7BDC20CD24E8395499B /* LiveNativeToolRegistry.swift in Sources */,
 				5C4F70F3EE4C4DBD93D0DCE0 /* RealtimeVoiceResultDispatchAuthority.swift in Sources */,
+				E73A4A9DC65F411B8186B011 /* RealtimeVoiceCanonicalHealthMailbox.swift in Sources */,
+				E73A4A9DC65F411B8186B010 /* RealtimeVoiceCanonicalHealthAdmission.swift in Sources */,
 				F40DFDA44E25442F829B17D7 /* RealtimeVoiceResponsesMailbox.swift in Sources */,
 				A32CEFB009D745E0AD3A3D1A /* RealtimeVoiceSocketFrame.swift in Sources */,
 				CB1180000000000000000001 /* RealtimeVoiceToolLease.swift in Sources */,
@@ -2009,6 +2023,8 @@
 				CB1180000000000000000005 /* RealtimeVoiceToolLifecycleTests.swift in Sources */,
 				CB1180000000000000000015 /* RealtimeVoiceManagedResponsesTests.swift in Sources */,
 				CE40B88A1C1A471D963A8A37 /* RealtimeVoiceResultDispatchTests.swift in Sources */,
+				E73A4A9DC65F411B8186B013 /* RealtimeVoiceCanonicalHealthMailboxAssertions.swift in Sources */,
+				E73A4A9DC65F411B8186B012 /* RealtimeVoiceCanonicalHealthAdmissionAssertions.swift in Sources */,
 				960E5E6DE6E89DFC8C020E76 /* RealtimeVoiceNativeRegistryAssertions.swift in Sources */,
 				CE1178000000000000000003 /* VoiceDuplexSystemLifecycleTests.swift in Sources */,
 				5B7E3E3D246EBD004E71D1D5 /* RealtimeVoiceLifecycleTests.swift in Sources */,

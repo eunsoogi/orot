@@ -5,6 +5,9 @@ import XCTest
 /// A Live streaming transcript has no finalized input witness for the old approval lease.
 extension RealtimeVoiceLifecycleTests {
     func testLiveRejectsLegacyModelAndAnyAttemptToEnableToolsBeforeAdmission() throws {
+        try assertCanonicalGrantRequiresItsOwnCurrentDeviceBindingAndLegacyOwner()
+        assertOnlyCanonicalFieldsAndUniquelyScopedResultReferencesCross()
+        try assertOnlyOwnedCanonicalTicketAcceptsTheApprovedBoundedResultAndContinuation()
         let audio = Audio(), socket = Socket()
         var requested = 0, rejected = 0
         let ownership = AudioSessionOwnership(configure: { _, _, _ in }, setActive: { _ in })

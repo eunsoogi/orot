@@ -74,6 +74,7 @@ export function LiveConversationVoiceEntry(
     const native = nativeLiveVoice(
       id => props.store.captureVoiceEnd?.(props.sessionId, id),
       managed.nativeGrant,
+      managed.canonicalRegistration,
     );
     if (!native) {
       managed.dispose();

@@ -26,7 +26,7 @@ final class VoiceRealtimeModule: RCTEventEmitter {
     #endif
 
     private var active: String?
-    private var responsesMailbox: LiveResponsesMailbox?
+    private var responsesMailbox: OwnedLiveResponsesMailbox?
     private let resultAuthority = LiveNativeResultDispatchAuthority()
     override static func requiresMainQueueSetup() -> Bool {
         true
@@ -46,21 +46,44 @@ final class VoiceRealtimeModule: RCTEventEmitter {
     {
         DispatchQueue.main.async { [self] in
             guard active == nil else { reject("VOICE_BUSY", "Voice is already active.", nil); return }
-            guard Set(options.allKeys.compactMap { $0 as? String }).isSubset(of: ["language", "voice", "responsesGrant"]),
+            guard Set(options.allKeys.compactMap { $0 as? String }).isSubset(of: ["language", "voice", "responsesGrant", "canonicalHealthGrant", "canonicalHealthDeclaration"]),
                   let language = options["language"] as? String, let voice = options["voice"] as? String
             else {
                 reject("VOICE_LIVE_FAILED", "Live voice is unavailable.", nil); return
             }
+            let canonicalRequested = options["canonicalHealthGrant"] != nil || options["canonicalHealthDeclaration"] != nil
             var admission: LiveResponsesAdmission?
             if let request = options["responsesGrant"] {
                 guard let grant = LiveResponsesSettingsGrant(request), grant.isCurrent(key: apiKey) else {
                     reject("VOICE_LIVE_FAILED", "Live voice is unavailable.", nil); return
                 }
-                let mailbox = LiveResponsesMailbox(identifier: identifier, grant: grant, key: apiKey, authority: resultAuthority) { [weak self] event, body in
-                    self?.sendEvent(withName: event, body: body)
+                if canonicalRequested {
+                    guard let request = options["canonicalHealthGrant"],
+                          let companion = RealtimeVoiceCanonicalHealthAdmission(request),
+                          let declaration = options["canonicalHealthDeclaration"] as? [String: Any],
+                          companion.configuration(declaration, base: grant, key: apiKey) != nil
+                    else { reject("VOICE_LIVE_FAILED", "Live voice is unavailable.", nil); return }
+                    let mailbox = RealtimeVoiceCanonicalHealthMailbox(
+                        call: identifier, baseline: grant, capability: companion, authority: resultAuthority, key: apiKey,
+                        owns: { [weak self] request in
+                            guard let self else { return false }
+                            return active == request.call && call.id == request.call && call.liveSessionID == request.session
+                                && call.liveSocketEpoch == request.epoch && call.ready && !call.paused
+                                && call.token != nil && call.foreground() && call.liveIsCurrent()
+                        },
+                        emit: { [weak self] event, body in self?.sendEvent(withName: event, body: body) },
+                    )
+                    responsesMailbox = OwnedLiveResponsesMailbox(identifier: identifier, mode: .canonical(mailbox, grant))
+                    admission = mailbox.bridge(backendModel: grant.backendModel, declaration: declaration)
+                } else {
+                    let mailbox = LiveResponsesMailbox(identifier: identifier, grant: grant, key: apiKey, authority: resultAuthority) { [weak self] event, body in
+                        self?.sendEvent(withName: event, body: body)
+                    }
+                    responsesMailbox = OwnedLiveResponsesMailbox(identifier: identifier, mode: .aggregate(mailbox))
+                    admission = mailbox.admission()
                 }
-                responsesMailbox = mailbox
-                admission = mailbox.admission()
+            } else if canonicalRequested {
+                reject("VOICE_LIVE_FAILED", "Live voice is unavailable.", nil); return
             }
             active = identifier
             call.open(identifier, model: model, key: apiKey, language: language, voice: voice, managedAdmission: admission) { result in
@@ -84,7 +107,7 @@ final class VoiceRealtimeModule: RCTEventEmitter {
     {
         DispatchQueue.main.async {
             guard self.active == identifier, let mailbox = self.responsesMailbox else { resolve(false); return }
-            mailbox.settle(challengeId, output: output) { resolve($0) }
+            mailbox.settle(call: identifier, challenge: challengeId, output: output) { resolve($0) }
         }
     }
 

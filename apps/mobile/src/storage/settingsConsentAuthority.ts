@@ -30,6 +30,14 @@ export function settingsConsentAuthority(slot: SettingsConsentSlot) {
       async read() {
         const value = await getGenericPassword({ service });
         if (!value) return null;
+        if (slot === 'voice-responses-health-context') {
+          // A malformed durable owner is not equivalent to never granting it.
+          if (value.username !== 'settings-consent-authority')
+            throw new Error('Canonical Live health authority is unavailable');
+          const raw: unknown = JSON.parse(value.password);
+          if (raw == null) throw new Error('Canonical Live health authority is unavailable');
+          return raw;
+        }
         try {
           return JSON.parse(value.password) as unknown;
         } catch {

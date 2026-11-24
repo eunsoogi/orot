@@ -4,6 +4,7 @@ import Foundation
 /// owned fixtures may use reviewed memory, but the production mailbox cannot.
 struct LiveNativeToolRegistry {
     enum Name: String {
+        case canonicalHealthContext = "local-health-context"
         case healthAggregate = "orot_health_context"
         case reviewedMemory = "orot_reviewed_memory"
 
@@ -12,6 +13,8 @@ struct LiveNativeToolRegistry {
             case .healthAggregate:
                 "The enabled app tool can request one bounded ordinary heart-rate average. " +
                     "Use only its approved result; do not claim other record access or actions."
+            case .canonicalHealthContext:
+                "Request only the enabled local health context. Use only independently approved results."
             case .reviewedMemory:
                 "Use only the enabled app tool and its approved result; do not claim other record access or actions."
             }
@@ -22,6 +25,10 @@ struct LiveNativeToolRegistry {
 
     init?(admission: LiveResponsesAdmission) {
         guard let admitted = Name(rawValue: admission.functionName) else { return nil }
+        // A name by itself cannot activate the companion path.
+        guard admitted != .canonicalHealthContext ||
+            (admission.canonicalConfiguration != nil && admission.dispatchTicket != nil)
+        else { return nil }
         eligible = [admitted]
     }
 

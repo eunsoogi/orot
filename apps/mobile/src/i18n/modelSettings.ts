@@ -114,6 +114,17 @@ export const modelSettingsKo = {
   'modelSettings.manageApi': 'OpenAI API 연결 관리',
   'modelSettings.confirmVoice': '저장',
   'modelSettings.modelNameUnknown': '모델 이름을 확인할 수 없어요.',
+  'modelSettings.canonicalLiveHealth': '대화와 같은 건강 기록 도구',
+  'modelSettings.canonicalLiveHealthOn': '사용',
+  'modelSettings.canonicalLiveHealthOff': '사용 안 함',
+  'modelSettings.canonicalLiveHealthConsentTitle':
+    'Live에서 건강 기록 도구 사용',
+  'modelSettings.canonicalLiveHealthConsentScope':
+    '이 설정을 켜면 Live가 대화 탭과 같은 건강 기록 도구를 요청할 수 있어요. 요청할 때마다 기록 조회와 결과 전송을 따로 확인해요.',
+  'modelSettings.canonicalLiveHealthConsentNotice':
+    '전송을 승인하면 보여드린 건강 기록 결과만 선택한 OpenAI 도구 모델에 보내요. 이 설정만으로 기록을 조회하거나 전송하지 않아요.',
+  'modelSettings.canonicalLiveHealthSaveError':
+    '건강 기록 도구 설정을 저장하지 못했어요.',
   'modelSettings.currentSelection': '현재 선택:',
   'modelSettings.voiceConsent':
     '통화를 시작할 때 마이크 사용과 OpenAI로의 음성 전송에 별도로 동의해야 합니다. 설정 저장만으로 키를 확인하거나 음성을 전송하지 않습니다.',

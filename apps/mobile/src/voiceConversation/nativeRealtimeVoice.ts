@@ -1,3 +1,4 @@
+import type { bindCanonicalLiveHealthRun } from './bindCanonicalLiveHealthRun';
 import {
   createVoiceStopReceipts,
   type CaptureVoiceEndReceipt,
@@ -65,17 +66,21 @@ export type LiveResponsesGrantIdentity = Readonly<{
   generation: string;
 }>;
 
+type CanonicalRegistration = NonNullable<ReturnType<typeof bindCanonicalLiveHealthRun>>['registration'];
+
 export function nativeLiveVoice(
   captureEnd?: CaptureVoiceEndReceipt,
   responsesGrant?: (callId: string) => LiveResponsesGrantIdentity | null,
+  canonicalRegistration?: (callId: string) => CanonicalRegistration | undefined,
 ): NativeRealtimeVoice | null {
-  return nativeOwnedVoice(true, captureEnd, responsesGrant);
+  return nativeOwnedVoice(true, captureEnd, responsesGrant, canonicalRegistration);
 }
 
 function nativeOwnedVoice(
   live: boolean,
   captureEnd?: CaptureVoiceEndReceipt,
   responsesGrant?: (callId: string) => LiveResponsesGrantIdentity | null,
+  canonicalRegistration?: (callId: string) => CanonicalRegistration | undefined,
 ): NativeRealtimeVoice | null {
   const module =
     Platform.OS === 'ios' ? NativeModules.VoiceRealtimeModule : null;
@@ -149,7 +154,7 @@ function nativeOwnedVoice(
           await module.openLiveCall(id, model, key, {
             language: 'auto',
             voice: preferences.voice,
-            ...(grant ? { responsesGrant: grant } : {}),
+            ...(grant ? { responsesGrant: grant, ...canonicalRegistration?.(id) } : {}),
           });
         } else {
           await module.openRealtimeCall(id, model, key, language, enableTools);

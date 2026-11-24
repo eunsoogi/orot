@@ -1,3 +1,5 @@
+import { bindCanonicalLiveHealthRun } from './bindCanonicalLiveHealthRun';
+import { loadCanonicalLiveHealthSettings, readCanonicalLiveHealthStartup } from '../voiceSettings/liveCanonicalHealthSettings';
 import { AppState } from 'react-native';
 import { conversationExecutionNative } from '../ragConversation/conversationExecutionNative';
 import { loadLiveCallSettings } from '../voiceSettings/liveVoicePreferencesKeychain';
@@ -16,6 +18,9 @@ export function liveResponsesConversationRun(input: {
 }) {
   const native = nativeLiveManagedTools();
   const protection = native ? conversationExecutionNative() : null;
+  let mode: NonNullable<Awaited<ReturnType<typeof loadCanonicalLiveHealthSettings>>> | undefined;
+  let enabledModeCurrent: (() => boolean) | undefined;
+  let companion: ReturnType<typeof bindCanonicalLiveHealthRun>;
   let protectionRevoked = false;
   let revision = 0;
   let admittedResponses = false;
@@ -26,6 +31,10 @@ export function liveResponsesConversationRun(input: {
     { callId: string; challengeId: string; abort: AbortController } | undefined;
   const clear = () => {
     ++revision;
+    companion?.retire();
+    companion = undefined;
+    mode = undefined;
+    enabledModeCurrent = undefined;
     challenge?.abort.abort();
     challenge = undefined;
     callId = undefined;
@@ -125,6 +134,8 @@ export function liveResponsesConversationRun(input: {
     native?.subscribe(
       incoming => {
         if (!current() || callId !== incoming.callId || challenge) return;
+        if (mode) { companion?.accept(incoming); return; }
+        if (incoming.name !== 'orot_health_context') return;
         const running = {
           callId: incoming.callId,
           challengeId: incoming.challengeId,
@@ -136,6 +147,7 @@ export function liveResponsesConversationRun(input: {
         });
       },
       (cancelledCall, id) => {
+        if (mode) { companion?.cancel(cancelledCall, id); return; }
         if (
           challenge?.callId === cancelledCall &&
           challenge.challengeId === id
@@ -170,15 +182,39 @@ export function liveResponsesConversationRun(input: {
           throw new Error('Live delegation unavailable');
         }
         unwatch = detach;
+        if (native.canonicalAvailable) {
+          const startup = await readCanonicalLiveHealthStartup(selected);
+          if (startup.kind === 'unavailable') throw new Error('Live delegation unavailable');
+          const candidate = startup.kind === 'active' ? startup.companion : undefined;
+          if (revision !== ownedRevision || grant !== selected || !current())
+            throw new Error('Live delegation unavailable');
+          if (candidate && (!candidate.current() ||
+            candidate.binding.legacyGeneration !== selected.nativeGrant.generation ||
+            candidate.binding.credentialEpoch !== selected.credentialEpoch ||
+            candidate.binding.backendModel !== selected.nativeGrant.backendModel))
+            throw new Error('Live delegation unavailable');
+          mode = candidate;
+          enabledModeCurrent = startup.kind === 'off' ? startup.current : startup.companion.current;
+        }
       }
       return credentials;
     },
     nativeGrant(id: string) {
       if (!admittedResponses) return null;
       if (!grant) throw new Error('Live delegation unavailable');
-      if (!current()) throw new Error('Live delegation unavailable');
+      if (!current() || (enabledModeCurrent && !enabledModeCurrent()))
+        throw new Error('Live delegation unavailable');
       callId = id;
       return grant.nativeGrant;
+    },
+    canonicalRegistration(id: string) {
+      if (!mode) return;
+      if (!native || !protection || callId !== id || !current() || companion)
+        throw new Error('Live delegation unavailable');
+      companion = bindCanonicalLiveHealthRun({ id, selection: mode, native, protection,
+        owner: () => callId === id && current(), confirm: input.confirm, revokeCall: revoke });
+      if (!companion) throw new Error('Live delegation unavailable');
+      return companion.registration;
     },
     retire: clear,
     dispose() {

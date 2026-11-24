@@ -1,6 +1,4 @@
 import { t } from '../i18n';
-import { modelPresentation } from '../providers/selection/savedModelPresentation';
-import { ModelSelectionSummary } from '../layout/ModelSelectionSummary';
 import { View } from 'react-native';
 import { useMemo, useState, type ComponentProps } from 'react';
 import { AppText as Text } from '../layout/AppText';
@@ -30,6 +28,8 @@ import type { LiveResponsesBackend } from './liveResponsesSettingsIdentity';
 import { selectOpenAiVoicePair } from './reviewOpenAiVoicePair';
 import { usePreviouslyReviewedVoicePair } from './usePreviouslyReviewedVoicePair';
 import { useOpenAiVoicePairSave } from './useOpenAiVoicePairSave';
+import { useCanonicalLiveHealthSelection } from './useCanonicalLiveHealthSelection';
+import { VoiceCurrentSelection } from './VoiceCurrentSelection';
 /** Local and API providers are sibling sections; a hidden tab must not own navigation actions. */
 export function VoiceSettingsPanel({
   onOpenAccounts,
@@ -107,12 +107,23 @@ export function VoiceSettingsPanel({
     onSaved: value => selection.markPairSaved(value.speechModel),
     onUnavailable: selection.markPairUnavailable,
   });
+  const companion = useCanonicalLiveHealthSelection(
+    active && pair && mode === savedMode && model === savedModel
+      ? { revision: pair.accountRevision, backend: pair.backendModel }
+      : undefined,
+    preferences?.revision === revision && preferences.draft?.dirty === true,
+  );
   const saveDisabled =
-    busy || failedLoad || pairedSave.busy || (apiDraft && !pair);
+    busy ||
+    failedLoad ||
+    pairedSave.busy ||
+    companion.busy ||
+    (apiDraft && !pair);
   const saveLabel = t('modelSettings.confirmVoice');
   const requestSave = () => {
     if (!saveDisabled) {
-      if (apiDraft) pairedSave.save();
+      if (companion.dirty) companion.save();
+      else if (apiDraft) pairedSave.save();
       else selection.save();
     }
   };
@@ -120,10 +131,9 @@ export function VoiceSettingsPanel({
     active,
     label: saveLabel,
     disabled: saveDisabled,
-    busy: busy || pairedSave.busy,
+    busy: busy || pairedSave.busy || companion.busy,
     onPress: requestSave,
   });
-  const displayedChoice = voiceModels.find(item => item.id === model);
   const choices = (connection: 'local' | 'openai-api') =>
     voiceModels
       .filter(
@@ -158,25 +168,10 @@ export function VoiceSettingsPanel({
       ));
   return (
     <View testID="voice-settings-panel">
-      {selection.pairAwaitingActivation ? (
-        <Text accessibilityRole="alert">
-          {t('modelSettings.liveVoicePairRecovery')}
-        </Text>
-      ) : savedModel !== null && !failedLoad ? (
-        <ModelSelectionSummary
-          label={t(
-            model !== savedModel || mode !== savedMode
-              ? 'modelSettings.selectedAiPrefix'
-              : 'modelSettings.currentSelection',
-          )}
-          value={modelPresentation(
-            mode === 'local' ? 'Apple' : 'OpenAI API',
-            displayedChoice?.title,
-          )}
-          testID="voice-current-model"
-        />
-      ) : null}
-      {active ? pairedSave.disclosureSheet : null}
+      <VoiceCurrentSelection selection={selection} />
+      {active
+        ? (pairedSave.disclosureSheet ?? companion.disclosureSheet)
+        : null}
       <View style={styles.section} testID="voice-model-group-local">
         <Text accessibilityRole="header" style={styles.heading}>
           Apple
@@ -206,7 +201,7 @@ export function VoiceSettingsPanel({
                         : { revision, draft },
                     )
                   }
-                  busy={busy || pairedSave.busy}
+                  busy={busy || pairedSave.busy || companion.dirty}
                   {...(livePreferences ?? {
                     ready: true,
                     store: preferencesReader!,
@@ -217,6 +212,7 @@ export function VoiceSettingsPanel({
             }
             tools={
               <OpenAiVoiceToolOptions
+                companion={companion.option}
                 models={catalog.toolIds}
                 selected={tool?.revision === revision ? tool.model : undefined}
                 disabled={busy || failedLoad || pairedSave.busy}
