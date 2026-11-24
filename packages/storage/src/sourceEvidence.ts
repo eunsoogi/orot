@@ -20,12 +20,14 @@ import {
 import type { RecordMap } from './contracts';
 import type { SqlDatabase, SqlExecutor } from './sql';
 import { listTypedSourceDeletionReferences } from './sourceDeletionReferences';
+import { sourceDeletionGroupReader } from './sourceDeletionMembership';
 
 export type HashedSourceRecord = SourceRecord & { contentHash: SourceContentHash };
 export type LocatedEvidenceSpan = EvidenceSpan & { locator: EvidenceSpanLocator };
 
 export interface SourceRecordRepository {
   create(record: HashedSourceRecord): Promise<HashedSourceRecord>;
+  readDeletionGroup?: ReturnType<typeof sourceDeletionGroupReader>;
   get(id: string): Promise<SourceRecord | null>;
   findByContentHash(hash: SourceContentHash): Promise<HashedSourceRecord | null>;
   update(record: HashedSourceRecord): Promise<void>;
@@ -79,6 +81,7 @@ export function createSourceEvidenceRepositories(database: SqlDatabase): {
   evidenceSpans: EvidenceSpanRepository;
 } {
   const sourceRecords: SourceRecordRepository = {
+    readDeletionGroup: sourceDeletionGroupReader(database),
     async create(input) {
       const record = parseHashedSourceRecord(input);
       let result: HashedSourceRecord | null = null;

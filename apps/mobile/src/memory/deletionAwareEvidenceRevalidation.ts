@@ -32,6 +32,37 @@ function structuredRecordIdentity(reference: EvidenceReference): string | null {
     : null;
 }
 
+/** A single bounded group can share the same typed source existence,
+ * tombstone, and membership snapshot. Never group distinct sources or histories. */
+function exactImportedGroup(references: readonly EvidenceReference[]) {
+  const source = references[0]?.sourceId;
+  if (!source || references.length < 2 || references.length > 50) return;
+  const ids = new Set<string>();
+  for (const reference of references) {
+    const locator = reference.locator;
+    if (
+      reference.sourceId !== source ||
+      (locator &&
+        typeof locator === 'object' &&
+        !Array.isArray(locator) &&
+        'kind' in locator &&
+        locator.kind === 'manual_history')
+    )
+      return;
+    for (const id of [
+      source,
+      reference.evidenceId,
+      ...locatorRecordIds(locator),
+    ]) {
+      const parsed = RecordIdSchema.safeParse(id);
+      if (!parsed.success) return;
+      ids.add(parsed.data);
+      if (ids.size > 50) return;
+    }
+  }
+  return { source, ids: [...ids] };
+}
+
 /** Explicit per-workflow storage binding; validation itself cannot be replaced.
  * Native application callers retain lazy protected storage by default. */
 export interface DeletionRevalidationStorage {
@@ -63,7 +94,16 @@ export function withLocalDeletionAwareRevalidation(
             require('../storage/secureDatabase') as typeof import('../storage/secureDatabase')
           ).openLocalStorage());
       if (signal.aborted) return false;
-      for (const reference of personalRecords) {
+      const sources = repository.sourceRecords;
+      const group = sources?.readDeletionGroup
+        ? exactImportedGroup(personalRecords)
+        : undefined;
+      const checked =
+        group && sources?.readDeletionGroup
+          ? await sources.readDeletionGroup(group.source, group.ids, signal)
+          : 'missing_source';
+      if (signal.aborted || checked === 'rejected') return false;
+      for (const reference of checked === 'current' ? [] : personalRecords) {
         if (signal.aborted) return false;
         const ids = [
           reference.sourceId,
