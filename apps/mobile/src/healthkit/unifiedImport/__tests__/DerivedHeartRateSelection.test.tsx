@@ -22,6 +22,9 @@ test('keeps derived heart-rate import as independent explicit choices', async ()
   const feature = (name: string) =>
     screen.getByTestId(`unified-import-toggle-${name}`);
   await fireEvent.press(feature('healthKit'));
+  expect(screen.getByText('안정 시 심박수')).toBeTruthy();
+  expect(screen.getByText('걷기 평균 심박수')).toBeTruthy();
+  expect(screen.getByText('건강 앱')).toBeTruthy();
   expect(feature('heartRate').props.accessibilityState.checked).toBe(true);
   expect(feature('restingHeartRate').props.accessibilityState.checked).toBe(
     false,

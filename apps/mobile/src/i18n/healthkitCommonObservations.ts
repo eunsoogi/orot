@@ -1,3 +1,9 @@
+/** Metric titles omit source attribution, which is presented separately from provenance. */
+export const derivedHeartRateNamesKo = {
+  resting: '안정 시 심박수',
+  walkingAverage: '걷기 평균 심박수',
+} as const;
+
 // Empty HealthKit results cannot establish denial because read authorization is unobservable.
 export const commonObservationsKo = {
   'healthkit.commonObservations.workouts': '운동 기록',
@@ -9,9 +15,10 @@ export const commonObservationsKo = {
     '선택한 기록만 이 기기의 암호화된 저장소에 보관하고 외부로 전송하지 않아요.',
   'healthkit.commonObservations.import': '선택한 기록 가져오기',
   'healthkit.commonObservations.heartRate': '심박수',
-  'healthkit.commonObservations.restingHeartRate': '안정 시 심박수 (건강 앱)',
+  'healthkit.commonObservations.restingHeartRate':
+    derivedHeartRateNamesKo.resting,
   'healthkit.commonObservations.walkingHeartRateAverage':
-    '걷기 평균 심박수 (건강 앱)',
+    derivedHeartRateNamesKo.walkingAverage,
   'healthkit.commonObservations.derivedHeartRateMean':
     '불러온 측정값 {samples}개의 평균: {mean}회/분',
   'healthkit.commonObservations.derivedHeartRateDates':

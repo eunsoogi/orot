@@ -182,9 +182,7 @@ test('separates visible Apple metrics, labels loaded mean and sources, and does 
     onOpenDetail: open,
   };
   const result = await render(<HealthRecordsLibraryScreen {...props} />);
-  await fireEvent.press(
-    screen.getByRole('button', { name: '안정 시 심박수 (건강 앱)' }),
-  );
+  await fireEvent.press(screen.getByRole('button', { name: '안정 시 심박수' }));
   expect(screen.getByText('불러온 측정값 2개의 평균: 71회/분')).toBeTruthy();
   expect(screen.getByText(/측정 기간:/)).toBeTruthy();
   expect(
@@ -203,7 +201,7 @@ test('separates visible Apple metrics, labels loaded mean and sources, and does 
     period: 'month',
   });
   await fireEvent.press(
-    screen.getByRole('button', { name: '걷기 평균 심박수 (건강 앱)' }),
+    screen.getByRole('button', { name: '걷기 평균 심박수' }),
   );
   expect(
     screen.getByTestId(
