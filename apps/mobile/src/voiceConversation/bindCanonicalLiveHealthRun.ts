@@ -27,11 +27,14 @@ export function bindCanonicalLiveHealthRun(input: {
   const current = () => !retired && input.owner() && selection.current();
   const owns = (call: LiveManagedHealthCall) =>
     current() && call.callId === id && challenge?.id === call.challengeId;
-  const admit = async (call: LiveManagedHealthCall, text: string, signal: AbortSignal,
-    use: 'live-local-read' | 'live-outbound-result') => {
+  const admit = async (
+    call: LiveManagedHealthCall,
+    text: string,
+    signal: AbortSignal,
+    use: 'live-local-read' | 'live-outbound-result',
+  ) => {
     const valid = () => !signal.aborted && owns(call);
-    if (!valid() || (await protection.protectedDataAvailable()) !== true || !valid())
-      return false;
+    if (!valid() || (await protection.protectedDataAvailable()) !== true || !valid()) return false;
     const approved = await input.confirm({
       text,
       signal,
@@ -40,12 +43,12 @@ export function bindCanonicalLiveHealthRun(input: {
       model: selection.binding.backendModel,
     });
     // AppState and the stale JS snapshot cannot stand in for a native unlock.
-    return approved && valid() &&
-      (await protection.protectedDataAvailable()) === true && valid();
+    return approved && valid() && (await protection.protectedDataAvailable()) === true && valid();
   };
   const execute = createCanonicalLiveHealthRead({
     async resolve(call) {
-      if (!owns(call) || (await protection.protectedDataAvailable()) !== true || !owns(call)) return;
+      if (!owns(call) || (await protection.protectedDataAvailable()) !== true || !owns(call))
+        return;
       return { capability: 'local-health-context', current };
     },
     owns,
@@ -53,10 +56,11 @@ export function bindCanonicalLiveHealthRun(input: {
     protectedAvailable: () => protection.protectedDataAvailable(),
     approveLocal: (call, text, signal) => admit(call, text, signal, 'live-local-read'),
     async approveTransfer(call, text, signal) {
-      if (!await admit(call, text, signal, 'live-outbound-result')) return;
+      if (!(await admit(call, text, signal, 'live-outbound-result'))) return;
       return () => !signal.aborted && owns(call);
     },
-    openData: async () => (await import('../aiFeatures/integration/localData')).openAiFeatureLocalData(),
+    openData: async () =>
+      (await import('../aiFeatures/integration/localData')).openAiFeatureLocalData(),
     holdDelivery: native.holdDelivery,
     settle: native.settle,
   });
@@ -70,14 +74,19 @@ export function bindCanonicalLiveHealthRun(input: {
   const unsubscribe = selection.subscribe(() => {
     if (!selection.current() && stop() && input.owner()) input.revokeCall();
   });
-  if (!current()) { stop(); unsubscribe(); return; }
+  if (!current()) {
+    stop();
+    unsubscribe();
+    return;
+  }
   return {
     registration,
     accept(call: LiveManagedHealthCall) {
-      if (call.name !== 'local-health-context' || !current() || call.callId !== id || challenge) return;
+      if (call.name !== 'local-health-context' || !current() || call.callId !== id || challenge)
+        return;
       const running = { id: call.challengeId, abort: new AbortController() };
       challenge = running;
-      void execute(call, running.abort.signal).finally(() => {
+      execute(call, running.abort.signal).finally(() => {
         if (challenge === running) challenge = undefined;
       });
     },
@@ -87,6 +96,9 @@ export function bindCanonicalLiveHealthRun(input: {
         challenge = undefined;
       }
     },
-    retire() { stop(); unsubscribe(); },
+    retire() {
+      stop();
+      unsubscribe();
+    },
   };
 }

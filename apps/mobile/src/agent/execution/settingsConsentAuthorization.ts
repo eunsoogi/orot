@@ -2,10 +2,7 @@ import {
   isCatalogDomainPermission,
   SETTINGS_CONSENT_CATALOG_VERSION,
 } from './settingsConsentCatalog';
-import type {
-  ExecutionConsentPort,
-  OutboundProcessingRequest,
-} from '@orot/agent-runtime';
+import type { ExecutionConsentPort, OutboundProcessingRequest } from '@orot/agent-runtime';
 import { consentSnapshot } from './consentSnapshot';
 import { canReuseConsent, consentRevision } from './consentRevision';
 import {
@@ -97,25 +94,23 @@ export function createSettingsConsentAuthorization(input: {
           isCurrent: owner.isCurrent,
           subscribeInvalidation: owner.subscribeInvalidation,
         };
-        const grant = await input.readGrant(captured.slot, captured.domain);
+        const slot = captured.slot;
+        // The dedicated Live companion cannot authorize a generic model request.
+        if (slot === 'voice-responses-health-context') return 'renewal_required';
+        const grant = await input.readGrant(slot, captured.domain);
         if (
           !grant ||
           input.catalogVersion !== SETTINGS_CONSENT_CATALOG_VERSION ||
-          !grant.permissions.every(permission =>
+          !grant.permissions.every((permission) =>
             isCatalogDomainPermission(
-              captured.slot,
+              slot,
               captured.domain,
               permission,
               captured.identity.providerId,
             ),
           ) ||
           !current() ||
-          !settingsGrantCoversRequest(
-            grant,
-            captured.identity,
-            input.catalogVersion,
-            request,
-          )
+          !settingsGrantCoversRequest(grant, captured.identity, input.catalogVersion, request)
         )
           return 'renewal_required';
         const after = await input.resolveOwner(request);
@@ -127,11 +122,8 @@ export function createSettingsConsentAuthorization(input: {
           !after.isCurrent()
         )
           return 'renewal_required';
-        witnesses.set(
-          request,
-          () => current() && captured.isCurrent() && after.isCurrent(),
-        );
-        subscriptions.set(request, listener => {
+        witnesses.set(request, () => current() && captured.isCurrent() && after.isCurrent());
+        subscriptions.set(request, (listener) => {
           const check = () => {
             if (witnesses.get(request)?.() !== true) listener();
           };

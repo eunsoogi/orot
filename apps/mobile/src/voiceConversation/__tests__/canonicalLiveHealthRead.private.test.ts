@@ -1,7 +1,5 @@
-import {
-  fixture,
-  call as legacyCall,
-} from '../testSupport/liveResponsesProtectedFixture';
+import { utf8ByteLength } from '../../aiFeatures/integration/evidenceUtils';
+import { fixture, call as legacyCall } from '../testSupport/liveResponsesProtectedFixture';
 import {
   createCanonicalLiveHealthRead,
   type CanonicalHealthLiveReceipt,
@@ -17,16 +15,9 @@ const canonicalCall = {
   }),
 } as const;
 
-test.each([
-  'allow',
-  'deny-local',
-  'deny-transfer',
-  'wrong-grant',
-  'edit',
-  'detach',
-] as const)(
+test.each(['allow', 'deny-local', 'deny-transfer', 'wrong-grant', 'edit', 'detach'] as const)(
   'serial canonical health invocation over actual guarded SQLite: %s',
-  async mode => {
+  async (mode) => {
     const f = await fixture();
     f.setActive(canonicalCall);
     let registeredRetirement: (() => void) | undefined;
@@ -72,16 +63,10 @@ test.each([
         );
         const exact = f.settle.mock.calls[0]?.[2];
         expect(typeof exact).toBe('string');
-        expect(approveTransfer).toHaveBeenCalledWith(
-          canonicalCall,
-          exact,
-          f.controller.signal,
-        );
+        expect(approveTransfer).toHaveBeenCalledWith(canonicalCall, exact, f.controller.signal);
         expect(exact).toContain('heart_rate');
-        expect(Buffer.byteLength(String(exact), 'utf8')).toBeGreaterThan(2048);
-        expect(Buffer.byteLength(String(exact), 'utf8')).toBeLessThanOrEqual(
-          8192,
-        );
+        expect(utf8ByteLength(String(exact))).toBeGreaterThan(2048);
+        expect(utf8ByteLength(String(exact))).toBeLessThanOrEqual(8192);
         const parsed = JSON.parse(exact!);
         expect(parsed).toMatchObject({
           tool: 'local-health-context',

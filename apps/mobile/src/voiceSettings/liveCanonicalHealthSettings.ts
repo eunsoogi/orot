@@ -2,10 +2,7 @@ import { commitSettingsConsent } from '../agent/execution/commitSettingsConsent'
 import { SETTINGS_CONSENT_CATALOG_VERSION } from '../agent/execution/settingsConsentCatalog';
 import { settingsConsentAuthority } from '../storage/settingsConsentAuthority';
 import { settingsConsentRepository } from '../storage/settingsConsentRepository';
-import {
-  liveResponsesProviderId,
-  liveResponsesRecipient,
-} from './liveResponsesSettingsIdentity';
+import { liveResponsesProviderId, liveResponsesRecipient } from './liveResponsesSettingsIdentity';
 import { loadLiveResponsesSettings, type LiveResponsesSettings } from './liveResponsesSettings';
 import {
   canonicalHealthBinding,
@@ -24,10 +21,7 @@ export const canonicalHealthPermission = {
   sourceKinds: ['personal_record'],
 } as const;
 
-const matches = (
-  left: CanonicalHealthBinding,
-  right: CanonicalHealthBinding | undefined,
-) =>
+const matches = (left: CanonicalHealthBinding, right: CanonicalHealthBinding | undefined) =>
   !!right &&
   left.version === right.version &&
   left.capability === right.capability &&
@@ -54,8 +48,7 @@ async function loadActiveCompanion(
     base.nativeGrant,
     base.credentialEpoch,
   );
-  if (!matches(expected, await readCanonicalHealthBinding()) || !current())
-    return;
+  if (!matches(expected, await readCanonicalHealthBinding()) || !current()) return;
   const store = await settingsConsentRepository();
   const grant = await store.read(canonicalHealthSlot);
   if (
@@ -67,8 +60,7 @@ async function loadActiveCompanion(
     grant.identity.modelId !== expected.backendModel ||
     grant.identity.credentialEpoch !== expected.credentialEpoch ||
     grant.identity.authorityGeneration !== expected.generation ||
-    JSON.stringify(grant.permissions) !==
-      JSON.stringify([canonicalHealthPermission])
+    JSON.stringify(grant.permissions) !== JSON.stringify([canonicalHealthPermission])
   )
     return;
   return {
@@ -86,7 +78,9 @@ async function loadActiveCompanion(
 }
 
 /** One latched account, never reinterpret a read failure as a saved choice. */
-export async function readCanonicalLiveHealthStartup(base: Base): Promise<
+export async function readCanonicalLiveHealthStartup(
+  base: Base,
+): Promise<
   | { kind: 'off'; current: () => boolean }
   | { kind: 'active'; companion: Companion }
   | { kind: 'unavailable' }
@@ -104,7 +98,9 @@ export async function readCanonicalLiveHealthStartup(base: Base): Promise<
       const store = await settingsConsentRepository();
       const review = await store.readReviewGrant(canonicalHealthSlot, 'model');
       // Malformed or duplicated SQL rows are unreadable, not absent.
-      return review.status === 'unset' && current() ? { kind: 'off', current } : { kind: 'unavailable' };
+      return review.status === 'unset' && current()
+        ? { kind: 'off', current }
+        : { kind: 'unavailable' };
     }
     if (state.kind !== 'active') return { kind: 'unavailable' };
     const companion = await loadActiveCompanion(base, owned, state.generation);
@@ -143,10 +139,8 @@ export async function saveCanonicalLiveHealthSettings(input: {
   ) => Promise<boolean>;
 }) {
   const base = await loadLiveResponsesSettings();
-  if (base.kind !== 'active')
-    throw new Error('Live Responses consent is unavailable');
-  const current = () =>
-    !input.signal.aborted && input.current() && base.current();
+  if (base.kind !== 'active') throw new Error('Live Responses consent is unavailable');
+  const current = () => !input.signal.aborted && input.current() && base.current();
   if (
     !current() ||
     !(await input.confirm(
@@ -168,11 +162,7 @@ export async function saveCanonicalLiveHealthSettings(input: {
     authority: authority(),
     grants,
     makeGrant(generation) {
-      binding = canonicalHealthBinding(
-        generation,
-        base.nativeGrant,
-        base.credentialEpoch,
-      );
+      binding = canonicalHealthBinding(generation, base.nativeGrant, base.credentialEpoch);
       return {
         version: 1,
         catalogVersion: SETTINGS_CONSENT_CATALOG_VERSION,
@@ -187,14 +177,11 @@ export async function saveCanonicalLiveHealthSettings(input: {
       };
     },
     async saveSelection() {
-      if (!binding || !current())
-        throw new Error('Canonical health selection retired');
+      if (!binding || !current()) throw new Error('Canonical health selection retired');
       await writeCanonicalHealthBinding(binding);
     },
     isSelectionCurrent: async () =>
-      !!binding &&
-      matches(binding, await readCanonicalHealthBinding()) &&
-      current(),
+      !!binding && matches(binding, await readCanonicalHealthBinding()) && current(),
     isPreviousSelectionCurrent: async () => false,
     async isCredentialCurrent() {
       const next = await loadLiveResponsesSettings(base.credentialEpoch);
