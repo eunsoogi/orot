@@ -5,6 +5,14 @@ import Security
 /// Versioned companion to the existing model/account grant. It cannot grant
 /// microphone access, actions, other tools, or transmission by itself.
 struct RealtimeVoiceCanonicalHealthAdmission: Equatable {
+    /// One native authority for both the exported capability and bridge admission.
+    /// A JS-supplied option cannot activate this staged foundation.
+    static let enabledForLiveBridge = false
+
+    static func permitsStartupOptions(_ options: NSDictionary, enabled: Bool = enabledForLiveBridge) -> Bool {
+        enabled || (options["canonicalHealthGrant"] == nil && options["canonicalHealthDeclaration"] == nil)
+    }
+
     static let name = "local-health-context"
     static let policy = "canonical-health-context-result-v2"
     static let resultLimit = 8192

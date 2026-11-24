@@ -35,7 +35,7 @@ jest.mock('react-native-keychain', () => ({
 test('distinct explicit v2 grant does not inherit the old aggregate and fails closed on revoked or replaced ownership', async () => {
   const lane = openSqliteTestDatabase(':memory:');
   try {
-    let state: ConsentAuthorityState | undefined;
+    let state: ConsentAuthorityState | null = null;
     let binding: string | undefined;
     let ordinal = 0;
     const authority = createConsentAuthority(

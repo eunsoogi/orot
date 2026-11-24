@@ -87,8 +87,16 @@ it.each(['gpt-6-luna', 'gpt-6-sol'])(
     });
     await run.credentials();
     expect(run.nativeGrant('current-call')).toBe(receipt);
-    mockIncoming({ callId: 'old-call', challengeId: 'old-tool' });
-    mockIncoming({ callId: 'current-call', challengeId: 'current-tool' });
+    mockIncoming({
+      name: 'orot_health_context',
+      callId: 'old-call',
+      challengeId: 'old-tool',
+    });
+    mockIncoming({
+      name: 'orot_health_context',
+      callId: 'current-call',
+      challengeId: 'current-tool',
+    });
     for (let tick = 0; tick < 10; tick++) await Promise.resolve();
     expect(mockScopeConfirm).toHaveBeenCalledWith(
       expect.objectContaining(receipt),
@@ -106,7 +114,11 @@ it.each(['gpt-6-luna', 'gpt-6-sol'])(
     expect(() => run.nativeGrant('after-revoke')).toThrow(
       'Live delegation unavailable',
     );
-    mockIncoming({ callId: 'current-call', challengeId: 'late-tool' });
+    mockIncoming({
+      name: 'orot_health_context',
+      callId: 'current-call',
+      challengeId: 'late-tool',
+    });
     expect(mockSettle).toHaveBeenCalledTimes(1);
     run.dispose();
   },

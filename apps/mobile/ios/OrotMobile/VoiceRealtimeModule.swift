@@ -33,7 +33,7 @@ final class VoiceRealtimeModule: RCTEventEmitter {
     }
 
     override func constantsToExport() -> [AnyHashable: Any]! {
-        ["supportsVoiceAudioLevels": true]
+        ["supportsVoiceAudioLevels": true, "supportsCanonicalHealthContextV2": RealtimeVoiceCanonicalHealthAdmission.enabledForLiveBridge]
     }
 
     override func supportedEvents() -> [String]! {
@@ -46,7 +46,8 @@ final class VoiceRealtimeModule: RCTEventEmitter {
     {
         DispatchQueue.main.async { [self] in
             guard active == nil else { reject("VOICE_BUSY", "Voice is already active.", nil); return }
-            guard Set(options.allKeys.compactMap { $0 as? String }).isSubset(of: ["language", "voice", "responsesGrant", "canonicalHealthGrant", "canonicalHealthDeclaration"]),
+            guard RealtimeVoiceCanonicalHealthAdmission.permitsStartupOptions(options),
+                  Set(options.allKeys.compactMap { $0 as? String }).isSubset(of: ["language", "voice", "responsesGrant", "canonicalHealthGrant", "canonicalHealthDeclaration"]),
                   let language = options["language"] as? String, let voice = options["voice"] as? String
             else {
                 reject("VOICE_LIVE_FAILED", "Live voice is unavailable.", nil); return
