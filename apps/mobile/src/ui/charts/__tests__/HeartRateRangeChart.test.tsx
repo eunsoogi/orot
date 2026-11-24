@@ -72,13 +72,13 @@ test('shows a span and independent mean marker while exposing accessible bounds,
   expect(screen.getAllByTestId('chart-range-single', renderer)).toHaveLength(1);
   const plot = screen.getByTestId('heart-plot');
   expect(plot.props.accessibilityLabel).toMatch(
-    /2035-01-01.*최저 60회\/분, 최고 100회\/분, 평균 70회\/분/,
+    /2035-01-01.*최저 60 BPM, 최고 100 BPM, 평균 70 BPM/,
   );
   expect(plot.props.accessibilityLabel).toMatch(/2035-01-02.*측정되지 않음/);
   await fireEvent(plot, 'accessibilityAction', {
     nativeEvent: { actionName: 'increment' },
   });
-  expect(plot.props.accessibilityLabel).toMatch(/2035-01-01.*평균 70회\/분/);
+  expect(plot.props.accessibilityLabel).toMatch(/2035-01-01.*평균 70 BPM/);
   await fireEvent(plot, 'accessibilityAction', {
     nativeEvent: { actionName: 'increment' },
   });
@@ -131,7 +131,7 @@ test('chooses a plotted range through the existing contextual callout', async ()
   await fireEvent.press(mark);
   expect(
     screen.getByTestId('heart-plot-tooltip', { includeHiddenElements: true }),
-  ).toHaveTextContent(/평균 70회\/분/);
+  ).toHaveTextContent(/평균 70 BPM/);
   await fireEvent.press(mark);
   expect(
     screen.queryByTestId('heart-plot-tooltip', { includeHiddenElements: true }),

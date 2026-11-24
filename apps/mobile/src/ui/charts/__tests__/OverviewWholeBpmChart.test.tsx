@@ -8,8 +8,8 @@ import { ChartTooltipHost } from '../ChartTooltipHost';
 import { formatChartValue, formatRangeAxisValue } from '../format';
 
 test('uses integer BPM axis labels without changing other axis precision', () => {
-  expect(formatRangeAxisValue(125.00000000000001, true)).toBe('125');
-  expect(formatRangeAxisValue(60.2, true)).toBe('60');
+  expect(formatRangeAxisValue(125.00000000000001, true)).toBe('125 BPM');
+  expect(formatRangeAxisValue(60.2, true)).toBe('60 BPM');
   expect(formatRangeAxisValue(60.2, false)).toBe('60.2');
 });
 
@@ -52,9 +52,7 @@ test.each(['heartRate', 'restingHeartRate', 'walkingHeartRate'] as const)(
   '%s keeps fractional data but presents whole BPM',
   kind => {
     const chart = overviewMetricChartData({ ...metric, metric: kind });
-    expect(formatOverviewMetricValue(kind, 104.5, metric.unit)).toBe(
-      '105회/분',
-    );
+    expect(formatOverviewMetricValue(kind, 104.5, metric.unit)).toBe('104 BPM');
     expect(chart.presentation).toBe('whole-bpm-overview');
     expect(chart.series[0]?.points.map(point => point.value)).toEqual([
       66.51,
@@ -67,12 +65,8 @@ test.each(['heartRate', 'restingHeartRate', 'walkingHeartRate'] as const)(
       maximum: 90.3,
       samples: 3,
     });
-    expect(formatChartValue('bodyMass', 68.75, 'kg', chart.presentation)).toBe(
-      '68.75 kg',
-    );
-    expect(formatChartValue('heartRate', 104.5, 'count/min')).toBe(
-      '104.5회/분',
-    );
+    expect(formatChartValue('bodyMass', 68.75, 'kg')).toBe('68.75 kg');
+    expect(formatChartValue('heartRate', 104.5, 'count/min')).toBe('104 BPM');
   },
 );
 
@@ -129,15 +123,15 @@ test('range-style single values use a centered flat mark; tooltip and accessibil
     expect(screen.queryByTestId('chart-range-single', renderer)).toBeNull();
     const plot = screen.getByTestId('walking-plot');
     expect(plot.props.accessibilityLabel).toMatch(
-      /최저 60회\/분, 최고 90회\/분, 평균 67회\/분/,
+      /최저 60 BPM, 최고 90 BPM, 평균 66 BPM/,
     );
     expect(plot.props.accessibilityLabel).toContain('측정되지 않음');
     const mark = screen.getAllByTestId('chart-range-bucket', renderer)[2]!;
     await fireEvent.press(mark);
     const tooltip = screen.getByTestId('walking-plot-tooltip', renderer);
-    expect(tooltip).toHaveTextContent(/측정값 125회\/분/);
+    expect(tooltip).toHaveTextContent(/측정값 125 BPM/);
     expect(tooltip).not.toHaveTextContent('125.');
-    expect(plot.props.accessibilityLabel).toContain('측정값 125회/분');
+    expect(plot.props.accessibilityLabel).toContain('측정값 125 BPM');
     await fireEvent.press(mark);
     expect(screen.queryByTestId('walking-plot-tooltip', renderer)).toBeNull();
     await view.unmount();

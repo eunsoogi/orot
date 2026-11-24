@@ -110,7 +110,7 @@ final class RealtimeVoiceLifecycleTests: OrotFailFastTestCase {
         try await assertConnectingCueWaitsForAdmissionAndLateStopCannotSendOnNextAttempt()
         let audio = Audio(), socket = Socket()
         var levels: [Double] = []
-        let call = fixture(audio, socket) { event, body in levels += event == "VoiceRealtimeAudioLevel" ? [body["level"] as? Double].compactMap { $0 } : [] }
+        let call = fixture(audio, socket) { event, body in levels += event == "VoiceRealtimeAudioLevel" ? [body["level"] as? Double].compactMap(\.self) : [] }
         await opening(call, socket: socket)
         socket.received?(started())
         let oldFailure = audio.failure, oldMeter = audio.displayLevel

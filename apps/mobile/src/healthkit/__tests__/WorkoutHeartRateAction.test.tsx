@@ -19,13 +19,13 @@ import {
 
 const workoutId = 'B09CB262-D06E-485C-A600-BEEA45828A97';
 const check = '운동에 연결된 심박수 확인';
-const summary = '운동 시간 안의 연결 심박수: 평균 81.3 bpm, 범위 61–122 bpm';
+const summary = '운동 시간 안의 연결 심박수: 평균 81 BPM, 범위 61–122 BPM';
 const original = NativeModules.HealthKitModule;
 const associated = {
   status: 'available',
-  minimum: 61,
-  mean: 81.3,
-  maximum: 122,
+  minimum: 61.99,
+  mean: 81.99,
+  maximum: 122.99,
 };
 
 function fixture() {

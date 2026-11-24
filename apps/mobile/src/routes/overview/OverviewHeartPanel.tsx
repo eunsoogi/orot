@@ -3,7 +3,11 @@ import { StyleSheet, View } from 'react-native';
 import { AppText as Text } from '../../layout/AppText';
 import { AppSymbol } from '../../layout/AppSymbol';
 import { appColors } from '../../layout/appColors';
-import { formatNumber, t } from '../../i18n';
+import { t } from '../../i18n';
+import {
+  formatHeartRateBpm,
+  isHeartRateDisplayUnit,
+} from '../../i18n/heartRateDisplay';
 import {
   coalesceOverviewHeartSelection,
   type OverviewMetricChoice,
@@ -51,8 +55,7 @@ function HeartReadingValue({
   const primary = metric === 'heartRate';
   const range =
     primary && value?.days.find(day => day.date === value.latest.date)?.range;
-  const whole = (amount: number) =>
-    formatNumber(amount, { maximumFractionDigits: 0 });
+
   return (
     <View
       testID={`overview-metric-${metric}`}
@@ -78,7 +81,9 @@ function HeartReadingValue({
       {value && range && range.minimum !== range.maximum ? (
         <Text style={overview.detail}>
           {t('overview.heartPanelRange', {
-            minimum: whole(range.minimum),
+            minimum: isHeartRateDisplayUnit(value.unit)
+              ? formatHeartRateBpm(range.minimum, false)
+              : formatOverviewMetricValue(metric, range.minimum, value.unit),
             maximum: formatOverviewMetricValue(
               metric,
               range.maximum,

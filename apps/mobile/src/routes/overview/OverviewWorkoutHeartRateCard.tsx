@@ -1,5 +1,6 @@
 import { StyleSheet, View } from 'react-native';
-import { formatNumber, t } from '../../i18n';
+import { t } from '../../i18n';
+import { formatHeartRateBpm } from '../../i18n/heartRateDisplay';
 import { AppText as Text } from '../../layout/AppText';
 import { overviewMetricStyles as styles } from './overviewMetricStyles';
 import { useOverviewWorkoutPeriodHeartRate } from './useOverviewWorkoutPeriodHeartRate';
@@ -42,7 +43,7 @@ export function OverviewWorkoutHeartRateCard({
         >
           {state.status === 'available'
             ? t('healthRecords.workoutHeartRate.periodAverage', {
-                mean: formatNumber(state.mean, { maximumFractionDigits: 0 }),
+                mean: formatHeartRateBpm(state.mean),
               })
             : state.status === 'loading'
               ? t('healthRecords.loading')

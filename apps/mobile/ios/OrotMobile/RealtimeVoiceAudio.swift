@@ -202,13 +202,13 @@ final class RealtimeVoiceDisplayMeter: @unchecked Sendable {
         let level = Self.level(count: count, value: value)
         DispatchQueue.main.async { [weak self] in
             guard let self else { return }
-            self.lock.lock()
-            let owned = self.epochs[index] == current
+            lock.lock()
+            let owned = epochs[index] == current
             if owned {
-                self.pending[index] = false
+                pending[index] = false
             }
-            let observer = owned ? self.sink : nil
-            self.lock.unlock()
+            let observer = owned ? sink : nil
+            lock.unlock()
             observer?(direction, level)
         }
     }

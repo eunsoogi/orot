@@ -2,7 +2,8 @@ import type { HealthObservationMonthWindow } from '@orot/storage';
 import { useState } from 'react';
 import { View } from 'react-native';
 import { AppText as Text } from '../layout/AppText';
-import { formatNumber, t } from '../i18n';
+import { t } from '../i18n';
+import { formatHeartRateBpm } from '../i18n/heartRateDisplay';
 import { ChartPlot, type ChartData, type ChartPoint } from '../ui/charts';
 import type { RecordsWorkoutDay } from './recordsWorkoutDayWitness';
 import { useRecordsWorkoutMonthHeartRate } from './useRecordsWorkoutMonthHeartRate';
@@ -71,7 +72,7 @@ export function HealthRecordsWorkoutMonthHeartRate({
         <>
           <Text accessibilityRole="status">
             {t('healthRecords.workoutHeartRate.periodAverage', {
-              mean: formatNumber(state.mean, { maximumFractionDigits: 0 }),
+              mean: formatHeartRateBpm(state.mean),
             })}
           </Text>
           {state.days ? (

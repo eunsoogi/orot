@@ -1,3 +1,4 @@
+import { isHeartRateDisplayUnit } from '../../i18n/heartRateDisplay';
 import { placeChartWindow } from './chartWindowPositions';
 import {
   BarChart,
@@ -81,6 +82,9 @@ export function ChartRenderer({
               axis={rangeAxis}
               xWindow={data.xWindow}
               wholeBpm={usesWholeBpm(data.metric, unit, data.presentation)}
+              heartRateBpm={
+                data.metric === 'heartRate' && isHeartRateDisplayUnit(unit)
+              }
               width={width}
               height={chartHeight}
               color={palette[token[data.metric]]}

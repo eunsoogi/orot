@@ -45,7 +45,6 @@ export const overviewKo = {
   'overview.metricSteps': '걸음수',
   'overview.duration.hoursMinutes': '{hours}시간 {minutes}분',
   'overview.metricUnit.minutes': '분',
-  'overview.metricUnit.countPerMinute': '회/분',
   'overview.metricUnit.steps': '걸음',
   'overview.metricChartTitle': '최근 날짜별 기록',
   'overview.metricChartDailySeries': '일별 집계',

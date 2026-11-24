@@ -107,7 +107,9 @@ test('normal opted-in legacy sync replaces only the observed singleton with a me
     const plot = await view.findByTestId(
       'health-record-chart-values-resting_heart_rate-plot',
     );
-    expect(plot.props.accessibilityLabel).toMatch(/최저 53.*최고 82.*평균 63/u);
+    expect(plot.props.accessibilityLabel).toMatch(
+      /최저 53 BPM.*최고 82 BPM.*평균 62 BPM/u,
+    );
     const svg = { includeHiddenElements: true };
     expect(view.getByTestId('chart-range-span', svg)).toBeOnTheScreen();
     expect(view.getByTestId('chart-range-mean', svg)).toBeOnTheScreen();

@@ -16,14 +16,14 @@ export const healthRecordsKo = {
     '날짜별 운동 심박수를 확인할 수 없어요.',
   'healthRecords.workoutHeartRate.overviewTitle': '운동 심박수',
   'healthRecords.workoutHeartRate.periodLabel': '오늘 포함 최근 7일',
-  'healthRecords.workoutHeartRate.periodAverage': '평균 {mean} bpm',
+  'healthRecords.workoutHeartRate.periodAverage': '평균 {mean}',
   'healthRecords.workoutHeartRate.periodUnavailable':
     '이 기간에 운동과 연결된 심박수를 확인할 수 없어요.',
   'healthRecords.workoutHeartRate.check': '운동에 연결된 심박수 확인',
   'healthRecords.workoutHeartRate.scope':
     '건강 앱에서 이 운동에 연결되고 운동 시간 안에 기록된 심박수만 확인해요.',
   'healthRecords.workoutHeartRate.summary':
-    '운동 시간 안의 연결 심박수: 평균 {mean} bpm, 범위 {minimum}–{maximum} bpm',
+    '운동 시간 안의 연결 심박수: 평균 {mean}, 범위 {minimum}–{maximum}',
   'healthRecords.workoutHeartRate.notAvailable':
     '이 운동에 연결된 심박수를 확인할 수 없어요. 건강 데이터 읽기 설정을 확인해 주세요.',
   'healthRecords.workoutHeartRate.reading': '이 운동의 심박수를 불러오는 중…',

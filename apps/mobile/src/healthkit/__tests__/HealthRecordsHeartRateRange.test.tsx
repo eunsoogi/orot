@@ -12,8 +12,8 @@ test('renders raw heart samples as instant ranges, without importing the derived
     <HealthRecordsLineChart
       category="heart_rate"
       observations={[
-        { ...raw, value: { ...raw.value, amount: 60 } },
-        { ...raw, id: 'second', value: { ...raw.value, amount: 100 } },
+        { ...raw, value: { ...raw.value, amount: 60.99 } },
+        { ...raw, id: 'second', value: { ...raw.value, amount: 100.99 } },
         { ...raw, id: 'single', effectiveAt: '2035-01-02T09:00:00Z' },
         { ...raw, id: 'not-generic', concept: 'resting_heart_rate' },
       ]}
@@ -30,12 +30,12 @@ test('renders raw heart samples as instant ranges, without importing the derived
   expect(screen.getAllByTestId('chart-range-span', options)).toHaveLength(1);
   expect(screen.getAllByTestId('chart-range-single', options)).toHaveLength(1);
   const selected = screen.getByTestId('health-record-chart-heart_rate');
-  expect(selected.props.accessibilityLabel).toContain('측정값 72회/분');
+  expect(selected.props.accessibilityLabel).toContain('측정값 72 BPM');
   await fireEvent.press(
     screen.getByTestId('health-record-chart-heart_rate-previous'),
   );
   expect(selected.props.accessibilityLabel).toContain(
-    '최저 60회/분, 최고 100회/분, 평균 80회/분',
+    '최저 60 BPM, 최고 100 BPM, 평균 80 BPM',
   );
   expect(selected.props.accessibilityLabel).toContain('출처: 건강 앱');
 });
@@ -159,10 +159,10 @@ test('keeps records from different device models separately selectable', async (
     nativeEvent: { actionName: 'increment' },
   });
   expect(plot.props.accessibilityLabel).toContain('phone');
-  expect(plot.props.accessibilityLabel).toContain('평균 95회/분');
+  expect(plot.props.accessibilityLabel).toContain('평균 95 BPM');
   await fireEvent(plot, 'accessibilityAction', {
     nativeEvent: { actionName: 'increment' },
   });
   expect(plot.props.accessibilityLabel).toContain('watch');
-  expect(plot.props.accessibilityLabel).toContain('평균 70회/분');
+  expect(plot.props.accessibilityLabel).toContain('평균 70 BPM');
 });

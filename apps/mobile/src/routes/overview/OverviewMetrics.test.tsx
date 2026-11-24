@@ -103,7 +103,7 @@ test('shows accessible gaps and delegates editing to a separate route', async ()
   expect(
     screen.queryByTestId('overview-metric-chart-heartRate-plot'),
   ).toBeNull();
-  expect(screen.getByText('70회/분')).toBeVisible();
+  expect(screen.getByText('70 BPM')).toBeVisible();
   await fireEvent.press(screen.getByRole('button', { name: '편집' }));
   expect(open).toHaveBeenCalledTimes(1);
   expect(screen.queryByRole('checkbox')).toBeNull();
