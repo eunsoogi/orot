@@ -13,7 +13,11 @@ export function conversationFailureReporter(
   retain: (id: number, activity: string) => void,
   id: number,
 ) {
-  return (kind: RagConversationFailureKind, partialCopy?: string) => {
+  return (
+    kind: RagConversationFailureKind,
+    partialCopy?: string,
+    rejectedOpeningTurnId?: string,
+  ) => {
     const failureCopy = getRagConversationFailureCopy(kind);
     if (kind === 'validation_failed' || kind === 'provider_refused') {
       const { pendingMessage: pending, messages } = find(id);
@@ -35,6 +39,9 @@ export function conversationFailureReporter(
               role: 'assistant',
               content: '',
               initialResponse: opening,
+              // Only pair the opening already visible with its saved display row;
+              // a rejected body does not own durable tools, recovery, or history.
+              rejectedOpeningTurnId,
               // Exclude this opening from future answer context without an
               // interruption label, body, or resumption metadata.
               incomplete: true,

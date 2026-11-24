@@ -198,7 +198,7 @@ export function createConversationSessionRequests(
         if (outcome.status === 'failure' || outcome.status === 'unavailable') {
           const kind =
             outcome.status === 'failure' ? outcome.kind : 'unavailable';
-          fail(kind);
+          fail(kind, undefined, retained?.toolMessageId);
           return;
         }
         if (outcome.status === 'answer')
