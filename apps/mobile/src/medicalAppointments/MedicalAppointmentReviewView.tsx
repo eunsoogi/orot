@@ -25,7 +25,8 @@ interface Props {
   readonly loading: boolean;
   readonly calendarLoading: boolean;
   readonly calendarUnavailable: boolean;
-  readonly classifying: boolean;
+  readonly classifying?: boolean;
+  readonly workCount?: number;
   readonly completed?: boolean;
   readonly accessAvailable: boolean;
   readonly queryComplete: boolean;
@@ -44,7 +45,11 @@ export function MedicalAppointmentReviewView(props: Props) {
   const inset = useNavigationContentInset();
   const [laneWidth, setLaneWidth] = useState(0);
   const [confirmAgain, setConfirmAgain] = useState(false);
-  const busy = props.loading || props.classifying || props.savingId !== null;
+  const workCount = props.workCount ?? props.eventCount;
+  const busy =
+    props.loading ||
+    (props.classifying ?? workCount > 0) ||
+    props.savingId !== null;
   const complete = props.completed ?? props.candidates.length > 0;
   const stage = busy
     ? 'progress'
@@ -53,6 +58,9 @@ export function MedicalAppointmentReviewView(props: Props) {
       : 'confirmation';
   const classified = props.candidates.filter(
     item => item.status === 'classified',
+  ).length;
+  const reused = props.candidates.filter(
+    item => item.reusedClassification,
   ).length;
   const medical = props.candidates.filter(isConfidentMedical);
   const unavailable =
@@ -73,7 +81,17 @@ export function MedicalAppointmentReviewView(props: Props) {
       .filter(Boolean)
       .join('\n'),
   };
-  const resultSummary = copy.coverage(props.eventCount, classified);
+  const resultSummary = [
+    copy.coverage(props.eventCount, classified),
+    reused
+      ? t('medicalAppointments.reusedResults', {
+          reused,
+          classified: classified - reused,
+        })
+      : '',
+  ]
+    .filter(Boolean)
+    .join('\n');
   const resultNotice = [
     props.message,
     !props.queryComplete ? copy.incompleteCalendar : '',
@@ -182,9 +200,11 @@ export function MedicalAppointmentReviewView(props: Props) {
             />
             <ClassificationMovingStage
               stage={stage}
-              classified={classified}
-              total={props.eventCount}
-              saving={props.savingId !== null}
+              classified={classified - reused}
+              total={workCount}
+              saving={
+                props.savingId !== null || (props.loading ? 'checking' : false)
+              }
               onRestart={() => setConfirmAgain(true)}
             >
               {content}

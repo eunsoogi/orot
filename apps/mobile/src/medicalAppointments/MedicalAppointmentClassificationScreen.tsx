@@ -46,7 +46,7 @@ export default function MedicalAppointmentClassificationScreen({
   const [queryComplete, setQueryComplete] = useState(true);
   const [loading, setLoading] = useState(false);
   const [completed, setCompleted] = useState(false);
-  const [classifying, setClassifying] = useState(false);
+  const [workCount, setWorkCount] = useState(0);
   const [eventCount, setEventCount] = useState(0);
   const [savingId, setSavingId] = useState<string | null>(null);
   const [savedIds, setSavedIds] = useState<ReadonlySet<string>>(new Set());
@@ -59,7 +59,7 @@ export default function MedicalAppointmentClassificationScreen({
     setCandidates([]);
     setEventCount(0);
     setMessage('');
-    setClassifying(false);
+    setWorkCount(0);
     setSavingId(null);
     return () => {
       // Leaving or switching provider prevents subsequent imports and late results.
@@ -116,7 +116,6 @@ export default function MedicalAppointmentClassificationScreen({
         complete: calendarSync.query?.complete === true,
       };
       if (!isCurrent()) return;
-      setLoading(false);
       setQueryComplete(source.complete);
       setAccessAvailable(source.access === 'fullAccess');
       setEventCount(source.events.length);
@@ -128,7 +127,6 @@ export default function MedicalAppointmentClassificationScreen({
         setMessage(copy.noCandidates);
         return;
       }
-      setClassifying(true);
       const result = await classifyCalendarEventsIncrementally(
         {
           bridge,
@@ -140,6 +138,11 @@ export default function MedicalAppointmentClassificationScreen({
             selectedProvider.privacyBoundary === 'selected-context-remote',
           consent,
           signal: controller.signal,
+          onWorkPlan: missingCount => {
+            if (!isCurrent()) return;
+            setWorkCount(missingCount);
+            if (missingCount > 0) setLoading(false);
+          },
           onProgress: progress => {
             if (!isCurrent()) return;
             setCandidates([...progress.candidates]);
@@ -148,6 +151,7 @@ export default function MedicalAppointmentClassificationScreen({
         repository.classificationCache,
       );
       if (!isCurrent()) return;
+      setLoading(false);
       if (result.status === 'empty') {
         setMessage(copy.noCandidates);
         return;
@@ -204,7 +208,7 @@ export default function MedicalAppointmentClassificationScreen({
         }
         setCompleted(true);
         setLoading(false);
-        setClassifying(false);
+        setWorkCount(0);
         setSavingId(null);
       }
     }
@@ -219,7 +223,7 @@ export default function MedicalAppointmentClassificationScreen({
         providerReady={providerReady}
         loading={loading}
         completed={completed}
-        classifying={classifying}
+        workCount={workCount}
         accessAvailable={accessAvailable}
         queryComplete={queryComplete}
         message={message || calendarUnavailableMessage}

@@ -18,7 +18,7 @@ export function ClassificationProgress({
 }: {
   readonly classified: number;
   readonly total: number;
-  readonly saving: boolean;
+  readonly saving: boolean | 'checking';
 }) {
   const window = useWindowDimensions();
   const [bounds, setBounds] = useState({
@@ -63,11 +63,13 @@ export function ClassificationProgress({
     </View>
   );
 }
-const progressLabel = (saving: boolean) =>
+const progressLabel = (saving: boolean | 'checking') =>
   t(
-    saving
-      ? 'medicalAppointments.savingResults'
-      : 'medicalAppointments.progress',
+    saving === 'checking'
+      ? 'medicalAppointments.checkingPriorResults'
+      : saving
+        ? 'medicalAppointments.savingResults'
+        : 'medicalAppointments.progress',
   );
 
 /** Only the drawn arc eases; accessibility always exposes the validated count. */
@@ -79,20 +81,23 @@ export function ClassificationProgressRing({
 }: {
   readonly classified: number;
   readonly total: number;
-  readonly saving: boolean;
+  readonly saving: boolean | 'checking';
   readonly size: number;
 }) {
   const percent =
     total > 0 ? Math.floor((100 * Math.min(classified, total)) / total) : 0;
   const shown = useClassificationProgressMotion(percent);
   const label = progressLabel(saving);
+  const checking = saving === 'checking';
   const circumference = 2 * Math.PI * 44;
   return (
     <View
       accessible
       accessibilityRole="progressbar"
       accessibilityLabel={label}
-      accessibilityValue={{ min: 0, max: 100, now: percent }}
+      accessibilityValue={
+        checking ? undefined : { min: 0, max: 100, now: percent }
+      }
       style={{ width: size, height: size }}
     >
       <Svg width="100%" height="100%" viewBox="0 0 100 100" accessible={false}>
@@ -125,7 +130,8 @@ export function ClassificationProgressRing({
           allowFontScaling={false}
           style={[styles.percent, { fontSize: Math.min(32, size * 0.22) }]}
         >
-          {shown}%
+          {checking ? '…' : shown}
+          {checking ? null : '%'}
         </AppText>
       </View>
     </View>
@@ -138,7 +144,7 @@ export function ClassificationProgressCaption({
   height,
   fontScale,
 }: {
-  readonly saving: boolean;
+  readonly saving: boolean | 'checking';
   readonly top: number;
   readonly height: number;
   readonly fontScale: number;
