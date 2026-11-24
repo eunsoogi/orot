@@ -128,3 +128,82 @@ test('queued expiration from a previous lease cannot interrupt a resumed request
   expect(interrupt).toHaveBeenCalledWith(1);
   await lifetime.settle(1, controller);
 });
+
+test('Stop keeps the short lease through its durable write when a pause is already pending', async () => {
+  type Listener = (
+    event: import('../conversationExecutionLease').ConversationExecutionEvent,
+  ) => void;
+  const listeners = new Set<Listener>();
+  const execution = {
+    begin: jest.fn(async (_requestId: string) => true),
+    end: jest.fn(),
+    isActive: async () => true,
+    protectedDataAvailable: async () => true,
+    work: jest.fn(),
+    currentPhase: () => 'active' as const,
+    subscribe: (listener: Listener) => {
+      listeners.add(listener);
+      return () => {
+        listeners.delete(listener);
+      };
+    },
+  };
+  let finishPause!: () => void;
+  const pauseWrite = new Promise<void>(resolve => {
+    finishPause = resolve;
+  });
+  let finishStop!: () => void;
+  const stopWrite = new Promise<void>(resolve => {
+    finishStop = resolve;
+  });
+  let notifyStopStarted!: () => void;
+  const stopStarted = new Promise<void>(resolve => {
+    notifyStopStarted = resolve;
+  });
+  const interruptRequest = jest
+    .fn()
+    .mockImplementationOnce(() => pauseWrite)
+    .mockImplementationOnce(() => {
+      notifyStopStarted();
+      return stopWrite;
+    });
+  const pauseState = jest.fn();
+  const lifetime = createConversationRequestLifetime({
+    execution,
+    interrupt: jest.fn(),
+    reportFenceFailure: jest.fn(),
+    pauseState,
+  });
+  const controller = new AbortController();
+  await lifetime.start(
+    1,
+    controller,
+    { ...turn(), interruptRequest },
+    'synthetic',
+  );
+  const requestId = execution.begin.mock.calls[0]![0];
+  const paused = lifetime.executionObserver(controller).onWorkflowPaused();
+  // The short advisory already entered its write when the supported adapter grants continued work.
+  listeners.forEach(listener =>
+    listener({ kind: 'continued', state: 'continued-granted', requestId }),
+  );
+  lifetime.interrupt(1, 'cancelled');
+  controller.abort();
+  await stopStarted;
+  expect(execution.work).toHaveBeenLastCalledWith(requestId, false);
+  expect(interruptRequest.mock.calls).toEqual([
+    ['interrupted', 'background-paused'],
+    ['interrupted', 'user-stopped'],
+  ]);
+  const settled = lifetime.settle(1, controller);
+  finishPause();
+  const resumed = await paused;
+  const endsBeforeStopWrite = execution.end.mock.calls.length;
+  finishStop();
+  await settled;
+
+  expect(resumed).toBe(false);
+  expect(pauseState).not.toHaveBeenCalled();
+  expect(endsBeforeStopWrite).toBe(0);
+  expect(execution.end.mock.calls).toEqual([[requestId]]);
+});
