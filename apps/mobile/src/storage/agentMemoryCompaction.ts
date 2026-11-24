@@ -20,7 +20,7 @@ import { assertSafeSymptomCompaction } from './agentMemorySymptomQuarantine';
 export async function compactAgentMemory(
   transaction: SqlTransaction,
   records: PersistedMemoryRecord[],
-): Promise<void> {
+): Promise<boolean> {
   await assertSafeSymptomCompaction(transaction, records);
   const quarantined = await quarantinedMemoryRecords(transaction);
   const removed = await transaction.execute(
@@ -56,7 +56,7 @@ export async function compactAgentMemory(
       if (!(error instanceof UserStatementSourceUnavailableError)) throw error;
     }
   }
-  await reconcileAgentMemoryRecords(transaction, [
+  return reconcileAgentMemoryRecords(transaction, [
     ...current,
     ...quarantined.filter(
       record =>

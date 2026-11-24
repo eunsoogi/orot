@@ -10,12 +10,13 @@ import { ensureSymptomDeletionFence } from './symptomDeletionFence';
 import { migrateSourceTimes } from './sourceTimeMigration';
 import { createManualHistoryTable } from './manualHistoryMigrations';
 import { createVisitQuestionRecordTables } from './visitQuestionRecordMigrations';
+import { addAgentMemoryClockWitness } from './agentMemoryRecentMetadataMigration';
 import { createDailyReportTables } from './dailyReportMigration';
 import { createRecapBindingTables } from './recapBinding';
 import { createRecentSourcePageIndex } from './recentSourcePage';
 import { readUserVersion } from './schemaVersion';
 
-export const CURRENT_SCHEMA_VERSION = 18;
+export const CURRENT_SCHEMA_VERSION = 19;
 
 async function createInitialTables(transaction: SqlExecutor): Promise<void> {
   for (const definition of Object.values(STORAGE_TABLES)) {
@@ -227,6 +228,7 @@ export async function runMigrations(database: SqlDatabase): Promise<void> {
     if (currentVersion < 15) await migrateSourceTimes(transaction);
     if (currentVersion < 16) await createRecapBindingTables(transaction);
     if (currentVersion < 18) await createRecentSourcePageIndex(transaction);
-    await transaction.execute('PRAGMA user_version = 18');
+    if (currentVersion < 19) await addAgentMemoryClockWitness(transaction);
+    await transaction.execute('PRAGMA user_version = 19');
   });
 }

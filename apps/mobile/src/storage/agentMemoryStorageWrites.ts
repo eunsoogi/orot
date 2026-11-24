@@ -34,6 +34,7 @@ export async function commitAgentMemoryWrites(
   removedKinds: Map<string, readonly string[] | undefined>,
   witness?: Parameters<AgentMemoryStorageAdapter['commitBatch']>[0],
 ) {
+  let changed = false;
   await database.transaction(async transaction => {
     if (
       [...writes.values()].some(
@@ -93,20 +94,25 @@ export async function commitAgentMemoryWrites(
           referencesAnySource(record, removedSourceIds) ||
           referencesAnySource(record, invalidatedSourceIds)
         ) {
-          await transaction.execute(
+          const deleted = await transaction.execute(
             'DELETE FROM agent_memory_records WHERE id = ?',
             [record.id],
           );
+          changed = (deleted.rowsAffected ?? 0) > 0 || changed;
         }
       }
     }
     for (const [id, record] of writes) {
-      if (record) await insertAgentMemoryRecord(transaction, record);
-      else
-        await transaction.execute(
+      if (record)
+        changed =
+          (await insertAgentMemoryRecord(transaction, record)) || changed;
+      else {
+        const deleted = await transaction.execute(
           'DELETE FROM agent_memory_records WHERE id = ?',
           [id],
         );
+        changed = (deleted.rowsAffected ?? 0) > 0 || changed;
+      }
     }
     if (witness)
       await attestNonPeriodVisitMemory(
@@ -114,10 +120,12 @@ export async function commitAgentMemoryWrites(
         writes.get(witness.recordId),
         witness.context,
       );
-    await writeAgentMemoryDeletionMarkers(
-      transaction,
-      removedSourceIdsToAdd,
-      removedKinds,
-    );
+    changed =
+      (await writeAgentMemoryDeletionMarkers(
+        transaction,
+        removedSourceIdsToAdd,
+        removedKinds,
+      )) || changed;
   });
+  return changed;
 }

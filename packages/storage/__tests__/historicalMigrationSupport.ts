@@ -53,3 +53,27 @@ export function openMigrationDatabase(path: string, failOn?: string) {
   };
   return { database, close: connection.close };
 }
+
+/** Rebuild the pre-v19 shape in synthetic fixtures that start from the newest
+ * schema before removing the feature-specific objects under test. */
+export async function rewindBeforeMemoryMetadata(db: SqlDatabase, version: number): Promise<void> {
+  if (!Number.isSafeInteger(version) || version < 0 || version >= 19) {
+    throw new Error('Expected a pre-metadata synthetic fixture version.');
+  }
+  await db.transaction(async (tx) => {
+    const table = await tx.execute(
+      "SELECT name FROM sqlite_master WHERE type='table' AND name='agent_memory_records'",
+    );
+    if (table.rows.length > 0) {
+      const count = await tx.execute('SELECT count(*) AS size FROM agent_memory_records');
+      if (count.rows[0]?.size !== 0) {
+        throw new Error('Synthetic fixture Memory must be empty before rewinding.');
+      }
+      // These historical fixtures did not initialize the pre-v19 lazy Memory table.
+      await tx.execute('DROP TABLE agent_memory_records');
+    }
+    // Remove the v19-only index, leaving transcript rows and historical indexes intact.
+    await tx.execute('DROP INDEX IF EXISTS transcript_segments_recent_memory_superseded_idx');
+    await tx.execute(`PRAGMA user_version = ${version}`);
+  });
+}
