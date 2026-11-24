@@ -183,8 +183,9 @@ final class ConversationRetentionUITests: OrotFailFastTestCase {
         verifyLeaseRelease("Synthetic stop question", stop: true, completionCount: 0)
     }
 
-    /// A test-only wakeup arrives only after the protected commit and UIKit lease check.
+    /// The default proves the short UIKit lease only; real continued-grant proof requires explicit opt-in.
     func testCompletionCommitsWhileBackgroundLeaseIsActive() {
+        let continued = ProcessInfo.processInfo.environment["OROT_TEST_CONTINUED_GRANT"] == "1"
         let token = UUID().uuidString
         let success = "com.orot.tests.conversation-background.\(token)" as CFString
         let failure = "com.orot.tests.conversation-background-failure.\(token)" as CFString
@@ -206,6 +207,7 @@ final class ConversationRetentionUITests: OrotFailFastTestCase {
         }
         let app = XCUIApplication()
         app.launchArguments = ["-OROT_TEST_SCENARIO", "conversation-background-retention", "-OROT_TEST_BACKGROUND_TOKEN", token]
+            + (continued ? ["-OROT_TEST_CONTINUED_GRANT", "1"] : [])
         app.launch()
         defer { UITestConditions.terminateStandaloneApp(app) }
         guard send(app, question: "Synthetic background question", waitForPartial: false) else { return }
@@ -227,7 +229,7 @@ final class ConversationRetentionUITests: OrotFailFastTestCase {
         let terminal = XCTNSPredicateExpectation(predicate: NSPredicate { _, _ in
             signal.received || app.state == .notRunning
         }, object: nil)
-        let outcome = UITestConditions.wait(for: [terminal])
+        let outcome = continued ? XCTWaiter.wait(for: [terminal], timeout: 100) : UITestConditions.wait(for: [terminal])
         guard app.state != .notRunning else {
             XCTFail("Application terminated before background completion")
             return
