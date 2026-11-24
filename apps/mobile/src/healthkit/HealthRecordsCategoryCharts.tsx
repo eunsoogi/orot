@@ -45,6 +45,7 @@ export function HealthRecordsCategoryCharts({
           observations={
             // Build complete loaded-day heart buckets before thinning preview marks.
             category === 'heart_rate' ||
+            category === 'workouts' ||
             isAppleDerivedHeartRateCategory(category)
               ? records
               : selectHealthRecordPreview(records)

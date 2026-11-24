@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { View } from 'react-native';
 import { ChartPlot } from '../../ui/charts';
+import { workoutRecordsChartKind } from '../../ui/charts/workoutRecordsChart';
 import { AppText as Text } from '../../layout/AppText';
 import { AppSymbol } from '../../layout/AppSymbol';
 import { appColors } from '../../layout/appColors';
@@ -97,7 +98,10 @@ function MeasuredOverviewMetricChart({
         barTooltip
         height={176}
         lineAxis="day"
-        kind={isOverviewHeartRate(metric) ? 'range' : 'line'}
+        kind={workoutRecordsChartKind(
+          metric,
+          isOverviewHeartRate(metric) ? 'range' : 'line',
+        )}
         testID={`overview-metric-chart-${metric}`}
         title={t('overview.metricChartTitle')}
         width={chartWidth}

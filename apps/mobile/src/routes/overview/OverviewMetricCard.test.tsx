@@ -86,7 +86,7 @@ test.each([
         ],
       },
       height: 176,
-      kind: 'line',
+      kind: metric === 'workouts' ? 'bar' : 'line',
       lineAxis: 'day',
       title: '최근 날짜별 기록',
     });

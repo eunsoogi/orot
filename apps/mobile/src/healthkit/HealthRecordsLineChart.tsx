@@ -19,6 +19,8 @@ import {
 } from './healthRecordsLibraryModel';
 import { buildHealthChartSeries } from './healthRecordsChartModel';
 import { heartRateInstantBuckets } from './heartRateInstantBuckets';
+import { workoutDurationPreviewSeries } from './workoutDurationPreviewSeries';
+import { workoutRecordsChartKind } from '../ui/charts/workoutRecordsChart';
 
 const metrics: Partial<Record<HealthObservationCategory, ChartMetric>> = {
   blood_pressure: 'bloodPressure',
@@ -46,9 +48,16 @@ export function HealthRecordsLineChart({
 }) {
   const [width, setWidth] = useState(0);
   const previewRange = preview && metrics[category] === 'heartRate';
+  const workoutBars = preview && category === 'workouts';
   const series = useMemo(
-    () => buildHealthChartSeries(category, observations),
-    [category, observations],
+    () =>
+      buildHealthChartSeries(
+        category,
+        workoutBars
+          ? observations.filter(record => record.concept === 'workout_duration')
+          : observations,
+      ),
+    [category, observations, workoutBars],
   );
   const data = useMemo<ChartData>(() => {
     const records = new Map(observations.map(item => [item.id, item]));
@@ -71,16 +80,34 @@ export function HealthRecordsLineChart({
     const displayed = points.length
       ? `${formatRecordedAt(points[0]!.effectiveAt)} – ${formatRecordedAt(points[points.length - 1]!.effectiveAt)}`
       : t(`chart.state.${status}`);
+    const coverage: ChartData['coverage'] = {
+      requested: healthRecordPeriodTitle('month'),
+      displayed,
+      status,
+    };
+    if (workoutBars) {
+      const zone = Intl.DateTimeFormat().resolvedOptions().timeZone;
+      return {
+        metric: 'workouts',
+        coverage,
+        series: series.flatMap(item =>
+          item.points[0]?.unit
+            ? workoutDurationPreviewSeries(
+                observations,
+                item.points[0].unit,
+                zone,
+                hasMore,
+              )
+            : [],
+        ),
+      };
+    }
     return {
       metric: metrics[category] ?? 'heartRate',
       ...(previewRange && category !== 'heart_rate'
         ? { presentation: 'whole-bpm-derived-records' as const }
         : {}),
-      coverage: {
-        requested: healthRecordPeriodTitle('month'),
-        displayed,
-        status,
-      },
+      coverage,
       series: series.flatMap(item => {
         const pointsByUnit = new Map<string, (typeof item.points)[number][]>();
         for (const point of item.points) {
@@ -130,7 +157,15 @@ export function HealthRecordsLineChart({
         );
       }),
     };
-  }, [category, observations, series, hasMore, loadState, previewRange]);
+  }, [
+    category,
+    observations,
+    series,
+    hasMore,
+    loadState,
+    previewRange,
+    workoutBars,
+  ]);
   return (
     <View
       onLayout={event => setWidth(event.nativeEvent.layout.width)}
@@ -140,12 +175,15 @@ export function HealthRecordsLineChart({
         data={data}
         compact={preview}
         accessibleCollapsedPlot={preview && !previewRange}
-        hideDetails={previewRange}
-        barTooltip={previewRange}
+        hideDetails={previewRange || workoutBars}
+        barTooltip={previewRange || workoutBars}
         width={width}
         height={200}
         title={healthRecordCategoryTitle(category)}
-        kind={previewRange || category === 'heart_rate' ? 'range' : 'line'}
+        kind={workoutRecordsChartKind(
+          workoutBars ? category : '',
+          previewRange || category === 'heart_rate' ? 'range' : 'line',
+        )}
         rangeAxis={previewRange ? 'day' : 'time'}
         testID={'health-record-chart-values-' + category}
         selectedPointTestID={'health-record-chart-' + category}
