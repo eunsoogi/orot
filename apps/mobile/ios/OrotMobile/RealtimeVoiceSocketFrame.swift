@@ -36,6 +36,15 @@ extension RealtimeVoiceSocket {
         }
     }
 
+    /// nil keeps the terminal receive open; false is a cleanup receipt only.
+    static func captionTerminalReceipt(
+        _ event: [String: Any], closing: (sessionID: String, command: String, sent: Bool)
+    ) -> Bool?
+    {
+        guard closing.sent, matchesClose(event, sessionID: closing.sessionID, command: closing.command) else { return nil }
+        return LiveObservedCaptionBuffer.acknowledged(event, sessionID: closing.sessionID, command: closing.command)
+    }
+
     static func matchesClose(_ event: [String: Any], sessionID: String, command: String) -> Bool {
         guard event["type"] as? String == "session.closed",
               let eventID = event["event_id"] as? String, !eventID.isEmpty,

@@ -172,7 +172,7 @@ final class VoiceRealtimeModule: RCTEventEmitter {
                     responsesMailbox = nil
                     active = nil
                 }
-                pendingDuration = self.call.connectedDuration.take(identifier)
+                pendingDuration = call.connectedDuration.take(identifier)
                 if !waitsForClose {
                     resolve(pendingDuration)
                 }

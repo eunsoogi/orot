@@ -46,7 +46,7 @@ struct LiveObservedCaptionBuffer {
         guard let owner, owner == expected, !lines.isEmpty else { return nil }
         let result: [String: Any] = ["callId": owner.call, "status": "observed_incomplete", "lines": lines]
         guard let encoded = try? JSONSerialization.data(withJSONObject: result),
-              encoded.count <= 24_000 else { return nil }
+              encoded.count <= 24000 else { return nil }
         return result
     }
 }

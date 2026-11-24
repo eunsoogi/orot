@@ -142,8 +142,7 @@ final class RealtimeVoiceSocket: RealtimeSocketPort {
                 }
                 guard let event = (try? JSONSerialization.jsonObject(with: data)) as? [String: Any] else { self.transportFailed(); return }
                 if let closing = self.closing {
-                    if closing.sent, Self.matchesClose(event, sessionID: closing.sessionID, command: closing.command) {
-                        let confirmed = LiveObservedCaptionBuffer.acknowledged(event, sessionID: closing.sessionID, command: closing.command)
+                    if let confirmed = Self.captionTerminalReceipt(event, closing: closing) {
                         self.close(confirmed: confirmed)
                     }
                 } else if self.captionTerminal.prepared == nil {
@@ -235,6 +234,7 @@ final class RealtimeVoiceSocket: RealtimeSocketPort {
     func close() {
         close(confirmed: false)
     }
+
     private func close(confirmed: Bool) {
         let observed = captionTerminal.retire()
         defer { observed?(confirmed) }
