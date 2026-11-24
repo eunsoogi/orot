@@ -1,3 +1,4 @@
+import { settingsConsentSlots } from './settingsConsentStorage';
 import { settingsConsentAuthority } from './settingsConsentAuthority';
 import { settingsConsentRepository } from './settingsConsentRepository';
 import type { SqlDatabase } from '@orot/storage';
@@ -87,11 +88,7 @@ export async function resetInferenceConsentReceipts() {
   beginConsentReset();
   // Durable tombstones precede either SQL cleanup. Failed cleanup cannot revive grants.
   await Promise.all(
-    ['conversation', 'calendar', 'voice'].map(slot =>
-      settingsConsentAuthority(
-        slot as 'conversation' | 'calendar' | 'voice',
-      ).revoke(),
-    ),
+    settingsConsentSlots.map(slot => settingsConsentAuthority(slot).revoke()),
   );
   await (await settingsConsentRepository()).clear();
   await inferenceConsentReceipts.clear();

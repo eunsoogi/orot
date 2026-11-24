@@ -243,3 +243,63 @@ it('handles owned system mute separately from app mute and terminal events', asy
     delete NativeModules.VoiceRealtimeModule;
   }
 });
+
+it.each(['gpt-6-luna', 'gpt-6-sol'])(
+  'routes selected %s to the Live bridge without changing the audio model',
+  async backendModel => {
+    Object.defineProperty(Platform, 'OS', { configurable: true, value: 'ios' });
+    const open = jest.fn().mockResolvedValue(undefined);
+    NativeModules.VoiceRealtimeModule = {
+      openLiveCall: open,
+      stopRealtimeCall: jest.fn(),
+      interruptRealtimeOutput: jest.fn(),
+      pauseRealtimeCall: jest.fn(),
+      resumeRealtimeCall: jest.fn(),
+      addListener: jest.fn(),
+      removeListeners: jest.fn(),
+    };
+    try {
+      const generation = 'a'.repeat(64);
+      const receipt = Object.freeze({
+        backendModel,
+        generation,
+        grantID: generation + '-model',
+      });
+      const selected = jest.fn(() => receipt);
+      const adapter = nativeLiveVoice(undefined, selected)!;
+      await adapter.open(
+        'approved',
+        'gpt-live-1.1',
+        'synthetic-key',
+        '',
+        false,
+        { schema: 1, language: 'ko', voice: 'noeul' },
+        () => true,
+      );
+      expect(selected).toHaveBeenCalledWith('approved');
+      expect(open).toHaveBeenCalledWith(
+        'approved',
+        'gpt-live-1.1',
+        'synthetic-key',
+        { language: 'auto', voice: 'noeul', responsesGrant: receipt },
+      );
+      selected.mockImplementation(() => {
+        throw new Error('Revoked choice');
+      });
+      await expect(
+        adapter.open(
+          'revoked',
+          'gpt-live-1.1',
+          'synthetic-key',
+          '',
+          false,
+          { schema: 1, language: 'ko', voice: 'noeul' },
+          () => true,
+        ),
+      ).rejects.toThrow('Revoked choice');
+      expect(open).toHaveBeenCalledTimes(1);
+    } finally {
+      delete NativeModules.VoiceRealtimeModule;
+    }
+  },
+);

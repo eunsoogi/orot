@@ -1,5 +1,6 @@
 import type { OutboundProcessingRequest } from '@orot/agent-runtime';
 import { isLiveVoiceAudioScope } from './liveVoiceSettingsIdentity';
+import { isLiveResponsesContextScope } from '../../voiceSettings/liveResponsesSettingsIdentity';
 import { isReusablePublicWebQuery } from './publicWebQuery';
 
 /** A credential epoch is a non-secret, durable identity, never a key or token digest. */
@@ -41,7 +42,10 @@ const allowedSourceKinds = (
   policy: unknown,
   value: unknown,
 ): value is readonly string[] =>
-  isLiveVoiceAudioScope(purpose, policy) ? emptyArray(value) : strings(value);
+  isLiveVoiceAudioScope(purpose, policy) ||
+  isLiveResponsesContextScope(purpose, policy)
+    ? emptyArray(value)
+    : strings(value);
 const record = (value: unknown): value is Record<string, unknown> =>
   typeof value === 'object' && value !== null && !Array.isArray(value);
 const keys = (value: Record<string, unknown>, expected: readonly string[]) =>
@@ -130,7 +134,8 @@ export function settingsGrantCoversRequest(
       scope.policyVersion,
       request.allowedScope.sourceKinds,
     ) ||
-    (isLiveVoiceAudioScope(scope.purpose, scope.policyVersion) &&
+    ((isLiveVoiceAudioScope(scope.purpose, scope.policyVersion) ||
+      isLiveResponsesContextScope(scope.purpose, scope.policyVersion)) &&
       request.allowedScope.sourceIds !== undefined &&
       !emptyArray(request.allowedScope.sourceIds))
   )

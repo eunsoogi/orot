@@ -5,7 +5,10 @@ import {
   setGenericPassword,
 } from 'react-native-keychain';
 import { createConsentAuthority } from '../agent/execution/consentAuthority';
-import type { SettingsConsentSlot } from './settingsConsentStorage';
+import {
+  settingsConsentSlots,
+  type SettingsConsentSlot,
+} from './settingsConsentStorage';
 
 const authorities = new Map<
   SettingsConsentSlot,
@@ -17,7 +20,7 @@ const authorities = new Map<
  * Tombstones remain after SQLCipher cleanup so a failed cleanup cannot restore consent.
  * This item contains only random generations/status, never account secrets or payloads. */
 export function settingsConsentAuthority(slot: SettingsConsentSlot) {
-  if (!['conversation', 'calendar', 'voice'].includes(slot))
+  if (!settingsConsentSlots.includes(slot))
     throw new Error('Invalid consent slot');
   const existing = authorities.get(slot);
   if (existing) return existing;

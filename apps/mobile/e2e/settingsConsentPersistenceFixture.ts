@@ -14,13 +14,11 @@ import {
   settingsPermissionsForFeature,
   SETTINGS_CONSENT_CATALOG_VERSION,
 } from '../src/agent/execution/settingsConsentCatalog';
-import {
-  createSettingsConsentStorage,
-  type SettingsConsentSlot,
-} from '../src/storage/settingsConsentStorage';
+import { createSettingsConsentStorage } from '../src/storage/settingsConsentStorage';
 import type { ProviderSelectionStore } from '../src/providers/selection/types';
 
 const slots = ['conversation', 'calendar', 'voice'] as const;
+type FixtureSlot = (typeof slots)[number];
 export const consentFixtureDestinations = {
   conversation: {
     providerId: 'chatgpt-plan:synthetic-consent:synthetic-model',
@@ -45,10 +43,10 @@ export const consentFixtureDestinations = {
  * Native hosts supply isolated Keychain and SQLCipher; no provider is ever invoked. */
 export function createSettingsConsentPersistenceFixture(input: {
   database: SqlDatabase;
-  authority(slot: SettingsConsentSlot): ConsentAuthorityPersistence;
-  selection(slot: SettingsConsentSlot): ProviderSelectionStore;
+  authority(slot: FixtureSlot): ConsentAuthorityPersistence;
+  selection(slot: FixtureSlot): ProviderSelectionStore;
   generation?: () => string;
-  credentialEpoch?: (slot: SettingsConsentSlot) => Promise<string | null>;
+  credentialEpoch?: (slot: FixtureSlot) => Promise<string | null>;
 }) {
   const grants = createSettingsConsentStorage(input.database);
   const owners = Object.fromEntries(
@@ -59,21 +57,17 @@ export function createSettingsConsentPersistenceFixture(input: {
         input.generation ?? createConsentGeneration,
       ),
     ]),
-  ) as Record<SettingsConsentSlot, ReturnType<typeof createConsentAuthority>>;
+  ) as Record<FixtureSlot, ReturnType<typeof createConsentAuthority>>;
   const credentialEpoch =
     input.credentialEpoch ??
-    (async (slot: SettingsConsentSlot) => `synthetic-${slot}-credential`);
-  const identity = (
-    slot: SettingsConsentSlot,
-    generation: string,
-    epoch: string,
-  ) => ({
+    (async (slot: FixtureSlot) => `synthetic-${slot}-credential`);
+  const identity = (slot: FixtureSlot, generation: string, epoch: string) => ({
     ...consentFixtureDestinations[slot],
     authorityGeneration: generation,
     credentialEpoch: epoch,
   });
   const authorizationServices = (
-    slot: SettingsConsentSlot,
+    slot: FixtureSlot,
   ): Parameters<typeof createSettingsConsentAuthorization>[0] => {
     return {
       catalogVersion: SETTINGS_CONSENT_CATALOG_VERSION,
@@ -100,7 +94,7 @@ export function createSettingsConsentPersistenceFixture(input: {
       },
     };
   };
-  const authorization = (slot: SettingsConsentSlot) =>
+  const authorization = (slot: FixtureSlot) =>
     createSettingsConsentAuthorization(authorizationServices(slot));
   const inspect = async () => {
     const observations: Record<string, string> = {};
@@ -140,8 +134,8 @@ export function createSettingsConsentPersistenceFixture(input: {
     };
   };
   const saveConsent: typeof saveModelSettingsConsent = async decision => {
-    const slot = decision.slot;
-    if (!slots.includes(slot)) throw new Error('Invalid synthetic slot');
+    const slot = slots.find(candidate => candidate === decision.slot);
+    if (!slot) throw new Error('Invalid synthetic slot');
     const selection = decision.store;
     const chosen = consentFixtureDestinations[slot];
     if (
@@ -193,7 +187,7 @@ export function createSettingsConsentPersistenceFixture(input: {
     authorizationServices,
     inspect,
     saveConsent,
-    async approve(slot: SettingsConsentSlot) {
+    async approve(slot: FixtureSlot) {
       await saveConsent({
         slot,
         store: input.selection(slot),

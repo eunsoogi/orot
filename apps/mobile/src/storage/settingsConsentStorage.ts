@@ -9,14 +9,20 @@ import {
   type SettingsConsentGrant,
 } from '../agent/execution/settingsConsentGrant';
 
-export type SettingsConsentSlot = 'conversation' | 'calendar' | 'voice';
+export const settingsConsentSlots = [
+  'conversation',
+  'calendar',
+  'voice',
+  'voice-responses',
+] as const;
+export type SettingsConsentSlot = (typeof settingsConsentSlots)[number];
 export type SettingsConsentDomain = 'model' | 'public-web' | 'medical-search';
 const validDomain = (domain: SettingsConsentDomain) => {
   if (!['model', 'public-web', 'medical-search'].includes(domain))
     throw new Error('Invalid permission domain');
 };
 const validSlot = (slot: SettingsConsentSlot) => {
-  if (!['conversation', 'calendar', 'voice'].includes(slot))
+  if (!settingsConsentSlots.includes(slot))
     throw new Error('Invalid consent slot');
 };
 const validToken = (token: string) => {

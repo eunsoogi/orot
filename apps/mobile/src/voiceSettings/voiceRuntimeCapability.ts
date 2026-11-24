@@ -18,6 +18,17 @@ export function hasRealtimeVoiceRuntime(): boolean {
   );
 }
 
+/** Require the managed native challenge and revocation ports, not just old Live audio. */
+export function hasLiveResponsesRuntime(): boolean {
+  const module =
+    Platform.OS === 'ios' ? NativeModules.VoiceRealtimeModule : null;
+  return (
+    hasLiveVoiceRuntime() &&
+    typeof module?.settleLiveResponsesToolCall === 'function' &&
+    typeof module?.revokeLiveResponsesGrant === 'function'
+  );
+}
+
 /** A compiled transport seam is not authorization or proof of API compatibility. */
 export function hasLiveVoiceRuntime(): boolean {
   const module =

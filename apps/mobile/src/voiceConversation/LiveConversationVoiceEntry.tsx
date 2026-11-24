@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { AppState } from 'react-native';
-import { loadLiveCallSettings } from '../voiceSettings/liveVoicePreferencesKeychain';
+import { liveResponsesConversationRun } from './liveResponsesConversationRun';
+import { useRealtimeToolConfirmation } from './useRealtimeToolConfirmation';
 import { liveModel } from '../voiceSettings/liveVoicePreferences';
 import { voiceSettingsStore } from '../voiceSettings/voiceSettingsStore';
 import { useInferenceConsent } from '../agent/execution/useInferenceConsent';
@@ -16,12 +17,16 @@ import { initialVoiceState } from './voiceTurn';
 import { resumeVoice } from './voiceSession';
 import { voiceStatus } from './voiceStatus';
 
-/** Owned Live audio only; no historical context, stored records, or legacy tool delegation. */
+/** Owned Live audio with separate opt-in Responses delegation; never uses legacy Realtime. */
 export function LiveConversationVoiceEntry(
   props: ConversationVoiceProps & {
     readonly onStatusChange?: (value: string) => void;
   },
 ) {
+  const confirmation = useRealtimeToolConfirmation(true);
+  const lease = useRef<ReturnType<typeof liveResponsesConversationRun> | null>(
+    null,
+  );
   const { consent } = useInferenceConsent();
   const permission = useMemo(
     () => createRealtimeSettingsPermission(consent, true),
@@ -61,10 +66,17 @@ export function LiveConversationVoiceEntry(
     );
   };
   useEffect(() => {
-    const native = nativeLiveVoice(id =>
-      props.store.captureVoiceEnd?.(props.sessionId, id),
+    const managed = liveResponsesConversationRun({
+      current: () => current() && permission.current(),
+      confirm: confirmation.confirm,
+      stop: () => owner.current?.stop(),
+    });
+    const native = nativeLiveVoice(
+      id => props.store.captureVoiceEnd?.(props.sessionId, id),
+      managed.nativeGrant,
     );
     if (!native) {
+      managed.dispose();
       setAvailable(false);
       return;
     }
@@ -75,7 +87,7 @@ export function LiveConversationVoiceEntry(
       model: liveModel,
       liveAudioOnly: true,
       sessionId: props.sessionId,
-      credentials: loadLiveCallSettings,
+      credentials: managed.credentials,
       isCurrent: () => current() && permission.current(),
       changed: value => {
         if (mounted) setState(value);
@@ -94,8 +106,10 @@ export function LiveConversationVoiceEntry(
       },
     });
     owner.current = session;
+    lease.current = managed;
     const revoke = () => {
       permission.stop();
+      managed.retire();
       session.stop();
       setVisible(false);
       setTranscripts([]);
@@ -112,13 +126,15 @@ export function LiveConversationVoiceEntry(
     return () => {
       mounted = false;
       permission.stop();
+      managed.dispose();
+      lease.current = null;
       owner.current = null;
       session.dispose();
       settings();
       app.remove();
     };
     // Current route and session guards are read on each callback from the live ref.
-  }, [props.sessionId, props.store, permission]);
+  }, [props.sessionId, props.store, permission, confirmation.confirm]);
   useEffect(() => {
     owner.current?.revalidate();
   });
@@ -155,6 +171,7 @@ export function LiveConversationVoiceEntry(
     }
   };
   const stop = (graceful: boolean) => {
+    lease.current?.retire();
     if (graceful) owner.current?.stop(true);
     permission.stop();
     if (!graceful) owner.current?.stop();
@@ -180,7 +197,8 @@ export function LiveConversationVoiceEntry(
       status={status}
       model={liveModel}
       transcripts={transcripts}
-      toolConfirmation={null}
+      inlineToolConfirmation
+      toolConfirmation={confirmation.node}
       disabled={!available || props.busy || props.photoPending}
       statusExternallyRendered={Boolean(props.onStatusChange)}
       start={start}

@@ -36,6 +36,8 @@ export async function saveModelSettingsConsent(input: {
   signal: AbortSignal;
   isCurrent: () => boolean;
 }) {
+  if (input.slot === 'voice-responses')
+    throw new Error('Use explicit Live Responses settings');
   // Only the explicit model-settings action can commit this exact Live media grant.
   if (
     (input.selection.providerId === liveVoiceProviderId ||

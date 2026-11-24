@@ -6,6 +6,11 @@
 RCT_EXTERN_METHOD(openLiveCall : (NSString *)identifier model : (NSString *)model apiKey : (
     NSString *)apiKey options : (NSDictionary *)options resolver : (RCTPromiseResolveBlock)
                       resolve rejecter : (RCTPromiseRejectBlock)reject)
+RCT_EXTERN_METHOD(settleLiveResponsesToolCall : (NSString *)identifier challengeId : (NSString *)
+                      challengeId output : (NSString *)output resolver : (RCTPromiseResolveBlock)
+                      resolve rejecter : (RCTPromiseRejectBlock)reject)
+RCT_EXTERN_METHOD(revokeLiveResponsesGrant : (NSString *)grantID generation : (NSString *)
+                      generation resolver : (RCTPromiseResolveBlock)resolve rejecter : (RCTPromiseRejectBlock)reject)
 RCT_EXTERN_METHOD(closeLiveCall : (NSString *)identifier resolver : (RCTPromiseResolveBlock)
                       resolve rejecter : (RCTPromiseRejectBlock)reject)
 RCT_EXTERN_METHOD(stopRealtimeCall : (NSString *)identifier resolver : (RCTPromiseResolveBlock)

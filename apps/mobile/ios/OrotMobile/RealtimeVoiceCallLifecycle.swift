@@ -12,7 +12,8 @@ extension RealtimeVoiceCall {
         }
     }
 
-    func open(_ identifier: String, model: String, key: String, language: String, voice: String = "default", enableTools: Bool = false, completion: @escaping (Result<Void, Error>) -> Void) {
+    func open(_ identifier: String, model: String, key: String, language: String, voice: String = "default", enableTools: Bool = false,
+              managedAdmission: LiveResponsesAdmission? = nil, completion: @escaping (Result<Void, Error>) -> Void) {
         guard id == nil, !identifier.isEmpty, model == "gpt-live-1.1", ["auto", "ko", "en"].contains(language),
               Self.liveVoices.contains(voice), !enableTools,
               !key.isEmpty, !key.contains("\n"), !key.contains("\r") else { completion(.failure(Failure.unavailable)); return }
@@ -41,9 +42,24 @@ extension RealtimeVoiceCall {
                         guard let self, liveSocketEpoch == epoch else { return }
                         fail()
                     }
+                    var event = Self.configuration(model: model, language: language, voice: voice)
+                    if let managedAdmission {
+                        guard let configuration = managedAdmission.configuration(),
+                              var session = event["session"] as? [String: Any],
+                              socket.admitResponsesTransport({ [weak self] in
+                                  guard let self else { return false }
+                                  return id == identifier && liveSocketEpoch == epoch && foreground() && managedAdmission.backendAllowed()
+                              }) else { fail(); return }
+                        managedResponsesTransport = true
+                        session["delegation"] = configuration
+                        event["session"] = session
+                        managedResponses = LiveResponsesToolBridge(admission: managedAdmission) { [weak self] in
+                            guard let self, liveSocketEpoch == epoch else { return }
+                            if socket.discardManagedToolFrames() { fail() }
+                        }
+                    }
                     socket.open(model: model, key: key)
                     guard id == identifier, lifecycleEpoch == epoch else { return }
-                    var event = Self.configuration(model: model, language: language, voice: voice)
                     event["event_id"] = startID
                     socket.send(event)
                 }
@@ -89,6 +105,8 @@ extension RealtimeVoiceCall {
         // A pending call has no confirmed session to mute, so close rather than send an out-of-order control.
         guard liveIsCurrent() else { try stop(identifier); return }
         guard !paused || opening != nil else { return }
+        retireManagedResponses()
+        guard liveIsCurrent() else { return }
         paused = true; liveUnmuteID = nil; ready = false; captureEpoch = UUID(); lifecycleEpoch = UUID()
         pending = nil; timer?.invalidate(); timer = nil
         let callback = opening; opening = nil

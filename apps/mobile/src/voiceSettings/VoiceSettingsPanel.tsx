@@ -12,7 +12,10 @@ import { providerSettingsStyles as styles } from '../layout/providerSettingsPres
 import { useNavigationRouteActions } from '../navigation/useNavigationRouteActions';
 import { useVoiceCatalog } from './useVoiceCatalog';
 import { useVoiceSelection } from './useVoiceSelection';
-import { hasLiveVoiceRuntime } from './voiceRuntimeCapability';
+import {
+  hasLiveResponsesRuntime,
+  hasLiveVoiceRuntime,
+} from './voiceRuntimeCapability';
 import { liveModel } from './liveVoicePreferences';
 import { useModelSettingsServices } from '../agent/execution/ModelSettingsServices';
 import { voiceSettingsStore } from './voiceSettingsStore';
@@ -21,6 +24,8 @@ import { voiceModels } from './voiceModels';
 import { VoiceModelOption } from './VoiceModelOption';
 import { VoiceCatalogAccount } from './VoiceCatalogAccount';
 import { LiveVoicePreferencesPanel } from './LiveVoicePreferencesPanel';
+import { LiveResponsesSettingsPanel } from './LiveResponsesSettingsPanel';
+import { liveResponsesBackends } from './liveResponsesSettingsIdentity';
 import { useLiveVoiceSettingsSave } from './useLiveVoiceSettingsSave';
 
 /** Local and API providers are sibling sections; a hidden tab must not own navigation actions. */
@@ -177,6 +182,26 @@ export function VoiceSettingsPanel({
                 store: liveVoicePreferencesKeychain,
                 authorityRevision: catalog.revision!,
               })}
+            />
+          ) : null}
+          {active &&
+          !failedLoad &&
+          voice === voiceSettingsStore &&
+          savedMode === 'openai-api' &&
+          savedModel === liveModel &&
+          catalog.connected &&
+          catalog.revision !== null &&
+          hasLiveResponsesRuntime() ? (
+            <LiveResponsesSettingsPanel
+              ownerRevision={catalog.revision}
+              allowedModels={
+                mode === savedMode &&
+                model === savedModel &&
+                !busy &&
+                catalog.fresh
+                  ? liveResponsesBackends.filter(id => catalog.ids.includes(id))
+                  : []
+              }
             />
           ) : null}
         </View>

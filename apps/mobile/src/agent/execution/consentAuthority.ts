@@ -1,29 +1,12 @@
-/** Non-secret, durable permission generation. Missing/invalid state is never approval. */
-export interface ConsentAuthorityState {
-  readonly version: 1;
-  readonly generation: string;
-  readonly status: 'active' | 'suspended' | 'revoked';
-}
+import {
+  parseConsentAuthorityState as parse,
+  type ConsentAuthorityState,
+} from './consentAuthorityState';
+
+export type { ConsentAuthorityState } from './consentAuthorityState';
 export interface ConsentAuthorityPersistence {
   read(): Promise<unknown>;
   write(state: ConsentAuthorityState): Promise<void>;
-}
-function parse(value: unknown): ConsentAuthorityState | null {
-  if (!value || typeof value !== 'object' || Array.isArray(value)) return null;
-  const row = value as Record<string, unknown>;
-  if (
-    Object.keys(row).sort().join(',') !== 'generation,status,version' ||
-    row.version !== 1 ||
-    typeof row.generation !== 'string' ||
-    !/^[a-f0-9]{64}$/.test(row.generation) ||
-    !['active', 'suspended', 'revoked'].includes(String(row.status))
-  )
-    return null;
-  return {
-    version: 1,
-    generation: row.generation,
-    status: row.status as ConsentAuthorityState['status'],
-  };
 }
 
 /** Serializes only this captured authority owner, not all storage or provider work.
@@ -63,7 +46,33 @@ export function createConsentAuthority(
       blocked = status !== 'active';
       return next;
     });
+  /** Distinguish actual opt-out/absence from inaccessible or changing authority.
+   * Only an active state may issue a native settings witness. */
+  async function reviewState(observeActive = true) {
+    const pending = tail;
+    const captured = revision;
+    await pending;
+    const raw = await persistence.read();
+    const current = () => pending === tail && captured === revision;
+    if (!current()) return null;
+    if (raw === null && !blocked) return { kind: 'unset', current } as const;
+    const state = parse(raw);
+    if (!state) return null;
+    if (state.status === 'active' && observeActive) {
+      if (blocked) return null;
+      observedGeneration = state.generation;
+    }
+    return {
+      kind: state.status,
+      generation: state.generation,
+      current: () =>
+        current() &&
+        (state.status !== 'active' ||
+          (!blocked && observedGeneration === state.generation)),
+    } as const;
+  }
   return {
+    reviewState,
     subscribe(listener: () => void) {
       listeners.add(listener);
       return () => {
@@ -82,20 +91,13 @@ export function createConsentAuthority(
     /** Review-only proof of denied authority. A failed read/mutation is not an
      * unchecked setting, and this witness cannot authorize provider dispatch. */
     async reviewInactive(): Promise<(() => boolean) | null> {
-      const pending = tail;
-      const captured = revision;
       try {
-        await pending;
-        if (pending !== tail || captured !== revision) return null;
-        const state = parse(await persistence.read());
-        if (
-          pending !== tail ||
-          captured !== revision ||
-          !state ||
-          state.status === 'active'
-        )
-          return null;
-        return () => pending === tail && captured === revision;
+        const state = await reviewState(false);
+        return state &&
+          (state.kind === 'suspended' || state.kind === 'revoked') &&
+          state.current()
+          ? state.current
+          : null;
       } catch {
         return null;
       }

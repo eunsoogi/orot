@@ -7,13 +7,13 @@ import {
 } from 'react-native-keychain';
 import type { ConsentAuthorityPersistence } from '../src/agent/execution/consentAuthority';
 import type { ProviderSelectionStore } from '../src/providers/selection/types';
-import type { SettingsConsentSlot } from '../src/storage/settingsConsentStorage';
 
 export const consentFixtureSlots = [
   'conversation',
   'calendar',
   'voice',
 ] as const;
+type ConsentFixtureSlot = (typeof consentFixtureSlots)[number];
 
 /** Exact UUID namespaces are the only resources this fixture can open or remove.
  * No application credential service, model catalog or normal database is consulted. */
@@ -69,18 +69,18 @@ export async function openSettingsConsentNativeStore(
     location: IOS_LIBRARY_PATH,
     encryptionKey: key,
   });
-  const slotName = (slot: SettingsConsentSlot) => {
+  const slotName = (slot: ConsentFixtureSlot) => {
     if (!consentFixtureSlots.includes(slot))
       throw new Error('Unknown synthetic slot');
     return slot;
   };
   return {
     database,
-    authority(slot: SettingsConsentSlot): ConsentAuthorityPersistence {
+    authority(slot: ConsentFixtureSlot): ConsentAuthorityPersistence {
       const suffix = `authority-${slotName(slot)}`;
       return { read: () => read(suffix), write: value => write(suffix, value) };
     },
-    selection(slot: SettingsConsentSlot): ProviderSelectionStore {
+    selection(slot: ConsentFixtureSlot): ProviderSelectionStore {
       const suffix = `selection-${slotName(slot)}`;
       return {
         async load() {

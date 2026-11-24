@@ -4,12 +4,18 @@ import {
   liveVoiceAudioPurpose,
   liveVoiceProviderId,
 } from './liveVoiceSettingsIdentity';
+import {
+  isLiveResponsesContextScope,
+  liveResponsesPermissions,
+  liveResponsesProviderId,
+} from '../../voiceSettings/liveResponsesSettingsIdentity';
 import type { SettingsConsentPermission } from './settingsConsentGrant';
 
 /** Changing a declared boundary requires explicit settings consent again. This catalog
  * describes possible permissions; it does not enable a recipient or create a grant. */
 export const SETTINGS_CONSENT_CATALOG_VERSION = 'model-settings-v1';
-export type SettingsConsentFeature = 'conversation' | 'calendar' | 'voice';
+export type SettingsConsentFeature =
+  'conversation' | 'calendar' | 'voice' | 'voice-responses';
 
 const permission = (
   purpose: string,
@@ -158,7 +164,11 @@ export function settingsPermissionsForFeature(
           ? providerId === liveVoiceProviderId
             ? liveVoice
             : voice
-          : null;
+          : feature === 'voice-responses'
+            ? providerId === liveResponsesProviderId
+              ? liveResponsesPermissions
+              : []
+            : null;
   if (!values) throw new Error('Unknown settings consent feature');
   return values.map(value => ({
     ...value,
@@ -175,13 +185,15 @@ export function isCatalogPermission(value: SettingsConsentPermission): boolean {
     ...calendar,
     ...voice,
     ...liveVoice,
+    ...liveResponsesPermissions,
     ...Object.values(publicSearchSettingsPermissions),
   ].some(
     known =>
       known.purpose === value.purpose &&
       known.policyVersion === value.policyVersion &&
       value.dataCategories.length > 0 &&
-      (isLiveVoiceAudioScope(value.purpose, value.policyVersion)
+      (isLiveVoiceAudioScope(value.purpose, value.policyVersion) ||
+      isLiveResponsesContextScope(value.purpose, value.policyVersion)
         ? value.sourceKinds.length === 0
         : value.sourceKinds.length > 0) &&
       value.dataCategories.every(category =>
