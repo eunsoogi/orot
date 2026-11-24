@@ -29,6 +29,46 @@ struct VoiceSystemCallLease {
 final class VoiceSystemCallLifecycle: NSObject, VoiceSystemCallPort, CXProviderDelegate {
     static let shared = VoiceSystemCallLifecycle()
     enum Failure: Error { case busy }
+
+    /// Fixed diagnostic vocabulary, never call/socket identifiers, routes, audio, or error text.
+    enum DiagnosticStage: String {
+        case pending = "callkit_activation_pending"
+        case active = "callkit_audio_active"
+        case timeout = "callkit_activation_timeout"
+        case deactivated = "callkit_audio_deactivated"
+        case reset = "callkit_reset"
+        case ended = "callkit_end_action"
+        case muted = "callkit_mute_action"
+        case backgroundContinued = "background_owned_audio_continues"
+        case backgroundManagedStopped = "background_foreground_only_delegation_stops"
+        case backgroundUnownedStopped = "background_unowned_audio_stops"
+        case protectedDataLost = "protected_data_unavailable"
+        case interruptionBegan = "audio_interruption_began"
+        case interruptionEnded = "audio_interruption_ended"
+        case interruptionUnspecified = "audio_interruption_unspecified"
+        case routeChanged = "audio_route_changed"
+    }
+
+    static func report(_ stage: DiagnosticStage) {
+        guard ProcessInfo.processInfo.arguments.contains("-OROT_PROVIDER_DIAGNOSTICS") else { return }
+        NSLog("OROT_VOICE_DIAGNOSTIC stage=%@", stage.rawValue)
+    }
+
+    static func interruptionStage(_ note: Notification) -> DiagnosticStage {
+        let type = (note.userInfo?[AVAudioSessionInterruptionTypeKey] as? UInt)
+            .flatMap(AVAudioSession.InterruptionType.init(rawValue:))
+        switch type {
+        case .began: return .interruptionBegan
+        case .ended: return .interruptionEnded
+        default: return .interruptionUnspecified
+        }
+    }
+
+    static func backgroundStage(systemCallActive: Bool, managed: Bool) -> DiagnosticStage {
+        guard systemCallActive else { return .backgroundUnownedStopped }
+        return managed ? .backgroundManagedStopped : .backgroundContinued
+    }
+
     private var provider: CXProvider
     private let controller = CXCallController()
     private var uuid: UUID?
@@ -66,6 +106,7 @@ final class VoiceSystemCallLifecycle: NSObject, VoiceSystemCallPort, CXProviderD
         let id = UUID()
         uuid = id; self.prepare = prepare; self.activated = activated
         self.ended = ended; self.muted = muted
+        Self.report(.pending)
         let action = CXStartCallAction(call: id, handle: CXHandle(type: .generic, value: "Orot"))
         action.isVideo = false
         controller.request(CXTransaction(action: action)) { [weak self] error in
@@ -78,6 +119,7 @@ final class VoiceSystemCallLifecycle: NSObject, VoiceSystemCallPort, CXProviderD
         // A transaction acknowledgment is not activation. Never keep a silent pending call indefinitely.
         timeout = Timer.scheduledTimer(withTimeInterval: 15, repeats: false) { [weak self] _ in
             guard let self, uuid == id else { return }
+            Self.report(.timeout)
             finish(notify: true)
         }
     }
@@ -121,23 +163,31 @@ final class VoiceSystemCallLifecycle: NSObject, VoiceSystemCallPort, CXProviderD
         guard provider === self.provider, let id = uuid, let callback = activated else { return }
         activated = nil; timeout?.invalidate(); timeout = nil
         provider.reportOutgoingCall(with: id, connectedAt: Date())
+        Self.report(.active)
         callback()
     }
 
     func provider(_ provider: CXProvider, didDeactivate _: AVAudioSession) {
         if provider === self.provider {
+            if uuid != nil {
+                Self.report(.deactivated)
+            }
             finish(notify: true)
         }
     }
 
     func providerDidReset(_ provider: CXProvider) {
         if provider === self.provider {
+            if uuid != nil {
+                Self.report(.reset)
+            }
             finish(notify: true)
         }
     }
 
     func provider(_ provider: CXProvider, perform action: CXEndCallAction) {
         guard provider === self.provider, action.callUUID == uuid else { action.fail(); return }
+        Self.report(.ended)
         finish(notify: true); action.fulfill()
     }
 
@@ -145,6 +195,7 @@ final class VoiceSystemCallLifecycle: NSObject, VoiceSystemCallPort, CXProviderD
         guard provider === self.provider, action.callUUID == uuid, action.isMuted else { action.fail(); return }
         // Resuming requires foreground consent/selection revalidation, never an OS unmute shortcut.
         let callback = muted
+        Self.report(.muted)
         finish(notify: false); callback?(); action.fulfill()
     }
 

@@ -21,6 +21,44 @@ final class CalendarRangeSnapshotTests: XCTestCase {
         }
     }
 
+    private func assertClassificationRevisionChangesForRecurrenceStatusAndFloatingSemantics() throws {
+        func revision(
+            _ snapshot: [String: Any],
+            status: String = "confirmed",
+            floating: Bool = false,
+        ) throws -> String {
+            try XCTUnwrap(EventKitCalendarSnapshot.classificationRevision(
+                startAt: "2030-03-12T10:00:00.000Z",
+                endAt: "2030-03-12T11:00:00.000Z",
+                isFloating: floating,
+                status: status,
+                snapshot: snapshot,
+            ))
+        }
+        let original: [String: Any] = [
+            "title": "Synthetic calendar event",
+            "isDetached": false,
+            "recurrenceRules": [["frequency": "weekly", "interval": 1]],
+        ]
+        let base = try revision(original)
+        let reordered: [String: Any] = [
+            "recurrenceRules": [["interval": 1, "frequency": "weekly"]],
+            "isDetached": false,
+            "title": "Synthetic calendar event",
+        ]
+        XCTAssertEqual(try revision(reordered), base)
+        var changedRule = original
+        changedRule["recurrenceRules"] = [["frequency": "weekly", "interval": 2]]
+        XCTAssertNotEqual(try revision(changedRule), base)
+        var detached = original
+        detached["isDetached"] = true
+        XCTAssertNotEqual(try revision(detached), base)
+        XCTAssertNotEqual(try revision(original, status: "canceled"), base)
+        XCTAssertNotEqual(try revision(original, status: "tentative"), base)
+        XCTAssertNotEqual(try revision(original, floating: true), base)
+        XCTAssertFalse(base.contains("Synthetic"))
+    }
+
     func testHalfOpenOverlapAndUnserializableEventsFailClosed() throws {
         let start = Date(timeIntervalSince1970: 100), end = Date(timeIntervalSince1970: 200)
         let store = EKEventStore()
@@ -44,5 +82,6 @@ final class CalendarRangeSnapshotTests: XCTestCase {
         XCTAssertTrue(query["resultLimit"] is NSNull)
         let empty = EventKitCalendarSnapshot.rangeSnapshot(start: start, end: end, access: "fullAccess") { [] }
         XCTAssertEqual((empty["query"] as? [String: Any])?["complete"] as? Bool, true)
+        try assertClassificationRevisionChangesForRecurrenceStatusAndFloatingSemantics()
     }
 }

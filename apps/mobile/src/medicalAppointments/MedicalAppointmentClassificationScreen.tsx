@@ -1,9 +1,10 @@
+import { subscribeLocalDataClear } from '../storage/localDataClearEvents';
 import { useEffect, useRef, useState } from 'react';
 import type { AppointmentRepository } from '@orot/storage';
 import { useInferenceConsent } from '../agent/execution/useInferenceConsent';
 import type { ProviderSelectionOption } from '../providers/selection/types';
 import { medicalAppointmentCopy as copy } from './copy.ko';
-import { classifyCalendarEvents } from './classificationWorkflow';
+import { classifyCalendarEventsIncrementally } from './incrementalCalendarClassification';
 import { classificationFailureMessage } from './classificationFailure';
 import type { CandidateReview } from './classificationWorkflow';
 import type { CalendarBridge } from '../calendar/types';
@@ -85,6 +86,11 @@ export default function MedicalAppointmentClassificationScreen({
     }
     const controller = new AbortController();
     activeRun.current = controller;
+    // A changed EventKit generation retires cached and newly classified output alike.
+    const change = bridge.addEventStoreListener(() => controller.abort());
+    const unsubscribeLocalClear = subscribeLocalDataClear(() =>
+      controller.abort(),
+    );
     const isCurrent = () =>
       activeRun.current === controller && !controller.signal.aborted;
     setCompleted(false);
@@ -118,27 +124,34 @@ export default function MedicalAppointmentClassificationScreen({
         setMessage(copy.permissionUnavailable);
         return;
       }
-      if (!source.events.length) {
+      if (!source.events.length && !repository.classificationCache) {
         setMessage(copy.noCandidates);
         return;
       }
       setClassifying(true);
-      const result = await classifyCalendarEvents({
-        bridge,
-        events: source.events,
-        provider: selectedProvider.provider,
-        modelId: selectedProvider.modelId,
-        recipient,
-        remoteProcessing:
-          selectedProvider.privacyBoundary === 'selected-context-remote',
-        consent,
-        signal: controller.signal,
-        onProgress: progress => {
-          if (!isCurrent()) return;
-          setCandidates([...progress.candidates]);
+      const result = await classifyCalendarEventsIncrementally(
+        {
+          bridge,
+          events: source.events,
+          provider: selectedProvider.provider,
+          modelId: selectedProvider.modelId,
+          recipient,
+          remoteProcessing:
+            selectedProvider.privacyBoundary === 'selected-context-remote',
+          consent,
+          signal: controller.signal,
+          onProgress: progress => {
+            if (!isCurrent()) return;
+            setCandidates([...progress.candidates]);
+          },
         },
-      });
+        repository.classificationCache,
+      );
       if (!isCurrent()) return;
+      if (result.status === 'empty') {
+        setMessage(copy.noCandidates);
+        return;
+      }
       setCandidates([...result.candidates]);
       // Classification settles before import; unfinished and uncertain rows stay excluded.
       const medical = result.candidates.filter(isConfidentMedical);
@@ -173,8 +186,7 @@ export default function MedicalAppointmentClassificationScreen({
             .filter(Boolean)
             .join(' ')
         : copy.noMedical;
-      const incomplete =
-        result.status !== 'complete' && result.status !== 'empty';
+      const incomplete = result.status !== 'complete';
       setMessage(
         saveFailure ||
           (incomplete ? classificationFailureMessage(result.failure) : summary),
@@ -182,8 +194,14 @@ export default function MedicalAppointmentClassificationScreen({
     } catch {
       if (isCurrent()) setMessage(copy.manualReview);
     } finally {
-      if (isCurrent()) {
+      change?.remove();
+      unsubscribeLocalClear();
+      if (activeRun.current === controller) {
         activeRun.current = null;
+        if (controller.signal.aborted) {
+          setCandidates([]);
+          setMessage(copy.calendarSyncing);
+        }
         setCompleted(true);
         setLoading(false);
         setClassifying(false);

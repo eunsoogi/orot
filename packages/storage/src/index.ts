@@ -109,3 +109,10 @@ export type {
   HealthObservationMonthChartLoader,
 } from './healthObservationMonthChart';
 export type { HealthObservationMonthWindow } from './healthObservationMonthQuantity';
+
+export { isCalendarClassificationWitness } from './calendarClassificationCache';
+export type {
+  CalendarClassificationWitness,
+  CalendarClassificationCache,
+  CachedCalendarDecision,
+} from './calendarClassificationCache';

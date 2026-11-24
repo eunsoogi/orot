@@ -1,3 +1,4 @@
+import AVFoundation
 import Foundation
 @testable import Orot
 import XCTest
@@ -5,6 +6,22 @@ import XCTest
 /// All audio, permission, ownership and transport ports are injected. No microphone or network is used.
 @MainActor
 final class RealtimeVoiceLifecycleTests: OrotFailFastTestCase {
+    func testLifecycleDiagnosticsClassifyOnlyRecognizedStates() {
+        let status = VoiceSystemCallLifecycle.backgroundStage
+        XCTAssertEqual(status(false, false), .backgroundUnownedStopped)
+        XCTAssertEqual(status(false, true), .backgroundUnownedStopped)
+        XCTAssertEqual(status(true, false), .backgroundContinued)
+        XCTAssertEqual(status(true, true), .backgroundManagedStopped)
+        let interruption = VoiceSystemCallLifecycle.interruptionStage
+        for (raw, expected) in [(AVAudioSession.InterruptionType.began.rawValue, VoiceSystemCallLifecycle.DiagnosticStage.interruptionBegan),
+                                (AVAudioSession.InterruptionType.ended.rawValue, .interruptionEnded),
+                                (UInt.max, .interruptionUnspecified)]
+        {
+            let note = Notification(name: AVAudioSession.interruptionNotification, userInfo: [AVAudioSessionInterruptionTypeKey: raw, "synthetic": "never logged"])
+            XCTAssertEqual(interruption(note), expected)
+        }
+    }
+
     func opening(_ call: RealtimeVoiceCall, socket: Socket, key: String = "synthetic-key", id: String = "call") async {
         let opened = expectation(description: "socket requested after synthetic permission")
         socket.opened = { opened.fulfill() }

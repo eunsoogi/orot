@@ -61,14 +61,26 @@ final class RealtimeVoiceCall {
             let action = self?.pending; self?.pending = nil; action?()
         })
         for name in [UIApplication.didEnterBackgroundNotification, UIApplication.protectedDataWillBecomeUnavailableNotification, AVAudioSession.interruptionNotification, AVAudioSession.routeChangeNotification] {
-            observers.append(NotificationCenter.default.addObserver(forName: name, object: nil, queue: .main) { [weak self] _ in
-                if name == UIApplication.didEnterBackgroundNotification, self?.systemCallActive == true, self?.managedResponsesTransport == false {
-                    return
+            observers.append(NotificationCenter.default.addObserver(forName: name, object: nil, queue: .main) { [weak self] note in
+                guard let self else { return }
+                if name == UIApplication.didEnterBackgroundNotification {
+                    let stage = VoiceSystemCallLifecycle.backgroundStage(systemCallActive: systemCallActive, managed: managedResponsesTransport)
+                    if id != nil {
+                        VoiceSystemCallLifecycle.report(stage)
+                    }
+                    if stage == .backgroundContinued {
+                        return
+                    }
+                } else if name == AVAudioSession.routeChangeNotification {
+                    guard ready, routeSignature != currentRoute() else { return }
+                    if id != nil {
+                        VoiceSystemCallLifecycle.report(.routeChanged)
+                    }
+                } else if id != nil {
+                    VoiceSystemCallLifecycle.report(name == AVAudioSession.interruptionNotification
+                        ? VoiceSystemCallLifecycle.interruptionStage(note) : .protectedDataLost)
                 }
-                if name == AVAudioSession.routeChangeNotification {
-                    guard let self, ready, routeSignature != currentRoute() else { return }
-                }
-                self?.fail()
+                fail()
             })
         }
     }

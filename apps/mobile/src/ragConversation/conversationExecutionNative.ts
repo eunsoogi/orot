@@ -96,9 +96,17 @@ export function conversationExecutionNative(): ConversationExecutionAdapter | nu
             listener({ kind: 'continuation-foreground' });
           else if (
             event.kind === 'expired' &&
-            typeof event.requestId === 'string'
+            typeof event.requestId === 'string' &&
+            (event.reason === undefined ||
+              event.reason === 'lease-check-failed')
           )
-            listener({ kind: 'expired', requestId: event.requestId });
+            listener({
+              kind: 'expired',
+              requestId: event.requestId,
+              ...(event.reason === 'lease-check-failed'
+                ? { reason: event.reason }
+                : {}),
+            });
           else if (
             event.kind === 'protectedData' &&
             typeof event.available === 'boolean'

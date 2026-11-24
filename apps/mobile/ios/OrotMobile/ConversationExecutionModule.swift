@@ -6,11 +6,9 @@ import UIKit
 /// Extends an active request only for the time iOS grants; expiration is terminal for the lease.
 @objc(ConversationExecutionModule)
 final class ConversationExecutionModule: RCTEventEmitter {
-    // Process-scoped, not bridge-scoped: a JS reload must never look like owner death.
-    // Random identity only; do not expose a PID, record contents, or credentials.
-    private static let processInstance = UUID().uuidString
     private var requests = Set<String>()
-    private var leases: [String: UIBackgroundTaskIdentifier] = [:]
+    private let nativeOwnership = ConversationNativeSceneOwnership()
+    private var continuedEpochs: [String: UUID] = [:]
     private var continued: [String: Any] = [:]
     private var saved = Set<String>()
     private var observers: [NSObjectProtocol] = []
@@ -40,17 +38,18 @@ final class ConversationExecutionModule: RCTEventEmitter {
             observeConversationExecution(.foreground)
             publish(["kind": "continuation-foreground"])
         })
+        observers += nativeOwnership.observeLifecycle(center,
+                                                      background: { [weak self] in self?.rearmOwnedRequests() },
+                                                      detach: { [weak self] in self?.detachOwnedRequests() })
         for name in [UIApplication.protectedDataWillBecomeUnavailableNotification,
                      UIApplication.protectedDataDidBecomeAvailableNotification]
         {
             observers.append(center.addObserver(forName: name, object: nil, queue: .main) { [weak self] notification in
                 // The will-unavailable notification precedes the getter changing to false.
                 let available = notification.name == UIApplication.protectedDataDidBecomeAvailableNotification
-                #if OROT_TESTS && targetEnvironment(simulator)
-                    if !available, let token = UserDefaults.standard.string(forKey: "OROT_TEST_BACKGROUND_TOKEN") {
-                        self?.signalBackgroundFailure(token)
-                    }
-                #endif
+                if !available, let self {
+                    observeConversationBackgroundFixtureFailure(self)
+                }
                 self?.publish(["kind": "protectedData", "available": available])
             })
         }
@@ -68,41 +67,18 @@ final class ConversationExecutionModule: RCTEventEmitter {
         }
     }
 
-    @objc(processIdentity:rejecter:)
-    func processIdentity(_ resolve: RCTPromiseResolveBlock, reject _: RCTPromiseRejectBlock) {
-        // Recovery assumes the single iOS application process, not an extension or
-        // desktop multi-instance host. Unsupported hosts never attest owner death.
-        guard Bundle.main.bundleURL.pathExtension == "app",
-              !ProcessInfo.processInfo.isMacCatalystApp,
-              !ProcessInfo.processInfo.isiOSAppOnMac,
-              UIApplication.shared.isProtectedDataAvailable
-        else { resolve(NSNull()); return }
-        resolve(Self.processInstance)
-    }
-
     @objc(begin:resolver:rejecter:)
     func begin(_ requestId: String, resolve: RCTPromiseResolveBlock, reject _: RCTPromiseRejectBlock) {
-        guard !requestId.isEmpty, !requests.contains(requestId) else { resolve(false); return }
-        let task = UIApplication.shared.beginBackgroundTask(withName: "Conversation request") { [weak self] in
-            guard let self else { return }
-            // A granted continued task replaces only the short execution deadline.
-            if conversationContinuedWorkIsActive(continued[requestId]) {
-                if let short = leases.removeValue(forKey: requestId) {
-                    UIApplication.shared.endBackgroundTask(short)
-                }
-                return
-            }
-            #if OROT_TESTS && targetEnvironment(simulator)
-                if let token = UserDefaults.standard.string(forKey: "OROT_TEST_BACKGROUND_TOKEN") {
-                    signalBackgroundFailure(token)
-                }
-            #endif
-            observeConversationExecution(.shortLeaseExpired)
-            endLease(requestId)
-            publish(["kind": "expired", "requestId": requestId])
+        guard !requestId.isEmpty else { resolve(false); return }
+        let duplicate = requests.contains(requestId)
+        if !requests.isEmpty, !nativeOwnership.hasCurrentWindow {
+            detachOwnedRequests()
         }
-        guard task != .invalid else { resolve(false); return }
-        leases[requestId] = task
+        guard !duplicate else { resolve(false); return }
+        if requests.isEmpty {
+            nativeOwnership.bindWindow()
+        }
+        guard beginShortLease(requestId) else { resolve(false); return }
         requests.insert(requestId)
         if deadlineTimer == nil {
             deadlineTimer = Timer.scheduledTimer(withTimeInterval: 1, repeats: true) { [weak self] _ in
@@ -112,11 +88,44 @@ final class ConversationExecutionModule: RCTEventEmitter {
         resolve(true)
     }
 
+    private func beginShortLease(_ requestId: String) -> Bool {
+        nativeOwnership.beginShortLease(requestId) { [weak self] in
+            guard let self else { return }
+            pauseWarnings.removeValue(forKey: requestId)
+            if ConversationLeaseOwnership.retainAfterShortExpiry(hasContinued: conversationContinuedWorkIsActive(continued[requestId]), hasVisibleOwner: nativeOwnership.hasVisibleForegroundOwner) {
+                return
+            }
+            observeConversationExecution(.shortLeaseExpired)
+            expireRequest(requestId)
+        }
+    }
+
+    private func rearmOwnedRequests() {
+        for id in Array(requests) where ConversationLeaseOwnership.rearmForBackground(hasShortLease: nativeOwnership.hasShortLease(id), hasContinued: conversationContinuedWorkIsActive(continued[id])) {
+            if !UIApplication.shared.isProtectedDataAvailable || !beginShortLease(id) {
+                expireRequest(id)
+            }
+        }
+    }
+
+    private func detachOwnedRequests() {
+        for id in Array(requests) {
+            expireRequest(id, ownerDetached: true)
+        }
+    }
+
+    private func expireRequest(_ requestId: String, ownerDetached: Bool = false) {
+        guard requests.contains(requestId) else { return }
+        endLease(requestId)
+        publish(conversationLeaseTerminalEvent(self, requestId: requestId, ownerDetached: ownerDetached))
+    }
+
     /// Admit durably owned foreground work; provider authorization remains independent.
     @objc(work:active:)
     func work(_ requestId: String, active: Bool) {
         guard requests.contains(requestId) else { return }
         if !active {
+            continuedEpochs.removeValue(forKey: requestId)
             if #available(iOS 26.0, *) {
                 (continued.removeValue(forKey: requestId) as? ConversationContinuedProcessing)?.finish(success: false)
             }
@@ -132,16 +141,23 @@ final class ConversationExecutionModule: RCTEventEmitter {
             return
         }
         if #available(iOS 26.0, *) {
+            let epoch = UUID()
             let work = ConversationContinuedProcessing(status: { [weak self] state, failureCode in
+                guard let self, continuedEpochs[requestId] == epoch else { return }
                 var event: [String: Any] = ["kind": "continued", "state": state, "requestId": requestId]
                 if let failureCode {
                     event["failureCode"] = failureCode
                 }
-                self?.publish(event)
+                publish(event)
             }) { [weak self] in
-                self?.endLease(requestId)
-                self?.publish(["kind": "expired", "requestId": requestId])
+                guard let self, continuedEpochs[requestId] == epoch else { return }
+                continuedEpochs.removeValue(forKey: requestId)
+                if nativeOwnership.hasVisibleForegroundOwner {
+                    return
+                }
+                expireRequest(requestId)
             }
+            continuedEpochs[requestId] = epoch
             continued[requestId] = work
             work.begin()
         }
@@ -154,7 +170,7 @@ final class ConversationExecutionModule: RCTEventEmitter {
 
     @objc(isActive:resolver:rejecter:)
     func isActive(_ requestId: String, resolve: RCTPromiseResolveBlock, reject _: RCTPromiseRejectBlock) {
-        resolve(conversationContinuedWorkIsActive(continued[requestId]) || leases[requestId] != nil || (requests.contains(requestId) && UIApplication.shared.applicationState == .active))
+        resolve(conversationContinuedWorkIsActive(continued[requestId]) || nativeOwnership.hasShortLease(requestId) || (requests.contains(requestId) && nativeOwnership.hasVisibleForegroundOwner))
     }
 
     @objc(isPauseCurrent:warning:resolver:rejecter:)
@@ -162,28 +178,21 @@ final class ConversationExecutionModule: RCTEventEmitter {
         // A queued JS warning can outlive its exact background visit or a newer continued grant.
         let application = UIApplication.shared
         guard application.applicationState == .background, application.isProtectedDataAvailable,
-              leases[requestId] != nil, !conversationContinuedWorkIsActive(continued[requestId])
+              nativeOwnership.hasShortLease(requestId), !conversationContinuedWorkIsActive(continued[requestId])
         else { resolve(false); return }
         resolve(pauseWarnings[requestId]?.uuidString == warning)
     }
 
     #if OROT_TESTS && targetEnvironment(simulator)
-        /// Read-only fixture access; the original UIKit lease must have been released.
-        func continuedGrantWithoutShortLease(_ requestId: String) -> Any? {
-            leases[requestId] == nil ? continued[requestId] : nil
+        func ownsShortLease(_ requestId: String) -> Bool {
+            nativeOwnership.hasShortLease(requestId)
         }
 
-        /// Signal the test host only after the saved answer and an actual background lease coexist.
-        @objc(signalBackgroundCommit:token:resolver:rejecter:)
-        func signalBackgroundCommit(_ requestId: String, token: String, resolve: RCTPromiseResolveBlock, reject _: RCTPromiseRejectBlock) {
-            guard UserDefaults.standard.string(forKey: "OROT_TEST_SCENARIO") == "conversation-background-retention",
-                  UUID(uuidString: token) != nil,
-                  UIApplication.shared.applicationState == .background,
-                  leases[requestId] != nil else { resolve(false); return }
-            let name = CFNotificationName("com.orot.tests.conversation-background.\(token)" as CFString)
-            CFNotificationCenterPostNotification(CFNotificationCenterGetDarwinNotifyCenter(), name, nil, nil, true)
-            resolve(true)
+        /// Read-only fixture access; the original UIKit lease must have been released.
+        func continuedGrantWithoutShortLease(_ requestId: String) -> Any? {
+            !nativeOwnership.hasShortLease(requestId) ? continued[requestId] : nil
         }
+
     #endif
 
     /// Milestones contain no prompt, answer, provider identifiers or sensitive metadata.
@@ -196,7 +205,7 @@ final class ConversationExecutionModule: RCTEventEmitter {
 
     @objc(committed:)
     func committed(_ requestId: String) {
-        if leases[requestId] != nil || continued[requestId] != nil {
+        if nativeOwnership.hasShortLease(requestId) || continued[requestId] != nil {
             saved.insert(requestId)
         }
     }
@@ -207,7 +216,7 @@ final class ConversationExecutionModule: RCTEventEmitter {
         guard UIApplication.shared.applicationState == .background else { return }
         let remaining = UIApplication.shared.backgroundTimeRemaining
         guard remaining.isFinite, remaining > 0, remaining <= 10 else { return }
-        for requestId in requests where leases[requestId] != nil && pauseWarnings[requestId] == nil && !conversationContinuedWorkIsActive(continued[requestId]) {
+        for requestId in requests where nativeOwnership.hasShortLease(requestId) && pauseWarnings[requestId] == nil && !conversationContinuedWorkIsActive(continued[requestId]) {
             let warning = UUID()
             pauseWarnings[requestId] = warning
             observeConversationExecution(.shortLeaseDrain)
@@ -218,7 +227,9 @@ final class ConversationExecutionModule: RCTEventEmitter {
     private func endLease(_ requestId: String) {
         requests.remove(requestId)
         pauseWarnings.removeValue(forKey: requestId)
+        continuedEpochs.removeValue(forKey: requestId)
         if requests.isEmpty {
+            nativeOwnership.clearWindow()
             deadlineTimer?.invalidate()
             deadlineTimer = nil
         }
@@ -226,13 +237,7 @@ final class ConversationExecutionModule: RCTEventEmitter {
         if #available(iOS 26.0, *) {
             (continued.removeValue(forKey: requestId) as? ConversationContinuedProcessing)?.finish(success: success)
         }
-        guard let task = leases.removeValue(forKey: requestId) else { return }
-        UIApplication.shared.endBackgroundTask(task)
-    }
-
-    @objc(protectedDataAvailable:rejecter:)
-    func protectedDataAvailable(_ resolve: RCTPromiseResolveBlock, reject _: RCTPromiseRejectBlock) {
-        resolve(UIApplication.shared.isProtectedDataAvailable)
+        nativeOwnership.finishShortLease(requestId)
     }
 
     override func invalidate() {
