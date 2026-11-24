@@ -1,8 +1,22 @@
+import { openSqliteTestDatabase } from '../../../../../packages/storage/__tests__/sqliteTestDatabase';
+import { openAiFeatureLocalData } from '../../aiFeatures/integration/localData';
+import { guardedNativeDatabase } from '../../storage/protectedReadEpoch';
+import {
+  isCurrentLocalAgentMemoryDatabase,
+  openLocalAgentMemoryDatabase,
+} from '../../storage/secureDatabase';
 import { stageLiveResponsesResult } from '../stageLiveResponsesResult';
 import { createLiveResponsesHealthToolExecutor } from '../liveResponsesHealthToolExecutor';
 import { call, fixture } from '../testSupport/liveResponsesProtectedFixture';
 
-test.each(['unchanged', 'edited', 'stopped', 'revoked', 'replaced'] as const)(
+test.each([
+  'unchanged',
+  'edited',
+  'stopped',
+  'revoked',
+  'replaced',
+  'storage owner lost',
+] as const)(
   'a held final protected proof for %s result settles only the originally approved current bytes',
   async mode => {
     const f = await fixture();
@@ -40,6 +54,7 @@ test.each(['unchanged', 'edited', 'stopped', 'revoked', 'replaced'] as const)(
       if (mode === 'edited') await f.edit();
       if (mode === 'stopped') f.controller.abort();
       if (mode === 'revoked') authorized = false;
+      if (mode === 'storage owner lost') f.revokeDbOwner();
       if (mode === 'replaced')
         f.setActive({ ...call, challengeId: 'replacement' });
       release();
@@ -82,4 +97,68 @@ test('staging sends nothing and two admission contenders cannot replay the appro
   await admitting;
   await staged.admit(handoff);
   expect(handoff.mock.calls).toEqual([['synthetic-approved-bytes']]);
+});
+
+test('only a guarded proof can admit the local outcome, even with exact consent', async () => {
+  const f = await fixture();
+  try {
+    let readsAtApproval = 0;
+    const execute = createLiveResponsesHealthToolExecutor({
+      ...f.input,
+      async authorizeResult() {
+        readsAtApproval = f.read.mock.calls.length;
+        return () => true;
+      },
+      async openData() {
+        return {
+          ...(await f.input.openData()),
+          borrowLiveHealthProof: undefined,
+        };
+      },
+    });
+    await execute(call, f.controller.signal);
+    expect(readsAtApproval).toBeGreaterThan(0);
+    expect(f.read).toHaveBeenCalledTimes(readsAtApproval);
+    expect(f.settle.mock.calls).toEqual([
+      [call.callId, call.challengeId, null],
+    ]);
+  } finally {
+    f.close();
+  }
+});
+
+jest.mock('../../storage/secureDatabase', () => ({
+  openLocalAgentMemoryDatabase: jest.fn(),
+  isCurrentLocalAgentMemoryDatabase: jest.fn(),
+}));
+
+test('real app local-data root lends only current guarded reads and never a database handle', async () => {
+  const f = openSqliteTestDatabase(':memory:');
+  try {
+    const database = guardedNativeDatabase(f.database);
+    let currentOwner = true;
+    jest.mocked(openLocalAgentMemoryDatabase).mockResolvedValue(database);
+    jest
+      .mocked(isCurrentLocalAgentMemoryDatabase)
+      .mockImplementation(candidate => candidate === database && currentOwner);
+    await database.execute('CREATE TABLE synthetic_read_epoch (n INTEGER)');
+    const local = await openAiFeatureLocalData();
+    const lease = local.borrowLiveHealthProof?.();
+    expect(lease?.current()).toBe(true);
+    expect(Object.keys(lease!)).toEqual(['current', 'dispose']);
+    await database.execute('SELECT n FROM synthetic_read_epoch');
+    expect(lease?.current()).toBe(true);
+    await database.execute('INSERT INTO synthetic_read_epoch VALUES (1)');
+    expect(lease?.current()).toBe(false);
+    const fresh = local.borrowLiveHealthProof?.();
+    expect(fresh?.current()).toBe(true);
+    currentOwner = false;
+    expect(fresh?.current()).toBe(false);
+    currentOwner = true;
+    expect(fresh?.current()).toBe(false);
+    expect(lease?.current()).toBe(false);
+    expect(local.borrowLiveHealthProof?.()?.current()).toBe(true);
+  } finally {
+    f.close();
+  }
 });
