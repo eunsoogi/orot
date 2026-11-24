@@ -10,6 +10,7 @@ import { toProviderError } from './errors';
 import { createChatGPTPlanStream } from './stream';
 import { cancellableStream } from './cancellable-stream';
 import { searchPublicWeb } from './public-web-search';
+import { registerChatGPTPlanDirectPhoto } from './direct-photo';
 
 let requestSequence = 0;
 
@@ -103,5 +104,6 @@ export function createChatGPTPlanProvider(
       );
     },
   };
+  registerChatGPTPlanDirectPhoto(provider, options, nextRequestID);
   return provider;
 }

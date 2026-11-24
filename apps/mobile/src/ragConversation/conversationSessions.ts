@@ -142,7 +142,7 @@ export function createConversationSessions(
     }),
     resumeCold: requests.resumeCold,
     steer: requests.steer,
-    ...photoSurface,
+    ...photoSurface.retain(restoration, () => !disposed && snapshot.activeId),
     attachExisting,
     loadHistory,
     loadOlderHistory: restoration.loadOlder,

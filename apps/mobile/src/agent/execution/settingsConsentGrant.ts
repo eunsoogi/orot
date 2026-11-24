@@ -1,3 +1,10 @@
+import {
+  directPhotoPermission,
+  directPhotoScopePayload,
+  isDirectPhotoPlanPair,
+  isDirectPhotoConsentScope,
+  isExactDirectPhotoPermission,
+} from './directPhotoConsentScope';
 import type { OutboundProcessingRequest } from '@orot/agent-runtime';
 import { isLiveVoiceAudioScope } from './liveVoiceSettingsIdentity';
 import { isReusablePublicWebQuery } from './publicWebQuery';
@@ -41,7 +48,10 @@ const allowedSourceKinds = (
   policy: unknown,
   value: unknown,
 ): value is readonly string[] =>
-  isLiveVoiceAudioScope(purpose, policy) ? emptyArray(value) : strings(value);
+  isLiveVoiceAudioScope(purpose, policy) ||
+  isDirectPhotoConsentScope(purpose, policy)
+    ? emptyArray(value)
+    : strings(value);
 const record = (value: unknown): value is Record<string, unknown> =>
   typeof value === 'object' && value !== null && !Array.isArray(value);
 const keys = (value: Record<string, unknown>, expected: readonly string[]) =>
@@ -130,7 +140,8 @@ export function settingsGrantCoversRequest(
       scope.policyVersion,
       request.allowedScope.sourceKinds,
     ) ||
-    (isLiveVoiceAudioScope(scope.purpose, scope.policyVersion) &&
+    ((isLiveVoiceAudioScope(scope.purpose, scope.policyVersion) ||
+      isDirectPhotoConsentScope(scope.purpose, scope.policyVersion)) &&
       request.allowedScope.sourceIds !== undefined &&
       !emptyArray(request.allowedScope.sourceIds))
   )
@@ -148,6 +159,16 @@ export function settingsGrantCoversRequest(
     request.recipient !== identity.recipient
   )
     return false;
+  if (scope.purpose === directPhotoPermission.purpose)
+    return (
+      request.payload === directPhotoScopePayload &&
+      isDirectPhotoPlanPair(identity.providerId, identity.modelId) &&
+      isExactDirectPhotoPermission({
+        ...scope,
+        sourceKinds: request.allowedScope.sourceKinds,
+      }) &&
+      parsed.permissions.some(isExactDirectPhotoPermission)
+    );
   if (
     scope.purpose === 'public_web_search' &&
     !isReusablePublicWebQuery(request)

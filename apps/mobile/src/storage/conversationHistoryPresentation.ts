@@ -1,8 +1,5 @@
 import * as steeringHistory from './conversationSteeringHistory';
-import {
-  decodeOwnedArchiveRow,
-  type ConversationHistoryPresentation,
-} from './conversationArchivePresentationRow';
+import * as archiveRow from './conversationArchivePresentationRow';
 import { currentReviewedOpeningSql } from './conversationReviewedOpeningStorage';
 export type { ConversationHistoryPresentation } from './conversationArchivePresentationRow';
 import {
@@ -12,16 +9,18 @@ import {
   type ArchivedHealthSummaryOwner,
 } from './archivedHealthSummaryPresentation';
 import { assertConversationSourcesNotRemoved } from './conversationArtifactDependencies';
+import { mergePhotoRows } from './conversationDirectPhotoReplies';
 import { selectArchivedCitation } from './selectArchivedCitation';
 import { createProtectedPromptHistory } from './protectedPromptHistory';
 import type { SqlDatabase, SqlExecutor } from '@orot/storage';
 import { projectSavedArchivedCitations } from '../ragConversation/savedArchivedCitations';
 import { suppressExplicitlyRemovedHistory } from './conversationHistoryDisplayAncestorFence';
+type ConversationHistoryPresentation =
+  archiveRow.ConversationHistoryPresentation;
 /** Read verified-at-save text, not whether sources are still openable. The
- * artifact table is written by the existing protected, validating append.
- * Legacy complete answers predate request checkpoints; their durable artifact
- * is the commit. If a checkpoint exists, it must agree with the saved turn. An interruption
- * without a committed artifact can disclose the authored question, never preview text. */
+ * protected artifact is the commit for legacy answers; any existing checkpoint must agree.
+ * An interrupted request without a committed answer may display only its authored
+ * question and a separately verified, current reviewed opening. */
 function createOwnedArchiveReader<T>(
   database: SqlDatabase,
   ensure: () => Promise<void>,
@@ -118,7 +117,7 @@ function createOwnedArchiveReader<T>(
         }
       >();
       for (const row of rows) {
-        const decoded = decodeOwnedArchiveRow(row, sessionId);
+        const decoded = archiveRow.decodeOwnedArchiveRow(row, sessionId);
         if (!decoded) continue;
         const { value, presentation } = decoded;
         const { id } = presentation;
@@ -156,6 +155,8 @@ function createOwnedArchiveReader<T>(
       }
       const schema = Number(lease.rows[0].steering ?? 0);
       await decorate?.(tx, sessionId, version, pending, schema);
+      if (readSavedSummaryCards)
+        await mergePhotoRows(tx, sessionId, ids, pending, project);
       for (const id of ids) {
         const projected = pending.get(id) ?? null;
         output.push(
@@ -168,7 +169,6 @@ function createOwnedArchiveReader<T>(
     return output;
   };
 }
-
 /** Keep the display-only and prompt-only contracts on the same encrypted owner. */
 export function createConversationProjectionReaders(
   database: SqlDatabase,

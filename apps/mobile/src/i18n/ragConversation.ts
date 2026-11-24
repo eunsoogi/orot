@@ -1,3 +1,4 @@
+import { conversationDirectPhotoKo } from './conversationDirectPhotoKo';
 import { conversationAttachmentKo } from './conversationAttachmentKo';
 import { conversationHistoryPagingKo } from './conversationHistoryPagingKo';
 import { conversationToolKo } from './conversationToolKo';
@@ -13,6 +14,7 @@ export const ragConversationKo = {
   'ragConversation.placeholder': '기록에 관해 물어보세요',
   'ragConversation.send': '질문하기',
   ...conversationAttachmentKo,
+  ...conversationDirectPhotoKo,
   'ragConversation.bubble.copy': '복사',
   'ragConversation.sessions': '대화 목록',
   'ragConversation.newConversation': '새 대화',

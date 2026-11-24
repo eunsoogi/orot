@@ -61,7 +61,11 @@ public extension ChatGPTOAuthClient {
         let response: URLResponse
         let body: AsyncThrowingStream<Data, Error>
         do {
-            (response, body) = try await responsesTransport.stream(for: request)
+            if input.containsDirectPhoto {
+                (response, body) = try await responsesTransport.streamDirectPhoto(for: request)
+            } else {
+                (response, body) = try await responsesTransport.stream(for: request)
+            }
         } catch {
             if Self.isCancellation(error) {
                 throw CancellationError()
@@ -73,6 +77,9 @@ public extension ChatGPTOAuthClient {
             throw ChatGPTResponsesError.transportUnavailable
         }
 
+        if input.containsDirectPhoto {
+            try DirectPhotoHTTPBoundary.validate(response)
+        }
         guard let httpResponse = response as? HTTPURLResponse else {
             throw ChatGPTResponsesError.invalidHTTPResponse
         }

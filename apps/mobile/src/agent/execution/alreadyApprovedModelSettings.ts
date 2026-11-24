@@ -1,3 +1,7 @@
+import {
+  canDiscloseDirectPhoto,
+  directPhotoPermission,
+} from './directPhotoConsentScope';
 import { t } from '../../i18n';
 import type { ProviderSelectionOption } from '../../providers/selection/types';
 import type { SettingsConsentDomain } from '../../storage/settingsConsentStorage';
@@ -47,10 +51,12 @@ export async function alreadyApprovedModelSettings(input: {
   slot: Slot;
   option: ProviderSelectionOption;
   search?: SettingsSearchChoices;
+  photoDisclosed?: boolean;
   signal: AbortSignal;
   isCurrent: () => boolean;
 }): Promise<boolean> {
-  const { services, slot, option, search, signal, isCurrent } = input;
+  const { services, slot, option, search, photoDisclosed, signal, isCurrent } =
+    input;
   if (
     !services.resolveTarget ||
     signal.aborted ||
@@ -69,6 +75,9 @@ export async function alreadyApprovedModelSettings(input: {
   if (!recipient) return false;
   const remote = option.privacyBoundary === 'selected-context-remote';
   if (!remote && !search?.medical) return false;
+  const photoCapable =
+    slot === 'conversation' && canDiscloseDirectPhoto(option);
+  const requiresPhoto = photoCapable && photoDisclosed === true;
   const domains: ReadonlyArray<
     readonly [
       SettingsConsentDomain,
@@ -87,7 +96,11 @@ export async function alreadyApprovedModelSettings(input: {
             selected.providerId,
             selected.modelId,
             recipient,
-            settingsPermissionsForFeature(slot, selected.providerId),
+            settingsPermissionsForFeature(
+              slot,
+              selected.providerId,
+              requiresPhoto,
+            ),
           ] as const,
         ]
       : []),
@@ -163,7 +176,15 @@ export async function alreadyApprovedModelSettings(input: {
           !row.permissions.every(permission =>
             isCatalogDomainPermission(slot, domain, permission, providerId),
           ) ||
-          !exactSet(row.permissions, expected)
+          (!exactSet(row.permissions, expected) &&
+            // Same-owner quick reopen may reuse an existing photo grant from Settings.
+            // It never creates or refreshes that permission.
+            !(
+              domain === 'model' &&
+              photoCapable &&
+              !requiresPhoto &&
+              exactSet(row.permissions, [...expected, directPhotoPermission])
+            ))
         )
           return false;
         positive++;
