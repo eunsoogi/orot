@@ -19,11 +19,17 @@ export function createTypedHeartRateModelOwner(
   selected: Extract<SelectedAiResolution, { status: 'ready' }>,
 ) {
   const { providerId, modelId } = selected.selection;
-  if (providerId !== selected.provider.id || modelId !== selected.modelId || !selected.recipient)
+  if (
+    providerId !== selected.provider.id ||
+    modelId !== selected.modelId ||
+    !selected.recipient
+  )
     return undefined;
   const selectionCurrent = providerSelectionStore.liveWitness();
   const chatGPT = Boolean(selectedChatGPTAccountId(selected.selection));
-  const credentialCurrent = chatGPT ? chatGPTCredentialMutation.capture() : undefined;
+  const credentialCurrent = chatGPT
+    ? chatGPTCredentialMutation.capture()
+    : undefined;
   if (!selectionCurrent || (chatGPT && !credentialCurrent)) return undefined;
   const details: TypedHeartRateRecipient = Object.freeze({
     providerId,
@@ -35,15 +41,22 @@ export function createTypedHeartRateModelOwner(
   let credential: Awaited<ReturnType<typeof readChatGPTConsentCredential>>;
   const current = () =>
     selectionCurrent() &&
-    (!chatGPT || (credentialCurrent?.() === true && credential?.isCurrent() !== false));
+    (!chatGPT ||
+      (credentialCurrent?.() === true && credential?.isCurrent() !== false));
   const recheck = async () => {
     if (!current()) return false;
     try {
       const live = await providerSelectionStore.load();
-      if (live?.providerId !== providerId || live?.modelId !== modelId || !current()) return false;
+      if (
+        live?.providerId !== providerId ||
+        live?.modelId !== modelId ||
+        !current()
+      )
+        return false;
       if (chatGPT) {
         const next = await readChatGPTConsentCredential();
-        if (!next || (credential && credential.epoch !== next.epoch)) return false;
+        if (!next || (credential && credential.epoch !== next.epoch))
+          return false;
         credential = next;
         if (!next.isCurrent()) return false;
       }

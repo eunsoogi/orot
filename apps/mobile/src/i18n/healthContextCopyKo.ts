@@ -6,10 +6,14 @@ export const healthContextCopyKo = {
   'healthContextCopy.ordinaryHeartRate': '평균 심박수',
   'healthContextCopy.restingHeartRate': '휴식기 심박수',
   'healthContextCopy.walkingHeartRate': '걷기 평균 심박수',
-  'healthContextCopy.confirmTypedHeartRateTitle': '이 심박수 기록을 조회할까요?',
-  'healthContextCopy.confirmTypedHeartRateExclusive': '종료 시각은 포함하지 않아요.',
-  'healthContextCopy.confirmTypedHeartRateRemote': '이 집계만 위 AI에 전달해 이번 답변에 사용해요.',
-  'healthContextCopy.confirmTypedHeartRateLocal': '이 집계만 기기에서 처리해 이번 답변에 사용해요.',
+  'healthContextCopy.confirmTypedHeartRateTitle':
+    '이 심박수 기록을 조회할까요?',
+  'healthContextCopy.confirmTypedHeartRateExclusive':
+    '종료 시각은 포함하지 않아요.',
+  'healthContextCopy.confirmTypedHeartRateRemote':
+    '이 집계만 위 AI에 전달해 이번 답변에 사용해요.',
+  'healthContextCopy.confirmTypedHeartRateLocal':
+    '이 집계만 기기에서 처리해 이번 답변에 사용해요.',
   'healthContextCopy.confirmTypedHeartRateAction': '조회 허용',
   'healthContextCopy.workoutOverlap': '운동 기록과 시간이 겹치는 심박',
   'healthContextCopy.noWorkoutOverlap': '운동 기록과 시간이 겹치지 않는 심박',
@@ -48,7 +52,8 @@ export const healthContextCopyKo = {
   'healthContextCopy.doseRecords': '기간 내 복용 기록',
   'healthContextCopy.daysWithDoseRecords': '복용 기록이 있는 날',
   'healthContextCopy.interpretation': '해석',
-  'healthContextCopy.missingDoseNotice': '기록이 없는 날의 복용 여부는 추정하지 않아요.',
+  'healthContextCopy.missingDoseNotice':
+    '기록이 없는 날의 복용 여부는 추정하지 않아요.',
   'healthContextCopy.unknownMedication': '약 이름 확인 불가',
   'healthContextCopy.recordedAt': '기록 시각',
   'healthContextCopy.scheduledAt': '예정 시각',
@@ -64,8 +69,10 @@ export const healthContextCopyKo = {
   'healthContextCopy.sourceTitle': '{label} · 측정 출처 {index}',
   'healthContextCopy.daysRatio': '{recorded}일 / {total}일',
   'healthContextCopy.countValue': '{count}건',
-  'healthContextCopy.comparisonValue': '{difference} {unit} · 기록 {previous}일 / {recent}일',
-  'healthContextCopy.doseCounts': '복용 {taken}건 · 건너뜀 {skipped}건 · 기타 {other}건',
+  'healthContextCopy.comparisonValue':
+    '{difference} {unit} · 기록 {previous}일 / {recent}일',
+  'healthContextCopy.doseCounts':
+    '복용 {taken}건 · 건너뜀 {skipped}건 · 기타 {other}건',
   'healthContextCopy.daysValue': '{days}일',
   'healthContextCopy.minutesValue': '{minutes}분',
   'healthContextCopy.symptomCounts': '{count}건 · {days}일',

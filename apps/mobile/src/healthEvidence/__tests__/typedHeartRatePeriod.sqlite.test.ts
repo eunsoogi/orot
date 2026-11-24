@@ -1,5 +1,11 @@
-import { supportedTypedHeartRatePeriod, typedHeartRateMaxRows } from '../typedHeartRateWindow';
-import { parseHealthContextScope, healthContextRevision } from '../healthContext/scope';
+import {
+  supportedTypedHeartRatePeriod,
+  typedHeartRateMaxRows,
+} from '../typedHeartRateWindow';
+import {
+  parseHealthContextScope,
+  healthContextRevision,
+} from '../healthContext/scope';
 import {
   healthContextContent,
   registerHealthContextEvidence,
@@ -52,12 +58,23 @@ test('reproves exact typed period in an existing transaction even when the mean 
         kind: 'health_context_period',
         version: 1,
         topic: 'measurements',
-        window: { ...window, timeZone: 'UTC', typedHeartRateCategory: category },
+        window: {
+          ...window,
+          timeZone: 'UTC',
+          typedHeartRateCategory: category,
+        },
       });
     const read = local.readHealthContext!;
     const scope = parse('resting_heart_rate')!;
     const put = async (key: string, bpm: number) =>
-      repo.put(kind, observation('healthkit:restingHeartRate:' + key, 'resting_heart_rate', bpm));
+      repo.put(
+        kind,
+        observation(
+          'healthkit:restingHeartRate:' + key,
+          'resting_heart_rate',
+          bpm,
+        ),
+      );
     await put('one', 50);
     await put('two', 70);
     const first = await read(scope.window, [scope.topic]);
@@ -74,7 +91,12 @@ test('reproves exact typed period in an existing transaction even when the mean 
       'typed_heart_rate: ' + JSON.stringify(typedFacts),
     );
     const registry = new LocalEvidenceReferenceRegistry();
-    const ref = registerHealthContextEvidence({ registry, read, scope, report: first });
+    const ref = registerHealthContextEvidence({
+      registry,
+      read,
+      scope,
+      report: first,
+    });
     // Real write-transaction validation uses the exact typed reader, not a generic measurements snapshot.
     const original = {
       reference: registry.resolve(ref)!,
@@ -83,7 +105,9 @@ test('reproves exact typed period in an existing transaction even when the mean 
       revision: savedRevision,
       deletionGeneration: first.deletionGeneration,
     };
-    await connection.database.transaction((tx) => assertSummaryPeriodCurrent(tx, original));
+    await connection.database.transaction(tx =>
+      assertSummaryPeriodCurrent(tx, original),
+    );
     await put('one', 55);
     await put('two', 65);
     const second = await read(scope.window, [scope.topic]);
@@ -92,11 +116,15 @@ test('reproves exact typed period in an existing transaction even when the mean 
     );
     expect(healthContextRevision(scope, second)).not.toBe(savedRevision);
     await expect(
-      connection.database.transaction((tx) => assertSummaryPeriodCurrent(tx, original)),
+      connection.database.transaction(tx =>
+        assertSummaryPeriodCurrent(tx, original),
+      ),
     ).rejects.toThrow('cited health period changed');
     expect(parse('workout_heart_rate')).toBeUndefined();
     expect(parse('heart_rate')).toBeUndefined();
-    expect(parseHealthContextScope({ ...scope, topic: 'medications' })).toBeUndefined();
+    expect(
+      parseHealthContextScope({ ...scope, topic: 'medications' }),
+    ).toBeUndefined();
   } finally {
     connection.close();
   }
@@ -104,15 +132,25 @@ test('reproves exact typed period in an existing transaction even when the mean 
 
 test('rejects precise periods over 31 days and whole-result coverage over 10,000 candidates', async () => {
   expect(
-    supportedTypedHeartRatePeriod('2035-01-01T09:00:00.1234Z', '2035-02-01T09:00:00.1234Z'),
+    supportedTypedHeartRatePeriod(
+      '2035-01-01T09:00:00.1234Z',
+      '2035-02-01T09:00:00.1234Z',
+    ),
   ).toBe(true);
   expect(
-    supportedTypedHeartRatePeriod('2035-01-01T09:00:00.1234Z', '2035-02-01T09:00:00.1235Z'),
+    supportedTypedHeartRatePeriod(
+      '2035-01-01T09:00:00.1234Z',
+      '2035-02-01T09:00:00.1235Z',
+    ),
   ).toBe(false);
   const connection = openSqliteTestDatabase(':memory:');
   try {
     await runMigrations(connection.database);
-    const record = observation('healthkit:restingHeartRate:prototype', 'resting_heart_rate', 61);
+    const record = observation(
+      'healthkit:restingHeartRate:prototype',
+      'resting_heart_rate',
+      61,
+    );
     const db = connection.database;
     await db.execute(
       `WITH RECURSIVE n(x) AS (SELECT 1 UNION ALL SELECT x+1 FROM n WHERE x < ?)
@@ -129,7 +167,11 @@ test('rejects precise periods over 31 days and whole-result coverage over 10,000
     );
     const data = createLocalEvidenceData(db);
     const report = await data.readHealthContext!(
-      { ...window, timeZone: 'UTC', typedHeartRateCategory: 'resting_heart_rate' },
+      {
+        ...window,
+        timeZone: 'UTC',
+        typedHeartRateCategory: 'resting_heart_rate',
+      },
       ['measurements'],
     );
     expect(report.typedHeartRate).toBeUndefined();

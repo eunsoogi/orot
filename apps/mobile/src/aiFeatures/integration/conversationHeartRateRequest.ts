@@ -24,7 +24,9 @@ export function parseConversationHeartRateRequest(
   const v = value as Record<string, unknown>;
   const { category, fromInclusive, toExclusive } = v;
   if (
-    Object.keys(v).some((key) => !['category', 'fromInclusive', 'toExclusive'].includes(key)) ||
+    Object.keys(v).some(
+      key => !['category', 'fromInclusive', 'toExclusive'].includes(key),
+    ) ||
     !conversationHeartRateCategories.includes(category as Category) ||
     typeof fromInclusive !== 'string' ||
     typeof toExclusive !== 'string' ||
@@ -33,7 +35,11 @@ export function parseConversationHeartRateRequest(
   )
     return;
   try {
-    if (localQueryTimestampKey(fromInclusive) >= localQueryTimestampKey(toExclusive)) return;
+    if (
+      localQueryTimestampKey(fromInclusive) >=
+      localQueryTimestampKey(toExclusive)
+    )
+      return;
   } catch {
     return;
   }

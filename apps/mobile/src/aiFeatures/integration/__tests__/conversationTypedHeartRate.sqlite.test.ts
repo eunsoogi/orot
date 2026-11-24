@@ -1,7 +1,11 @@
 import { createLocalEvidenceData } from '../../../healthEvidence/localEvidenceData';
 import { guardedNativeDatabase } from '../../../storage/protectedReadEpoch';
-import { restoreColdConversationRegistry } from '../restoreColdConversationRegistry';
-import { HealthObservationSchema } from '@orot/domain';
+import {
+  assertTypedHeartRateRetention,
+  fixtureBpm,
+  record,
+  scope,
+} from '../testSupport/typedHeartRateRetentionFixture';
 import { actualSendRetentionFixture } from '../testSupport/actualSendRetentionFixture';
 import { createRagConversationService } from '../ragConversationService';
 import { LocalEvidenceReferenceRegistry } from '../evidenceRegistry';
@@ -11,7 +15,10 @@ import type { RagConversationObserver } from '../../../ragConversation/conversat
 const mockProtection = jest.fn(async () => true);
 const mockLoadChoice = jest.fn();
 const mockSelectionWitness = jest.fn(() => () => true);
-const mockCredential = jest.fn(async () => ({ epoch: 'synthetic', isCurrent: () => true }));
+const mockCredential = jest.fn(async () => ({
+  epoch: 'synthetic',
+  isCurrent: () => true,
+}));
 jest.mock('../../../providers/selection/keychainSelectionStore', () => ({
   ...jest.requireActual('../../../providers/selection/keychainSelectionStore'),
   providerSelectionStore: {
@@ -32,28 +39,6 @@ jest.mock('../../../ragConversation/conversationExecutionNative', () => ({
 
 const operationRunId = 'synthetic-typed-heart-rate-turn';
 const typedTool = 'local-typed-heart-rate';
-const period = {
-  fromInclusive: '2026-10-01T00:00:00Z',
-  toExclusive: '2026-10-03T00:00:00Z',
-};
-const scope = { category: 'resting_heart_rate', ...period };
-const fixtureBpm = 63;
-const record = HealthObservationSchema.parse({
-  id: 'healthkit:restingHeartRate:private-source',
-  effectiveAt: '2026-10-02T00:00:00Z',
-  recordedAt: '2026-10-02T00:00:00Z',
-  ingestedAt: '2026-10-02T00:00:00Z',
-  provenance: {
-    origin: 'imported',
-    sourceRecordIds: ['private-source'],
-    source: { system: 'healthkit' },
-  },
-  reviewState: { status: 'unreviewed' },
-  observationKind: 'measurement',
-  concept: 'resting_heart_rate',
-  value: { kind: 'quantity', amount: fixtureBpm, unit: 'count/min' },
-});
-
 test.each([
   'approved',
   'declined',
@@ -67,13 +52,15 @@ test.each([
   'too-wide',
 ] as const)(
   'ordinary send: %s never bypasses typed approval or exact source ownership',
-  async (mode) => {
+  async mode => {
     mockProtection.mockReset().mockResolvedValue(true);
     const { f, data } = await actualSendRetentionFixture('one');
     const guardedDatabase = guardedNativeDatabase(f.database);
     const protectedData = createLocalEvidenceData(guardedDatabase);
     data.readHealthContext = protectedData.readHealthContext!;
-    Object.assign(data, { acquireHeartRateSourceEpoch: protectedData.acquireHeartRateSourceEpoch });
+    Object.assign(data, {
+      acquireHeartRateSourceEpoch: protectedData.acquireHeartRateSourceEpoch,
+    });
     const { consent, selected } = publicEvidenceFixture();
     mockLoadChoice.mockReset().mockResolvedValue(selected.selection);
     const controller = new AbortController();
@@ -99,11 +86,16 @@ test.each([
     let whilePending: (() => Promise<void>) | undefined;
     const confirm = jest.fn(
       async (_proposal: unknown, _recipient: unknown, _signal: AbortSignal) => {
-        expect(read.mock.calls.filter((call) => call[0].typedHeartRateCategory)).toHaveLength(0);
+        expect(
+          read.mock.calls.filter(call => call[0].typedHeartRateCategory),
+        ).toHaveLength(0);
         if (mode === 'retired') controller.abort();
         if (mode === 'locked') mockProtection.mockResolvedValue(false);
         if (mode === 'recipient-changed')
-          mockLoadChoice.mockResolvedValue({ ...selected.selection, modelId: 'other' });
+          mockLoadChoice.mockResolvedValue({
+            ...selected.selection,
+            modelId: 'other',
+          });
         if (mode === 'approved') await whilePending?.();
         return mode !== 'declined';
       },
@@ -111,7 +103,8 @@ test.each([
     try {
       await f.repository.put('health_observation', record);
       let returned = false;
-      let acceptedSnapshot: ReturnType<LocalEvidenceReferenceRegistry['snapshot']> | undefined;
+      let acceptedSnapshot:
+        ReturnType<LocalEvidenceReferenceRegistry['snapshot']> | undefined;
       const send = createRagConversationService({
         consent,
         queryConsent: { authorize: async () => 'denied' },
@@ -120,8 +113,10 @@ test.each([
         selectedAi: async () => selected,
         registry,
         createOperationRunId: () => operationRunId,
-        ragRunner: async (options) => {
-          const tool = options.workflow.tools.find((item) => item.id === typedTool);
+        ragRunner: async options => {
+          const tool = options.workflow.tools.find(
+            item => item.id === typedTool,
+          );
           if (mode === 'shortcut') {
             expect(tool).toBeUndefined();
             return { status: 'failure', kind: 'validation_failed' };
@@ -134,7 +129,8 @@ test.each([
                 ? { ...scope, toExclusive: '2026-12-01T00:00:00Z' }
                 : scope;
           const request = {
-            operationRunId: mode === 'wrong-owner' ? 'foreign-turn' : operationRunId,
+            operationRunId:
+              mode === 'wrong-owner' ? 'foreign-turn' : operationRunId,
             operationKey: 'typed-read',
             input,
             signal: controller.signal,
@@ -143,7 +139,10 @@ test.each([
             maxPayloadBytes: 20480,
           };
           whilePending = async () => {
-            const duplicate = await tool!.search({ ...request, operationKey: 'concurrent' });
+            const duplicate = await tool!.search({
+              ...request,
+              operationKey: 'concurrent',
+            });
             expect(duplicate).toMatchObject({ items: [] });
           };
           const batch = await tool!.search(request);
@@ -152,35 +151,49 @@ test.each([
             return { status: 'failure', kind: 'validation_failed' };
           }
           expect('status' in batch).toBe(false);
-          if ('status' in batch) throw new Error('Synthetic result is not a batch.');
+          if ('status' in batch)
+            throw new Error('Synthetic result is not a batch.');
           if (mode !== 'approved') {
             expect(batch.items).toEqual([]);
             return { status: 'failure', kind: 'validation_failed' };
           }
           expect(batch.items).toHaveLength(1);
-          expect(JSON.parse(batch.items[0]!.content.split(': ').slice(1).join(': '))).toMatchObject(
-            { ...scope, unit: 'BPM', meanBpm: fixtureBpm, sampleCount: 1 },
-          );
+          expect(
+            JSON.parse(batch.items[0]!.content.split(': ').slice(1).join(': ')),
+          ).toMatchObject({
+            ...scope,
+            unit: 'BPM',
+            meanBpm: fixtureBpm,
+            sampleCount: 1,
+          });
           expect(JSON.stringify(batch)).not.toContain('private-source');
           const alreadyRead = read.mock.calls.length;
-          const duplicate = await tool!.search({ ...request, operationKey: 'sequential' });
+          const duplicate = await tool!.search({
+            ...request,
+            operationKey: 'sequential',
+          });
           expect(duplicate).toMatchObject({ items: [] });
           expect(read).toHaveBeenCalledTimes(alreadyRead);
           acceptedSnapshot = registry.snapshot();
           options.onValidatedEvidence?.(batch.items);
           returned = true;
-          return { status: 'answer', answer: 'Synthetic answer', citations: batch.items };
+          return {
+            status: 'answer',
+            answer: 'Synthetic answer',
+            citations: batch.items,
+          };
         },
       });
-      const save: RagConversationObserver['onRetentionCandidate'] = async (candidate) => {
-        await f.storage.append({
-          ...candidate,
-          id: 'typed-answer',
-          sessionId: 'session',
-          createdAt: '2026-11-02T00:00:00.000Z',
-          status: 'complete',
-        });
-      };
+      const save: RagConversationObserver['onRetentionCandidate'] =
+        async candidate => {
+          await f.storage.append({
+            ...candidate,
+            id: 'typed-answer',
+            sessionId: 'session',
+            createdAt: '2026-11-02T00:00:00.000Z',
+            status: 'complete',
+          });
+        };
       await send(
         mode === 'workout'
           ? '운동 중 심박수를 알려주세요'
@@ -199,7 +212,12 @@ test.each([
         },
       );
       expect(externalSearch).not.toHaveBeenCalled();
-      const preflightRejected = ['workout', 'shortcut', 'wrong-owner', 'too-wide'].includes(mode);
+      const preflightRejected = [
+        'workout',
+        'shortcut',
+        'wrong-owner',
+        'too-wide',
+      ].includes(mode);
       expect(confirm).toHaveBeenCalledTimes(preflightRejected ? 0 : 1);
       if (mode === 'approved') {
         expect(returned).toBe(true);
@@ -209,32 +227,17 @@ test.each([
           modelId: selected.modelId,
           remoteProcessing: true,
         });
-        const saved = await f.storage.read('typed-answer');
-        expect(saved?.sources[0]).toMatchObject({
-          kind: 'health_context_period',
-          scope: { window: { typedHeartRateCategory: 'resting_heart_rate', ...period } },
-        });
-        expect(
-          await f.storage.readProtectedPromptHistory(
-            'session',
-            (await f.storage.activeSessionVersion('session'))!,
-            ['typed-answer'],
-            controller.signal,
-          ),
-        ).toEqual([]);
-        await expect(
-          restoreColdConversationRegistry({
-            snapshot: acceptedSnapshot!,
-            sources: saved!.sources,
-            data,
-            signal: controller.signal,
-          }),
-        ).rejects.toThrow('new typed heart-rate approval');
-        await f.repository.delete('health_observation', record.id);
-        await expect(f.storage.read('typed-answer')).resolves.toBeNull();
+        await assertTypedHeartRateRetention(
+          f,
+          data,
+          acceptedSnapshot!,
+          controller.signal,
+        );
       } else {
         if (mode !== 'changed-after-read')
-          expect(read.mock.calls.filter((call) => call[0].typedHeartRateCategory)).toHaveLength(0);
+          expect(
+            read.mock.calls.filter(call => call[0].typedHeartRateCategory),
+          ).toHaveLength(0);
         else expect(changed).toBe(true);
         expect(returned).toBe(false);
       }

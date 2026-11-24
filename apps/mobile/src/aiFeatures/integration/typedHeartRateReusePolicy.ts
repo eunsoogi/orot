@@ -7,7 +7,7 @@ export function hasTypedHeartRateSource(
   references: readonly EvidenceReference[],
   registry?: LocalEvidenceReferenceRegistry,
 ) {
-  return references.some((reference) => {
+  return references.some(reference => {
     const locator = (registry?.resolve(reference) ?? reference).locator;
     return Boolean(
       locator &&
@@ -46,7 +46,8 @@ export function createTypedHeartRateDispatch() {
       recheck: () => Promise<boolean>,
       source: SourceGuard,
     ) {
-      if (grant) throw new Error('The typed heart-rate scope is already owned.');
+      if (grant)
+        throw new Error('The typed heart-rate scope is already owned.');
       grant = {
         referenceKey: stableEvidenceReference(reference),
         current,
@@ -65,7 +66,7 @@ export function createTypedHeartRateDispatch() {
         !grant.current() ||
         signal.aborted ||
         references.some(
-          (reference) =>
+          reference =>
             hasTypedHeartRateSource([reference], registry) &&
             stableEvidenceReference(reference) !== grant?.referenceKey,
         )
@@ -75,4 +76,6 @@ export function createTypedHeartRateDispatch() {
     },
   };
 }
-export type TypedHeartRateDispatch = ReturnType<typeof createTypedHeartRateDispatch>;
+export type TypedHeartRateDispatch = ReturnType<
+  typeof createTypedHeartRateDispatch
+>;

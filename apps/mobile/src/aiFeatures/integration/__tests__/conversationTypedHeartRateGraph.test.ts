@@ -1,7 +1,11 @@
 import { createLocalEvidenceData } from '../../../healthEvidence/localEvidenceData';
 import { guardedNativeDatabase } from '../../../storage/protectedReadEpoch';
 import { HealthObservationSchema } from '@orot/domain';
-import { providerFailure, providerSuccess, type LanguageModelRequest } from '@orot/model-runtime';
+import {
+  providerFailure,
+  providerSuccess,
+  type LanguageModelRequest,
+} from '@orot/model-runtime';
 import { createRagConversationService } from '../ragConversationService';
 import { LocalEvidenceReferenceRegistry } from '../evidenceRegistry';
 import { actualSendRetentionFixture } from '../testSupport/actualSendRetentionFixture';
@@ -19,7 +23,10 @@ jest.mock('../../../providers/selection/keychainSelectionStore', () => ({
 }));
 jest.mock('../../../providers/chatGPTConsentIdentity', () => ({
   ...jest.requireActual('../../../providers/chatGPTConsentIdentity'),
-  readChatGPTConsentCredential: async () => ({ epoch: 'synthetic', isCurrent: () => true }),
+  readChatGPTConsentCredential: async () => ({
+    epoch: 'synthetic',
+    isCurrent: () => true,
+  }),
 }));
 const mockProtectedData = jest.fn(async () => true);
 jest.mock('../../../ragConversation/conversationExecutionNative', () => ({
@@ -56,12 +63,14 @@ test.each([
   'denied',
   'recipient-replaced',
   'source-deleted-during-final-check',
-] as const)('text graph %s gates exact typed outgoing evidence', async (mode) => {
+] as const)('text graph %s gates exact typed outgoing evidence', async mode => {
   const { f, data } = await actualSendRetentionFixture('one');
   const guardedDatabase = guardedNativeDatabase(f.database);
   const protectedData = createLocalEvidenceData(guardedDatabase);
   data.readHealthContext = protectedData.readHealthContext!;
-  Object.assign(data, { acquireHeartRateSourceEpoch: protectedData.acquireHeartRateSourceEpoch });
+  Object.assign(data, {
+    acquireHeartRateSourceEpoch: protectedData.acquireHeartRateSourceEpoch,
+  });
   let enteredProtectedFinalWindow = false;
   let lateDeletion = false;
   mockProtectedData.mockReset().mockImplementation(async () => {
@@ -71,7 +80,10 @@ test.each([
       !lateDeletion
     ) {
       lateDeletion = true;
-      await guardedDatabase.execute('DELETE FROM health_observations WHERE id = ?', [metric.id]);
+      await guardedDatabase.execute(
+        'DELETE FROM health_observations WHERE id = ?',
+        [metric.id],
+      );
     }
     return true;
   });
@@ -92,7 +104,13 @@ test.each([
         return providerSuccess({
           text: '',
           finishReason: 'tool_calls' as const,
-          toolCalls: [{ id: 'typed-proposal', name: 'local-typed-heart-rate', arguments: scope }],
+          toolCalls: [
+            {
+              id: 'typed-proposal',
+              name: 'local-typed-heart-rate',
+              arguments: scope,
+            },
+          ],
         });
       }
       // The fake transport records the request; it never calls a provider.
@@ -138,7 +156,7 @@ test.each([
         inputOrigin: 'composer',
         suppressContextualOpening: true,
         confirmTypedHeartRate: confirm,
-        onToolEvent: (event) => {
+        onToolEvent: event => {
           if (
             mode === 'recipient-replaced' &&
             event.toolName === 'local-typed-heart-rate' &&
@@ -158,7 +176,7 @@ test.each([
     expect(generate).toHaveBeenCalled();
     expect(confirm).toHaveBeenCalledTimes(1);
     const calls = generate.mock.calls.map(([call]) => JSON.stringify(call));
-    const scoped = calls.filter((call) => call.includes('meanBpm'));
+    const scoped = calls.filter(call => call.includes('meanBpm'));
     expect(scoped.length).toBe(mode === 'authorized' ? 1 : 0);
     expect(scoped.join()).not.toContain('private-fixture');
     if (mode === 'authorized') expect(scoped[0]).toContain('137');

@@ -3,11 +3,25 @@ import { healthContextReportCacheKey } from './reportCacheKey';
 import { immutableReportSnapshot } from './committedReportScope';
 import { registerHealthContextReadOwner } from './healthContextReadOperation';
 import type { SqlDatabase } from '@orot/storage';
-import { readHealthContextGeneration, ensureHealthContextGeneration } from './generation';
-import type { HealthContextReport, HealthContextTopic, HealthContextWindow } from './types';
+import {
+  readHealthContextGeneration,
+  ensureHealthContextGeneration,
+} from './generation';
+import type {
+  HealthContextReport,
+  HealthContextTopic,
+  HealthContextWindow,
+} from './types';
 import { HEALTH_CONTEXT_TOPICS } from './types';
-import { traceHealthContext, traceHealthContextScheduler, type HealthContextTrace } from './trace';
-import { readHealthContextCalendar, type HealthContextCalendarScope } from './calendarReadScope';
+import {
+  traceHealthContext,
+  traceHealthContextScheduler,
+  type HealthContextTrace,
+} from './trace';
+import {
+  readHealthContextCalendar,
+  type HealthContextCalendarScope,
+} from './calendarReadScope';
 import { healthContextCalendarParameter } from './calendarSql';
 import { readHealthContextReport as calculateHealthContextReport } from './healthContextReport';
 // Preserve the original exported callable boundary for adapters and diagnostics.
@@ -21,7 +35,9 @@ export type HealthContextReader = (
 ) => Promise<HealthContextReport>;
 
 /** One bounded report per health topic may be reused only while the protected dataset generation remains current. */
-export function createHealthContextReader(database: SqlDatabase): HealthContextReader {
+export function createHealthContextReader(
+  database: SqlDatabase,
+): HealthContextReader {
   let ready: Promise<void> | undefined;
   const createRead =
     (
@@ -35,7 +51,7 @@ export function createHealthContextReader(database: SqlDatabase): HealthContextR
         // Standalone source restoration must preserve the same privacy boundary as the local evidence adapter.
         .execute('PRAGMA temp_store = MEMORY')
         .then(() => database.transaction(ensureHealthContextGeneration))
-        .catch((error) => {
+        .catch(error => {
           ready = undefined;
           throw error;
         });
@@ -51,7 +67,9 @@ export function createHealthContextReader(database: SqlDatabase): HealthContextR
       if (prepareMeasurements) {
         window = {
           ...window,
-          ...(window.doseHistory ? { doseHistory: { ...window.doseHistory } } : {}),
+          ...(window.doseHistory
+            ? { doseHistory: { ...window.doseHistory } }
+            : {}),
         };
         topics = ['measurements'];
       }
@@ -87,12 +105,13 @@ export function createHealthContextReader(database: SqlDatabase): HealthContextR
       trace?.('transaction_wait', 'started');
       const stopProbe = traceHealthContextScheduler(trace);
       try {
-        await database.transaction(async (tx) => {
+        await database.transaction(async tx => {
           stopProbe();
           trace?.('transaction_wait', 'completed');
           try {
             const before = await readHealthContextGeneration(tx);
-            if (signal?.aborted) throw new Error('Health context was cancelled.');
+            if (signal?.aborted)
+              throw new Error('Health context was cancelled.');
             report = await readHealthContextReport(
               tx,
               window,
@@ -105,8 +124,12 @@ export function createHealthContextReader(database: SqlDatabase): HealthContextR
               preparedCalendar,
             );
             const after = await readHealthContextGeneration(tx);
-            if (signal?.aborted) throw new Error('Health context was cancelled.');
-            if (!sameGeneration(before, report) || !sameGeneration(after, report))
+            if (signal?.aborted)
+              throw new Error('Health context was cancelled.');
+            if (
+              !sameGeneration(before, report) ||
+              !sameGeneration(after, report)
+            )
               throw new Error('Health context changed during aggregation.');
           } catch (error) {
             // These queries are read-only. Report invalidation after commit so a
@@ -136,7 +159,8 @@ export function createHealthContextReader(database: SqlDatabase): HealthContextR
   registerHealthContextReadOwner(reader, database, (cache, calendar) => {
     // Copy only committed bounded entries. Each scoped hit still checks live
     // generations and cancellation; scoped results never flow back to baseCache.
-    for (const [key, report] of baseCache) if (!cache.has(key)) cache.set(key, report);
+    for (const [key, report] of baseCache)
+      if (!cache.has(key)) cache.set(key, report);
     return createRead(cache, undefined, calendar);
   });
   return reader;

@@ -1,3 +1,4 @@
+import { acquireIndependentReadEpoch } from '../storage/protectedReadEpoch';
 import { createTypedHeartRateEvidenceReader } from './typedHeartRateEvidence';
 import { historyStalenessRead } from './historyObservationHydrationOwner';
 import {
@@ -40,6 +41,9 @@ export interface LocalEvidenceData {
       : never
   ) => ReturnType<typeof readDailyReportSnapshot>;
   readonly readHealthContext?: HealthContextReader;
+  readonly acquireHeartRateSourceEpoch?: () => ReturnType<
+    typeof acquireIndependentReadEpoch
+  >;
   readonly resolveHealthContextWindow?: ResolveHealthContextWindow;
   readonly manualHistory: ManualHistoryRepository;
   readManualHistoryCandidates(
@@ -138,6 +142,7 @@ export function createLocalEvidenceData(
     // Keep its factory identity so history operations can share reports without
     // treating arbitrary wrappers as trusted owners or caching source validity.
     readHealthContext,
+    acquireHeartRateSourceEpoch: () => acquireIndependentReadEpoch(database),
     async readCandidates(query, signal, scope) {
       await prepare();
       return readEvidenceCandidates(database, query, signal, scope);

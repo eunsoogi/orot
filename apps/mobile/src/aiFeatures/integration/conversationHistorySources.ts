@@ -17,17 +17,17 @@ export function prepareConversationHistory(
 ) {
   const excluded = new Set(excludedQuestions);
   const eligible = history.filter(
-    (message) => message.role !== 'user' || !excluded.has(message.content),
+    message => message.role !== 'user' || !excluded.has(message.content),
   );
-  const messages = boundRagConversationHistory(eligible).map((message) => ({
+  const messages = boundRagConversationHistory(eligible).map(message => ({
     ...message,
     content: registry.redactText(message.content),
   }));
   return {
     messages,
     reports: messages
-      .filter((message) => message.role === 'user')
-      .map((message) => message.content),
+      .filter(message => message.role === 'user')
+      .map(message => message.content),
   };
 }
 
@@ -50,7 +50,11 @@ export async function loadConversationHistory(
   const sources = await conversationHistorySources(input);
   return {
     ...sources,
-    ...prepareConversationHistory(input.messages, input.registry, sources.excludedQuestions),
+    ...prepareConversationHistory(
+      input.messages,
+      input.registry,
+      sources.excludedQuestions,
+    ),
   };
 }
 
@@ -83,9 +87,12 @@ export async function conversationHistorySources(input: {
       omitted: false,
       excludedQuestions: [],
     };
-  const discovery = await input.data.conversationArtifactDiscovery?.(input.registry);
+  const discovery = await input.data.conversationArtifactDiscovery?.(
+    input.registry,
+  );
   // An identified retained turn must be revalidated before its text is sent.
-  if (!discovery) throw new ConversationHistoryFailure('history_discovery_unavailable');
+  if (!discovery)
+    throw new ConversationHistoryFailure('history_discovery_unavailable');
   const ownerIsCurrent = async () =>
     !input.signal.aborted &&
     (await discovery.activeSessionVersion(session.id)) === session.version &&
@@ -94,14 +101,15 @@ export async function conversationHistorySources(input: {
     const turns = await readSelectedConversationHistory(
       discovery,
       session.id,
-      expected.map((item) => item.id),
+      expected.map(item => item.id),
       input.signal,
       recover,
     );
     let privateTypedOmissions = 0;
-    const selected = expected.flatMap((item) => {
+    const selected = expected.flatMap(item => {
       const turn = turns.find(
-        (candidate) => candidate.id === item.id && candidate.question === item.question,
+        candidate =>
+          candidate.id === item.id && candidate.question === item.question,
       );
       if (turn && hasTypedHeartRateSource(turn.sources, input.registry)) {
         privateTypedOmissions++;
@@ -109,13 +117,20 @@ export async function conversationHistorySources(input: {
       }
       return turn ? [turn] : [];
     });
-    if (input.signal.aborted) throw new ConversationHistoryFailure('history_cancelled');
+    if (input.signal.aborted)
+      throw new ConversationHistoryFailure('history_cancelled');
     if (!recover && selected.length + privateTypedOmissions !== expected.length)
       throw new ConversationHistoryFailure('history_turn_unavailable');
-    if (!(await ownerIsCurrent())) throw new ConversationHistoryFailure('history_session_changed');
+    if (!(await ownerIsCurrent()))
+      throw new ConversationHistoryFailure('history_session_changed');
     if (
       selected.length &&
-      !(await discovery.revalidateSession(session.id, session.version, selected, input.signal))
+      !(await discovery.revalidateSession(
+        session.id,
+        session.version,
+        selected,
+        input.signal,
+      ))
     )
       throw new ConversationHistoryFailure('history_sources_stale');
     if (recover && !(await ownerIsCurrent()))
@@ -132,28 +147,33 @@ export async function conversationHistorySources(input: {
     if (
       !input.recoverImplicitHistory ||
       !(error instanceof ConversationHistoryFailure) ||
-      !['history_page_unavailable', 'history_turn_unavailable', 'history_sources_stale'].includes(
-        error.code,
-      ) ||
+      ![
+        'history_page_unavailable',
+        'history_turn_unavailable',
+        'history_sources_stale',
+      ].includes(error.code) ||
       !(await ownerIsCurrent())
     )
       throw error;
     selected = await select(true);
     recovered = true;
   }
-  const accepted = new Map(selected.map((turn) => [turn.id, turn.question]));
+  const accepted = new Map(selected.map(turn => [turn.id, turn.question]));
   const excludedQuestions = expected
-    .filter((turn) => accepted.get(turn.id) !== turn.question)
-    .map((turn) => turn.question);
+    .filter(turn => accepted.get(turn.id) !== turn.question)
+    .map(turn => turn.question);
 
-  const references = selected.map((turn) => {
+  const references = selected.map(turn => {
     const readSource = async (signal: AbortSignal) => {
-      if ((await discovery.activeSessionVersion(session.id)) !== session.version)
+      if (
+        (await discovery.activeSessionVersion(session.id)) !== session.version
+      )
         return { status: 'missing' as const };
       const current = await discovery.read(turn.id, signal);
       if (!current || current.metadata.originSession !== session.id)
         return { status: 'missing' as const };
-      if (current.metadata.revision !== turn.revision) return { status: 'changed' as const };
+      if (current.metadata.revision !== turn.revision)
+        return { status: 'changed' as const };
       return {
         status: 'available' as const,
         document: {
@@ -185,7 +205,8 @@ export async function conversationHistorySources(input: {
             }
           : undefined,
         readSource,
-        validate: async (signal) => (await readSource(signal)).status === 'available',
+        validate: async signal =>
+          (await readSource(signal)).status === 'available',
       }),
     );
   });
@@ -195,15 +216,15 @@ export async function conversationHistorySources(input: {
   const priorTurns = admitted
     .slice()
     .reverse()
-    .map((turn) => ({
+    .map(turn => ({
       question: input.registry.redactText(turn.question),
       answer: input.registry.redactText(turn.answer),
     }));
   // Photo ownership belongs to the original request, so retain its validated
   // parent turn instead of assigning the original to a later request.
-  const sources = admitted.flatMap((turn) => {
+  const sources = admitted.flatMap(turn => {
     const parent = references[selected.indexOf(turn)]!;
-    return turn.sources.map((source) => {
+    return turn.sources.map(source => {
       const locator = input.registry.resolve(source)?.locator;
       return locator &&
         typeof locator === 'object' &&

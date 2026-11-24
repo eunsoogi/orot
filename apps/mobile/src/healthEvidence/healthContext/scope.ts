@@ -1,6 +1,10 @@
 import { isAppleDerivedHeartRateCategory } from '@orot/storage';
 import { supportedTypedHeartRatePeriod } from '../typedHeartRateWindow';
-import type { HealthContextReport, HealthContextTopic, HealthContextWindow } from './types';
+import type {
+  HealthContextReport,
+  HealthContextTopic,
+  HealthContextWindow,
+} from './types';
 import { HEALTH_CONTEXT_TOPICS } from './types';
 import { validateHealthContextCalendar } from './calendarValidation';
 import {
@@ -19,14 +23,19 @@ export interface HealthContextScope {
 }
 
 /** Persist a fixed local-calendar period and aggregation policy, never a relative moving date. */
-export function parseHealthContextScope(value: unknown): HealthContextScope | undefined {
-  if (!value || typeof value !== 'object' || Array.isArray(value)) return undefined;
+export function parseHealthContextScope(
+  value: unknown,
+): HealthContextScope | undefined {
+  if (!value || typeof value !== 'object' || Array.isArray(value))
+    return undefined;
   const v = value as Record<string, unknown>;
   if (
     v.kind !== 'health_context_period' ||
     v.version !== 1 ||
     !HEALTH_CONTEXT_TOPICS.includes(v.topic as HealthContextTopic) ||
-    Object.keys(v).some((key) => !['kind', 'version', 'topic', 'window'].includes(key)) ||
+    Object.keys(v).some(
+      key => !['kind', 'version', 'topic', 'window'].includes(key),
+    ) ||
     !v.window ||
     typeof v.window !== 'object' ||
     Array.isArray(v.window)
@@ -35,7 +44,7 @@ export function parseHealthContextScope(value: unknown): HealthContextScope | un
   const w = v.window as Record<string, unknown>;
   if (
     Object.keys(w).some(
-      (key) =>
+      key =>
         ![
           'fromInclusive',
           'toExclusive',
@@ -45,10 +54,15 @@ export function parseHealthContextScope(value: unknown): HealthContextScope | un
           'typedHeartRateCategory',
         ].includes(key),
     ) ||
-    !['fromInclusive', 'toExclusive', 'timeZone'].every((key) => typeof w[key] === 'string')
+    !['fromInclusive', 'toExclusive', 'timeZone'].every(
+      key => typeof w[key] === 'string',
+    )
   )
     return undefined;
-  if (w.dataAvailableThrough !== undefined && typeof w.dataAvailableThrough !== 'string')
+  if (
+    w.dataAvailableThrough !== undefined &&
+    typeof w.dataAvailableThrough !== 'string'
+  )
     return undefined;
   const category = w.typedHeartRateCategory;
   if (
@@ -57,7 +71,8 @@ export function parseHealthContextScope(value: unknown): HealthContextScope | un
       w.doseHistory !== undefined ||
       w.dataAvailableThrough !== undefined ||
       (category !== 'ordinary_average' &&
-        (typeof category !== 'string' || !isAppleDerivedHeartRateCategory(category))))
+        (typeof category !== 'string' ||
+          !isAppleDerivedHeartRateCategory(category))))
   )
     return undefined;
   try {
@@ -65,7 +80,10 @@ export function parseHealthContextScope(value: unknown): HealthContextScope | un
       validateHealthContextCalendar(w as unknown as HealthContextWindow);
     } else if (
       w.timeZone !== 'UTC' ||
-      !supportedTypedHeartRatePeriod(w.fromInclusive as string, w.toExclusive as string)
+      !supportedTypedHeartRatePeriod(
+        w.fromInclusive as string,
+        w.toExclusive as string,
+      )
     )
       return undefined;
     if (w.doseHistory !== undefined) {
@@ -74,7 +92,9 @@ export function parseHealthContextScope(value: unknown): HealthContextScope | un
         !d ||
         typeof d !== 'object' ||
         Array.isArray(d) ||
-        Object.keys(d).some((key) => !['medicationName', 'page', 'pageSize'].includes(key)) ||
+        Object.keys(d).some(
+          key => !['medicationName', 'page', 'pageSize'].includes(key),
+        ) ||
         !Number.isSafeInteger(d.page) ||
         Number(d.page) < 0 ||
         !Number.isSafeInteger(Number(d.page) * Number(d.pageSize)) ||
@@ -108,7 +128,10 @@ export function parseHealthContextScope(value: unknown): HealthContextScope | un
   }
 }
 
-const revisions = new WeakMap<HealthContextReport, { scopeKey: string; revision: string }>();
+const revisions = new WeakMap<
+  HealthContextReport,
+  { scopeKey: string; revision: string }
+>();
 
 /** Exclude out-of-period deletions from the historical digest. Reuse one pure
  * digest per immutable report and exact scope; live generation checks belong to
@@ -117,7 +140,9 @@ export function healthContextRevision(
   scope: HealthContextScope,
   report: HealthContextReport,
 ): string {
-  const scopeKey = isImmutableReportSnapshot(report) ? stableJson(scope) : undefined;
+  const scopeKey = isImmutableReportSnapshot(report)
+    ? stableJson(scope)
+    : undefined;
   const cached = scopeKey === undefined ? undefined : revisions.get(report);
   if (cached && cached.scopeKey === scopeKey) return cached.revision;
   const facts = {
@@ -135,7 +160,9 @@ export function healthContextRevision(
   const revision =
     scopeKey === undefined
       ? fingerprint({ scope, facts })
-      : fingerprintText(`{"facts":${immutableReportJson(facts)},"scope":${scopeKey}}`);
+      : fingerprintText(
+          `{"facts":${immutableReportJson(facts)},"scope":${scopeKey}}`,
+        );
   if (scopeKey !== undefined) revisions.set(report, { scopeKey, revision });
   return revision;
 }

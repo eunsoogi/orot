@@ -20,12 +20,18 @@ import type { LocalEvidenceReferenceRegistry } from './evidenceRegistry';
 /** Model input proposes a metric and period. Only the current composer can grant the protected read. */
 export function createConversationHeartRateTool(input: {
   readonly read: HealthContextReader;
-  readonly acquireSourceEpoch: () => { current(): boolean; dispose(): void } | undefined;
+  readonly acquireSourceEpoch: () =>
+    { current(): boolean; dispose(): void } | undefined;
   readonly registry: LocalEvidenceReferenceRegistry;
-  readonly owner: { readonly operationRunId: string; readonly signal: AbortSignal };
+  readonly owner: {
+    readonly operationRunId: string;
+    readonly signal: AbortSignal;
+  };
   readonly observer: RagConversationObserver;
   readonly dispatch: TypedHeartRateDispatch;
-  readonly model: NonNullable<ReturnType<typeof createTypedHeartRateModelOwner>>;
+  readonly model: NonNullable<
+    ReturnType<typeof createTypedHeartRateModelOwner>
+  >;
 }): EvidenceSearchTool {
   let consumed = false;
   const { observer, owner, model } = input;
@@ -40,26 +46,37 @@ export function createConversationHeartRateTool(input: {
         category: {
           type: 'string',
           enum: conversationHeartRateCategories.filter(
-            (category) => category !== 'workout_heart_rate',
+            category => category !== 'workout_heart_rate',
           ),
         },
-        fromInclusive: { type: 'string', description: 'Inclusive ISO instant, with offset.' },
-        toExclusive: { type: 'string', description: 'Exclusive ISO instant, with offset.' },
+        fromInclusive: {
+          type: 'string',
+          description: 'Inclusive ISO instant, with offset.',
+        },
+        toExclusive: {
+          type: 'string',
+          description: 'Exclusive ISO instant, with offset.',
+        },
       },
       required: ['category', 'fromInclusive', 'toExclusive'],
       additionalProperties: false,
     },
     parseInput(value) {
       const parsed = parseConversationHeartRateRequest(value);
-      return parsed && parsed.category !== 'workout_heart_rate' ? { ...parsed } : undefined;
+      return parsed && parsed.category !== 'workout_heart_rate'
+        ? { ...parsed }
+        : undefined;
     },
     async search(request) {
-      const batch = (items: EvidenceBatch['items'], gaps: string[]): EvidenceBatch => ({
+      const batch = (
+        items: EvidenceBatch['items'],
+        gaps: string[],
+      ): EvidenceBatch => ({
         items,
         coverage: [
           {
             sourceKind: 'personal_record',
-            searchedSourceIds: items.map((item) => item.sourceId),
+            searchedSourceIds: items.map(item => item.sourceId),
             gaps,
             truncated: false,
             resultLimit: request.resultLimit,
@@ -79,10 +96,11 @@ export function createConversationHeartRateTool(input: {
         try {
           const native = conversationExecutionNative();
           return (
-            native.bridgeAvailable &&
+            native?.bridgeAvailable === true &&
             (await native.protectedDataAvailable()) === true &&
             (await model.recheck()) &&
-            (await observer.expectedConversationModel?.isDurablyCurrent?.()) !== false &&
+            (await observer.expectedConversationModel?.isDurablyCurrent?.()) !==
+              false &&
             current()
           );
         } catch {
@@ -94,21 +112,36 @@ export function createConversationHeartRateTool(input: {
         !proposed ||
         !current() ||
         request.resultLimit < 1 ||
-        !admitConversationHeartRateRequest(request, { ...owner, scope: proposed })
+        !admitConversationHeartRateRequest(request, {
+          ...owner,
+          scope: proposed,
+        })
       )
         return empty('typed_heart_rate_scope_not_admitted');
       if (proposed.category === 'workout_heart_rate')
         return empty('workout_heart_rate_exact_association_unavailable');
       const { category, ...window } = proposed;
-      if (!supportedTypedHeartRatePeriod(window.fromInclusive, window.toExclusive))
-        return empty('typed_heart_rate_scope_too_large_request_narrower_period');
+      if (
+        !supportedTypedHeartRatePeriod(window.fromInclusive, window.toExclusive)
+      )
+        return empty(
+          'typed_heart_rate_scope_too_large_request_narrower_period',
+        );
       const scope = parseHealthContextScope({
         kind: 'health_context_period',
         version: 1,
         topic: 'measurements',
-        window: { ...window, timeZone: 'UTC', typedHeartRateCategory: category },
+        window: {
+          ...window,
+          timeZone: 'UTC',
+          typedHeartRateCategory: category,
+        },
       });
-      if (!scope || !observer.confirmTypedHeartRate || !(await confirmedCurrent()))
+      if (
+        !scope ||
+        !observer.confirmTypedHeartRate ||
+        !(await confirmedCurrent())
+      )
         return empty('typed_heart_rate_scope_not_admitted');
       // Retire this one-use authorization before awaiting the prompt or reading any records.
       if (consumed) return empty('typed_heart_rate_scope_not_admitted');
@@ -116,7 +149,11 @@ export function createConversationHeartRateTool(input: {
       let approved: boolean;
       observer.onApprovalWait?.(true);
       try {
-        approved = await observer.confirmTypedHeartRate(proposed, model.details, request.signal);
+        approved = await observer.confirmTypedHeartRate(
+          proposed,
+          model.details,
+          request.signal,
+        );
       } finally {
         observer.onApprovalWait?.(false);
       }
@@ -124,10 +161,17 @@ export function createConversationHeartRateTool(input: {
         // A declined scope must not cause the model to fetch equivalent generic data in this turn.
         return { status: 'consent_required' };
       }
-      if (!(await confirmedCurrent())) return empty('typed_heart_rate_scope_not_admitted');
-      const report = await input.read(scope.window, [scope.topic], request.signal);
+      if (!(await confirmedCurrent()))
+        return empty('typed_heart_rate_scope_not_admitted');
+      const report = await input.read(
+        scope.window,
+        [scope.topic],
+        request.signal,
+      );
       if (report.limitations.includes('typed_heart_rate_scope_too_large'))
-        return empty('typed_heart_rate_scope_too_large_request_narrower_period');
+        return empty(
+          'typed_heart_rate_scope_too_large_request_narrower_period',
+        );
       if (
         !report.typedHeartRate ||
         report.typedHeartRate.category !== category ||
@@ -141,13 +185,17 @@ export function createConversationHeartRateTool(input: {
         report,
       });
       if (
-        !(await input.registry.revalidateEvidence([evidence], request.signal)) ||
+        !(await input.registry.revalidateEvidence(
+          [evidence],
+          request.signal,
+        )) ||
         !(await confirmedCurrent())
       )
         return empty('typed_heart_rate_proof_unavailable');
       input.dispatch.bind(evidence, current, confirmedCurrent, {
         acquire: input.acquireSourceEpoch,
-        reprove: (signal) => input.registry.revalidateEvidence([evidence], signal),
+        reprove: signal =>
+          input.registry.revalidateEvidence([evidence], signal),
       });
       return batch([evidence], []);
     },

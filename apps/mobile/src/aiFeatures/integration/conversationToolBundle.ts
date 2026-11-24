@@ -19,7 +19,7 @@ const recordingClarificationTool: EvidenceSearchTool = {
   sourceKind: 'personal_record',
   execution: 'local_read_only',
   inputSchema: { type: 'object', properties: {}, additionalProperties: false },
-  parseInput: (value) =>
+  parseInput: value =>
     value !== null &&
     typeof value === 'object' &&
     !Array.isArray(value) &&
@@ -38,7 +38,10 @@ export function createConversationToolBundle(input: {
   readonly external: ReturnType<typeof conversationExternalEvidence>;
   readonly publicSearchSucceeded: boolean;
   readonly literatureOnly?: boolean;
-  readonly typedHeartRateOwner?: { readonly operationRunId: string; readonly signal: AbortSignal };
+  readonly typedHeartRateOwner?: {
+    readonly operationRunId: string;
+    readonly signal: AbortSignal;
+  };
   readonly artifactPaging?: unknown;
   readonly researchPaging?: { snapshot: unknown; operationRunId: string };
 }) {
@@ -50,8 +53,11 @@ export function createConversationToolBundle(input: {
     input.researchPaging,
     input.artifactPaging,
   );
-  const typedModel = input.typedHeartRateOwner && input.external.createTypedHeartRateOwner?.();
-  const typedHeartRateDispatch = typedModel ? createTypedHeartRateDispatch() : undefined;
+  const typedModel =
+    input.typedHeartRateOwner && input.external.createTypedHeartRateOwner?.();
+  const typedHeartRateDispatch = typedModel
+    ? createTypedHeartRateDispatch()
+    : undefined;
   const typed =
     typedHeartRateDispatch &&
     typedModel &&
@@ -73,18 +79,21 @@ export function createConversationToolBundle(input: {
           observer: input.observer,
         })
       : undefined;
-  const external = input.external.tools.map((tool) =>
+  const external = input.external.tools.map(tool =>
     typed && tool.execution === 'external_read_only'
       ? {
           ...tool,
           async search(...args: Parameters<typeof tool.search>) {
-            if (typedHeartRateDispatch?.active()) return { status: 'consent_required' as const };
+            if (typedHeartRateDispatch?.active())
+              return { status: 'consent_required' as const };
             return tool.search(...args);
           },
           ...(tool.prepareAuthorizedSearch
             ? {
                 async prepareAuthorizedSearch(
-                  ...args: Parameters<NonNullable<typeof tool.prepareAuthorizedSearch>>
+                  ...args: Parameters<
+                    NonNullable<typeof tool.prepareAuthorizedSearch>
+                  >
                 ) {
                   if (typedHeartRateDispatch?.active())
                     return { status: 'consent_required' as const };
@@ -120,7 +129,7 @@ export function createConversationToolBundle(input: {
       },
     ),
     ...(input.literatureOnly
-      ? external.filter((tool) => tool.id === europePmcConversationTool)
+      ? external.filter(tool => tool.id === europePmcConversationTool)
       : input.publicSearchSucceeded || !input.external.publicWebTool
         ? external
         : []),

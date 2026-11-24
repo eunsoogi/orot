@@ -30,7 +30,8 @@ export function bindRequestCancel(
   cancel: (id: number) => void,
 ) {
   return () => {
-    if (controllers.get(id) !== controller || controller.signal.aborted) return false;
+    if (controllers.get(id) !== controller || controller.signal.aborted)
+      return false;
     cancel(id);
     return true;
   };

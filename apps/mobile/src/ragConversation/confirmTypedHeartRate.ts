@@ -10,7 +10,8 @@ export function confirmTypedHeartRate(
   recipient: TypedHeartRateRecipient,
   signal: AbortSignal,
 ): Promise<boolean> {
-  if (signal.aborted || scope.category === 'workout_heart_rate') return Promise.resolve(false);
+  if (signal.aborted || scope.category === 'workout_heart_rate')
+    return Promise.resolve(false);
   const label = {
     ordinary_average: 'healthContextCopy.ordinaryHeartRate',
     resting_heart_rate: 'healthContextCopy.restingHeartRate',
@@ -34,7 +35,7 @@ export function confirmTypedHeartRate(
         ? 'healthContextCopy.confirmTypedHeartRateRemote'
         : 'healthContextCopy.confirmTypedHeartRateLocal',
     );
-  return new Promise((resolve) => {
+  return new Promise(resolve => {
     let settled = false;
     const finish = (approved: boolean) => {
       if (settled) return;
@@ -49,7 +50,10 @@ export function confirmTypedHeartRate(
       body,
       [
         { text: navigationText.cancel.label, style: 'cancel', onPress: cancel },
-        { text: t('healthContextCopy.confirmTypedHeartRateAction'), onPress: () => finish(true) },
+        {
+          text: t('healthContextCopy.confirmTypedHeartRateAction'),
+          onPress: () => finish(true),
+        },
       ],
       { cancelable: true, onDismiss: cancel },
     );

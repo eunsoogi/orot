@@ -18,27 +18,42 @@ export async function restoreColdConversationRegistry(input: {
   sources: readonly ConversationArtifactSource[];
   data: AiFeatureLocalData;
   signal: AbortSignal;
-  photo?: Pick<Parameters<typeof restoreColdPhotoEvidence>[0], 'submitted' | 'owner'>;
+  photo?: Pick<
+    Parameters<typeof restoreColdPhotoEvidence>[0],
+    'submitted' | 'owner'
+  >;
 }): Promise<LocalEvidenceReferenceRegistry> {
   const check = () => {
-    if (input.signal.aborted) throw new Error('Cold source restoration cancelled.');
+    if (input.signal.aborted)
+      throw new Error('Cold source restoration cancelled.');
   };
   check();
   // Detach before awaiting local storage so mutable caller objects cannot change the binding.
-  const snapshot: EvidenceRegistrySnapshot = JSON.parse(JSON.stringify(input.snapshot));
-  const sources: readonly ConversationArtifactSource[] = JSON.parse(JSON.stringify(input.sources));
-  if (hasTypedHeartRateSource(sources.map((source) => source.reference)))
-    throw new Error('A new typed heart-rate approval is required for this request.');
+  const snapshot: EvidenceRegistrySnapshot = JSON.parse(
+    JSON.stringify(input.snapshot),
+  );
+  const sources: readonly ConversationArtifactSource[] = JSON.parse(
+    JSON.stringify(input.sources),
+  );
+  if (hasTypedHeartRateSource(sources.map(source => source.reference)))
+    throw new Error(
+      'A new typed heart-rate approval is required for this request.',
+    );
   const photos = sources.filter(isConversationPhotoSource);
-  if (photos.length && !input.photo) throw new Error('Cold photo owner is required.');
-  const originals = new Set(snapshot.entries.map((entry) => stableJson(entry.original)));
-  const keys = sources.map((source) => stableJson(source.reference));
+  if (photos.length && !input.photo)
+    throw new Error('Cold photo owner is required.');
+  const originals = new Set(
+    snapshot.entries.map(entry => stableJson(entry.original)),
+  );
+  const keys = sources.map(source => stableJson(source.reference));
   if (
     new Set(keys).size !== keys.length ||
     originals.size !== keys.length ||
-    keys.some((key) => !originals.has(key))
+    keys.some(key => !originals.has(key))
   )
-    throw new Error('Cold source descriptors do not match the exact registry originals.');
+    throw new Error(
+      'Cold source descriptors do not match the exact registry originals.',
+    );
   // Do not silently interpret an unknown descriptor as a record descriptor.
   for (const source of sources) {
     const kind = 'kind' in source ? source.kind : undefined;
@@ -72,7 +87,7 @@ export async function restoreColdConversationRegistry(input: {
     });
   const research = createColdResearchSourceReader({
     snapshot,
-    sources: sources.filter((source) => !isConversationPhotoSource(source)),
+    sources: sources.filter(source => !isConversationPhotoSource(source)),
     data: input.data,
   });
   for (const source of sources) {
@@ -80,21 +95,26 @@ export async function restoreColdConversationRegistry(input: {
     if (isConversationPhotoSource(source)) continue;
     if (
       'kind' in source &&
-      (source.kind === 'generated_research' || source.kind === 'generated_conversation')
+      (source.kind === 'generated_research' ||
+        source.kind === 'generated_conversation')
     ) {
       const readSource = (signal: AbortSignal) => research.read(source, signal);
       fresh.add({
         reference: source.reference,
         content: '',
         readSource,
-        validate: async (signal) => (await readSource(signal)).status === 'available',
+        validate: async signal =>
+          (await readSource(signal)).status === 'available',
       });
       continue;
     }
     // The existing source readers perform local revision checks. They do not invoke tools/models.
     const result = await restoreRetainedSources([source], fresh, input.data);
     check();
-    if (result.sourceChanged || !result.mapping.has(stableJson(source.reference)))
+    if (
+      result.sourceChanged ||
+      !result.mapping.has(stableJson(source.reference))
+    )
       throw new Error('Cold source changed or is unavailable.');
   }
   // Import before validating research: its dependency links must point into this final owner.

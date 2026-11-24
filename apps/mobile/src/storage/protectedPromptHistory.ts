@@ -23,7 +23,10 @@ const visible = `NOT EXISTS (SELECT 1 FROM conversation_deleted_artifacts d WHER
  AND NOT EXISTS (SELECT 1 FROM json_each(${document}, '$.sources') source
    WHERE json_type(source.value, '$.scope.window.typedHeartRateCategory') IS NOT NULL)`;
 
-export function createProtectedPromptHistory(database: SqlExecutor, ensure: () => Promise<void>) {
+export function createProtectedPromptHistory(
+  database: SqlExecutor,
+  ensure: () => Promise<void>,
+) {
   return {
     /** Read only committed text; no source blobs, attachment data or tool rows may cross. */
     async readProtectedPromptHistory(
@@ -59,7 +62,12 @@ export function createProtectedPromptHistory(database: SqlExecutor, ensure: () =
         )
         SELECT r.id, r.created_at, r.question, r.answer FROM owner o
         LEFT JOIN text_rows r ON 1 ORDER BY r.created_at ASC, r.id ASC)`,
-        [sessionId, version, JSON.stringify([...new Set(expectedIds)]), Number(includeRecent)],
+        [
+          sessionId,
+          version,
+          JSON.stringify([...new Set(expectedIds)]),
+          Number(includeRecent),
+        ],
       );
       if (signal.aborted || !rows.length) return null;
       const turns: PromptTurn[] = [];

@@ -46,7 +46,8 @@ export interface HealthContextDay {
 }
 
 export interface HeartRateActivityGroup {
-  readonly context: 'workout_overlap' | 'no_recorded_workout_overlap' | 'unknown';
+  readonly context:
+    'workout_overlap' | 'no_recorded_workout_overlap' | 'unknown';
   readonly samples: number;
   readonly minimum: number;
   readonly maximum: number;
@@ -76,7 +77,10 @@ export interface HealthQuantitySeries {
 export interface HealthMedicationProfile {
   readonly identity: string;
   readonly name: string;
-  readonly source: 'healthkit_registration' | 'current_user_confirmation' | 'prescription_record';
+  readonly source:
+    | 'healthkit_registration'
+    | 'current_user_confirmation'
+    | 'prescription_record';
   readonly scheduleRegistered?: boolean;
   readonly dosageInstruction?: string;
   readonly assertedAt?: string;

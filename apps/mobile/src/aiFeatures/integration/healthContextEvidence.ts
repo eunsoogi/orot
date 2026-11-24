@@ -10,7 +10,10 @@ import {
   projectHealthContext,
   type HealthContextDetail,
 } from '../../healthEvidence/healthContext/projection';
-import { LocalEvidenceReferenceRegistry, type EvidenceSourceReadResult } from './evidenceRegistry';
+import {
+  LocalEvidenceReferenceRegistry,
+  type EvidenceSourceReadResult,
+} from './evidenceRegistry';
 import { fingerprint } from './evidenceUtils';
 import { isImmutableReportSnapshot } from '../../healthEvidence/healthContext/committedReportScope';
 
@@ -31,7 +34,8 @@ export function healthContextContent(
   if (cached?.topic === scope.topic) return cached.content;
   if (scope.window.typedHeartRateCategory !== undefined) {
     const typed = report.typedHeartRate;
-    if (!typed || typed.category !== scope.window.typedHeartRateCategory) return '';
+    if (!typed || typed.category !== scope.window.typedHeartRateCategory)
+      return '';
     const { category, meanBpm, sampleCount, unit } = typed;
     const { fromInclusive, toExclusive } = scope.window;
     return (
@@ -69,10 +73,12 @@ export function healthContextContent(
       statisticSemantics:
         scope.topic === 'measurements' || scope.topic === 'activity'
           ? {
-              sampleCount: 'Number of observation samples, never a measured amount.',
+              sampleCount:
+                'Number of observation samples, never a measured amount.',
               latest:
                 'One latest measured amount with its occurrence time, never a sample count or period total.',
-              recordedDays: 'Calendar days with observations, not the number of samples.',
+              recordedDays:
+                'Calendar days with observations, not the number of samples.',
               sensorSeries:
                 'Separate measurement sources; do not add overlapping sources into a daily total.',
             }
@@ -89,7 +95,8 @@ export function healthContextContent(
               ? {
                   meanRecordedDailyMinutes:
                     'Mean of calendar-day unions of asleep intervals over recorded dates, not a complete-night total.',
-                  stageMinutes: 'Stage totals over the whole period, not daily means.',
+                  stageMinutes:
+                    'Stage totals over the whole period, not daily means.',
                   completeNightCoverage:
                     'Calendar-day aggregation establishes neither presence nor absence of complete-night records.',
                 }
@@ -111,14 +118,18 @@ export function registerHealthContextEvidence(input: {
   readonly expectedRevision?: string;
 }) {
   const { scope, report } = input;
-  const revision = input.expectedRevision ?? healthContextRevision(scope, report);
+  const revision =
+    input.expectedRevision ?? healthContextRevision(scope, report);
   const id = `health-context-${fingerprint(scope)}`;
   const key = {};
   const createReaders = (read: HealthContextReader) => {
-    const current = async (signal: AbortSignal) => read(scope.window, [scope.topic], signal);
+    const current = async (signal: AbortSignal) =>
+      read(scope.window, [scope.topic], signal);
     const matches = (value: HealthContextReport) =>
       healthContextRevision(scope, value) === revision;
-    const readSource = async (signal: AbortSignal): Promise<EvidenceSourceReadResult> => {
+    const readSource = async (
+      signal: AbortSignal,
+    ): Promise<EvidenceSourceReadResult> => {
       if (signal.aborted) return { status: 'unavailable' };
       const value = await current(signal);
       return matches(value)

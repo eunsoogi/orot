@@ -7,17 +7,24 @@ import {
   type SqlDatabase,
   type SqlExecutor,
 } from '@orot/storage';
-import { typedHeartRateMaxRows, typedHeartRateMaxSourceBytes } from './typedHeartRateWindow';
+import {
+  typedHeartRateMaxRows,
+  typedHeartRateMaxSourceBytes,
+} from './typedHeartRateWindow';
 import { fingerprint } from '../aiFeatures/integration/evidenceUtils';
 import { currentEvidenceCondition } from './evidenceCandidateScope';
 import {
   ensureHealthContextGeneration,
   readHealthContextGeneration,
 } from './healthContext/generation';
-import { checkHealthEvidenceAbort, decodeHealthEvidenceRecord } from './localEvidenceQueries';
+import {
+  checkHealthEvidenceAbort,
+  decodeHealthEvidenceRecord,
+} from './localEvidenceQueries';
 import { readSelectedEvidenceRows } from './readSelectedEvidenceRows';
 
-export type TypedHeartRateCategory = 'ordinary_average' | AppleDerivedHeartRateCategory;
+export type TypedHeartRateCategory =
+  'ordinary_average' | AppleDerivedHeartRateCategory;
 type Period = { readonly fromInclusive: string; readonly toExclusive: string };
 type Owner = { readonly current: () => boolean; readonly signal: AbortSignal };
 
@@ -53,18 +60,22 @@ export function createTypedHeartRateEvidenceReader(database: SqlDatabase) {
     const active = () => !signal.aborted && current();
     if (!active()) return null;
     // Workout overlap and display-only aggregates are not proof of HealthKit association.
-    if (category !== 'ordinary_average' && !isAppleDerivedHeartRateCategory(category)) return null;
+    if (
+      category !== 'ordinary_average' &&
+      !isAppleDerivedHeartRateCategory(category)
+    )
+      return null;
     ready ??= database
       .execute('PRAGMA temp_store = MEMORY')
       .then(() => database.transaction(ensureHealthContextGeneration))
-      .catch((error) => {
+      .catch(error => {
         ready = undefined;
         throw error;
       });
     await ready;
     if (!active()) return null;
     let snapshot: Awaited<ReturnType<typeof readTypedHeartRateSnapshot>> = null;
-    await database.transaction(async (tx) => {
+    await database.transaction(async tx => {
       if (!active()) return;
       snapshot = await readTypedHeartRateSnapshot(
         tx,
@@ -74,7 +85,9 @@ export function createTypedHeartRateEvidenceReader(database: SqlDatabase) {
       );
     });
     checkHealthEvidenceAbort(signal);
-    const owned = snapshot as Awaited<ReturnType<typeof readTypedHeartRateSnapshot>>;
+    const owned = snapshot as Awaited<
+      ReturnType<typeof readTypedHeartRateSnapshot>
+    >;
     if (!owned || !active()) return null;
     const { generation, ...evidence } = owned;
     const isCurrent = async () => {
@@ -103,11 +116,19 @@ export async function readTypedHeartRateSnapshot(
   signal?: AbortSignal,
   maximumCandidates?: number,
 ) {
-  if (category !== 'ordinary_average' && !isAppleDerivedHeartRateCategory(category)) return null;
+  if (
+    category !== 'ordinary_average' &&
+    !isAppleDerivedHeartRateCategory(category)
+  )
+    return null;
   const from = localQueryTimestampKey(fromInclusive);
   const to = localQueryTimestampKey(toExclusive);
   if (from >= to) throw new RangeError('Heart-rate period must advance.');
-  const { condition, at, parameters } = typedHeartRateSelection(category, from, to);
+  const { condition, at, parameters } = typedHeartRateSelection(
+    category,
+    from,
+    to,
+  );
   checkHealthEvidenceAbort(signal);
   let mean = 0;
   const sourceReferences: Evidence['sourceReferences'][number][] = [];
@@ -117,18 +138,24 @@ export async function readTypedHeartRateSnapshot(
      FROM health_observations r WHERE ${condition} ORDER BY (${at}), r.id`;
   const { rows } = await readSelectedEvidenceRows(
     tx,
-    maximumCandidates === undefined ? query : `SELECT * FROM (${query} LIMIT ?)`,
-    maximumCandidates === undefined ? parameters : [...parameters, maximumCandidates + 1],
+    maximumCandidates === undefined
+      ? query
+      : `SELECT * FROM (${query} LIMIT ?)`,
+    maximumCandidates === undefined
+      ? parameters
+      : [...parameters, maximumCandidates + 1],
     signal,
   );
-  if (maximumCandidates !== undefined && rows.length > maximumCandidates) return null;
+  if (maximumCandidates !== undefined && rows.length > maximumCandidates)
+    return null;
   for (const row of rows) {
     const entry = decodeHealthEvidenceRecord('health_observation', row);
     if (entry.kind !== 'health_observation') continue;
     const { id, provenance, value } = entry.record;
     if (
       value.kind !== 'quantity' ||
-      (category !== 'ordinary_average' && classifyAppleDerivedHeartRate(entry.record) !== category)
+      (category !== 'ordinary_average' &&
+        classifyAppleDerivedHeartRate(entry.record) !== category)
     )
       continue;
     memberRevisions.push([id, fingerprint(entry.record)]);
@@ -139,7 +166,9 @@ export async function readTypedHeartRateSnapshot(
         sourceRecordIds: Object.freeze([...provenance.sourceRecordIds]),
         effectiveAt: entry.record.effectiveAt,
         origin: provenance.origin,
-        ...(provenance.source ? { sourceSystem: provenance.source.system } : {}),
+        ...(provenance.source
+          ? { sourceSystem: provenance.source.system }
+          : {}),
       }),
     );
     mean += (value.amount - mean) / sourceReferences.length;
@@ -159,7 +188,11 @@ export async function readTypedHeartRateSnapshot(
   });
 }
 
-function typedHeartRateSelection(category: TypedHeartRateCategory, from: string, to: string) {
+function typedHeartRateSelection(
+  category: TypedHeartRateCategory,
+  from: string,
+  to: string,
+) {
   const at = localQueryTimestampKeyExpression('r.effective_at');
   // Exactly the same candidate membership is used for bounds and the complete read.
   const condition = `json_extract(r.payload_json, '$.concept') = ?

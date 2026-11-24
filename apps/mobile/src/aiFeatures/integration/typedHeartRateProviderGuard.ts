@@ -1,4 +1,7 @@
-import { providerFailure, type LanguageModelProvider } from '@orot/model-runtime';
+import {
+  providerFailure,
+  type LanguageModelProvider,
+} from '@orot/model-runtime';
 import type { TypedHeartRateDispatch } from './typedHeartRateReusePolicy';
 
 const unavailable = () =>
@@ -26,7 +29,8 @@ export function guardTypedHeartRateProvider(
     const witness = grant.source.acquire();
     if (!witness) return;
     try {
-      if (!(await grant.source.reprove(signal)) || !(await grant.recheck())) return;
+      if (!(await grant.source.reprove(signal)) || !(await grant.recheck()))
+        return;
       if (signal.aborted || !grant.current() || !witness.current()) return;
       // No await between the synchronous source/turn guards and invocation.
       return { started: start() };
@@ -37,14 +41,19 @@ export function guardTypedHeartRateProvider(
   return {
     ...provider,
     async generate(request, options) {
-      const result = await dispatch(() => provider.generate(request, options), options?.signal);
+      const result = await dispatch(
+        () => provider.generate(request, options),
+        options?.signal,
+      );
       return result ? result.started : unavailable();
     },
     ...(provider.stream
       ? ({
           async *stream(request, options) {
             const result = await dispatch(() => {
-              const stream = provider.stream!(request, options)[Symbol.asyncIterator]();
+              const stream = provider.stream!(request, options)[
+                Symbol.asyncIterator
+              ]();
               return { stream, first: stream.next() };
             }, options?.signal);
             if (!result) {

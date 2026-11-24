@@ -1,6 +1,12 @@
 import type { SqlExecutor } from '@orot/storage';
-import { supportedTypedHeartRatePeriod, typedHeartRateMaxRows } from '../typedHeartRateWindow';
-import { readTypedHeartRateSnapshot, typedHeartRateContextFits } from '../typedHeartRateEvidence';
+import {
+  supportedTypedHeartRatePeriod,
+  typedHeartRateMaxRows,
+} from '../typedHeartRateWindow';
+import {
+  readTypedHeartRateSnapshot,
+  typedHeartRateContextFits,
+} from '../typedHeartRateEvidence';
 import { readHealthContextGeneration } from './generation';
 import type { HealthContextReport, HealthContextWindow } from './types';
 
@@ -21,7 +27,13 @@ export async function readTypedHeartRateContext(
   const before = await readHealthContextGeneration(tx);
   const fits = await typedHeartRateContextFits(tx, category, window, signal);
   const proof = fits
-    ? await readTypedHeartRateSnapshot(tx, category, window, signal, typedHeartRateMaxRows)
+    ? await readTypedHeartRateSnapshot(
+        tx,
+        category,
+        window,
+        signal,
+        typedHeartRateMaxRows,
+      )
     : null;
   const generation = await readHealthContextGeneration(tx);
   if (
@@ -38,7 +50,11 @@ export async function readTypedHeartRateContext(
     symptoms: { entryCount: 0, recordedDays: 0, latest: [] },
     limitations: proof
       ? []
-      : [fits ? 'typed_heart_rate_unavailable' : 'typed_heart_rate_scope_too_large'],
+      : [
+          fits
+            ? 'typed_heart_rate_unavailable'
+            : 'typed_heart_rate_scope_too_large',
+        ],
     ...(proof
       ? {
           typedHeartRate: {
