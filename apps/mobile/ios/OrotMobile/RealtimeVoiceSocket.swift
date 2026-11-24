@@ -1,8 +1,8 @@
 import Foundation
 
 final class RealtimeVoiceSocket: RealtimeSocketPort {
-    private let session = URLSession(configuration: .ephemeral, delegate: LiveSocketSessionDelegate(), delegateQueue: nil)
-    private var socket: URLSessionWebSocketTask?
+    private let endpoint: RealtimeVoiceSocketEndpoint
+    private var socket: RealtimeVoiceSocketTask?
     private var queue: [RealtimeSocketWrite] = []
     private var bytes = 0
     private var sending = false
@@ -14,17 +14,17 @@ final class RealtimeVoiceSocket: RealtimeSocketPort {
     var received: (([String: Any]) -> Void)?
     var failed: (() -> Void)?
 
+    init(endpoint: RealtimeVoiceSocketEndpoint = RealtimeVoiceSocketEndpoint()) {
+        self.endpoint = endpoint
+    }
+
     func open(model: String, key: String) {
         if closing != nil {
             let current = responsesTransportCurrent
             close()
             responsesTransportCurrent = current
         }
-        guard model == "gpt-live-1.1", socket == nil, captionTerminal.prepared == nil, responsesTransportCurrent?() != false else { failed?(); return }
-        var request = URLRequest(url: URL(string: "wss://api.openai.com/v1/live/sessions")!)
-        request.setValue("Bearer \(key)", forHTTPHeaderField: "Authorization")
-        let task = session.webSocketTask(with: request)
-        task.maximumMessageSize = 1024 * 1024
+        guard model == "gpt-live-1.1", socket == nil, captionTerminal.prepared == nil, responsesTransportCurrent?() != false, let task = endpoint.task(key: key) else { failed?(); return }
         socket = task
         task.resume()
         receive(task, epoch: epoch)
@@ -128,7 +128,7 @@ final class RealtimeVoiceSocket: RealtimeSocketPort {
         }
     }
 
-    private func receive(_ task: URLSessionWebSocketTask, epoch current: Int) {
+    private func receive(_ task: RealtimeVoiceSocketTask, epoch current: Int) {
         task.receive { [weak self] result in
             DispatchQueue.main.async {
                 guard let self else { return }
@@ -246,5 +246,5 @@ final class RealtimeVoiceSocket: RealtimeSocketPort {
         queue.removeAll(); bytes = 0; sending = false
     }
 
-    deinit { socket?.cancel(with: .goingAway, reason: nil); session.invalidateAndCancel() }
+    deinit { socket?.cancel(with: .goingAway, reason: nil); endpoint.invalidateAndCancel() }
 }
