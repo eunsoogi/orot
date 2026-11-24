@@ -18,6 +18,14 @@ export type SubscribeRootConversationVisibility = (
   listener: (visible: boolean) => void,
 ) => () => void;
 
+const RootVisibilityContext = createContext<
+  SubscribeRootConversationVisibility | undefined
+>(undefined);
+
+export function useRootConversationVisibilitySubscription() {
+  return useContext(RootVisibilityContext);
+}
+
 const Context = createContext<ConversationSessions | null>(null);
 /** One app lifetime owns conversations; route components only subscribe. */
 export function ConversationSessionsProvider({
@@ -42,7 +50,11 @@ export function ConversationSessionsProvider({
     [store],
   );
   useEffect(() => () => store.dispose(), [store]);
-  return <Context.Provider value={store}>{children}</Context.Provider>;
+  return (
+    <RootVisibilityContext.Provider value={subscribeRootConversationVisibility}>
+      <Context.Provider value={store}>{children}</Context.Provider>
+    </RootVisibilityContext.Provider>
+  );
 }
 export function useConversationSessions() {
   const retained = useContext(Context);

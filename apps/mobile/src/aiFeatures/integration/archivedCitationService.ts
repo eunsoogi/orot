@@ -1,3 +1,4 @@
+import { selectedRecordingArchiveIsCurrent } from './selectedRecordingArchiveScope';
 import type { EvidenceReference } from '@orot/agent-runtime';
 import type {
   ArchivedCitationTarget,
@@ -83,7 +84,12 @@ export function createArchivedCitationService(
       const entry = await selected(target, key.ordinal, signal);
       if (
         !entry ||
-        stableJson(entry.source.reference) !== stableJson(reference)
+        stableJson(entry.source.reference) !== stableJson(reference) ||
+        !(await selectedRecordingArchiveIsCurrent(
+          entry.data,
+          reference,
+          signal,
+        ))
       )
         return unavailable;
       const registry = new LocalEvidenceReferenceRegistry();
@@ -97,7 +103,13 @@ export function createArchivedCitationService(
       if (!alias || result.sourceChanged || signal.aborted) return unavailable;
       const document = await registry.readSource(alias, signal);
       const current = await selected(target, key.ordinal, signal);
-      return current && stableJson(current.source) === stableJson(entry.source)
+      return current &&
+        stableJson(current.source) === stableJson(entry.source) &&
+        (await selectedRecordingArchiveIsCurrent(
+          current.data,
+          reference,
+          signal,
+        ))
         ? document
         : unavailable;
     } catch {
