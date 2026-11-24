@@ -1,6 +1,5 @@
 import { t } from '../i18n';
 import { modelPresentation } from '../providers/selection/savedModelPresentation';
-
 import { ModelSelectionSummary } from '../layout/ModelSelectionSummary';
 import { View } from 'react-native';
 import { useMemo, useState, type ComponentProps } from 'react';
@@ -41,7 +40,7 @@ export function VoiceSettingsPanel({
   readonly active?: boolean;
   readonly livePreferences?: ComponentProps<typeof LiveVoicePreferencesPanel>;
 }) {
-  const { voice } = useModelSettingsServices();
+  const { voice, voicePair } = useModelSettingsServices();
   const catalog = useVoiceCatalog();
   const selection = useVoiceSelection(catalog);
   const { mode, model, savedModel, savedMode, busy, failedLoad, message } =
@@ -63,8 +62,8 @@ export function VoiceSettingsPanel({
   );
   const eligible =
     revision !== null &&
-    hasLiveVoiceRuntime() &&
-    hasLiveResponsesRuntime() &&
+    (voicePair?.runtimeAvailable ??
+      (hasLiveVoiceRuntime() && hasLiveResponsesRuntime())) &&
     catalog.ids.includes(liveModel) &&
     catalog.toolIds.length > 0;
   usePreviouslyReviewedVoicePair({
@@ -100,6 +99,7 @@ export function VoiceSettingsPanel({
   const pairedSave = useOpenAiVoicePairSave({
     active: active && !failedLoad && !busy,
     pair,
+    commit: voicePair?.commit,
     preferences:
       preferences?.revision === revision
         ? preferences.draft?.preferences

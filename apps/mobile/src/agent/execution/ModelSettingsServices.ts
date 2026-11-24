@@ -1,5 +1,6 @@
 import { prepareJointCalendarReview } from './prepareJointCalendarReview';
 import { createCalendarDecisionsOption } from '../../calendarModelSettings/decisionsProvider';
+import type { saveReviewedOpenAiVoicePair } from '../../voiceSettings/saveReviewedOpenAiVoicePair';
 import type { ProviderSelectionStore } from '../../providers/selection/types';
 import { createContext, useContext } from 'react';
 import { voiceSettingsStore } from '../../voiceSettings/voiceSettingsStore';
@@ -19,6 +20,10 @@ export interface ModelSettingsServices {
     | 'discoverModels'
     | 'subscribe'
   >;
+  readonly voicePair?: {
+    readonly runtimeAvailable: boolean;
+    readonly commit: typeof saveReviewedOpenAiVoicePair;
+  };
   readonly calendar: ProviderSelectionStore;
   readonly calendarOption: typeof createCalendarDecisionsOption;
   readonly saveConsent: typeof saveModelSettingsConsent;

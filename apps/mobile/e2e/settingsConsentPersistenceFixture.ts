@@ -46,16 +46,18 @@ export function createSettingsConsentPersistenceFixture(input: {
   authority(slot: FixtureSlot): ConsentAuthorityPersistence;
   selection(slot: FixtureSlot): ProviderSelectionStore;
   generation?: () => string;
+  voiceOwner?: ReturnType<typeof createConsentAuthority>;
   credentialEpoch?: (slot: FixtureSlot) => Promise<string | null>;
 }) {
   const grants = createSettingsConsentStorage(input.database);
   const owners = Object.fromEntries(
     slots.map(slot => [
       slot,
-      createConsentAuthority(
-        input.authority(slot),
-        input.generation ?? createConsentGeneration,
-      ),
+      (slot === 'voice' ? input.voiceOwner : undefined) ??
+        createConsentAuthority(
+          input.authority(slot),
+          input.generation ?? createConsentGeneration,
+        ),
     ]),
   ) as Record<FixtureSlot, ReturnType<typeof createConsentAuthority>>;
   const credentialEpoch =

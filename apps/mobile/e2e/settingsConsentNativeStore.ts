@@ -80,6 +80,10 @@ export async function openSettingsConsentNativeStore(
       const suffix = `authority-${slotName(slot)}`;
       return { read: () => read(suffix), write: value => write(suffix, value) };
     },
+    voiceResponsesAuthority: {
+      read: () => read('authority-voice-responses'),
+      write: (value: unknown) => write('authority-voice-responses', value),
+    },
     selection(slot: ConsentFixtureSlot): ProviderSelectionStore {
       const suffix = `selection-${slotName(slot)}`;
       return {
@@ -117,6 +121,9 @@ export async function openSettingsConsentNativeStore(
         await resetGenericPassword({ service: service(`authority-${slot}`) });
         await resetGenericPassword({ service: service(`selection-${slot}`) });
       }
+      await resetGenericPassword({
+        service: service('authority-voice-responses'),
+      });
       await resetGenericPassword({ service: service('recovery-credential') });
       await resetGenericPassword({ service: service('database-key') });
     },

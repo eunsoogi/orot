@@ -11,6 +11,7 @@ import { saveReviewedOpenAiVoicePair } from './saveReviewedOpenAiVoicePair';
 export function useOpenAiVoicePairSave(input: {
   active: boolean;
   pair?: OpenAiVoicePair;
+  commit?: typeof saveReviewedOpenAiVoicePair;
   preferences?: Preferences;
   onSaved: (pair: OpenAiVoicePair) => void;
   onUnavailable: () => void;
@@ -22,7 +23,12 @@ export function useOpenAiVoicePairSave(input: {
   const [error, setError] = useState('');
   const { confirmDisclosure, cancelDisclosure, disclosureSheet } =
     useSettingsDisclosure();
-  const { active, pair, preferences } = input;
+  const {
+    active,
+    pair,
+    preferences,
+    commit = saveReviewedOpenAiVoicePair,
+  } = input;
   const revision = pair?.accountRevision;
   const speech = pair?.speechModel;
   const tools = pair?.backendModel;
@@ -34,7 +40,7 @@ export function useOpenAiVoicePairSave(input: {
       operation.current = null;
       cancelDisclosure();
     };
-  }, [active, revision, speech, tools, preferences, cancelDisclosure]);
+  }, [active, revision, speech, tools, preferences, commit, cancelDisclosure]);
   return {
     busy,
     error,
@@ -52,7 +58,8 @@ export function useOpenAiVoicePairSave(input: {
           next.pair?.accountRevision === revision &&
           next.pair?.speechModel === speech &&
           next.pair?.backendModel === tools &&
-          next.preferences === preferences
+          next.preferences === preferences &&
+          (next.commit ?? saveReviewedOpenAiVoicePair) === commit
         );
       };
       setBusy(true);
@@ -65,7 +72,7 @@ export function useOpenAiVoicePairSave(input: {
           current,
           review: confirmDisclosure,
           commit: async value => {
-            presented = await saveReviewedOpenAiVoicePair({
+            presented = await commit({
               ...value,
               preferences,
             });
