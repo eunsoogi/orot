@@ -6,7 +6,8 @@ import { useConversationPresentationSnapshot } from './useConversationPresentati
 import { useMemo } from 'react';
 import { useContinuousConversationEntry } from './useContinuousConversationEntry';
 import { useConversationSessions } from './ConversationSessionsContext';
-import { ConversationRecordingComposer } from './ConversationRecordingComposer';
+import { ConversationSteeringComposer } from './ConversationSteeringComposer';
+import { composerSendWithReportBookmark } from './explicitDailyReportBookmark';
 import { ConversationWorkspace } from './ConversationWorkspace';
 import { styles } from './ConversationScreen.styles';
 import { KeyboardAvoidingView, Platform, View } from 'react-native';
@@ -136,25 +137,26 @@ export function ConversationScreen({
           isEntryCurrent={isEntryCurrent}
           routeKey={navigationRouteKey}
           composer={
-            <ConversationRecordingComposer
+            <ConversationSteeringComposer
               {...composer}
               photo={photo}
               session={session}
               store={store}
+              isEntryCurrent={isEntryCurrent}
               cancelling={session.requestActivity?.stage === 'cancelling'}
               disabled={conversationComposerDisabled(session, store.continuous)}
               compact={composerLayout.compact}
               maximumInputHeight={composerLayout.maximumInputHeight}
               preflightError={preflightError}
               onChangeText={value => store.setDraft(id, value)}
-              routeKey={navigationRouteKey}
-              isEntryCurrent={isEntryCurrent}
-              modelRevision={voiceSelection?.revision}
-              ordinaryEntry={
-                !entryContext || entryContext.intent === 'conversation'
-              }
-              send={onSend}
-              prepare={prepareVisitQuestions}
+              onSend={composerSendWithReportBookmark(
+                store,
+                id,
+                isEntryCurrent,
+                onSend,
+                prepareVisitQuestions,
+              )}
+              onCancel={() => store.cancel(id)}
             />
           }
         >
