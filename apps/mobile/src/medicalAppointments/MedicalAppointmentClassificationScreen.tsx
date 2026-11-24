@@ -28,7 +28,7 @@ interface MedicalAppointmentClassificationScreenProps {
   readonly onOpenProviderSelection?: () => void;
 }
 
-/** One import scans every returned event and saves only confidently medical occurrences. */
+/** Import only confidently medical occurrences from the current authorized Calendar view. */
 export default function MedicalAppointmentClassificationScreen({
   bridge,
   calendarSync,
@@ -189,7 +189,11 @@ export default function MedicalAppointmentClassificationScreen({
         ? [copy.imported(imported), preserved ? copy.preserved(preserved) : '']
             .filter(Boolean)
             .join(' ')
-        : copy.noMedical;
+        : result.candidates.some(
+              candidate => candidate.unresolvedCalendarIdentity,
+            )
+          ? ''
+          : copy.noMedical;
       const incomplete = result.status !== 'complete';
       setMessage(
         saveFailure ||
