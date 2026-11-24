@@ -19,7 +19,6 @@ import type {
   ProviderSelectionOption,
   ProviderSelectionStore,
 } from '../types';
-
 jest.mock(
   'react-native-safe-area-context',
   () => require('react-native-safe-area-context/jest/mock').default,
@@ -206,6 +205,7 @@ it('starts every model tab with exactly one identically styled selection card', 
     }),
     save: jest.fn(),
     accountStatus: async () => ({ connected: false, revision: 0 }),
+    accountRevisionMatches: revision => revision === 0,
     discoverModels: jest.fn(),
     subscribe: () => () => undefined,
   };

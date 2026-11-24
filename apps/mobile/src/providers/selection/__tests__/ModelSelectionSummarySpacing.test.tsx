@@ -16,6 +16,7 @@ test('uses the same spacing below the selection summary in all three Settings ta
     }),
     save: jest.fn(),
     accountStatus: async () => ({ connected: false, revision: 0 }),
+    accountRevisionMatches: revision => revision === 0,
     discoverModels: jest.fn(),
     subscribe: () => () => undefined,
   };
