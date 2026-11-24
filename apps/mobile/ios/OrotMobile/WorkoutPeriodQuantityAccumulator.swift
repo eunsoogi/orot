@@ -12,6 +12,16 @@ struct WorkoutPeriodQuantityAccumulator {
         }
     }
 
+    enum RetrievalRoute: Equatable {
+        case singleton
+        case series
+    }
+
+    static func retrievalRoute(quantityCount: Int) -> RetrievalRoute? {
+        if quantityCount == 1 { return .singleton }
+        return quantityCount > 1 ? .series : nil
+    }
+
     struct Parent {
         let quantityCount: Int
         let eligibleWindows: Set<Window>
