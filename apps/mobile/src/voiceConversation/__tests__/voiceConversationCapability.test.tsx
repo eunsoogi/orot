@@ -1,7 +1,6 @@
 import { render } from '@testing-library/react-native';
 import { VoiceModelOption } from '../../voiceSettings/VoiceModelOption';
 import { voiceModels } from '../../voiceSettings/voiceModels';
-import { t } from '../../i18n';
 import { liveModel } from '../../voiceSettings/liveVoicePreferences';
 import { voiceConversationCapability } from '../voiceConversationCapability';
 
@@ -43,18 +42,7 @@ test.each([
   },
 );
 
-test('shows the unsupported tool notice in the Live model option only', async () => {
-  const modelNotice = t('modelSettings.liveVoiceToolsUnavailable');
-  const local = await render(
-    <VoiceModelOption
-      item={voiceModels[0]}
-      selected
-      disabled={false}
-      onPress={jest.fn()}
-    />,
-  );
-  expect(local.queryByText(modelNotice)).toBeNull();
-  await local.unmount();
+test('the Live model row keeps its model ID without repeating capability or processing copy', async () => {
   const live = await render(
     <VoiceModelOption
       item={voiceModels[1]}
@@ -63,6 +51,8 @@ test('shows the unsupported tool notice in the Live model option only', async ()
       onPress={jest.fn()}
     />,
   );
-  expect(live.getByText(modelNotice)).toBeVisible();
+  expect(live.getByText(liveModel)).toBeVisible();
+  expect(live.queryByText(/API에서 음성 대화/)).toBeNull();
+  expect(live.queryByText(/기본 음성 모드/)).toBeNull();
   expect(live.getByRole('radio')).toBeEnabled();
 });

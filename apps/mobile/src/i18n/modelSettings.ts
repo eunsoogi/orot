@@ -33,8 +33,6 @@ export const modelSettingsKo = {
     '통화 중 말한 음성과 이 통화의 대화만 전송해요.',
   'modelSettings.liveVoiceConsentNotice':
     '같은 계정과 모델로 음성 대화를 시작할 때 다시 묻지 않아요. 모델 설정에서 동의를 변경할 수 있어요.',
-  'modelSettings.liveVoiceToolsUnavailable':
-    '기본 음성 모드에서는 도구를 사용하지 않아요.',
   'modelSettings.liveVoiceModelTab': '음성 모델',
   'modelSettings.liveResponsesTitle': '도구 호출 모델',
   'modelSettings.liveResponsesDescription':
@@ -53,8 +51,6 @@ export const modelSettingsKo = {
     'OpenAI가 이 통화와 관련된 대화 내용을 {model}로 처리해요. 앱은 요청하고 승인한 기간의 일반 심박수를 기기에서 집계해요. 3일 이상에 걸쳐 측정값이 3개 이상일 때만 반올림한 평균과 표본 수를 계산하며, 그 결과를 별도로 확인하고 동의한 경우에만 전송해요. 개별 수치, 측정 시각, 메모, 투약 정보와 이전 대화를 앱이 자동으로 첨부하지 않아요.',
   'modelSettings.liveResponsesConsentNotice':
     '기존 OpenAI API 계정을 사용하며 음성 통화와 별도로 API 사용료가 발생할 수 있어요. 설정에서 언제든 끌 수 있어요.',
-  'modelSettings.liveVoiceProcessing':
-    'OpenAI Live API에서 음성 대화를 처리해요.',
   'modelSettings.liveVoiceUnselected': '선택',
   'modelSettings.liveVoicePreferenceLoading': '음성 설정을 불러오는 중이에요.',
   'modelSettings.liveVoicePreferenceUnavailable':

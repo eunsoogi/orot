@@ -112,13 +112,13 @@ test('the OpenAI-only sub-tabs separate choice and approval, keep drafts, and re
   const local = within(screen.getByTestId('voice-model-group-local'));
   expect(local.getByTestId('voice-model-apple-system-speech')).toBeTruthy();
   expect(local.queryByTestId('openai-voice-model-tabs')).toBeNull();
-  expect(
-    StyleSheet.flatten(
-      screen.getByTestId('openai-voice-model-tabs').parent?.props.style,
-    ),
-  ).toMatchObject({
-    paddingHorizontal: providerCatalogContentInset,
+  const strip = screen.getByTestId('openai-voice-model-tabs');
+  expect(StyleSheet.flatten(strip.props.style)).toMatchObject({
+    marginHorizontal: providerCatalogContentInset,
   });
+  expect(StyleSheet.flatten(strip.parent?.props.style)).not.toHaveProperty(
+    'paddingHorizontal',
+  );
   expect(tab('speech')).toHaveTextContent('음성 모델');
   expect(tab('tools')).toHaveTextContent('도구 호출 모델');
   expect(screen.queryByTestId('live-responses-setting')).toBeNull();
@@ -129,7 +129,10 @@ test('the OpenAI-only sub-tabs separate choice and approval, keep drafts, and re
   expect(language()).toHaveProp('accessibilityValue', { text: '영어' });
 
   await fireEvent.press(screen.getByTestId('voice-model-refresh'));
-  await screen.findByTestId('voice-model-gpt-live-1.1');
+  const speechRow = await screen.findByTestId('voice-model-gpt-live-1.1');
+  expect(StyleSheet.flatten(speechRow.props.style)).toMatchObject({
+    padding: providerCatalogContentInset,
+  });
   await fireEvent.press(tab('tools'));
   expect(tab('tools').props.accessibilityState).toMatchObject({
     selected: true,
@@ -146,6 +149,9 @@ test('the OpenAI-only sub-tabs separate choice and approval, keep drafts, and re
     disabled: false,
   });
   expect(row('gpt-6-sol')).toBeEnabled();
+  expect(StyleSheet.flatten(row('gpt-6-sol').props.style)).toMatchObject({
+    padding: providerCatalogContentInset,
+  });
   expect(screen.getAllByTestId(/^live-responses-backend-/)).toHaveLength(2);
   expect(screen.queryByText('gpt-unrelated')).toBeNull();
   expect(screen.getByTestId('live-responses-active-model')).toHaveTextContent(
