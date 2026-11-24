@@ -1,7 +1,6 @@
 import { StyleSheet, View } from 'react-native';
 import type { HealthObservation } from '@orot/domain';
-import { isAppleDerivedHeartRateCategory } from '@orot/storage';
-import { AppleDerivedHeartRateSummary } from './AppleDerivedHeartRateSummary';
+import { HealthRecordsSleepChart } from './HealthRecordsSleepChart';
 import { AppButton } from '../layout/AppButton';
 import { AppText as Text } from '../layout/AppText';
 import { AppSymbol } from '../layout/AppSymbol';
@@ -39,16 +38,16 @@ export function HealthRecordsCategoryCard({
 }: HealthRecordsCategoryCardProps) {
   const title = healthRecordCategoryTitle(category);
   const appearance = healthRecordCategoryPresentation[category];
+  const now = new Date();
   const recentObservations = filterObservationsByPeriod(
     observations,
     'month',
-    new Date().toISOString(),
+    now.toISOString(),
   );
   const count =
     category === 'blood_pressure'
       ? groupBloodPressureObservations(recentObservations).length
       : recentObservations.length;
-  const eventLike = category === 'sleep' || category === 'other';
 
   return (
     <View style={styles.card} testID={'health-record-category-' + category}>
@@ -60,15 +59,7 @@ export function HealthRecordsCategoryCard({
             <AppSymbol name={appearance.symbol} color={appearance.color} />
           </View>
         }
-        action={
-          <AppButton
-            accessibilityHint={t('healthRecords.detailHint', { title })}
-            onPress={() => onOpenDetail({ category, period: 'month' })}
-            testID={'health-record-open-detail-' + category}
-            title={t('healthRecords.detail')}
-            variant="secondary"
-          />
-        }
+        action={null}
       >
         <Text accessibilityRole="header" style={styles.title}>
           {title}
@@ -104,23 +95,14 @@ export function HealthRecordsCategoryCard({
                 )}
         </Text>
       ) : null}
-      {isAppleDerivedHeartRateCategory(category) ? (
-        recentObservations.length && loadState !== 'ready' ? (
-          <Text>
-            {t(
-              loadState === 'failed'
-                ? 'healthRecords.error'
-                : 'healthRecords.loading',
-            )}
-          </Text>
-        ) : recentObservations.length ? (
-          <AppleDerivedHeartRateSummary
-            category={category}
-            observations={recentObservations}
-            partial={hasMore}
-          />
-        ) : null
-      ) : !eventLike ? (
+      {recentObservations.length > 0 && category === 'sleep' ? (
+        <HealthRecordsSleepChart
+          observations={recentObservations}
+          hasMore={hasMore}
+          loadState={loadState}
+          now={now}
+        />
+      ) : recentObservations.length > 0 && category !== 'other' ? (
         <HealthRecordsCategoryCharts
           category={category}
           observations={recentObservations}
@@ -128,6 +110,13 @@ export function HealthRecordsCategoryCard({
           loadState={loadState}
         />
       ) : null}
+      <AppButton
+        accessibilityHint={t('healthRecords.detailHint', { title })}
+        onPress={() => onOpenDetail({ category, period: 'month' })}
+        testID={'health-record-open-detail-' + category}
+        title={t('healthRecords.detail')}
+        variant="secondary"
+      />
     </View>
   );
 }

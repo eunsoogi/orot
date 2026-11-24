@@ -1,4 +1,5 @@
 import { fireEvent, render, screen } from '@testing-library/react-native';
+import type { ChartData } from '../../ui/charts';
 import type { HealthObservationPageLoader } from '@orot/storage';
 import { createRecordRepository, runMigrations } from '@orot/storage';
 import { openSqliteTestDatabase } from '../../../../../packages/storage/__tests__/sqliteTestDatabase';
@@ -11,6 +12,21 @@ import {
 } from '../commonObservations/mapper';
 import { healthKitSample } from '../commonObservations/testSupport';
 import type { CommonObservationFeature } from '../commonObservations/types';
+
+jest.mock('../../ui/charts', () => {
+  const { Text } = require('react-native');
+  return {
+    ChartPlot: ({ data, testID }: { data: ChartData; testID: string }) => (
+      <Text testID={testID}>{JSON.stringify(data)}</Text>
+    ),
+  };
+});
+
+function chartData(category: string): ChartData {
+  return JSON.parse(
+    screen.getByTestId('health-record-chart-values-' + category).props.children,
+  ) as ChartData;
+}
 
 function imported(
   feature: CommonObservationFeature,
@@ -154,7 +170,7 @@ test('scopes sparse Apple metrics to owned indexed pages and excludes them only 
   }
 });
 
-test('separates visible Apple metrics, labels loaded mean and sources, and does not turn missing into zero', async () => {
+test('plots exact Apple metrics separately with source and partial-data coverage', async () => {
   const at = new Date(Date.now() - 60_000).toISOString();
   const raw = healthObservation('raw', 'heart_rate', at);
   const first = imported('restingHeartRate', 'r1', 60, at);
@@ -183,16 +199,21 @@ test('separates visible Apple metrics, labels loaded mean and sources, and does 
   };
   const result = await render(<HealthRecordsLibraryScreen {...props} />);
   await fireEvent.press(screen.getByRole('button', { name: '안정 시 심박수' }));
-  expect(screen.getByText('불러온 측정값 2개의 평균: 71회/분')).toBeTruthy();
-  expect(screen.getByText(/측정 기간:/)).toBeTruthy();
-  expect(
-    screen.getByText(
-      /출처: 건강 앱 · Synthetic Watch, 건강 앱 · Synthetic Phone/,
-    ),
-  ).toBeTruthy();
-  expect(
-    screen.getAllByText('아직 불러오지 않은 기록이 있어요.').length,
-  ).toBeGreaterThan(0);
+  const restingChart = chartData('resting_heart_rate');
+  expect(restingChart.coverage.status).toBe('partial');
+  expect(restingChart.series.flatMap(series => series.points)).toEqual([
+    expect.objectContaining({
+      x: at,
+      value: 60,
+      source: '건강 앱 · Synthetic Watch',
+    }),
+    expect.objectContaining({
+      x: at,
+      value: 82,
+      source: '건강 앱 · Synthetic Phone',
+    }),
+  ]);
+  expect(screen.queryByText(/개의 평균:/)).toBeNull();
   await fireEvent.press(
     screen.getByTestId('health-record-open-detail-resting_heart_rate'),
   );
@@ -214,8 +235,13 @@ test('separates visible Apple metrics, labels loaded mean and sources, and does 
   await result.rerender(
     <HealthRecordsLibraryScreen {...props} refreshRevision={1} />,
   );
+  await screen.findByTestId(
+    'health-record-chart-values-walking_heart_rate_average',
+  );
+  expect(chartData('walking_heart_rate_average').series[0]?.points).toEqual([
+    expect.objectContaining({ x: at, value: 99 }),
+  ]);
   expect(
-    await screen.findByText('불러온 측정값 1개의 평균: 99회/분'),
-  ).toBeTruthy();
-  expect(screen.queryByText('불러온 측정값 2개의 평균: 71회/분')).toBeNull();
+    screen.queryByTestId('health-record-chart-values-resting_heart_rate'),
+  ).toBeNull();
 });

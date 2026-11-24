@@ -1,4 +1,8 @@
 import type { HealthObservation } from '@orot/domain';
+import {
+  classifyAppleDerivedHeartRate,
+  isAppleDerivedHeartRateCategory,
+} from '@orot/storage';
 import { t } from '../i18n';
 import { formatRecordedAt } from '../recording/formatRecordedAt';
 import type { HealthRecordCategory } from './healthRecordsLibraryModel';
@@ -24,6 +28,10 @@ function seriesLabel(category: HealthRecordCategory, concept: string): string {
       : t('healthkit.bloodPressure.component.diastolic');
   }
   switch (category) {
+    case 'resting_heart_rate':
+      return t('healthkit.commonObservations.restingHeartRate');
+    case 'walking_heart_rate_average':
+      return t('healthkit.commonObservations.walkingHeartRateAverage');
     case 'heart_rate':
       return t('healthkit.commonObservations.heartRate');
     case 'workouts':
@@ -46,6 +54,8 @@ export function buildHealthChartSeries(
   for (const observation of observations) {
     if (
       (category === 'heart_rate' && observation.concept !== 'heart_rate') ||
+      (isAppleDerivedHeartRateCategory(category) &&
+        classifyAppleDerivedHeartRate(observation) !== category) ||
       observation.value.kind !== 'quantity' ||
       !Number.isFinite(observation.value.amount) ||
       !Number.isFinite(new Date(observation.effectiveAt).getTime())
