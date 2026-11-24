@@ -2,6 +2,10 @@ import { t } from '../i18n';
 import { useEffect, useRef, useState } from 'react';
 import { useModelSettingsServices } from '../agent/execution/ModelSettingsServices';
 import { voiceModels } from './voiceModels';
+import { isLiveResponsesBackend } from './liveResponsesSettingsIdentity';
+
+const isSpeechModel = (id: string) =>
+  voiceModels.some(model => model.mode === 'openai-api' && model.id === id);
 
 const errors: Record<string, string> = {
   access: t('modelSettings.accessError'),
@@ -86,15 +90,14 @@ export function useVoiceCatalog() {
       if (request !== generation.current) return;
       if (result.revision !== revision.current)
         throw new Error('account-changed');
-      const supported = result.ids.filter(id =>
-        voiceModels.some(
-          model => model.mode === 'openai-api' && model.id === id,
-        ),
+      // Keep both approved subsets from the same explicit account refresh.
+      const supported = result.ids.filter(
+        id => isSpeechModel(id) || isLiveResponsesBackend(id),
       );
       setIds(supported);
       setFresh(true);
       setMessage(
-        supported.length
+        supported.some(isSpeechModel)
           ? t('modelSettings.modelListNotice')
           : t('modelSettings.noSupportedVoice'),
       );
@@ -111,7 +114,8 @@ export function useVoiceCatalog() {
   };
   return {
     connected,
-    ids,
+    ids: ids.filter(isSpeechModel),
+    toolIds: ids.filter(isLiveResponsesBackend),
     busy,
     fresh,
     message,

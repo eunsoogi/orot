@@ -7,7 +7,8 @@ import { AppButton } from '../layout/AppButton';
 import { AppText as Text } from '../layout/AppText';
 import { providerSettingsStyles as styles } from '../layout/providerSettingsPresentation';
 import { createRealtimeSettingsPermission } from '../voiceConversation/createRealtimeSettingsPermission';
-import { LiveVoiceCatalogSelect } from './LiveVoiceCatalogSelect';
+import { ProviderModelChoiceRow } from '../providers/selection/ProviderModelChoiceRow';
+import { ModelSelectionSummary } from '../layout/ModelSelectionSummary';
 import { liveModel } from './liveVoicePreferences';
 import {
   loadLiveResponsesSettings,
@@ -16,16 +17,26 @@ import {
 } from './liveResponsesSettings';
 import {
   type LiveResponsesBackend,
+  liveResponsesBackends,
   liveResponsesProviderId,
   liveResponsesRecipient,
 } from './liveResponsesSettingsIdentity';
 
 /** An explicit, separately disclosed Settings action; choosing GPT-Live or
  * saving its voice options never turns on Responses delegation. */
+const backendNames: Readonly<Record<LiveResponsesBackend, string>> = {
+  'gpt-6-luna': 'GPT-6 Luna',
+  'gpt-6-sol': 'GPT-6 Sol',
+};
+
 export function LiveResponsesSettingsPanel({
+  active,
   allowedModels,
+  onBusyChange,
   ownerRevision,
 }: {
+  readonly active: boolean;
+  readonly onBusyChange: (busy: boolean) => void;
   readonly allowedModels: readonly LiveResponsesBackend[];
   readonly ownerRevision: number;
 }) {
@@ -36,7 +47,6 @@ export function LiveResponsesSettingsPanel({
   >('loading');
   const [saved, setSaved] = useState<LiveResponsesBackend>();
   const [draft, setDraft] = useState<LiveResponsesBackend>();
-  const [expanded, setExpanded] = useState(false);
   const [busy, setBusy] = useState(false);
   const [failed, setFailed] = useState(false);
   const [reload, setReload] = useState(0);
@@ -51,7 +61,6 @@ export function LiveResponsesSettingsPanel({
     setStatus('loading');
     setDraft(undefined);
     setSaved(undefined);
-    setExpanded(false);
     setBusy(false);
     setFailed(false);
     let unsubscribe: (() => void) | undefined;
@@ -72,10 +81,16 @@ export function LiveResponsesSettingsPanel({
     };
   }, [ownerRevision, reload]);
 
+  useEffect(() => {
+    onBusyChange(busy);
+    return () => onBusyChange(false);
+  }, [busy, onBusyChange]);
+
   const change = async (enable: boolean) => {
     const owner = lifetime.current;
     const backend = draft;
     if (
+      !active ||
       !owner ||
       owner.signal.aborted ||
       operation.current ||
@@ -159,31 +174,37 @@ export function LiveResponsesSettingsPanel({
         {t('modelSettings.liveResponsesDescription')}
       </Text>
       {status === 'active' && saved ? (
-        <Text style={styles.detail} testID="live-responses-active-model">
-          {t('modelSettings.currentSelection')} {saved}
-        </Text>
+        <ModelSelectionSummary
+          label={t('modelSettings.currentSelection')}
+          value={`OpenAI API - ${backendNames[saved]}`}
+          testID="live-responses-active-model"
+        />
       ) : null}
       {status === 'off' || status === 'active' ? (
         <>
-          <LiveVoiceCatalogSelect<LiveResponsesBackend>
-            testID="live-responses-backend"
-            label={t('modelSettings.liveResponsesTitle')}
-            options={allowedModels.map(id => [id, id] as const)}
-            value={draft ?? saved}
-            expanded={expanded}
-            busy={busy || allowedModels.length === 0}
-            onSelect={value => {
-              if (!operation.current && allowedRef.current.includes(value)) {
-                setDraft(value);
-                setExpanded(false);
-              }
-            }}
-            onToggle={() => setExpanded(value => !value)}
-          />
+          {liveResponsesBackends.map(model => (
+            <ProviderModelChoiceRow
+              key={model}
+              testID={`live-responses-backend-${model}`}
+              title={backendNames[model]}
+              detail={model}
+              selected={(draft ?? saved) === model}
+              disabled={!active || busy || !allowedModels.includes(model)}
+              onPress={() => {
+                if (
+                  active &&
+                  !operation.current &&
+                  allowedRef.current.includes(model)
+                )
+                  setDraft(model);
+              }}
+            />
+          ))}
           <AppButton
             title={t('modelSettings.liveResponsesEnable')}
             testID="live-responses-enable"
             disabled={
+              !active ||
               busy ||
               !draft ||
               draft === saved ||
@@ -214,7 +235,7 @@ export function LiveResponsesSettingsPanel({
           {t('modelSettings.liveResponsesUnavailable')}
         </Text>
       )}
-      {disclosureSheet}
+      {active ? disclosureSheet : null}
     </View>
   );
 }

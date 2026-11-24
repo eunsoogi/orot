@@ -35,11 +35,14 @@ export const modelSettingsKo = {
     '같은 계정과 모델로 음성 대화를 시작할 때 다시 묻지 않아요. 모델 설정에서 동의를 변경할 수 있어요.',
   'modelSettings.liveVoiceToolsUnavailable':
     '기본 음성 모드에서는 도구를 사용하지 않아요.',
-  'modelSettings.liveResponsesTitle': '도구 호출용 모델',
+  'modelSettings.liveVoiceModelTab': '음성 모델',
+  'modelSettings.liveResponsesTitle': '도구 호출 모델',
   'modelSettings.liveResponsesDescription':
     '음성 대화 모델과 별도로 이 통화의 도구 요청을 처리해요. gpt-6-luna를 권장해요.',
-  'modelSettings.liveResponsesEnable': '선택한 도구 호출용 모델 사용',
+  'modelSettings.liveResponsesEnable': '선택한 도구 호출 모델 사용',
   'modelSettings.liveResponsesDisable': '음성 대화 도구 끄기',
+  'modelSettings.liveResponsesSelectVoice':
+    '도구 호출 모델을 사용하려면 먼저 OpenAI API 음성 모델을 적용해 주세요.',
   'modelSettings.liveResponsesUnavailable':
     '음성 대화 도구 설정을 확인하지 못했어요.',
   'modelSettings.liveResponsesConsentTitle':
