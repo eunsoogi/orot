@@ -194,6 +194,7 @@ export function HealthRecordsLibraryScreen({
                         window: monthWindow,
                       }
                     }
+                    workoutMonthSelected={selectedCategory === 'workouts'}
                     observations={read(category).records}
                     onOpenDetail={onOpenDetail}
                   />

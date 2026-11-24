@@ -42,4 +42,27 @@ final class WorkoutPeriodQuantityRoutingTests: XCTestCase {
         aggregate.accept(parentID: parent, start: start, end: start, bpm: 110)
         XCTAssertEqual(aggregate.finish(completed: true), .unavailable)
     }
+    func testRecordsRollingMonthUsesObservedLocalDatesAcrossDST() throws {
+        let formatter = ISO8601DateFormatter()
+        formatter.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
+        func date(_ timestamp: String) throws -> Date {
+            try XCTUnwrap(formatter.date(from: timestamp))
+        }
+        let zone = try XCTUnwrap(TimeZone(identifier: "America/Los_Angeles"))
+        let start = try date("2026-03-02T07:30:00.000Z")
+        let end = try date("2026-04-02T07:30:00.001Z")
+        let window = Accumulator.Window(start: start, end: end)
+        var rollup = try XCTUnwrap(WorkoutPeriodDailyRollup(period: window, timeZone: zone))
+        rollup.accept(start: start, bpm: 100)
+        rollup.accept(start: try date("2026-03-08T08:00:00.000Z"), bpm: 90)
+        rollup.accept(start: try date("2026-03-08T08:00:00.000Z"), bpm: 90)
+        rollup.accept(start: try date("2026-03-08T21:00:00.000Z"), bpm: 120)
+        rollup.accept(start: try date("2026-04-02T07:30:00.000Z"), bpm: 140)
+        rollup.accept(start: end, bpm: 200)
+        let days = try XCTUnwrap(rollup.verifiedDays(expectedCount: 5))
+        XCTAssertEqual(days.map(\.date), ["2026-03-01", "2026-03-08", "2026-04-02"])
+        XCTAssertEqual(days[0].statistics, .init(sampleCount: 1, minimum: 100, mean: 100, maximum: 100))
+        XCTAssertEqual(days[1].statistics, .init(sampleCount: 3, minimum: 90, mean: 100, maximum: 120))
+        XCTAssertNil(rollup.verifiedDays(expectedCount: 6))
+    }
 }
