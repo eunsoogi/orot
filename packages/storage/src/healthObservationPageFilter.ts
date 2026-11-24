@@ -24,6 +24,8 @@ export interface HealthObservationPageFilter {
   readonly category: HealthObservationPageCategory;
   readonly fromInclusive?: string;
   readonly toInclusive: string;
+  /** Workouts match their actual end and a half-open upper start bound instead of start alone. */
+  readonly matchWorkoutOverlap?: true;
 }
 
 // The same fixed expression is used by the index and every scoped reader.
@@ -38,6 +40,8 @@ const categoryExpression = `CASE
   WHEN ${concept} = 'HKCategoryTypeIdentifierSleepAnalysis' THEN 'sleep'
   ELSE 'other' END`;
 const timeExpression = localQueryTimestampKeyExpression('effective_at');
+const endedAt = "json_extract(payload_json, '$.endedAt')";
+const endTimeExpression = localQueryTimestampKeyExpression(endedAt);
 
 /** Added once during schema migration; existing rows and source times remain unchanged. */
 export async function createHealthObservationLibraryIndex(executor: SqlExecutor): Promise<void> {
@@ -60,10 +64,14 @@ export function healthObservationPagePredicate(
       : localQueryTimestampKey(TimestampSchema.parse(filter.fromInclusive));
   if (from !== null && from > to) throw new Error('Health observation period is invalid.');
   const category = filter.category;
+  const overlap = filter.matchWorkoutOverlap === true;
+  if (overlap && (category !== 'workouts' || from === null || from >= to)) {
+    throw new Error('Workout overlap period is invalid.');
+  }
   const derived = isAppleDerivedHeartRateCategory(category);
   const clauses = [
     derived ? appleDerivedHeartRatePredicate(category) : `(${categoryExpression}) = ?`,
-    `(${timeExpression}) <= ?`,
+    `(${timeExpression}) ${overlap ? '<' : '<='} ?`,
   ];
   const parameters: SqlValue[] = derived ? [to] : [category, to];
   if (category === 'other') {
@@ -74,7 +82,12 @@ export function healthObservationPagePredicate(
     clauses.push(`NOT COALESCE((${derivedPredicates}), 0)`);
   }
   if (from !== null) {
-    clauses.push(`(${timeExpression}) >= ?`);
+    // Do not gate the workout cohort by start alone: a genuine workout may cross from.
+    clauses.push(
+      overlap
+        ? `(${endedAt}) IS NOT NULL AND (${endTimeExpression}) > ?`
+        : `(${timeExpression}) >= ?`,
+    );
     parameters.push(from);
   }
   if (cursor) {
