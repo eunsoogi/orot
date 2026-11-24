@@ -1,3 +1,4 @@
+import { refreshRecentDiscreteHeartRate } from './refreshRecentDiscreteHeartRate';
 import { commitHealthKitChanges } from '../commitHealthKitChanges';
 import { healthKitSampleChangesCheckpointKey } from '../sampleChangesCheckpoint';
 import {
@@ -8,9 +9,9 @@ import {
 import { preserveIngestedAt } from './syncIdentity';
 import {
   measureCommonObservationOperation,
+  commonSyncResult as result,
   type CommonObservationRepository,
   type CommonObservationSyncResult,
-  type CommonObservationSyncStatus,
   type SyncCommonObservationChangesOptions,
 } from './syncOptions';
 import type { CommonObservationFeature } from './types';
@@ -193,6 +194,12 @@ async function syncCommonObservationChangesExclusive(
     cursorAdvanced ||= pageCursorAdvanced;
     pageCount += 1;
     if (!page.hasMore) {
+      if (options.refreshDerivedSamples && savedCheckpoint) {
+        upserted += await refreshRecentDiscreteHeartRate(
+          options,
+          options.refreshDerivedSamples,
+        );
+      }
       return result(
         upserted > 0 || deleted > 0 ? 'complete' : 'empty',
         upserted,
@@ -230,21 +237,4 @@ function serializeFeatureSync<T>(
       if (featureTails.size === 0) pendingSyncs.delete(lockIdentity);
     }
   });
-}
-
-function result(
-  status: CommonObservationSyncStatus,
-  upserted: number,
-  deleted: number,
-  skipped: number,
-  cursorAdvanced: boolean,
-): CommonObservationSyncResult {
-  return {
-    status,
-    readAuthorization: 'notObservable',
-    upserted,
-    deleted,
-    skipped,
-    cursorAdvanced,
-  };
 }
