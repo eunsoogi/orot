@@ -8,7 +8,9 @@ extension NavigationGlassSurfaceView {
         let end = hostHeight - railBottomInset
         var resolution: String?
         defer {
-            if observe { observeContextualBackResolution(resolution) }
+            if observe {
+                observeContextualBackResolution(resolution)
+            }
         }
         if layoutMode == "right", !isPageDock, hasBack {
             resolution = "local-host"
