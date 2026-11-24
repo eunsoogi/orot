@@ -139,7 +139,6 @@ export function ConversationScreen({
             <ConversationRecordingComposer
               {...composer}
               photo={photo}
-              isEntryCurrent={isEntryCurrent}
               session={session}
               store={store}
               cancelling={session.requestActivity?.stage === 'cancelling'}
