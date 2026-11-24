@@ -5,7 +5,7 @@ import {
   type ReadOnlyPeriodValidation,
 } from './readOnlyPeriodValidation';
 import {
-  mergeConversationToolEvents,
+  createConversationToolEventBuffer,
   projectConversationToolEvent,
 } from '@orot/agent-runtime';
 import { conversationSelectedIds } from './conversationSelectedIds';
@@ -33,7 +33,14 @@ export function conversationToolSnapshotReader(
   ) => {
     await ensure();
     const selected = conversationSelectedIds('e.message_id', selectedIds);
-    const turns = new Map<string, StoredConversationToolTurn>();
+    const turns = new Map<
+      string,
+      {
+        createdAt: string;
+        events: ReturnType<typeof createConversationToolEventBuffer>;
+        lineages: StoredConversationToolTurn['lineages'][number][];
+      }
+    >();
     const unavailable: {
       messageId: string;
       createdAt: string;
@@ -117,22 +124,21 @@ export function conversationToolSnapshotReader(
           continue;
         }
         const messageId = String(row.message_id);
-        const prior = turns.get(messageId);
-        turns.set(messageId, {
-          messageId,
-          createdAt: String(row.created_at),
-          toolEvents: mergeConversationToolEvents(
-            prior?.toolEvents ?? [],
-            event,
-          ),
-          lineages: [
-            ...(prior?.lineages ?? []),
-            {
-              runId: event.operationRunId,
-              callId: event.callId,
-              sources: lineage.sources,
-            },
-          ],
+        let turn = turns.get(messageId);
+        if (!turn) {
+          turn = {
+            createdAt: '',
+            events: createConversationToolEventBuffer(),
+            lineages: [],
+          };
+          turns.set(messageId, turn);
+        }
+        turn.createdAt = String(row.created_at);
+        turn.events.add(event);
+        turn.lineages.push({
+          runId: event.operationRunId,
+          callId: event.callId,
+          sources: lineage.sources,
         });
       }
     };
@@ -141,9 +147,17 @@ export function conversationToolSnapshotReader(
     else await database.transaction(work);
     // One unavailable call withholds its whole turn; no sibling payload can leak via that notice.
     return {
-      items: [...turns.values()].filter(
-        turn => !unavailable.some(item => item.messageId === turn.messageId),
-      ),
+      items: [...turns]
+        .filter(
+          ([messageId]) =>
+            !unavailable.some(item => item.messageId === messageId),
+        )
+        .map(([messageId, turn]) => ({
+          messageId,
+          createdAt: turn.createdAt,
+          toolEvents: turn.events.sorted(),
+          lineages: turn.lineages,
+        })),
       unavailable,
     };
   };
