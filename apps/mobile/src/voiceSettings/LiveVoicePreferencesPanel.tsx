@@ -184,6 +184,7 @@ export function LiveVoicePreferencesPanel({
       </Text>
     );
 
+  const voiceOpacity = { opacity: language ? opacity : 1 };
   const selectLanguage = (value: LiveVoiceLanguage) => {
     if (!language && motionAllowed) {
       opacity.setValue(0);
@@ -209,7 +210,7 @@ export function LiveVoicePreferencesPanel({
         onToggle={() => setOpen(open === 'language' ? undefined : 'language')}
         onSelect={selectLanguage}
       />
-      <Animated.View style={{ opacity: language ? opacity : 1 }}>
+      <Animated.View style={voiceOpacity}>
         <LiveVoiceCatalogSelect
           label={t('modelSettings.liveVoiceName')}
           testID="live-voice-voice"

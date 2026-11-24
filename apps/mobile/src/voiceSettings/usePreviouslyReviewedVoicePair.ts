@@ -18,7 +18,7 @@ export function usePreviouslyReviewedVoicePair(input: {
   useEffect(() => {
     if (revision === null || !eligible) return;
     let active = true;
-    void loadLiveResponsesSettings()
+    loadLiveResponsesSettings()
       .then(settings => {
         const latest = live.current;
         if (

@@ -112,8 +112,8 @@ export function VoiceSettingsPanel({
   const saveLabel = t('modelSettings.confirmVoice');
   const requestSave = () => {
     if (!saveDisabled) {
-      if (apiDraft) void pairedSave.save();
-      else void selection.save();
+      if (apiDraft) pairedSave.save();
+      else selection.save();
     }
   };
   const hasDock = useVoiceSettingsRouteSave({
