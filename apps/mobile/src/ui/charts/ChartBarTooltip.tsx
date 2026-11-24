@@ -29,7 +29,17 @@ export function ChartBarTooltip({
   const source = useRef<ComponentRef<typeof View>>(null);
   const owner = useRef(Symbol()).current;
   const touchedIndex = useRef(-1);
-  const entries = data.series
+  const workoutBars = data.metric === 'workouts' && kind === 'bar';
+  const selectable = workoutBars
+    ? {
+        ...data,
+        series: data.series.map(series => ({
+          ...series,
+          points: series.points.filter(point => point.value !== null),
+        })),
+      }
+    : data;
+  const entries = selectable.series
     .flatMap(series =>
       series.points
         .filter(point => kind !== 'line' || point.value !== null)
@@ -85,7 +95,7 @@ export function ChartBarTooltip({
         accessibilityLabel={
           entry
             ? describe(entry)
-            : chartAccessibilitySummary(data, 'day', title)
+            : chartAccessibilitySummary(selectable, 'day', title)
         }
         accessibilityHint={t('chart.pointSelectionHint')}
         accessibilityActions={[
