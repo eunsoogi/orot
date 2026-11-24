@@ -1,176 +1,130 @@
-// These route/consent fixtures omit native protected storage; continuity is exercised with real SQLite separately.
-jest.mock('../continuousSessionOption', () => ({
-  continuousSessionOption: () => ({}),
-}));
 import {
+  act,
   fireEvent,
   render,
   screen,
   waitFor,
 } from '@testing-library/react-native';
-import { NativeModules } from 'react-native';
-import { providerSuccess } from '@orot/model-runtime';
-import { runMigrations } from '@orot/storage';
-import { openSqliteTestDatabase } from '../../../../../../packages/storage/__tests__/sqliteTestDatabase';
-import { createConversationArtifactStorage } from '../../../storage/conversationArtifactStorage';
 import { ConversationScreen } from '../../../ragConversation/ConversationScreen';
-import type { ConversationSender } from '../../../ragConversation/conversationSessionTypes';
-import { ConversationSessionsProvider } from '../../../ragConversation/ConversationSessionsContext';
-import { runRagConversationTurn } from '../../../ragConversation/service';
-import { createRagConversationService } from '../ragConversationService';
-import { createConversationSessionOptions } from '../conversationSessionOptions';
-import { createConversationPhotoInputValidator } from '../conversationPhotoInputValidation';
-import { LocalEvidenceReferenceRegistry } from '../evidenceRegistry';
-import { localData } from '../featureServiceFixtures';
-import { publicEvidenceFixture } from '../testSupport/publicWebEvidenceTestSupport';
+import {
+  ConversationSessionsProvider,
+  useConversationSessions,
+} from '../../../ragConversation/ConversationSessionsContext';
+import type { ConversationSessions } from '../../../ragConversation/conversationSessionTypes';
+import { conversationDirectPhotoPorts as ports } from '../../../ragConversation/conversationDirectPhotoPorts';
+import { directPhotoComposerFixture } from '../../../ragConversation/testSupport/directPhotoComposerFixture';
+import { syntheticDirectJPEG } from '../testSupport/directPhotoSendFixture';
 
-jest.mock('../../../medicalDocuments/medicalDocumentImportService', () => ({
-  medicalDocumentImportService: {
-    selectDocument: jest.fn().mockResolvedValue({
-      id: '12345678-1234-4234-8234-123456789abc',
-      displayName: 'synthetic.jpg',
-      contentHash: `sha256:${'a'.repeat(64)}`,
-      previewData: 'data:image/jpeg;base64,c3ludGhldGlj',
-      sections: [
-        {
-          id: 'section',
-          text: 'synthetic OCR',
-          startOffset: 0,
-          endOffset: 13,
-        },
-      ],
-    }),
-    discardDocument: jest.fn().mockResolvedValue(undefined),
+jest.mock('../../../ragConversation/conversationDirectPhotoPorts', () => ({
+  conversationDirectPhotoPorts: {
+    hasPicker: jest.fn(() => true),
+    pick: jest.fn(),
+    authorization: jest.fn(),
+    grant: jest.fn(),
   },
 }));
 jest.mock('../../../ragConversation/ConversationSavedRecaps', () => ({
   ConversationSavedRecaps: () => null,
 }));
 
-test('a selected photo is explicitly approved before provider dispatch and retained with its session', async () => {
-  const db = openSqliteTestDatabase(':memory:');
-  const previous = NativeModules.MedicalDocumentImportModule;
-  NativeModules.MedicalDocumentImportModule = {
-    ensureMedicalDocumentOriginal: jest.fn().mockResolvedValue(undefined),
-  };
-  const f = publicEvidenceFixture();
-  const generate = jest.fn().mockResolvedValue(
-    providerSuccess({
-      text: JSON.stringify({
-        type: 'result',
-        value: {
-          answerKind: 'grounded',
-          answer: '사진에 합성 문구가 있어요.',
-        },
-        citations: ['e2'],
-      }),
-      toolCalls: [],
-      finishReason: 'complete',
-    }),
-  );
-  const provider = {
-    ...f.selected.provider,
-    searchPublicWeb: undefined,
-    generate,
-    capabilities: {
-      ...f.selected.provider.capabilities,
-      streaming: false,
-      toolCalling: false,
-      structuredOutput: false,
-    },
-  };
-  const selected = {
-    ...f.selected,
-    provider,
-    recipient: 'device',
-    remoteProcessing: false,
-  };
+const attach = () =>
+  fireEvent.press(screen.getByRole('button', { name: '사진 첨부' }));
+const send = () => fireEvent.press(screen.getByTestId('rag-conversation-send'));
+
+test('the real screen holds image pixels until Settings consent and saves only its completed reply in the selected session', async () => {
+  const fixture = await directPhotoComposerFixture();
+  const ordinarySend = jest.fn();
+  let store!: ConversationSessions;
+  function Screen() {
+    store = useConversationSessions();
+    return (
+      <ConversationScreen
+        onBack={() => {}}
+        onOpenSource={() => {}}
+        onSend={ordinarySend}
+      />
+    );
+  }
   try {
-    await runMigrations(db.database);
-    const storage = createConversationArtifactStorage(db.database);
-    const data = {
-      ...localData([]).data,
-      openConversationArtifactStorage: async () => storage,
-      validateConversationPhotoInput:
-        createConversationPhotoInputValidator(storage),
-    };
-    const registry = new LocalEvidenceReferenceRegistry();
-    const options = createConversationSessionOptions({
-      loadLocalData: async () => data,
-      selectedAi: async () => selected,
-      registry,
-    });
-    const send = createRagConversationService({
-      consent: f.consent,
-      queryConsent: { authorize: async () => 'authorized' },
-      externalEvidence: { search: jest.fn() },
-      loadLocalData: async () => data,
-      selectedAi: async () => selected,
-      registry,
-      ragRunner: runRagConversationTurn,
-    });
-    let preflightFails = true;
-    const sendWithPreflightFailure: ConversationSender = (...args) => {
-      if (preflightFails) {
-        preflightFails = false;
-        return Promise.reject(new Error('Synthetic pre-consent failure'));
-      }
-      return send(...args);
-    };
     const view = await render(
-      <ConversationSessionsProvider options={options}>
-        <ConversationScreen
-          onBack={() => {}}
-          onOpenSource={() => {}}
-          onSend={sendWithPreflightFailure}
-        />
+      <ConversationSessionsProvider options={fixture.options}>
+        <Screen />
       </ConversationSessionsProvider>,
     );
-    await fireEvent.press(screen.getByRole('button', { name: '사진 첨부' }));
-    await waitFor(() =>
-      expect(screen.getByTestId('conversation-photo-preview')).toBeTruthy(),
+    await act(() =>
+      store.attachExisting('selected', 0, '2026-10-05T00:00:00.000Z'),
     );
-    expect(generate).not.toHaveBeenCalled();
-    await fireEvent.press(screen.getByTestId('rag-conversation-send'));
-    await waitFor(() =>
-      expect(screen.getByTestId('conversation-photo-preview')).toBeTruthy(),
+    const first = store.getSnapshot().activeId;
+    await fireEvent.changeText(
+      screen.getByTestId('rag-conversation-input'),
+      '합성 질문',
     );
-    await waitFor(() =>
-      expect(
-        screen.getByTestId('rag-conversation-send').props.disabled,
-      ).toBeFalsy(),
+    await attach();
+    expect(screen.getByTestId('conversation-photo-preview')).toBeTruthy();
+    expect(ports.grant).not.toHaveBeenCalled();
+    expect(fixture.start).not.toHaveBeenCalled();
+
+    // A session switch retires transient image pixels, but preserves authored text.
+    await act(() => store.create());
+    expect(screen.queryByTestId('conversation-photo-preview')).toBeNull();
+    await act(() => store.select(first));
+    expect(screen.queryByTestId('conversation-photo-preview')).toBeNull();
+    expect(screen.getByTestId('rag-conversation-input').props.value).toBe(
+      '합성 질문',
     );
-    await fireEvent.press(screen.getByTestId('rag-conversation-send'));
-    await waitFor(() => expect(screen.getByText('동의하고 계속')).toBeTruthy());
-    expect(generate).not.toHaveBeenCalled();
+    await attach();
+
+    let release!: (grant: Awaited<ReturnType<typeof ports.grant>>) => void;
+    jest.mocked(ports.grant).mockImplementationOnce(
+      () =>
+        new Promise(resolve => {
+          release = resolve;
+        }),
+    );
+    await send();
+    await waitFor(() => expect(ports.grant).toHaveBeenCalledTimes(1));
+    expect(fixture.start).not.toHaveBeenCalled();
+    // The exact existing Settings grant can be denied without losing the preview.
+    await act(() => release(null));
     expect(
-      screen.getByText(`모델: ${selected.modelId}\n처리 대상: device`),
+      await screen.findByText(/사진 전송에 동의하지 않았거나/),
     ).toBeTruthy();
-    await fireEvent.press(screen.getByRole('button', { name: '취소' }));
-    await waitFor(() =>
-      expect(screen.getByTestId('conversation-photo-preview')).toBeTruthy(),
+    expect(screen.getByTestId('conversation-photo-preview')).toBeTruthy();
+    expect(fixture.start).not.toHaveBeenCalled();
+    expect(ordinarySend).not.toHaveBeenCalled();
+
+    await send();
+    await waitFor(() => expect(fixture.start).toHaveBeenCalledTimes(1));
+    expect(fixture.start).toHaveBeenCalledWith(
+      'image-request',
+      'synthetic-owner',
+      {
+        model: 'gpt-6.2-sol',
+        directPhoto: { text: '합성 질문', jpegBase64: syntheticDirectJPEG },
+      },
     );
-    expect(generate).not.toHaveBeenCalled();
-    await fireEvent.press(screen.getByTestId('rag-conversation-send'));
-    await waitFor(() => expect(screen.getByText('동의하고 계속')).toBeTruthy());
-    await fireEvent.press(
-      screen.getByRole('button', { name: '동의하고 계속' }),
-    );
-    await waitFor(() =>
-      expect(screen.getByText(/사진에 합성 문구가 있어요/)).toBeTruthy(),
-    );
-    expect(generate).toHaveBeenCalledTimes(1);
-    const sessions = await storage.listSessions();
-    expect(sessions.items).toHaveLength(1);
-    const page = await storage.list(sessions.items[0]!.id);
-    const saved = await storage.read(page.items[0]!.id);
-    expect(saved?.submittedInput?.question).toBe('');
-    expect(saved?.sources).toEqual([
-      expect.objectContaining({ kind: 'conversation_photo' }),
+    expect(await screen.findByText('합성 이미지 설명')).toBeTruthy();
+    expect(screen.queryByTestId('conversation-photo-preview')).toBeNull();
+    expect(ordinarySend).not.toHaveBeenCalled();
+    expect(fixture.ordinary).not.toHaveBeenCalled();
+    expect(await fixture.storage.listTimeline('selected', 0)).toEqual({
+      items: [],
+      nextCursor: null,
+    });
+    expect(
+      store
+        .getSnapshot()
+        .sessions.find(session => session.id === first)
+        ?.savedHistoryDisplay?.map(item => item.row),
+    ).toEqual([
+      expect.objectContaining({
+        question: '합성 질문',
+        answer: '합성 이미지 설명',
+        directPhoto: true,
+      }),
     ]);
     await view.unmount();
   } finally {
-    NativeModules.MedicalDocumentImportModule = previous;
-    db.close();
+    fixture.close();
   }
 });
