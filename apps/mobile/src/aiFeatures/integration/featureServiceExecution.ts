@@ -16,7 +16,7 @@ import { createLocalEvidenceSearchTool } from './evidenceSearchTool';
 import type { LocalEvidenceReferenceRegistry } from './evidenceRegistry';
 import type { LocalEvidenceSnapshot } from './evidenceSnapshot';
 import { requireSelectedAi } from './provider';
-import { createHealthContextTool } from './healthContextTool';
+import { bindHealthContextTool } from './bindHealthContextTool';
 import { evidenceConsentScope } from './evidenceConsentScope';
 import {
   indexChangedFeatureEvidence,
@@ -33,21 +33,9 @@ export function toolsFor(
   healthOverview = false,
   feature: 'disease' | 'rag' = 'disease',
 ) {
+  const healthContext = bindHealthContextTool(data, registry, feature);
   return [
-    ...(data.readHealthContext
-      ? [
-          // Only ordinary conversation opts into pre-dispatch refresh. The RAG
-          // input schema is also used by health summaries, which keep their own
-          // single-read freshness contract.
-          createHealthContextTool(
-            data.readHealthContext,
-            registry,
-            feature,
-            feature === 'rag',
-            data.resolveHealthContextWindow,
-          ),
-        ]
-      : []),
+    ...(healthContext ? [healthContext] : []),
     createLocalEvidenceSearchTool({
       id: 'local-personal-records',
       sourceKind: 'personal_record',

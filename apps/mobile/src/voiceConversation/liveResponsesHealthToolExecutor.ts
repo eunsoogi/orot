@@ -2,7 +2,7 @@ import { stageLiveResponsesResult } from './stageLiveResponsesResult';
 import type { JsonObject } from '@orot/model-runtime';
 import type { AiFeatureLocalData } from '../aiFeatures/integration/localData';
 import { LocalEvidenceReferenceRegistry } from '../aiFeatures/integration/evidenceRegistry';
-import { toolsFor } from '../aiFeatures/integration/featureServiceExecution';
+import { bindHealthContextTool } from '../aiFeatures/integration/bindHealthContextTool';
 import { jsonByteLength } from '../aiFeatures/integration/evidenceUtils';
 import { liveHeartRateAggregate } from './liveHeartRateAggregate';
 export type LiveManagedHealthCall = Readonly<{
@@ -165,20 +165,9 @@ export function createLiveResponsesHealthToolExecutor(input: {
       if ((await input.confirm(authority)) !== true || !(await reproof()))
         return;
       const data = await input.openData();
-      if (!current() || !data.readHealthContext) return;
+      if (!current()) return;
       const registry = new LocalEvidenceReferenceRegistry();
-      const candidate = toolsFor(
-        undefined,
-        data,
-        registry,
-        1,
-        false,
-        'rag',
-      ).find(
-        tool =>
-          tool.id === 'local-health-context' &&
-          tool.execution === 'local_read_only',
-      );
+      const candidate = bindHealthContextTool(data, registry, 'rag');
       const args: JsonObject = {
         topics: [scope.topic],
         days: scope.days,
