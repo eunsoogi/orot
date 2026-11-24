@@ -1,3 +1,4 @@
+import { clearCalendarClassificationCache } from './calendarClassificationCache';
 import {
   readHealthObservationMonthChart,
   type HealthObservationMonthChartLoader,
@@ -115,8 +116,7 @@ export function createRecordRepository(database: SqlDatabase): RecordRepository 
     ...sourceEvidenceRepositories,
     manualHistory: createManualHistoryRepository(database),
     listHealthMedicationPage: (request) => readHealthMedicationPage(database, request),
-    listHealthObservationMonthChart: (category, window) =>
-      readHealthObservationMonthChart(database, category, window),
+    listHealthObservationMonthChart: readHealthObservationMonthChart.bind(undefined, database),
     listHealthObservationPage: (cursor, limit, filter) =>
       readHealthObservationPage(database, cursor, limit, filter),
     transcripts,
@@ -153,6 +153,7 @@ export function createRecordRepository(database: SqlDatabase): RecordRepository 
       let deleted: DeletedLocalDataReferences = { sourceRecordIds: [] };
       await database.transaction(async (transaction) => {
         await clearResearchArtifacts(transaction);
+        await clearCalendarClassificationCache(transaction);
         // Fence conversations begun before this wipe, even when no source records exist.
         const conversationStore = await transaction.execute(
           "SELECT name FROM sqlite_master WHERE type = 'table' AND name = ?",

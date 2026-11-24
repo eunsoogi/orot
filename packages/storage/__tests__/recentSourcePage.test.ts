@@ -110,7 +110,7 @@ test('version 17 upgrade only installs the recent seek index and preserves exist
     await f.database.execute('DROP INDEX source_records_recent_page_idx');
     await rewindBeforeMemoryMetadata(f.database, 17);
     await runMigrations(f.database);
-    expect((await f.database.execute('PRAGMA user_version')).rows).toEqual([{ user_version: 19 }]);
+    expect((await f.database.execute('PRAGMA user_version')).rows).toEqual([{ user_version: 20 }]);
     expect(await records.sourceRecords.get(original.id)).toEqual(original);
     await expect(listRecentSourcePage(f.database)).resolves.toEqual([
       {

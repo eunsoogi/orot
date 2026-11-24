@@ -1,3 +1,4 @@
+import { calendarEventMatchesAppointment } from '../calendar/calendarSnapshot';
 import type { AppointmentRepository } from '@orot/storage';
 import type { CalendarBridge } from '../calendar/types';
 import { calendarEventsMatch } from './calendarEvidence';
@@ -34,8 +35,8 @@ export async function saveCalendarCandidate(
   // An unchanged calendar occurrence must not undo a user's cancellation or completion.
   if (
     linked &&
-    linked.status !== 'scheduled' &&
-    linked.status !== 'rescheduled'
+    (linked.startTimeAuthority === 'manual' ||
+      (linked.status !== 'scheduled' && linked.status !== 'rescheduled'))
   )
     return 'preserved';
   // Permissions and the full snapshot must still match when classification finishes.
@@ -53,6 +54,11 @@ export async function saveCalendarCandidate(
     return 'stale';
   }
   if (linked) {
+    if (
+      candidate.reusedClassification &&
+      calendarEventMatchesAppointment(current.event, linked)
+    )
+      return 'preserved';
     await repository.reconfirmCalendarEvent(linked.id, current.event);
   } else {
     await repository.confirmCalendarEvent(current.event);

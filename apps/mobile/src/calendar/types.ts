@@ -1,6 +1,12 @@
-import type { CalendarAppointmentInput } from '@orot/storage';
+import type {
+  CalendarAppointmentInput,
+  CalendarClassificationWitness,
+} from '@orot/storage';
 
-export type CalendarEvent = CalendarAppointmentInput;
+export type CalendarEvent = CalendarAppointmentInput & {
+  /** Native opaque witness: exact calendar/account and occurrence, plus classified input revision. */
+  readonly classificationWitness?: CalendarClassificationWitness;
+};
 
 /** Calendar confirmation is a plan status, never evidence of attendance. */
 export type CalendarRangeEvent = CalendarEvent & {

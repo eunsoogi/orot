@@ -1,3 +1,4 @@
+import CryptoKit
 import EventKit
 import Foundation
 
@@ -47,11 +48,7 @@ enum EventKitCalendarSnapshot {
         let matching = access == "fullAccess" ? readEvents()
             .filter { $0.startDate < end && ($0.endDate > start || $0.startDate >= start) }
             .sorted { $0.startDate < $1.startDate } : []
-        let events = matching.compactMap { event -> [String: Any]? in
-            guard var result = serialize(event) else { return nil }
-            result["calendarStatus"] = calendarStatus(event.status)
-            return result
-        }
+        let events = matching.compactMap(serialize)
         return [
             "access": access, "events": events,
             "query": [
@@ -102,24 +99,51 @@ enum EventKitCalendarSnapshot {
             ? floatingDateTime(event.endDate)
             : NSNull()
 
-        return [
-            "calendarEventIdentifier": identifier,
-            "effectiveAt": timestamp(event.startDate),
-            "endsAt": timestamp(event.endDate),
-            "calendarEventSnapshot": [
-                "title": event.title ?? "",
-                "timeZoneIdentifier": zoneValue,
-                "isAllDay": event.isAllDay,
-                "floatingStartAt": floatingStartAt,
-                "floatingEndAt": floatingEndAt,
-                "occurrenceDate": occurrenceDate,
-                "floatingOccurrenceAt": floatingOccurrenceAt,
-                "isDetached": event.isDetached,
-                "recurrenceRules": (event.recurrenceRules ?? []).map {
-                    serialize($0, isFloating: isFloating)
-                },
-            ],
+        let startAt = timestamp(event.startDate)
+        let endAt = timestamp(event.endDate)
+        let title = event.title ?? ""
+        let status = calendarStatus(event.status)
+        let snapshot: [String: Any] = [
+            "title": title,
+            "timeZoneIdentifier": zoneValue,
+            "isAllDay": event.isAllDay,
+            "floatingStartAt": floatingStartAt,
+            "floatingEndAt": floatingEndAt,
+            "occurrenceDate": occurrenceDate,
+            "floatingOccurrenceAt": floatingOccurrenceAt,
+            "isDetached": event.isDetached,
+            "recurrenceRules": (event.recurrenceRules ?? []).map {
+                serialize($0, isFloating: isFloating)
+            },
         ]
+        var result: [String: Any] = [
+            "calendarEventIdentifier": identifier, "effectiveAt": startAt, "endsAt": endAt,
+            "calendarEventSnapshot": snapshot, "calendarStatus": status,
+        ]
+        // EventKit ownership and recurring occurrence are local-only. Persist no raw
+        // account/calendar ID, title, or time just to remember a decision.
+        let occurrence = (floatingOccurrenceAt as? String) ?? (occurrenceDate as? String)
+        let recurring = event.isDetached || !(event.recurrenceRules ?? []).isEmpty
+        if !recurring || occurrence != nil, let calendar = event.calendar,
+           let source = calendar.source, !calendar.calendarIdentifier.isEmpty,
+           !source.sourceIdentifier.isEmpty,
+           let key = classificationDigest([source.sourceIdentifier, calendar.calendarIdentifier, identifier, occurrence ?? "single"]),
+           let revision = classificationRevision(startAt: startAt, endAt: endAt, isFloating: isFloating, status: status, snapshot: snapshot)
+        {
+            result["classificationWitness"] = ["occurrence": key, "revision": revision]
+        }
+        return result
+    }
+
+    static func classificationRevision(
+        startAt: String, endAt: String, isFloating: Bool, status: String, snapshot: [String: Any],
+    ) -> String? {
+        classificationDigest(["calendar-classification-input-v2", startAt, endAt, isFloating, status, snapshot])
+    }
+
+    private static func classificationDigest(_ value: [Any]) -> String? {
+        guard let bytes = try? JSONSerialization.data(withJSONObject: value, options: [.sortedKeys]) else { return nil }
+        return "v1:" + SHA256.hash(data: bytes).map { String(format: "%02x", $0) }.joined()
     }
 
     static func floatingDateTime(_ date: Date) -> String {
