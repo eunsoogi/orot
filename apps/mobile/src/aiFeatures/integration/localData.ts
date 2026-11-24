@@ -9,7 +9,11 @@ import { createLocalEvidenceData } from '../../healthEvidence/localEvidenceData'
 import type { LocalEvidenceData } from '../../healthEvidence/localEvidenceData';
 import type { LocalHealthEvidenceRepository } from '../../healthEvidence/localEvidenceRepository';
 import { SqlCipherAgentMemoryStorage } from '../../storage/agentMemoryStorage';
-import { openLocalAgentMemoryDatabase } from '../../storage/secureDatabase';
+import { createLiveHealthProofLease } from '../../healthEvidence/healthContext/liveHealthProofLease';
+import {
+  isCurrentLocalAgentMemoryDatabase,
+  openLocalAgentMemoryDatabase,
+} from '../../storage/secureDatabase';
 import type { PersistedMemoryRecord } from '@orot/agent-memory';
 import type { LocalEvidenceReferenceRegistry } from './evidenceRegistry';
 import type { createSummaryArtifactDiscovery } from './summaryArtifactDiscovery';
@@ -22,6 +26,10 @@ import type { createResearchArtifactDiscovery } from './researchArtifactDiscover
 export type { StaleEvidenceArtifact } from './transcriptInvalidations';
 
 export interface AiFeatureLocalData extends LocalEvidenceData {
+  /** Lend currentness only for the existing staged Live health source read. */
+  readonly borrowLiveHealthProof?: ReturnType<
+    typeof createLiveHealthProofLease
+  >;
   /** Local mutation capability, deliberately absent from read-only evidence tools. */
   saveConversationHistory?(
     input: import('../../storage/conversationHealthHistory').ConversationHistorySave,
@@ -106,6 +114,10 @@ async function openDefault(): Promise<AiFeatureLocalData> {
     });
   };
   const data: AiFeatureLocalData = {
+    borrowLiveHealthProof: createLiveHealthProofLease(
+      database,
+      isCurrentLocalAgentMemoryDatabase,
+    ),
     repository,
     async saveConversationHistory(input, signal) {
       const { saveConversationHealthHistory } =

@@ -2,6 +2,8 @@ import { createRecordRepository, runMigrations } from '@orot/storage';
 import { healthObservation } from '../../../../../packages/storage/__tests__/localQueryTestSupport';
 import { openSqliteTestDatabase } from '../../../../../packages/storage/__tests__/sqliteTestDatabase';
 import { localData } from '../../aiFeatures/integration/featureServiceFixtures';
+import { guardedNativeDatabase } from '../../storage/protectedReadEpoch';
+import { createLiveHealthProofLease } from '../../healthEvidence/healthContext/liveHealthProofLease';
 import { createHealthContextReader } from '../../healthEvidence/healthContext/reader';
 import {
   type createLiveResponsesHealthToolExecutor,
@@ -21,8 +23,9 @@ export const call: LiveManagedHealthCall = {
 
 export async function fixture() {
   const db = openSqliteTestDatabase(':memory:');
-  await runMigrations(db.database);
-  const records = createRecordRepository(db.database);
+  const database = guardedNativeDatabase(db.database);
+  await runMigrations(database);
+  const records = createRecordRepository(database);
   const measurement = healthObservation(
     'synthetic-health-id',
     'heart_rate',
@@ -41,9 +44,14 @@ export async function fixture() {
       ingestedAt: observation.ingestedAt,
     });
   }
-  const read = jest.fn(createHealthContextReader(db.database));
+  const read = jest.fn(createHealthContextReader(database));
   const controller = new AbortController();
   let active = call;
+  let ownsProtectedRead = true;
+  const borrowLiveHealthProof = createLiveHealthProofLease(
+    database,
+    owner => owner === database && ownsProtectedRead,
+  );
   let protectedData = true;
   let epoch = 'a'.repeat(64);
   const settle = jest.fn(
@@ -76,7 +84,11 @@ export async function fixture() {
     protectedDataCurrent: () => protectedData,
     confirm: async () => true,
     authorizeResult: async () => () => true,
-    openData: async () => ({ ...localData([]).data, readHealthContext: read }),
+    openData: async () => ({
+      ...localData([]).data,
+      readHealthContext: read,
+      borrowLiveHealthProof,
+    }),
     settle,
   };
   return {
@@ -85,6 +97,9 @@ export async function fixture() {
     read,
     settle,
     close: db.close,
+    revokeDbOwner() {
+      ownsProtectedRead = false;
+    },
     setActive(next: LiveManagedHealthCall) {
       active = next;
     },
