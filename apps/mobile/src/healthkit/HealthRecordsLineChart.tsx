@@ -18,6 +18,8 @@ import { selectHealthRecordPreviewRanks } from './healthRecordPreview';
 const metrics: Partial<Record<HealthObservationCategory, ChartMetric>> = {
   blood_pressure: 'bloodPressure',
   heart_rate: 'heartRate',
+  resting_heart_rate: 'heartRate',
+  walking_heart_rate_average: 'heartRate',
   steps: 'steps',
   workouts: 'workouts',
   body_mass: 'bodyMass',
@@ -123,8 +125,8 @@ export function HealthRecordsLineChart({
     >
       <ChartPlot
         data={data}
-        compact={preview}
-        hideDetails={preview}
+        compact={preview && category !== 'heart_rate'}
+        hideDetails={preview && category !== 'heart_rate'}
         width={width}
         height={200}
         title={healthRecordCategoryTitle(category)}

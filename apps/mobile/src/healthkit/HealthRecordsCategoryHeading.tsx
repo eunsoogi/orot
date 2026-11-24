@@ -25,9 +25,11 @@ export function HealthRecordsCategoryHeading({
         {icon}
         <View style={styles.copy}>{children}</View>
       </View>
-      <View style={stacked ? styles.stackedAction : styles.inlineAction}>
-        {action}
-      </View>
+      {action ? (
+        <View style={stacked ? styles.stackedAction : styles.inlineAction}>
+          {action}
+        </View>
+      ) : null}
     </View>
   );
 }

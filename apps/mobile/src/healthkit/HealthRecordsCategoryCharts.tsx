@@ -1,4 +1,8 @@
 import { StyleSheet, View } from 'react-native';
+import {
+  classifyAppleDerivedHeartRate,
+  isAppleDerivedHeartRateCategory,
+} from '@orot/storage';
 import type { HealthObservation } from '@orot/domain';
 import type { HealthObservationCategory } from './healthRecordsLibraryModel';
 import { selectHealthRecordPreview } from './healthRecordPreview';
@@ -18,7 +22,12 @@ export function HealthRecordsCategoryCharts({
 }) {
   const units = new Map<string, HealthObservation[]>();
   for (const observation of observations) {
-    if (observation.value.kind !== 'quantity') continue;
+    if (
+      observation.value.kind !== 'quantity' ||
+      (isAppleDerivedHeartRateCategory(category) &&
+        classifyAppleDerivedHeartRate(observation) !== category)
+    )
+      continue;
     const unit = observation.value.unit;
     const records = units.get(unit) ?? [];
     records.push(observation);

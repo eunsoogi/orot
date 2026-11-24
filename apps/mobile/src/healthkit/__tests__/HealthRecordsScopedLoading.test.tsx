@@ -62,7 +62,10 @@ test('loads each category directly and shows pressure while a Watch category rem
       /^0개 기록/,
     ),
   ).toBeNull();
-  expect(screen.getByText('기록을 불러오는 중이에요.')).toBeTruthy();
+  // Until a measured point arrives, the dedicated card status is the only loader.
+  expect(
+    screen.queryByTestId('health-record-chart-values-heart_rate'),
+  ).toBeNull();
   await fireEvent.press(screen.getByTestId('health-record-filter-sleep'));
   expect(loader).toHaveBeenCalledTimes(9);
   await act(async () => finishHeart({ records: [], nextCursor: null }));
