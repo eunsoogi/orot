@@ -1,6 +1,13 @@
 import '../src/agent/polyfills';
 import { useState } from 'react';
-import { AppRegistry, Button, StyleSheet, Text, View } from 'react-native';
+import {
+  AppRegistry,
+  AppState,
+  Button,
+  StyleSheet,
+  Text,
+  View,
+} from 'react-native';
 import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context';
 import { name as appName } from '../app.json';
 import { ConversationScreen } from '../src/ragConversation/ConversationScreen';
@@ -17,6 +24,7 @@ import {
   afterBackgroundCommit,
   backgroundQuestion,
   beforeBackgroundCommit,
+  continuedBackgroundProbeEnabled,
   observeBackground,
   preflightBackgroundCommit,
   signalBackgroundFailure,
@@ -51,6 +59,8 @@ const send: ConversationSender = async (
   observer,
 ) => {
   const background = question === backgroundQuestion;
+  let phaseObservation:
+    ReturnType<typeof AppState.addEventListener> | undefined;
   try {
     const db = await database();
     await db.execute(
@@ -86,7 +96,16 @@ const send: ConversationSender = async (
       if (background) signalBackgroundFailure();
       return { status: 'failure', kind: 'cancelled' };
     }
-    const before = background ? await beforeBackgroundCommit(db) : undefined;
+    let stayedBackground = true;
+    if (background && continuedBackgroundProbeEnabled()) {
+      phaseObservation = AppState.addEventListener('change', phase => {
+        // A foreground visit during the protected commit cannot qualify after re-backgrounding.
+        if (phase !== 'background') stayedBackground = false;
+      });
+    }
+    const before = background
+      ? await beforeBackgroundCommit(db, signal!)
+      : undefined;
     await observer!.onRetentionCandidate!(
       {
         question,
@@ -98,7 +117,7 @@ const send: ConversationSender = async (
       },
       signal!,
     );
-    if (before) await afterBackgroundCommit(db, before);
+    if (before) await afterBackgroundCommit(db, before, () => stayedBackground);
     publish?.(await readProbe());
     return { status: 'answer', answer, citations: [] };
   } catch (error) {
@@ -109,6 +128,8 @@ const send: ConversationSender = async (
       signalBackgroundFailure();
     }
     throw error;
+  } finally {
+    phaseObservation?.remove();
   }
 };
 

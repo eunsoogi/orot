@@ -1,4 +1,5 @@
 import BackgroundTasks
+import CoreFoundation
 import React
 import UIKit
 
@@ -39,6 +40,12 @@ final class ConversationContinuedProcessing {
         task != nil && !finished
     }
 
+    #if OROT_TESTS && targetEnvironment(simulator)
+        // A submitted or queued task has no witness. Only the real launched BG task does.
+        private var fixtureGrantWitness: UUID?
+        var activeFixtureGrant: String? { active ? fixtureGrantWitness?.uuidString : nil }
+    #endif
+
     init(status: @escaping (String, Int?) -> Void, expired: @escaping () -> Void) {
         self.status = status
         self.expired = expired
@@ -53,6 +60,9 @@ final class ConversationContinuedProcessing {
                 return
             }
             self.task = continued
+            #if OROT_TESTS && targetEnvironment(simulator)
+                fixtureGrantWitness = UUID()
+            #endif
             observeConversationExecution(.granted)
             status("continued-granted", nil)
             continued.expirationHandler = { [weak self] in
@@ -179,3 +189,44 @@ func conversationContinuedWorkIsActive(_ work: Any?) -> Bool {
     }
     return false
 }
+
+#if OROT_TESTS && targetEnvironment(simulator)
+    extension ConversationExecutionModule {
+        private func fixtureContinuedGrant(_ requestId: String, token: String) -> String? {
+            let settings = UserDefaults.standard
+            let app = UIApplication.shared
+            guard #available(iOS 26.0, *),
+                  settings.string(forKey: "OROT_TEST_SCENARIO") == "conversation-background-retention",
+                  settings.string(forKey: "OROT_TEST_BACKGROUND_TOKEN") == token,
+                  settings.string(forKey: "OROT_TEST_CONTINUED_GRANT") == "1",
+                  UUID(uuidString: token) != nil, app.applicationState == .background,
+                  app.isProtectedDataAvailable
+            else { return nil }
+            return (continuedGrantWithoutShortLease(requestId) as? ConversationContinuedProcessing)?.activeFixtureGrant
+        }
+
+
+        /// A test failure wakes the host without exposing request text or changing production behavior.
+        @objc(signalBackgroundFailure:)
+        func signalBackgroundFailure(_ token: String) {
+            guard UserDefaults.standard.string(forKey: "OROT_TEST_SCENARIO") == "conversation-background-retention",
+                  UUID(uuidString: token) != nil else { return }
+            let name = CFNotificationName("com.orot.tests.conversation-background-failure.\(token)" as CFString)
+            CFNotificationCenterPostNotification(CFNotificationCenterGetDarwinNotifyCenter(), name, nil, nil, true)
+        }
+
+        @objc(backgroundContinuedGrant:token:resolver:rejecter:)
+        func backgroundContinuedGrant(_ requestId: String, token: String, resolve: RCTPromiseResolveBlock, reject _: RCTPromiseRejectBlock) {
+            if let grant = fixtureContinuedGrant(requestId, token: token) { resolve(grant) }
+            else { resolve(NSNull()) }
+        }
+
+        @objc(signalContinuedBackgroundCommit:token:grant:resolver:rejecter:)
+        func signalContinuedBackgroundCommit(_ requestId: String, token: String, grant: String, resolve: RCTPromiseResolveBlock, reject _: RCTPromiseRejectBlock) {
+            guard fixtureContinuedGrant(requestId, token: token) == grant else { resolve(false); return }
+            let name = CFNotificationName("com.orot.tests.conversation-background.\(token)" as CFString)
+            CFNotificationCenterPostNotification(CFNotificationCenterGetDarwinNotifyCenter(), name, nil, nil, true)
+            resolve(true)
+        }
+    }
+#endif

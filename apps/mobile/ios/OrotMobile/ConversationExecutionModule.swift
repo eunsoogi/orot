@@ -168,6 +168,11 @@ final class ConversationExecutionModule: RCTEventEmitter {
     }
 
     #if OROT_TESTS && targetEnvironment(simulator)
+        /// Read-only fixture access; the original UIKit lease must have been released.
+        func continuedGrantWithoutShortLease(_ requestId: String) -> Any? {
+            leases[requestId] == nil ? continued[requestId] : nil
+        }
+
         /// Signal the test host only after the saved answer and an actual background lease coexist.
         @objc(signalBackgroundCommit:token:resolver:rejecter:)
         func signalBackgroundCommit(_ requestId: String, token: String, resolve: RCTPromiseResolveBlock, reject _: RCTPromiseRejectBlock) {
@@ -178,15 +183,6 @@ final class ConversationExecutionModule: RCTEventEmitter {
             let name = CFNotificationName("com.orot.tests.conversation-background.\(token)" as CFString)
             CFNotificationCenterPostNotification(CFNotificationCenterGetDarwinNotifyCenter(), name, nil, nil, true)
             resolve(true)
-        }
-
-        /// A test failure wakes the host without exposing request text or changing production behavior.
-        @objc(signalBackgroundFailure:)
-        func signalBackgroundFailure(_ token: String) {
-            guard UserDefaults.standard.string(forKey: "OROT_TEST_SCENARIO") == "conversation-background-retention",
-                  UUID(uuidString: token) != nil else { return }
-            let name = CFNotificationName("com.orot.tests.conversation-background-failure.\(token)" as CFString)
-            CFNotificationCenterPostNotification(CFNotificationCenterGetDarwinNotifyCenter(), name, nil, nil, true)
         }
     #endif
 
