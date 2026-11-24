@@ -13,6 +13,8 @@ final class RealtimeVoiceLifecycleTests: OrotFailFastTestCase {
     }
 
     func testSessionConfigurationGatesAudioAndStopClosesEverything() async throws {
+        try RealtimeVoiceNativeRegistryAssertions.assertAudioOnlySessionAdvertisesNoToolsOrRecordAccess()
+        try RealtimeVoiceNativeRegistryAssertions.assertExactOwnedRegistryMatchesWireAndRejectsUnknownOrRevokedAdmission()
         let audio = Audio(), socket = Socket()
         var activated = 0, released = 0
         let ownership = AudioSessionOwnership(configure: { _, _, _ in activated += 1 }, setActive: {

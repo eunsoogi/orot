@@ -11,7 +11,7 @@ struct LiveNativeToolRegistry {
             switch self {
             case .healthAggregate:
                 "The enabled app tool can request one bounded ordinary heart-rate average. " +
-                "Use only its approved result; do not claim other record access or actions."
+                    "Use only its approved result; do not claim other record access or actions."
             case .reviewedMemory:
                 "Use only the enabled app tool and its approved result; do not claim other record access or actions."
             }
