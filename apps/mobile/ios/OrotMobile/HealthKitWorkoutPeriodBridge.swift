@@ -46,7 +46,7 @@ private final class WorkoutPeriodReadCall: @unchecked Sendable {
     let resolve: RCTPromiseResolveBlock
 
     init?(_ raw: NSDictionary, resolve: @escaping RCTPromiseResolveBlock) {
-        guard (raw.count == 4 || raw.count == 5), let id = raw["callId"] as? String,
+        guard raw.count == 4 || raw.count == 5, let id = raw["callId"] as? String,
               id.count <= 64, id.hasPrefix("workout-period-"),
               let from = raw["fromInclusive"] as? String, let to = raw["toExclusive"] as? String,
               let input = raw["workouts"] as? [[String: String]], input.count <= 512

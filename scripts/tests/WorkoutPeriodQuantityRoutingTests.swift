@@ -42,6 +42,7 @@ final class WorkoutPeriodQuantityRoutingTests: XCTestCase {
         aggregate.accept(parentID: parent, start: start, end: start, bpm: 110)
         XCTAssertEqual(aggregate.finish(completed: true), .unavailable)
     }
+
     func testRecordsRollingMonthUsesObservedLocalDatesAcrossDST() throws {
         let formatter = ISO8601DateFormatter()
         formatter.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
@@ -53,11 +54,14 @@ final class WorkoutPeriodQuantityRoutingTests: XCTestCase {
         let end = try date("2026-04-02T07:30:00.001Z")
         let window = Accumulator.Window(start: start, end: end)
         var rollup = try XCTUnwrap(WorkoutPeriodDailyRollup(period: window, timeZone: zone))
+        let springMidnight = try date("2026-03-08T08:00:00.000Z")
+        let laterThatDay = try date("2026-03-08T21:00:00.000Z")
+        let lastIncluded = try date("2026-04-02T07:30:00.000Z")
         rollup.accept(start: start, bpm: 100)
-        rollup.accept(start: try date("2026-03-08T08:00:00.000Z"), bpm: 90)
-        rollup.accept(start: try date("2026-03-08T08:00:00.000Z"), bpm: 90)
-        rollup.accept(start: try date("2026-03-08T21:00:00.000Z"), bpm: 120)
-        rollup.accept(start: try date("2026-04-02T07:30:00.000Z"), bpm: 140)
+        rollup.accept(start: springMidnight, bpm: 90)
+        rollup.accept(start: springMidnight, bpm: 90)
+        rollup.accept(start: laterThatDay, bpm: 120)
+        rollup.accept(start: lastIncluded, bpm: 140)
         rollup.accept(start: end, bpm: 200)
         let days = try XCTUnwrap(rollup.verifiedDays(expectedCount: 5))
         XCTAssertEqual(days.map(\.date), ["2026-03-01", "2026-03-08", "2026-04-02"])

@@ -157,7 +157,7 @@ struct WorkoutPeriodDailyRollup {
                   interval.end > cursor else { return nil }
             let next = interval.end
             let parts = calendar.dateComponents([.year, .month, .day], from: cursor)
-            guard let year = parts.year, (1...9999).contains(year),
+            guard let year = parts.year, (1 ... 9999).contains(year),
                   let month = parts.month, let day = parts.day else { return nil }
             let key = String(format: "%04d-%02d-%02d", year, month, day)
             buckets.append(.init(date: key, start: max(cursor, period.start), end: min(next, period.end)))

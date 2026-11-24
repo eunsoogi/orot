@@ -14,6 +14,7 @@ test('host regressions retain every migrated test outside the iOS inventory', ()
     WorkoutPeriodQuantityRoutingTests: [
       'testRouteSeparatesSingletonsFromRealSeries',
       'testMixedExactAssociatedInputsKeepTheSampleWeightedPeriod',
+      'testRecordsRollingMonthUsesObservedLocalDatesAcrossDST',
       'testWrongOrIncompleteMembershipAndCancellationNeverBecomeAnAverage',
     ],
     AppleNativeToolLifecycleTests: [
