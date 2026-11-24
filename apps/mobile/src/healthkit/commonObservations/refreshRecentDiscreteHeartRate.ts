@@ -43,10 +43,9 @@ export async function refreshRecentDiscreteHeartRate(
       // Do not repeatedly rescan the same incomplete snapshot on rapid launches.
       if (
         last >= Date.parse(requestedAt!) &&
-        (previous?.value === 'inspected' ||
-          (previous?.value === 'attempted' &&
-            elapsed >= 0 &&
-            elapsed < derivedInspectionRetryMs))
+        (previous?.value === 'inspected' || previous?.value === 'attempted') &&
+        elapsed >= 0 &&
+        elapsed < derivedInspectionRetryMs
       )
         return 0;
     }
@@ -118,10 +117,24 @@ async function inspectRecentDerivedSamples(
   )
     return 0;
   // Enrichment isn't a deletion; do not invalidate retained sources as if removed.
-  return repository.transaction(async writer => {
+  return repository.transaction(async (writer, sql) => {
     if (!isCurrent()) return 0;
+    if (automaticKey) {
+      // The prior read cannot authorize a queued writer after opt-out or wipe.
+      if (!sql) return 0;
+      const current = await sql.execute(
+        'SELECT value, updated_at FROM healthkit_sync_checkpoints WHERE checkpoint_key = ?',
+        [healthKitAutoSyncCheckpointKey(feature)],
+      );
+      const choice = current.rows[0];
+      if (
+        !isCurrent() ||
+        choice?.value !== 'requested' ||
+        choice.updated_at !== options.derivedAutoSyncRequest
+      )
+        return 0;
+    }
     let enriched = 0;
-    let exactMatch = false;
     for (const row of rows) {
       const existing = await writer.get('health_observation', row.id);
       if (!existing) continue;
@@ -133,13 +146,9 @@ async function inspectRecentDerivedSamples(
         JSON.stringify(previousScalar)
       )
         continue;
-      if (previousSummary) {
-        exactMatch ||=
-          JSON.stringify(previousSummary) ===
-          JSON.stringify(heartRateSampleSummary);
-        continue;
-      }
-      exactMatch = true;
+      // Keep existing stats unchanged; contradictory native subsets don't
+      // grant authority to replace another exact scoped observation.
+      if (previousSummary) continue;
       await writer.put('health_observation', {
         ...existing,
         heartRateSampleSummary,
@@ -147,13 +156,11 @@ async function inspectRecentDerivedSamples(
       enriched++;
     }
     if (automaticKey && isCurrent()) {
-      // No-op or potentially truncated reads permit a later bounded retry.
+      // Native results cannot prove the whole retained cohort was inspected,
+      // even when one exact observation matched. This is only a retry delay.
       await writer.putSyncCheckpoint({
         key: automaticKey,
-        value:
-          exactMatch && result.samples.length < derivedInspectionLimit
-            ? 'inspected'
-            : 'attempted',
+        value: 'attempted',
         updatedAt: now,
       });
     }
