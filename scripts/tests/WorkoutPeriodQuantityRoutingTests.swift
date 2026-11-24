@@ -1,6 +1,6 @@
 import Foundation
-import XCTest
 @testable import NativeSwiftRegressions
+import XCTest
 
 final class WorkoutPeriodQuantityRoutingTests: XCTestCase {
     typealias Accumulator = WorkoutPeriodQuantityAccumulator

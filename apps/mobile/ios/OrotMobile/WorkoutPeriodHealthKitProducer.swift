@@ -101,7 +101,9 @@ enum WorkoutPeriodHealthKitProducer {
                           parentCounts[sample.uuid].map({ $0 == sample.count }) ?? true,
                           parentSource[sample.uuid].map({ $0 == identity }) ?? true
                     else { return .unavailable }
-                    if route == .singleton { singletons[sample.uuid] = sample }
+                    if route == .singleton {
+                        singletons[sample.uuid] = sample
+                    }
                     parentCounts[sample.uuid] = sample.count
                     parentSource[sample.uuid] = identity
                     parentWindows[sample.uuid, default: []].insert(clipped)
