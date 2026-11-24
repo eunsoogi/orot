@@ -43,6 +43,8 @@ export interface RagConversationRunOptions {
   ) => void;
   readonly question: string;
   readonly entryIntent?: ConversationIntent;
+  /** App-owned non-ordinary routes can deny optional structured presentation. */
+  readonly suppressA2UIPresentation?: true;
   readonly authoredCurrentRequest?: boolean;
   readonly typedPossibilityReport?: boolean;
   readonly explicitPossibilityChoice?: boolean;

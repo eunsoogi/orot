@@ -2,6 +2,8 @@ import {
   providerSuccess,
   type LanguageModelRequest,
 } from '@orot/model-runtime';
+import { conversationA2UICatalog } from '../../../ragConversation/conversationA2UI';
+import { ragConversationTask } from '../../../ragConversation/task';
 import { runRagConversationTurn } from '../../../ragConversation/service';
 import { createRagConversationService } from '../ragConversationService';
 import { LocalEvidenceReferenceRegistry } from '../evidenceRegistry';
@@ -124,11 +126,38 @@ it.each([
     const [options] = ragRunner.mock.calls[0]!;
     expect(options.continuation).toBeUndefined();
     expect(options.previousMessages).toEqual([]);
+    expect(options.suppressA2UIPresentation).toBe(true);
     expect(options.workflow.tools.map(tool => tool.id)).toEqual([
       'local-saved-recording-transcript',
     ]);
     expect(JSON.stringify(generate.mock.calls)).not.toMatch(
-      /foreign|SYNTHETIC_UNRELATED_HISTORY|selected revision/,
+      /foreign|SYNTHETIC_UNRELATED_HISTORY|selected revision|a2ui|suppressA2UIPresentation/,
     );
   }, mode === 'generic-fallback'),
 );
+
+it('does not advertise or admit optional A2UI for the app-owned explicit recording route', () => {
+  const answer = 'Synthetic reply';
+  const input = {
+    request: 'Synthetic question',
+    context: { history: [], suppressA2UIPresentation: true },
+    evidence: { items: [], coverage: [], conflicts: [] },
+  };
+  const a2ui = JSON.stringify({
+    version: '1.0',
+    createSurface: {
+      surfaceId: 'orot:response:draft',
+      catalogId: conversationA2UICatalog,
+      components: [{ id: 'root', component: 'Text', text: answer }],
+    },
+  });
+  expect(
+    ragConversationTask.createResultSchema?.(input).properties,
+  ).not.toHaveProperty('a2ui');
+  expect(
+    ragConversationTask.validateResult(
+      { answerKind: 'conversation', answer, a2ui },
+      input,
+    ),
+  ).toEqual({ status: 'valid', value: { answerKind: 'conversation', answer } });
+});

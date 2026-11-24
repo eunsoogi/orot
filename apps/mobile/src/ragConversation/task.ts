@@ -23,6 +23,11 @@ import { isEvidenceIndependentConversation } from './literatureIntent';
 import { conversationTaskInput } from './conversationEntryContext';
 import { conversationRequestHistory } from './conversationRequestHistory';
 import { possibilityPrompt } from './possibilityPrompt';
+import {
+  conversationA2UIPresentationSchema,
+  admitConversationA2UIPresentation,
+} from './conversationA2UIPresentation';
+import type { ConversationA2UINode } from './conversationA2UI';
 import { withProactiveMemory } from './proactiveConversationMemory';
 export interface RagConversationMessage {
   readonly role: 'user' | 'assistant';
@@ -31,6 +36,7 @@ export interface RagConversationMessage {
 export interface GroundedRagAnswer {
   readonly answer: string;
   readonly proactiveMemory?: true;
+  readonly a2uiPresentation?: ConversationA2UINode;
   /** Omitted legacy values remain grounded; only explicit social/clarifying replies need no sources. */
   readonly answerKind?: 'grounded' | 'conversation' | 'prior_output';
   readonly literatureReferences?: readonly LiteratureIdentity[];
@@ -174,7 +180,7 @@ export const modelRoutedConversationTaskV18 = {
 
 // Preserve the shipped v18 template contract for exact checkpoints. Only fresh
 // v19 turns can propose the separately enrolled authored-routine statement.
-export const ragConversationTask = {
+export const conversationTaskV19 = {
   ...withProactiveMemory(
     routedStructuredTask,
     value => localConversationMemoryScope(value) !== undefined,
@@ -182,3 +188,48 @@ export const ragConversationTask = {
   taskVersion: '19',
   systemPrompt: modelRoutedConversationTaskV18.systemPrompt,
 };
+
+/** The optional layout cannot change evidence decisions or legacy checkpoints. */
+export const ragConversationTask: TaskResponderContract<GroundedRagAnswer> = {
+  ...conversationTaskV19,
+  taskVersion: '20',
+  createResultSchema(input) {
+    const schema = conversationTaskV19.createResultSchema!(input);
+    if (!allowsOrdinaryA2UI(input)) return schema;
+    const properties = isObject(schema.properties) ? schema.properties : {};
+    return {
+      ...schema,
+      properties: { ...properties, a2ui: conversationA2UIPresentationSchema },
+    };
+  },
+  validateResult(value, input) {
+    if (!isObject(value) || !('a2ui' in value))
+      return conversationTaskV19.validateResult(value, input);
+    const { a2ui, ...answer } = value;
+    const validated = conversationTaskV19.validateResult(answer, input);
+    if (
+      validated.status !== 'valid' ||
+      validated.value.answerKind !== 'conversation' ||
+      !allowsOrdinaryA2UI(input)
+    )
+      return validated;
+    const root = admitConversationA2UIPresentation(
+      a2ui,
+      validated.value.answer,
+    );
+    return root
+      ? { ...validated, value: { ...validated.value, a2uiPresentation: root } }
+      : validated;
+  },
+};
+
+function allowsOrdinaryA2UI({ context }: TaskResponderInput) {
+  if (Array.isArray(context)) return true;
+  return (
+    isObject(context) &&
+    !context.suppressA2UIPresentation &&
+    !context.photoAttachment &&
+    !context.targetEvidenceId &&
+    (!context.intent || context.intent === 'conversation')
+  );
+}

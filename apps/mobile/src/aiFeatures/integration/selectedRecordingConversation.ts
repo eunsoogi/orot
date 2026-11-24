@@ -131,6 +131,7 @@ async function runSelectedRecordingConversation(
     {
       question,
       previousMessages: [],
+      suppressA2UIPresentation: true,
       loadCurrentEvidence: emptyConversationSnapshot,
       rag: data.rag,
       resolveLocalEvidenceIdentity: reference => registry.resolve(reference),

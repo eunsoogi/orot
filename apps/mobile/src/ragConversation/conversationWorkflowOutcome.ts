@@ -57,6 +57,9 @@ export async function conversationWorkflowOutcome(
                 ? { proactiveMemory: true as const }
                 : {}),
               citations: [],
+              ...(result.value.a2uiPresentation && !signal?.aborted
+                ? { a2uiPresentation: result.value.a2uiPresentation }
+                : {}),
             },
       );
     }

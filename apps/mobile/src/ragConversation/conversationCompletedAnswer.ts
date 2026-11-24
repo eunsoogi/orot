@@ -137,6 +137,13 @@ export function conversationCompletedAnswer(input: {
                 ? { dailyReport: outcome.dailyReport }
                 : {}),
               citations: outcome.citations,
+              ...(!input.retentionUnavailable &&
+              !outcome.completion &&
+              !session.pendingMessage?.withholdHealthBody &&
+              session.pendingMessage?.id === messageId &&
+              outcome.a2uiPresentation
+                ? { a2uiPresentation: outcome.a2uiPresentation }
+                : {}),
               ...(input.retainedTurnId &&
               outcome.committedRecordingCitations?.target.turnId ===
                 input.retainedTurnId

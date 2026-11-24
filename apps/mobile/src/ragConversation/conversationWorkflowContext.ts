@@ -9,6 +9,7 @@ export function conversationWorkflowContext(
   const history = boundedProviderHistory(options.previousMessages);
   if (
     !options.entryIntent &&
+    !options.suppressA2UIPresentation &&
     !options.photoEvidence?.length &&
     !options.validatedPriorTurns?.length &&
     !options.priorDialogueOmitted
@@ -16,6 +17,9 @@ export function conversationWorkflowContext(
     return history as unknown as JsonValue;
   return {
     history,
+    ...(options.suppressA2UIPresentation
+      ? { suppressA2UIPresentation: true }
+      : {}),
     ...(options.photoEvidence?.length ? { photoAttachment: true } : {}),
     ...(options.entryIntent ? { intent: options.entryIntent } : {}),
     ...(options.entryIntent && options.authoredCurrentRequest

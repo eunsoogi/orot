@@ -34,6 +34,7 @@ export type RagConversationOutcome =
       readonly answer: string;
       readonly committedRecordingCitations?: CommittedConversationCitations;
       readonly proactiveMemory?: true;
+      readonly a2uiPresentation?: import('./conversationA2UI').ConversationA2UINode;
       readonly dailyReport?: import('./conversationDisplayMessage').DisplayMessage['dailyReport'];
       readonly completion?: 'partial';
       readonly citations: readonly import('@orot/agent-runtime').EvidenceReference[];
