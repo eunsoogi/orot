@@ -35,7 +35,10 @@ test.each(['user', 'assistant'] as const)(
           }
         : {}),
     };
-    const type = `conversation-${role}-message`;
+    const type =
+      role === 'user'
+        ? 'conversation-user-message'
+        : 'conversation-message-body';
     const view = await render(
       <ConversationMessage
         {...actions}
@@ -44,11 +47,17 @@ test.each(['user', 'assistant'] as const)(
       />,
     );
     const original = screen.getByTestId(type);
-    expect(original.props).toMatchObject({
-      copyOwner: `9:${id}`,
-      copyLabel: '복사',
-      copyText: 'Synthetic visible words',
-    });
+    expect(original.props.copyOwner).toBe(`9:${id}`);
+    expect(original.props.copyLabel).toBe('복사');
+    expect(original.props.copyText).toBe('Synthetic visible words');
+    if (role === 'assistant') {
+      expect(
+        screen.getByTestId('conversation-assistant-message').props.copyText,
+      ).toBeUndefined();
+      expect(
+        within(original).getByText('Synthetic visible words'),
+      ).toBeVisible();
+    }
     expect(actions.onOpenSource).not.toHaveBeenCalled();
     await view.rerender(
       <ConversationMessage
@@ -80,15 +89,15 @@ test('copies a separately visible reviewed opening only on its own bubble', asyn
       }}
     />,
   );
+  const opening = screen.getByTestId('conversation-opening-body');
+  expect(opening.props.copyOwner).toBe('7:-4:opening');
+  expect(opening.props.copyText).toBe('Synthetic reviewed opening');
+  expect(screen.getByTestId('conversation-message-body').props.copyText).toBe(
+    'Synthetic answer',
+  );
   expect(
-    screen.getByTestId('conversation-assistant-opening-message').props,
-  ).toMatchObject({
-    copyOwner: '7:-4:opening',
-    copyText: 'Synthetic reviewed opening',
-  });
-  expect(
-    screen.getByTestId('conversation-assistant-message').props.copyText,
-  ).toBe('Synthetic answer');
+    screen.getByTestId('conversation-assistant-opening-message').props.copyText,
+  ).toBeUndefined();
 });
 
 test('formats visible report headings and refuses unavailable or not-yet-admitted text', () => {
@@ -154,9 +163,9 @@ test('a citation remains an independent tap and its URL is not a copy payload', 
         }}
       />,
     );
-    expect(
-      screen.getByTestId('conversation-assistant-message').props.copyText,
-    ).toBe('Visible synthetic answer');
+    expect(screen.getByTestId('conversation-message-body').props.copyText).toBe(
+      'Visible synthetic answer',
+    );
     expect(screen.getByText('Visible synthetic answer').props.selectable).toBe(
       false,
     );

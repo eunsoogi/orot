@@ -56,11 +56,10 @@ export const styles = StyleSheet.create({
   },
   role: { fontSize: 16, fontWeight: '700' },
   assistantBody: {
-    padding: 18,
-    gap: 14,
     borderRadius: 22,
     backgroundColor: appColors.surface,
   },
+  assistantBodyContent: { padding: 18, gap: 14 },
   // Fix structured content width without removing the opposite speaker lane.
   visitQuestionsMessage: { width: '85%' },
   // Reclaim only 10pt of the body's 18pt padding for structured questions.

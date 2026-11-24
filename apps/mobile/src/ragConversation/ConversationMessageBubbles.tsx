@@ -9,7 +9,10 @@ import {
 } from './conversationBubblePaint';
 import { conversationBubbleKey } from './conversationBubbleEntrances';
 import { ConversationInitialResponse } from './ConversationInitialResponse';
-import type { ConversationBubbleCopy } from './ConversationBubbleCopyHost';
+import {
+  ConversationBubbleCopyHost,
+  type ConversationBubbleCopy,
+} from './ConversationBubbleCopyHost';
 import type { DisplayMessage } from './conversationDisplayMessage';
 import { styles } from './ConversationScreen.styles';
 
@@ -37,16 +40,15 @@ export function ConversationMessageBubbles({
         <ConversationBubbleEntrance
           entranceKey={conversationBubbleKey('opening', message.id)}
           restored={message.restoredHistory || message.id <= 0}
-          copyMenu={openingCopyMenu}
           testID="conversation-assistant-opening-message"
           style={styles.assistantMessage}
         >
-          <View testID="conversation-opening-body" style={styles.assistantBody}>
+          <ConversationBubbleBody opening copyMenu={openingCopyMenu}>
             <ConversationInitialResponse
               key={opening.callId}
               response={opening}
             />
-          </View>
+          </ConversationBubbleBody>
         </ConversationBubbleEntrance>
       ) : null}
       {beforeAnswer && message.previousOutputs?.length ? (
@@ -57,5 +59,49 @@ export function ConversationMessageBubbles({
       {beforeAnswer}
       {showBody ? children : null}
     </View>
+  );
+}
+
+/** The native paint host has no inset: Fabric would apply it again to its Paper view. */
+export function ConversationBubbleBody({
+  user,
+  opening,
+  compactStreaming,
+  copyMenu,
+  children,
+}: {
+  readonly user?: boolean;
+  readonly opening?: boolean;
+  readonly compactStreaming?: boolean;
+  readonly copyMenu?: ConversationBubbleCopy;
+  readonly children: ReactNode;
+}) {
+  if (user)
+    return (
+      <View testID="conversation-message-body" style={styles.userMessageBody}>
+        {children}
+      </View>
+    );
+  const testID = opening
+    ? 'conversation-opening-body'
+    : 'conversation-message-body';
+  const contentStyle = [
+    styles.assistantBodyContent,
+    compactStreaming && styles.compactStreamingBody,
+  ];
+  if (!copyMenu || !ConversationBubbleCopyHost)
+    return (
+      <View testID={testID} style={[styles.assistantBody, ...contentStyle]}>
+        {children}
+      </View>
+    );
+  return (
+    <ConversationBubbleCopyHost
+      testID={testID}
+      style={styles.assistantBody}
+      {...copyMenu}
+    >
+      <View style={contentStyle}>{children}</View>
+    </ConversationBubbleCopyHost>
   );
 }
