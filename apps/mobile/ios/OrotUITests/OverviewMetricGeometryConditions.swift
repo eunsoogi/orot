@@ -7,8 +7,8 @@ enum OverviewMetricGeometryConditions {
         let identifiers = [
             "overview-health-overview-section", "overview-health-overview-heading", "overview-metric-grid",
             "overview-recent-changes-section", "overview-recent-changes-heading", "overview-recent-changes-content",
-            "overview-metric-sleep", "overview-metric-heartRate",
-            "overview-metric-chart-sleep", "overview-metric-chart-heartRate",
+            "overview-metric-sleep", "overview-heart-panel",
+            "overview-metric-chart-sleep",
         ]
         var frames: [String: CGRect] = [:]
         for identifier in identifiers {
@@ -22,18 +22,17 @@ enum OverviewMetricGeometryConditions {
               let grid = frames[identifiers[2]], let recent = frames[identifiers[3]],
               let recentHeading = frames[identifiers[4]], let recentContent = frames[identifiers[5]],
               let first = frames[identifiers[6]], let second = frames[identifiers[7]],
-              let firstChart = frames[identifiers[8]], let secondChart = frames[identifiers[9]] else { return }
+              let firstChart = frames[identifiers[8]] else { return }
 
-        // The merged chart facade must keep its measured plots inside the visible metric cards.
-        for (chart, card, identifier) in [
-            (firstChart, first, "sleep"), (secondChart, second, "heartRate"),
-        ] {
-            XCTAssertGreaterThan(chart.width, 0, "\(identifier) chart width")
-            XCTAssertGreaterThan(chart.height, 0, "\(identifier) chart height")
-            XCTAssertGreaterThanOrEqual(chart.minX, card.minX - 1, "\(identifier) chart left edge")
-            XCTAssertLessThanOrEqual(chart.maxX, card.maxX + 1, "\(identifier) chart right edge")
-            XCTAssertGreaterThanOrEqual(chart.minY, card.minY - 1, "\(identifier) chart top edge")
-            XCTAssertLessThanOrEqual(chart.maxY, card.maxY + 1, "\(identifier) chart bottom edge")
+        // Sleep still has a measured plot; the textual heart panel must not contain one.
+        XCTAssertGreaterThan(firstChart.width, 0, "sleep chart width")
+        XCTAssertGreaterThan(firstChart.height, 0, "sleep chart height")
+        XCTAssertGreaterThanOrEqual(firstChart.minX, first.minX - 1, "sleep chart left edge")
+        XCTAssertLessThanOrEqual(firstChart.maxX, first.maxX + 1, "sleep chart right edge")
+        XCTAssertGreaterThanOrEqual(firstChart.minY, first.minY - 1, "sleep chart top edge")
+        XCTAssertLessThanOrEqual(firstChart.maxY, first.maxY + 1, "sleep chart bottom edge")
+        for metric in ["heartRate", "restingHeartRate", "walkingHeartRate", "workoutHeartRate"] {
+            XCTAssertFalse(UITestConditions.element(app, "overview-metric-chart-\(metric)").exists)
         }
 
         let largeText = app.launchArguments.contains("UICTContentSizeCategoryAccessibilityXXXL")
@@ -86,6 +85,13 @@ enum OverviewMetricGeometryConditions {
 
     @MainActor
     static func captureCard(_ card: XCUIElement, in app: XCUIApplication, testCase: XCTestCase) {
+        if card.identifier == "overview-heart-panel" {
+            let attachment = XCTAttachment(screenshot: app.screenshot())
+            attachment.name = "overview-heart-panel-readability"
+            attachment.lifetime = .keepAlways
+            testCase.add(attachment)
+            return
+        }
         // The summary stays grouped; the chart exposes one exact selected observation at a time.
         let metric = String(card.identifier.dropFirst("overview-metric-".count))
         let summary = UITestConditions.element(app, "overview-metric-summary-\(metric)")

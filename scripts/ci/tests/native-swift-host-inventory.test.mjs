@@ -11,6 +11,11 @@ test('host regressions retain every migrated test outside the iOS inventory', ()
       'testCatalogShrinkageAndEmptyVisibilityRetainDeletionScope',
       'testReplayExpansionAndErrorsPreserveCheckpointInvariants',
     ],
+    WorkoutPeriodQuantityRoutingTests: [
+      'testRouteSeparatesSingletonsFromRealSeries',
+      'testMixedExactAssociatedInputsKeepTheSampleWeightedPeriod',
+      'testWrongOrIncompleteMembershipAndCancellationNeverBecomeAnAverage',
+    ],
     AppleNativeToolLifecycleTests: [
       'testPrivateCloudToolResultResumesOnlyItsMatchingProducer',
       'testToolResultsCannotCrossModelRoutes',
@@ -54,4 +59,20 @@ test('host regressions retain every migrated test outside the iOS inventory', ()
       assert.ok(!inventory.includes(`OrotIntegrationTests/${suite}/${method}`));
     }
   }
+});
+
+test('the native workout period producer does not send regular discrete samples to the series iterator', () => {
+  const producer = readFileSync(
+    'apps/mobile/ios/OrotMobile/WorkoutPeriodHealthKitProducer.swift',
+    'utf8',
+  );
+  assert.match(producer, /for singleton in singletons\.values/);
+  assert.match(producer, /singleton\.quantity\.doubleValue\(for: unit\)/);
+  assert.match(
+    producer,
+    /let seriesIDs = Set\(parentCounts\.keys\)\.subtracting\(singletons\.keys\)/,
+  );
+  assert.match(producer, /if !seriesIDs\.isEmpty \{/);
+  assert.match(producer, /predicateForObjects\(with: seriesIDs\)/);
+  assert.doesNotMatch(producer, /predicateForObjects\(with: Set\(parentCounts\.keys\)\)/);
 });

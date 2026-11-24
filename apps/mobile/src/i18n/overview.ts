@@ -20,7 +20,8 @@ export const overviewKo = {
   'overview.metricSave': '저장',
   'overview.metricCancel': '취소',
   'overview.metricSelectionTitle': '건강 지표 편집',
-  'overview.metricChoose': '지표를 2개 이상 선택하세요.',
+  'overview.metricChoose':
+    '지표를 2개 이상 선택하세요. 심박수는 단독으로 표시할 수 있어요.',
   'overview.metricSelectionLoadError': '선택한 지표를 불러오지 못했어요.',
   'overview.metricSelectionLoading': '선택한 지표를 불러오는 중…',
   'overview.metricReorder': '{metric} 순서 변경',
@@ -38,6 +39,8 @@ export const overviewKo = {
   'overview.metricTruncated': '기록이 많아 이 지표를 모두 확인하지 못했어요.',
   'overview.metricSleep': '기록된 수면',
   'overview.metricHeartRate': '평균 심박수',
+  'overview.heartPanel': '심박수',
+  'overview.heartPanelRange': '범위 {minimum}–{maximum}',
   'overview.metricBodyMass': '체중',
   'overview.metricSteps': '걸음수',
   'overview.duration.hoursMinutes': '{hours}시간 {minutes}분',

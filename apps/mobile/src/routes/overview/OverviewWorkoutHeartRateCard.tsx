@@ -1,4 +1,4 @@
-import { View } from 'react-native';
+import { StyleSheet, View } from 'react-native';
 import { formatNumber, t } from '../../i18n';
 import { AppText as Text } from '../../layout/AppText';
 import { overviewMetricStyles as styles } from './overviewMetricStyles';
@@ -8,32 +8,60 @@ import { useOverviewWorkoutPeriodHeartRate } from './useOverviewWorkoutPeriodHea
 export function OverviewWorkoutHeartRateCard({
   width,
   active,
+  embedded,
 }: {
   readonly width: number | undefined;
   readonly active: boolean;
+  readonly embedded?: boolean;
 }) {
   const state = useOverviewWorkoutPeriodHeartRate(active);
   return (
     <View
-      style={[styles.card, { width: width ?? '100%' }]}
+      style={[
+        embedded ? styles.heartMetric : styles.card,
+        { width: width ?? '100%' },
+      ]}
       testID="overview-metric-workoutHeartRate"
     >
-      <Text accessibilityRole="header" style={styles.title}>
-        {t('healthRecords.workoutHeartRate.overviewTitle')}
-      </Text>
-      <Text>{t('healthRecords.workoutHeartRate.periodLabel')}</Text>
-      <Text
-        accessibilityRole="status"
-        testID="overview-workout-heart-rate-result"
-      >
-        {state.status === 'available'
-          ? t('healthRecords.workoutHeartRate.periodAverage', {
-              mean: formatNumber(state.mean, { maximumFractionDigits: 0 }),
-            })
-          : state.status === 'loading'
-            ? t('healthRecords.loading')
-            : t('healthRecords.workoutHeartRate.periodUnavailable')}
+      <View style={embedded && embeddedStyles.readingLine}>
+        <Text
+          accessibilityRole="header"
+          style={embedded ? styles.cardTitle : styles.title}
+        >
+          {t('healthRecords.workoutHeartRate.overviewTitle')}
+        </Text>
+        <Text
+          style={
+            embedded &&
+            (state.status === 'available'
+              ? styles.heartSupportingNumber
+              : styles.detail)
+          }
+          accessibilityRole="status"
+          testID="overview-workout-heart-rate-result"
+        >
+          {state.status === 'available'
+            ? t('healthRecords.workoutHeartRate.periodAverage', {
+                mean: formatNumber(state.mean, { maximumFractionDigits: 0 }),
+              })
+            : state.status === 'loading'
+              ? t('healthRecords.loading')
+              : t('healthRecords.workoutHeartRate.periodUnavailable')}
+        </Text>
+      </View>
+      <Text style={embedded && styles.detail}>
+        {t('healthRecords.workoutHeartRate.periodLabel')}
       </Text>
     </View>
   );
 }
+
+const embeddedStyles = StyleSheet.create({
+  readingLine: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    alignItems: 'baseline',
+    justifyContent: 'space-between',
+    columnGap: 8,
+  },
+});

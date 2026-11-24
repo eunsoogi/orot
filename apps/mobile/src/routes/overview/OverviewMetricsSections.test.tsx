@@ -4,6 +4,10 @@ import { OverviewMetrics } from './OverviewMetrics';
 import { useOverviewMetrics } from './useOverviewMetrics';
 
 jest.mock('./useOverviewMetrics');
+jest.mock('@react-navigation/native', () => ({
+  ...jest.requireActual('@react-navigation/native'),
+  useIsFocused: () => false,
+}));
 
 test('groups both Home sections with equal heading and content spacing', async () => {
   jest.mocked(useOverviewMetrics).mockReturnValue({

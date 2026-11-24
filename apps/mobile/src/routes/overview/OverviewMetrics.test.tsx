@@ -4,6 +4,10 @@ import { useOverviewMetrics } from './useOverviewMetrics';
 import type { OverviewMetricProjection } from './metricProjection';
 
 jest.mock('./useOverviewMetrics');
+jest.mock('@react-navigation/native', () => ({
+  ...jest.requireActual('@react-navigation/native'),
+  useIsFocused: () => false,
+}));
 jest.mock('react-native-chart-kit/v2', () => ({
   ChartKitProvider: ({ children }: { children: React.ReactNode }) => children,
   LineChart: () => null,
@@ -96,14 +100,10 @@ test('shows accessible gaps and delegates editing to a separate route', async ()
   expect(
     screen.queryByTestId('overview-metric-chart-heartRate-details'),
   ).toBeNull();
-  const label = screen.getByTestId('overview-metric-chart-heartRate-plot').props
-    .accessibilityLabel;
-  expect(label).toContain('2026-10-15');
-  expect(label).toContain('측정되지 않음');
-  expect(label).toContain('일부 기록');
-  expect(label).toContain('출처: 건강 기록');
-  expect(label).toContain('2026-10-14');
-  expect(screen.getByLabelText(/해당 날짜 측정 평균/)).toBeTruthy();
+  expect(
+    screen.queryByTestId('overview-metric-chart-heartRate-plot'),
+  ).toBeNull();
+  expect(screen.getByText('70회/분')).toBeVisible();
   await fireEvent.press(screen.getByRole('button', { name: '편집' }));
   expect(open).toHaveBeenCalledTimes(1);
   expect(screen.queryByRole('checkbox')).toBeNull();

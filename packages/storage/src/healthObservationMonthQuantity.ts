@@ -1,3 +1,4 @@
+import { isAppleDerivedHeartRateCategory } from './appleDerivedHeartRate';
 import { TimestampSchema } from '@orot/domain';
 import {
   healthObservationCategoryScope,
@@ -68,6 +69,46 @@ export function healthObservationMonthBoundaries(window: HealthObservationMonthW
   return days;
 }
 
+/** One already-admitted Apple measurement can represent multiple exact samples.
+ * Expand only complete same-source intervals whose neighbors do not overlap or
+ * touch. Otherwise keep the original reported scalar as one reading. */
+function sampledDerivedQuantitySql(measures: string) {
+  const count = payload('heartRateSampleSummary.count');
+  const min = payload('heartRateSampleSummary.minimum');
+  const max = payload('heartRateSampleSummary.maximum');
+  const mean = payload('heartRateSampleSummary.mean');
+  const eligible = `typeof(${count}) = 'integer' AND ${count} BETWEEN 2 AND 1000000
+    AND typeof(${min}) IN ('integer', 'real') AND typeof(${max}) IN ('integer', 'real')
+    AND ${min} > 0 AND ${min} <= amount AND ${max} >= amount
+    AND typeof(${mean}) IN ('integer', 'real') AND ${mean} = amount
+    AND nullif(${sourceId}, '') IS NOT NULL AND ${payload('observationKind')} = 'measurement'
+    AND interval_end >= at_key AND interval_end < upper_key`;
+  return `SELECT * FROM (WITH measures AS MATERIALIZED (${measures}),
+    neighbors AS (
+      SELECT *, max(COALESCE(interval_end, at_key)) OVER (
+        PARTITION BY bucket_at, concept, unit, source ORDER BY at_key, id
+        ROWS BETWEEN UNBOUNDED PRECEDING AND 1 PRECEDING
+      ) AS preceding_end,
+      lead(at_key) OVER (PARTITION BY bucket_at, concept, unit, source ORDER BY at_key, id) AS following_start
+      FROM measures
+    ), amounts AS (
+      SELECT *, (${eligible}) AND (preceding_end IS NULL OR preceding_end < at_key)
+        AND (following_start IS NULL OR following_start > interval_end) AS count_safe
+      FROM neighbors
+    ), samples AS (
+      SELECT bucket_at, concept, unit, source, amount,
+        CASE WHEN count_safe THEN ${count} ELSE 1 END AS weight,
+        CASE WHEN count_safe THEN ${min} ELSE amount END AS low,
+        CASE WHEN count_safe THEN ${max} ELSE amount END AS high
+      FROM amounts
+    )
+    SELECT bucket_at, concept, unit, source, SUM(weight) AS sample_count,
+      MIN(low) AS min, MAX(high) AS max, SUM(CAST(amount AS REAL) * weight) / SUM(weight) AS mean,
+      SUM(CAST(amount AS REAL) * weight) AS total
+    FROM samples GROUP BY bucket_at, concept, unit, source
+    ORDER BY bucket_at, concept, unit, source LIMIT ?)`;
+}
+
 /** SQLite sees every matching sample in the bounded month; JS gets at most
  * 1024 grouped results, not an unbounded raw observation or newest-page sample.
  * Match the same indexed category/origin predicates as detail paging. */
@@ -82,11 +123,7 @@ export async function readHealthObservationMonthQuantity(
   const unitSql = payload('value.unit');
   const conceptSql = payload('concept');
   const bind: SqlValue[] = days.flatMap((day) => [day.effectiveAt, day.lower, day.upper]);
-  const result = await executor.execute(
-    `SELECT bucket_at, ${conceptSql} AS concept, ${unitSql} AS unit, ${healthObservationChartSourceExpression} AS source,
-       COUNT(*) AS sample_count, MIN(${amount}) AS min, MAX(${amount}) AS max,
-       AVG(${amount}) AS mean, SUM(CAST(${amount} AS REAL)) AS total
-     FROM (SELECT ? AS bucket_at, ? AS lower_key, ? AS upper_key
+  const observations = `FROM (SELECT ? AS bucket_at, ? AS lower_key, ? AS upper_key
        ${days
          .slice(1)
          .map(() => 'UNION ALL SELECT ?, ?, ?')
@@ -94,11 +131,23 @@ export async function readHealthObservationMonthQuantity(
      CROSS JOIN health_observations
      WHERE ${scope.where} AND (${sortTime}) >= lower_key AND (${sortTime}) < upper_key
        AND ${payload('value.kind')} = 'quantity'
-       AND typeof(${amount}) IN ('integer', 'real') AND typeof(${unitSql}) = 'text'
-     GROUP BY bucket_at, concept, unit, source
-     ORDER BY bucket_at, concept, unit, source LIMIT ?`,
-    [...bind, ...scope.parameters, maxHealthObservationMonthBuckets + 1],
-  );
+       AND typeof(${amount}) IN ('integer', 'real') AND typeof(${unitSql}) = 'text'`;
+  const projection = `bucket_at, ${conceptSql} AS concept, ${unitSql} AS unit,
+    ${healthObservationChartSourceExpression} AS source`;
+  const sql = isAppleDerivedHeartRateCategory(category)
+    ? sampledDerivedQuantitySql(`SELECT ${projection}, id, payload_json, upper_key, (${sortTime}) AS at_key,
+        ${localQueryTimestampKeyExpression(payload('endedAt'))} AS interval_end, ${amount} AS amount ${observations}`)
+    : `SELECT ${projection},
+         COUNT(*) AS sample_count, MIN(${amount}) AS min, MAX(${amount}) AS max,
+         AVG(${amount}) AS mean, SUM(CAST(${amount} AS REAL)) AS total
+       ${observations}
+       GROUP BY bucket_at, concept, unit, source
+       ORDER BY bucket_at, concept, unit, source LIMIT ?`;
+  const result = await executor.execute(sql, [
+    ...bind,
+    ...scope.parameters,
+    maxHealthObservationMonthBuckets + 1,
+  ]);
   if (result.rows.length > maxHealthObservationMonthBuckets)
     throw new Error('Too many independent health chart buckets.');
   return result.rows.map((row) => {

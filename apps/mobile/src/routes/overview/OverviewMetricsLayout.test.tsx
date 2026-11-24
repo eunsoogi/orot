@@ -15,6 +15,10 @@ import {
 } from './overviewMetricLayoutFixtures';
 
 jest.mock('./useOverviewMetrics');
+jest.mock('@react-navigation/native', () => ({
+  ...jest.requireActual('@react-navigation/native'),
+  useIsFocused: () => false,
+}));
 const mocked = jest.mocked(useOverviewMetrics);
 
 const allOverviewMetrics: readonly OverviewMetric[] = [
@@ -59,7 +63,11 @@ function metricGrid() {
 
 function cardWidth(metric: OverviewMetric) {
   return StyleSheet.flatten(
-    screen.getByTestId(`overview-metric-${metric}`).props.style,
+    screen.getByTestId(
+      metric === 'heartRate'
+        ? 'overview-heart-panel'
+        : `overview-metric-${metric}`,
+    ).props.style,
   )?.width;
 }
 
@@ -96,6 +104,12 @@ test.each([2, 3, 4])(
     // An ordinary iPhone's measured content must keep each metric on its own row.
     expect(selection.map(cardWidth)).toEqual(Array(count).fill(348));
     for (const metric of selection) {
+      if (metric === 'heartRate') {
+        expect(
+          screen.queryByTestId('overview-metric-chart-heartRate'),
+        ).toBeNull();
+        continue;
+      }
       if (metric === 'sleep') {
         const timeline = within(
           screen.getByTestId('overview-sleep-stage-timeline'),

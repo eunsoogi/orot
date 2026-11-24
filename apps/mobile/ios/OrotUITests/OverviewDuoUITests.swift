@@ -217,7 +217,7 @@ final class OverviewDuoUITests: OrotFailFastTestCase {
             if identifier == "overview-metrics-edit" {
                 UITestConditions.scrollToAndTap(action, in: homeScroll)
                 NavigationUITestConditions.route(app, markers: ["overview-metric-selection-screen"])
-                XCTAssertTrue(app.staticTexts["지표를 2개 이상 선택하세요."].waitForAppearance())
+                XCTAssertTrue(app.staticTexts["지표를 2개 이상 선택하세요. 심박수는 단독으로 표시할 수 있어요."].waitForAppearance())
                 let editorScroll = UITestConditions.element(app, "navigation-route-scroll")
                 XCTAssertTrue(editorScroll.waitForAppearance())
                 for metric in ["sleep", "heartRate", "bodyMass", "steps"] {

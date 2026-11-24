@@ -112,7 +112,7 @@ test('production adapter opens the same existing owner and publishes only after 
   expect(projectOverviewMetricSnapshot).toHaveBeenLastCalledWith(
     expect.anything(),
     expect.any(Date),
-    ['sleep', 'heartRate'],
+    ['sleep', 'heartRate', 'restingHeartRate', 'walkingHeartRate'],
   );
   expect(publish).toHaveBeenCalledWith(
     expect.objectContaining({

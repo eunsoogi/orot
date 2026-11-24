@@ -52,6 +52,10 @@ interface SyncCommonObservationChangesSharedOptions {
   /** Observes phases without replacing the repository object used for its lock. */
   readonly instrumentation?: CommonObservationInstrumentation;
   readonly now: () => string;
+  /** The existing explicit import or the opted-in one-time automatic upgrade. */
+  readonly refreshDerivedSamples?: HealthKitNativeModule['querySamples'];
+  /** Exact previously chosen feature request; ordinary sync must never ask for access. */
+  readonly derivedAutoSyncRequest?: string;
 }
 
 export type SyncCommonObservationChangesOptions =
@@ -79,3 +83,20 @@ export type SyncCommonObservationChangesOptions =
           >;
         }
     );
+
+export function commonSyncResult(
+  status: CommonObservationSyncStatus,
+  upserted: number,
+  deleted: number,
+  skipped: number,
+  cursorAdvanced: boolean,
+): CommonObservationSyncResult {
+  return {
+    status,
+    readAuthorization: 'notObservable',
+    upserted,
+    deleted,
+    skipped,
+    cursorAdvanced,
+  };
+}

@@ -1,13 +1,12 @@
-import { useIsFocused } from '@react-navigation/native';
-import { useState } from 'react';
+import { Fragment, useState } from 'react';
 import { Pressable, useWindowDimensions, View } from 'react-native';
 import { AppText as Text } from '../../layout/AppText';
 import { AppButton } from '../../layout/AppButton';
 import { t } from '../../i18n';
 import type { ChartStatus } from '../../ui/charts';
 import {
-  isOverviewDerivedHeartRate,
   isOverviewSnapshotMetric,
+  type OverviewMetricChoice,
 } from './metricSelection';
 import { useOverviewMetrics } from './useOverviewMetrics';
 import { overviewMetricStyles as styles } from './overviewMetricStyles';
@@ -22,23 +21,10 @@ import {
 } from './overviewMetricLayout';
 import { OverviewRecentHealthChange } from './OverviewRecentHealthChange';
 import { formatOverviewMetricValue } from './metricFormatting';
-import { OverviewWorkoutHeartRateCard } from './OverviewWorkoutHeartRateCard';
-
-/** The standalone association card owns its focus separately from projected charts. */
-function FocusedWorkoutHeartRate({
-  width,
-}: {
-  readonly width: number | '100%';
-}) {
-  const focused = useIsFocused();
-  return (
-    <OverviewWorkoutHeartRateCard
-      width={typeof width === 'number' ? width : undefined}
-      active={focused}
-    />
-  );
-}
-
+import {
+  OverviewHeartPanel,
+  groupOverviewCardSelection,
+} from './OverviewHeartPanel';
 /** Shows saved calendar-day metrics; an isolated route owns uncommitted edits. */
 export function OverviewMetrics({ onEdit }: { readonly onEdit?: () => void }) {
   const data = useOverviewMetrics();
@@ -50,9 +36,10 @@ export function OverviewMetrics({ onEdit }: { readonly onEdit?: () => void }) {
       data.metrics[metric]?.comparison ? [data.metrics[metric]!] : [],
     )
     .slice(0, 2);
+  const cards = groupOverviewCardSelection(data.selection);
   const gridLayout = resolveOverviewMetricGridLayout(
     gridWidth,
-    data.selection.length,
+    cards.length,
     fontScale,
   );
   const recentChangeLayout = resolveOverviewRecentChangeLayout(
@@ -76,6 +63,31 @@ export function OverviewMetrics({ onEdit }: { readonly onEdit?: () => void }) {
       : data.state === 'stale'
         ? 'stale'
         : undefined;
+  const metricCard = (
+    metric: Exclude<OverviewMetricChoice, 'workoutHeartRate'>,
+    width: number | '100%',
+  ) => {
+    return data.metrics[metric] ? (
+      <OverviewMetricCard
+        metric={data.metrics[metric]!}
+        width={width}
+        chartStatus={chartStatus}
+      />
+    ) : (
+      <OverviewMetricChartPlaceholder
+        metric={metric}
+        status={placeholderStatus}
+        width={width}
+        emptyMessage={
+          data.state === 'ready'
+            ? metric !== 'sleep' && data.quantityTruncated
+              ? t('overview.metricTruncated')
+              : t('overview.metricWindowEmpty')
+            : undefined
+        }
+      />
+    );
+  };
   const canShowComparisons =
     data.state === 'ready' ||
     data.state === 'refreshing' ||
@@ -118,36 +130,19 @@ export function OverviewMetrics({ onEdit }: { readonly onEdit?: () => void }) {
             setGridWidth(current => (current === width ? current : width));
           }}
         >
-          {data.selection.map(metric =>
-            metric === 'workoutHeartRate' ? (
-              <FocusedWorkoutHeartRate
+          {cards.map(metric =>
+            metric === 'heartRate' ? (
+              <OverviewHeartPanel
                 key={metric}
                 width={gridLayout.cardWidth}
+                metrics={data.metrics}
+                state={data.state}
               />
-            ) : data.metrics[metric] ? (
-              <OverviewMetricCard
-                key={metric}
-                metric={data.metrics[metric]!}
-                width={gridLayout.cardWidth}
-                chartStatus={chartStatus}
-              />
-            ) : (
-              <OverviewMetricChartPlaceholder
-                key={metric}
-                metric={metric}
-                status={placeholderStatus}
-                width={gridLayout.cardWidth}
-                emptyMessage={
-                  data.state === 'ready'
-                    ? metric !== 'sleep' &&
-                      !isOverviewDerivedHeartRate(metric) &&
-                      data.quantityTruncated
-                      ? t('overview.metricTruncated')
-                      : t('overview.metricWindowEmpty')
-                    : undefined
-                }
-              />
-            ),
+            ) : isOverviewSnapshotMetric(metric) ? (
+              <Fragment key={metric}>
+                {metricCard(metric, gridLayout.cardWidth)}
+              </Fragment>
+            ) : null,
           )}
         </View>
       </View>

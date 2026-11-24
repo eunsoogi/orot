@@ -41,7 +41,7 @@ export function ClassificationMovingStage({
   readonly stage: Stage;
   readonly classified: number;
   readonly total: number;
-  readonly saving: boolean;
+  readonly saving: boolean | 'checking';
   readonly onRestart: () => void;
   readonly children: (
     dock: ReturnType<typeof classificationDockGeometry>,

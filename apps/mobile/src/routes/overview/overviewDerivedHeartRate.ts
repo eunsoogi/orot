@@ -29,11 +29,25 @@ export async function projectOverviewDerivedHeartRate(
 ) {
   const concept = concepts[metric];
   const at = localQueryTimestampKeyExpression('r.effective_at');
+  const end = localQueryTimestampKeyExpression(
+    "json_extract(r.payload_json, '$.endedAt')",
+  );
+  const stats = (name: string) =>
+    `json_extract(r.payload_json, '$.heartRateSampleSummary.${name}')`;
+  const useSummary = `${end} >= ${at} AND ${end} < days.to_key
+    AND json_type(r.payload_json, '$.heartRateSampleSummary.count') = 'integer'
+    AND ${stats('count')} BETWEEN 2 AND 1000000
+    AND ${stats('mean')} = json_extract(r.payload_json, '$.value.amount')
+    AND ${stats('minimum')} > 0 AND ${stats('minimum')} <= ${stats('mean')}
+    AND ${stats('maximum')} >= ${stats('mean')}`;
   const result = await tx.execute(
     `SELECT * FROM (WITH days(date, from_key, to_key) AS (${healthContextCalendarSql}),
       measures AS MATERIALIZED (
-        SELECT days.date, r.id, r.effective_at AS at, ${at} AS at_key,
+        SELECT days.date, r.id, r.effective_at AS at, ${at} AS at_key, ${end} AS end_key,
           json_extract(r.payload_json, '$.value.amount') AS bpm,
+          CASE WHEN ${useSummary} THEN ${stats('count')} ELSE 1 END AS weight,
+          CASE WHEN ${useSummary} THEN ${stats('minimum')} ELSE json_extract(r.payload_json, '$.value.amount') END AS low,
+          CASE WHEN ${useSummary} THEN ${stats('maximum')} ELSE json_extract(r.payload_json, '$.value.amount') END AS high,
           json_extract(r.payload_json, '$.provenance.source.sourceName') AS name,
           CASE WHEN NULLIF(json_extract(r.payload_json, '$.provenance.source.sourceIdentifier'), '') IS NULL
             THEN json_array('unidentified', r.id)
@@ -48,15 +62,31 @@ export async function projectOverviewDerivedHeartRate(
           AND json_extract(r.payload_json, '$.observationKind') = 'measurement'
           AND json_type(r.payload_json, '$.value.amount') IN ('integer', 'real')
           AND json_extract(r.payload_json, '$.value.amount') > 0
+      ), neighbors AS (
+        SELECT *,
+          max(COALESCE(end_key, at_key)) OVER (
+            PARTITION BY date, sensor ORDER BY at_key, id ROWS BETWEEN UNBOUNDED PRECEDING AND 1 PRECEDING
+          ) AS prev_end,
+          lead(at_key) OVER (PARTITION BY date, sensor ORDER BY at_key, id) AS next_start
+        FROM measures
+      ), disjoint AS (
+        SELECT *, (prev_end IS NULL OR prev_end < at_key)
+          AND (next_start IS NULL OR next_start > end_key) AS safe_interval
+        FROM neighbors
       ), winner AS (
         SELECT sensor FROM measures GROUP BY sensor ORDER BY count(*) DESC, sensor LIMIT 1
       ), ranked AS (
         SELECT *, row_number() OVER (PARTITION BY date ORDER BY at_key DESC, id) AS newest,
           row_number() OVER (PARTITION BY date ORDER BY at_key, id) AS oldest
-        FROM measures JOIN winner USING (sensor)
+        FROM disjoint JOIN winner USING (sensor)
       )
-      SELECT date, count(*) AS samples, min(bpm) AS minimum, max(bpm) AS maximum,
-        avg(bpm) AS mean, sum(bpm) AS total,
+      SELECT date,
+        sum(CASE WHEN safe_interval THEN weight ELSE 1 END) AS samples,
+        min(CASE WHEN safe_interval THEN low ELSE bpm END) AS minimum,
+        max(CASE WHEN safe_interval THEN high ELSE bpm END) AS maximum,
+        sum(bpm * CASE WHEN safe_interval THEN weight ELSE 1 END)
+          / CAST(sum(CASE WHEN safe_interval THEN weight ELSE 1 END) AS REAL) AS mean,
+        sum(bpm * CASE WHEN safe_interval THEN weight ELSE 1 END) AS total,
         max(CASE WHEN newest = 1 THEN bpm END) AS latest,
         max(CASE WHEN newest = 1 THEN at END) AS last_at,
         max(CASE WHEN oldest = 1 THEN at END) AS first_at, min(name) AS name

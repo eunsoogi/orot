@@ -127,6 +127,7 @@ enum HealthKitBoundary {
             let unit = Self.unit(for: quantity.quantityType.identifier)
             result["value"] = quantity.quantity.doubleValue(for: unit)
             result["unit"] = unit.unitString
+            result.merge(Self.derivedHeartRateSampleSummary(quantity, unit: unit) ?? [:]) { _, value in value }
             // The query uses a canonical unit because HealthKit omits each entry's display unit.
             result["sourceRepresentation"] = [
                 "status": "unavailable",

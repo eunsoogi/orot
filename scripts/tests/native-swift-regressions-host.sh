@@ -29,10 +29,10 @@ mkdir -p "$orot_host_root/Sources/NativeSwiftRegressions" "$orot_host_root/Tests
 
 # The temporary package compiles shipping sources and original assertions without
 # changing the iOS inventory or leaving host build products in the checkout.
-for source in MedicationDoseCursor AppleNativeToolRegistry AppleNativeToolGeneration AppleNativeToolTrace; do
+for source in MedicationDoseCursor WorkoutPeriodQuantityAccumulator AppleNativeToolRegistry AppleNativeToolGeneration AppleNativeToolTrace; do
   cp "$repository_root/apps/mobile/ios/OrotMobile/$source.swift" "$orot_host_root/Sources/NativeSwiftRegressions/"
 done
-for suite in MedicationDoseCursorTests AppleNativeToolLifecycleTests; do
+for suite in MedicationDoseCursorTests WorkoutPeriodQuantityRoutingTests AppleNativeToolLifecycleTests; do
   cp "$repository_root/scripts/tests/$suite.swift" "$orot_host_root/Tests/NativeSwiftRegressionsTests/"
 done
 cat >"$orot_host_root/Package.swift" <<'SWIFT'

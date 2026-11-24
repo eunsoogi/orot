@@ -8,7 +8,7 @@ import { readOverviewMetricSnapshot } from './metricReadCancellation';
 import {
   loadOverviewMetricSelection,
   type OverviewMetricChoice,
-  isOverviewSnapshotMetric,
+  snapshotOverviewMetricSelection,
 } from './metricSelection';
 
 export type SelectedOverviewSnapshot = {
@@ -33,7 +33,7 @@ export async function readSelectedOverviewProjection(
     chart: await projectOverviewMetricSnapshot(
       tx,
       now,
-      selection.filter(isOverviewSnapshotMetric),
+      snapshotOverviewMetricSelection(selection),
     ),
   };
 }

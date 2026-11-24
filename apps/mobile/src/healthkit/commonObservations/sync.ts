@@ -1,3 +1,5 @@
+import { notifyWorkoutImportCommitted } from '../workoutImportEvents';
+import { refreshRecentDiscreteHeartRate } from './refreshRecentDiscreteHeartRate';
 import { commitHealthKitChanges } from '../commitHealthKitChanges';
 import { healthKitSampleChangesCheckpointKey } from '../sampleChangesCheckpoint';
 import {
@@ -8,9 +10,9 @@ import {
 import { preserveIngestedAt } from './syncIdentity';
 import {
   measureCommonObservationOperation,
+  commonSyncResult as result,
   type CommonObservationRepository,
   type CommonObservationSyncResult,
-  type CommonObservationSyncStatus,
   type SyncCommonObservationChangesOptions,
 } from './syncOptions';
 import type { CommonObservationFeature } from './types';
@@ -35,9 +37,12 @@ const pendingSyncs = new WeakMap<
 export function syncCommonObservationChanges(
   options: SyncCommonObservationChangesOptions,
 ): Promise<CommonObservationSyncResult> {
-  return serializeFeatureSync(options, () =>
-    syncCommonObservationChangesExclusive(options),
-  );
+  return serializeFeatureSync(options, async () => {
+    const outcome = await syncCommonObservationChangesExclusive(options);
+    if (options.feature === 'workouts' && outcome.upserted > 0)
+      notifyWorkoutImportCommitted();
+    return outcome;
+  });
 }
 
 /** Commits each complete native page before using its opaque cursor for the next one. */
@@ -193,6 +198,12 @@ async function syncCommonObservationChangesExclusive(
     cursorAdvanced ||= pageCursorAdvanced;
     pageCount += 1;
     if (!page.hasMore) {
+      if (options.refreshDerivedSamples && savedCheckpoint) {
+        upserted += await refreshRecentDiscreteHeartRate(
+          options,
+          options.refreshDerivedSamples,
+        );
+      }
       return result(
         upserted > 0 || deleted > 0 ? 'complete' : 'empty',
         upserted,
@@ -230,21 +241,4 @@ function serializeFeatureSync<T>(
       if (featureTails.size === 0) pendingSyncs.delete(lockIdentity);
     }
   });
-}
-
-function result(
-  status: CommonObservationSyncStatus,
-  upserted: number,
-  deleted: number,
-  skipped: number,
-  cursorAdvanced: boolean,
-): CommonObservationSyncResult {
-  return {
-    status,
-    readAuthorization: 'notObservable',
-    upserted,
-    deleted,
-    skipped,
-    cursorAdvanced,
-  };
 }
