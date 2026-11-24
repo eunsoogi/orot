@@ -9,6 +9,7 @@ type Epoch = {
   unsettledFailure?: boolean;
   detached?: boolean;
   settleListeners?: Set<() => void>;
+  preDispatchRetirements?: Set<() => void>;
 };
 const epochs = new WeakMap<SqlDatabase, Epoch>();
 
@@ -54,6 +55,15 @@ export function guardedNativeDatabase<T extends SqlDatabase>(native: T): T {
       notifySettlement();
     };
     try {
+      // Synchronous process-local retirement must precede any native SQL submission.
+      // An infrastructure throw rejects this submission, never leaves a possibly live ticket beside a queued write.
+      const listeners = epoch.preDispatchRetirements;
+      if (listeners) {
+        for (const retire of listeners) {
+          retire();
+          listeners.delete(retire);
+        }
+      }
       const result = call();
       if (
         result &&
@@ -176,13 +186,23 @@ function acquireEpoch(owner: SqlDatabase, independent: boolean) {
   epoch.active++;
   const start = epoch.mutation;
   let active = true;
+  const current = () =>
+    active &&
+    !epoch.detached &&
+    start === epoch.mutation &&
+    (!independent ||
+      (epoch.dirtyTransactions === 0 && !epoch.unsettledFailure));
   return {
-    current: () =>
-      active &&
-      !epoch.detached &&
-      start === epoch.mutation &&
-      (!independent ||
-        (epoch.dirtyTransactions === 0 && !epoch.unsettledFailure)),
+    current,
+    beforeDispatch(retire: () => void) {
+      if (!independent || !current()) return;
+      const listeners = (epoch.preDispatchRetirements ??= new Set());
+      // Caller retains an explicit independently idempotent lifetime across queue awaits.
+      listeners.add(retire);
+      return () => {
+        listeners.delete(retire);
+      };
+    },
     dispose() {
       if (active) epoch.active--;
       active = false;

@@ -10,6 +10,10 @@ export const maintainedNativeTestOwners = new Map([
   ],
   ['apps/mobile/ios/orotintegrationtests/realtimevoicelifecycletests.swift', ['core-integration']],
   [
+    'apps/mobile/ios/orotintegrationtests/realtimevoiceresultdispatchtests.swift',
+    ['core-integration'],
+  ],
+  [
     'apps/mobile/ios/orotintegrationtests/realtimevoiceconnectingcuetests.swift',
     ['core-integration'],
   ],

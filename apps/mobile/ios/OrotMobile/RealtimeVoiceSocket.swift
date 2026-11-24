@@ -1,19 +1,5 @@
 import Foundation
 
-/// Ordered, bounded WebSocket writes; never logs authentication, remote errors or audio.
-protocol RealtimeSocketPort: AnyObject {
-    var received: (([String: Any]) -> Void)? { get set }
-    var failed: (() -> Void)? { get set }
-    func open(model: String, key: String)
-    func admitResponsesTransport(_ current: @escaping () -> Bool) -> Bool
-    func send(_ event: [String: Any])
-    func sendManagedToolFrames(_ frames: [[String: Any]], current: @escaping () -> Bool) -> Bool
-    func discardManagedToolFrames() -> Bool
-    func discardInput()
-    func close()
-    func finishLive(sessionID: String)
-}
-
 /// A redirect must never carry a user's BYOK credential to a second destination.
 private final class LiveSocketSessionDelegate: NSObject, URLSessionTaskDelegate {
     func urlSession(_: URLSession, task _: URLSessionTask, willPerformHTTPRedirection _: HTTPURLResponse,
@@ -65,13 +51,33 @@ final class RealtimeVoiceSocket: RealtimeSocketPort {
 
     /// Queue acceptance is not a provider receipt. Never reconnect or use a fallback transport.
     func sendManagedToolFrames(_ frames: [[String: Any]], current: @escaping () -> Bool) -> Bool {
+        enqueueManaged(frames, permit: LiveQueuedToolPermit(current: current))
+    }
+
+    func sendTicketedToolFrames(_ frames: [[String: Any]], current: @escaping () -> Bool,
+                                ticket: LiveNativeResultDispatchAuthority.Ticket) -> Bool
+    {
+        enqueueManaged(frames, permit: LiveQueuedToolPermit(current: current, ticket: ticket))
+    }
+
+    private func enqueueManaged(_ frames: [[String: Any]], permit: LiveQueuedToolPermit) -> Bool {
         guard closing == nil, let task = socket else { return false }
         let currentEpoch = epoch
-        let permit = LiveQueuedToolPermit(current: current)
         guard let writes = permit.prepare(frames), epoch == currentEpoch, socket === task, closing == nil,
               !queue.contains(where: { $0.permit != nil }) else { return false }
         let size = writes.reduce(0) { $0 + $1.text.utf8.count }
         guard bytes + size <= 512 * 1024 else { return false }
+        if let ticket = permit.ticket {
+            guard ticket.observeQueueRetirement({ [weak self, weak task, weak permit] partial in
+                guard let self, let task, let permit, epoch == currentEpoch, socket === task,
+                      queue.contains(where: { $0.permit === permit }) else { return }
+                if partial {
+                    transportFailed()
+                } else {
+                    discardRejected(permit)
+                }
+            }) else { return false }
+        }
         bytes += size
         queue.append(contentsOf: writes)
         flush()
@@ -87,36 +93,46 @@ final class RealtimeVoiceSocket: RealtimeSocketPort {
             let allowed = permit.authorizeHandoff()
             // Authority lookup may retire this exact socket or clear its queue synchronously.
             guard epoch == current, socket === task, !sending, queue.first?.permit === permit else { return }
-            guard allowed else {
-                queue.removeAll { $0.permit === permit }
-                bytes = queue.reduce(0) { $0 + $1.text.utf8.count }
-                // Once a partial batch reached URLSession, never guess that its continuation
-                // is safe or retry it. Terminate through the existing transport failure owner.
-                if permit.issued {
-                    transportFailed()
-                } else {
-                    flush()
-                }
-                return
-            }
-            permit.issued = true
+            guard allowed else { discardRejected(permit); return }
         }
-        sending = true
-        task.send(.string(message.text)) { [weak self] error in
-            DispatchQueue.main.async {
-                guard let self else { return }
-                guard self.epoch == current, self.socket === task else { return }
-                self.sending = false
-                if error != nil {
-                    self.transportFailed(); return
-                }
-                self.bytes -= self.queue.removeFirst().text.utf8.count
-                if self.closing != nil {
-                    self.sendClose()
-                } else {
-                    self.flush()
+        let submit = { [self] in
+            message.permit?.issued = true
+            sending = true
+            task.send(.string(message.text)) { [weak self] error in
+                DispatchQueue.main.async {
+                    guard let self, self.epoch == current, self.socket === task else { return }
+                    self.sending = false
+                    if error != nil {
+                        self.transportFailed()
+                        return
+                    }
+                    self.bytes -= self.queue.removeFirst().text.utf8.count
+                    if self.closing != nil {
+                        self.sendClose()
+                    } else {
+                        self.flush()
+                    }
                 }
             }
+        }
+        if let permit = message.permit, let ticket = permit.ticket {
+            if !ticket.submit(submit) {
+                discardRejected(permit)
+            }
+        } else {
+            submit()
+        }
+    }
+
+    private func discardRejected(_ permit: LiveQueuedToolPermit) {
+        permit.ticket?.retire()
+        queue.removeAll { $0.permit === permit }
+        bytes = queue.reduce(0) { $0 + $1.text.utf8.count }
+        // A partial batch cannot be replayed after losing its authority.
+        if permit.issued {
+            transportFailed()
+        } else {
+            flush()
         }
     }
 
@@ -150,6 +166,7 @@ final class RealtimeVoiceSocket: RealtimeSocketPort {
     /// Remove protected frames before later events can resume this queue. A partial handoff is not replayable.
     func discardManagedToolFrames() -> Bool {
         let retained = sending ? 1 : 0
+        queue.forEach { $0.permit?.ticket?.retire() }
         let uncertain = queue.dropFirst(retained).contains { $0.permit?.issued == true }
         queue = Array(queue.prefix(retained)) + queue.dropFirst(retained).filter { $0.permit == nil }
         bytes = queue.reduce(0) { $0 + $1.text.utf8.count }
@@ -161,12 +178,6 @@ final class RealtimeVoiceSocket: RealtimeSocketPort {
     func discardInput() {
         queue = Self.retainingControl(queue, sending: sending)
         bytes = queue.reduce(0) { $0 + $1.text.utf8.count }
-    }
-
-    static func retainingControl(_ writes: [RealtimeSocketWrite], sending: Bool) -> [RealtimeSocketWrite] {
-        writes.enumerated().compactMap { index, write in
-            (sending && index == 0) || !write.isInput ? write : nil
-        }
     }
 
     /// A stopped call keeps only its existing task long enough for one terminal command.
@@ -209,37 +220,14 @@ final class RealtimeVoiceSocket: RealtimeSocketPort {
         }
     }
 
-    static func matchesClose(_ event: [String: Any], sessionID: String, command: String) -> Bool {
-        guard event["type"] as? String == "session.closed",
-              let eventID = event["event_id"] as? String, !eventID.isEmpty,
-              let reason = event["reason"] as? String,
-              ["close_requested", "expired", "content", "remote_hangup", "connection_lost"].contains(reason),
-              event["client_event_id"] == nil || event["client_event_id"] as? String == command,
-              let session = event["session"] as? [String: Any]
-        else { return false }
-        return session["id"] as? String == sessionID && session["model"] as? String == "gpt-live-1.1"
-    }
-
     func close() {
         epoch += 1
         closeDeadline?.cancel(); closeDeadline = nil; closing = nil
         socket?.cancel(with: .normalClosure, reason: nil)
         socket = nil; responsesTransportCurrent = nil
+        queue.forEach { $0.permit?.ticket?.retire() }
         queue.removeAll(); bytes = 0; sending = false
     }
 
     deinit { socket?.cancel(with: .goingAway, reason: nil); session.invalidateAndCancel() }
-}
-
-/// The queue records event kind before serialization; filtering never inspects audio contents.
-struct RealtimeSocketWrite {
-    let text: String
-    let isInput: Bool
-    let permit: LiveQueuedToolPermit?
-
-    init(text: String, isInput: Bool, permit: LiveQueuedToolPermit? = nil) {
-        self.text = text
-        self.isInput = isInput
-        self.permit = permit
-    }
 }

@@ -27,6 +27,7 @@ final class VoiceRealtimeModule: RCTEventEmitter {
 
     private var active: String?
     private var responsesMailbox: LiveResponsesMailbox?
+    private let resultAuthority = LiveNativeResultDispatchAuthority()
     override static func requiresMainQueueSetup() -> Bool {
         true
     }
@@ -51,7 +52,7 @@ final class VoiceRealtimeModule: RCTEventEmitter {
                 guard let grant = LiveResponsesSettingsGrant(request), grant.isCurrent(key: apiKey) else {
                     reject("VOICE_LIVE_FAILED", "Live voice is unavailable.", nil); return
                 }
-                let mailbox = LiveResponsesMailbox(identifier: identifier, grant: grant, key: apiKey) { [weak self] event, body in
+                let mailbox = LiveResponsesMailbox(identifier: identifier, grant: grant, key: apiKey, authority: resultAuthority) { [weak self] event, body in
                     self?.sendEvent(withName: event, body: body)
                 }
                 responsesMailbox = mailbox
@@ -63,6 +64,7 @@ final class VoiceRealtimeModule: RCTEventEmitter {
                 case .success: resolve(nil)
                 case .failure:
                     if self.call.id == nil, self.active == identifier {
+                        self.responsesMailbox?.revoke()
                         self.responsesMailbox = nil
                         self.active = nil
                     }
@@ -77,8 +79,20 @@ final class VoiceRealtimeModule: RCTEventEmitter {
                                      resolver resolve: @escaping RCTPromiseResolveBlock, rejecter _: @escaping RCTPromiseRejectBlock)
     {
         DispatchQueue.main.async {
-            resolve(self.active == identifier && self.responsesMailbox?.settle(challengeId, output: output) == true)
+            guard self.active == identifier, let mailbox = self.responsesMailbox else { resolve(false); return }
+            mailbox.settle(challengeId, output: output) { resolve($0) }
         }
+    }
+
+    /// These process-local methods never wait for main or inspect any health data.
+    @objc(claimLiveResponsesResult:challengeId:)
+    func claimLiveResponsesResult(_ identifier: String, challengeId: String) -> NSNumber {
+        NSNumber(value: resultAuthority.claim(call: identifier, challenge: challengeId))
+    }
+
+    @objc(retireLiveResponsesResult:challengeId:)
+    func retireLiveResponsesResult(_ identifier: String, challengeId: String) -> NSNumber {
+        NSNumber(value: resultAuthority.retire(call: identifier, challenge: challengeId))
     }
 
     @objc(revokeLiveResponsesGrant:generation:resolver:rejecter:)
@@ -134,6 +148,7 @@ final class VoiceRealtimeModule: RCTEventEmitter {
             do {
                 try self.call.stop(identifier, graceful: graceful)
                 if self.active == identifier {
+                    self.responsesMailbox?.revoke()
                     self.responsesMailbox = nil
                     self.active = nil
                 }
@@ -174,6 +189,8 @@ final class VoiceRealtimeModule: RCTEventEmitter {
 
     override func invalidate() {
         DispatchQueue.main.async {
+            self.responsesMailbox?.revoke()
+            self.responsesMailbox = nil
             if let id = self.active {
                 try? self.call.stop(id)
             }

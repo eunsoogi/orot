@@ -95,11 +95,13 @@ final class RealtimeVoiceToolLease {
 /// An exact approved tool batch, retained only by its current socket queue.
 final class LiveQueuedToolPermit {
     private let current: () -> Bool
+    let ticket: LiveNativeResultDispatchAuthority.Ticket?
     private var retired = false
     var issued = false
 
-    init(current: @escaping () -> Bool) {
+    init(current: @escaping () -> Bool, ticket: LiveNativeResultDispatchAuthority.Ticket? = nil) {
         self.current = current
+        self.ticket = ticket
     }
 
     /// A failed check is permanent, even if settings later return to the same values.
@@ -111,7 +113,7 @@ final class LiveQueuedToolPermit {
     /// Permit only the Live Responses output envelope and a single final continuation.
     /// This is not user approval; the native owner must separately approve these exact bytes.
     func prepare(_ frames: [[String: Any]]) -> [RealtimeSocketWrite]? {
-        guard (2 ... 9).contains(frames.count), authorizeHandoff() else { return nil }
+        guard ticket == nil ? (2 ... 9).contains(frames.count) : frames.count == 2, authorizeHandoff() else { return nil }
         var calls = Set<String>()
         var events = Set<UUID>()
         var writes: [RealtimeSocketWrite] = []
