@@ -1,12 +1,14 @@
 import type { LanguageModelProvider } from '@orot/model-runtime';
 import {
-  isCalendarClassificationWitness,
   type CalendarClassificationCache,
   type CachedCalendarDecision,
 } from '@orot/storage';
-import type { CalendarEvent } from '../calendar/types';
 import { t } from '../i18n';
 import { calendarEventsMatch } from './calendarEvidence';
+import {
+  canStoreClassifiedCalendarBatches,
+  exactKeys,
+} from './calendarClassificationWitnesses';
 import { createClassificationCandidates } from './classificationCandidates';
 import {
   classifyCalendarEvents,
@@ -14,26 +16,13 @@ import {
   type ClassificationRunResult,
 } from './classificationWorkflow';
 
-/** Never create a reuse key for an ambiguous native occurrence or a competing snapshot. */
-function exactKeys(events: readonly CalendarEvent[]) {
-  const keys = events.map(event =>
-    isCalendarClassificationWitness(event.classificationWitness)
-      ? event.classificationWitness
-      : undefined,
-  );
-  const counts = new Map<string, number>();
-  for (const key of keys)
-    if (key) counts.set(key.occurrence, (counts.get(key.occurrence) ?? 0) + 1);
-  return keys.map(key =>
-    key && counts.get(key.occurrence) === 1 ? key : undefined,
-  );
-}
-
 /** Reuse only an unchanged witness reread in a fresh, fully authorized EventKit snapshot.
  * Remote authorization still runs in the canonical workflow for actual misses only.
  */
 export async function classifyCalendarEventsIncrementally(
-  input: ClassifyCalendarEventsInput,
+  input: ClassifyCalendarEventsInput & {
+    readonly onWorkPlan?: (missingCount: number) => void;
+  },
   cache: CalendarClassificationCache | undefined,
 ): Promise<ClassificationRunResult> {
   // Unknown/native older adapters leave existing behavior unchanged, not an invented cache hit.
@@ -41,8 +30,10 @@ export async function classifyCalendarEventsIncrementally(
     !cache ||
     !input.bridge.listUpcomingEvents ||
     (input.events.length > 0 && !exactKeys(input.events).some(Boolean))
-  )
+  ) {
+    input.onWorkPlan?.(input.events.length);
     return classifyCalendarEvents(input);
+  }
   const base = createClassificationCandidates(input.events);
   const rejected = (
     status: 'cancelled' | 'unavailable',
@@ -88,6 +79,7 @@ export async function classifyCalendarEventsIncrementally(
   const missing = input.events.flatMap((event, index) =>
     reused[index] ? [] : [{ event, index }],
   );
+  input.onWorkPlan?.(missing.length);
   const hasReused = reused.some(Boolean);
   const compose = (fresh: ClassificationRunResult, includeReused: boolean) => {
     const candidates = base.slice();
@@ -138,7 +130,7 @@ export async function classifyCalendarEventsIncrementally(
         totalBatches: 0,
       };
   if (input.signal.aborted) return rejected('cancelled');
-  if (result.status !== 'complete') return compose(result, false);
+  if (!canStoreClassifiedCalendarBatches(result)) return compose(result, false);
   const staged: CachedCalendarDecision[] = [];
   for (let index = 0; index < missing.length; index++) {
     const key = keys[missing[index]!.index];
@@ -161,22 +153,25 @@ export async function classifyCalendarEventsIncrementally(
   if (!terminal)
     return rejected(input.signal.aborted ? 'cancelled' : 'unavailable');
   // A partial or ambiguous snapshot cannot prove a source was removed.
-  const pruneTo = terminal.complete
-    ? terminal.liveKeys.map(key => key!.occurrence)
-    : undefined;
+  const pruneTo =
+    result.status === 'complete' && terminal.complete
+      ? terminal.liveKeys.map(key => key!.occurrence)
+      : undefined;
   await cache.commit(generation, staged, pruneTo, input.signal);
   if (input.signal.aborted) return rejected('cancelled');
-  // A native edit while the protected write was queued cannot show an old hit.
-  if (hasReused) {
+  // A native edit while the protected write awaited must not publish cached
+  // hits or the completed rows of an admitted partial result.
+  if (hasReused || result.status === 'partial') {
     if (!(await readCurrentSnapshot()))
       return rejected(input.signal.aborted ? 'cancelled' : 'unavailable');
     try {
-      // A wipe that committed during the final native read also retires the hit.
+      // A wipe during the final native read retires the whole result.
       await cache.startIfCurrent(generation, input.signal, () => undefined);
     } catch {
       return rejected(input.signal.aborted ? 'cancelled' : 'unavailable');
     }
   }
+  if (result.status !== 'complete') return compose(result, false);
   return input.events.length
     ? compose(result, true)
     : { ...result, status: 'empty' };
