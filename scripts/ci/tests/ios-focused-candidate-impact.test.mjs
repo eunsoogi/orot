@@ -72,3 +72,35 @@ test('maintained literature cases and Jest entries retain their separate impact'
     /does not cover/,
   );
 });
+
+test('only the exact canonical Settings fixture and its registered case are covered', () => {
+  const xctest = 'apps/mobile/ios/OrotUITests/SettingsConsentUITests.swift';
+  const fixture = 'apps/mobile/e2e/NativeCanonicalQueueFixtureControls.tsx';
+  const identifier =
+    'OrotUITests/SettingsConsentUITests/testExplicitThreeTabGrantsAndRevocationSurviveProcessRestart';
+  const selected = selectFocusedIosTests('ios/provider-selection', xctest, identifier);
+  assert.deepEqual(verifyFocusedCandidateImpact([fixture, xctest], selected), [
+    { path: fixture, reason: 'canonical-settings-queue-fixture', cohorts: ['selection'] },
+    { path: xctest, reason: 'maintained-native-test', cohorts: ['selection'] },
+  ]);
+  for (const selection of [
+    { ...selected, profile: 'fixtures' },
+    {
+      ...selected,
+      identifiers: [
+        'OrotUITests/ProviderSelectionUITests/testAuthSessionCancellationRouteExitRetryAndCallbackKeepSelectionExplicit',
+      ],
+    },
+    { ...selected, identifiers: [identifier, 'OrotUITests/SettingsConsentUITests/unknown'] },
+  ])
+    assert.throws(
+      () => verifyFocusedCandidateImpact([fixture], selection),
+      /canonical-settings-queue-fixture/u,
+    );
+  for (const path of [
+    'apps/mobile/e2e/NativeCanonicalQueueFixtureControls-copy.tsx',
+    'apps/mobile/e2e/nested/NativeCanonicalQueueFixtureControls.tsx',
+    'apps/mobile/e2e/UnknownFixture.tsx',
+  ])
+    assert.throws(() => verifyFocusedCandidateImpact([path], selected), /unknown-e2e-impact/u);
+});
