@@ -17,12 +17,23 @@ type Protection = NonNullable<ReturnType<typeof conversationExecutionNative>>;
 type ProtectionEvent = Parameters<Parameters<Protection['subscribe']>[0]>[0];
 export const one = 'B09CB262-D06E-485C-A600-BEEA45828A97';
 export const two = 'FE6E3FEA-0BCA-402B-BED3-E2838C9F4B1F';
-export const values = {
-  status: 'available',
-  minimum: 60,
-  mean: 90,
-  maximum: 130,
-};
+export function resultFor(period: {
+  fromInclusive: string;
+  toExclusive: string;
+}) {
+  const first = Date.parse(period.fromInclusive) + 10_000;
+  return {
+    ...period,
+    status: 'available',
+    minimum: 60,
+    mean: 120,
+    maximum: 180,
+    sampleCount: 5,
+    firstSampleAtMs: first,
+    lastSampleAtMs: first + 60_000,
+    membershipRevision: 'v1:' + '0'.repeat(64),
+  };
+}
 const original = NativeModules.HealthKitModule;
 
 function fixture(id: string, hoursAgo: number) {
@@ -78,11 +89,26 @@ export async function setup() {
       return () => subscribers.delete(listener);
     },
   });
-  const queryWorkoutHeartRate = jest.fn(async (_id: string) => values);
+  const queryWorkoutPeriodHeartRate = jest.fn(
+    async (request: {
+      callId: string;
+      fromInclusive: string;
+      toExclusive: string;
+      workouts: readonly { id: string }[];
+    }) =>
+      resultFor({
+        fromInclusive: request.fromInclusive,
+        toExclusive: request.toExclusive,
+      }),
+  );
+  const cancelWorkoutPeriodHeartRate = jest.fn();
+  const queryWorkoutHeartRate = jest.fn();
   const requestReadAuthorizations = jest.fn();
   const querySamples = jest.fn();
   NativeModules.HealthKitModule = {
     queryWorkoutHeartRate,
+    queryWorkoutPeriodHeartRate,
+    cancelWorkoutPeriodHeartRate,
     requestReadAuthorizations,
     querySamples,
   };
@@ -94,6 +120,9 @@ export async function setup() {
     statements,
     replaceOwner() {
       currentOwner = false;
+    },
+    consumeProbe() {
+      return protectedProbe?.();
     },
     holdSecondProbe() {
       let enter!: () => void;
@@ -116,6 +145,8 @@ export async function setup() {
       return { entered, release };
     },
     queryWorkoutHeartRate,
+    queryWorkoutPeriodHeartRate,
+    cancelWorkoutPeriodHeartRate,
     requestReadAuthorizations,
     querySamples,
     revoke() {

@@ -12,6 +12,9 @@ RCT_EXTERN_METHOD(querySamples : (NSDictionary *)query resolver : (RCTPromiseRes
                       resolve rejecter : (RCTPromiseRejectBlock)reject)
 RCT_EXTERN_METHOD(queryWorkoutHeartRate : (NSString *)workoutID resolver : (RCTPromiseResolveBlock)
                       resolve rejecter : (RCTPromiseRejectBlock)reject)
+RCT_EXTERN_METHOD(queryWorkoutPeriodHeartRate : (NSDictionary *)request resolver : (
+    RCTPromiseResolveBlock)resolve rejecter : (RCTPromiseRejectBlock)reject)
+RCT_EXTERN_METHOD(cancelWorkoutPeriodHeartRate : (NSString *)callId)
 RCT_EXTERN_METHOD(queryMedicationDefinitions : (nonnull NSNumber *)limit resolver : (
     RCTPromiseResolveBlock)resolve rejecter : (RCTPromiseRejectBlock)reject)
 RCT_EXTERN_METHOD(querySampleChanges : (NSDictionary *)query resolver : (RCTPromiseResolveBlock)

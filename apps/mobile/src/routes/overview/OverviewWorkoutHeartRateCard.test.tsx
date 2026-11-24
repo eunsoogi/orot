@@ -1,10 +1,4 @@
-import {
-  act,
-  fireEvent,
-  render,
-  screen,
-  waitFor,
-} from '@testing-library/react-native';
+import { act, render, screen, waitFor } from '@testing-library/react-native';
 import { openLocalAgentMemoryDatabase } from '../../storage/secureDatabase';
 import { notifyLocalSourceDeleted } from '../../storage/localDataClearEvents';
 import { OverviewWorkoutHeartRateCard } from './OverviewWorkoutHeartRateCard';
@@ -12,7 +6,7 @@ import {
   setup,
   one,
   two,
-  values,
+  resultFor,
 } from './testSupport/overviewWorkoutCardHarness';
 
 jest.mock('../../storage/secureDatabase', () => ({
@@ -23,43 +17,33 @@ jest.mock('../../ragConversation/conversationExecutionNative', () => ({
   conversationExecutionNative: jest.fn(),
 }));
 
-const picker = () => screen.getByTestId('overview-workout-heart-rate-choose');
-const option = (i: number) =>
-  screen.findByTestId('overview-workout-heart-rate-option-' + i);
-const result = () => screen.queryByTestId('overview-workout-heart-rate-result');
+const result = () => screen.getByTestId('overview-workout-heart-rate-result');
 
-test('loads only an explicit bounded workout page and reads only the selected associated UUID', async () => {
+test('displays the direct period average only on the opted-in visible card and never opens a picker', async () => {
   const lane = await setup();
   try {
     const view = await render(
-      <OverviewWorkoutHeartRateCard active width={302} />,
+      <OverviewWorkoutHeartRateCard active={false} width={302} />,
     );
     expect(openLocalAgentMemoryDatabase).not.toHaveBeenCalled();
+    await view.rerender(<OverviewWorkoutHeartRateCard active width={302} />);
+    await waitFor(() => expect(result()).toHaveTextContent('평균 120 bpm'));
+    expect(screen.queryByRole('button', { name: '운동 선택하기' })).toBeNull();
+    expect(lane.queryWorkoutPeriodHeartRate).toHaveBeenCalledTimes(1);
+    const request = lane.queryWorkoutPeriodHeartRate.mock.calls[0]![0];
+    expect(request.workouts.map(workout => workout.id)).toEqual([
+      one.toLowerCase(),
+      two.toLowerCase(),
+    ]);
+    const from = new Date(request.toExclusive);
+    from.setHours(0, 0, 0, 0);
+    from.setDate(from.getDate() - 6);
+    expect(request.fromInclusive).toBe(from.toISOString());
     expect(lane.queryWorkoutHeartRate).not.toHaveBeenCalled();
-    await fireEvent.press(picker());
-    const selected = await option(1);
-    const pages = lane.statements.mock.calls.filter(
-      ([sql]) =>
-        sql.includes('FROM health_observations') && sql.includes('LIMIT'),
-    );
-    expect(pages).toHaveLength(1);
-    expect(pages[0]?.[1]).toEqual(expect.arrayContaining([21]));
-    expect(
-      screen.queryByTestId('overview-workout-heart-rate-option-2'),
-    ).toBeNull();
-    expect(lane.queryWorkoutHeartRate).not.toHaveBeenCalled();
-    await fireEvent.press(selected);
-    await waitFor(() =>
-      expect(result()).toHaveTextContent(
-        '운동 시간 안의 연결 심박수: 평균 90 bpm, 범위 60–130 bpm',
-      ),
-    );
-    expect(lane.queryWorkoutHeartRate).toHaveBeenCalledTimes(1);
-    expect(lane.queryWorkoutHeartRate).toHaveBeenCalledWith(two);
     expect(lane.requestReadAuthorizations).not.toHaveBeenCalled();
     expect(lane.querySamples).not.toHaveBeenCalled();
     await act(() => lane.revoke());
-    expect(result()).toBeNull();
+    expect(result()).not.toHaveTextContent('120');
     await view.unmount();
   } finally {
     lane.close();
@@ -67,12 +51,12 @@ test('loads only an explicit bounded workout page and reads only the selected as
 });
 
 test.each(['deleted', 'locked', 'blurred', 'changed'])(
-  'does not publish a held native result after %s',
+  'does not show a native period read held during %s',
   async reason => {
     const lane = await setup();
     try {
-      let release!: (value: typeof values) => void;
-      lane.queryWorkoutHeartRate.mockReturnValueOnce(
+      let release!: (value: ReturnType<typeof resultFor>) => void;
+      lane.queryWorkoutPeriodHeartRate.mockReturnValueOnce(
         new Promise(resolve => {
           release = resolve;
         }),
@@ -80,34 +64,37 @@ test.each(['deleted', 'locked', 'blurred', 'changed'])(
       const view = await render(
         <OverviewWorkoutHeartRateCard active width={undefined} />,
       );
-      await fireEvent.press(picker());
-      const selected = await option(0);
-      const tapped = fireEvent.press(selected);
       await waitFor(() =>
-        expect(lane.queryWorkoutHeartRate).toHaveBeenCalledWith(one),
+        expect(lane.queryWorkoutPeriodHeartRate).toHaveBeenCalledTimes(1),
       );
+      const request = lane.queryWorkoutPeriodHeartRate.mock.calls[0]![0];
       if (reason === 'deleted') {
         await lane.repository.delete('health_observation', lane.first.id);
         await act(() =>
           notifyLocalSourceDeleted('healthkit', new Set([lane.first.id])),
         );
       } else if (reason === 'locked') await act(() => lane.revoke());
-      else if (reason === 'blurred') {
+      else if (reason === 'blurred')
         await view.rerender(
           <OverviewWorkoutHeartRateCard active={false} width={undefined} />,
         );
-      } else
+      else {
         await lane.repository.put('health_observation', {
           ...lane.first,
           endedAt: new Date(
             Date.parse(lane.first.endedAt!) + 30000,
           ).toISOString(),
         });
-      await act(async () => {
-        release(values);
-        await tapped;
-      });
-      await waitFor(() => expect(result()).toBeNull());
+      }
+      if (reason !== 'changed')
+        expect(lane.cancelWorkoutPeriodHeartRate).toHaveBeenCalledWith(
+          request.callId,
+        );
+      await act(() => release(resultFor(request)));
+      await waitFor(() =>
+        expect(result()).toHaveTextContent(/심박수를 확인할 수 없어요/),
+      );
+      expect(result()).not.toHaveTextContent('120');
       await view.unmount();
     } finally {
       lane.close();
@@ -115,89 +102,99 @@ test.each(['deleted', 'locked', 'blurred', 'changed'])(
   },
 );
 
-test('a captured choice deleted before native admission never calls native', async () => {
+test('a repository replacement during final native confirmation does not release the result', async () => {
   const lane = await setup();
   try {
+    let release!: (value: ReturnType<typeof resultFor>) => void;
+    lane.queryWorkoutPeriodHeartRate.mockReturnValueOnce(
+      new Promise(resolve => {
+        release = resolve;
+      }),
+    );
     const view = await render(
       <OverviewWorkoutHeartRateCard active width={undefined} />,
     );
-    await fireEvent.press(picker());
-    const selected = await option(0);
-    await lane.repository.delete('health_observation', lane.first.id);
-    await fireEvent.press(selected);
-    await waitFor(() => expect(result()).toBeNull());
-    expect(lane.queryWorkoutHeartRate).not.toHaveBeenCalled();
+    await waitFor(() =>
+      expect(lane.queryWorkoutPeriodHeartRate).toHaveBeenCalledTimes(1),
+    );
+    const request = lane.queryWorkoutPeriodHeartRate.mock.calls[0]![0];
+    const gate = lane.holdSecondProbe();
+    // The new hook uses exactly one final post-native confirmation. Arrange
+    // an already-admitted first probe so that confirmation itself is held.
+    await act(async () => {
+      await lane.consumeProbe();
+      release(resultFor(request));
+      await gate.entered;
+      lane.replaceOwner();
+      gate.release(true);
+    });
+    expect(result()).not.toHaveTextContent('120');
     await view.unmount();
   } finally {
     lane.close();
   }
 });
 
-test.each(['reimport', 'repository replacement'])(
-  'rejects a %s during the last delayed protected-data confirmation',
-  async change => {
-    const lane = await setup();
-    try {
-      let releaseNative!: (value: typeof values) => void;
-      lane.queryWorkoutHeartRate.mockReturnValueOnce(
-        new Promise(resolve => {
-          releaseNative = resolve;
-        }),
-      );
-      const view = await render(
-        <OverviewWorkoutHeartRateCard active width={undefined} />,
-      );
-      await fireEvent.press(picker());
-      const tapped = fireEvent.press(await option(0));
-      await waitFor(() =>
-        expect(lane.queryWorkoutHeartRate).toHaveBeenCalledWith(one),
-      );
-      const gate = lane.holdSecondProbe();
-      releaseNative(values);
-      await gate.entered;
-      if (change === 'reimport') {
-        await lane.repository.put('health_observation', {
-          ...lane.first,
-          endedAt: new Date(
-            Date.parse(lane.first.endedAt!) + 30000,
-          ).toISOString(),
-        });
-      } else lane.replaceOwner();
-      await act(async () => {
-        gate.release(true);
-        await tapped;
-      });
-      expect(result()).toBeNull();
-      expect(lane.queryWorkoutHeartRate).toHaveBeenCalledTimes(1);
-      await view.unmount();
-    } finally {
-      lane.close();
-    }
-  },
-);
+test('reimport during the last pre-native confirmation sends no cohort', async () => {
+  const lane = await setup();
+  try {
+    const gate = lane.holdSecondProbe();
+    const view = await render(
+      <OverviewWorkoutHeartRateCard active width={undefined} />,
+    );
+    await gate.entered;
+    await lane.repository.put('health_observation', {
+      ...lane.first,
+      endedAt: new Date(Date.parse(lane.first.endedAt!) + 30_000).toISOString(),
+    });
+    await act(() => gate.release(true));
+    expect(lane.queryWorkoutPeriodHeartRate).not.toHaveBeenCalled();
+    expect(result()).not.toHaveTextContent('120');
+    await view.unmount();
+  } finally {
+    lane.close();
+  }
+});
 
-test('a reimport during delayed pre-native confirmation sends no UUID to native', async () => {
+test('refreshes a continuously visible card once at local midnight and clears its timer on blur', async () => {
+  jest.useFakeTimers();
+  const now = new Date(2026, 9, 31, 23, 59, 59, 500);
+  jest.setSystemTime(now);
   const lane = await setup();
   try {
     const view = await render(
       <OverviewWorkoutHeartRateCard active width={undefined} />,
     );
-    await fireEvent.press(picker());
-    const gate = lane.holdSecondProbe();
-    const tapped = fireEvent.press(await option(0));
-    await gate.entered;
-    await lane.repository.put('health_observation', {
-      ...lane.first,
-      endedAt: new Date(Date.parse(lane.first.endedAt!) + 30000).toISOString(),
-    });
-    await act(async () => {
-      gate.release(true);
-      await tapped;
-    });
-    expect(result()).toBeNull();
-    expect(lane.queryWorkoutHeartRate).not.toHaveBeenCalled();
+    await waitFor(() => expect(result()).toHaveTextContent('평균 120 bpm'));
+    expect(lane.queryWorkoutPeriodHeartRate).toHaveBeenCalledTimes(1);
+    const initial = lane.queryWorkoutPeriodHeartRate.mock.calls[0]![0];
+    await act(() => jest.advanceTimersByTimeAsync(500));
+    await waitFor(() =>
+      expect(lane.queryWorkoutPeriodHeartRate).toHaveBeenCalledTimes(2),
+    );
+    const current = lane.queryWorkoutPeriodHeartRate.mock.calls[1]![0];
+    expect(new Date(current.toExclusive).getDate()).toBe(1);
+    expect(new Date(initial.fromInclusive).getDate()).toBe(25);
+    expect(new Date(current.fromInclusive).getDate()).toBe(26);
+    // In Los Angeles this subsequent local day is 25h, not a fixed 24h.
+    const nextMidnight = new Date(2026, 10, 2);
+    await act(() =>
+      jest.advanceTimersByTimeAsync(nextMidnight.getTime() - Date.now() - 1),
+    );
+    expect(lane.queryWorkoutPeriodHeartRate).toHaveBeenCalledTimes(2);
+    await act(() => jest.advanceTimersByTimeAsync(1));
+    await waitFor(() =>
+      expect(lane.queryWorkoutPeriodHeartRate).toHaveBeenCalledTimes(3),
+    );
+    await view.rerender(
+      <OverviewWorkoutHeartRateCard active={false} width={undefined} />,
+    );
+    await act(() => jest.advanceTimersByTimeAsync(26 * 60 * 60 * 1000));
+    expect(lane.queryWorkoutPeriodHeartRate).toHaveBeenCalledTimes(3);
+    expect(result()).not.toHaveTextContent('120');
     await view.unmount();
   } finally {
     lane.close();
+    jest.useRealTimers();
   }
 });

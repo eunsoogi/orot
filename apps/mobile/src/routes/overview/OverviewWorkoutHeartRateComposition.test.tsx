@@ -89,8 +89,9 @@ test('keeps workout association separate in the editor, saved order, and actual 
     const grid = await render(<OverviewMetrics />);
     const c = screen.getByTestId('overview-metric-workoutHeartRate');
     expect(
-      within(c).getByRole('button', { name: '운동 선택하기' }),
-    ).toBeEnabled();
+      within(c).queryByRole('button', { name: '운동 선택하기' }),
+    ).toBeNull();
+    expect(within(c).getByText('오늘 포함 최근 7일')).toBeVisible();
     expect(
       screen.queryByTestId('overview-metric-chart-workoutHeartRate'),
     ).toBeNull();
