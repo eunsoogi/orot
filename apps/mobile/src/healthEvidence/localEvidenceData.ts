@@ -1,3 +1,4 @@
+import { createTypedHeartRateEvidenceReader } from './typedHeartRateEvidence';
 import { historyStalenessRead } from './historyObservationHydrationOwner';
 import {
   readAvailableHealthContextWindow,
@@ -27,6 +28,9 @@ import {
 } from './healthContext/reader';
 
 export interface LocalEvidenceData {
+  readonly readTypedHeartRateEvidence?: ReturnType<
+    typeof createTypedHeartRateEvidenceReader
+  >;
   readonly readDailyReportSnapshot?: (
     ...args: Parameters<typeof readDailyReportSnapshot> extends [
       unknown,
@@ -112,6 +116,7 @@ export function createLocalEvidenceData(
   };
   return {
     manualHistory,
+    readTypedHeartRateEvidence: createTypedHeartRateEvidenceReader(database),
     readDailyReportSnapshot: (calendar, scope, signal) =>
       readDailyReportSnapshot(database, calendar, scope, signal),
     readManualHistoryCandidates: (query, signal, scope) =>
