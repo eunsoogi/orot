@@ -1,4 +1,10 @@
-import type { ChartAxis, ChartPoint, ChartSeries } from './types';
+import { chartWindowLimit } from './chartWindowPositions';
+import type {
+  ChartAxis,
+  ChartPoint,
+  ChartSeries,
+  ChartTimeWindow,
+} from './types';
 
 const pad = 8;
 const footer = 19;
@@ -29,6 +35,7 @@ export function chartRangeGeometry(
   height: number,
   axis: ChartAxis,
   axisLabelWidth = 0,
+  xWindow?: ChartTimeWindow,
 ) {
   const time = (point: ChartPoint) =>
     Date.parse(axis === 'day' ? `${point.x}T00:00:00Z` : point.x);
@@ -46,8 +53,9 @@ export function chartRangeGeometry(
   const max = Math.max(...measured.map(item => item.point.range.maximum));
   const span = max - min;
   if (!Number.isFinite(span)) return null;
-  const first = Math.min(...entries.map(item => item.time));
-  const last = Math.max(...entries.map(item => item.time));
+  const bounds = xWindow && chartWindowLimit(xWindow, axis);
+  const first = bounds?.first ?? Math.min(...entries.map(item => item.time));
+  const last = bounds?.last ?? Math.max(...entries.map(item => item.time));
   const plotHeight = height - footer - 2 * pad;
   const y = (value: number) =>
     pad + plotHeight * (min === max ? 0.5 : (max - value) / span);

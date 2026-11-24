@@ -1,13 +1,16 @@
+import type { HealthObservationMonthChartLoader } from './healthObservationMonthChart';
 import type { HealthObservation } from '@orot/domain';
 import { decodeStoredRecord } from './recordPersistence';
 import type { SqlExecutor } from './sql';
 import { healthObservationPagePredicate } from './healthObservationPageFilter';
 import type { HealthObservationPageFilter } from './healthObservationPageFilter';
 
-export type HealthObservationPageLoader = (
+export type HealthObservationPageLoader = ((
   cursor: HealthObservationCursor | null,
   filter?: HealthObservationPageFilter,
-) => Promise<HealthObservationPage>;
+) => Promise<HealthObservationPage>) & {
+  readonly readMonthChart?: HealthObservationMonthChartLoader;
+};
 
 export interface HealthObservationCursor {
   readonly effectiveAt: string;

@@ -20,7 +20,7 @@ test('upgrades version twelve without assigning daily identities to legacy summa
     expect(
       (await connection.database.execute('PRAGMA user_version')).rows[0]
         ?.user_version,
-    ).toBe(19);
+    ).toBe(20);
     expect(
       (
         await connection.database.execute(
