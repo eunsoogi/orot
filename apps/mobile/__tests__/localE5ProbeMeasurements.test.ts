@@ -23,8 +23,13 @@ import {
   getLocalE5NativeRuntimeMetrics,
 } from '../src/rag/localE5NativeBackend';
 import { cancelOneInFlightBatch } from '../e2e/localE5CancellationProbe';
-import { SqlCipherRagEmbeddingStorage } from '../src/storage/ragEmbeddingStorage';
 import { openLocalStorage } from '../src/storage/secureDatabase';
+
+const { SqlCipherRagEmbeddingStorage } = jest.requireMock<{
+  SqlCipherRagEmbeddingStorage: jest.Mock<{
+    listForModel: () => Promise<unknown[]>;
+  }>;
+}>('../src/storage/ragEmbeddingStorage');
 
 const ids = [
   'korean-bp-medication',
@@ -88,7 +93,7 @@ function observations(ranks: readonly number[], completed = [1]) {
     responseMilliseconds: 1,
     settlementMilliseconds: 2,
   });
-  (SqlCipherRagEmbeddingStorage as jest.Mock).mockImplementation(() => ({
+  SqlCipherRagEmbeddingStorage.mockImplementation(() => ({
     listForModel: async () => Array.from({ length: 6 }, () => ({})),
   }));
 }
