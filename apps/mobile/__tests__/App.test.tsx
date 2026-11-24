@@ -209,10 +209,9 @@ test('keeps health sync setup in Settings and removes manual imports from Record
   await fireEvent.press(screen.getByTestId('health-data-save'));
 
   await waitFor(() =>
-    expect(configureLocalHealthKitAutoSync).toHaveBeenCalledWith([
-      'medications',
-      'bloodPressure',
-    ]),
+    expect(
+      jest.mocked(configureLocalHealthKitAutoSync).mock.calls[0]?.[0],
+    ).toEqual(['medications', 'bloodPressure']),
   );
   expect(await screen.findByTestId('health-data-status')).toHaveTextContent(
     '자동 동기화 설정을 저장했어요.',

@@ -9,6 +9,7 @@ import { Alert } from 'react-native';
 import type { AlertButton } from 'react-native';
 import type { ComponentProps } from 'react';
 import App from '../App';
+import { configureLocalHealthKitAutoSync } from '../src/healthkit/autoSyncLocal';
 import { navigationText } from '../src/i18n/navigation';
 import { createAppointmentStore } from '../test-helpers/appointmentStore';
 
@@ -131,3 +132,45 @@ async function pressAlertButton(alert: jest.SpyInstance, index: number) {
     await Promise.resolve();
   });
 }
+
+test.each([[[]], [['steps']]] as const)(
+  'leaves once after committed auto-sync selection (%j), while permission or refresh is still pending',
+  async saved => {
+    const load = jest.requireMock('../src/healthkit/autoSyncLocal')
+      .loadLocalHealthKitAutoSyncSelection as jest.Mock;
+    load.mockResolvedValueOnce(saved);
+    let finish!: (value: { status: 'complete'; attemptedFeatures: [] }) => void;
+    const pending = new Promise<{ status: 'complete'; attemptedFeatures: [] }>(
+      resolve => {
+        finish = resolve;
+      },
+    );
+    const persist = jest.fn();
+    jest.mocked(configureLocalHealthKitAutoSync).mockImplementationOnce((async (
+      features: readonly string[],
+      committed?: () => void,
+    ) => {
+      persist(features);
+      committed?.();
+      return pending;
+    }) as typeof configureLocalHealthKitAutoSync);
+    await renderApp();
+    await openSettings();
+    await fireEvent.press(screen.getByTestId('settings-open-health-data'));
+    const steps = await screen.findByTestId('health-data-feature-steps');
+    await waitFor(() => expect(steps).toBeEnabled());
+    await fireEvent.press(steps);
+    await fireEvent.press(screen.getByTestId('health-data-save'));
+    expect(persist).toHaveBeenCalledWith(saved.length ? [] : ['steps']);
+    expect(screen.getByTestId('navigation-back')).toBeEnabled();
+
+    await fireEvent.press(screen.getByTestId('navigation-back'));
+    expect(await screen.findByTestId('settings-title')).toBeTruthy();
+    await act(async () =>
+      finish({ status: 'complete', attemptedFeatures: [] }),
+    );
+    expect(screen.queryByTestId('health-data-title')).toBeNull();
+    expect(screen.queryByTestId('navigation-back')).toBeNull();
+    expect(persist).toHaveBeenCalledTimes(1);
+  },
+);

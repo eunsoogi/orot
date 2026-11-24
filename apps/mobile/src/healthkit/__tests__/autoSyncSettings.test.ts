@@ -12,7 +12,9 @@ const now = '2026-10-18T12:00:00.000Z';
 
 test('stores the selection before requesting access and syncs selected records', async () => {
   const repository = new MemoryObservationRepository();
+  const onSelectionCommitted = jest.fn();
   const requestReadAuthorizations = jest.fn(async () => {
+    expect(onSelectionCommitted).toHaveBeenCalledTimes(1);
     expect(
       await repository.getSyncCheckpoint(
         healthKitAutoSyncCheckpointKey('sleep'),
@@ -35,6 +37,7 @@ test('stores the selection before requesting access and syncs selected records',
       repository,
       healthKit: { requestReadAuthorizations, querySampleChanges },
       now: () => now,
+      onSelectionCommitted,
     }),
   ).resolves.toEqual({ status: 'complete', attemptedFeatures: ['sleep'] });
 
@@ -84,6 +87,7 @@ test('reports a selection persistence failure before requesting HealthKit access
     .spyOn(repository, 'transaction')
     .mockRejectedValue(new Error('encrypted store unavailable'));
   const requestReadAuthorizations = jest.fn();
+  const onSelectionCommitted = jest.fn();
 
   await expect(
     configureHealthKitAutoSync(['sleep'], {
@@ -93,12 +97,14 @@ test('reports a selection persistence failure before requesting HealthKit access
         querySampleChanges: jest.fn(),
       },
       now: () => now,
+      onSelectionCommitted,
     }),
   ).resolves.toEqual({
     status: 'selection_save_failed',
     attemptedFeatures: [],
   });
   expect(requestReadAuthorizations).not.toHaveBeenCalled();
+  expect(onSelectionCommitted).not.toHaveBeenCalled();
 });
 
 test('repeats authorization for an unchanged selection already in saved checkpoints', async () => {

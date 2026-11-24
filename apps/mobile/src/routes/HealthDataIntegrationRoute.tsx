@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { AppState } from 'react-native';
 import type { HealthKitAutoSyncFeature } from '../healthkit/autoSyncCheckpoint';
 import type { HealthKitAutoSyncNotice } from '../healthkit/autoSyncSettings';
@@ -22,6 +22,7 @@ export function HealthDataIntegrationRoute({
   readonly loadSelection?: () => Promise<readonly HealthKitAutoSyncFeature[]>;
   readonly saveSelection?: (
     features: readonly HealthKitAutoSyncFeature[],
+    onSelectionCommitted?: () => void,
   ) => Promise<HealthKitAutoSyncNotice>;
   readonly loadIntegrationStatus?: () => Promise<HealthDataIntegrationStatus>;
 }) {
@@ -37,6 +38,14 @@ export function HealthDataIntegrationRoute({
     useState<HealthDataIntegrationStatus | null>(null);
   const [statusLoadFailed, setStatusLoadFailed] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [committing, setCommitting] = useState(false);
+  const inFlight = useRef<symbol | null>(null);
+  useLayoutEffect(
+    () => () => {
+      inFlight.current = null;
+    },
+    [],
+  );
   const [notice, setNotice] = useState<HealthKitAutoSyncNotice | null>(null);
   const [revision, setRevision] = useState(0);
   const [loadRevision, setLoadRevision] = useState(0);
@@ -94,10 +103,12 @@ export function HealthDataIntegrationRoute({
 
   const dirty = !sameSelection(selected, saved);
   useNavigationLeaveStateRegistration({
-    canLeave: !saving,
+    canLeave: !committing,
     hasUnsavedChanges: dirty,
     isRecording: false,
-    hasOngoingOperation: saving,
+    // Only the pending durable write blocks leaving. The existing HealthKit
+    // authorization and refresh neither own navigation nor roll back that write.
+    hasOngoingOperation: false,
     revision,
     inputRevision: revision,
   });
@@ -122,22 +133,40 @@ export function HealthDataIntegrationRoute({
   }
 
   async function save() {
-    if (!loaded || saving) return;
+    if (!loaded || inFlight.current) return;
+    const token = Symbol('health-data-save');
+    inFlight.current = token;
+    const current = () => inFlight.current === token;
+    let committed = false;
     setSaving(true);
+    setCommitting(true);
     setNotice(null);
     const features = [...selected];
+    const confirmCommit = () => {
+      if (!current() || committed) return;
+      committed = true;
+      setSaved(new Set(features));
+      setCommitting(false);
+    };
     try {
-      const result = await saveSelection(features);
+      const result = await saveSelection(features, confirmCommit);
+      if (!current()) return;
       setNotice(result);
       if (result.status !== 'selection_save_failed') {
-        setSaved(new Set(features));
-        // Saving can run a refresh that updates this screen's aggregate status snapshot.
+        confirmCommit();
         setStatusRevision(value => value + 1);
       }
     } catch {
-      setNotice({ status: 'selection_save_failed' });
+      if (current())
+        setNotice({
+          status: committed ? 'retryable' : 'selection_save_failed',
+        });
     } finally {
-      setSaving(false);
+      if (current()) {
+        inFlight.current = null;
+        setCommitting(false);
+        setSaving(false);
+      }
     }
   }
 
