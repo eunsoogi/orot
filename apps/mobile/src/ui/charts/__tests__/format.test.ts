@@ -54,6 +54,7 @@ test('uses truncated BPM on fractional ticks, visible tooltips and accessible se
   expect(formatRangeAxisValue(89.96, false)).toBe('90');
   const point = {
     x: '2035-01-01',
+    source: 'synthetic',
     value: 76.99,
     range: { minimum: 64.99, maximum: 89.99, samples: 3 },
   };

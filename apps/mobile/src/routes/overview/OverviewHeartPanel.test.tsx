@@ -64,6 +64,8 @@ test('renders one chartless card with independently labeled real values at narro
     sampleCount: 3,
     firstSampleAtMs: 111,
     lastSampleAtMs: 222,
+    fromInclusive: '2035-01-01T00:00:00.000Z',
+    toExclusive: '2035-01-08T00:00:00.000Z',
     membershipRevision: 'v1:' + '0'.repeat(64),
   });
   await render(<OverviewMetrics />);
