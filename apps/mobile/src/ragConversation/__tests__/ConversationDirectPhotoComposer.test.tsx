@@ -7,6 +7,7 @@ import {
 } from '@testing-library/react-native';
 import { t } from '../../i18n';
 import { syntheticDirectJPEG } from '../../aiFeatures/integration/testSupport/directPhotoSendFixture';
+import { ConversationSteeringComposer } from '../ConversationSteeringComposer';
 import { conversationHistoryPayload } from '../conversationHistoryPayload';
 import {
   directPhotoComposerFixture,
@@ -35,7 +36,10 @@ async function fixture(
   databases.push(f.close);
   return f;
 }
-beforeEach(() => jest.clearAllMocks());
+beforeEach(() => {
+  jest.clearAllMocks();
+  jest.mocked(ports.hasPicker).mockReturnValue(true);
+});
 afterEach(() => {
   for (const close of databases.splice(0)) close();
 });
@@ -119,7 +123,7 @@ test('opted-in automatic memory excludes a direct photo and its authored prefere
 });
 
 test.each(['denied', 'retired', 'unsupported'])(
-  '%s makes no transfer, while explicit OCR is still separate',
+  '%s makes no transfer and never offers OCR',
   async condition => {
     const f = await fixture({
       supported: condition !== 'unsupported',
@@ -140,10 +144,10 @@ test.each(['denied', 'retired', 'unsupported'])(
           /선택한 AI에서 사진을 이미지로 전송할 수 없어요/,
         ),
       ).toBeTruthy();
-    await fireEvent.press(
-      screen.getByRole('button', { name: '텍스트만 읽어 첨부' }),
-    );
-    expect(onPickOCR).toHaveBeenCalledTimes(1);
+    expect(
+      screen.queryByRole('button', { name: '텍스트만 읽어 첨부' }),
+    ).toBeNull();
+    expect(onPickOCR).not.toHaveBeenCalled();
     expect(f.start).not.toHaveBeenCalled();
     expect(f.ordinary).not.toHaveBeenCalled();
     expect(onSendText).not.toHaveBeenCalled();
@@ -210,4 +214,30 @@ test('a completed native reply is never published or saved after its grant retir
   ).toEqual([]);
   expect(f.session().savedHistoryDisplay).toEqual([]);
   expect(f.start).toHaveBeenCalledTimes(1);
+});
+
+test('a missing native image picker never falls back to OCR or prevents typed Send', async () => {
+  jest.mocked(ports.hasPicker).mockReturnValue(false);
+  const f = await fixture();
+  await act(() => f.store.setDraft(f.session().id, 'A typed question'));
+  await render(
+    <ConversationSteeringComposer
+      store={f.store}
+      session={f.session()}
+      photo={{ status: 'empty', onSelect: onPickOCR, onRemove: jest.fn() }}
+      onSend={onSendText}
+      onCancel={jest.fn()}
+      onChangeText={jest.fn()}
+    />,
+  );
+  expect(screen.getByRole('button', { name: '사진 첨부' })).toBeDisabled();
+  expect(
+    screen.queryByRole('button', { name: '텍스트만 읽어 첨부' }),
+  ).toBeNull();
+  await attach();
+  expect(ports.pick).not.toHaveBeenCalled();
+  expect(onPickOCR).not.toHaveBeenCalled();
+  await send();
+  expect(onSendText).toHaveBeenCalledTimes(1);
+  expect(f.start).not.toHaveBeenCalled();
 });

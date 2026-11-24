@@ -1,7 +1,4 @@
 import type { ComponentProps } from 'react';
-import { Pressable, StyleSheet } from 'react-native';
-import { AppText } from '../layout/AppText';
-import { t } from '../i18n';
 import { ConversationComposer } from './ConversationComposer';
 import { useConversationDirectPhoto } from './useConversationDirectPhoto';
 import type {
@@ -11,8 +8,8 @@ import type {
 
 type Props = ComponentProps<typeof ConversationComposer>;
 
-/** Route only an attached direct image to the dedicated sender. An ordinary Send
- * or explicitly selected OCR attachment continues to use the existing owner. */
+/** Only direct image selection is exposed here. Keep the ordinary sender for
+ * typed turns; unavailable image transport must not fall back to OCR. */
 export function ConversationDirectPhotoComposer({
   composer,
   session,
@@ -31,7 +28,7 @@ export function ConversationDirectPhotoComposer({
   const direct = useConversationDirectPhoto(session, store, isEntryCurrent);
   const { photo } = composer;
   const { image, picking, sending, message } = direct.state;
-  if (!direct.available || !photo)
+  if (!photo)
     return (
       <ConversationComposer
         {...composer}
@@ -41,10 +38,13 @@ export function ConversationDirectPhotoComposer({
       />
     );
   const selected = Boolean(image || picking || sending || message);
-  const useImagePicker = photo.status === 'empty';
   const photoOverride: Props['photo'] = {
     ...photo,
-    onSelect: useImagePicker ? direct.pick : photo.onSelect,
+    pickerDisabled: photo.pickerDisabled || !direct.available,
+    onSelect: () => {
+      if (direct.available && !photo.pickerDisabled) direct.pick();
+    },
+    deliveryReady: false,
     ...(selected
       ? {
           status: image ? 'ready' : picking ? 'preparing' : 'error',
@@ -57,49 +57,17 @@ export function ConversationDirectPhotoComposer({
       : {}),
   };
   return (
-    <>
-      <ConversationComposer
-        {...composer}
-        photo={photoOverride}
-        trailingAction={
-          renderTrailingAction?.(selected) ?? composer.trailingAction
-        }
-        busy={composer.busy || Boolean(sending)}
-        onSteer={sending ? undefined : composer.onSteer}
-        onCancel={sending ? direct.remove : composer.onCancel}
-        onSend={selected ? direct.send : composer.onSend}
-        preflightError={message ?? composer.preflightError}
-        steeringControls={
-          <>
-            {useImagePicker &&
-            !composer.busy &&
-            !composer.disabled &&
-            !photo.pickerDisabled &&
-            !picking &&
-            !sending ? (
-              <Pressable
-                accessibilityRole="button"
-                onPress={() => {
-                  direct.remove();
-                  photo.onSelect();
-                }}
-                style={styles.textChoice}
-              >
-                <AppText>{t('ragConversation.photo.imageTextOnly')}</AppText>
-              </Pressable>
-            ) : null}
-            {composer.steeringControls}
-          </>
-        }
-      />
-    </>
+    <ConversationComposer
+      {...composer}
+      photo={photoOverride}
+      trailingAction={
+        renderTrailingAction?.(selected) ?? composer.trailingAction
+      }
+      busy={composer.busy || Boolean(sending)}
+      onSteer={sending ? undefined : composer.onSteer}
+      onCancel={sending ? direct.remove : composer.onCancel}
+      onSend={selected ? direct.send : composer.onSend}
+      preflightError={message ?? composer.preflightError}
+    />
   );
 }
-
-const styles = StyleSheet.create({
-  textChoice: {
-    minHeight: 44,
-    justifyContent: 'center',
-    alignSelf: 'flex-start',
-  },
-});

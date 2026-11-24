@@ -5,12 +5,11 @@ export const conversationDirectPhotoKo = {
   'ragConversation.photo.imageInvalid':
     '이 사진을 준비할 수 없어요. 다른 사진을 선택해 주세요.',
   'ragConversation.photo.imageUnsupported':
-    '선택한 AI에서 사진을 이미지로 전송할 수 없어요. 사진을 빼거나 텍스트 첨부를 따로 선택해 주세요.',
+    '선택한 AI에서 사진을 이미지로 전송할 수 없어요. 사진을 빼거나 사진을 지원하는 모델을 선택해 주세요.',
   'ragConversation.photo.imageUnavailable':
     '사진을 전송할 수 없어요. 다른 AI나 텍스트로 자동 전송하지 않았어요.',
   'ragConversation.photo.imageSettingsRequired':
     '사진 전송에 동의하지 않았거나 동의가 변경됐어요. 대화 모델 설정에서 전송 범위를 확인해 주세요.',
-  'ragConversation.photo.imageTextOnly': '텍스트만 읽어 첨부',
   'ragConversation.photo.imageReplyNotSaved':
     '사진 답변을 안전하게 저장하지 못했어요. 다시 자동으로 전송하지 않았어요.',
   'ragConversation.photo.imageSettingsConsent':
