@@ -82,28 +82,61 @@ export function projectConversationToolEvent(value: unknown): ConversationToolEv
   };
 }
 
+function requireProjectedEvent(incoming: ConversationToolEvent) {
+  const event = projectConversationToolEvent(incoming);
+  if (!event) throw new Error('Invalid conversation tool event.');
+  return event;
+}
+
+function compareToolEvents(a: ConversationToolEvent, b: ConversationToolEvent) {
+  return (
+    a.operationRunId.localeCompare(b.operationRunId) ||
+    a.order - b.order ||
+    a.callId.localeCompare(b.callId)
+  );
+}
+
 /** A delayed start cannot reopen a terminal call; first terminal result wins conflicting replay. */
+function keepsPrior(prior: ConversationToolEvent, event: ConversationToolEvent) {
+  if (
+    prior.toolName !== event.toolName ||
+    prior.order !== event.order ||
+    prior.inputSummary.sourceKind !== event.inputSummary.sourceKind
+  )
+    throw new Error('Tool call identity changed.');
+  return prior.status !== 'started' || event.status === 'started';
+}
+
 export function mergeConversationToolEvents(
   existing: readonly ConversationToolEvent[],
   incoming: ConversationToolEvent,
 ): readonly ConversationToolEvent[] {
-  const event = projectConversationToolEvent(incoming);
-  if (!event) throw new Error('Invalid conversation tool event.');
+  const event = requireProjectedEvent(incoming);
   const prior = existing.find(
     (e) => e.operationRunId === event.operationRunId && e.callId === event.callId,
   );
-  if (
-    prior &&
-    (prior.toolName !== event.toolName ||
-      prior.order !== event.order ||
-      prior.inputSummary.sourceKind !== event.inputSummary.sourceKind)
-  )
-    throw new Error('Tool call identity changed.');
-  if (prior && (prior.status !== 'started' || event.status === 'started')) return existing;
-  return [...existing.filter((e) => e !== prior), event].sort(
-    (a, b) =>
-      a.operationRunId.localeCompare(b.operationRunId) ||
-      a.order - b.order ||
-      a.callId.localeCompare(b.callId),
-  );
+  if (prior && keepsPrior(prior, event)) return existing;
+  return [...existing.filter((e) => e !== prior), event].sort(compareToolEvents);
+}
+
+/** A single materialization keeps replay decisions in arrival order, then sorts once.
+ * Replacement moves to the end of its stable sort tie, just as a live merge does. */
+export function createConversationToolEventBuffer() {
+  const runs = new Map<string, Map<string, ConversationToolEvent>>();
+  const ordered = new Set<ConversationToolEvent>();
+  return {
+    add(incoming: ConversationToolEvent) {
+      const event = requireProjectedEvent(incoming);
+      const calls = runs.get(event.operationRunId) ?? new Map();
+      runs.set(event.operationRunId, calls);
+      const prior = calls.get(event.callId);
+      if (prior && keepsPrior(prior, event)) return;
+      if (prior) ordered.delete(prior);
+      calls.set(event.callId, event);
+      ordered.add(event);
+    },
+    sorted(): readonly ConversationToolEvent[] {
+      return [...ordered].sort(compareToolEvents);
+    },
+  };
 }

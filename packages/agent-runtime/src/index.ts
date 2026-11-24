@@ -87,7 +87,11 @@ export type {
   ConversationToolStatus,
   ToolSourceReference,
 } from './multiAgent/toolEvents';
-export { projectConversationToolEvent, mergeConversationToolEvents } from './multiAgent/toolEvents';
+export {
+  createConversationToolEventBuffer,
+  projectConversationToolEvent,
+  mergeConversationToolEvents,
+} from './multiAgent/toolEvents';
 
 export type {
   LocalAppointmentQueryResult,
