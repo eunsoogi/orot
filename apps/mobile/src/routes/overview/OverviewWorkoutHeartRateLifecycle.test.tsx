@@ -1,3 +1,9 @@
+import { syncCommonObservationChanges } from '../../healthkit/commonObservations/sync';
+import { healthKitSample } from '../../healthkit/commonObservations/testSupport';
+import {
+  healthKit,
+  page,
+} from '../../healthkit/commonObservations/testSyncSupport';
 import { act, render, screen, waitFor } from '@testing-library/react-native';
 import { OverviewWorkoutHeartRateCard } from './OverviewWorkoutHeartRateCard';
 import { resultFor, setup } from './testSupport/overviewWorkoutCardHarness';
@@ -82,6 +88,67 @@ test('true background clears a proven amount and resumes with one fresh query on
     });
     await waitFor(() => expect(result()).toHaveTextContent('평균 120 bpm'));
     expect(lane.queryWorkoutPeriodHeartRate).toHaveBeenCalledTimes(2);
+    await view.unmount();
+  } finally {
+    lane.close();
+  }
+});
+
+test('only a committed workout import re-queries the focused empty period', async () => {
+  const lane = await setup();
+  try {
+    lane.queryWorkoutPeriodHeartRate.mockImplementationOnce(async request => ({
+      ...resultFor(request),
+      status: 'emptyVisible',
+    }));
+    const view = await render(
+      <OverviewWorkoutHeartRateCard active width={302} />,
+    );
+    await waitFor(() => expect(result()).toHaveTextContent(/확인할 수 없어요/));
+    expect(lane.queryWorkoutPeriodHeartRate).toHaveBeenCalledTimes(1);
+    const now = () => new Date().toISOString();
+    const workout = healthKitSample('workouts', {
+      id: '195dd035-5be5-4124-ad39-113445fb56c4',
+      startDate: new Date(Date.now() - 120000).toISOString(),
+      endDate: new Date(Date.now() - 60000).toISOString(),
+    });
+    await act(async () => {
+      await syncCommonObservationChanges({
+        feature: 'steps',
+        repository: lane.repository,
+        now,
+        healthKit: healthKit([
+          page({ addedSamples: [healthKitSample('steps')], cursor: 'step-1' }),
+        ]),
+      });
+      await syncCommonObservationChanges({
+        feature: 'workouts',
+        repository: lane.repository,
+        now,
+        healthKit: healthKit([page({ cursor: 'workout-1' })]),
+      });
+    });
+    expect(lane.queryWorkoutPeriodHeartRate).toHaveBeenCalledTimes(1);
+    await act(async () => {
+      await syncCommonObservationChanges({
+        feature: 'workouts',
+        repository: lane.repository,
+        now,
+        healthKit: healthKit([
+          page({ addedSamples: [workout], cursor: 'workout-2' }),
+        ]),
+      });
+    });
+    await waitFor(() => expect(result()).toHaveTextContent('평균 120 bpm'));
+    await act(async () => {
+      lane.transition('active');
+      lane.transition('active');
+    });
+    expect(lane.queryWorkoutPeriodHeartRate).toHaveBeenCalledTimes(2);
+    expect(lane.queryWorkoutPeriodHeartRate.mock.calls[1]![0].workouts).toEqual(
+      expect.arrayContaining([expect.objectContaining({ id: workout.id })]),
+    );
+    expect(lane.requestReadAuthorizations).not.toHaveBeenCalled();
     await view.unmount();
   } finally {
     lane.close();
