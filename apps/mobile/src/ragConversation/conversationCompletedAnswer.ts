@@ -100,9 +100,11 @@ export function conversationCompletedAnswer(input: {
       ? outcome.answer
       : outcome.status === 'no_evidence'
         ? input.copy.noEvidence
-        : outcome.guidance === 'visit_goal'
-          ? t('visitQuestions.conversation.clarifyGoal')
-          : input.copy.insufficient;
+        : outcome.guidance === 'recording_selector'
+          ? t('ragConversation.conversation.recordingSelectorClarification')
+          : outcome.guidance === 'visit_goal'
+            ? t('visitQuestions.conversation.clarifyGoal')
+            : input.copy.insufficient;
   update(id, {
     pendingMessage: null,
     // A generated report is retained on its own message, not selected for every later prompt.

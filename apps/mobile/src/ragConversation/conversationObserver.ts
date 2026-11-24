@@ -75,6 +75,14 @@ export type RagConversationObserver = Pick<
     readonly signal: AbortSignal;
     readonly isCurrent: () => boolean;
   };
+  /** Live composer only. Neither a saved bubble nor the model can mint this receipt. */
+  readonly recordingClarification?: {
+    stage(
+      recipient: import('./conversationRecordingClarification').RecordingRecipient,
+      originalQuestion?: string,
+    ): Promise<boolean>;
+    readonly reply?: import('./conversationRecordingClarification').RecordingClarificationReply;
+  };
   readonly conversationScope?: string;
   readonly retentionSession?: { readonly id: string; readonly version: number };
   /** The checkpoint and explicit photo consent are owned by this specific turn. */

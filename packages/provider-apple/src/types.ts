@@ -22,7 +22,13 @@ export interface AppleCancellationSignal {
   removeEventListener(type: 'abort', listener: () => void): void;
 }
 
+/** App-owned request fence. Neither the model nor the serialized bridge payload sees it. */
+export type AppleNativeHandoffFence = () => Promise<
+  { current(): boolean; dispose(): void } | undefined
+>;
+
 export interface AppleGenerationOptions {
+  readonly nativeHandoffFence?: AppleNativeHandoffFence;
   readonly signal?: AppleCancellationSignal;
 }
 

@@ -79,3 +79,23 @@ export async function listRecentSourcePage(
     };
   });
 }
+
+/** Seek exact audio metadata only; a second row is sufficient to reject ambiguity. */
+export async function findExactRecordingTime(
+  sql: SqlExecutor,
+  zonedTimestamp: string,
+): Promise<readonly string[]> {
+  const lower = localQueryTimestampKey(TimestampSchema.parse(zonedTimestamp));
+  // The next ASCII character after the key terminator '!' is '"'.
+  const upper = lower.slice(0, -1) + '"';
+  const result = await sql.execute(
+    `SELECT id FROM source_records INDEXED BY source_records_recent_page_idx
+     WHERE ${eligible} AND ${sourceKind} = 'audio_recording'
+       AND json_extract(payload_json, '$.recordedAt') = recorded_at
+       AND (${sourceKey}) >= ? AND (${sourceKey}) < ?
+       AND NOT EXISTS (SELECT 1 FROM ${SOURCE_DELETION_TOMBSTONES_TABLE} WHERE source_id=source_records.id)
+     ORDER BY (${sourceKey}) LIMIT 2`,
+    [lower, upper],
+  );
+  return result.rows.map((row) => RecordIdSchema.parse(row.id));
+}

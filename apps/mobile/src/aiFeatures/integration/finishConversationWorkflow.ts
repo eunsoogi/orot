@@ -3,12 +3,14 @@ import type { RagConversationObserver } from '../../ragConversation/conversation
 import type { conversationGeneratedTools } from './conversationGeneratedTools';
 import { conversationFallbackOutcome } from './conversationFallbackOutcome';
 import { t } from '../../i18n';
+import { recordingSelectionRecipient } from './recordingSelectionRecipient';
 import { finishRagConversation } from './finishRagConversation';
 
 /** Both live and reconstructed workflows preserve final freshness, paging and retention gates. */
 export async function finishConversationWorkflow(
   input: Omit<Parameters<typeof finishRagConversation>[0], 'continuation'> & {
     observer?: RagConversationObserver;
+    recordingSelection?: Parameters<typeof recordingSelectionRecipient>[0];
     priorDialogueOmitted?: boolean;
     generated: ReturnType<typeof conversationGeneratedTools>;
     localRetrievalFailed(): boolean;
@@ -29,6 +31,19 @@ export async function finishConversationWorkflow(
       kind: 'retrieval_failed',
       discardUnverifiedDraft: true,
     };
+  if (
+    input.outcome.status === 'insufficient' &&
+    input.outcome.guidance === 'recording_selector'
+  ) {
+    return input.observer?.inputOrigin === 'composer' &&
+      input.recordingSelection &&
+      (await input.observer.recordingClarification?.stage(
+        recordingSelectionRecipient(input.recordingSelection),
+      )) &&
+      !input.signal.aborted
+      ? input.outcome
+      : { status: 'insufficient' };
+  }
   const continuation = input.generated.choose(input.outcome);
   input.observer?.onArtifactContinuation?.(continuation);
   const fallback = conversationFallbackOutcome(

@@ -194,7 +194,7 @@ export type MultiAgentRunResult<TResult> =
   | {
       readonly status: 'needs_clarification';
       readonly reason: string;
-      /** Task-validated display copy; generic evidence clarifications may omit it. */
+      readonly clarification?: 'recording_selector_required';
       readonly message?: string;
       readonly providerErrorCode?: ProviderErrorCode;
       readonly coverage?: readonly EvidenceCoverage[];
