@@ -39,3 +39,43 @@ test('renders raw heart samples as instant ranges, without importing the derived
   );
   expect(selected.props.accessibilityLabel).toContain('출처: 건강 앱');
 });
+
+test('combines distinct local-hour readings into a genuine daily preview range', async () => {
+  const raw = healthObservation(
+    'morning',
+    'heart_rate',
+    new Date(2035, 0, 1, 9, 30).toISOString(),
+  );
+  if (raw.value.kind !== 'quantity')
+    throw new Error('Synthetic fixture needs BPM');
+  await render(
+    <HealthRecordsLineChart
+      category="heart_rate"
+      preview
+      observations={[
+        { ...raw, value: { ...raw.value, amount: 60 } },
+        {
+          ...raw,
+          id: 'afternoon',
+          effectiveAt: new Date(2035, 0, 1, 16).toISOString(),
+          value: { ...raw.value, amount: 100 },
+        },
+        {
+          ...raw,
+          id: 'next-day',
+          effectiveAt: new Date(2035, 0, 2, 9).toISOString(),
+        },
+      ]}
+    />,
+  );
+  await fireEvent(
+    screen.getByTestId('health-record-chart-plot-row'),
+    'layout',
+    {
+      nativeEvent: { layout: { width: 320 } },
+    },
+  );
+  const options = { includeHiddenElements: true };
+  expect(screen.getAllByTestId('chart-range-span', options)).toHaveLength(1);
+  expect(screen.getAllByTestId('chart-range-single', options)).toHaveLength(1);
+});

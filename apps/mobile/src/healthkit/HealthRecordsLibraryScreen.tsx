@@ -1,3 +1,4 @@
+import { ChartTooltipHost } from '../ui/charts/ChartTooltipHost';
 import { useState } from 'react';
 import {
   useNavigationEdgeMenu,
@@ -131,71 +132,73 @@ export function HealthRecordsLibraryScreen({
     selectedCategory,
   );
   return (
-    <AdaptiveColumns
-      routeKey="health-records-library"
-      testID="health-records-layout"
-      primary={
-        <View
-          style={styles.scroll}
-          onLayout={event => setPanelWidth(event.nativeEvent.layout.width)}
-          testID="health-records-primary-scroll-host"
-        >
-          <FlatList
-            data={displayedCategories}
-            keyExtractor={category => category}
-            {...edge.indicatorProps}
-            contentContainerStyle={[
-              styles.container,
-              navigationInset,
-              edge.contentStyle,
-            ]}
-            ListHeaderComponent={
-              <HealthRecordsLibraryHeader
-                beforeFilters={
-                  !hasDock ? (
-                    <AppButton
-                      onPress={onOpenHealthImport}
-                      testID="health-records-open-health-import"
-                      title={t('healthRecords.openHealthDataSettings')}
-                    />
-                  ) : null
-                }
-                hasSharedNavigation={hasSharedNavigation}
-                loadState={loadState}
-                observationCount={observationCount}
-                hasMore={hasMore}
-                onBack={onBack}
-                onRetry={retry}
-                retryInDock={retryInDock}
-                onSelectCategory={setSelectedCategory}
-                selectedCategory={selectedCategory}
-                filterRailWidth={menuEdge.touchClearance}
-                filterRightBleed={menuEdge.rightBleed}
-              />
-            }
-            ItemSeparatorComponent={CategoryDivider}
-            renderItem={({ item: category }) =>
-              category === 'medications' ? (
-                <HealthRecordsMedicationCategoryCard
-                  summary={medication}
-                  onOpenDetail={onOpenDetail}
+    <ChartTooltipHost style={styles.scroll}>
+      <AdaptiveColumns
+        routeKey="health-records-library"
+        testID="health-records-layout"
+        primary={
+          <View
+            style={styles.scroll}
+            onLayout={event => setPanelWidth(event.nativeEvent.layout.width)}
+            testID="health-records-primary-scroll-host"
+          >
+            <FlatList
+              data={displayedCategories}
+              keyExtractor={category => category}
+              {...edge.indicatorProps}
+              contentContainerStyle={[
+                styles.container,
+                navigationInset,
+                edge.contentStyle,
+              ]}
+              ListHeaderComponent={
+                <HealthRecordsLibraryHeader
+                  beforeFilters={
+                    !hasDock ? (
+                      <AppButton
+                        onPress={onOpenHealthImport}
+                        testID="health-records-open-health-import"
+                        title={t('healthRecords.openHealthDataSettings')}
+                      />
+                    ) : null
+                  }
+                  hasSharedNavigation={hasSharedNavigation}
+                  loadState={loadState}
+                  observationCount={observationCount}
+                  hasMore={hasMore}
+                  onBack={onBack}
+                  onRetry={retry}
+                  retryInDock={retryInDock}
+                  onSelectCategory={setSelectedCategory}
+                  selectedCategory={selectedCategory}
+                  filterRailWidth={menuEdge.touchClearance}
+                  filterRightBleed={menuEdge.rightBleed}
                 />
-              ) : (
-                <HealthRecordsCategoryCard
-                  category={category}
-                  hasMore={read(category).cursor !== null}
-                  loadState={read(category).loadState}
-                  observations={read(category).records}
-                  onOpenDetail={onOpenDetail}
-                />
-              )
-            }
-            style={[styles.scroll, edge.scrollViewStyle]}
-            testID="health-records-scroll"
-          />
-        </View>
-      }
-    />
+              }
+              ItemSeparatorComponent={CategoryDivider}
+              renderItem={({ item: category }) =>
+                category === 'medications' ? (
+                  <HealthRecordsMedicationCategoryCard
+                    summary={medication}
+                    onOpenDetail={onOpenDetail}
+                  />
+                ) : (
+                  <HealthRecordsCategoryCard
+                    category={category}
+                    hasMore={read(category).cursor !== null}
+                    loadState={read(category).loadState}
+                    observations={read(category).records}
+                    onOpenDetail={onOpenDetail}
+                  />
+                )
+              }
+              style={[styles.scroll, edge.scrollViewStyle]}
+              testID="health-records-scroll"
+            />
+          </View>
+        }
+      />
+    </ChartTooltipHost>
   );
 }
 

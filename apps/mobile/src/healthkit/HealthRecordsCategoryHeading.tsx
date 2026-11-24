@@ -6,27 +6,43 @@ export function HealthRecordsCategoryHeading({
   icon,
   children,
   action,
+  body,
 }: {
   readonly icon: ReactNode;
   readonly children: ReactNode;
   readonly action: ReactNode;
+  readonly body?: ReactNode;
 }) {
   const { fontScale } = useWindowDimensions();
   const [width, setWidth] = useState(0);
-  // Until measured, and at large text sizes, give the action its own bounded line.
+  // Use the earlier medication header placement only when the actual card can fit it.
   const stacked = width < 440 || fontScale > 1.3;
   return (
-    <View
-      onLayout={event => setWidth(event.nativeEvent.layout.width)}
-      style={[styles.heading, !stacked && styles.inline]}
-      testID="health-record-category-heading"
-    >
-      <View style={[styles.identity, !stacked && styles.grow]}>
-        {icon}
-        <View style={styles.copy}>{children}</View>
+    <View style={styles.cardContents}>
+      <View
+        onLayout={event => setWidth(event.nativeEvent.layout.width)}
+        style={[styles.heading, !stacked && styles.inline]}
+        testID="health-record-category-heading"
+      >
+        <View style={[styles.identity, !stacked && styles.grow]}>
+          {icon}
+          <View style={styles.copy}>{children}</View>
+        </View>
+        {action && !stacked ? (
+          <View
+            style={styles.inlineAction}
+            testID="health-record-details-inline"
+          >
+            {action}
+          </View>
+        ) : null}
       </View>
-      {action ? (
-        <View style={stacked ? styles.stackedAction : styles.inlineAction}>
+      {body}
+      {action && stacked ? (
+        <View
+          style={styles.stackedAction}
+          testID="health-record-details-bottom"
+        >
           {action}
         </View>
       ) : null}
@@ -35,6 +51,7 @@ export function HealthRecordsCategoryHeading({
 }
 
 const styles = StyleSheet.create({
+  cardContents: { gap: 16, minWidth: 0 },
   heading: { gap: 12, minWidth: 0 },
   inline: { flexDirection: 'row', alignItems: 'center' },
   identity: {

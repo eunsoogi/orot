@@ -12,7 +12,10 @@ import {
   healthRecordPeriodTitle,
 } from './healthRecordsLibraryModel';
 import { buildHealthChartSeries } from './healthRecordsChartModel';
-import { heartRateInstantBuckets } from './heartRateInstantBuckets';
+import {
+  heartRateDayBuckets,
+  heartRateInstantBuckets,
+} from './heartRateInstantBuckets';
 import { selectHealthRecordPreviewRanks } from './healthRecordPreview';
 
 const metrics: Partial<Record<HealthObservationCategory, ChartMetric>> = {
@@ -40,6 +43,7 @@ export function HealthRecordsLineChart({
   readonly loadState?: 'loading' | 'ready' | 'failed';
 }) {
   const [width, setWidth] = useState(0);
+  const previewRange = preview && metrics[category] === 'heartRate';
   const series = useMemo(
     () => buildHealthChartSeries(category, observations),
     [category, observations],
@@ -90,8 +94,9 @@ export function HealthRecordsLineChart({
           }));
           // Page boundaries can cut through an instant. Never describe the
           // resulting stats as covering records beyond the observed page.
-          const buckets =
-            category === 'heart_rate'
+          const buckets = previewRange
+            ? heartRateDayBuckets(measurements)
+            : category === 'heart_rate'
               ? heartRateInstantBuckets(measurements)
               : measurements;
           return {
@@ -109,15 +114,17 @@ export function HealthRecordsLineChart({
               category === 'blood_pressure' && isDiastolic
                 ? 'secondary'
                 : 'primary',
-            points:
-              category === 'heart_rate' && preview
-                ? selectHealthRecordPreviewRanks(buckets)
-                : buckets,
+            points: previewRange
+              ? selectHealthRecordPreviewRanks(buckets).map(point => ({
+                  ...point,
+                  ...(hasMore ? { partial: true } : {}),
+                }))
+              : buckets,
           };
         });
       }),
     };
-  }, [category, observations, series, hasMore, loadState, preview]);
+  }, [category, observations, series, hasMore, loadState, previewRange]);
   return (
     <View
       onLayout={event => setWidth(event.nativeEvent.layout.width)}
@@ -125,21 +132,17 @@ export function HealthRecordsLineChart({
     >
       <ChartPlot
         data={data}
-        compact={preview && category !== 'heart_rate'}
-        hideDetails={preview && category !== 'heart_rate'}
+        compact={preview}
+        hideDetails={preview}
+        barTooltip={previewRange}
         width={width}
         height={200}
         title={healthRecordCategoryTitle(category)}
-        kind={category === 'heart_rate' ? 'range' : 'line'}
-        rangeAxis="time"
+        kind={previewRange || category === 'heart_rate' ? 'range' : 'line'}
+        rangeAxis={previewRange ? 'day' : 'time'}
         testID={'health-record-chart-values-' + category}
         selectedPointTestID={'health-record-chart-' + category}
       />
-      {preview &&
-      category === 'heart_rate' &&
-      data.series.some(item => item.points.length > 0) ? (
-        <Text>{t('healthRecords.heartRatePreviewCoverage')}</Text>
-      ) : null}
       {!preview ? <Text>{t('healthRecords.measuredOnly')}</Text> : null}
     </View>
   );

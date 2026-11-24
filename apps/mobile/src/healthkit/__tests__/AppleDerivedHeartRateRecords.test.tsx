@@ -203,14 +203,10 @@ test('plots exact Apple metrics separately with source and partial-data coverage
   expect(restingChart.coverage.status).toBe('partial');
   expect(restingChart.series.flatMap(series => series.points)).toEqual([
     expect.objectContaining({
-      x: at,
-      value: 60,
-      source: '건강 앱 · Synthetic Watch',
-    }),
-    expect.objectContaining({
-      x: at,
-      value: 82,
-      source: '건강 앱 · Synthetic Phone',
+      value: 71,
+      range: { minimum: 60, maximum: 82, samples: 2 },
+      source: '건강 앱 · Synthetic Watch · 건강 앱 · Synthetic Phone',
+      partial: true,
     }),
   ]);
   expect(screen.queryByText(/개의 평균:/)).toBeNull();
@@ -239,7 +235,10 @@ test('plots exact Apple metrics separately with source and partial-data coverage
     'health-record-chart-values-walking_heart_rate_average',
   );
   expect(chartData('walking_heart_rate_average').series[0]?.points).toEqual([
-    expect.objectContaining({ x: at, value: 99 }),
+    expect.objectContaining({
+      value: 99,
+      range: { minimum: 99, maximum: 99, samples: 1 },
+    }),
   ]);
   expect(
     screen.queryByTestId('health-record-chart-values-resting_heart_rate'),

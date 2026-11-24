@@ -22,8 +22,11 @@ function sleep(id: string, stage: string, start: Date, end: Date) {
   };
 }
 
-test('coincident ordinary heart rate uses the detailed range with no sparse presentation', async () => {
-  const at = new Date(Date.now() - 60000).toISOString();
+test('ordinary heart-rate preview shows real local day spans without measurement prose', async () => {
+  const day = new Date();
+  day.setDate(day.getDate() - 1);
+  day.setHours(10, 0, 0, 0);
+  const at = day.toISOString();
   const record = healthObservation('one', 'heart_rate', at);
   const view = await render(
     <HealthRecordsCategoryCard
@@ -37,6 +40,7 @@ test('coincident ordinary heart rate uses the detailed range with no sparse pres
         {
           ...record,
           id: 'two',
+          effectiveAt: new Date(day.getTime() + 3600_000).toISOString(),
           value: { kind: 'quantity', amount: 80, unit: 'count/min' },
         },
       ]}
@@ -46,15 +50,18 @@ test('coincident ordinary heart rate uses the detailed range with no sparse pres
   const chart = view.getByTestId('health-record-chart-values-heart_rate');
   const props = JSON.parse(chart.props.children);
   expect(props).toMatchObject({
-    compact: false,
-    hideDetails: false,
+    compact: true,
+    hideDetails: true,
+    barTooltip: true,
     kind: 'range',
+    rangeAxis: 'day',
   });
   expect(props.data.series[0].points[0]).toMatchObject({
     value: 70,
     range: { minimum: 60, maximum: 80, samples: 2 },
   });
   const card = view.getByTestId('health-record-category-heart_rate');
+  expect(within(card).queryByText(/측정값|개 기록/)).toBeNull();
   const detail = within(card).getByTestId(
     'health-record-open-detail-heart_rate',
   );

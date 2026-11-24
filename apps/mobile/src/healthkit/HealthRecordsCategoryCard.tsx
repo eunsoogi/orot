@@ -14,9 +14,7 @@ import type {
   HealthRecordsDetailSelection,
 } from './healthRecordsLibraryModel';
 import {
-  groupBloodPressureObservations,
   healthRecordCategoryTitle,
-  healthRecordPeriodTitle,
   filterObservationsByPeriod,
 } from './healthRecordsLibraryModel';
 
@@ -44,10 +42,6 @@ export function HealthRecordsCategoryCard({
     'month',
     now.toISOString(),
   );
-  const count =
-    category === 'blood_pressure'
-      ? groupBloodPressureObservations(recentObservations).length
-      : recentObservations.length;
 
   return (
     <View style={styles.card} testID={'health-record-category-' + category}>
@@ -59,64 +53,56 @@ export function HealthRecordsCategoryCard({
             <AppSymbol name={appearance.symbol} color={appearance.color} />
           </View>
         }
-        action={null}
+        action={
+          <AppButton
+            accessibilityHint={t('healthRecords.detailHint', { title })}
+            onPress={() => onOpenDetail({ category, period: 'month' })}
+            testID={'health-record-open-detail-' + category}
+            title={t('healthRecords.detail')}
+            variant="secondary"
+          />
+        }
+        body={
+          <>
+            {recentObservations.length === 0 ? (
+              <Text
+                style={styles.eventSummary}
+                testID={'health-record-category-empty-' + category}
+              >
+                {loadState === 'loading'
+                  ? t('healthRecords.loading')
+                  : loadState === 'failed'
+                    ? t('healthRecords.error')
+                    : t(
+                        hasMore
+                          ? 'healthRecords.categoryNotLoaded'
+                          : 'healthRecords.categoryEmpty',
+                        { title },
+                      )}
+              </Text>
+            ) : null}
+            {recentObservations.length > 0 && category === 'sleep' ? (
+              <HealthRecordsSleepChart
+                observations={recentObservations}
+                hasMore={hasMore}
+                loadState={loadState}
+                now={now}
+              />
+            ) : recentObservations.length > 0 && category !== 'other' ? (
+              <HealthRecordsCategoryCharts
+                category={category}
+                observations={recentObservations}
+                hasMore={hasMore}
+                loadState={loadState}
+              />
+            ) : null}
+          </>
+        }
       >
         <Text accessibilityRole="header" style={styles.title}>
           {title}
         </Text>
-        {loadState === 'ready' || count > 0 || hasMore ? (
-          <Text style={styles.count}>
-            {t(
-              hasMore
-                ? 'healthRecords.loadedCategoryPeriodSummary'
-                : 'healthRecords.categoryPeriodSummary',
-              {
-                count,
-                period: healthRecordPeriodTitle('month'),
-              },
-            )}
-          </Text>
-        ) : null}
       </HealthRecordsCategoryHeading>
-      {recentObservations.length === 0 ? (
-        <Text
-          style={styles.eventSummary}
-          testID={'health-record-category-empty-' + category}
-        >
-          {loadState === 'loading'
-            ? t('healthRecords.loading')
-            : loadState === 'failed'
-              ? t('healthRecords.error')
-              : t(
-                  hasMore
-                    ? 'healthRecords.categoryNotLoaded'
-                    : 'healthRecords.categoryEmpty',
-                  { title },
-                )}
-        </Text>
-      ) : null}
-      {recentObservations.length > 0 && category === 'sleep' ? (
-        <HealthRecordsSleepChart
-          observations={recentObservations}
-          hasMore={hasMore}
-          loadState={loadState}
-          now={now}
-        />
-      ) : recentObservations.length > 0 && category !== 'other' ? (
-        <HealthRecordsCategoryCharts
-          category={category}
-          observations={recentObservations}
-          hasMore={hasMore}
-          loadState={loadState}
-        />
-      ) : null}
-      <AppButton
-        accessibilityHint={t('healthRecords.detailHint', { title })}
-        onPress={() => onOpenDetail({ category, period: 'month' })}
-        testID={'health-record-open-detail-' + category}
-        title={t('healthRecords.detail')}
-        variant="secondary"
-      />
     </View>
   );
 }
@@ -139,7 +125,6 @@ const styles = StyleSheet.create({
     width: 52,
   },
   title: { color: appColors.text, fontSize: 17, fontWeight: '700' },
-  count: { color: appColors.secondary, fontSize: 13 },
   eventSummary: {
     color: appColors.text,
     fontSize: 14,
