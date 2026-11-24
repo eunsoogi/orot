@@ -82,7 +82,7 @@ private enum WorkoutPeriodBridgeOperations {
     private static var active: [String: Active] = [:]
 
     static func start(_ call: WorkoutPeriodReadCall, store: HKHealthStore) {
-        guard active[call.id] == nil, active.count < 2 else {
+        guard #available(iOS 15.4, *), active[call.id] == nil, active.count < 2 else {
             call.resolve(["status": "unavailable"])
             return
         }
@@ -107,7 +107,7 @@ private enum WorkoutPeriodBridgeOperations {
             }
         }
         let expiry = Task {
-            do { try await Task.sleep(for: .seconds(15)) } catch { return }
+            do { try await Task.sleep(nanoseconds: 15_000_000_000) } catch { return }
             if active[call.id]?.call === call {
                 cancel(call.id)
             }

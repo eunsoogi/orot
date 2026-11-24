@@ -34,16 +34,16 @@ enum WorkoutPeriodHealthKitProducer {
     private static let maxQuantities = 200_000
     private static let maxMemberships = 32768
 
+    @available(iOS 15.4, *)
     static func capture(
         store: HKHealthStore,
         period: Accumulator.Window,
         completeCohort: [OwnedWorkout],
         isCurrent: @MainActor () -> Bool,
     ) async -> Outcome {
-        let clock = ContinuousClock()
-        let deadline = clock.now.advanced(by: .seconds(15))
+        let deadline = DispatchTime.now() + .seconds(15)
         func active() -> Bool {
-            clock.now < deadline && !Task.isCancelled && isCurrent() && UIApplication.shared.isProtectedDataAvailable &&
+            DispatchTime.now() < deadline && !Task.isCancelled && isCurrent() && UIApplication.shared.isProtectedDataAvailable &&
                 UIApplication.shared.applicationState == .active
         }
         guard active(), HKHealthStore.isHealthDataAvailable(),
