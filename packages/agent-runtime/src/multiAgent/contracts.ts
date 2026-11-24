@@ -222,7 +222,7 @@ export interface MultiAgentInvocation {
   readonly config?: RunnableConfig;
   readonly resumeFrom?: MultiAgentCheckpointState;
   readonly onApprovalWait?: (waiting: boolean, kind?: 'checkpoint-only') => void;
-  readonly onModelApprovalWait?: (waiting: boolean) => void;
+  readonly onModelApprovalWait?: (waiting: boolean) => 'checkpoint-only' | void;
   readonly pause?: import('./workflowPause').MultiAgentPauseController;
   readonly signal?: AbortSignal;
   readonly onProgress?: (event: MultiAgentProgressEvent) => void;
