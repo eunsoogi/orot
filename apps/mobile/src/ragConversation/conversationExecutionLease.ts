@@ -144,29 +144,29 @@ export async function beginConversationExecutionLease(
     reconciling = true;
     try {
       do {
-        // Observe actual bridge checks, not duplicate foreground notifications.
         reconcileAgain = false;
         const opportunity = nativeOpportunity;
         nativeOpportunity = false;
         report('foreground-check-started');
         const visit = foregroundVisit;
-        const available = await adapter.protectedDataAvailable();
-        if (closed || interrupted) return;
-        if (available === false) notify('protected-data');
-        else if (visit === foregroundVisit) {
-          const active = await adapter.isActive(requestId);
-          // A lease sample from another foreground visit cannot prove ownership loss here.
-          if (closed || interrupted || visit !== foregroundVisit) continue;
-          if (!active) unavailable('foreground');
-          else {
-            report('foreground-check-passed');
-            if (opportunity && available === true)
-              observeOpportunity?.('continuation-foreground');
+        try {
+          const available = await adapter.protectedDataAvailable();
+          if (closed || interrupted) return;
+          if (available === false) notify('protected-data');
+          else if (visit === foregroundVisit) {
+            const active = await adapter.isActive(requestId);
+            if (closed || interrupted || visit !== foregroundVisit) continue;
+            if (!active) unavailable('foreground');
+            else {
+              report('foreground-check-passed');
+              if (opportunity && available === true)
+                observeOpportunity?.('continuation-foreground');
+            }
           }
+        } catch {
+          if (visit === foregroundVisit) notify('lease-check-failed');
         }
       } while (reconcileAgain && !closed && !interrupted);
-    } catch {
-      notify('lease-check-failed');
     } finally {
       reconciling = false;
     }
