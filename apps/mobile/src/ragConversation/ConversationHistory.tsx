@@ -5,7 +5,7 @@ import { useConversationTranscriptWindow } from './useConversationTranscriptWind
 import { conversationHistoryError } from './conversationHistoryError';
 import { useConversationJumpToLatest } from './useConversationJumpToLatest';
 import { ConversationJumpToLatest } from './ConversationJumpToLatest';
-import { useFloatingComposerInset } from './FloatingComposerSurface';
+import { useFloatingComposerAnchor } from './FloatingComposerSurface';
 import { followConversationLatest } from './followConversationLatest';
 import { useSeparatedConversationActivity } from './ConversationWorkspaceContext';
 import { projectTranscript } from './conversationBubblePaint';
@@ -54,7 +54,8 @@ export function ConversationHistory({
   requestSessionId,
   requestActivity,
 }: import('./ConversationHistoryProps').ConversationHistoryProps) {
-  const composerInset = useFloatingComposerInset();
+  const composerAnchor = useFloatingComposerAnchor();
+  const composerInset = composerAnchor ?? 0;
   const edge = useTranscriptEdgeScroll(bottomInset, compact);
   const separatedActivity = useSeparatedConversationActivity();
   const historyView = useRef<ComponentRef<typeof ScrollView>>(null);
@@ -232,8 +233,8 @@ export function ConversationHistory({
       </ScrollView>
       <ConversationJumpToLatest
         key={sessionId}
-        visible={jumpControl.away}
-        bottom={composerInset}
+        visible={jumpControl.away && composerAnchor !== null}
+        bottom={composerAnchor ?? 8}
         onPress={() => {
           reading.cancel();
           window.cancelAnchor();

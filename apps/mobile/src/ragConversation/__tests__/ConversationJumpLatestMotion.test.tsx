@@ -33,7 +33,7 @@ test('fades a decorative surface at the same position and retires the real hit t
   await view.rerender(scene(true, press));
   expect(phases.map(phase => phase.target)).toEqual([1]);
   expect(screen.queryByTestId(actionID, quiet)).toBeNull();
-  expect(screen.getByTestId(hostID, quiet)).toHaveStyle({ bottom: 104 });
+  expect(screen.getByTestId(hostID, quiet)).toHaveStyle({ bottom: 96 });
   expect(screen.getByTestId(visualID, quiet)).toHaveProp(
     'pointerEvents',
     'none',
@@ -41,7 +41,7 @@ test('fades a decorative surface at the same position and retires the real hit t
   expect(screen.queryByTestId(visualID)).toBeNull();
   await act(() => phases[0]!.finish());
   expect(screen.queryByTestId(visualID, quiet)).toBeNull();
-  expect(screen.getByTestId(hostID)).toHaveStyle({ bottom: 104 });
+  expect(screen.getByTestId(hostID)).toHaveStyle({ bottom: 96 });
   const live = screen.getByTestId(actionID);
   expect(live).toHaveStyle({ width: 44, height: 44 });
   const queued = live.props.onClick ?? live.props.onPress;

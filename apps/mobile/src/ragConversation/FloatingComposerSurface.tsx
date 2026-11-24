@@ -1,8 +1,10 @@
 import { createContext, useContext, useState, type ReactNode } from 'react';
 import { StyleSheet, View } from 'react-native';
 
-const ComposerInset = createContext(0);
-export const useFloatingComposerInset = () => useContext(ComposerInset);
+// Null is a mounted composer awaiting native layout; undefined is a standalone transcript.
+const ComposerAnchor = createContext<number | null | undefined>(undefined);
+export const useFloatingComposerAnchor = () => useContext(ComposerAnchor);
+export const useFloatingComposerInset = () => useFloatingComposerAnchor() ?? 0;
 
 /** Float over the transcript while reserving exactly the mounted controls' height for its final items. */
 export function FloatingComposerSurface({
@@ -12,15 +14,15 @@ export function FloatingComposerSurface({
   children: ReactNode;
   composer?: ReactNode;
 }) {
-  const [height, setHeight] = useState(0);
+  const [height, setHeight] = useState<number | null>(null);
   return (
     <View
       style={styles.surface}
       testID="conversation-floating-composer-surface"
     >
-      <ComposerInset.Provider value={composer ? height : 0}>
+      <ComposerAnchor.Provider value={composer ? height : undefined}>
         {children}
-      </ComposerInset.Provider>
+      </ComposerAnchor.Provider>
       <View
         pointerEvents="box-none"
         style={styles.overlay}

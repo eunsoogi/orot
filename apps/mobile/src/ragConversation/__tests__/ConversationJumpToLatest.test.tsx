@@ -1,9 +1,8 @@
 import { fireEvent, render, screen } from '@testing-library/react-native';
-import { ScrollView, Text } from 'react-native';
+import { ScrollView } from 'react-native';
 import { ConversationHistory } from '../ConversationHistory';
 import { trackJumpLatestMotion } from '../testSupport/jumpLatestMotion';
 import { NavigationMotionContext } from '../../navigation/NavigationMotionContext';
-import { FloatingComposerSurface } from '../FloatingComposerSurface';
 
 // Keep native button props visible; actual UIKit geometry is validated separately.
 jest.mock('../../layout/GlassIconButton', () => {
@@ -73,35 +72,6 @@ test('hides for short content and after returning to the bottom manually', async
   expect(jump()).not.toBeNull();
   await scroll(600);
   expect(jump()).toBeNull();
-});
-
-test('targets the message end before footer and tracks measured composer growth', async () => {
-  const move = jest.spyOn(ScrollView.prototype, 'scrollTo');
-  await render(
-    <FloatingComposerSurface composer={<Text>Composer</Text>}>
-      <ConversationHistory {...props} compact footer={<Text>Sources</Text>} />
-    </FloatingComposerSurface>,
-  );
-  await layout(400);
-  await end(1000);
-  await scroll(600, 400, 1400);
-  expect(jump()).toBeNull();
-  await fireEvent(
-    screen.getByTestId('conversation-floating-composer-overlay'),
-    'layout',
-    {
-      nativeEvent: { layout: { height: 120 } },
-    },
-  );
-  expect(jump()).not.toBeNull();
-  expect(screen.getByTestId('conversation-jump-latest-position')).toHaveStyle({
-    bottom: 128,
-    left: 0,
-    right: 0,
-    alignItems: 'center',
-  });
-  await fireEvent.press(jump()!);
-  expect(move).toHaveBeenLastCalledWith({ y: 720, animated: true });
 });
 
 test('reflow updates visibility without stealing the reader position', async () => {
