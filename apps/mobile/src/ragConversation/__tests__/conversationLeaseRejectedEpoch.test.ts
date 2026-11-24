@@ -14,8 +14,8 @@ async function fixture(read: 'isActive' | 'protectedDataAvailable') {
     begin: jest.fn(async () => true),
     end: jest.fn(),
     currentPhase: () => 'active' as const,
-    isActive: jest.fn(async () => true),
-    protectedDataAvailable: jest.fn(async () => true),
+    isActive: jest.fn(async (): Promise<boolean> => true),
+    protectedDataAvailable: jest.fn(async (): Promise<boolean> => true),
     subscribe: (receive: (event: ConversationExecutionEvent) => void) => {
       emit = receive;
       return jest.fn();
