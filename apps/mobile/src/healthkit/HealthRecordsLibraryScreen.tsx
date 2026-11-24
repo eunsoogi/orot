@@ -91,9 +91,10 @@ export function HealthRecordsLibraryScreen({
   const observationCount =
     states.reduce((count, state) => count + state.records.length, 0) +
     (includesMedication
-      ? (medication.data.totalDefinitions ??
-          medication.data.definitions.length) +
-        (medication.data.totalDoseEvents ?? medication.data.doseEvents.length)
+      ? medication.status === 'ready' &&
+        medication.data.monthlyTaken?.status === 'complete'
+        ? medication.data.monthlyTaken.observedCount
+        : 0
       : 0);
   const hasMore = states.some(state => state.cursor !== null);
   const retryInDock =

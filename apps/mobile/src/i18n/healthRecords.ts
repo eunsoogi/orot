@@ -85,10 +85,18 @@ export const healthRecordsKo = {
   'healthRecords.recordCount': '{count}개 기록',
   'healthRecords.loadOlder': '이전 기록 더 보기',
   'healthRecords.incompleteBloodPressure': '한 항목만 저장된 혈압 기록',
-  'healthRecords.medicationCountSummary':
-    '{medications}개 약 · {doseEvents}개 복용 기록',
-  'healthRecords.medicationLatestDose': '최근 복용 기록 {timestamp}',
-  'healthRecords.medicationNoDoseEvents': '저장된 복용 기록이 없어요.',
+  'healthRecords.medicationMonthPeriod': '건강 앱 기록: {from}부터 {to}까지',
+  'healthRecords.medicationMonthTaken': '복용 확인 {count}건',
+  'healthRecords.medicationMonthRowLabel': '{name}, 복용 확인 {count}건',
+  'healthRecords.medicationMonthRowCount': '{count}건',
+  'healthRecords.medicationMonthExcluded':
+    '복용 여부나 약을 확인할 수 없는 기록 {count}건은 집계에서 제외했어요.',
+  'healthRecords.medicationMonthNoTaken':
+    '이 기간에 복용이 확인된 기록이 없어요.',
+  'healthRecords.medicationMonthUnverified':
+    '이 기간의 기록을 모두 확인할 수 없어 복용 횟수를 표시하지 않아요.',
+  'healthRecords.medicationMonthExpand': '약 {count}개 모두 보기',
+  'healthRecords.medicationMonthCollapse': '접기',
   'healthRecords.medicationUnknownName': '약 이름을 확인할 수 없어요.',
   'healthRecords.medicationDoseNotRecorded': '복용량 정보가 없어요.',
   'healthRecords.medicationDose': '{amount} {unit}',

@@ -4,12 +4,14 @@ import type { HealthObservationCursor } from './healthObservationPages';
 import { localQueryTimestampKey, localQueryTimestampKeyExpression } from './localQueryTimestamp';
 import { decodeStoredRecord } from './recordPersistence';
 import type { SqlExecutor, SqlValue } from './sql';
+import { readMedicationTakenMonth, type MedicationTakenMonth } from './healthMedicationMonthly';
 
 export interface HealthMedicationPageRequest {
   readonly cursor?: HealthObservationCursor | null;
   readonly fromInclusive?: string;
   readonly toInclusive: string;
   readonly includeTotals?: boolean;
+  readonly monthlyTakenOnly?: boolean;
 }
 export interface HealthMedicationPage {
   readonly definitions: readonly MedicationDefinition[];
@@ -17,6 +19,7 @@ export interface HealthMedicationPage {
   readonly nextCursor?: HealthObservationCursor | null;
   readonly totalDefinitions?: number;
   readonly totalDoseEvents?: number;
+  readonly monthlyTaken?: MedicationTakenMonth;
 }
 
 const imported =
@@ -36,6 +39,15 @@ export async function readHealthMedicationPage(
   executor: SqlExecutor,
   request: HealthMedicationPageRequest,
 ): Promise<HealthMedicationPage> {
+  if (request.monthlyTakenOnly) {
+    if (!request.fromInclusive || request.cursor)
+      throw new Error('Monthly medication statistics require a complete bounded period.');
+    const monthlyTaken = await readMedicationTakenMonth(executor, {
+      fromInclusive: request.fromInclusive,
+      toInclusive: request.toInclusive,
+    });
+    return { definitions: [], doseEvents: [], monthlyTaken };
+  }
   const to = localQueryTimestampKey(TimestampSchema.parse(request.toInclusive));
   const from =
     request.fromInclusive === undefined

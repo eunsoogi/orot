@@ -1,3 +1,4 @@
+import { medicationMonthFixture } from './medicationMonthFixture';
 import { fireEvent, render, screen } from '@testing-library/react-native';
 import { mapBloodPressureCorrelation } from '../bloodPressure/mapper';
 import { correlation, correlationAt } from '../bloodPressure/testSupport';
@@ -7,10 +8,7 @@ import {
 } from '../commonObservations/mapper';
 import { healthKitSample } from '../commonObservations/testSupport';
 import { HealthRecordsLibraryScreen } from '../HealthRecordsLibraryScreen';
-import {
-  importedDoseEvent,
-  medicationDefinition,
-} from '../../../../../packages/storage/__tests__/localQueryTestSupport';
+import { medicationDefinition } from '../../../../../packages/storage/__tests__/localQueryTestSupport';
 
 test('shows imported pressure as a chart-first category and opens a separate period list', async () => {
   const timestamp = new Date().toISOString();
@@ -115,15 +113,13 @@ test('shows only the selected record type and restores all types with All', asyn
 test('shows stored HealthKit medication counts and opens its separate detail list', async () => {
   const timestamp = new Date().toISOString();
   const medication = medicationDefinition('medication-1', timestamp);
-  const dose = importedDoseEvent('dose-1', timestamp, 'taken');
   const onOpenDetail = jest.fn();
 
   await render(
     <HealthRecordsLibraryScreen
-      loadMedicationData={async () => ({
-        definitions: [medication],
-        doseEvents: [dose],
-      })}
+      loadMedicationData={async request =>
+        medicationMonthFixture(request, medication)
+      }
       loadObservations={async () => ({ records: [], nextCursor: null })}
       onBack={jest.fn()}
       onOpenHealthImport={jest.fn()}
@@ -134,8 +130,14 @@ test('shows stored HealthKit medication counts and opens its separate detail lis
   await fireEvent.press(screen.getByTestId('health-record-filter-medications'));
   expect(
     await screen.findByTestId('health-record-medications-count'),
-  ).toHaveTextContent('1개 약 · 1개 복용 기록');
+  ).toHaveTextContent('복용 확인 1건');
   expect(screen.getByText('출처: 건강 앱')).toBeTruthy();
+  expect(
+    screen.getByTestId('health-record-medication-month-period'),
+  ).toBeTruthy();
+  expect(
+    screen.getByLabelText('Synthetic medication, 복용 확인 1건'),
+  ).toBeTruthy();
   await fireEvent.press(
     screen.getByTestId('health-record-open-detail-medications'),
   );
@@ -149,7 +151,7 @@ test('recovers the medication summary after a local read failure', async () => {
   const loadMedicationData = jest
     .fn()
     .mockRejectedValueOnce(new Error('local database unavailable'))
-    .mockResolvedValueOnce({ definitions: [], doseEvents: [] });
+    .mockImplementationOnce(async request => medicationMonthFixture(request));
 
   await render(
     <HealthRecordsLibraryScreen
@@ -168,7 +170,7 @@ test('recovers the medication summary after a local read failure', async () => {
   await fireEvent.press(screen.getByTestId('health-record-medications-retry'));
   expect(
     await screen.findByTestId('health-record-medications-summary'),
-  ).toHaveTextContent('저장된 약 및 복용 기록이 없어요.');
+  ).toHaveTextContent('이 기간에 복용이 확인된 기록이 없어요.');
   expect(loadMedicationData).toHaveBeenCalledTimes(2);
 });
 
