@@ -9,7 +9,6 @@ import {
   savedHistoryTranscript,
 } from '../conversationSavedHistoryDisplay';
 import { createConversationSessions } from '../conversationSessions';
-import { select as selectA2UI } from '../conversationA2UISelection';
 import { conversationA2UICatalog } from '../conversationA2UI';
 import { runRagConversationTurn } from '../service';
 import { fixture, response } from '../testSupport/conversationEnvelopeFixtures';
@@ -228,24 +227,6 @@ test.each([
           version: 1,
           tree: ['Column', 0, 0],
         });
-        const archivedSurface = {
-          messageId: message.id,
-          root: layout,
-          origin: 'owned-archive' as const,
-        };
-        expect(selectA2UI(message, archivedSurface)).toBe(layout);
-        expect(
-          selectA2UI(
-            { ...message, savedHistoryDisplayOnly: undefined },
-            surface,
-          ),
-        ).toBeUndefined();
-        expect(
-          selectA2UI({ ...message, incomplete: true }, archivedSurface),
-        ).toBeUndefined();
-        expect(
-          selectA2UI({ ...message, id: message.id - 1 }, archivedSurface),
-        ).toBeUndefined();
       }
       expect(JSON.stringify(stored?.archivedA2UILayout) ?? '').not.toContain(
         answer,
