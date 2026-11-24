@@ -7,6 +7,7 @@ import { AppSymbol } from '../layout/AppSymbol';
 import { appColors } from '../layout/appColors';
 import { t } from '../i18n';
 import type { VoicePhase } from './voiceTurn';
+import { VoiceActivityIndicator } from './VoiceActivityIndicator';
 import {
   VoiceTranscriptViewport,
   type VoiceTranscriptLine,
@@ -17,6 +18,7 @@ export function VoiceConversationScreen({
   visible,
   phase,
   status,
+  audioOwnerId,
   identity,
   pipeline,
   toolConfirmation,
@@ -33,6 +35,7 @@ export function VoiceConversationScreen({
   visible: boolean;
   phase: VoicePhase;
   status: string;
+  audioOwnerId?: string;
   identity?: ReactNode;
   pipeline?: string | null;
   toolConfirmation?: ReactNode;
@@ -93,17 +96,10 @@ export function VoiceConversationScreen({
         </AppText>
         <View style={styles.center}>
           <View style={styles.identity}>{identity}</View>
-          {/* This is a phase symbol, not a fabricated audio amplitude or waveform. */}
-          <AppSymbol
-            name={
-              muted
-                ? 'mic.slash'
-                : phase === 'listening' || phase === 'speaking'
-                  ? 'waveform'
-                  : 'ellipsis'
-            }
-            size={32}
-            color={appColors.primary}
+          <VoiceActivityIndicator
+            visible={visible}
+            phase={phase}
+            callId={audioOwnerId}
           />
           <AppText accessibilityLiveRegion="polite" style={styles.status}>
             {muted ? t('ragConversation.voice.muted') : status}

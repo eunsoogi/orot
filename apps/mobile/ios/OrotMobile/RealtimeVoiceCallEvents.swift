@@ -11,6 +11,20 @@ extension RealtimeVoiceCall {
         return false
     }
 
+    /// Presentation gets only the scalar from the currently owned active audio graph.
+    func bindDisplayMeter(callID: String, captureEpoch epoch: UUID) {
+        (audio as? RealtimeVoiceDisplayMeterPort)?.displayLevel = { [weak self] direction, level in
+            guard let self, id == callID, captureEpoch == epoch, ready, !paused, liveIsCurrent(),
+                  level.isFinite, (0 ... 1).contains(level)
+            else { return }
+            emit("VoiceRealtimeAudioLevel", [
+                "callId": callID,
+                "direction": direction == .input ? "input" : "output",
+                "level": level,
+            ])
+        }
+    }
+
     func receive(_ event: [String: Any]) {
         guard id != nil, let type = event["type"] as? String else { return }
         switch type {

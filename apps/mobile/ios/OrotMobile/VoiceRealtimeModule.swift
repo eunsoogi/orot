@@ -31,8 +31,12 @@ final class VoiceRealtimeModule: RCTEventEmitter {
         true
     }
 
+    override func constantsToExport() -> [AnyHashable: Any]! {
+        ["supportsVoiceAudioLevels": true]
+    }
+
     override func supportedEvents() -> [String]! {
-        ["VoiceRealtimeState", "VoiceRealtimeTranscript", "VoiceRealtimeInterrupted", "VoiceRealtimeSystemCall", "VoiceRealtimePaused", "VoiceRealtimeToolCall", "VoiceRealtimeToolCancelled", "VoiceRealtimeManagedToolCall", "VoiceRealtimeManagedToolCancelled"]
+        ["VoiceRealtimeState", "VoiceRealtimeTranscript", "VoiceRealtimeInterrupted", "VoiceRealtimeSystemCall", "VoiceRealtimePaused", "VoiceRealtimeAudioLevel", "VoiceRealtimeToolCall", "VoiceRealtimeToolCancelled", "VoiceRealtimeManagedToolCall", "VoiceRealtimeManagedToolCancelled"]
     }
 
     @objc(openLiveCall:model:apiKey:options:resolver:rejecter:)

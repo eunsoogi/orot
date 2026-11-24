@@ -109,20 +109,21 @@ final class RealtimeVoiceLifecycleTests: OrotFailFastTestCase {
     func testOldCaptureFailureCannotStopNewCall() async throws {
         try await assertConnectingCueWaitsForAdmissionAndLateStopCannotSendOnNextAttempt()
         let audio = Audio(), socket = Socket()
-        let call = fixture(audio, socket)
+        var levels: [Double] = []
+        let call = fixture(audio, socket) { event, body in levels += event == "VoiceRealtimeAudioLevel" ? [body["level"] as? Double].compactMap { $0 } : [] }
         await opening(call, socket: socket)
         socket.received?(started())
-        let oldFailure = audio.failure
+        let oldFailure = audio.failure, oldMeter = audio.displayLevel
+        oldMeter?(.output, 0.5)
         try call.stop("call")
         await opening(call, socket: socket, id: "new-call")
         socket.received?(started())
-        oldFailure?()
+        oldFailure?(); oldMeter?(.output, 0.9)
         let delivered = expectation(description: "old callback drained")
         DispatchQueue.main.async { delivered.fulfill() }
         await fulfillment(of: [delivered], timeout: 1)
-        XCTAssertEqual(audio.starts, 2)
-        XCTAssertEqual(audio.stops, 1)
-        XCTAssertEqual(socket.closes, 1)
+        XCTAssertEqual(levels, [0.5])
+        XCTAssertEqual([audio.starts, audio.stops, socket.closes], [2, 1, 1])
         try call.stop("new-call")
     }
 
@@ -192,7 +193,8 @@ final class RealtimeVoiceLifecycleTests: OrotFailFastTestCase {
     }
 
     private enum Failure: Error { case synthetic }
-    final class Audio: RealtimeAudioPort {
+    final class Audio: RealtimeAudioPort, RealtimeVoiceDisplayMeterPort {
+        var displayLevel: ((RealtimeVoiceLevelDirection, Double) -> Void)?
         var isDrained = true
         var drained: (() -> Void)?
         var failure: (() -> Void)?
