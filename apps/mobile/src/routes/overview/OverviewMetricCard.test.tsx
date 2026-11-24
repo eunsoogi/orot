@@ -23,6 +23,8 @@ function projection(
   const unit = {
     sleep: 'min',
     heartRate: 'count/min',
+    restingHeartRate: 'count/min',
+    walkingHeartRate: 'count/min',
     bodyMass: 'kg',
     steps: 'count',
     workouts: 'min',
