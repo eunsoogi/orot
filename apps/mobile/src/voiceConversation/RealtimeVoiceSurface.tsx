@@ -58,6 +58,7 @@ export function RealtimeVoiceSurface({
         onDismiss={onDismiss}
         phase={state.phase}
         status={status}
+        audioOwnerId={state.identity?.turnId}
         pipeline={
           model === liveModel ? null : t('realtimeDisplay.pipeline', { model })
         }

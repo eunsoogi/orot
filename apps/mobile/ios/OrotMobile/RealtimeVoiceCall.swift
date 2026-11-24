@@ -123,6 +123,7 @@ final class RealtimeVoiceCall {
         }
         let epoch = UUID()
         captureEpoch = epoch
+        bindDisplayMeter(callID: current, captureEpoch: epoch)
         let inputBudget = RealtimeInputBudget()
         do {
             if systemCallActive {
