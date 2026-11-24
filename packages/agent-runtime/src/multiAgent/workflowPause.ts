@@ -25,6 +25,10 @@ export class MultiAgentPauseController {
     this.provedCooperativePause = true;
     return true;
   }
+  /** The caller proved a decision-free wait; only a requested OS drain records a pause. */
+  confirmCooperativeModelWait(): void {
+    if (this.requested) this.provedCooperativePause = true;
+  }
   private approvalWaits = new Set<AbortController>();
 
   requestPause(): void {
