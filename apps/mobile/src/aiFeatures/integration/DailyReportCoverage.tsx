@@ -1,3 +1,4 @@
+import { isDailyReportActivityMarker } from './dailyReportEmptyActivity';
 import { StyleSheet, View } from 'react-native';
 import type { DailyReportSourceCoverage } from '@orot/domain';
 import {
@@ -15,10 +16,12 @@ export function DailyReportCoverage({
   readonly sourceCounts?: ReadonlyMap<string, number>;
   readonly timeZone: string;
 }) {
+  // The checked-empty activity findings already lead their report observations.
+  const sources = coverage.filter(item => !isDailyReportActivityMarker(item));
   return (
     <View style={styles.grid} testID="daily-report-coverage-grid">
-      {coverage.length ? (
-        coverage.map((item, index) => (
+      {sources.length ? (
+        sources.map((item, index) => (
           <DailyReportCoverageCard
             key={`${item.source}:${index}`}
             item={item}

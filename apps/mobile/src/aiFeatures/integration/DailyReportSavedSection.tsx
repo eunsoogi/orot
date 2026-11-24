@@ -5,6 +5,7 @@ import type { EvidenceReference } from '@orot/agent-runtime';
 import { AppText } from '../../layout/AppText';
 import { AppButton } from '../../layout/AppButton';
 import { formatDateTime, t } from '../../i18n';
+import { dailyReportEmptyActivity } from './dailyReportEmptyActivity';
 import { DailyReportCoverage } from './DailyReportCoverage';
 import { dailyReportCoverageCounts } from './dailyReportCoverageCounts';
 import { DailyReportSourceLinks } from './DailyReportSourceLinks';
@@ -71,6 +72,9 @@ export function DailyReportSavedSection({
       <AppText accessibilityRole="header">
         {t('dailyReport.observations')}
       </AppText>
+      {dailyReportEmptyActivity(saved.report.coverage).map(text => (
+        <AppText key={text}>{text}</AppText>
+      ))}
       <AppButton
         title={
           showEvidence

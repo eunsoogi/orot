@@ -90,6 +90,5 @@ export function sensorSummaryText(summary: ProviderObservationSummary): string {
     ...(summary.limitations.includes('conflicting_values_at_same_instant')
       ? ['같은 시각의 값이 서로 달라 어느 기록이 정확한지 확인이 필요해요.']
       : []),
-    '조회한 자료의 기술 통계이며 전체 기간의 완전한 기록이나 정상 범위·진단을 뜻하지 않아요.',
   ].join(' · ');
 }

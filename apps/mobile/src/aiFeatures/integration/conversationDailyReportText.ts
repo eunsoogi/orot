@@ -1,12 +1,10 @@
-import {
-  dailyReportCoverageMeaning,
-  isDailyReportCoverageWarning,
-} from './dailyReportCoverageMeaning';
+import { dailyReportCoverageMeaning } from './dailyReportCoverageMeaning';
 import {
   sourceLabel,
   limitationLabel,
   statusLabel,
 } from './dailyReportCoveragePresentation';
+import { dailyReportEmptyActivity } from './dailyReportEmptyActivity';
 import { dailyReportCoverageCounts } from './dailyReportCoverageCounts';
 import type { ConversationReport } from '../../ragConversation/conversationReportTemplate';
 import type { DailyReportLookup } from '../../storage/dailyReportStorageTypes';
@@ -19,44 +17,24 @@ export function dailyReportPresentation(
   const counts = dailyReportCoverageCounts(
     saved.context.sourceSnapshot?.records,
   );
-  const coverage = saved.report.coverage
-    .filter(isDailyReportCoverageWarning)
-    .map(item => {
-      const meaning = dailyReportCoverageMeaning(item);
-      // The cutoff and deliberate scope exclusions are provenance, not warnings.
-      const codes = item.limitationCodes.filter(
-        code =>
-          code !== 'partial_day' &&
-          code !== 'selected_facts_only' &&
-          code !== 'planned_events_not_attendance',
-      );
-      if (
-        meaning === 'partial' &&
-        item.syncStatus !== 'retryable' &&
-        item.limitationCodes.length > 0 &&
-        codes.length === 0
-      )
-        return '';
-      const count = counts?.get(item.source);
-      // The old ambiguous calendar status proves non-inclusion, not a partial read.
-      const unknownCalendar =
-        item.source === 'system_calendar' &&
-        item.status === 'unknown' &&
-        item.syncStatus !== 'retryable' &&
-        codes.some(
-          code =>
-            code === 'calendar_unavailable_or_scoped_out' ||
-            code === 'calendar_read_unavailable',
-        );
-      const details = [
-        ...(unknownCalendar ? [] : [statusLabel(meaning)]),
-        ...new Set(codes.map(limitationLabel)),
-      ];
-      if (count !== undefined)
-        details.unshift(t('dailyReport.coverage.count', { count }));
-      return `${sourceLabel(item.source)}: ${[...new Set(details)].join('. ')}`;
-    })
-    .filter(Boolean);
+  const coverage = saved.report.coverage.flatMap(item => {
+    const meaning = dailyReportCoverageMeaning(item);
+    // A concrete failed or stale source is not a generic data-sufficiency judgement.
+    if (meaning !== 'failed' && meaning !== 'stale') return [];
+    const count = counts?.get(item.source);
+    const details = [
+      ...(count === undefined
+        ? []
+        : [t('dailyReport.coverage.count', { count })]),
+      statusLabel(meaning),
+      ...item.limitationCodes
+        .filter(code =>
+          ['source_query_failed', 'source_data_stale'].includes(code),
+        )
+        .map(limitationLabel),
+    ];
+    return [`${sourceLabel(item.source)}: ${[...new Set(details)].join('. ')}`];
+  });
   const sections: { title: string; content: string }[] = [];
   function add(title: string, paragraphs: readonly string[]) {
     if (paragraphs.length)
@@ -76,10 +54,10 @@ export function dailyReportPresentation(
     claims.push(claim.text);
   }
   add(heading, claims);
-  add(
-    t('dailyReport.observations'),
-    saved.report.observations.map(item => item.text),
-  );
+  add(t('dailyReport.observations'), [
+    ...dailyReportEmptyActivity(saved.report.coverage),
+    ...saved.report.observations.map(item => item.text),
+  ]);
   add(t('dailyReport.suggestedQuestions'), saved.report.followUpQuestions);
   add(t('dailyReport.coverage.attention'), coverage);
 

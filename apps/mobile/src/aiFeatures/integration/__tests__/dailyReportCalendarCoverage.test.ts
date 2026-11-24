@@ -54,9 +54,8 @@ test.each(['denied', 'read_error', 'scoped'] as const)(
       ).lookup(result.context.identity);
       if (saved.status !== 'saved') throw new Error('Expected a stored report');
       const warning = '시스템 캘린더 기록을 확인하지 못했어요.';
-      if (mode === 'scoped')
-        expect(conversationDailyReportText(saved)).not.toContain(warning);
-      else expect(conversationDailyReportText(saved)).toContain(warning);
+      expect(conversationDailyReportText(saved)).not.toContain(warning);
+      expect(saved.report.coverage).toEqual(result.report.coverage);
       expect(native.listeners.size).toBe(0);
     } finally {
       connection.close();
