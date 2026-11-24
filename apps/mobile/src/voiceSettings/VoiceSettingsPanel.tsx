@@ -25,11 +25,11 @@ import { OpenAiVoiceToolOptions } from './OpenAiVoiceToolOptions';
 import { OpenAiVoicePairForm } from './OpenAiVoicePairForm';
 import { VoiceCatalogAccount } from './VoiceCatalogAccount';
 import { LiveVoicePreferencesPanel } from './LiveVoicePreferencesPanel';
+import type { LiveVoicePreferencesDraft } from './LiveVoicePreferencesPanel';
 import type { LiveResponsesBackend } from './liveResponsesSettingsIdentity';
 import { selectOpenAiVoicePair } from './reviewOpenAiVoicePair';
 import { usePreviouslyReviewedVoicePair } from './usePreviouslyReviewedVoicePair';
 import { useOpenAiVoicePairSave } from './useOpenAiVoicePairSave';
-import type { LiveVoicePreferencesDraft } from './LiveVoicePreferencesPanel';
 /** Local and API providers are sibling sections; a hidden tab must not own navigation actions. */
 export function VoiceSettingsPanel({
   onOpenAccounts,
@@ -188,47 +188,46 @@ export function VoiceSettingsPanel({
         <Text accessibilityRole="header" style={styles.heading}>
           OpenAI API
         </Text>
-        <VoiceCatalogAccount
-          catalog={catalog}
-          onOpenAccounts={onOpenAccounts}
-        />
-        <OpenAiVoicePairForm
-          fresh={active && catalog.fresh}
-          eligible={eligible}
-          speech={choices('openai-api')}
-          preferences={
-            revision !== null &&
-            (livePreferences || voice === voiceSettingsStore) ? (
-              <LiveVoicePreferencesPanel
-                key={revision}
-                onDraftChange={draft =>
-                  setPrefs(previous =>
-                    previous?.revision === revision && previous.draft === draft
-                      ? previous
-                      : { revision, draft },
-                  )
-                }
-                busy={busy || pairedSave.busy}
-                {...(livePreferences ?? {
-                  ready: true,
-                  store: preferencesReader!,
-                  authorityRevision: revision,
-                })}
+        <VoiceCatalogAccount catalog={catalog} onOpenAccounts={onOpenAccounts}>
+          <OpenAiVoicePairForm
+            fresh={active && catalog.fresh}
+            eligible={eligible}
+            speech={choices('openai-api')}
+            preferences={
+              revision !== null &&
+              (livePreferences || voice === voiceSettingsStore) ? (
+                <LiveVoicePreferencesPanel
+                  key={revision}
+                  onDraftChange={draft =>
+                    setPrefs(previous =>
+                      previous?.revision === revision &&
+                      previous.draft === draft
+                        ? previous
+                        : { revision, draft },
+                    )
+                  }
+                  busy={busy || pairedSave.busy}
+                  {...(livePreferences ?? {
+                    ready: true,
+                    store: preferencesReader!,
+                    authorityRevision: revision,
+                  })}
+                />
+              ) : null
+            }
+            tools={
+              <OpenAiVoiceToolOptions
+                models={catalog.toolIds}
+                selected={tool?.revision === revision ? tool.model : undefined}
+                disabled={busy || failedLoad || pairedSave.busy}
+                choose={value => {
+                  if (revision !== null) setTool({ revision, model: value });
+                }}
               />
-            ) : null
-          }
-          tools={
-            <OpenAiVoiceToolOptions
-              models={catalog.toolIds}
-              selected={tool?.revision === revision ? tool.model : undefined}
-              disabled={busy || failedLoad || pairedSave.busy}
-              choose={value => {
-                if (revision !== null) setTool({ revision, model: value });
-              }}
-            />
-          }
-        />
-        <OpenAiVoiceCatalogStatus catalog={catalog} />
+            }
+          />
+          <OpenAiVoiceCatalogStatus catalog={catalog} />
+        </VoiceCatalogAccount>
       </View>
       {active ? (
         <View style={styles.section}>

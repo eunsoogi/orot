@@ -1,10 +1,6 @@
 import { t } from '../../i18n';
-import type { ChartData, ChartSeries, ChartStatus } from '../../ui/charts';
-import { summarizeSparseHeartRates } from '../../ui/charts/summarizeSparseHeartRates';
-import {
-  isOverviewDerivedHeartRate,
-  isOverviewHeartRate,
-} from './metricSelection';
+import type { ChartData, ChartStatus } from '../../ui/charts';
+import { isOverviewHeartRate } from './metricSelection';
 import type { OverviewMetricProjection } from './metricProjection';
 
 /** Keeps the selected series' day buckets while generic source labels preserve Home's existing privacy. */
@@ -30,19 +26,6 @@ export function overviewMetricChartData(
   const hasPartialCoverage =
     recordedDays < points.length || points.some(point => point.partial);
 
-  const series: ChartSeries[] = [
-    {
-      id: metric.metric,
-      label: t('overview.metricChartDailySeries'),
-      unit: metric.unit,
-      style: 'primary',
-      points,
-    },
-  ];
-  const displayed =
-    isOverviewDerivedHeartRate(metric.metric) && metric.unit === 'count/min'
-      ? summarizeSparseHeartRates(series)
-      : series;
   return {
     metric: chartMetric(metric.metric),
     ...(isOverviewHeartRate(metric.metric) && metric.unit === 'count/min'
@@ -62,11 +45,15 @@ export function overviewMetricChartData(
             ? 'partial'
             : 'ready'),
     },
-    series: displayed.map(item =>
-      item.points.some(point => point.period)
-        ? { ...item, label: t('chart.groupedMean') }
-        : item,
-    ),
+    series: [
+      {
+        id: metric.metric,
+        label: t('overview.metricChartDailySeries'),
+        unit: metric.unit,
+        style: 'primary',
+        points,
+      },
+    ],
   };
 }
 

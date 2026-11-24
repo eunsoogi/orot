@@ -22,8 +22,6 @@ export type ChartPoint = {
   source: string;
   /** If present, value is the mean of these same sampled extrema. */
   range?: ChartRange;
-  /** Inclusive local dates when a plotted value aggregates more than one day. */
-  period?: { readonly start: string; readonly end: string };
   partial?: boolean;
 };
 export type ChartSeries = {

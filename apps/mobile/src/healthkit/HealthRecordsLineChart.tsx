@@ -80,7 +80,7 @@ export function HealthRecordsLineChart({
     const displayed = points.length
       ? `${formatRecordedAt(points[0]!.effectiveAt)} – ${formatRecordedAt(points[points.length - 1]!.effectiveAt)}`
       : t(`chart.state.${status}`);
-    const coverage = {
+    const coverage: ChartData['coverage'] = {
       requested: healthRecordPeriodTitle('month'),
       displayed,
       status,
@@ -119,13 +119,7 @@ export function HealthRecordsLineChart({
         return [...pointsByUnit].flatMap(
           ([unit, unitPoints]): ChartSeries[] => {
             if (previewRange) {
-              return heartRatePreviewSeries(
-                unit,
-                unitPoints,
-                records,
-                hasMore,
-                category !== 'heart_rate',
-              );
+              return heartRatePreviewSeries(unit, unitPoints, records, hasMore);
             }
             const measurements = unitPoints.map(point => ({
               x: point.effectiveAt,

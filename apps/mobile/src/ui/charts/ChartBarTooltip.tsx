@@ -4,7 +4,7 @@ import { useChartTooltip } from './ChartTooltipHost';
 import { t } from '../../i18n';
 import { ChartRenderer } from './ChartRenderer';
 import { chartAccessibilitySummary } from './chartAccessibilitySummary';
-import { formatChartPointPosition, formatChartPointValue } from './format';
+import { formatChartPointValue } from './format';
 import type { ChartData } from './types';
 
 type Props = {
@@ -50,7 +50,7 @@ export function ChartBarTooltip({
   const entry = selected === null ? undefined : entries[selected];
   function describe(item: (typeof entries)[number]) {
     return [
-      formatChartPointPosition(item.point, 'day'),
+      item.point.x,
       item.series.label,
       formatChartPointValue(
         data.metric,
