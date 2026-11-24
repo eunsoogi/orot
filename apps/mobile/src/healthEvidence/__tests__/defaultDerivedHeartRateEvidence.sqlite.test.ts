@@ -121,12 +121,22 @@ test('new Apple-derived rows cannot broaden default evidence, catalog or date co
     expect(snapshot.lineage.map(item => item.recordId).sort()).toEqual(
       expectedIds,
     );
-    // The quantity reader groups by normalized concepts. A differently cased
-    // row in a reserved importer namespace must not join the manual series.
+    // Reserved importer rows cannot become default evidence just because their
+    // concept is stored with different casing.
     await repository.put(kind, {
       ...hidden[0]!,
       concept: 'RESTING_HEART_RATE',
     });
+    await repository.put(kind, {
+      ...hidden[1]!,
+      concept: 'Walking_Heart_Rate_Average',
+    });
+    const refreshedCandidates = await data.readCandidates('심박수');
+    expect(refreshedCandidates.catalog.totalRecordCount).toBe(2);
+    expect(
+      refreshedCandidates.candidates.map(item => item.record.id).sort(),
+    ).toEqual(expectedIds);
+    expect(await data.loadCurrentChunks(selected)).toEqual([]);
     const refreshed = await data.readHealthContext!(window, ['measurements']);
     expect(
       refreshed.quantities

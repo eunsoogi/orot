@@ -31,7 +31,7 @@ export function defaultQuantityObservationEvidence(): string {
 }
 
 function defaultObservationAllowedSql(
-  concept = "json_extract(r.payload_json, '$.concept')",
+  concept = "lower(json_extract(r.payload_json, '$.concept'))",
 ): string {
   return `CASE
     WHEN ${resting} THEN ${concept} IS NOT 'resting_heart_rate'
