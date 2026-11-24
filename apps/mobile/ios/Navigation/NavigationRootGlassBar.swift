@@ -93,7 +93,7 @@ final class NavigationRootGlassBar: UIVisualEffectView {
                         label.text = action.label
                         label.font = NavigationTextMetrics.font(for: action, traits: button.traitCollection)
                         label.textColor = color
-                        label.isHidden = usesVerticalLayout
+                        label.isHidden = usesVerticalLayout || !action.showsTitleWithSystemImage
                     }
                 }
             }
@@ -112,7 +112,7 @@ final class NavigationRootGlassBar: UIVisualEffectView {
         }
     }
 
-    /// Hides only visible tab titles in the narrow lane; button accessibility names remain unchanged.
+    /// The rail stays icon-only; a layout transition must not re-enable an icon-only bottom title.
     func setVerticalLayout(_ isVertical: Bool) {
         guard usesVerticalLayout != isVertical else { return }
         usesVerticalLayout = isVertical
@@ -122,7 +122,7 @@ final class NavigationRootGlassBar: UIVisualEffectView {
         for (button, action) in zip(buttons, descriptors) where action.rootTab {
             for content in button.subviews.compactMap({ $0 as? UIStackView }) {
                 content.arrangedSubviews.compactMap { $0 as? UILabel }.forEach {
-                    $0.isHidden = isVertical
+                    $0.isHidden = isVertical || !action.showsTitleWithSystemImage
                 }
             }
         }

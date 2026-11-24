@@ -65,7 +65,7 @@ final class NavigationViewportFrameIntegrationTests: OrotFailFastTestCase {
     }
 
     @MainActor
-    func testBackTitleIsVisibleBelowIconOnBottomAndHiddenOnRail() throws {
+    func testBackIsIconOnlyAndAccessibleInBottomAndRail() throws {
         let action = try XCTUnwrap(NavigationActionDescriptor([
             "id": "back", "label": "Back", "testID": "navigation-back", "accessibilityLabel": "Back",
         ]))
@@ -76,12 +76,15 @@ final class NavigationViewportFrameIntegrationTests: OrotFailFastTestCase {
         XCTAssertEqual(content.axis, .vertical)
         XCTAssertNotNil(icon.image)
         XCTAssertEqual(label.text, "Back")
-        XCTAssertFalse(label.isHidden)
+        XCTAssertTrue(label.isHidden)
         NavigationGlassButton.setUsesRightRail(true, for: action, button: button)
         XCTAssertTrue(label.isHidden)
         XCTAssertEqual(button.accessibilityLabel, "Back")
         NavigationGlassButton.setUsesRightRail(false, for: action, button: button)
-        XCTAssertFalse(label.isHidden)
+        XCTAssertTrue(label.isHidden)
+        let largeText = UITraitCollection(preferredContentSizeCategory: .accessibilityExtraExtraExtraLarge)
+        XCTAssertEqual(NavigationTextMetrics.width(for: action, traits: largeText), 48)
+        XCTAssertEqual(NavigationTextMetrics.height(for: action, traits: largeText), 48)
     }
 
     @MainActor

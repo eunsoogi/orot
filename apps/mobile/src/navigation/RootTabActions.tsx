@@ -113,11 +113,12 @@ function RootTabAction({
         pointerEvents="none"
         style={[styles.selectedBackground, { opacity: selectionProgress }]}
       />
-      <Animated.Text style={[styles.symbol, { color: foregroundColor }]}>
+      <Animated.Text
+        accessibilityElementsHidden
+        importantForAccessibility="no-hide-descendants"
+        style={[styles.symbol, { color: foregroundColor }]}
+      >
         {item.fallbackSymbol}
-      </Animated.Text>
-      <Animated.Text style={[styles.label, { color: foregroundColor }]}>
-        {item.label}
       </Animated.Text>
     </Pressable>
   );
@@ -150,5 +151,4 @@ const styles = StyleSheet.create({
     fontSize: COMPACT_APP_SYMBOL_POINT_SIZE,
     lineHeight: COMPACT_APP_SYMBOL_POINT_SIZE + 2,
   },
-  label: { fontSize: 12, lineHeight: 16 },
 });

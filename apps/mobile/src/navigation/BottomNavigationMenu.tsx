@@ -1,5 +1,6 @@
 import { useState } from 'react';
-import { Platform, Pressable, Text, useColorScheme, View } from 'react-native';
+import { Platform, useColorScheme, View } from 'react-native';
+import { NavigationActionButton } from './NavigationActionButton';
 import { navigationText } from '../i18n/navigation';
 import {
   NavigationGlassSurface,
@@ -50,9 +51,7 @@ export function BottomNavigationMenu({
       label: primaryAction.label,
       accessibilityLabel: primaryAction.accessibilityLabel,
       testID: primaryAction.testID,
-      systemImageName: primaryAction.systemImageName,
-      showsTitleWithSystemImage: true,
-      titleBelowImage: true,
+      systemImageName: primaryAction.systemImageName ?? 'ellipsis',
       disabled: disabled || primaryAction.disabled === true,
       primary: true,
     });
@@ -77,21 +76,21 @@ export function BottomNavigationMenu({
 
   const actions = (
     <View style={styles.actions} testID="bottom-navigation-action-bar">
-      <BottomAction
+      <NavigationActionButton
         accessibilityLabel={navigationText.back.accessibilityLabel}
         disabled={disabled}
         isDarkAppearance={isDarkAppearance}
-        label={navigationText.back.label}
-        onPress={onBack}
+        symbol="chevron.backward"
+        onPress={() => settleBottomAction(onBack)}
         testID={testID}
       />
       {primaryAction ? (
-        <BottomAction
+        <NavigationActionButton
           accessibilityLabel={primaryAction.accessibilityLabel}
           disabled={disabled || primaryAction.disabled === true}
           isDarkAppearance={isDarkAppearance}
-          label={primaryAction.label}
-          onPress={primaryAction.onPress}
+          symbol={primaryAction.systemImageName}
+          onPress={() => settleBottomAction(primaryAction.onPress)}
           primary
           testID={primaryAction.testID}
         />
@@ -150,51 +149,6 @@ export function BottomNavigationMenu({
     >
       {surface}
     </View>
-  );
-}
-
-function BottomAction({
-  accessibilityLabel,
-  disabled,
-  isDarkAppearance,
-  label,
-  onPress,
-  primary = false,
-  testID,
-}: {
-  readonly accessibilityLabel: string;
-  readonly disabled: boolean;
-  readonly isDarkAppearance: boolean;
-  readonly label: string;
-  readonly onPress: () => void | Promise<unknown>;
-  readonly primary?: boolean;
-  readonly testID: string;
-}) {
-  return (
-    <Pressable
-      accessibilityLabel={accessibilityLabel}
-      accessibilityRole="button"
-      accessibilityState={{ disabled }}
-      disabled={disabled}
-      onPress={() => settleBottomAction(onPress)}
-      style={[
-        styles.action,
-        isDarkAppearance && !primary && styles.darkAction,
-        primary && styles.primaryAction,
-        disabled && styles.disabled,
-      ]}
-      testID={testID}
-    >
-      <Text
-        style={[
-          styles.label,
-          isDarkAppearance && !primary && styles.darkLabel,
-          primary && styles.primaryLabel,
-        ]}
-      >
-        {label}
-      </Text>
-    </Pressable>
   );
 }
 

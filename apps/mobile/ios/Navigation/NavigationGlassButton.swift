@@ -30,12 +30,12 @@ enum NavigationGlassButton {
         }
     }
 
-    /// The narrow rail hides visible navigation titles but retains VoiceOver names.
+    /// A chrome icon and its spoken label are independent in either layout.
     static func setUsesRightRail(_ usesRightRail: Bool, for action: NavigationActionDescriptor, button: UIButton) {
         guard action.id == "home" || action.id == "back" else { return }
         for content in button.subviews.compactMap({ $0 as? UIStackView }) {
             content.arrangedSubviews.compactMap { $0 as? UILabel }.forEach {
-                $0.isHidden = usesRightRail
+                $0.isHidden = usesRightRail || !action.showsTitleWithSystemImage
             }
         }
     }
@@ -83,6 +83,7 @@ enum NavigationGlassButton {
                 testID: action.testID,
                 foregroundColor: action.rootTab && action.selected ? NavigationGlassPalette.selectedRootTabForeground : .label,
                 titleSize: action.rootTab ? 12 : 11,
+                showsTitle: action.showsTitleWithSystemImage,
             )
             button.addSubview(content)
             NSLayoutConstraint.activate([
