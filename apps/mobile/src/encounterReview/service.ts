@@ -1,7 +1,11 @@
 import '../agent/polyfills';
 import { createLangGraphCheckpointStorage } from '@orot/storage';
 import { requireLiveCheckpointSource } from '@orot/storage';
-import type { EncounterApproval, EncounterPending } from '@orot/agent-runtime';
+import type {
+  EncounterApproval,
+  EncounterPending,
+  EncounterTranscript,
+} from '@orot/agent-runtime';
 import {
   SqliteCheckpointSaver,
   validateEncounterApproval,
@@ -157,11 +161,14 @@ export function createEncounterReviewService(
         await repository.transcripts.listForRecording(sourceId);
       if (!transcripts.length) return { status: 'no-transcript' };
       diagnostics?.stage('transcript_read');
+      let expectedTranscript: EncounterTranscript;
       try {
-        await repository.transaction(async (writer, sql) => {
-          if (!sql) throw new Error('Canonical storage required.');
-          await readEncounterTranscript(writer, sql, sourceId);
-        });
+        expectedTranscript = await repository.transaction(
+          async (writer, sql) => {
+            if (!sql) throw new Error('Canonical storage required.');
+            return readEncounterTranscript(writer, sql, sourceId);
+          },
+        );
       } catch (error) {
         if (!(error instanceof EncounterTranscriptTooLong)) throw error;
         if (signal.aborted) return { status: 'cancelled' };
@@ -183,6 +190,8 @@ export function createEncounterReviewService(
       if (signal.aborted) return { status: 'cancelled' };
       diagnostics?.stage('session_begin');
       const { discovery } = await sessions(sourceId);
+      // A stop while storage opens must not replace the last discoverable review.
+      if (signal.aborted) return { status: 'cancelled' };
       const session = await discovery.begin();
       // Keep the source-bound checkpoint thread; only its verified nonce becomes the workflow ID.
       const executionId = discovery.executionId(session);
@@ -205,6 +214,7 @@ export function createEncounterReviewService(
       const result = await runLocalEncounterProcessing({
         sourceId,
         threadId: session.threadId,
+        expectedTranscript,
         model,
         signal,
         onDiagnostic: diagnostics?.capture,

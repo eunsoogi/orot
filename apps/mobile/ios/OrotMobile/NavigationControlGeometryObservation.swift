@@ -9,6 +9,9 @@
 
         @MainActor static func snapshot(identity: (NSObject) -> String) -> [String: Any] {
             let started = Date().timeIntervalSince1970 * 1000
+            let probe = UserDefaults.standard.string(forKey: "OROT_E2E_PROBE")
+            let appointmentEdge = probe == "medical-appointment-app-navigation" &&
+                UserDefaults.standard.string(forKey: "OROT_TEST_APPOINTMENT_EDGE_SCROLL") == "YES"
             let scenes = UIApplication.shared.connectedScenes.compactMap { $0 as? UIWindowScene }
             let visibleWindows = scenes.flatMap(\.windows).filter { !$0.isHidden && $0.alpha > 0.01 }
             let windows = visibleWindows.filter(\.isKeyWindow)
@@ -92,8 +95,8 @@
             } else {
                 NSNull()
             }
-            let appointmentPage: [String: Any] = if UserDefaults.standard.string(forKey: "OROT_E2E_PROBE") == "appointments" {
-                AppointmentPageScrollObservation.snapshot(window: window, identity: identity)
+            let appointmentPage: [String: Any] = if probe == "appointments" || appointmentEdge {
+                AppointmentPageScrollObservation.snapshot(window: window, identity: identity, includeIndicatorGeometry: appointmentEdge)
             } else {
                 ["status": "not-requested"]
             }

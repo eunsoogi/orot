@@ -1,5 +1,6 @@
 import { useState, type ReactNode } from 'react';
 import { StyleSheet, View } from 'react-native';
+import { useNavigationContentFrame } from '../navigation/navigationContentFrame';
 import type { ConversationSession } from '../ragConversation/conversationSessionTypes';
 import { useAssistantAppearance } from './AssistantAppearanceProvider';
 import { FloatingProfileGradient } from './FloatingProfileGradient';
@@ -18,6 +19,7 @@ export function FloatingAssistantSurface({
 }) {
   const [height, setHeight] = useState(0);
   const appearance = useAssistantAppearance();
+  const topIndicator = useNavigationContentFrame()?.systemIndicatorAtTop;
   const reservedHeight = appearance?.ready ? height : 0;
   return (
     <View style={styles.surface} testID="assistant-floating-surface">
@@ -29,6 +31,7 @@ export function FloatingAssistantSurface({
           pointerEvents="box-none"
           style={[
             styles.overlay,
+            topIndicator && styles.overlayAtSystemTop,
             identityWidth !== undefined && {
               width: identityWidth,
               right: undefined,
@@ -53,7 +56,9 @@ const styles = StyleSheet.create({
     right: 0,
     alignItems: 'center',
     paddingHorizontal: 16,
-    paddingVertical: 8,
+    paddingTop: 8,
+    paddingBottom: 8,
     zIndex: 1,
   },
+  overlayAtSystemTop: { paddingTop: 0 },
 });

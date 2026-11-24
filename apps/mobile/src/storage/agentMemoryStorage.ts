@@ -4,6 +4,7 @@ import {
   unavailableMemoryMetadata,
 } from './agentMemoryParentQuarantine';
 import { observeDatabaseOwner } from './databaseOwnerDiagnostics';
+import { notifyCommittedAgentMemoryVisibility } from './agentMemoryVisibilityEvents';
 import { commitAgentMemoryWrites } from './agentMemoryStorageWrites';
 import type { SqlDatabase } from '@orot/storage';
 import { listInvalidatedHealthPeriods } from './healthPeriodDependencies';
@@ -41,6 +42,7 @@ export class SqlCipherAgentMemoryStorage implements AgentMemoryStorageAdapter {
   async load(): Promise<PersistedMemoryRecord[]> {
     await this.ensureTable();
     const retained: PersistedMemoryRecord[] = [];
+    let changed = false;
     await this.database.transaction(transaction =>
       observeDatabaseOwner('memory', async () => {
         const removedResult = await transaction.execute(
@@ -64,15 +66,17 @@ export class SqlCipherAgentMemoryStorage implements AgentMemoryStorageAdapter {
             referencesAnySource(record, removedSourceIds) ||
             referencesAnySource(record, invalidatedSourceIds)
           ) {
-            await transaction.execute(
+            const deleted = await transaction.execute(
               'DELETE FROM agent_memory_records WHERE id = ?',
               [record.id],
             );
+            changed = (deleted.rowsAffected ?? 0) > 0 || changed;
           } else if (await memoryParentAvailable(transaction, record))
             retained.push(record);
         }
       }),
     );
+    if (changed) notifyCommittedAgentMemoryVisibility(this.database);
     return retained;
   }
 
@@ -105,9 +109,11 @@ export class SqlCipherAgentMemoryStorage implements AgentMemoryStorageAdapter {
     if (this.pending)
       throw new Error('Cannot compact agent memory during a write batch.');
     await this.ensureTable();
-    await this.database.transaction(transaction =>
-      compactAgentMemory(transaction, records),
-    );
+    let changed = false;
+    await this.database.transaction(async transaction => {
+      changed = await compactAgentMemory(transaction, records);
+    });
+    if (changed) notifyCommittedAgentMemoryVisibility(this.database);
   }
 
   async listRemovedSourceIds(): Promise<string[]> {
@@ -225,12 +231,13 @@ export class SqlCipherAgentMemoryStorage implements AgentMemoryStorageAdapter {
     witness?: Parameters<AgentMemoryStorageAdapter['commitBatch']>[0],
   ): Promise<void> {
     await this.ensureTable();
-    await commitAgentMemoryWrites(
+    const changed = await commitAgentMemoryWrites(
       this.database,
       writes,
       removedSourceIdsToAdd,
       removedKinds,
       witness,
     );
+    if (changed) notifyCommittedAgentMemoryVisibility(this.database);
   }
 }

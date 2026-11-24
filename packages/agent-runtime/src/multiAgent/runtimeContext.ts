@@ -52,6 +52,7 @@ export interface RuntimeContext<TResult> {
   readonly onProgress?: (event: MultiAgentProgressEvent) => void;
   activeToolEvent?: import('./toolEvents').ConversationToolEvent;
   readonly onToolEvent?: (event: import('./toolEvents').ConversationToolEvent) => void;
+  readonly onReviewedInitialToolOpening?: MultiAgentInvocation['onReviewedInitialToolOpening'];
   readonly onTaskStreamEvent?: (event: MultiAgentResponderStreamEvent) => void;
   readonly beforeTaskStream?: MultiAgentInvocation['beforeTaskStream'];
   readonly beforeTaskInputChange?: MultiAgentInvocation['beforeTaskInputChange'];

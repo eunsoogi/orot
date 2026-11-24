@@ -4,12 +4,8 @@ import type {
   LocalEmbeddingWrite,
   PersistedLocalEmbedding,
 } from '@orot/rag';
-import type { SqlDatabase, SqlExecutor } from '@orot/storage';
-import {
-  EMBEDDING_MODELS_TABLE,
-  ensureModelRow,
-  verifyModelRow,
-} from './ragEmbeddingModel';
+import type { SqlDatabase, SqlExecutor, SqlTransaction } from '@orot/storage';
+import { ensureModelRow, verifyModelRow } from './ragEmbeddingModel';
 import {
   decodeVector,
   encodeVector,
@@ -23,9 +19,17 @@ import {
   findRemovedRagEvidence,
   upsertRagEmbeddingSources,
 } from './ragEmbeddingDeletionStorage';
-import { deletedSymptomIds } from './agentMemorySymptomQuarantine';
+import {
+  deletedSymptomIds,
+  readSelectedSymptomQuarantine,
+} from './agentMemorySymptomQuarantine';
 
-const EMBEDDINGS_TABLE = 'rag_embeddings';
+import {
+  createEmbeddingSchemaIfAbsent,
+  embeddingSchema,
+  EMBEDDINGS_TABLE,
+  hasExactEmbeddingSchema,
+} from './ragEmbeddingSchemaShape';
 
 function cancelled(): Error {
   const error = new Error('Embedding storage was cancelled.');
@@ -39,6 +43,19 @@ export class SqlCipherRagEmbeddingStorage implements LocalEmbeddingVectorStore {
 
   constructor(private readonly database: SqlDatabase) {}
 
+  /** Create a read adapter for this transaction only; missing or legacy schema uses stock setup. */
+  static async forVectorRead(
+    transaction: SqlTransaction,
+  ): Promise<SqlCipherRagEmbeddingStorage> {
+    const storage = new SqlCipherRagEmbeddingStorage({
+      execute: (sql, values) => transaction.execute(sql, values),
+      transaction: operation => operation(transaction),
+    });
+    if (await hasExactEmbeddingSchema(transaction))
+      storage.schemaReady = Promise.resolve();
+    return storage;
+  }
+
   /** Prepares RAG tables before callers join vector cleanup to an open deletion transaction. */
   async prepare(): Promise<void> {
     await this.ensureSchema();
@@ -47,7 +64,17 @@ export class SqlCipherRagEmbeddingStorage implements LocalEmbeddingVectorStore {
   async findRemovedTypedEvidence(
     references: readonly { readonly kind: string; readonly id: string }[],
   ): Promise<readonly { readonly kind: string; readonly id: string }[]> {
-    const deleted = await deletedSymptomIds(this.database);
+    const symptomIds = () =>
+      references
+        .filter(reference => reference.kind === 'symptom_entry')
+        .map(reference => reference.id);
+    const selected = await readSelectedSymptomQuarantine(
+      this.database,
+      symptomIds(),
+    );
+    const deleted =
+      selected.matches(symptomIds()) ??
+      (await deletedSymptomIds(this.database));
     return references.filter(
       reference =>
         reference.kind === 'symptom_entry' && deleted.has(reference.id),
@@ -190,16 +217,14 @@ export class SqlCipherRagEmbeddingStorage implements LocalEmbeddingVectorStore {
   private async ensureSchema(): Promise<void> {
     if (!this.schemaReady) {
       this.schemaReady = this.database
-        .execute(
-          `CREATE TABLE IF NOT EXISTS ${EMBEDDING_MODELS_TABLE} (model_id TEXT NOT NULL, model_revision TEXT NOT NULL, dimension INTEGER NOT NULL, model_sha256 TEXT NOT NULL, tokenizer_sha256 TEXT NOT NULL, PRIMARY KEY (model_id, model_revision))`,
-        )
+        .execute(createEmbeddingSchemaIfAbsent(embeddingSchema.models))
         .then(async () => {
           await this.database.execute(
-            `CREATE TABLE IF NOT EXISTS ${EMBEDDINGS_TABLE} (chunk_id TEXT NOT NULL, model_id TEXT NOT NULL, model_revision TEXT NOT NULL, dimension INTEGER NOT NULL, vector_blob BLOB NOT NULL, PRIMARY KEY (chunk_id, model_id, model_revision))`,
+            createEmbeddingSchemaIfAbsent(embeddingSchema.vectors),
           );
           await this.database.transaction(async transaction => {
             await transaction.execute(
-              `CREATE INDEX IF NOT EXISTS rag_embeddings_model_idx ON ${EMBEDDINGS_TABLE} (model_id, model_revision, dimension)`,
+              createEmbeddingSchemaIfAbsent(embeddingSchema.modelIndex),
             );
             await ensureRagEmbeddingDeletionSchema(transaction);
           });

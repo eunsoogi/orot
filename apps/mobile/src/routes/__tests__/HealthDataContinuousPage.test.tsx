@@ -12,7 +12,11 @@ jest.mock('../../navigation/useNavigationContentInset', () => ({
   useNavigationContentInset: () => ({ paddingBottom: 91 }),
   useNavigationOcclusion: () => {
     const zero = { top: 0, right: 0, bottom: 0, left: 0 };
-    return { systemInsets: zero, viewportInsets: zero };
+    return {
+      systemInsets: zero,
+      viewportInsets: zero,
+      scrollContentInsets: zero,
+    };
   },
 }));
 

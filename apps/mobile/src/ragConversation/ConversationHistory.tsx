@@ -9,7 +9,6 @@ import { useFloatingComposerInset } from './FloatingComposerSurface';
 import { followConversationLatest } from './followConversationLatest';
 import { useSeparatedConversationActivity } from './ConversationWorkspaceContext';
 import { projectTranscript } from './conversationBubblePaint';
-import { useFloatingIdentityInset } from '../assistantAppearance/FloatingIdentityInset';
 import { useEffect, useRef, type ComponentRef } from 'react';
 import { ScrollView, View } from 'react-native';
 import { styles } from './ConversationScreen.styles';
@@ -17,6 +16,7 @@ import { ConversationTranscriptMessages } from './ConversationTranscriptMessages
 import { ConversationHistoryStatus } from './ConversationHistoryStatus';
 import { useReplyScroll } from './useReplyScroll';
 import { useConversationHistoryPresentation } from './conversationHistoryActivity';
+import { useTranscriptEdgeScroll } from './useConversationOwnedEdgeScroll';
 export function ConversationHistory({
   messages,
   savedHistoryDisplay,
@@ -54,8 +54,8 @@ export function ConversationHistory({
   requestSessionId,
   requestActivity,
 }: import('./ConversationHistoryProps').ConversationHistoryProps) {
-  const identityInset = useFloatingIdentityInset();
   const composerInset = useFloatingComposerInset();
+  const edge = useTranscriptEdgeScroll(bottomInset, compact);
   const separatedActivity = useSeparatedConversationActivity();
   const historyView = useRef<ComponentRef<typeof ScrollView>>(null);
   const followsBottom = useRef(true);
@@ -148,14 +148,10 @@ export function ConversationHistory({
     wasRestoringPosition.current = reading.pending;
   });
   return (
-    <View style={styles.history}>
+    <View style={styles.history} {...edge.hostProps}>
       <ScrollView
         ref={historyView}
-        style={styles.history}
-        contentContainerStyle={{
-          paddingTop: identityInset,
-          paddingBottom: bottomInset + composerInset + (compact ? 0 : 20),
-        }}
+        {...edge.scrollProps}
         keyboardShouldPersistTaps="handled"
         {...conversationHistoryScrollEvents({
           reading,

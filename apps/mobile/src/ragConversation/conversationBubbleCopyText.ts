@@ -17,7 +17,9 @@ export function conversationBubbleCopyText(message: DisplayMessage) {
   )
     return undefined;
   const report =
-    message.role === 'assistant' && !message.incomplete
+    message.role === 'assistant' &&
+    !message.incomplete &&
+    !message.directPhotoReply
       ? parseConversationReport(content)
       : undefined;
   return report

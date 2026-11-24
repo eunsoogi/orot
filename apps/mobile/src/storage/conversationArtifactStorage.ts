@@ -4,6 +4,7 @@ import { createConversationWarmLeaseReader } from './conversationWarmLease';
 import { createSavedGeneratedReportReferences } from './savedGeneratedReportReferences';
 import { registerConversationStrictReaders } from './conversationStrictReadOwner';
 import { createPlainConversationContextReader } from './plainConversationContext';
+import { createDirectPhotoReplyWriter } from './conversationDirectPhotoReplies';
 import { conversationTimelinePages } from './conversationTimelinePages';
 import { continuousConversationStorage } from './continuousConversationStorage';
 import { conversationSteeringHistory } from './conversationSteeringHistory';
@@ -37,6 +38,7 @@ export function createConversationArtifactStorage(database: SqlDatabase) {
   const storage = {
     ...createSavedGeneratedReportReferences(database, ensure),
     listTimeline,
+    writeDirectPhotoReply: createDirectPhotoReplyWriter(database, ensure),
     ...createConversationProjectionReaders(database, ensure),
     readPlainContextPage: createPlainConversationContextReader(
       database,

@@ -16,7 +16,7 @@ import { AppText as Text } from '../layout/AppText';
 import { t } from '../i18n';
 import { useNavigationLeaveStateRegistration } from '../navigation';
 import type { NavigationLeaveState } from '../navigation';
-import { useNavigationContentInset } from '../navigation/useNavigationContentInset';
+import { HealthRecordsDetailScrollLane } from './HealthRecordsDetailScrollLane';
 import type { HealthRecordsDetailSelection } from './healthRecordsLibraryModel';
 import {
   healthRecordCategoryTitle,
@@ -45,7 +45,6 @@ export function HealthRecordsDetailScreen({
   onSelectionChange,
   selection,
 }: HealthRecordsDetailScreenProps) {
-  const navigationInset = useNavigationContentInset();
   const [observations, setObservations] = useState<
     readonly HealthObservation[]
   >([]);
@@ -155,57 +154,66 @@ export function HealthRecordsDetailScreen({
     />
   );
   const recordsPanel = (
-    <FlatList
-      data={rows}
-      keyExtractor={row =>
-        row.kind === 'blood_pressure' ? row.reading.id : row.observation.id
-      }
-      contentContainerStyle={[styles.container, navigationInset]}
-      ListHeaderComponent={controlsPanel}
-      ListEmptyComponent={
-        loadState === 'ready' && !cursor ? (
-          <Text testID="health-records-detail-empty">
-            {t('healthRecords.detailEmpty')}
-          </Text>
-        ) : undefined
-      }
-      ListFooterComponent={
-        cursor ? (
-          loadState === 'failed' ? (
-            <AppButton
-              onPress={() => {
-                reload(cursor);
-              }}
-              testID="health-records-detail-retry"
-              title={t('healthRecords.retry')}
-              variant="secondary"
-            />
-          ) : loadState === 'loading' ? (
-            <Text testID="health-records-detail-loading">
-              {t('healthRecords.loading')}
-            </Text>
-          ) : (
-            <AppButton
-              onPress={() => {
-                reload(cursor);
-              }}
-              testID="health-records-load-older"
-              title={t('healthRecords.loadOlder')}
-              variant="secondary"
-            />
-          )
-        ) : undefined
-      }
-      onEndReached={() => {
-        if (cursor && loadState === 'ready') reload(cursor);
-      }}
-      onEndReachedThreshold={0.5}
-      renderItem={({ item, index }) => (
-        <HealthRecordsDetailRecordRow index={index} row={item} />
+    <HealthRecordsDetailScrollLane>
+      {({ edge, navigationInset }) => (
+        <FlatList
+          {...edge.indicatorProps}
+          data={rows}
+          keyExtractor={row =>
+            row.kind === 'blood_pressure' ? row.reading.id : row.observation.id
+          }
+          contentContainerStyle={[
+            styles.container,
+            navigationInset,
+            edge.contentStyle,
+          ]}
+          ListHeaderComponent={controlsPanel}
+          ListEmptyComponent={
+            loadState === 'ready' && !cursor ? (
+              <Text testID="health-records-detail-empty">
+                {t('healthRecords.detailEmpty')}
+              </Text>
+            ) : undefined
+          }
+          ListFooterComponent={
+            cursor ? (
+              loadState === 'failed' ? (
+                <AppButton
+                  onPress={() => {
+                    reload(cursor);
+                  }}
+                  testID="health-records-detail-retry"
+                  title={t('healthRecords.retry')}
+                  variant="secondary"
+                />
+              ) : loadState === 'loading' ? (
+                <Text testID="health-records-detail-loading">
+                  {t('healthRecords.loading')}
+                </Text>
+              ) : (
+                <AppButton
+                  onPress={() => {
+                    reload(cursor);
+                  }}
+                  testID="health-records-load-older"
+                  title={t('healthRecords.loadOlder')}
+                  variant="secondary"
+                />
+              )
+            ) : undefined
+          }
+          onEndReached={() => {
+            if (cursor && loadState === 'ready') reload(cursor);
+          }}
+          onEndReachedThreshold={0.5}
+          renderItem={({ item, index }) => (
+            <HealthRecordsDetailRecordRow index={index} row={item} />
+          )}
+          style={[styles.panelScroll, edge.scrollViewStyle]}
+          testID="health-records-detail-scroll"
+        />
       )}
-      style={styles.panelScroll}
-      testID="health-records-detail-scroll"
-    />
+    </HealthRecordsDetailScrollLane>
   );
 
   return (

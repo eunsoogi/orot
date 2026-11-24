@@ -1,3 +1,6 @@
+import { createAgentMemory, listSavedMemories } from '@orot/agent-memory';
+import { SqlCipherAgentMemoryStorage } from '../../storage/agentMemoryStorage';
+import { processStatementMemoryJobs } from '../userStatementMemoryProcessing';
 import { runMigrations } from '@orot/storage';
 import { createHealthEvidenceTestDatabase } from '../../healthEvidence/localEvidenceTestSupport';
 import { createConversationArtifactStorage } from '../../storage/conversationArtifactStorage';
@@ -151,6 +154,85 @@ test('commits an explicitly remembered authored turn, but not canned labels or a
     expect(await f.jobs()).toEqual([{ source_id: 'explicit-user-memory' }]);
     await f.storage.deleteSession(f.lease.id);
     expect(await f.jobs()).toEqual([]);
+  } finally {
+    f.close();
+  }
+});
+
+test('keeps opted-out turns in history without scheduling a memory projection', async () => {
+  const f = await fixture();
+  try {
+    const offered = [
+      ['ordinary', '저는 일요일마다 산책을 해요.'],
+      ['preservation-topic', '저는 사진 보존 기술을 좋아합니다.'],
+      ['non-direct-ko', '저는 오래된 사진을 보존하지 않아요.'],
+      ['non-direct-en', 'I prefer workflows where I don’t retain old drafts.'],
+      ['quoted', '저는 “이 내용을 보존하지 마세요”라는 문장을 봤어요.'],
+      ['hypothetical', '저는 만약 이 내용을 보존하지 않으면 걱정할 거예요.'],
+      ['optout-ko', '저는 일요일마다 산책을 해요. 이 내용은 보존하지 마세요.'],
+      ['optout-en', 'I prefer quiet places but don’t retain this.'],
+    ] as const;
+    for (const [id, question] of offered) {
+      await f.storage.append({ ...f.turn, id, question });
+    }
+    expect(
+      (
+        await f.database.execute(
+          'SELECT id FROM conversation_artifacts ORDER BY id',
+        )
+      ).rows,
+    ).toEqual(
+      offered.map(([id]) => ({ id })).sort((a, b) => a.id.localeCompare(b.id)),
+    );
+    expect(await f.jobs()).toEqual([
+      { source_id: 'ordinary' },
+      { source_id: 'preservation-topic' },
+      { source_id: 'non-direct-ko' },
+      { source_id: 'non-direct-en' },
+    ]);
+  } finally {
+    f.close();
+  }
+});
+
+test('rechecks explicit no-retention before embedding a previously queued turn', async () => {
+  const f = await fixture();
+  try {
+    const storage = new SqlCipherAgentMemoryStorage(f.database);
+    const embed = jest.fn(async (texts: string[]) =>
+      texts.map(() => new Float32Array([1, 0])),
+    );
+    const memory = await createAgentMemory({ storage, embedder: { embed } });
+    await f.storage.append(f.turn);
+    const declined = {
+      ...f.turn,
+      id: 'declined',
+      question: 'I prefer quiet places but don’t retain this.',
+      proactiveMemory: true as const,
+    };
+    await f.storage.append(declined);
+    expect(await f.storage.read(declined.id)).toMatchObject({
+      question: declined.question,
+      proactiveMemory: true,
+    });
+    // Simulate a job left by an older build, with the original answer intact.
+    await f.database.execute(
+      'INSERT OR IGNORE INTO user_statement_memory_jobs (source_kind, source_id) VALUES (?, ?)',
+      ['conversation_user_statement', declined.id],
+    );
+    expect(await processStatementMemoryJobs(f.database, memory)).toEqual({
+      failed: 0,
+    });
+    expect(embed).toHaveBeenCalledTimes(1);
+    expect((await listSavedMemories(storage)).map(row => row.text)).toEqual([
+      expect.stringContaining(f.turn.question),
+    ]);
+    expect(
+      (await f.database.execute('SELECT * FROM user_statement_memory_jobs'))
+        .rows,
+    ).toEqual([]);
+    expect(await f.storage.read(declined.id)).not.toBeNull();
+    await memory.close();
   } finally {
     f.close();
   }

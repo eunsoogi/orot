@@ -80,7 +80,10 @@ export function NavigationContentTransition({
       }
       return;
     }
-    if (reduceMotion) {
+    // Native-driver work cannot be relied on while the scene is inactive.
+    // A selected tab can change here without a foreground listener ever seeing it.
+    if (reduceMotion || isKnownInactive()) {
+      transitionGeneration.current += 1;
       veilOpacity.stopAnimation();
       veilOpacity.setValue(0);
       setEnterPending(false);
@@ -125,7 +128,7 @@ export function NavigationContentTransition({
 
   useEffect(() => {
     if (!enterPending) return;
-    if (reduceMotion) {
+    if (reduceMotion || isKnownInactive()) {
       veilOpacity.setValue(0);
       setEnterPending(false);
       return;
@@ -178,6 +181,11 @@ export function NavigationContentTransition({
       <NavigationFadeVeil opacity={veilOpacity} />
     </Animated.View>
   );
+}
+
+function isKnownInactive() {
+  const phase = AppState.currentState;
+  return phase === 'inactive' || phase === 'background';
 }
 
 const styles = StyleSheet.create({ fill: { flex: 1, opacity: 1 } });

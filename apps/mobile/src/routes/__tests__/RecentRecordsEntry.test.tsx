@@ -1,3 +1,4 @@
+import { rewindBeforeMemoryMetadata } from '../../../../../packages/storage/__tests__/historicalMigrationSupport';
 import { act, fireEvent, screen, waitFor } from '@testing-library/react-native';
 import { AppState } from 'react-native';
 import { createRecordRepository, runMigrations } from '@orot/storage';
@@ -99,7 +100,7 @@ test('first Records entry after v17 upgrade waits for both first pages without a
     await seedFile(f);
     // Model the installed v17 artifact's storage state without removing retained data.
     await f.database.execute('DROP INDEX source_records_recent_page_idx');
-    await f.database.execute('PRAGMA user_version = 17');
+    await rewindBeforeMemoryMetadata(f.database, 17);
     await runMigrations(f.database);
     operation = f.database.execute('PRAGMA temp_store = MEMORY');
     await entered.promise;
@@ -143,7 +144,7 @@ test('a genuinely failed indexed query offers Retry and publishes both streams o
     ).toBeTruthy();
     expect(screen.queryByTestId('records-recent-source-visit:30')).toBeNull();
     expect(jest.mocked(loadRecentSourceMaterial)).toHaveBeenCalledTimes(1);
-    await f.database.execute('PRAGMA user_version = 17');
+    await rewindBeforeMemoryMetadata(f.database, 17);
     await runMigrations(f.database);
     await fireEvent.press(screen.getByTestId('records-recent-sources-retry'));
     expect(

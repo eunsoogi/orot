@@ -213,6 +213,7 @@ export function AppRouteContent({
     case 'appointments':
       return appointmentRepository ? (
         <AppointmentsScreen
+          fullNavigationLane
           active={active}
           repository={appointmentRepository}
           onAppointmentsChanged={() => refreshAppointments()}

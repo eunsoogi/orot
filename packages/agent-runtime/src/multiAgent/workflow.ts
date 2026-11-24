@@ -113,6 +113,7 @@ async function runMultiAgentWorkflowUnlocked<TResult = JsonValue>(
     onProgress: invocation.onProgress,
     onToolEvent: invocation.onToolEvent,
     onTaskStreamEvent: invocation.onTaskStreamEvent,
+    onReviewedInitialToolOpening: invocation.onReviewedInitialToolOpening,
     onApprovalWait: invocation.onApprovalWait,
     onModelApprovalWait: invocation.onModelApprovalWait,
     beforeTaskStream: invocation.beforeTaskStream,

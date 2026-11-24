@@ -36,6 +36,8 @@ export interface NavigationGeometryPayload {
   readonly navigationWidth?: number;
   readonly navigationSide?: 'bottom' | 'left' | 'right';
   readonly navigationFrame?: NavigationGeometryRect;
+  /** Visible same-scene system status bar; omitted when UIKit prefers a vertical system bar. */
+  readonly systemTopBarFrame?: NavigationGeometryRect;
 }
 
 export interface NavigationGeometrySnapshot extends NavigationGeometryPayload {
@@ -52,6 +54,27 @@ function isFiniteRect(rect: NavigationGeometryRect): boolean {
     rect.width >= 0 &&
     rect.height >= 0
   );
+}
+
+/** Positive top evidence is a horizontal band across the window center, not a side tile clipped at the top. */
+export function navigationSystemTopBarBottom(
+  geometry: NavigationGeometrySnapshot | null,
+): number | null {
+  const frame = geometry?.systemTopBarFrame;
+  if (!geometry || !frame || !isFiniteRect(frame)) return null;
+  const window = geometry.windowBounds;
+  const bottom = frame.y + frame.height;
+  const innerLeft = window.x + window.width / 4;
+  const innerRight = window.x + (3 * window.width) / 4;
+  return frame.height > 0 &&
+    frame.width > frame.height &&
+    Math.abs(frame.y - window.y) <= 1 &&
+    frame.x <= innerLeft &&
+    frame.x + frame.width >= innerRight &&
+    bottom > window.y &&
+    bottom < window.y + window.height
+    ? bottom
+    : null;
 }
 
 function isFiniteInsets(insets: NavigationGeometryInsets): boolean {

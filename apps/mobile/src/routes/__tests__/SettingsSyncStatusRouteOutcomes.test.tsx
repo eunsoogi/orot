@@ -8,6 +8,9 @@ jest.mock('../../navigation', () => ({
   useNavigationLeaveStateRegistration: jest.fn(),
 }));
 jest.mock('../../navigation/useNavigationContentInset', () => ({
+  ...jest.requireActual<
+    typeof import('../../navigation/useNavigationContentInset')
+  >('../../navigation/useNavigationContentInset'),
   useNavigationContentInset: () => [],
 }));
 jest.mock('../../layout/AdaptiveColumns', () => {

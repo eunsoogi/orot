@@ -44,15 +44,18 @@ export async function loadFreshConversationDialogue(
     throw new ConversationHistoryFailure(
       input.signal.aborted ? 'history_cancelled' : 'history_session_changed',
     );
+  // Keep exact prior question matching and output order without repeated scans.
+  const selectedQuestions = new Map<string, Set<string>>();
+  for (const { id, question } of selected) {
+    let questions = selectedQuestions.get(id);
+    if (!questions) selectedQuestions.set(id, (questions = new Set()));
+    questions.add(question);
+  }
   const omit = expected.filter(
-    turn =>
-      !selected.some(
-        value => value.id === turn.id && value.question === turn.question,
-      ),
+    ({ id, question }) => !selectedQuestions.get(id)?.has(question),
   );
-  const turns = selected.filter(
-    value => !omit.some(turn => turn.id === value.id),
-  );
+  const omittedIds = new Set(omit.map(({ id }) => id));
+  const turns = selected.filter(({ id }) => !omittedIds.has(id));
   const parents = turns.map(({ id, createdAt }) => ({ id, createdAt }));
   const priorTurns = turns.map(({ question, answer }) => ({
     question: input.registry.redactText(question),

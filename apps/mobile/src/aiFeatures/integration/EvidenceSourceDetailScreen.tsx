@@ -1,7 +1,7 @@
-import { useNavigationContentInset } from '../../navigation/useNavigationContentInset';
+import { EvidenceRouteScrollView } from './EvidenceRouteScrollView';
 import { useNavigationRouteActions } from '../../navigation/useNavigationRouteActions';
 import { useEffect, useState } from 'react';
-import { ScrollView, StyleSheet, View } from 'react-native';
+import { StyleSheet, View } from 'react-native';
 import type { EvidenceReference } from '@orot/agent-runtime';
 import { t } from '../../i18n';
 import { AppButton } from '../../layout/AppButton';
@@ -47,7 +47,6 @@ export function EvidenceSourceDetailScreen({
   sourceOwner,
   readColdSource,
 }: EvidenceSourceDetailScreenProps) {
-  const navigationInset = useNavigationContentInset();
   const [attempt, setAttempt] = useState(0);
   const [sourceStack, setSourceStack] = useState<readonly EvidenceReference[]>(
     [],
@@ -116,99 +115,110 @@ export function EvidenceSourceDetailScreen({
   const presentation =
     state.status === 'available' ? presentEvidenceSource(state.document) : [];
   return (
-    <ScrollView
+    <EvidenceRouteScrollView
+      routeKey={navigationRouteKey}
       style={styles.screen}
-      contentContainerStyle={[styles.container, navigationInset]}
+      contentContainerStyle={styles.container}
       testID="ai-feature-source-detail"
     >
-      {/* Integrated routes use the shared bottom menu; standalone probes retain local Back. */}
-      {navigationRouteKey ? null : (
-        <AppButton
-          accessibilityLabel={navigationText.back.accessibilityLabel}
-          onPress={onBack}
-          testID="ai-feature-source-back"
-          title={navigationText.back.label}
-        />
-      )}
-      {sourceStack.length ? (
-        <AppButton
-          title={t('sourceDisplay.previousSource')}
-          onPress={() => setSourceStack(current => current.slice(0, -1))}
-          testID="ai-feature-source-previous"
-        />
-      ) : null}
-      <Text accessibilityRole="header" style={styles.heading}>
-        {t('sourceDisplay.inspect')}
-      </Text>
-      <Text style={styles.subtitle}>{t('sourceDisplay.citedRecords')}</Text>
-      {state.status === 'loading' ? (
-        <Text testID="ai-feature-source-loading">
-          {t('aiFeatures.source.loading')}
-        </Text>
-      ) : null}
-      {state.status === 'missing' ? (
-        <Text
-          accessibilityRole="alert"
-          style={styles.error}
-          testID="ai-feature-source-missing"
-        >
-          {t('aiFeatures.source.missing')}
-        </Text>
-      ) : null}
-      {state.status === 'changed' ? (
-        <Text
-          accessibilityRole="alert"
-          style={styles.error}
-          testID="ai-feature-source-changed"
-        >
-          {t('aiFeatures.source.changed')}
-        </Text>
-      ) : null}
-      {state.status === 'unavailable' ? (
-        <View>
-          <Text
-            accessibilityRole="alert"
-            style={styles.error}
-            testID="ai-feature-source-unavailable"
-          >
-            {t(
-              quarantined
-                ? 'aiFeatures.source.quarantinedResearch'
-                : 'aiFeatures.source.unavailable',
-            )}
-          </Text>
-          {!hasDock ? (
-            <AppButton
-              onPress={recover}
-              testID="ai-feature-source-retry"
-              title={retryLabel}
-            />
-          ) : null}
-        </View>
-      ) : null}
-      {state.status === 'available' ? (
+      {lane => (
         <>
-          <EvidenceSourceSections
-            routeKey={navigationRouteKey}
-            sections={presentation}
-          />
-          {state.document.sourceKind === 'generated_artifact' &&
-          'analysis' in state.document ? (
-            <ArtifactSourceLinks
-              analysis={state.document.analysis}
-              onOpen={source => setSourceStack(current => [...current, source])}
+          {/* Integrated routes use the shared bottom menu; standalone probes retain local Back. */}
+          {navigationRouteKey ? null : (
+            <AppButton
+              accessibilityLabel={navigationText.back.accessibilityLabel}
+              onPress={onBack}
+              testID="ai-feature-source-back"
+              title={navigationText.back.label}
+            />
+          )}
+          {sourceStack.length ? (
+            <AppButton
+              title={t('sourceDisplay.previousSource')}
+              onPress={() => setSourceStack(current => current.slice(0, -1))}
+              testID="ai-feature-source-previous"
             />
           ) : null}
-          {state.document.sourceKind === 'generated_artifact' &&
-          ('conversation' in state.document || 'research' in state.document) ? (
-            <ConversationArtifactSourceLinks
-              sources={state.document.sources}
-              onOpen={source => setSourceStack(current => [...current, source])}
-            />
+          <Text accessibilityRole="header" style={styles.heading}>
+            {t('sourceDisplay.inspect')}
+          </Text>
+          <Text style={styles.subtitle}>{t('sourceDisplay.citedRecords')}</Text>
+          {state.status === 'loading' ? (
+            <Text testID="ai-feature-source-loading">
+              {t('aiFeatures.source.loading')}
+            </Text>
+          ) : null}
+          {state.status === 'missing' ? (
+            <Text
+              accessibilityRole="alert"
+              style={styles.error}
+              testID="ai-feature-source-missing"
+            >
+              {t('aiFeatures.source.missing')}
+            </Text>
+          ) : null}
+          {state.status === 'changed' ? (
+            <Text
+              accessibilityRole="alert"
+              style={styles.error}
+              testID="ai-feature-source-changed"
+            >
+              {t('aiFeatures.source.changed')}
+            </Text>
+          ) : null}
+          {state.status === 'unavailable' ? (
+            <View>
+              <Text
+                accessibilityRole="alert"
+                style={styles.error}
+                testID="ai-feature-source-unavailable"
+              >
+                {t(
+                  quarantined
+                    ? 'aiFeatures.source.quarantinedResearch'
+                    : 'aiFeatures.source.unavailable',
+                )}
+              </Text>
+              {!hasDock ? (
+                <AppButton
+                  onPress={recover}
+                  testID="ai-feature-source-retry"
+                  title={retryLabel}
+                />
+              ) : null}
+            </View>
+          ) : null}
+          {state.status === 'available' ? (
+            <>
+              <EvidenceSourceSections
+                routeKey={navigationRouteKey}
+                edgeLane={lane}
+                sections={presentation}
+              />
+              {state.document.sourceKind === 'generated_artifact' &&
+              'analysis' in state.document ? (
+                <ArtifactSourceLinks
+                  analysis={state.document.analysis}
+                  onOpen={source =>
+                    setSourceStack(current => [...current, source])
+                  }
+                />
+              ) : null}
+              {state.document.sourceKind === 'generated_artifact' &&
+              ('conversation' in state.document ||
+                'research' in state.document) ? (
+                <ConversationArtifactSourceLinks
+                  sources={state.document.sources}
+                  onOpen={source =>
+                    setSourceStack(current => [...current, source])
+                  }
+                />
+              ) : null}
+            </>
           ) : null}
         </>
-      ) : null}
-    </ScrollView>
+      )}
+    </EvidenceRouteScrollView>
   );
 }
 

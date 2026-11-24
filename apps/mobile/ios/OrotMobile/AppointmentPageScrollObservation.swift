@@ -3,7 +3,7 @@
 
     /// Samples only the fixed appointment page's physical scroll ownership, never its content.
     @MainActor enum AppointmentPageScrollObservation {
-        static func snapshot(window: UIWindow, identity: (NSObject) -> String) -> [String: Any] {
+        static func snapshot(window: UIWindow, identity: (NSObject) -> String, includeIndicatorGeometry: Bool = false) -> [String: Any] {
             let keys = ["appointments-scroll", "appointments-columns-primary", "appointments-columns-secondary"]
             var pending: [UIView] = [window], matches: [String: [UIView]] = [:], visited = 0
             while visited < 2048, let view = pending.popLast() {
@@ -56,15 +56,23 @@
             func frame(_ view: UIView) -> [String: Any] {
                 NavigationGeometryTestObservation.finiteRect(view.convert(view.bounds, to: window.screen.coordinateSpace))
             }
-            return ["status": "sampled", "windowID": identity(window), "wrapperID": identity(wrapper), "ownerID": ownerID,
-                    "primaryID": identity(primary), "secondaryID": identity(secondary), "counts": counts, "ownerCount": owners.count,
-                    "primaryAncestors": first.ids, "secondaryAncestors": second.ids,
-                    "primaryComplete": first.complete && firstNested.complete, "secondaryComplete": second.complete && secondNested.complete,
-                    "primaryNested": firstNested.count, "secondaryNested": secondNested.count, "truncated": false,
-                    "ownerEnabled": owner.isScrollEnabled,
-                    "ownerContentSize": ["width": owner.contentSize.width, "height": owner.contentSize.height],
-                    "ownerOffset": ["x": owner.contentOffset.x, "y": owner.contentOffset.y],
-                    "wrapperFrame": frame(wrapper), "ownerFrame": frame(owner), "primaryFrame": frame(primary), "secondaryFrame": frame(secondary)]
+            var result: [String: Any] = ["status": "sampled", "windowID": identity(window), "wrapperID": identity(wrapper), "ownerID": ownerID,
+                                         "primaryID": identity(primary), "secondaryID": identity(secondary), "counts": counts, "ownerCount": owners.count,
+                                         "primaryAncestors": first.ids, "secondaryAncestors": second.ids,
+                                         "primaryComplete": first.complete && firstNested.complete, "secondaryComplete": second.complete && secondNested.complete,
+                                         "primaryNested": firstNested.count, "secondaryNested": secondNested.count, "truncated": false,
+                                         "ownerEnabled": owner.isScrollEnabled,
+                                         "ownerContentSize": ["width": owner.contentSize.width, "height": owner.contentSize.height],
+                                         "ownerOffset": ["x": owner.contentOffset.x, "y": owner.contentOffset.y],
+                                         "wrapperFrame": frame(wrapper), "ownerFrame": frame(owner), "primaryFrame": frame(primary), "secondaryFrame": frame(secondary)]
+            if includeIndicatorGeometry {
+                // Public UIKit configuration only; this cannot describe pixels painted by UIKit.
+                let insets = owner.verticalScrollIndicatorInsets
+                result["indicators"] = ["verticalEnabled": owner.showsVerticalScrollIndicator,
+                                        "automaticallyAdjusted": owner.automaticallyAdjustsScrollIndicatorInsets,
+                                        "top": insets.top, "right": insets.right, "bottom": insets.bottom, "left": insets.left]
+            }
+            return result
         }
     }
 #endif

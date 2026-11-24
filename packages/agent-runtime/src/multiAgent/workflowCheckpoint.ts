@@ -216,7 +216,12 @@ export async function invokeWorkflowGraph<TResult>(
   }
 
   const finalState = result.value;
-  if (context.pausedCheckpoint) return { status: 'paused', checkpoint: context.pausedCheckpoint };
+  if (context.pausedCheckpoint)
+    return {
+      status: 'paused',
+      checkpoint: context.pausedCheckpoint,
+      pauseReason: context.pause?.pauseReason,
+    };
   if (!context.outcome)
     stop(context, 'The workflow ended without a validated result.', 'invalid_output');
   const finalOutcome = context.outcome!;

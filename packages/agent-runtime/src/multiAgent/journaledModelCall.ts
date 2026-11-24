@@ -99,16 +99,28 @@ export async function journaledModelCall<TResult>(
   const approvalSignal = approval?.signal ?? signal;
   const notify = (waiting: boolean) => {
     try {
-      (context.onModelApprovalWait ?? context.onApprovalWait)?.(waiting);
+      if (context.onModelApprovalWait) return context.onModelApprovalWait(waiting);
+      context.onApprovalWait?.(waiting);
     } catch {
       /* UI observers cannot grant access. */
     }
   };
   try {
-    notify(Boolean(approval));
-    const prepared = prepare ? await prepare(approvalSignal, request) : 'ready';
-    if (approvalSignal.aborted && !signal.aborted && options.checkpointer)
+    if (
+      approvalSignal.aborted &&
+      !signal.aborted &&
+      context.pause?.confirmCooperativePostToolPause()
+    )
       throw new AuthorizationPaused();
+    const checkpointOnly = notify(Boolean(approval)) === 'checkpoint-only';
+    // Only an OS pause while the exact app-declared decision-free wait is
+    // pending changes provenance. This never grants consent or replay rights.
+    const pauseAuthorization = () => {
+      if (checkpointOnly) context.pause?.confirmCooperativeModelWait();
+      throw new AuthorizationPaused();
+    };
+    const prepared = prepare ? await prepare(approvalSignal, request) : 'ready';
+    if (approvalSignal.aborted && !signal.aborted && options.checkpointer) pauseAuthorization();
     if (prepared !== 'ready') return prepared;
     const grant = await authorizeModelCall(request, options.execution, consent, approvalSignal);
     approval?.finishApproval();
@@ -116,7 +128,7 @@ export async function journaledModelCall<TResult>(
     if (grant.status !== 'authorized') {
       // No intent has been written and no provider has been called for this operation.
       if (approvalSignal.aborted && !signal.aborted && options.checkpointer) {
-        throw new AuthorizationPaused();
+        pauseAuthorization();
       }
       return grant;
     }

@@ -22,7 +22,6 @@ import type { RagConversationRunOptions } from '../../ragConversation/service';
 import type { loadConversationHistory } from './conversationHistorySources';
 import type { createConversationRetentionBridge } from './conversationRetentionBridge';
 import { emptyConversationSnapshot } from './conversationEntryTargets';
-
 /** Preserve source fences and the actual preflight budget for this invocation. */
 export function conversationRunWorkflow<
   T extends {
@@ -47,7 +46,6 @@ export function conversationRunWorkflow<
     },
   };
 }
-
 export function conversationRunInvocation(
   observer: RagConversationObserver | undefined,
   retained: boolean,
@@ -69,16 +67,22 @@ export function conversationRunInvocation(
     onApprovalWait,
     onModelApprovalWait:
       checkpointOnly && onApprovalWait
-        ? (waiting: boolean) => onApprovalWait(waiting, 'checkpoint-only')
+        ? (waiting: boolean) => {
+            onApprovalWait(waiting, 'checkpoint-only');
+            return 'checkpoint-only' as const;
+          }
         : undefined,
     onProgress: observer?.onProgress,
     onToolEvent: observer?.onToolEvent,
     backgroundStatusForLease: observer?.backgroundStatusForLease,
+    onReviewedInitialToolOpening:
+      settingsConsent && !observer?.photoInput
+        ? observer?.onReviewedOpening
+        : undefined,
     ...conversationStreamObservers(observer, retained, registry, selection),
     signal,
   };
 }
-
 /** Keep history and selected evidence lineage attached to the responder input. */
 export function conversationRunRequest(input: {
   readonly continuation?: RagConversationRunOptions['continuation'];
@@ -133,9 +137,7 @@ export function conversationRunRequest(input: {
     workflow: input.workflow,
   };
 }
-
 export const cancelled = { status: 'failure', kind: 'cancelled' } as const;
-
 type RagSend = (
   question: string,
   previous: readonly RagConversationMessage[],
@@ -143,7 +145,6 @@ type RagSend = (
   observer?: RagConversationObserver,
   entry?: ConversationEntryContext,
 ) => Promise<RagConversationOutcome>;
-
 function receiptDiagnosticsEnabled() {
   try {
     return NativeModules.OrotProviderDiagnostics?.enabled === true;
@@ -151,7 +152,6 @@ function receiptDiagnosticsEnabled() {
     return false;
   }
 }
-
 type ReceiptStage = Extract<Stage, `conversation_receipt_${string}`>;
 
 /** Native timestamps on fixed stage labels are for isolated, opt-in attempts.

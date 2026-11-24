@@ -1,12 +1,8 @@
 import { t } from '../../i18n';
 import { useState } from 'react';
-import {
-  Pressable,
-  ScrollView,
-  StyleSheet,
-  View,
-  useWindowDimensions,
-} from 'react-native';
+import { Pressable, StyleSheet, View, useWindowDimensions } from 'react-native';
+import { NavigationEdgeMenuScrollView } from '../../navigation/NavigationEdgeMenuScrollView';
+import { useNavigationEdgeMenu } from '../../navigation/navigationEdgeScroll';
 import { AdaptiveColumns } from '../../layout/AdaptiveColumns';
 import { AppSymbol } from '../../layout/AppSymbol';
 import { AppText as Text } from '../../layout/AppText';
@@ -17,11 +13,33 @@ import type { EvidenceSourceDetailSection } from './evidenceSourcePresentation';
 export function EvidenceSourceSections({
   sections,
   routeKey,
+  edgeLane,
 }: {
   readonly sections: readonly EvidenceSourceDetailSection[];
   readonly routeKey?: string;
+  readonly edgeLane?: {
+    readonly width: number;
+    readonly leftGutter: number;
+    readonly rightGutter: number;
+  };
 }) {
   const [selected, setSelected] = useState(0);
+  const [menuOwnerWidth, setMenuOwnerWidth] = useState(0);
+  // AdaptiveColumns may narrow its primary region without changing the outer
+  // route. Only a real full-width selector can inherit the route's rail.
+  const fullMenu =
+    edgeLane &&
+    menuOwnerWidth > 0 &&
+    Math.abs(
+      menuOwnerWidth +
+        edgeLane.leftGutter +
+        edgeLane.rightGutter -
+        edgeLane.width,
+    ) <= 1;
+  const menuEdge = useNavigationEdgeMenu({
+    ownerWidth: fullMenu ? edgeLane.width : 0,
+    trailingGutter: edgeLane?.rightGutter,
+  });
   const [detailWidth, setDetailWidth] = useState<number | null>(null);
   const { fontScale, width } = useWindowDimensions();
   const section = sections[selected] ?? sections[0];
@@ -34,10 +52,10 @@ export function EvidenceSourceSections({
 
   // Stable panel children keep the selected source mounted while measured regions reflow.
   const sourceSelection = (
-    <ScrollView
+    <NavigationEdgeMenuScrollView
+      {...menuEdge}
       accessibilityLabel={t('sourceDisplay.selectSaved')}
       contentContainerStyle={styles.tabs}
-      horizontal
       showsHorizontalScrollIndicator={false}
       testID="ai-feature-source-selection"
     >
@@ -61,7 +79,7 @@ export function EvidenceSourceSections({
           </Text>
         </Pressable>
       ))}
-    </ScrollView>
+    </NavigationEdgeMenuScrollView>
   );
 
   const sourceContent = (
@@ -122,7 +140,11 @@ export function EvidenceSourceSections({
   return (
     <AdaptiveColumns
       primary={
-        <View style={styles.pageSections}>
+        <View
+          style={styles.pageSections}
+          testID="ai-feature-source-selection-owner"
+          onLayout={event => setMenuOwnerWidth(event.nativeEvent.layout.width)}
+        >
           {sourceSelection}
           {sourceContent}
         </View>

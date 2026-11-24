@@ -1,3 +1,4 @@
+import { canDiscloseDirectPhoto } from './directPhotoConsentScope';
 import type { JointCalendarReview } from './prepareJointCalendarReview';
 import { useEffect, useRef } from 'react';
 import { t } from '../../i18n';
@@ -16,8 +17,9 @@ type Slot = 'conversation' | 'calendar';
 function disclosureFor(
   slot: Slot,
   option: ProviderSelectionOption,
-  search?: SettingsSearchChoices,
-  calendar?: JointCalendarReview,
+  search: SettingsSearchChoices | undefined,
+  calendar: JointCalendarReview | undefined,
+  photoDisclosed: boolean,
 ): SettingsDisclosureSummary | null {
   const remote = option.privacyBoundary === 'selected-context-remote';
   const recipient = remote
@@ -34,6 +36,13 @@ function disclosureFor(
         ),
       ]
     : [];
+  if (photoDisclosed)
+    copy.push(
+      t('ragConversation.photo.imageSettingsConsent', {
+        recipient,
+        model: option.displayName,
+      }),
+    );
   const jointWeb = slot === 'conversation' && remote && search?.web;
   if (jointWeb) {
     copy.push(t('modelSettings.consentJointWeb', { recipient }));
@@ -77,6 +86,7 @@ export function useModelSettingsReview(
   owner: object,
   key: string,
   store: ProviderSelectionStore,
+  settingsPhotoReview = false,
 ) {
   const { reuseApproval, prepareJointCalendarReview } =
     useModelSettingsServices();
@@ -96,7 +106,7 @@ export function useModelSettingsReview(
   const review = async (
     option: ProviderSelectionOption,
     search: SettingsSearchChoices | undefined,
-    commit: (isCurrent: () => boolean) => Promise<void>,
+    commit: (isCurrent: () => boolean, reviewedPhoto?: true) => Promise<void>,
   ) => {
     if (
       pending.current ||
@@ -134,8 +144,20 @@ export function useModelSettingsReview(
             )
           : null;
       if (!current() || (calendar && !calendar.isCurrent())) return false;
+      const photoDisclosed =
+        enabled &&
+        settingsPhotoReview &&
+        slot === 'conversation' &&
+        canDiscloseDirectPhoto(option);
       const disclosure =
-        enabled && disclosureFor(slot, option, search, calendar ?? undefined);
+        enabled &&
+        disclosureFor(
+          slot,
+          option,
+          search,
+          calendar ?? undefined,
+          photoDisclosed,
+        );
       if (
         disclosure &&
         (await reuseApproval?.(
@@ -143,6 +165,7 @@ export function useModelSettingsReview(
             slot,
             option,
             search,
+            photoDisclosed,
             signal: controller.signal,
             isCurrent: current,
           },
@@ -157,7 +180,13 @@ export function useModelSettingsReview(
       )
         return false;
       if (!current() || (calendar && !calendar.isCurrent())) return false;
-      if (calendar) await calendar.commit();
+      const reviewedPhoto = Boolean(
+        disclosure && photoDisclosed && canDiscloseDirectPhoto(option),
+      );
+      if (calendar) {
+        if (reviewedPhoto) await calendar.commit(true);
+        else await calendar.commit();
+      } else if (reviewedPhoto) await commit(current, true);
       else await commit(current);
       // The joint writer already settled; a later Calendar-only change must not strand the Conversation picker.
       return current();

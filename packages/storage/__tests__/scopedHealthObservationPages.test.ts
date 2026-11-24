@@ -1,3 +1,4 @@
+import { rewindBeforeMemoryMetadata } from './historicalMigrationSupport';
 import { createRecordRepository, runMigrations } from '../src';
 import { readHealthObservationPage } from '../src/healthObservationPages';
 import { openSqliteTestDatabase } from './sqliteTestDatabase';
@@ -158,7 +159,7 @@ test('upgrades version nine while preserving saved rows and avoiding destructive
       observed('saved-pressure', 'blood pressure systolic', '2026-10-20T00:00:00Z'),
     );
     await database.execute('DROP INDEX health_observations_library_workouts_idx');
-    await database.execute('PRAGMA user_version = 9');
+    await rewindBeforeMemoryMetadata(database, 9);
     const statements: string[] = [];
     await runMigrations({
       ...database,
@@ -177,8 +178,17 @@ test('upgrades version nine while preserving saved rows and avoiding destructive
       'DROP TRIGGER IF EXISTS source_records_delete_visit_questions_dependencies',
       'DROP TRIGGER IF EXISTS source_records_delete_evidence_spans',
     ]);
-    expect(statements.some((sql) => /^\s*(UPDATE|ALTER)\b/i.test(sql))).toBe(false);
-    expect((await database.execute('PRAGMA user_version')).rows[0]!.user_version).toBe(18);
+    // The v19 schema adds only known metadata columns to the Memory table,
+    // never rewriting saved observations or allowing other ALTER/UPDATE statements.
+    expect(
+      statements
+        .filter((sql) => /^\s*(UPDATE|ALTER)\b/i.test(sql))
+        .map(
+          (sql) =>
+            sql.match(/^ALTER TABLE agent_memory_records ADD COLUMN (\w+) INTEGER\b/)?.[1] ?? sql,
+        ),
+    ).toEqual(['recent_metadata_version', 'recent_created_at_ms', 'recent_legacy_pending']);
+    expect((await database.execute('PRAGMA user_version')).rows[0]!.user_version).toBe(19);
     const page = await repository.listHealthObservationPage(null, 100, {
       category: 'blood_pressure',
       toInclusive: '2026-10-21T00:00:00Z',

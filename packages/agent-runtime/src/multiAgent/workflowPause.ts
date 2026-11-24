@@ -12,6 +12,23 @@ import { resumeState } from './workflowSupport';
 export class MultiAgentPauseController {
   readonly control = new RunControl();
   private requested = false;
+  private deferredNativeToolDrain = false;
+  private provedCooperativePause = false;
+
+  get pauseReason(): 'background-paused' | undefined {
+    return this.provedCooperativePause ? 'background-paused' : undefined;
+  }
+
+  /** The protected next model boundary was reached before any approval work began. */
+  confirmCooperativePostToolPause(): boolean {
+    if (!this.deferredNativeToolDrain) return false;
+    this.provedCooperativePause = true;
+    return true;
+  }
+  /** The caller proved a decision-free wait; only a requested OS drain records a pause. */
+  confirmCooperativeModelWait(): void {
+    if (this.requested) this.provedCooperativePause = true;
+  }
   private approvalWaits = new Set<AbortController>();
 
   requestPause(): void {
@@ -38,6 +55,18 @@ export class MultiAgentPauseController {
 
   /** Never clear an uncertain pending operation just to make a checkpoint resumable. */
   boundary<TResult>(state: WorkflowState, context: RuntimeContext<TResult>): void {
+    // Continue only as far as the next protected model authorization boundary; the
+    // plain post-tool checkpoint cannot carry the exact private tool-message pair.
+    if (
+      this.requested &&
+      state.phase === 'revised_response' &&
+      !state.awaitingAuthorization &&
+      context.options.operationJournal?.loadPrepared &&
+      context.nativeToolMessages?.length
+    ) {
+      this.deferredNativeToolDrain = true;
+      return;
+    }
     if (this.requested && context.options.checkpointer && resumeState(state, context.options)) {
       this.control.requestDrain('background-pause');
     }
@@ -50,6 +79,7 @@ export function createMultiAgentPauseController(): MultiAgentPauseController {
 
 export interface MultiAgentPausedResult {
   readonly status: 'paused';
+  readonly pauseReason?: 'background-paused';
   readonly checkpoint: MultiAgentCheckpointState;
 }
 

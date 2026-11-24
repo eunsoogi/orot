@@ -1,3 +1,4 @@
+import { useNavigationEdgeVerticalScroll } from '../navigation/navigationEdgeScroll';
 import { useNavigationContentInset } from '../navigation/useNavigationContentInset';
 import { useState } from 'react';
 import { Linking, Pressable, ScrollView, StyleSheet, View } from 'react-native';
@@ -20,6 +21,10 @@ export function SettingsBackupRoute({
   onPrepare,
 }: SettingsBackupRouteProps) {
   const navigationInset = useNavigationContentInset();
+  // This page owns the scroll viewport; the panels retain their readable inset.
+  const edge = useNavigationEdgeVerticalScroll({
+    trailingPadding: navigationInset.paddingRight ?? 0,
+  });
   const [settingsError, setSettingsError] = useState(false);
   useNavigationLeaveStateRegistration({
     canLeave: true,
@@ -39,8 +44,13 @@ export function SettingsBackupRoute({
 
   return (
     <ScrollView
-      contentContainerStyle={[styles.scrollContent, navigationInset]}
-      style={styles.scrollView}
+      {...edge.indicatorProps}
+      contentContainerStyle={[
+        styles.scrollContent,
+        navigationInset,
+        edge.contentStyle,
+      ]}
+      style={[styles.scrollView, edge.scrollViewStyle]}
       testID="settings-backup-scroll"
     >
       <AdaptiveColumns

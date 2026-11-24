@@ -85,16 +85,26 @@ export function RecordingReviewRoute({
           enabled={!busy && !dirty}
           owner={routeOwner}
           publish={value =>
-            setPresentation(previous => ({
-              owner: selection,
-              value,
-              durationMs:
-                value.status === 'ready'
-                  ? value.durationMs
-                  : previous?.owner === selection
-                    ? previous.durationMs
-                    : (selection?.summary.durationMs ?? null),
-            }))
+            setPresentation(previous => {
+              // A failed retry is not permission to restore panels hidden by a lock or deletion.
+              if (
+                previous?.owner === selection &&
+                value.status === 'unavailable' &&
+                (previous?.value.status === 'protected' ||
+                  previous?.value.status === 'missing')
+              )
+                return previous;
+              return {
+                owner: selection,
+                value,
+                durationMs:
+                  value.status === 'ready'
+                    ? value.durationMs
+                    : previous?.owner === selection
+                      ? previous.durationMs
+                      : (selection?.summary.durationMs ?? null),
+              };
+            })
           }
         />
       ) : null}

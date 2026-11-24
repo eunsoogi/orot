@@ -13,7 +13,8 @@ public extension OpenAIProviderModule {
                 let models = try await activeClient.listModels(forIssuedClientID: issuedClientID)
                 // Local protocol eligibility after direct-plan authorization; not a server capability claim.
                 resolve(models.map { ["slug": $0.slug, "displayName": $0.displayName,
-                                      "supportsMidTurnSteering": ChatGPTSteerableResponse.supportsModel($0.slug)] as NSDictionary })
+                                      "supportsMidTurnSteering": ChatGPTSteerableResponse.supportsModel($0.slug),
+                                      "supportsDirectPhoto": ChatGPTResponsesRequestDecoder.supportsDirectPhotoModel($0.slug)] as NSDictionary })
             } catch {
                 let details = OpenAIProviderErrorDetails.make(error)
                 let message = details["message"] as? String ?? "ChatGPT model discovery failed."

@@ -19,6 +19,7 @@ export type SavedHistoryDisplayRow = {
       readonly kind: 'answer';
       readonly question: string;
       readonly answer: string;
+      readonly directPhoto?: true;
       readonly savedPossibilityNarrative?: true;
       readonly archivedCitationTarget?: import('./useArchivedCitationOpen').ArchivedCitationTarget;
       readonly interruptionReason?: ConversationRecoveryReason;
@@ -55,6 +56,8 @@ export type SavedHistoryDisplayItem = {
   readonly row: SavedHistoryDisplayRow;
   readonly questionId: number;
   readonly answerId: number;
+  /** Mount-only ordering for a newly saved local photo among current live turns. */
+  readonly afterLiveId?: number;
 };
 
 /** Keep row identity through older prepends and never replace an already mounted live turn. */
@@ -80,69 +83,98 @@ export function savedHistoryTranscript(
 ): readonly DisplayMessage[] {
   if (!saved.length) return live;
   const liveIds = new Set(live.map(message => message.toolMessageId));
-  return [
-    ...saved.flatMap<DisplayMessage>(({ row, questionId, answerId }) => {
-      if (liveIds.has(row.id)) return [];
-      const origin = {
-        restoredHistory: true as const,
-        savedHistoryDisplayOnly: true as const,
-        voiceTimelineOrder: { createdAt: row.createdAt, id: row.id },
-      };
-      const incomplete =
-        row.kind === 'interrupted' || (row.kind === 'answer' && row.partial);
-      const activity = incomplete
-        ? restoredConversationInterruptionCopy(row.interruptionReason)
-        : undefined;
-      return [
-        ...(row.question
-          ? [
-              {
-                ...origin,
-                id: questionId,
-                role: 'user' as const,
-                content: row.question,
-                ...(row.kind === 'answer' && row.delivery
-                  ? { delivery: row.delivery }
-                  : {}),
-              },
-            ]
-          : []),
-        ...(row.kind === 'answer' || row.kind === 'opening' || activity
-          ? [
-              {
-                ...origin,
-                id: answerId,
-                role: 'assistant' as const,
-                content: row.kind === 'answer' ? row.answer : '',
-                ...(row.kind === 'answer' && row.savedPossibilityNarrative
-                  ? { savedPossibilityNarrative: true as const }
-                  : {}),
-                ...(row.kind !== 'interrupted' && row.initialResponse
-                  ? { initialResponse: row.initialResponse }
-                  : {}),
-                ...(activity ? { activity } : {}),
-                ...(row.kind === 'answer' && row.healthSummary
-                  ? { healthSummary: row.healthSummary }
-                  : {}),
-                ...(row.kind === 'answer' && row.dailyReport
-                  ? { dailyReport: row.dailyReport }
-                  : {}),
-                ...(row.kind === 'answer' && row.steeringInstructions
-                  ? { steeringInstructions: row.steeringInstructions }
-                  : {}),
-                ...(row.kind === 'answer' && row.savedCitations
-                  ? { savedCitations: row.savedCitations }
-                  : {}),
-                ...(row.kind === 'answer' && row.archivedCitationTarget
-                  ? { archivedCitationTarget: row.archivedCitationTarget }
-                  : {}),
-              },
-            ]
-          : []),
-      ];
-    }),
-    ...live,
-  ];
+  const rejectedOpenings = new Map<string, DisplayMessage['initialResponse']>();
+  for (const message of live)
+    if (message.rejectedOpeningTurnId && message.initialResponse)
+      rejectedOpenings.set(
+        message.rejectedOpeningTurnId,
+        message.initialResponse,
+      );
+  const historical: DisplayMessage[] = [];
+  const mounted: { after: number; messages: DisplayMessage[] }[] = [];
+  for (const { row, questionId, answerId, afterLiveId } of saved) {
+    if (liveIds.has(row.id)) continue;
+    const shown = rejectedOpenings.get(row.id);
+    // Keep the live pair only when it is the exact archived opening.
+    if (
+      row.kind === 'opening' &&
+      shown?.callId === row.initialResponse.callId &&
+      shown.text === row.initialResponse.text
+    )
+      continue;
+    const origin = {
+      restoredHistory: true as const,
+      savedHistoryDisplayOnly: true as const,
+      voiceTimelineOrder: { createdAt: row.createdAt, id: row.id },
+    };
+    const incomplete =
+      row.kind === 'interrupted' || (row.kind === 'answer' && row.partial);
+    const activity = incomplete
+      ? restoredConversationInterruptionCopy(row.interruptionReason)
+      : undefined;
+    const directPhoto = row.kind === 'answer' && row.directPhoto;
+    const messages: DisplayMessage[] = [
+      ...(row.question || directPhoto
+        ? [
+            {
+              ...origin,
+              id: questionId,
+              role: 'user' as const,
+              content: row.question,
+              ...(directPhoto ? { photoAttached: true } : {}),
+              ...(row.kind === 'answer' && row.delivery
+                ? { delivery: row.delivery }
+                : {}),
+            },
+          ]
+        : []),
+    ];
+    // A reviewed opening can stand alone; do not invent an empty interrupted assistant bubble.
+    if (row.kind === 'answer' || row.kind === 'opening' || activity) {
+      messages.push({
+        ...origin,
+        id: answerId,
+        role: 'assistant',
+        content: row.kind === 'answer' ? row.answer : '',
+        ...(directPhoto ? { directPhotoReply: true } : {}),
+        ...(row.kind === 'answer' &&
+        row.savedPossibilityNarrative &&
+        !directPhoto
+          ? { savedPossibilityNarrative: true as const }
+          : {}),
+        ...(row.kind !== 'interrupted' && row.initialResponse
+          ? { initialResponse: row.initialResponse }
+          : {}),
+        ...(activity ? { activity } : {}),
+        ...(row.kind === 'answer' && row.healthSummary
+          ? { healthSummary: row.healthSummary }
+          : {}),
+        ...(row.kind === 'answer' && row.dailyReport
+          ? { dailyReport: row.dailyReport }
+          : {}),
+        ...(row.kind === 'answer' && row.steeringInstructions
+          ? { steeringInstructions: row.steeringInstructions }
+          : {}),
+        ...(row.kind === 'answer' && row.savedCitations
+          ? { savedCitations: row.savedCitations }
+          : {}),
+        ...(row.kind === 'answer' && row.archivedCitationTarget
+          ? { archivedCitationTarget: row.archivedCitationTarget }
+          : {}),
+      });
+    }
+    if (afterLiveId === undefined) historical.push(...messages);
+    else mounted.push({ after: afterLiveId, messages });
+  }
+  let index = 0;
+  for (const message of live) {
+    while (mounted[index] && message.id > mounted[index]!.after)
+      historical.push(...mounted[index++]!.messages);
+    historical.push(message);
+  }
+  for (; index < mounted.length; index++)
+    historical.push(...mounted[index]!.messages);
+  return historical;
 }
 
 /** Never paint another route, pending account owner, or replaced lease's retained prose. */

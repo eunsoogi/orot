@@ -9,6 +9,8 @@ export interface DisplayMessage extends RagConversationMessage {
   readonly savedPossibilityNarrative?: true;
   /** App-owned terminal clarification and its question are for display only. */
   readonly localClarification?: true;
+  /** A retained photo reply is prose, never an actionable report or image. */
+  readonly directPhotoReply?: true;
   readonly archivedCitationTarget?: import('./useArchivedCitationOpen').ArchivedCitationTarget;
   readonly savedCitations?: readonly import('./savedArchivedCitations').SavedArchivedCitation[];
   readonly restoredHistory?: true;
@@ -39,6 +41,8 @@ export interface DisplayMessage extends RagConversationMessage {
     readonly text: string;
     readonly source?: 'receipt';
   };
+  /** Only deduplicates the identical archived opening; grants no durable actions. */
+  readonly rejectedOpeningTurnId?: string;
   /** Unverified, request-local outputs before live steering; never provider history. */
   readonly previousOutputs?: readonly string[];
   readonly activity?: string;

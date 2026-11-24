@@ -1,4 +1,8 @@
 import { useState } from 'react';
+import {
+  useNavigationEdgeMenu,
+  useNavigationEdgeVerticalScroll,
+} from '../navigation/navigationEdgeScroll';
 import { FlatList, StyleSheet, View } from 'react-native';
 import type { HealthObservationPageLoader } from '@orot/storage';
 import { AdaptiveColumns } from '../layout/AdaptiveColumns';
@@ -43,6 +47,17 @@ export function HealthRecordsLibraryScreen({
   refreshRevision = 0,
 }: HealthRecordsLibraryScreenProps) {
   const navigationInset = useNavigationContentInset();
+  const [panelWidth, setPanelWidth] = useState(0);
+  // Measure the stable parent, never the extended list, so applying bleed
+  // cannot change the width authority or oscillate between local/full edge.
+  const edge = useNavigationEdgeVerticalScroll({
+    ownerWidth: panelWidth,
+    trailingPadding: navigationInset.paddingRight ?? libraryGutter,
+  });
+  const menuEdge = useNavigationEdgeMenu({
+    ownerWidth: panelWidth,
+    trailingGutter: navigationInset.paddingRight ?? libraryGutter,
+  });
   const [selectedCategory, setSelectedCategory] =
     useState<HealthRecordFilter>('blood_pressure');
   const { read, reload, revision } = useHealthRecordCategoryPages(
@@ -120,62 +135,77 @@ export function HealthRecordsLibraryScreen({
       routeKey="health-records-library"
       testID="health-records-layout"
       primary={
-        <FlatList
-          data={displayedCategories}
-          keyExtractor={category => category}
-          contentContainerStyle={[styles.container, navigationInset]}
-          ListHeaderComponent={
-            <HealthRecordsLibraryHeader
-              beforeFilters={
-                !hasDock ? (
-                  <AppButton
-                    onPress={onOpenHealthImport}
-                    testID="health-records-open-health-import"
-                    title={t('healthRecords.importHealthData')}
-                  />
-                ) : null
-              }
-              hasSharedNavigation={hasSharedNavigation}
-              loadState={loadState}
-              observationCount={observationCount}
-              hasMore={hasMore}
-              onBack={onBack}
-              onRetry={retry}
-              retryInDock={retryInDock}
-              onSelectCategory={setSelectedCategory}
-              selectedCategory={selectedCategory}
-            />
-          }
-          ItemSeparatorComponent={CategoryDivider}
-          renderItem={({ item: category }) =>
-            category === 'medications' ? (
-              <HealthRecordsMedicationCategoryCard
-                summary={medication}
-                onOpenDetail={onOpenDetail}
-              />
-            ) : (
-              <HealthRecordsCategoryCard
-                category={category}
-                hasMore={read(category).cursor !== null}
-                loadState={read(category).loadState}
-                observations={read(category).records}
-                onOpenDetail={onOpenDetail}
-              />
-            )
-          }
+        <View
           style={styles.scroll}
-          testID="health-records-scroll"
-        />
+          onLayout={event => setPanelWidth(event.nativeEvent.layout.width)}
+          testID="health-records-primary-scroll-host"
+        >
+          <FlatList
+            data={displayedCategories}
+            keyExtractor={category => category}
+            {...edge.indicatorProps}
+            contentContainerStyle={[
+              styles.container,
+              navigationInset,
+              edge.contentStyle,
+            ]}
+            ListHeaderComponent={
+              <HealthRecordsLibraryHeader
+                beforeFilters={
+                  !hasDock ? (
+                    <AppButton
+                      onPress={onOpenHealthImport}
+                      testID="health-records-open-health-import"
+                      title={t('healthRecords.importHealthData')}
+                    />
+                  ) : null
+                }
+                hasSharedNavigation={hasSharedNavigation}
+                loadState={loadState}
+                observationCount={observationCount}
+                hasMore={hasMore}
+                onBack={onBack}
+                onRetry={retry}
+                retryInDock={retryInDock}
+                onSelectCategory={setSelectedCategory}
+                selectedCategory={selectedCategory}
+                filterRailWidth={menuEdge.touchClearance}
+                filterRightBleed={menuEdge.rightBleed}
+              />
+            }
+            ItemSeparatorComponent={CategoryDivider}
+            renderItem={({ item: category }) =>
+              category === 'medications' ? (
+                <HealthRecordsMedicationCategoryCard
+                  summary={medication}
+                  onOpenDetail={onOpenDetail}
+                />
+              ) : (
+                <HealthRecordsCategoryCard
+                  category={category}
+                  hasMore={read(category).cursor !== null}
+                  loadState={read(category).loadState}
+                  observations={read(category).records}
+                  onOpenDetail={onOpenDetail}
+                />
+              )
+            }
+            style={[styles.scroll, edge.scrollViewStyle]}
+            testID="health-records-scroll"
+          />
+        </View>
       }
     />
   );
 }
 
+const libraryGutter = 20;
+
 const styles = StyleSheet.create({
   scroll: { flex: 1, minHeight: 0 },
   container: {
     gap: 16,
-    paddingHorizontal: 20,
+    paddingHorizontal: libraryGutter,
     paddingTop: 20,
     paddingBottom: 28,
   },

@@ -55,7 +55,7 @@ test('stock settings and protected preview use the model-only checkpoint observe
   const live = f.invoke();
   expect(live.beforeTaskStream).toBeDefined();
   expect(live.onModelApprovalWait).toBeDefined();
-  live.onModelApprovalWait?.(true);
+  expect(live.onModelApprovalWait?.(true)).toBe('checkpoint-only');
   live.onModelApprovalWait?.(false);
   // An evidence or action checkpoint still has the original conservative observer.
   live.onApprovalWait?.(true);

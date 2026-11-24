@@ -37,6 +37,9 @@ jest.mock('../recentSourceReader', () => ({
   readSelectedRecentRecording: jest.fn(),
 }));
 
+type RecordingMetadataResult = Awaited<
+  ReturnType<typeof readSelectedRecentRecording>
+>;
 const read = jest.mocked(readSelectedRecentRecording);
 const control = () => screen.getByTestId('navigation-route-refresh');
 const pull = async () =>
@@ -67,10 +70,7 @@ async function open() {
 test('Recent Records registers one native refresh that only rereads the exact saved recording metadata', async () => {
   const play = jest.spyOn(recordingService, 'playRange');
   const { controller, original } = await open();
-  const held =
-    holdRecentTestPage<
-      Awaited<ReturnType<typeof readSelectedRecentRecording>>
-    >();
+  const held = holdRecentTestPage<RecordingMetadataResult>();
   read.mockReturnValueOnce(held.promise);
   expect(read).not.toHaveBeenCalled();
   await pull();
@@ -105,13 +105,13 @@ test('silently lost protection hides metadata and allows retry; selected deletio
     screen.getByText('기기 잠금을 해제한 뒤 아래로 당겨 다시 시도해 주세요.'),
   ).toBeVisible();
   protectedData = true;
+  read.mockRejectedValueOnce(new Error('synthetic unavailable after lock'));
+  await pull();
+  expect(screen.queryByTestId('recording-review-layout')).toBeNull();
   read.mockResolvedValueOnce({ ...original, recordingDurationMs: 95000 });
   await pull();
   expect(screen.getByText('01:35')).toBeVisible();
-  const held =
-    holdRecentTestPage<
-      Awaited<ReturnType<typeof readSelectedRecentRecording>>
-    >();
+  const held = holdRecentTestPage<RecordingMetadataResult>();
   read.mockReturnValueOnce(held.promise);
   await pull();
   await act(async () =>
@@ -127,10 +127,7 @@ test('silently lost protection hides metadata and allows retry; selected deletio
 
 test('Back retires a held metadata read and cannot replace another recording', async () => {
   const { controller, original } = await open();
-  const held =
-    holdRecentTestPage<
-      Awaited<ReturnType<typeof readSelectedRecentRecording>>
-    >();
+  const held = holdRecentTestPage<RecordingMetadataResult>();
   read.mockReturnValueOnce(held.promise);
   await pull();
   await fireEvent.press(screen.getByTestId('navigation-back'));
@@ -187,10 +184,7 @@ test('a native lock event stays revoked for the held metadata read even after na
     },
   });
   const { original } = await open();
-  const held =
-    holdRecentTestPage<
-      Awaited<ReturnType<typeof readSelectedRecentRecording>>
-    >();
+  const held = holdRecentTestPage<RecordingMetadataResult>();
   read.mockReturnValueOnce(held.promise);
   await pull();
   await act(async () => {
@@ -208,4 +202,40 @@ test('a native lock event stays revoked for the held metadata read even after na
   read.mockResolvedValueOnce({ ...original, recordingDurationMs: 95000 });
   await pull();
   expect(screen.getByText('01:35')).toBeVisible();
+});
+
+test('a timed-out pull allows one new exact read and cannot publish late', async () => {
+  const { controller, original } = await open();
+  const old = holdRecentTestPage<RecordingMetadataResult>();
+  const newer = holdRecentTestPage<RecordingMetadataResult>();
+  jest.useFakeTimers();
+  try {
+    read.mockReturnValueOnce(old.promise).mockReturnValueOnce(newer.promise);
+    await pull();
+    await pull();
+    expect(read).toHaveBeenCalledTimes(1);
+    expect(control().props.refreshing).toBe(true);
+    await act(async () => jest.advanceTimersByTime(10_000));
+    expect(control().props.refreshing).toBe(false);
+    expect(
+      screen.getByText(
+        '녹음 정보를 불러오지 못했어요. 아래로 당겨 다시 시도해 주세요.',
+      ),
+    ).toBeVisible();
+    await pull();
+    expect(read.mock.calls).toEqual([[original.id], [original.id]]);
+    await act(async () =>
+      old.resolve({ ...original, recordingDurationMs: 92000 }),
+    );
+    expect(screen.queryByText('01:32')).toBeNull();
+    expect(control().props.refreshing).toBe(true);
+    await act(async () =>
+      newer.resolve({ ...original, recordingDurationMs: 95000 }),
+    );
+    expect(screen.getByText('01:35')).toBeVisible();
+    expect(control().props.refreshing).toBe(false);
+    expect(controller.getSnapshot().currentRoute.name).toBe('recording-review');
+  } finally {
+    jest.useRealTimers();
+  }
 });

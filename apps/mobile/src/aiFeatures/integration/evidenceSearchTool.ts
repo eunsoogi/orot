@@ -1,3 +1,4 @@
+import { personalSearchTiming } from './personalSearchStageDiagnostic';
 import { resultCoverage } from './evidenceSearchCoverage';
 import {
   providerObservationEvidence,
@@ -35,6 +36,7 @@ export function createLocalEvidenceSearchTool(input: {
   readonly snapshot?: LocalEvidenceSnapshot;
   readonly registry?: LocalEvidenceReferenceRegistry;
   readonly allowHealthOverview?: boolean;
+  readonly observeRankedSearch?: boolean;
   readonly rag: Pick<LocalE5RagService, 'search'>;
   readonly prepareChunks?: (
     chunks: readonly EvidenceChunk[],
@@ -65,10 +67,16 @@ export function createLocalEvidenceSearchTool(input: {
     async search(request) {
       const parsed = queryInput(request.input, allowOverview);
       if (!parsed) throw new Error('The local evidence query is invalid.');
+      const time = personalSearchTiming(
+        input.observeRankedSearch === true && !parsed.view,
+        request.signal,
+      );
       let snapshot = input.snapshot ?? unsearchedSnapshot;
       try {
         if (input.loadSnapshot)
-          snapshot = await input.loadSnapshot(parsed.query as string, request);
+          snapshot = await time('personal_search_snapshot', () =>
+            input.loadSnapshot!(parsed.query as string, request),
+          );
         if (
           parsed.view === 'health_overview' &&
           input.sourceKind === 'personal_record' &&
@@ -111,15 +119,20 @@ export function createLocalEvidenceSearchTool(input: {
         // Index only the scoped candidates.
         if (request.signal.aborted)
           throw new Error('The local evidence request was cancelled.');
-        await input.prepareChunks?.(chunks, request.signal);
+        if (input.prepareChunks)
+          await time('personal_search_index', () =>
+            input.prepareChunks!(chunks, request.signal),
+          );
         if (request.signal.aborted)
           throw new Error('The local evidence request was cancelled.');
         // Ranking may expand concept keys without changing the admitted candidates.
-        const hits = await input.rag.search(
-          evidenceRagSearchQuery(parsed.query as string),
-          chunks,
-          request.resultLimit,
-          { signal: request.signal },
+        const hits = await time('personal_search_rank_adapter', () =>
+          input.rag.search(
+            evidenceRagSearchQuery(parsed.query as string),
+            chunks,
+            request.resultLimit,
+            { signal: request.signal },
+          ),
         );
         const byKey = new Map(
           candidates.map(item => [localEvidenceKey(item), item]),
