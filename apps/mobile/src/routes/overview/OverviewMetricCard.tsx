@@ -95,8 +95,9 @@ function MeasuredOverviewMetricChart({
         compact
         hideDetails
         barTooltip
-        height={112}
-        kind={isOverviewHeartRate(metric) ? 'range' : 'bar'}
+        height={176}
+        lineAxis="day"
+        kind={isOverviewHeartRate(metric) ? 'range' : 'line'}
         testID={`overview-metric-chart-${metric}`}
         title={t('overview.metricChartTitle')}
         width={chartWidth}

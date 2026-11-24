@@ -64,6 +64,9 @@ test('shows a span and independent mean marker while exposing accessible bounds,
     />,
   );
   const renderer = { includeHiddenElements: true };
+  expect(
+    screen.getAllByTestId('chart-range-horizontal-guide', renderer),
+  ).toHaveLength(2);
   expect(screen.getAllByTestId('chart-range-span', renderer)).toHaveLength(1);
   expect(screen.getAllByTestId('chart-range-mean', renderer)).toHaveLength(1);
   expect(screen.getAllByTestId('chart-range-single', renderer)).toHaveLength(1);

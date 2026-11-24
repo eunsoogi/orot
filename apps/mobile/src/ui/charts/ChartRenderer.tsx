@@ -23,6 +23,7 @@ type Props = {
   height: number;
   kind: ChartKind;
   rangeAxis?: ChartAxis;
+  lineAxis?: ChartAxis;
   onBarSelect?: ChartBucketSelect;
 };
 
@@ -45,6 +46,7 @@ export function ChartRenderer({
   height,
   kind,
   rangeAxis = 'day',
+  lineAxis = 'time',
   onBarSelect,
 }: Props) {
   const scheme = useColorScheme() === 'dark' ? 'dark' : 'light';
@@ -80,6 +82,7 @@ export function ChartRenderer({
               color={palette[token[data.metric]]}
               contrast={palette.background}
               labels={palette.text}
+              guideColor={palette.border}
               fontSize={11 * fontScale}
               offsetY={index * chartHeight}
               onSelect={onBarSelect}
@@ -110,9 +113,9 @@ export function ChartRenderer({
         const xLabel = (value: string | number | Date) =>
           formatChartTick(
             typeof value === 'number'
-              ? new Date(value).toISOString()
+              ? new Date(value).toISOString().slice(0, 10)
               : String(value),
-            kind === 'line' ? 'time' : 'day',
+            kind === 'line' ? lineAxis : 'day',
           );
         const timeTick = (value: string | number | Date, pointIndex: number) =>
           pointIndex === 0 || pointIndex === rows.length - 1
@@ -127,7 +130,12 @@ export function ChartRenderer({
           <ChartKitProvider
             key={`${unit}-${index}`}
             mode={scheme}
-            theme={{ typography: { axisLabelSize: 11 * fontScale } }}
+            theme={{
+              grid: palette.border,
+              text: palette.text,
+              mutedText: palette.text,
+              typography: { axisLabelSize: 11 * fontScale },
+            }}
           >
             {kind === 'line' ? (
               <LineChart
@@ -142,8 +150,39 @@ export function ChartRenderer({
                 legend={false}
                 decimation={false}
                 showDots
-                interaction="none"
-                formatXLabel={timeTick}
+                showHorizontalGridLines
+                showVerticalGridLines={false}
+                tooltip={false}
+                interaction={
+                  onBarSelect
+                    ? {
+                        mode: 'tap',
+                        onSelect: event => {
+                          const segment = line?.segments.find(
+                            candidate =>
+                              candidate.id ===
+                              event.series.find(item => item.value != null)
+                                ?.key,
+                          );
+                          const x = event.raw?.x;
+                          onBarSelect(
+                            segment && typeof x === 'number'
+                              ? {
+                                  x: new Date(x).toISOString().slice(0, 10),
+                                  seriesId: segment.seriesId,
+                                  position: {
+                                    x: event.position.x,
+                                    y: event.position.y + index * chartHeight,
+                                  },
+                                }
+                              : null,
+                          );
+                        },
+                        onDeselect: () => onBarSelect(null),
+                      }
+                    : 'none'
+                }
+                formatXLabel={lineAxis === 'day' ? xLabel : timeTick}
                 formatYLabel={formatValue}
               />
             ) : (

@@ -13,10 +13,10 @@ type Props = {
   height: number;
   title: string;
   testID?: string;
-  kind?: 'bar' | 'range';
+  kind?: 'bar' | 'range' | 'line';
 };
 
-/** A selected bar publishes its measured point to the route's unclipped tooltip host. */
+/** A selected measured mark publishes its point to the route's unclipped tooltip host. */
 export function ChartBarTooltip({
   data,
   width,
@@ -46,10 +46,10 @@ export function ChartBarTooltip({
   }
   useLayoutEffect(() => () => tooltip?.close(owner), [owner, tooltip]);
   const move = (direction: number) => {
-    // Missing values have no bar; VoiceOver still announces their complete description.
+    // Missing values have no visible mark; VoiceOver still announces their complete description.
     tooltip?.close(owner);
     touchedIndex.current = -1;
-    // VoiceOver can inspect missing and zero values even where there is no visible bar.
+    // VoiceOver can inspect missing and zero values even without a visible mark.
     setSelected(current =>
       Math.max(
         0,
@@ -94,6 +94,7 @@ export function ChartBarTooltip({
           width={width}
           height={height}
           kind={kind}
+          lineAxis="day"
           onBarSelect={selection => {
             const index = selection
               ? entries.findIndex(
