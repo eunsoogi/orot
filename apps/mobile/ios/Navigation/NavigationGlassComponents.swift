@@ -173,6 +173,7 @@ enum NavigationRootTabContent {
         testID: String,
         foregroundColor: UIColor,
         titleSize: CGFloat = 12,
+        showsTitle: Bool,
     ) -> UIStackView {
         let stack = UIStackView()
         stack.translatesAutoresizingMaskIntoConstraints = false
@@ -197,6 +198,7 @@ enum NavigationRootTabContent {
         let title = UILabel()
         title.translatesAutoresizingMaskIntoConstraints = false
         title.text = label
+        title.isHidden = !showsTitle
         title.font = NavigationTextMetrics.font(size: titleSize, traits: UITraitCollection.current)
         title.adjustsFontForContentSizeCategory = true
         title.textAlignment = .center

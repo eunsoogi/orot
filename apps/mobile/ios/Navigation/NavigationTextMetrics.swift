@@ -2,6 +2,14 @@ import UIKit
 
 /// One typography contract supplies both UIKit labels and their layout measurements.
 enum NavigationTextMetrics {
+    /// Spoken labels must not drive compact geometry when not painted.
+    private static func hasVisibleTitle(_ action: NavigationActionDescriptor) -> Bool {
+        if action.rootTab || action.id == "back" || action.id == "home" {
+            return action.showsTitleWithSystemImage
+        }
+        return action.systemImageName == nil || action.showsTitleWithSystemImage
+    }
+
     static func font(size: CGFloat, traits: UITraitCollection) -> UIFont {
         UIFontMetrics(forTextStyle: .caption1).scaledFont(
             for: .systemFont(ofSize: size, weight: .medium), compatibleWith: traits,
@@ -14,7 +22,9 @@ enum NavigationTextMetrics {
     }
 
     static func width(for action: NavigationActionDescriptor, traits: UITraitCollection) -> CGFloat {
-        let title = (action.label as NSString).size(withAttributes: [.font: font(for: action, traits: traits)]).width
+        let title = hasVisibleTitle(action)
+            ? (action.label as NSString).size(withAttributes: [.font: font(for: action, traits: traits)]).width
+            : 0
         if action.rootTab {
             return ceil(max(44, title + 8))
         }
@@ -28,6 +38,9 @@ enum NavigationTextMetrics {
     }
 
     static func height(for action: NavigationActionDescriptor, traits: UITraitCollection) -> CGFloat {
+        if !hasVisibleTitle(action) {
+            return action.rootTab ? 60 : 48
+        }
         let line = font(for: action, traits: traits).lineHeight
         if action.rootTab {
             return ceil(max(60, 18 + 4 + line + 16))

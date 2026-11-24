@@ -27,8 +27,6 @@ export function navigationMoreDescriptor(root: boolean): NavigationGlassAction {
     accessibilityLabel: navigationText.navigationOverflow.accessibilityLabel,
     testID: 'navigation-page-action-overflow',
     systemImageName: 'ellipsis',
-    showsTitleWithSystemImage: true,
-    titleBelowImage: true,
     rootTab: root,
     primary: !root,
   };

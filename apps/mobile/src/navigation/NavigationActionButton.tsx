@@ -10,7 +10,7 @@ interface NavigationActionButtonProps {
   readonly symbol?: string;
   readonly onPress: () => void;
   readonly primary?: boolean;
-  readonly testID: string;
+  readonly testID?: string;
 }
 
 /** Keep one accessible action name when the compact chrome only shows its symbol. */

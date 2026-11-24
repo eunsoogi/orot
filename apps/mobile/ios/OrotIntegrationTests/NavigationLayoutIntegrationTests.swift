@@ -201,22 +201,21 @@ final class NavigationLayoutIntegrationTests: OrotFailFastTestCase {
             return XCTFail("Root tab \(identifier) has no UIKit symbol or label")
         }
         let iconFrame = icon.convert(icon.bounds, to: button)
-        let labelFrame = label.convert(label.bounds, to: button)
         XCTAssertGreaterThanOrEqual(button.bounds.width, 44)
         XCTAssertGreaterThanOrEqual(button.bounds.height, 52)
         XCTAssertLessThanOrEqual(iconFrame.width, 23)
         XCTAssertLessThanOrEqual(iconFrame.height, 23)
         XCTAssertGreaterThanOrEqual(iconFrame.minY, 3)
         XCTAssertGreaterThanOrEqual(button.bounds.width - iconFrame.maxX, 3)
-        XCTAssertGreaterThanOrEqual(labelFrame.minY - iconFrame.maxY, 2)
-        XCTAssertGreaterThanOrEqual(labelFrame.minX, 3)
-        XCTAssertGreaterThanOrEqual(button.bounds.width - labelFrame.maxX, 3)
-        XCTAssertGreaterThanOrEqual(button.bounds.height - labelFrame.maxY, 3)
+        XCTAssertTrue(label.isHidden)
+        XCTAssertFalse(button.accessibilityLabel?.isEmpty ?? true)
+        XCTAssertEqual(iconFrame.midX, button.bounds.midX, accuracy: 1)
+        XCTAssertEqual(iconFrame.midY, button.bounds.midY, accuracy: 1)
         let report: [String: Any] = [
             "identifier": identifier,
             "button": frame(button.bounds),
             "icon": frame(iconFrame),
-            "label": frame(labelFrame),
+            "visibleTitle": !label.isHidden,
         ]
         do {
             let attachment = try XCTAttachment(data: JSONSerialization.data(withJSONObject: report), uniformTypeIdentifier: "public.json")
