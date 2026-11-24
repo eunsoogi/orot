@@ -7,11 +7,12 @@ import { projectOverviewMetricSnapshot } from './metricLoader';
 import { readOverviewMetricSnapshot } from './metricReadCancellation';
 import {
   loadOverviewMetricSelection,
-  type OverviewMetric,
+  type OverviewMetricChoice,
+  isOverviewSnapshotMetric,
 } from './metricSelection';
 
 export type SelectedOverviewSnapshot = {
-  selection: OverviewMetric[];
+  selection: OverviewMetricChoice[];
   chart: Awaited<ReturnType<typeof projectOverviewMetricSnapshot>>;
 };
 
@@ -29,7 +30,11 @@ export async function readSelectedOverviewProjection(
   const selection = await loadOverviewMetricSelection(preferences);
   return {
     selection,
-    chart: await projectOverviewMetricSnapshot(tx, now, selection),
+    chart: await projectOverviewMetricSnapshot(
+      tx,
+      now,
+      selection.filter(isOverviewSnapshotMetric),
+    ),
   };
 }
 

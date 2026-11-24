@@ -1,10 +1,14 @@
+import { useIsFocused } from '@react-navigation/native';
 import { useState } from 'react';
 import { Pressable, useWindowDimensions, View } from 'react-native';
 import { AppText as Text } from '../../layout/AppText';
 import { AppButton } from '../../layout/AppButton';
 import { t } from '../../i18n';
 import type { ChartStatus } from '../../ui/charts';
-import { isOverviewDerivedHeartRate } from './metricSelection';
+import {
+  isOverviewDerivedHeartRate,
+  isOverviewSnapshotMetric,
+} from './metricSelection';
 import { useOverviewMetrics } from './useOverviewMetrics';
 import { overviewMetricStyles as styles } from './overviewMetricStyles';
 import {
@@ -18,6 +22,22 @@ import {
 } from './overviewMetricLayout';
 import { OverviewRecentHealthChange } from './OverviewRecentHealthChange';
 import { formatOverviewMetricValue } from './metricFormatting';
+import { OverviewWorkoutHeartRateCard } from './OverviewWorkoutHeartRateCard';
+
+/** The standalone association card owns its focus separately from projected charts. */
+function FocusedWorkoutHeartRate({
+  width,
+}: {
+  readonly width: number | '100%';
+}) {
+  const focused = useIsFocused();
+  return (
+    <OverviewWorkoutHeartRateCard
+      width={typeof width === 'number' ? width : undefined}
+      active={focused}
+    />
+  );
+}
 
 /** Shows saved calendar-day metrics; an isolated route owns uncommitted edits. */
 export function OverviewMetrics({ onEdit }: { readonly onEdit?: () => void }) {
@@ -25,6 +45,7 @@ export function OverviewMetrics({ onEdit }: { readonly onEdit?: () => void }) {
   const { fontScale } = useWindowDimensions();
   const [gridWidth, setGridWidth] = useState(0);
   const comparisons = data.selection
+    .filter(isOverviewSnapshotMetric)
     .flatMap(metric =>
       data.metrics[metric]?.comparison ? [data.metrics[metric]!] : [],
     )
@@ -98,7 +119,12 @@ export function OverviewMetrics({ onEdit }: { readonly onEdit?: () => void }) {
           }}
         >
           {data.selection.map(metric =>
-            data.metrics[metric] ? (
+            metric === 'workoutHeartRate' ? (
+              <FocusedWorkoutHeartRate
+                key={metric}
+                width={gridLayout.cardWidth}
+              />
+            ) : data.metrics[metric] ? (
               <OverviewMetricCard
                 key={metric}
                 metric={data.metrics[metric]!}

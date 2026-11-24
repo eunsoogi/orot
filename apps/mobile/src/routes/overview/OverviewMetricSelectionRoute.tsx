@@ -14,7 +14,7 @@ import {
   loadOverviewMetricSelection,
   minimumOverviewMetricCount,
   saveOverviewMetricSelection,
-  type OverviewMetric,
+  type OverviewMetricChoice,
 } from './metricSelection';
 
 declare const require: (
@@ -33,7 +33,9 @@ export function OverviewMetricSelectionRoute({
   readonly actions: NavigationRouteActions<AppNavigationRoute>;
 }) {
   const focused = useIsFocused();
-  const [draft, setDraft] = useState<readonly OverviewMetric[] | null>(null);
+  const [draft, setDraft] = useState<readonly OverviewMetricChoice[] | null>(
+    null,
+  );
   const [attempt, setAttempt] = useState(0);
   const [loadFailed, setLoadFailed] = useState(false);
   const [saveError, setSaveError] = useState(false);
@@ -76,7 +78,7 @@ export function OverviewMetricSelectionRoute({
       reading = false;
     };
   }, [attempt, focused, owner]);
-  const toggle = (metric: OverviewMetric) => {
+  const toggle = (metric: OverviewMetricChoice) => {
     if (!current() || savingRef.current) return;
     setDraft(previous =>
       previous?.includes(metric)
@@ -84,7 +86,7 @@ export function OverviewMetricSelectionRoute({
         : [...(previous ?? []), metric],
     );
   };
-  const move = (metric: OverviewMetric, to: number) => {
+  const move = (metric: OverviewMetricChoice, to: number) => {
     if (!current() || savingRef.current) return;
     setDraft(previous => {
       if (!previous) return previous;

@@ -10,6 +10,12 @@ export const healthRecordsKo = {
   'healthRecords.workout.cardio': '유산소 운동',
   'healthRecords.workout.interval': '인터벌 운동',
   'healthRecords.workout.minutes': '{minutes}분',
+  'healthRecords.workoutHeartRate.overviewTitle': '운동 심박수',
+  'healthRecords.workoutHeartRate.choose': '운동 선택하기',
+  'healthRecords.workoutHeartRate.empty':
+    '불러온 최근 한 달 기록에 선택할 수 있는 운동이 없어요.',
+  'healthRecords.workoutHeartRate.window': '저장된 운동 시간: {start}–{end}',
+  'healthRecords.workoutHeartRate.workoutSource': '운동 기록 출처: {source}',
   'healthRecords.workoutHeartRate.check': '운동에 연결된 심박수 확인',
   'healthRecords.workoutHeartRate.scope':
     '건강 앱에서 이 운동에 연결되고 운동 시간 안에 기록된 심박수만 확인해요.',
