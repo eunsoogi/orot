@@ -61,6 +61,10 @@ extension RealtimeVoiceLifecycleTests {
             XCTAssertEqual(delegation?["type"] as? String, "responses")
             XCTAssertEqual((delegation?["responses"] as? [String: Any])?["model"] as? String, backend)
             socket.received?(started())
+            for index in 0..<64 {
+                socket.received?(["type": "session.input_transcript.delta", "event_id": "lead-in-\(index)",
+                                  "start_ms": 1, "end_ms": 2, "delta": "synthetic"])
+            }
             for event in managedEvents() {
                 socket.received?(event)
             }
@@ -86,14 +90,14 @@ extension RealtimeVoiceLifecycleTests {
     }
 
     func testManagedReadNeverStartsOnNullOrMismatchedDelegationAndLateResultCannotCrossStop() async throws {
-        for mode in ["null", "wrong", "stop"] {
+        for mode in ["null", "wrong", "stop", "new-speech"] {
             let socket = ManagedResponseFixtureSocket()
             let configured = expectation(description: "test-only Live config \(mode)")
             socket.configured = { configured.fulfill() }
             let call = managedFixtureCall(socket)
             var hits = 0
             var late: ((String?) -> Void)?
-            let entered = mode == "stop" ? expectation(description: "held synthetic execution") : nil
+            let entered = ["stop", "new-speech"].contains(mode) ? expectation(description: "held synthetic execution") : nil
             let admission = managedAdmission { _, finish in
                 hits += 1
                 late = finish
@@ -105,7 +109,7 @@ extension RealtimeVoiceLifecycleTests {
             await fulfillment(of: [configured], timeout: 2)
             socket.received?(started())
             var events = managedEvents()
-            if mode != "stop" {
+            if entered == nil {
                 if mode == "null" {
                     events[1]["delegation_id"] = NSNull()
                 } else {
@@ -121,12 +125,20 @@ extension RealtimeVoiceLifecycleTests {
             } else {
                 XCTAssertEqual(hits, 0)
             }
-            try call.stop("fixture-call")
+            if mode == "new-speech" {
+                socket.received?(["type": "session.input_transcript.delta", "event_id": "new-speech-event",
+                                  "start_ms": 6, "end_ms": 7, "delta": "synthetic"])
+            } else {
+                try call.stop("fixture-call")
+            }
             late?("{\"status\":\"stale\"}")
             let turn = expectation(description: "held callback drained \(mode)")
             DispatchQueue.main.async { turn.fulfill() }
             await fulfillment(of: [turn], timeout: 2)
             XCTAssertTrue(socket.managed.isEmpty)
+            if mode == "new-speech" {
+                try call.stop("fixture-call")
+            }
         }
     }
 

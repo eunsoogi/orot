@@ -85,6 +85,10 @@ final class LiveResponsesToolBridge {
         guard !retired, current(), admission.backendAllowed() else { retire(); return }
         guard self.owner == nil || self.owner == owner else { retire(); return }
         self.owner = owner
+        // Speech before a delegation cannot supersede it or consume its replay budget.
+        if delegation == nil, envelope["type"] as? String == "session.input_transcript.delta" {
+            return
+        }
         guard let id = envelope["event_id"] as? String, RealtimeVoiceToolLease.validID(id),
               !received.contains(id) else { return }
         guard received.count < 64 else { retire(); return }
