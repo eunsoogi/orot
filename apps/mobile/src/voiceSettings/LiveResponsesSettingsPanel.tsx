@@ -10,6 +10,7 @@ import { createRealtimeSettingsPermission } from '../voiceConversation/createRea
 import { ProviderModelChoiceRow } from '../providers/selection/ProviderModelChoiceRow';
 import { ModelSelectionSummary } from '../layout/ModelSelectionSummary';
 import { liveModel } from './liveVoicePreferences';
+import { voiceSettingsStore } from './voiceSettingsStore';
 import {
   loadLiveResponsesSettings,
   revokeLiveResponsesSettings,
@@ -91,6 +92,7 @@ export function LiveResponsesSettingsPanel({
     const backend = draft;
     if (
       !active ||
+      !voiceSettingsStore.accountRevisionMatches(ownerRevision) ||
       !owner ||
       owner.signal.aborted ||
       operation.current ||
@@ -104,6 +106,7 @@ export function LiveResponsesSettingsPanel({
     const token = {};
     operation.current = token;
     const current = () =>
+      voiceSettingsStore.accountRevisionMatches(ownerRevision) &&
       lifetime.current === owner &&
       !owner.signal.aborted &&
       operation.current === token;

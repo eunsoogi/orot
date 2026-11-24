@@ -24,6 +24,7 @@ jest.mock('../voiceSettingsStore', () => ({
     load: jest.fn(),
     save: jest.fn(),
     accountStatus: jest.fn(),
+    accountRevisionMatches: jest.fn(() => true),
     discoverModels: jest.fn(),
     subscribe: jest.fn(() => () => {}),
   },

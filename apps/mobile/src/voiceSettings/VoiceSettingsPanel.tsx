@@ -204,6 +204,7 @@ export function VoiceSettingsPanel({
           catalog.revision !== null &&
           hasLiveResponsesRuntime() ? (
             <LiveResponsesSettingsPanel
+              key={catalog.revision}
               active={apiTab === 'tools'}
               onBusyChange={setToolBusy}
               ownerRevision={catalog.revision}

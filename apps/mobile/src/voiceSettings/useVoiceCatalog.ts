@@ -61,6 +61,17 @@ export function useVoiceCatalog() {
     };
     load();
     const unsubscribe = voiceSettingsStore.subscribe(() => {
+      if (
+        revision.current !== null &&
+        !voiceSettingsStore.accountRevisionMatches(revision.current)
+      ) {
+        // Retire the old owner's choices before the next keychain read settles.
+        revision.current = null;
+        setConnected(false);
+        setIds([]);
+        setFresh(false);
+        setMessage(t('modelSettings.checkingAccount'));
+      }
       load();
     });
     // These refs are request state, not a mounted DOM/native node. Invalidate all
@@ -76,7 +87,7 @@ export function useVoiceCatalog() {
     };
   }, [voiceSettingsStore]);
   const refresh = async () => {
-    if (busy || !connected) return;
+    if (busy || !connected || revision.current === null) return;
     const request = ++generation.current;
     controller.current?.abort();
     const abort = new AbortController();
