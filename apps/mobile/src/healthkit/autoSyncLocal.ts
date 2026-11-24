@@ -42,7 +42,9 @@ export async function loadLocalHealthKitAutoSyncStatus() {
 /** Saves the user's category choices, requests access once, and runs the first refresh. */
 export async function configureLocalHealthKitAutoSync(
   selected: readonly HealthKitAutoSyncFeature[],
+  onSelectionCommitted?: () => void,
 ): Promise<HealthKitAutoSyncConfigurationResult> {
+  let committed = false;
   try {
     const [{ healthKit }, { openLocalStorage }] = await Promise.all([
       import('.'),
@@ -53,10 +55,16 @@ export async function configureLocalHealthKitAutoSync(
       repository,
       healthKit,
       now: () => new Date().toISOString(),
+      onSelectionCommitted() {
+        committed = true;
+        onSelectionCommitted?.();
+      },
     });
   } catch {
-    // Storage setup failed before preferences could be saved, so Settings must retain dirty state.
-    return { status: 'selection_save_failed', attemptedFeatures: [] };
+    // A failure after the durable write belongs to refresh, not preference save.
+    return committed
+      ? { status: 'retryable', attemptedFeatures: [] }
+      : { status: 'selection_save_failed', attemptedFeatures: [] };
   }
 }
 

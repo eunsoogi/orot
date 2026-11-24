@@ -51,6 +51,7 @@ interface ConfigureHealthKitAutoSyncOptions {
   > &
     Partial<Pick<HealthKitNativeModule, 'queryMedicationDefinitions'>>;
   readonly now: () => string;
+  readonly onSelectionCommitted?: () => void;
 }
 
 /** Saves opt-ins before consent so launch sync can retry if iOS access is unavailable. */
@@ -70,6 +71,14 @@ export async function configureHealthKitAutoSync(
   } catch {
     // A failed preference write is not a sync retry; the requested selection is still unsaved.
     return { status: 'selection_save_failed', attemptedFeatures: [] };
+  }
+
+  // This receipt changes Settings presentation only. The explicit
+  // authorization and first refresh still own their existing sequence.
+  try {
+    options.onSelectionCommitted?.();
+  } catch {
+    // A retired or broken observer must not change persisted settings or sync.
   }
 
   if (selected.length === 0) {

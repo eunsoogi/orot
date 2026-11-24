@@ -77,7 +77,10 @@ test('saves compact automatic-sync choices and shows the result', async () => {
   await fireEvent.press(sleep);
   await fireEvent.press(screen.getByTestId('health-data-save'));
 
-  expect(saveSelection).toHaveBeenCalledWith(['medications', 'sleep']);
+  expect(saveSelection).toHaveBeenCalledWith(
+    ['medications', 'sleep'],
+    expect.any(Function),
+  );
   expect(screen.getByTestId('health-data-save')).toHaveTextContent(
     '설정 저장 중…',
   );
