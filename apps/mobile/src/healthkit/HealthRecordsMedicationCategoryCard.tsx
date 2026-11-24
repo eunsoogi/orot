@@ -1,45 +1,63 @@
+import { useState } from 'react';
 import { StyleSheet, View } from 'react-native';
 import { AppButton } from '../layout/AppButton';
 import { AppText as Text } from '../layout/AppText';
 import { AppSymbol } from '../layout/AppSymbol';
 import { appColors } from '../layout/appColors';
-import { t } from '../i18n';
-import { formatRecordedAt } from '../recording/formatRecordedAt';
-import type { HealthRecordsDetailSelection } from './healthRecordsLibraryModel';
-import { healthRecordCategoryTitle } from './healthRecordsLibraryModel';
+import { formatDate, t } from '../i18n';
+import {
+  healthRecordCategoryTitle,
+  type HealthRecordsDetailSelection,
+} from './healthRecordsLibraryModel';
 import type { useHealthRecordsMedicationSummary } from './useHealthRecordsMedicationSummary';
 import { HealthRecordsCategoryHeading } from './HealthRecordsCategoryHeading';
 
-interface HealthRecordsMedicationCategoryCardProps {
+type Props = {
   readonly summary: ReturnType<typeof useHealthRecordsMedicationSummary>;
   readonly onOpenDetail: (selection: HealthRecordsDetailSelection) => void;
-}
+};
 
-/** Shows stored medication events with a readable source instead of a numeric chart. */
+const visibleMedicationCount = 5;
+
+/** Counts source-confirmed dose records, never dose amounts or adherence. */
 export function HealthRecordsMedicationCategoryCard({
   summary,
   onOpenDetail,
-}: HealthRecordsMedicationCategoryCardProps) {
+}: Props) {
+  const [expanded, setExpanded] = useState(false);
   const { data, status, reload } = summary;
   const title = healthRecordCategoryTitle('medications');
-  const medicationCount = data.totalDefinitions ?? data.definitions.length;
-  const doseCount = data.totalDoseEvents ?? data.doseEvents.length;
-  const latestDose = [...data.doseEvents].sort((left, right) =>
-    right.effectiveAt.localeCompare(left.effectiveAt),
-  )[0];
-
+  const month = data.monthlyTaken;
+  const ready =
+    status === 'ready' && month?.status === 'complete' ? month : undefined;
+  const date = (stamp: string) =>
+    formatDate(new Date(stamp), {
+      year: 'numeric',
+      month: 'short',
+      day: 'numeric',
+    });
+  const period =
+    month &&
+    t('healthRecords.medicationMonthPeriod', {
+      from: date(month.fromInclusive),
+      to: date(month.toInclusive),
+    });
   const message =
     status === 'loading'
       ? t('healthRecords.loading')
       : status === 'failed'
         ? t('healthRecords.error')
-        : medicationCount === 0 && doseCount === 0
-          ? t('healthRecords.categoryEmpty', { title })
-          : latestDose
-            ? t('healthRecords.medicationLatestDose', {
-                timestamp: formatRecordedAt(latestDose.effectiveAt),
-              })
-            : t('healthRecords.medicationNoDoseEvents');
+        : !ready
+          ? t('healthRecords.medicationMonthUnverified')
+          : ready.takenCount === 0
+            ? t('healthRecords.medicationMonthNoTaken')
+            : t('healthRecords.medicationSource', {
+                source: t('healthRecords.source.healthApp'),
+              });
+  const medications = ready?.medications ?? [];
+  const shown = expanded
+    ? medications
+    : medications.slice(0, visibleMedicationCount);
 
   return (
     <View style={styles.card} testID="health-record-category-medications">
@@ -64,34 +82,56 @@ export function HealthRecordsMedicationCategoryCard({
           <View style={styles.body}>
             <Text
               accessibilityRole={status === 'failed' ? 'alert' : undefined}
-              style={status === 'failed' ? styles.error : styles.message}
+              style={status === 'failed' ? styles.error : styles.secondary}
               testID="health-record-medications-summary"
             >
               {message}
             </Text>
-            {latestDose ? (
-              <View style={styles.copy}>
-                <Text style={styles.message}>
-                  {latestDose.dose?.amount === undefined
-                    ? t('healthRecords.medicationDoseNotRecorded')
-                    : t('healthRecords.medicationDose', {
-                        amount: latestDose.dose.amount,
-                        unit: latestDose.dose.unit,
+            {shown.length ? (
+              <View
+                style={styles.list}
+                testID="health-record-medication-month-list"
+              >
+                {shown.map(medication => (
+                  <View
+                    key={medication.medicationId}
+                    accessible
+                    accessibilityLabel={t(
+                      'healthRecords.medicationMonthRowLabel',
+                      { name: medication.name, count: medication.count },
+                    )}
+                    style={styles.row}
+                  >
+                    <Text style={styles.name}>{medication.name}</Text>
+                    <Text style={styles.count}>
+                      {t('healthRecords.medicationMonthRowCount', {
+                        count: medication.count,
                       })}
-                </Text>
-                <Text style={styles.summary}>
-                  {formatRecordedAt(latestDose.effectiveAt)}
-                </Text>
-                <Text style={styles.summary}>
-                  {t('healthRecords.medicationSource', {
-                    source:
-                      latestDose.provenance.source?.sourceName ??
-                      (latestDose.provenance.source?.system === 'healthkit'
-                        ? t('healthRecords.source.healthApp')
-                        : t('healthRecords.medicationSourceUnavailable')),
-                  })}
-                </Text>
+                    </Text>
+                  </View>
+                ))}
               </View>
+            ) : null}
+            {medications.length > visibleMedicationCount ? (
+              <AppButton
+                onPress={() => setExpanded(current => !current)}
+                testID="health-record-medication-month-toggle"
+                title={
+                  expanded
+                    ? t('healthRecords.medicationMonthCollapse')
+                    : t('healthRecords.medicationMonthExpand', {
+                        count: medications.length,
+                      })
+                }
+                variant="secondary"
+              />
+            ) : null}
+            {ready && ready.unverifiedCount > 0 ? (
+              <Text style={styles.secondary}>
+                {t('healthRecords.medicationMonthExcluded', {
+                  count: ready.unverifiedCount,
+                })}
+              </Text>
             ) : null}
             {status === 'failed' ? (
               <AppButton
@@ -109,11 +149,18 @@ export function HealthRecordsMedicationCategoryCard({
         <Text accessibilityRole="header" style={styles.title}>
           {t('legacySymptom.categoryRecords', { category: title })}
         </Text>
-        {status === 'ready' || medicationCount > 0 || doseCount > 0 ? (
-          <Text style={styles.summary} testID="health-record-medications-count">
-            {t('healthRecords.medicationCountSummary', {
-              medications: medicationCount,
-              doseEvents: doseCount,
+        {period ? (
+          <Text
+            style={styles.secondary}
+            testID="health-record-medication-month-period"
+          >
+            {period}
+          </Text>
+        ) : null}
+        {ready ? (
+          <Text style={styles.taken} testID="health-record-medications-count">
+            {t('healthRecords.medicationMonthTaken', {
+              count: ready.takenCount,
             })}
           </Text>
         ) : null}
@@ -126,7 +173,6 @@ const styles = StyleSheet.create({
   card: {
     backgroundColor: appColors.surface,
     borderRadius: 18,
-    // Filled surfaces group saved records; controls and state boundaries stay separate.
     borderWidth: 0,
     gap: 14,
     padding: 16,
@@ -139,10 +185,22 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     width: 52,
   },
-  body: { gap: 14 },
-  copy: { minWidth: 0, gap: 4 },
+  body: { gap: 12 },
+  list: { gap: 6 },
+  row: {
+    alignItems: 'center',
+    backgroundColor: appColors.primarySoft,
+    borderRadius: 10,
+    columnGap: 12,
+    flexDirection: 'row',
+    minHeight: 42,
+    paddingHorizontal: 12,
+    paddingVertical: 9,
+  },
+  name: { color: appColors.text, flex: 1, fontSize: 15, minWidth: 0 },
+  count: { color: appColors.text, fontSize: 15, fontWeight: '700' },
   title: { color: appColors.text, fontSize: 17, fontWeight: '700' },
-  summary: { color: appColors.secondary, fontSize: 13 },
-  message: { color: appColors.secondary, fontSize: 14, lineHeight: 20 },
+  taken: { color: appColors.text, fontSize: 19, fontWeight: '700' },
+  secondary: { color: appColors.secondary, fontSize: 13, lineHeight: 19 },
   error: { color: appColors.danger, fontSize: 14, lineHeight: 20 },
 });

@@ -1,3 +1,4 @@
+import { medicationMonthFixture } from '../testSupport/medicationMonthFixture';
 import {
   act,
   fireEvent,
@@ -47,10 +48,11 @@ test('one library list owns import, horizontal filters and results; Other filter
 });
 
 test('medication summary is cached across filtering and refreshed without losing selection', async () => {
-  const loadMedicationData = jest.fn(async () => ({
-    definitions: [medicationDefinition('one', new Date().toISOString())],
-    doseEvents: [],
-  }));
+  const medication = medicationDefinition('one', new Date().toISOString());
+  const loadMedicationData = jest.fn(
+    async (request?: Parameters<typeof medicationMonthFixture>[0]) =>
+      medicationMonthFixture(request, medication),
+  );
   const props = {
     ...base,
     loadMedicationData,
@@ -60,7 +62,7 @@ test('medication summary is cached across filtering and refreshed without losing
   await fireEvent.press(screen.getByTestId('health-record-filter-medications'));
   expect(
     await screen.findByTestId('health-record-medications-count'),
-  ).toHaveTextContent(/1개 약/u);
+  ).toHaveTextContent(/복용 확인 1건/u);
   await fireEvent.press(screen.getByTestId('health-record-filter-other'));
   await fireEvent.press(screen.getByTestId('health-record-filter-medications'));
   expect(loadMedicationData).toHaveBeenCalledTimes(1);
