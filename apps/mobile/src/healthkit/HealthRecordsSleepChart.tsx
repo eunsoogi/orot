@@ -132,6 +132,9 @@ export function HealthRecordsSleepChart({
     <View onLayout={event => setWidth(event.nativeEvent.layout.width)}>
       <ChartPlot
         data={data}
+        compact
+        hideDetails
+        barTooltip
         width={width}
         height={200}
         title={title}

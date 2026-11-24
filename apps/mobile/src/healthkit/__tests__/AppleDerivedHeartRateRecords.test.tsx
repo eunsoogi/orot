@@ -43,6 +43,7 @@ function imported(
       startDate: at,
       endDate: at,
       sourceName,
+      sourceIdentifier: 'com.example.' + sourceName.split(' ').pop(),
     }),
   );
   if (sample.status !== 'mapped') throw new Error('Invalid fixture');
@@ -199,20 +200,16 @@ test('plots exact Apple metrics separately with source and partial-data coverage
   };
   const result = await render(<HealthRecordsLibraryScreen {...props} />);
   await fireEvent.press(screen.getByRole('button', { name: '안정 시 심박수' }));
-  const restingChart = chartData('resting_heart_rate');
-  expect(restingChart.coverage.status).toBe('partial');
-  expect(restingChart.series.flatMap(series => series.points)).toEqual([
-    expect.objectContaining({
-      x: at,
-      value: 60,
-      source: '건강 앱 · Synthetic Watch',
-    }),
-    expect.objectContaining({
-      x: at,
-      value: 82,
-      source: '건강 앱 · Synthetic Phone',
-    }),
+  const { coverage, series } = chartData('resting_heart_rate');
+  expect(coverage.status).toBe('partial');
+  const points = series.flatMap(item => item.points);
+  expect(
+    points.map(point => [point.value, point.source, point.partial]),
+  ).toEqual([
+    [82, '건강 앱 · Synthetic Phone', true],
+    [60, '건강 앱 · Synthetic Watch', true],
   ]);
+  expect(points.map(point => point.range?.samples)).toEqual([1, 1]);
   expect(screen.queryByText(/개의 평균:/)).toBeNull();
   await fireEvent.press(
     screen.getByTestId('health-record-open-detail-resting_heart_rate'),
@@ -239,7 +236,10 @@ test('plots exact Apple metrics separately with source and partial-data coverage
     'health-record-chart-values-walking_heart_rate_average',
   );
   expect(chartData('walking_heart_rate_average').series[0]?.points).toEqual([
-    expect.objectContaining({ x: at, value: 99 }),
+    expect.objectContaining({
+      value: 99,
+      range: { minimum: 99, maximum: 99, samples: 1 },
+    }),
   ]);
   expect(
     screen.queryByTestId('health-record-chart-values-resting_heart_rate'),

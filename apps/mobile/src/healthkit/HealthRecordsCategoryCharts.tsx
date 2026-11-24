@@ -43,9 +43,9 @@ export function HealthRecordsCategoryCharts({
           key={unit}
           category={category}
           observations={
-            // A retained heart mark must summarize all samples at its instant
-            // in the loaded page; thin the marks only after that calculation.
-            category === 'heart_rate'
+            // Build complete loaded-day heart buckets before thinning preview marks.
+            category === 'heart_rate' ||
+            isAppleDerivedHeartRateCategory(category)
               ? records
               : selectHealthRecordPreview(records)
           }

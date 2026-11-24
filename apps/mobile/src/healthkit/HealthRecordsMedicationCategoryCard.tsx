@@ -60,6 +60,51 @@ export function HealthRecordsMedicationCategoryCard({
             variant="secondary"
           />
         }
+        body={
+          <View style={styles.body}>
+            <Text
+              accessibilityRole={status === 'failed' ? 'alert' : undefined}
+              style={status === 'failed' ? styles.error : styles.message}
+              testID="health-record-medications-summary"
+            >
+              {message}
+            </Text>
+            {latestDose ? (
+              <View style={styles.copy}>
+                <Text style={styles.message}>
+                  {latestDose.dose?.amount === undefined
+                    ? t('healthRecords.medicationDoseNotRecorded')
+                    : t('healthRecords.medicationDose', {
+                        amount: latestDose.dose.amount,
+                        unit: latestDose.dose.unit,
+                      })}
+                </Text>
+                <Text style={styles.summary}>
+                  {formatRecordedAt(latestDose.effectiveAt)}
+                </Text>
+                <Text style={styles.summary}>
+                  {t('healthRecords.medicationSource', {
+                    source:
+                      latestDose.provenance.source?.sourceName ??
+                      (latestDose.provenance.source?.system === 'healthkit'
+                        ? t('healthRecords.source.healthApp')
+                        : t('healthRecords.medicationSourceUnavailable')),
+                  })}
+                </Text>
+              </View>
+            ) : null}
+            {status === 'failed' ? (
+              <AppButton
+                onPress={() => {
+                  reload();
+                }}
+                testID="health-record-medications-retry"
+                title={t('healthRecords.retry')}
+                variant="secondary"
+              />
+            ) : null}
+          </View>
+        }
       >
         <Text accessibilityRole="header" style={styles.title}>
           {t('legacySymptom.categoryRecords', { category: title })}
@@ -73,47 +118,6 @@ export function HealthRecordsMedicationCategoryCard({
           </Text>
         ) : null}
       </HealthRecordsCategoryHeading>
-      <Text
-        accessibilityRole={status === 'failed' ? 'alert' : undefined}
-        style={status === 'failed' ? styles.error : styles.message}
-        testID="health-record-medications-summary"
-      >
-        {message}
-      </Text>
-      {latestDose ? (
-        <View style={styles.copy}>
-          <Text style={styles.message}>
-            {latestDose.dose?.amount === undefined
-              ? t('healthRecords.medicationDoseNotRecorded')
-              : t('healthRecords.medicationDose', {
-                  amount: latestDose.dose.amount,
-                  unit: latestDose.dose.unit,
-                })}
-          </Text>
-          <Text style={styles.summary}>
-            {formatRecordedAt(latestDose.effectiveAt)}
-          </Text>
-          <Text style={styles.summary}>
-            {t('healthRecords.medicationSource', {
-              source:
-                latestDose.provenance.source?.sourceName ??
-                (latestDose.provenance.source?.system === 'healthkit'
-                  ? t('healthRecords.source.healthApp')
-                  : t('healthRecords.medicationSourceUnavailable')),
-            })}
-          </Text>
-        </View>
-      ) : null}
-      {status === 'failed' ? (
-        <AppButton
-          onPress={() => {
-            reload();
-          }}
-          testID="health-record-medications-retry"
-          title={t('healthRecords.retry')}
-          variant="secondary"
-        />
-      ) : null}
     </View>
   );
 }
@@ -135,6 +139,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     width: 52,
   },
+  body: { gap: 14 },
   copy: { minWidth: 0, gap: 4 },
   title: { color: appColors.text, fontSize: 17, fontWeight: '700' },
   summary: { color: appColors.secondary, fontSize: 13 },
