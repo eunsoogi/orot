@@ -84,3 +84,43 @@ test.each(['cancelled', 'completed'] as const)(
     expect(cancelled.status).toBe(status);
   },
 );
+
+test('a manually rescheduled linked occurrence is not reconfirmed by classification', async () => {
+  const occurrence = event(
+    'manual-reschedule',
+    'Synthetic visit',
+    '2035-06-02',
+  );
+  const original = createAppointment({
+    ...occurrence,
+    id: 'linked',
+    recordedAt: '2035-06-01T00:00:00.000Z',
+    ingestedAt: '2035-06-01T00:00:00.000Z',
+    provenance: { origin: 'user_reported', sourceRecordIds: [] },
+    reviewState: { status: 'unreviewed' },
+  });
+  const appointments = repository();
+  jest.mocked(appointments.list).mockResolvedValue([
+    {
+      ...original,
+      status: 'rescheduled',
+      startTimeAuthority: 'manual',
+      effectiveAt: '2035-06-02T04:00:00.000Z',
+    },
+  ]);
+  const findEvent = jest.fn();
+  const bridge: CalendarBridge = {
+    findEvent,
+    requestAccessAndListUpcomingEvents: jest.fn(),
+    addEventStoreListener: jest.fn(),
+  };
+  await expect(
+    saveCalendarCandidate(
+      result([occurrence]).candidates[0]!,
+      appointments,
+      bridge,
+    ),
+  ).resolves.toBe('preserved');
+  expect(appointments.reconfirmCalendarEvent).not.toHaveBeenCalled();
+  expect(findEvent).not.toHaveBeenCalled();
+});

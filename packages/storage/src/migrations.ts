@@ -1,3 +1,4 @@
+import { createCalendarClassificationCacheTable } from './calendarClassificationCache';
 import { createHealthObservationLibraryIndex } from './healthObservationPageFilter';
 import { createHealthMedicationLibraryIndex } from './healthMedicationPages';
 import { isRecordKind, parseRecord, STORAGE_TABLES } from './contracts';
@@ -16,7 +17,7 @@ import { createRecapBindingTables } from './recapBinding';
 import { createRecentSourcePageIndex } from './recentSourcePage';
 import { readUserVersion } from './schemaVersion';
 
-export const CURRENT_SCHEMA_VERSION = 19;
+export const CURRENT_SCHEMA_VERSION = 20;
 
 async function createInitialTables(transaction: SqlExecutor): Promise<void> {
   for (const definition of Object.values(STORAGE_TABLES)) {
@@ -229,6 +230,7 @@ export async function runMigrations(database: SqlDatabase): Promise<void> {
     if (currentVersion < 16) await createRecapBindingTables(transaction);
     if (currentVersion < 18) await createRecentSourcePageIndex(transaction);
     if (currentVersion < 19) await addAgentMemoryClockWitness(transaction);
-    await transaction.execute('PRAGMA user_version = 19');
+    if (currentVersion < 20) await createCalendarClassificationCacheTable(transaction);
+    await transaction.execute('PRAGMA user_version = 20');
   });
 }

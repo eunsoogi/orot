@@ -50,11 +50,28 @@ test('native execution events are forwarded only when their payload is valid', (
   try {
     const unsubscribe = conversationExecutionNative()!.subscribe(listener);
     emit!({ kind: 'expired', requestId: 'request' });
+    emit!({
+      kind: 'expired',
+      requestId: 'detached-owner',
+      reason: 'lease-check-failed',
+    });
+    emit!({
+      kind: 'expired',
+      requestId: 'malformed',
+      reason: 'bridge-unavailable',
+    });
     emit!({ kind: 'protectedData', available: false });
     emit!({ kind: 'expired', requestId: 12 });
     emit!({ kind: 'protectedData', available: 'false' });
     expect(listener.mock.calls).toEqual([
       [{ kind: 'expired', requestId: 'request' }],
+      [
+        {
+          kind: 'expired',
+          requestId: 'detached-owner',
+          reason: 'lease-check-failed',
+        },
+      ],
       [{ kind: 'protectedData', available: false }],
     ]);
     unsubscribe();

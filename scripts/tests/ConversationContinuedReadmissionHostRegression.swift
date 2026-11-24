@@ -26,7 +26,19 @@ final class ConversationContinuedProcessing {
     }
 }
 
+final class ConversationNativeSceneOwnership {
+    var hasVisibleForegroundOwner = false
+}
+
 final class ConversationExecutionModule {
+    var continuedEpochs: [String: UUID] = [:]
+    let nativeOwnership = ConversationNativeSceneOwnership()
+
+    func expireRequest(_ id: String) {
+        endLease(id)
+        publish(["kind": "expired", "requestId": id])
+    }
+
     var requests: Set<String> = ["current"]
     var continued: [String: Any] = [:]
     var events: [[String: Any]] = []
@@ -36,6 +48,7 @@ final class ConversationExecutionModule {
 
     func endLease(_ id: String) {
         requests.remove(id)
+        continuedEpochs.removeValue(forKey: id)
         continued.removeValue(forKey: id)
     }
 }
@@ -76,6 +89,24 @@ enum ConversationContinuedReadmissionHostRegression {
         module.work("current", active: true)
         module.work("stale", active: true)
         precondition(ConversationContinuedProcessing.starts == 1 && module.continued.isEmpty)
+        module.requests.insert("current")
+        module.work("current", active: true)
+        let retired = module.continued["current"] as! ConversationContinuedProcessing
+        module.work("current", active: false)
+        module.work("current", active: true)
+        let replacement = module.continued["current"] as! ConversationContinuedProcessing
+        retired.expired()
+        precondition(module.requests.contains("current") && module.continued["current"] as? ConversationContinuedProcessing === replacement)
+        module.nativeOwnership.hasVisibleForegroundOwner = true
+        replacement.expired()
+        precondition(module.requests.contains("current"))
+        module.work("current", active: false)
+        module.work("current", active: true)
+        let actualBackground = module.continued["current"] as! ConversationContinuedProcessing
+        module.nativeOwnership.hasVisibleForegroundOwner = false
+        actualBackground.expired()
+        precondition(!module.requests.contains("current"))
+        precondition(module.events.last?["kind"] as? String == "expired")
         print("PASS continued admission: background, inactive, protected data, foreground, one attempt, decision and ended ownership")
     }
 }

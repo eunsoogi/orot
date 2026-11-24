@@ -1,4 +1,8 @@
 import {
+  createCalendarClassificationCache,
+  type CalendarClassificationCache,
+} from './calendarClassificationCache';
+import {
   compareTimestamps,
   cancelAppointment as cancelDomainAppointment,
   createAppointment as createDomainAppointment,
@@ -29,6 +33,7 @@ export interface CalendarAppointmentInput {
 export type AppointmentChanges = AppointmentUpdateInput;
 
 export interface AppointmentRepository {
+  readonly classificationCache?: CalendarClassificationCache;
   list(): Promise<Appointment[]>;
   create(input: ManualAppointmentInput): Promise<Appointment>;
   confirmCalendarEvent(input: CalendarAppointmentInput): Promise<Appointment>;
@@ -66,6 +71,7 @@ export function createAppointmentRepository(
 
   return {
     list: () => listStoredAppointments(database),
+    classificationCache: createCalendarClassificationCache(database),
     async create(input) {
       const now = clock();
       const note = input.note?.trim();
