@@ -101,7 +101,7 @@ test('production daily save and revise preserves exact historical metadata, neve
     const detail = await reader.read(first, new AbortController().signal);
     expect(detail?.paragraphs).toEqual([]);
     expect(detail?.dailyReport?.sections.map(section => section.title)).toEqual(
-      [t('dailyReport.observations'), t('dailyReport.coverage.attention')],
+      [t('dailyReport.observations')],
     );
     expect(detail?.dailyReport?.sections[0]?.content).toBe(
       'Synthetic private report',

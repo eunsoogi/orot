@@ -1,3 +1,4 @@
+import { medicationMonthFixture } from '../../healthkit/testSupport/medicationMonthFixture';
 import { act, fireEvent, render, screen } from '@testing-library/react-native';
 import { NavigationContext } from '@react-navigation/native';
 import { healthObservation } from '../../../../../packages/storage/__tests__/localQueryTestSupport';
@@ -33,10 +34,9 @@ test('routes the medication summary action to its separate dose-event detail lis
   await render(
     <HealthRecordsRoute
       actions={navigation}
-      loadMedicationData={async () => ({
-        definitions: [medication],
-        doseEvents: [dose],
-      })}
+      loadMedicationData={async request =>
+        medicationMonthFixture(request, medication)
+      }
       loadObservations={async () => ({ records: [], nextCursor: null })}
       onSelectionChange={onSelectionChange}
       route="health-records"

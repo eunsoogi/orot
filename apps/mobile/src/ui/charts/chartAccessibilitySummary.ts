@@ -1,5 +1,5 @@
 import { t } from '../../i18n';
-import { formatChartPointPosition, formatChartPointValue } from './format';
+import { formatChartPosition, formatChartPointValue } from './format';
 import type { ChartData } from './types';
 
 /** Keeps chart-only cards readable without introducing a hidden details action or mutating records. */
@@ -15,7 +15,7 @@ export function chartAccessibilitySummary(
     ...data.series.flatMap(series =>
       series.points.map(point =>
         [
-          formatChartPointPosition(point, axis),
+          formatChartPosition(point.x, axis),
           series.label,
           formatChartPointValue(
             data.metric,

@@ -8,7 +8,7 @@ import type {
   ChartKind,
   ChartMetric,
   ChartSeries,
-} from '../ui/charts';
+} from '../ui/charts/types';
 import { t } from '../i18n';
 import { formatRecordedAt } from '../recording/formatRecordedAt';
 import {
@@ -64,7 +64,7 @@ export function buildHealthRecordsMonthChart(
   const kind =
     metric === 'heartRate'
       ? 'range'
-      : ['steps', 'workouts', 'sleep'].includes(metric)
+      : ['steps', 'workouts'].includes(metric)
         ? 'bar'
         : 'line';
   const groups = new Map<

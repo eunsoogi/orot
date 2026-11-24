@@ -1,5 +1,5 @@
 import {
-  formatChartPointPosition,
+  formatChartPosition,
   formatChartPointValue,
 } from '../../ui/charts/format';
 import type { HealthObservationMonthChart } from '@orot/storage';
@@ -140,12 +140,12 @@ test('monthly derived heart range keeps adjacent local days and a second sensor 
     samples: 2,
   });
   expect(measured.value).toBe(62.25);
-  expect(measured.period).toBeUndefined();
+  expect(measured).not.toHaveProperty('period');
   expect(first?.points[1]).toMatchObject({
     value: 88.75,
     range: { minimum: 88.75, maximum: 88.75, samples: 1 },
   });
-  expect(formatChartPointPosition(measured, 'day')).toContain('2026-10-24');
+  expect(formatChartPosition(measured.x, 'day')).toContain('2026-10-24');
   expect(
     formatChartPointValue(
       data.metric,
@@ -177,4 +177,17 @@ test('the full-month workout duration chart uses bars and actual daily totals', 
     expect.objectContaining({ x: '2026-11-01', value: 248 }),
   ]);
   expect(data.series[0]?.points[0]?.range).toBeUndefined();
+});
+
+test('sparse and missing sleep stay on the time line with no invented observations', () => {
+  expect(buildHealthRecordsMonthChart('sleep', window).kind).toBe('line');
+  const { kind, data } = buildHealthRecordsMonthChart('sleep', window, {
+    kind: 'sleep',
+    rows: [{ effectiveAt: row.effectiveAt, source: row.source, minutes: 420 }],
+  });
+  expect(kind).toBe('line');
+  expect(data.xWindow).toEqual(window);
+  expect(data.series[0]?.points).toEqual([
+    expect.objectContaining({ x: row.effectiveAt, value: 420 }),
+  ]);
 });

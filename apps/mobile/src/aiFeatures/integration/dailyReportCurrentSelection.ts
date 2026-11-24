@@ -61,7 +61,6 @@ export async function selectCurrentDailyReportFacts(
         localDate: calendar.context.identity.localDate,
         timeZone: calendar.context.identity.timeZone,
         generationCutoff: calendar.context.generationCutoff,
-        coverage: prepared.sourceSnapshot.coverage,
       },
       includesSystemCalendar: !!external?.facts.length,
       signal: request.signal,

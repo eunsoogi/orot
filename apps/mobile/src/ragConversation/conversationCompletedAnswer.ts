@@ -114,11 +114,18 @@ export function conversationCompletedAnswer(input: {
       ? { error: t('ragConversation.conversation.answerSaveSourceUnavailable') }
       : {}),
     messages: [
-      ...find(id).messages.map(message =>
-        clarification && message.id === input.userMessageId
-          ? { ...message, localClarification: true as const }
-          : message,
-      ),
+      ...find(id).messages.map(message => {
+        if (message.role !== 'user' || message.id !== input.userMessageId)
+          return message;
+        if (!message.deliveryPending && !clarification) return message;
+        // Terminal display settles this outgoing row before unrelated cleanup.
+        // A local result is not a provider receipt; preserve only observed times.
+        return {
+          ...message,
+          deliveryPending: false,
+          ...(clarification ? { localClarification: true as const } : {}),
+        };
+      }),
       {
         id: messageId,
         role: 'assistant',

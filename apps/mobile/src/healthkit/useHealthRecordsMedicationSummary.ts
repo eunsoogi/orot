@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
+import { healthRecordPeriodStart } from './healthRecordsLibraryModel';
 import {
   subscribeLocalDataClear,
   subscribeLocalSourceDeletion,
@@ -23,9 +24,26 @@ export function useHealthRecordsMedicationSummary(
     const request = ++generation.current;
     setStatus('loading');
     try {
-      const next = await load();
+      const toInclusive = new Date().toISOString();
+      const fromInclusive = healthRecordPeriodStart(
+        'month',
+        toInclusive,
+      )!.toISOString();
+      const next = await load({
+        fromInclusive,
+        toInclusive,
+        monthlyTakenOnly: true,
+      });
       if (request !== generation.current) return;
-      setData(next);
+      const accepted = next.monthlyTaken;
+      setData({
+        ...emptyHealthRecordsMedicationData,
+        monthlyTaken:
+          accepted?.fromInclusive === fromInclusive &&
+          accepted.toInclusive === toInclusive
+            ? accepted
+            : { fromInclusive, toInclusive, status: 'unverified' },
+      });
       setStatus('ready');
     } catch {
       if (request === generation.current) setStatus('failed');

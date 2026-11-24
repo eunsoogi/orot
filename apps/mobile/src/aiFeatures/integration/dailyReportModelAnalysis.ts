@@ -113,9 +113,4 @@ export type ReportModelContext = {
   localDate: string;
   timeZone: string;
   generationCutoff: string;
-  coverage: readonly {
-    source: string;
-    status: string;
-    limitationCodes: readonly string[];
-  }[];
 };
