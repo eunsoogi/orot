@@ -1,4 +1,5 @@
-import { Pressable, StyleSheet, Text } from 'react-native';
+import { Pressable, StyleSheet } from 'react-native';
+import { AppSymbol } from '../layout/AppSymbol';
 import { appColors } from '../layout/appColors';
 
 interface NavigationActionButtonProps {
@@ -6,19 +7,19 @@ interface NavigationActionButtonProps {
   readonly disabled: boolean;
   readonly busy?: boolean;
   readonly isDarkAppearance: boolean;
-  readonly label: string;
+  readonly symbol?: string;
   readonly onPress: () => void;
   readonly primary?: boolean;
   readonly testID: string;
 }
 
-/** Keeps detail actions readable over the shared native glass surface. */
+/** Keep one accessible action name when the compact chrome only shows its symbol. */
 export function NavigationActionButton({
   accessibilityLabel,
   disabled,
   busy,
   isDarkAppearance,
-  label,
+  symbol = 'ellipsis',
   onPress,
   primary = false,
   testID,
@@ -38,15 +39,17 @@ export function NavigationActionButton({
       ]}
       testID={testID}
     >
-      <Text
-        style={[
-          styles.label,
-          isDarkAppearance && !primary && styles.darkLabel,
-          primary && styles.primaryLabel,
-        ]}
-      >
-        {label}
-      </Text>
+      <AppSymbol
+        name={symbol}
+        size={20}
+        color={
+          primary
+            ? appColors.onPrimary
+            : isDarkAppearance
+              ? '#f7f8fa'
+              : appColors.primaryText
+        }
+      />
     </Pressable>
   );
 }
@@ -57,7 +60,6 @@ const styles = StyleSheet.create({
     borderColor: appColors.border,
     borderRadius: 24,
     borderWidth: 1,
-    flex: 1,
     justifyContent: 'center',
     minHeight: 50,
     minWidth: 72,
@@ -69,12 +71,4 @@ const styles = StyleSheet.create({
     borderColor: appColors.primaryAction,
   },
   disabled: { opacity: 0.55 },
-  label: {
-    color: appColors.primaryText,
-    fontSize: 15,
-    fontWeight: '600',
-    textAlign: 'center',
-  },
-  darkLabel: { color: '#f7f8fa' },
-  primaryLabel: { color: appColors.onPrimary },
 });

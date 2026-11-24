@@ -34,7 +34,7 @@ export function useBottomNavigationRow({
   const more = navigationMoreDescriptor(hasRootTabs);
   const measuredActions = [
     ...actions,
-    ...taskActions.map(action => pageActionDescriptor(action, false, false)),
+    ...taskActions.map(action => pageActionDescriptor(action, false)),
     more,
   ];
   // Selection and availability do not affect UIKit's measured label geometry.

@@ -179,30 +179,6 @@ describe('bottom navigation actions', () => {
     ).toBeVisible();
   });
 
-  it('uses a light control foreground for dark system appearance', async () => {
-    mockUseColorScheme.mockReturnValue('dark');
-    const controller = createNavigationController<'home' | 'details'>('home');
-    controller.push('details');
-
-    await render(
-      <NavigationActionBar
-        controller={controller}
-        safeAreaHandledByParent
-        surface={FallbackSurface}
-      />,
-    );
-
-    const back = screen.getByRole('button', {
-      name: '이전 화면으로 돌아가기',
-    });
-    expect(StyleSheet.flatten(back.props.style)).toEqual(
-      expect.objectContaining({ borderColor: '#ffffff', borderWidth: 1 }),
-    );
-    expect(StyleSheet.flatten(screen.getByText('뒤로').props.style)).toEqual(
-      expect.objectContaining({ color: '#f7f8fa' }),
-    );
-  });
-
   it('keeps callback-route controls legible in dark appearance', async () => {
     mockUseColorScheme.mockReturnValue('dark');
     await render(

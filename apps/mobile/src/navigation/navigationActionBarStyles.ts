@@ -8,7 +8,12 @@ import {
 export const navigationActionBarStyles = StyleSheet.create({
   fill: { flex: 1 },
   bottomRow: { alignItems: 'center', flexDirection: 'row-reverse', gap: 8 },
-  centeredPage: { position: 'absolute', top: 0, zIndex: 1 },
+  contextualFallbackRow: {
+    alignItems: 'center',
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+  },
+  trailingPage: { position: 'absolute', top: 0, zIndex: 1 },
   statusHost: { justifyContent: 'center', minHeight: 60 },
   measurementHost: {
     left: 0,

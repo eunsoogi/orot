@@ -6,7 +6,6 @@ import type { NavigationRouteAction } from './useNavigationPrimaryAction';
 export function pageActionDescriptor(
   action: NavigationRouteAction,
   disabled: boolean,
-  isRail: boolean,
 ): NavigationGlassAction {
   return {
     id: `page:${action.id}`,
@@ -16,15 +15,7 @@ export function pageActionDescriptor(
     disabled: disabled || action.disabled,
     busy: action.busy,
     primary: true,
-    ...(isRail
-      ? { systemImageName: action.systemImageName ?? 'ellipsis' }
-      : action.systemImageName
-        ? {
-            systemImageName: action.systemImageName,
-            showsTitleWithSystemImage: true,
-            titleBelowImage: true,
-          }
-        : {}),
+    systemImageName: action.systemImageName ?? 'ellipsis',
   };
 }
 

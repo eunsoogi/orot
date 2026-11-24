@@ -173,6 +173,7 @@ export function NavigationActionBarPresentation({
       disabled={pageActionsDisabled}
       isDarkAppearance={isDarkAppearance}
       isRail={isRightRail}
+      reserveLeadingAction={!hasRootTabs && !isRightRail && hasContextualBack}
       key={routeKey}
       routeKey={routeKey}
       surface={Surface}
