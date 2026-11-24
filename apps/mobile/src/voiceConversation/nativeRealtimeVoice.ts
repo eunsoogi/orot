@@ -115,6 +115,7 @@ function nativeOwnedVoice(
           return previous.receive?.(
             close?.duration ?? result,
             previous.captionsCurrent() ? close?.captions : undefined,
+            previous.captionsCurrent,
           );
         }),
     );

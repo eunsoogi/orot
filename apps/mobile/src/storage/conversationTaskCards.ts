@@ -83,6 +83,7 @@ export function createConversationTaskCardStorage(
       expectedRevision: number | null;
       task: ConversationTaskCard;
       observedVoiceCaptions?: unknown;
+      captionWriteCurrent?: () => boolean;
       signal?: AbortSignal;
     }) {
       if (

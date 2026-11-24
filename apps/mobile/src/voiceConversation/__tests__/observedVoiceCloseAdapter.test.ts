@@ -1,3 +1,4 @@
+import { parseObservedVoiceCaptions } from '../observedVoiceCaptions';
 import { NativeModules, Platform } from 'react-native';
 import {
   beginConsentReset,
@@ -61,7 +62,9 @@ test.each([
       await closing;
       await adapter.stop(callId, graceful);
       expect(retain.mock.calls).toEqual([
-        saved ? [{ durationSeconds: 52 }, captions] : [{ durationSeconds: 52 }],
+        saved
+          ? [{ durationSeconds: 52 }, captions, expect.any(Function)]
+          : [{ durationSeconds: 52 }],
       ]);
     } finally {
       if (revoked) finishConsentReset();
@@ -70,3 +73,36 @@ test.each([
     }
   },
 );
+
+test('rejects misordered, extra fields, unbounded, and final-labeled inputs', () => {
+  const first = 'live-1-1';
+  const observed = {
+    callId: first,
+    status: 'observed_incomplete',
+    lines: [
+      { order: 2, role: 'user', text: 'Synthetic start' },
+      { order: 4, role: 'assistant', text: 'Synthetic end' },
+    ],
+  };
+  expect(
+    parseObservedVoiceCaptions({ ...observed, status: 'final' }, first),
+  ).toBeUndefined();
+  expect(
+    parseObservedVoiceCaptions({ ...observed, audio: 'synthetic' }, first),
+  ).toBeUndefined();
+  expect(
+    parseObservedVoiceCaptions(
+      { ...observed, lines: [...observed.lines].reverse() },
+      first,
+    ),
+  ).toBeUndefined();
+  expect(
+    parseObservedVoiceCaptions(
+      {
+        ...observed,
+        lines: [{ order: 1, role: 'user', text: 'a'.repeat(2001) }],
+      },
+      first,
+    ),
+  ).toBeUndefined();
+});

@@ -29,43 +29,64 @@ export async function writeConversationVoiceEndMarker(
     createdAt: string;
     signal?: AbortSignal;
     observedVoiceCaptions?: unknown;
+    captionWriteCurrent?: () => boolean;
   },
   task: VoiceEndTaskCard,
   requireSession: (tx: SqlExecutor) => Promise<void>,
 ) {
   let createdAt = input.createdAt;
-  await database.transaction(async tx => {
-    assertConversationNotCancelled(input.signal);
-    await requireSession(tx);
-    const existing = (
-      await tx.execute(
-        'SELECT created_at, duration_seconds FROM conversation_voice_end_markers WHERE session_id = ? AND id = ?',
-        [input.sessionId, input.id],
-      )
-    ).rows[0];
-    if (existing) {
+  let didSaveCaptions = false;
+  const captionRevoked = new Error('Voice caption authority changed.');
+  const write = (allowCaptions: boolean) =>
+    database.transaction(async tx => {
+      assertConversationNotCancelled(input.signal);
+      await requireSession(tx);
+      const existing = (
+        await tx.execute(
+          'SELECT created_at, duration_seconds FROM conversation_voice_end_markers WHERE session_id = ? AND id = ?',
+          [input.sessionId, input.id],
+        )
+      ).rows[0];
+      if (existing) {
+        if (
+          existing.duration_seconds !== task.durationSeconds ||
+          typeof existing.created_at !== 'string'
+        )
+          throw new Error('Voice completion changed.');
+        createdAt = existing.created_at;
+      } else {
+        await tx.execute(
+          'INSERT INTO conversation_voice_end_markers VALUES (?, ?, ?, ?)',
+          [input.sessionId, input.id, input.createdAt, task.durationSeconds],
+        );
+      }
       if (
-        existing.duration_seconds !== task.durationSeconds ||
-        typeof existing.created_at !== 'string'
-      )
-        throw new Error('Voice completion changed.');
-      createdAt = existing.created_at;
-    } else {
-      await tx.execute(
-        'INSERT INTO conversation_voice_end_markers VALUES (?, ?, ?, ?)',
-        [input.sessionId, input.id, input.createdAt, task.durationSeconds],
-      );
-    }
-    await writeObservedVoiceCaptions(tx, input, Boolean(existing));
-    assertConversationNotCancelled(input.signal);
-  });
+        allowCaptions &&
+        input.observedVoiceCaptions !== undefined &&
+        input.captionWriteCurrent?.() === true
+      ) {
+        await writeObservedVoiceCaptions(tx, input, Boolean(existing));
+        // The exact original settings/consent witness must survive the final
+        // queued statement. A revoked write rolls back before duration-only retry.
+        assertConversationNotCancelled(input.signal);
+        if (input.captionWriteCurrent?.() !== true) throw captionRevoked;
+        tx.commit();
+        didSaveCaptions = true;
+        return;
+      }
+      assertConversationNotCancelled(input.signal);
+    });
+  try {
+    await write(true);
+  } catch (error) {
+    if (error !== captionRevoked) throw error;
+    await write(false);
+  }
   return {
     id: input.id,
     createdAt,
     revision: 1,
     task,
-    ...(input.observedVoiceCaptions !== undefined
-      ? { hasObservedVoiceCaptions: true as const }
-      : {}),
+    ...(didSaveCaptions ? { hasObservedVoiceCaptions: true as const } : {}),
   };
 }

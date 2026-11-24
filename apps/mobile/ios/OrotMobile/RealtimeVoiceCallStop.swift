@@ -2,7 +2,8 @@ import Foundation
 
 extension RealtimeVoiceCall {
     func stop(_ identifier: String, graceful: Bool = false,
-              retireMailbox: (() -> Void)? = nil, observedClose: (([String: Any]?) -> Void)? = nil) throws {
+              retireMailbox: (() -> Void)? = nil, observedClose: (([String: Any]?) -> Void)? = nil) throws
+    {
         guard id == identifier else { return }
         let eligible = graceful && (ready || paused) && liveIsCurrent() ? liveSessionID : nil
         let finalSession: String? = eligible.flatMap { session in

@@ -9,6 +9,7 @@ export function createVoiceEndReceipt(input: {
   readonly retain: (
     duration: CompletedVoiceDuration,
     observedCaptions?: unknown,
+    captionWriteCurrent?: () => boolean,
   ) => Promise<void>;
 }) {
   const { callId, isCurrent, retain } = input;
@@ -17,7 +18,11 @@ export function createVoiceEndReceipt(input: {
     discard() {
       settled = true;
     },
-    accept(event: unknown, observedCaptions?: unknown) {
+    accept(
+      event: unknown,
+      observedCaptions?: unknown,
+      captionWriteCurrent?: () => boolean,
+    ) {
       if (
         settled ||
         !event ||
@@ -40,7 +45,7 @@ export function createVoiceEndReceipt(input: {
       const duration = { durationSeconds: value.durationSeconds };
       return observedCaptions === undefined
         ? retain(duration)
-        : retain(duration, observedCaptions);
+        : retain(duration, observedCaptions, captionWriteCurrent);
     },
   };
 }

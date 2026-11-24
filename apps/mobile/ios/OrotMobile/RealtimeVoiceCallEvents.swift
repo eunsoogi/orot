@@ -27,7 +27,7 @@ extension RealtimeVoiceCall {
 
     func receive(_ event: [String: Any]) {
         guard id != nil, let type = event["type"] as? String else { return }
-        if (type == "session.input_transcript.delta" || type == "session.output_transcript.delta"),
+        if type == "session.input_transcript.delta" || type == "session.output_transcript.delta",
            let call = id, let session = liveSessionID, let epoch = liveSocketEpoch,
            ready, !paused, token != nil, foreground(), liveIsCurrent()
         {

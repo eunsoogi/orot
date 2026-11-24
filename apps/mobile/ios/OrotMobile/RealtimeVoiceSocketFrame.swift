@@ -19,7 +19,9 @@ protocol RealtimeSocketPort: AnyObject {
 }
 
 extension RealtimeSocketPort {
-    func prepareManagedCaptionClose(sessionID _: String) -> Bool { false }
+    func prepareManagedCaptionClose(sessionID _: String) -> Bool {
+        false
+    }
 
     func finishObservedLive(sessionID: String, completion: @escaping (Bool) -> Void) {
         finishLive(sessionID: sessionID)
@@ -68,7 +70,7 @@ struct LiveCaptionTerminalQueue {
     let retireDiscarded: () -> Void
 
     static func prepare(_ writes: [RealtimeSocketWrite], sending: Bool) -> Self? {
-        guard (!sending || !writes.isEmpty),
+        guard !sending || !writes.isEmpty,
               !writes.contains(where: { $0.permit?.issued == true }),
               !sending || writes.first?.permit == nil else { return nil }
         let retained = Array(writes.prefix(sending ? 1 : 0))
@@ -76,5 +78,16 @@ struct LiveCaptionTerminalQueue {
         return .init(retained: retained, bytes: retained.reduce(0) { $0 + $1.text.utf8.count }) {
             discarded.forEach { $0.permit?.ticket?.retire() }
         }
+    }
+}
+
+/// A graceful caption reservation never makes ordinary transport reentrant.
+struct LiveCaptionTerminalState {
+    var prepared: String?
+    var completion: ((Bool) -> Void)?
+
+    mutating func retire() -> ((Bool) -> Void)? {
+        defer { self = Self() }
+        return completion
     }
 }

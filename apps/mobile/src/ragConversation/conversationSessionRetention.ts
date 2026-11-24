@@ -166,6 +166,7 @@ export function createConversationSessionRetention(input: {
         expectedRevision: number | null;
         task: import('../storage/conversationTaskCards').ConversationTaskCard;
         observedVoiceCaptions?: unknown;
+        captionWriteCurrent?: () => boolean;
       },
       signal: AbortSignal,
       expectedVoiceLease?: { readonly id: string; readonly version: number },

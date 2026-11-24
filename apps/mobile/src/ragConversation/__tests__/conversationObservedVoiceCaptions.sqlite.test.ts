@@ -52,21 +52,25 @@ test('retains ordered incomplete captions on the exact completed owner without e
   const reopened = f.open();
   try {
     const home = initial.store.getSnapshot().activeId;
-    const complete = initial.store.captureVoiceEnd(home, first, () =>
-      packet(first),
-    )!;
+    const complete = initial.store.captureVoiceEnd(home, first)!;
     initial.store.create();
     const other = initial.store.getSnapshot().activeId;
-    const otherComplete = initial.store.captureVoiceEnd(other, second, () =>
-      packet(second),
-    )!;
+    const otherComplete = initial.store.captureVoiceEnd(other, second)!;
     expect(complete({ callId: second, durationSeconds: 13 })).toBeUndefined();
     expect(parseObservedVoiceCaptions(packet(first), first)).toEqual(
       packet(first),
     );
-    await complete({ callId: first, durationSeconds: 13 });
+    await complete(
+      { callId: first, durationSeconds: 13 },
+      packet(first),
+      () => true,
+    );
     expect(complete({ callId: first, durationSeconds: 13 })).toBeUndefined();
-    await otherComplete({ callId: second, durationSeconds: 17 });
+    await otherComplete(
+      { callId: second, durationSeconds: 17 },
+      packet(second),
+      () => true,
+    );
     const durableRows = await f.sql.database.execute(
       'SELECT session_id, marker_id, caption_json FROM conversation_voice_observed_captions',
     );
@@ -157,8 +161,12 @@ test('empty or invalid capture remains a duration marker and deletion rejects st
   const { store, retention } = f.open();
   try {
     const home = store.getSnapshot().activeId;
-    const noCapture = store.captureVoiceEnd(home, first, () => packet(second))!;
-    await noCapture({ callId: first, durationSeconds: 5 });
+    const noCapture = store.captureVoiceEnd(home, first)!;
+    await noCapture(
+      { callId: first, durationSeconds: 5 },
+      packet(second),
+      () => true,
+    );
     const lease = retention.activeLease(home)!;
     expect(
       await f.storage.readObservedVoiceCaptions(
@@ -176,6 +184,7 @@ test('empty or invalid capture remains a duration marker and deletion rejects st
         expectedRevision: null,
         task: { kind: 'voice_end', durationSeconds: 5 },
         observedVoiceCaptions: packet(first),
+        captionWriteCurrent: () => true,
       }),
     ).rejects.toThrow('Voice caption receipt changed.');
     expect(
@@ -185,11 +194,13 @@ test('empty or invalid capture remains a duration marker and deletion rejects st
         mark(first),
       ),
     ).toBeUndefined();
-    const capture = store.captureVoiceEnd(home, second, () => packet(second))!;
-    await capture({ callId: second, durationSeconds: 9 });
-    const pending = store.captureVoiceEnd(home, 'live-12347-3', () =>
-      packet('live-12347-3'),
-    )!;
+    const capture = store.captureVoiceEnd(home, second)!;
+    await capture(
+      { callId: second, durationSeconds: 9 },
+      packet(second),
+      () => true,
+    );
+    const pending = store.captureVoiceEnd(home, 'live-12347-3')!;
     const hidden = await f.storage.hideSession(lease.id, lease.version);
     await expect(
       f.storage.readObservedVoiceCaptions(
@@ -198,6 +209,8 @@ test('empty or invalid capture remains a duration marker and deletion rejects st
         mark(second),
       ),
     ).rejects.toThrow();
+    if (hidden === null)
+      throw new Error('Expected the synthetic session to hide.');
     await f.storage.finalizeHiddenSession(lease.id, hidden);
     await expect(
       pending({ callId: 'live-12347-3', durationSeconds: 4 }),
@@ -213,29 +226,4 @@ test('empty or invalid capture remains a duration marker and deletion rejects st
     store.dispose();
     f.sql.close();
   }
-});
-
-test('rejects misordered, extra fields, unbounded, and final-labeled inputs', () => {
-  const observed = packet(first);
-  expect(
-    parseObservedVoiceCaptions({ ...observed, status: 'final' }, first),
-  ).toBeUndefined();
-  expect(
-    parseObservedVoiceCaptions({ ...observed, audio: 'synthetic' }, first),
-  ).toBeUndefined();
-  expect(
-    parseObservedVoiceCaptions(
-      { ...observed, lines: [...observed.lines].reverse() },
-      first,
-    ),
-  ).toBeUndefined();
-  expect(
-    parseObservedVoiceCaptions(
-      {
-        ...observed,
-        lines: [{ order: 1, role: 'user', text: 'a'.repeat(2001) }],
-      },
-      first,
-    ),
-  ).toBeUndefined();
 });

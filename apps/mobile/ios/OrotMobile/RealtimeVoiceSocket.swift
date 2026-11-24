@@ -8,8 +8,7 @@ final class RealtimeVoiceSocket: RealtimeSocketPort {
     private var sending = false
     private var epoch = 0
     private var closing: (sessionID: String, command: String, sent: Bool)?
-    private var preparedCaptionClose: String?
-    private var observedClose: ((Bool) -> Void)?
+    private var captionTerminal = LiveCaptionTerminalState()
     private var closeDeadline: DispatchWorkItem?
     var responsesTransportCurrent: (() -> Bool)?
     var received: (([String: Any]) -> Void)?
@@ -21,7 +20,7 @@ final class RealtimeVoiceSocket: RealtimeSocketPort {
             close()
             responsesTransportCurrent = current
         }
-        guard model == "gpt-live-1.1", socket == nil, preparedCaptionClose == nil, responsesTransportCurrent?() != false else { failed?(); return }
+        guard model == "gpt-live-1.1", socket == nil, captionTerminal.prepared == nil, responsesTransportCurrent?() != false else { failed?(); return }
         var request = URLRequest(url: URL(string: "wss://api.openai.com/v1/live/sessions")!)
         request.setValue("Bearer \(key)", forHTTPHeaderField: "Authorization")
         let task = session.webSocketTask(with: request)
@@ -33,7 +32,7 @@ final class RealtimeVoiceSocket: RealtimeSocketPort {
 
     func send(_ event: [String: Any]) {
         // Protected Live results must not fall back to the unguarded control/audio queue.
-        guard closing == nil, preparedCaptionClose == nil, !["response.item.create", "response.create"].contains(event["type"] as? String ?? "") else { return }
+        guard closing == nil, captionTerminal.prepared == nil, !["response.item.create", "response.create"].contains(event["type"] as? String ?? "") else { return }
         guard socket != nil, let data = try? JSONSerialization.data(withJSONObject: event),
               let string = String(data: data, encoding: .utf8) else { failed?(); return }
         guard bytes + data.count <= 512 * 1024 else { failed?(); return }
@@ -54,9 +53,9 @@ final class RealtimeVoiceSocket: RealtimeSocketPort {
     }
 
     private func enqueueManaged(_ frames: [[String: Any]], permit: LiveQueuedToolPermit) -> Bool {
-        guard closing == nil, preparedCaptionClose == nil, let task = socket else { return false }
+        guard closing == nil, captionTerminal.prepared == nil, let task = socket else { return false }
         let currentEpoch = epoch
-        guard let writes = permit.prepare(frames), epoch == currentEpoch, socket === task, closing == nil, preparedCaptionClose == nil,
+        guard let writes = permit.prepare(frames), epoch == currentEpoch, socket === task, closing == nil, captionTerminal.prepared == nil,
               !queue.contains(where: { $0.permit != nil }) else { return false }
         let size = writes.reduce(0) { $0 + $1.text.utf8.count }
         guard bytes + size <= 512 * 1024 else { return false }
@@ -78,14 +77,14 @@ final class RealtimeVoiceSocket: RealtimeSocketPort {
     }
 
     private func flush() {
-        guard closing == nil, preparedCaptionClose == nil, !sending, let task = socket, let message = queue.first else { return }
+        guard closing == nil, captionTerminal.prepared == nil, !sending, let task = socket, let message = queue.first else { return }
         let current = epoch
         guard responsesTransportCurrent?() != false else { transportFailed(); return }
-        guard epoch == current, socket === task, preparedCaptionClose == nil, !sending else { return }
+        guard epoch == current, socket === task, captionTerminal.prepared == nil, !sending else { return }
         if let permit = message.permit {
             let allowed = permit.authorizeHandoff()
             // Authority lookup may retire this exact socket or clear its queue synchronously.
-            guard epoch == current, socket === task, preparedCaptionClose == nil, !sending, queue.first?.permit === permit else { return }
+            guard epoch == current, socket === task, captionTerminal.prepared == nil, !sending, queue.first?.permit === permit else { return }
             guard allowed else { discardRejected(permit); return }
         }
         let submit = { [self] in
@@ -147,7 +146,7 @@ final class RealtimeVoiceSocket: RealtimeSocketPort {
                         let confirmed = LiveObservedCaptionBuffer.acknowledged(event, sessionID: closing.sessionID, command: closing.command)
                         self.close(confirmed: confirmed)
                     }
-                } else if self.preparedCaptionClose == nil {
+                } else if self.captionTerminal.prepared == nil {
                     self.received?(event)
                 }
                 if self.socket === task {
@@ -176,23 +175,23 @@ final class RealtimeVoiceSocket: RealtimeSocketPort {
 
     /// Reserve the exact terminal path before callbacks can retire the bridge.
     func prepareManagedCaptionClose(sessionID: String) -> Bool {
-        guard let task = socket, closing == nil, preparedCaptionClose == nil else { return false }
+        guard let task = socket, closing == nil, captionTerminal.prepared == nil else { return false }
         let owner = epoch
         guard responsesTransportCurrent?() == true,
-              epoch == owner, socket === task, closing == nil, preparedCaptionClose == nil,
+              epoch == owner, socket === task, closing == nil, captionTerminal.prepared == nil,
               let cutoff = LiveCaptionTerminalQueue.prepare(queue, sending: sending) else { return false }
-        preparedCaptionClose = sessionID
+        captionTerminal.prepared = sessionID
         queue = cutoff.retained
         bytes = cutoff.bytes
         cutoff.retireDiscarded()
-        return epoch == owner && socket === task && preparedCaptionClose == sessionID
+        return epoch == owner && socket === task && captionTerminal.prepared == sessionID
     }
 
     func finishObservedLive(sessionID: String, completion: @escaping (Bool) -> Void) {
         guard socket != nil, closing == nil else { completion(false); return }
-        guard responsesTransportCurrent == nil ? preparedCaptionClose == nil : preparedCaptionClose == sessionID
+        guard responsesTransportCurrent == nil ? captionTerminal.prepared == nil : captionTerminal.prepared == sessionID
         else { close(); completion(false); return }
-        observedClose = completion
+        captionTerminal.completion = completion
         finishLive(sessionID: sessionID)
     }
 
@@ -201,7 +200,7 @@ final class RealtimeVoiceSocket: RealtimeSocketPort {
         guard socket != nil, closing == nil else { return }
         let current = epoch
         closing = (sessionID, UUID().uuidString, false)
-        preparedCaptionClose = nil
+        captionTerminal.prepared = nil
         // An already handed write cannot be retracted; do not queue any other normal event.
         queue = sending ? Array(queue.prefix(1)) : []
         bytes = queue.reduce(0) { $0 + $1.text.utf8.count }
@@ -230,12 +229,14 @@ final class RealtimeVoiceSocket: RealtimeSocketPort {
     }
 
     private func transportFailed() {
-        if closing != nil || preparedCaptionClose != nil { close() } else { failed?() }
+        (closing == nil && captionTerminal.prepared == nil ? failed : close)?()
     }
 
-    func close() { close(confirmed: false) }
+    func close() {
+        close(confirmed: false)
+    }
     private func close(confirmed: Bool) {
-        let observed = observedClose; observedClose = nil; preparedCaptionClose = nil
+        let observed = captionTerminal.retire()
         defer { observed?(confirmed) }
         epoch += 1
         closeDeadline?.cancel(); closeDeadline = nil; closing = nil

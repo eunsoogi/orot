@@ -131,9 +131,15 @@ export function ConversationTranscriptMessages({
           beforeAnswer={bubbleRows(before)}
           {...renderMessage}
           verifiedA2UI={
-            message.a2uiPresentation
-              ? { messageId: message.id, root: message.a2uiPresentation }
-              : undefined
+            message.archivedA2UIPresentation
+              ? {
+                  messageId: message.id,
+                  root: message.archivedA2UIPresentation,
+                  origin: 'owned-archive',
+                }
+              : message.a2uiPresentation
+                ? { messageId: message.id, root: message.a2uiPresentation }
+                : undefined
           }
         />
         {bubbleRows(after)}

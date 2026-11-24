@@ -157,7 +157,10 @@ export function createConversationTaskState(input: {
                   expectedRevision: revision,
                   task: nextTask,
                   ...(voice?.observedVoiceCaptions
-                    ? { observedVoiceCaptions: voice.observedVoiceCaptions }
+                    ? {
+                        observedVoiceCaptions: voice.observedVoiceCaptions,
+                        captionWriteCurrent: voice.captionWriteCurrent,
+                      }
                     : {}),
                 },
                 controller.signal,

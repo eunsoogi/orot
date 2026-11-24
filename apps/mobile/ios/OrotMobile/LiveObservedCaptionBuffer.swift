@@ -14,12 +14,12 @@ struct LiveObservedCaptionBuffer {
     private var units = 0
 
     mutating func append(_ event: [String: Any], owner incoming: Owner) {
-        guard (owner == nil || owner == incoming), lines.count < 48,
+        guard owner == nil || owner == incoming, lines.count < 48,
               let type = event["type"] as? String,
               let eventID = event["event_id"] as? String, !eventID.isEmpty,
               eventID.utf8.count <= 128, !seen.contains(eventID),
               let delta = event["delta"] as? String, !delta.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty,
-              delta.utf16.count <= 2_000, units + delta.utf16.count <= 8_000 else { return }
+              delta.utf16.count <= 2000, units + delta.utf16.count <= 8000 else { return }
         let role: String
         switch type {
         case "session.input_transcript.delta": role = "user"

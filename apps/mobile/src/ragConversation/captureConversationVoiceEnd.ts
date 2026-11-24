@@ -15,6 +15,7 @@ export type VoiceEndOwnership = {
   createdAt: string;
   afterMessage: number | null;
   observedVoiceCaptions?: ObservedVoiceCaptions;
+  captionWriteCurrent?: () => boolean;
 };
 
 /** Capture the owner before opening a call. A future producer supplies only
@@ -36,11 +37,11 @@ export function captureConversationVoiceEnd(ports: {
   return function captureVoiceEnd(
     sessionId: number,
     callId: string,
-    snapshot?: () => unknown,
   ):
     | ((
         event: unknown,
         observedCaptions?: unknown,
+        captionWriteCurrent?: () => boolean,
       ) => Promise<void> | undefined)
     | undefined {
     const owner = ports.find(sessionId);
@@ -69,17 +70,10 @@ export function captureConversationVoiceEnd(ports: {
         session?.createdAt === owner.createdAt
       );
     };
-    const safeSnapshot = () => {
-      try {
-        return snapshot?.();
-      } catch {
-        return undefined;
-      }
-    };
     return createVoiceEndReceipt({
       callId,
       isCurrent: current,
-      retain: (duration, observedCaptions) =>
+      retain: (duration, observedCaptions, captionWriteCurrent) =>
         ports.save(
           sessionId,
           `voice-end:${callId}`,
@@ -90,9 +84,10 @@ export function captureConversationVoiceEnd(ports: {
             lease: lease ?? undefined,
             signal,
             observedVoiceCaptions: parseObservedVoiceCaptions(
-              observedCaptions ?? safeSnapshot(),
+              observedCaptions,
               callId,
             ),
+            captionWriteCurrent,
             createdAt: new Date().toISOString(),
             afterMessage: ports.find(sessionId)?.messages.at(-1)?.id ?? null,
           },

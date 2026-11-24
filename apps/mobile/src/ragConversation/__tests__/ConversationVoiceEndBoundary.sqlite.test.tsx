@@ -204,6 +204,7 @@ test('the actual restored duration marker reads only its exact local captions af
           },
         ],
       },
+      () => true,
     );
     await first.store.captureVoiceEnd(
       id,

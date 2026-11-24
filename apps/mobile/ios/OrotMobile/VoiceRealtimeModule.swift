@@ -150,7 +150,7 @@ final class VoiceRealtimeModule: RCTEventEmitter {
     private func stop(_ identifier: String, graceful: Bool, resolve: @escaping RCTPromiseResolveBlock, reject: @escaping RCTPromiseRejectBlock) {
         DispatchQueue.main.async { [self] in
             do {
-                let waitsForClose = graceful && self.call.id == identifier
+                let waitsForClose = graceful && call.id == identifier
                 var pendingDuration: [String: Any]?
                 let capture: (([String: Any]?) -> Void)? = waitsForClose ? { [weak self] captions in
                     DispatchQueue.main.async {
@@ -162,16 +162,20 @@ final class VoiceRealtimeModule: RCTEventEmitter {
                         }
                     }
                 } : nil
-                try self.call.stop(identifier, graceful: graceful, retireMailbox: {
-                    if self.active == identifier { self.responsesMailbox?.revoke() }
+                try call.stop(identifier, graceful: graceful, retireMailbox: { [self] in
+                    if active == identifier {
+                        responsesMailbox?.revoke()
+                    }
                 }, observedClose: capture)
-                if self.active == identifier {
-                    self.responsesMailbox?.revoke()
-                    self.responsesMailbox = nil
-                    self.active = nil
+                if active == identifier {
+                    responsesMailbox?.revoke()
+                    responsesMailbox = nil
+                    active = nil
                 }
                 pendingDuration = self.call.connectedDuration.take(identifier)
-                if !waitsForClose { resolve(pendingDuration) }
+                if !waitsForClose {
+                    resolve(pendingDuration)
+                }
             } catch { reject("VOICE_CLEANUP_FAILED", "Audio could not be released.", nil) }
         }
     }
