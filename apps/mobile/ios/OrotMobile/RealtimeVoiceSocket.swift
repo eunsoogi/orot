@@ -1,21 +1,5 @@
 import Foundation
 
-/// Ordered, bounded WebSocket writes; never logs authentication, remote errors or audio.
-protocol RealtimeSocketPort: AnyObject {
-    var received: (([String: Any]) -> Void)? { get set }
-    var failed: (() -> Void)? { get set }
-    func open(model: String, key: String)
-    func admitResponsesTransport(_ current: @escaping () -> Bool) -> Bool
-    func send(_ event: [String: Any])
-    func sendManagedToolFrames(_ frames: [[String: Any]], current: @escaping () -> Bool) -> Bool
-    func sendTicketedToolFrames(_ frames: [[String: Any]], current: @escaping () -> Bool,
-                                ticket: LiveNativeResultDispatchAuthority.Ticket) -> Bool
-    func discardManagedToolFrames() -> Bool
-    func discardInput()
-    func close()
-    func finishLive(sessionID: String)
-}
-
 /// A redirect must never carry a user's BYOK credential to a second destination.
 private final class LiveSocketSessionDelegate: NSObject, URLSessionTaskDelegate {
     func urlSession(_: URLSession, task _: URLSessionTask, willPerformHTTPRedirection _: HTTPURLResponse,
@@ -87,7 +71,11 @@ final class RealtimeVoiceSocket: RealtimeSocketPort {
             guard ticket.observeQueueRetirement({ [weak self, weak task, weak permit] partial in
                 guard let self, let task, let permit, epoch == currentEpoch, socket === task,
                       queue.contains(where: { $0.permit === permit }) else { return }
-                if partial { transportFailed() } else { discardRejected(permit) }
+                if partial {
+                    transportFailed()
+                } else {
+                    discardRejected(permit)
+                }
             }) else { return false }
         }
         bytes += size
@@ -114,14 +102,23 @@ final class RealtimeVoiceSocket: RealtimeSocketPort {
                 DispatchQueue.main.async {
                     guard let self, self.epoch == current, self.socket === task else { return }
                     self.sending = false
-                    if error != nil { self.transportFailed(); return }
+                    if error != nil {
+                        self.transportFailed()
+                        return
+                    }
                     self.bytes -= self.queue.removeFirst().text.utf8.count
-                    if self.closing != nil { self.sendClose() } else { self.flush() }
+                    if self.closing != nil {
+                        self.sendClose()
+                    } else {
+                        self.flush()
+                    }
                 }
             }
         }
         if let permit = message.permit, let ticket = permit.ticket {
-            if !ticket.submit(submit) { discardRejected(permit) }
+            if !ticket.submit(submit) {
+                discardRejected(permit)
+            }
         } else {
             submit()
         }
@@ -132,7 +129,11 @@ final class RealtimeVoiceSocket: RealtimeSocketPort {
         queue.removeAll { $0.permit === permit }
         bytes = queue.reduce(0) { $0 + $1.text.utf8.count }
         // A partial batch cannot be replayed after losing its authority.
-        if permit.issued { transportFailed() } else { flush() }
+        if permit.issued {
+            transportFailed()
+        } else {
+            flush()
+        }
     }
 
     private func receive(_ task: URLSessionWebSocketTask, epoch current: Int) {

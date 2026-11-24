@@ -12,7 +12,8 @@ final class LiveResponsesMailbox {
     private var revoked = false
 
     init(identifier: String, grant: LiveResponsesSettingsGrant, key: String, authority: LiveNativeResultDispatchAuthority,
-         emit: @escaping (String, [String: Any]) -> Void) {
+         emit: @escaping (String, [String: Any]) -> Void)
+    {
         self.identifier = identifier; self.grant = grant; self.key = key; self.emit = emit
         self.authority = authority
     }
@@ -63,9 +64,12 @@ final class LiveResponsesMailbox {
         }
         guard LiveResponsesAdmission.validAggregate(output, days: pending.request.days),
               pending.ticket.bind({ [weak self, weak ticket = pending.ticket] success in
-                  if let ticket, self?.approved?.2 === ticket { self?.approved = nil }
+                  if let ticket, self?.approved?.2 === ticket {
+                      self?.approved = nil
+                  }
                   completion(success)
-              }) else {
+              })
+        else {
             pending.ticket.retire(); pending.finish(nil); completion(false); return
         }
         approved = (pending.request, output, pending.ticket)

@@ -162,8 +162,10 @@ extension RealtimeSocketPort {
     }
 
     func sendTicketedToolFrames(_: [[String: Any]], current _: @escaping () -> Bool,
-                               ticket _: LiveNativeResultDispatchAuthority.Ticket) -> Bool
-    { false }
+                                ticket _: LiveNativeResultDispatchAuthority.Ticket) -> Bool
+    {
+        false
+    }
 
     func discardManagedToolFrames() -> Bool {
         false

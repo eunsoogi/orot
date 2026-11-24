@@ -87,7 +87,8 @@ extension RealtimeVoiceCall {
         bridge.receive(event, owner: owner, current: current) { [weak self] frames, approved, ticket in
             guard let self else { ticket?.retire(); return }
             if !enqueueManagedToolFrames(frames, callID: callID, sessionID: sessionID,
-                                         socketEpoch: epoch, approvedCurrent: approved, ticket: ticket) {
+                                         socketEpoch: epoch, approvedCurrent: approved, ticket: ticket)
+            {
                 ticket?.retire()
             }
         }
@@ -134,8 +135,8 @@ struct LiveResponsesAdmission {
     let execute: (Request, @escaping (String?) -> Void) -> (() -> Void)
     /// Read-only check of a separate exact current-result grant, including at transport handoff.
     let mayDisclose: (Request, String) -> Bool
-    var dispatchTicket: ((Request, String) -> LiveNativeResultDispatchAuthority.Ticket?)? = nil
-    var retireDispatch: (() -> Void)? = nil
+    var dispatchTicket: ((Request, String) -> LiveNativeResultDispatchAuthority.Ticket?)?
+    var retireDispatch: (() -> Void)?
 
     static func validAggregate(_ output: String, days: Int?) -> Bool {
         guard output.utf8.count <= 512,

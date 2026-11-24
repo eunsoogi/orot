@@ -37,7 +37,9 @@ extension RealtimeVoiceCall {
                 && token != nil && ready && !paused && foreground() && liveIsCurrent()
         }
         let current = { owns() && approvedCurrent() && owns() }
-        if let ticket { return socket.sendTicketedToolFrames(frames, current: current, ticket: ticket) }
+        if let ticket {
+            return socket.sendTicketedToolFrames(frames, current: current, ticket: ticket)
+        }
         return socket.sendManagedToolFrames(frames, current: current)
     }
 

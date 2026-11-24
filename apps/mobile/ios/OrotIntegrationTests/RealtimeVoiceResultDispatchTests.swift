@@ -2,8 +2,8 @@ import Foundation
 @testable import Orot
 import XCTest
 
-final class RealtimeVoiceResultDispatchTests: XCTestCase {
-    func testAQueuedResultCannotSubmitAfterExactSourceRetirement() {
+extension RealtimeVoiceLifecycleTests {
+    func verifyAQueuedResultCannotSubmitAfterExactSourceRetirement() {
         let authority = LiveNativeResultDispatchAuthority()
         let ticket = authority.begin(call: "call", challenge: "challenge")
         XCTAssertFalse(authority.claim(call: "other", challenge: "challenge"))
@@ -16,7 +16,7 @@ final class RealtimeVoiceResultDispatchTests: XCTestCase {
         wait(for: [denied], timeout: 1)
     }
 
-    func testOutputDoesNotAcknowledgeUntilTheExactContinuationSubmits() {
+    func verifyOutputDoesNotAcknowledgeUntilTheExactContinuationSubmits() {
         let authority = LiveNativeResultDispatchAuthority()
         let old = authority.begin(call: "call", challenge: "old")
         XCTAssertTrue(authority.claim(call: "call", challenge: "old"))
@@ -35,7 +35,7 @@ final class RealtimeVoiceResultDispatchTests: XCTestCase {
         XCTAssertFalse(replacement.submit { XCTFail("duplicate continuation submitted") })
     }
 
-    func testClearingAfterFirstSubmissionSuppressesContinuation() {
+    func verifyClearingAfterFirstSubmissionSuppressesContinuation() {
         let authority = LiveNativeResultDispatchAuthority()
         let ticket = authority.begin(call: "call", challenge: "challenge")
         XCTAssertTrue(authority.claim(call: "call", challenge: "challenge"))
@@ -47,7 +47,7 @@ final class RealtimeVoiceResultDispatchTests: XCTestCase {
         wait(for: [denied], timeout: 1)
     }
 
-    func testDeadlineRejectsBothUnissuedAndPartiallySubmittedStalledQueues() {
+    func verifyDeadlineRejectsBothUnissuedAndPartiallySubmittedStalledQueues() {
         for partial in [false, true] {
             let authority = LiveNativeResultDispatchAuthority()
             let ticket = authority.begin(call: "call", challenge: "deadline")
@@ -64,7 +64,9 @@ final class RealtimeVoiceResultDispatchTests: XCTestCase {
                 XCTAssertEqual(hadOutput, partial)
                 notifiedQueue.fulfill()
             })
-            if partial { XCTAssertTrue(ticket.submit {}) }
+            if partial {
+                XCTAssertTrue(ticket.submit {})
+            }
             wait(for: [notifiedQueue, terminal], timeout: 1)
             ticket.retire()
             XCTAssertFalse(ticket.submit { XCTFail("expired work must not replay") })
@@ -72,7 +74,7 @@ final class RealtimeVoiceResultDispatchTests: XCTestCase {
         }
     }
 
-    func testLastHopRejectsElapsedDeadlineBeforeItsMainQueueCallbackRuns() {
+    func verifyLastHopRejectsElapsedDeadlineBeforeItsMainQueueCallbackRuns() {
         let authority = LiveNativeResultDispatchAuthority()
         let ticket = authority.begin(call: "call", challenge: "elapsed")
         XCTAssertTrue(authority.claim(call: "call", challenge: "elapsed"))

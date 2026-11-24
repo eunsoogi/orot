@@ -1,5 +1,21 @@
 import Foundation
 
+/// Ordered, bounded WebSocket writes; never logs authentication, remote errors or audio.
+protocol RealtimeSocketPort: AnyObject {
+    var received: (([String: Any]) -> Void)? { get set }
+    var failed: (() -> Void)? { get set }
+    func open(model: String, key: String)
+    func admitResponsesTransport(_ current: @escaping () -> Bool) -> Bool
+    func send(_ event: [String: Any])
+    func sendManagedToolFrames(_ frames: [[String: Any]], current: @escaping () -> Bool) -> Bool
+    func sendTicketedToolFrames(_ frames: [[String: Any]], current: @escaping () -> Bool,
+                                ticket: LiveNativeResultDispatchAuthority.Ticket) -> Bool
+    func discardManagedToolFrames() -> Bool
+    func discardInput()
+    func close()
+    func finishLive(sessionID: String)
+}
+
 extension RealtimeVoiceSocket {
     static func retainingControl(_ writes: [RealtimeSocketWrite], sending: Bool) -> [RealtimeSocketWrite] {
         writes.enumerated().compactMap { index, write in

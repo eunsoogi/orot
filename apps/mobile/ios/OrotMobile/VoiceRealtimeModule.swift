@@ -84,7 +84,7 @@ final class VoiceRealtimeModule: RCTEventEmitter {
         }
     }
 
-    // These process-local methods never wait for main or inspect any health data.
+    /// These process-local methods never wait for main or inspect any health data.
     @objc(claimLiveResponsesResult:challengeId:)
     func claimLiveResponsesResult(_ identifier: String, challengeId: String) -> NSNumber {
         NSNumber(value: resultAuthority.claim(call: identifier, challenge: challengeId))

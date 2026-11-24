@@ -113,7 +113,7 @@ final class LiveQueuedToolPermit {
     /// Permit only the Live Responses output envelope and a single final continuation.
     /// This is not user approval; the native owner must separately approve these exact bytes.
     func prepare(_ frames: [[String: Any]]) -> [RealtimeSocketWrite]? {
-        guard (ticket == nil ? (2 ... 9).contains(frames.count) : frames.count == 2), authorizeHandoff() else { return nil }
+        guard ticket == nil ? (2 ... 9).contains(frames.count) : frames.count == 2, authorizeHandoff() else { return nil }
         var calls = Set<String>()
         var events = Set<UUID>()
         var writes: [RealtimeSocketWrite] = []
