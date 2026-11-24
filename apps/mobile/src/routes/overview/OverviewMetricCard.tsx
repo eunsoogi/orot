@@ -30,6 +30,8 @@ export const overviewMetricTitle = (metric: OverviewMetric) =>
     workouts: t('healthRecords.category.workouts'),
   })[metric];
 
+type HeartPlacement = 'featured' | 'supporting';
+
 const overviewMetricAccent = (metric: OverviewMetric) =>
   ({
     sleep: appColors.purple,
@@ -55,17 +57,21 @@ const overviewMetricSymbol = (metric: OverviewMetric) =>
 /** Keeps metric identity visible in both loaded cards and reserved chart placeholders. */
 function OverviewMetricHeading({
   metric,
+  quiet,
 }: {
   readonly metric: OverviewMetric;
+  readonly quiet?: boolean;
 }) {
   return (
     <View style={styles.metricHeading}>
-      <View style={styles.metricIcon}>
-        <AppSymbol
-          name={overviewMetricSymbol(metric)}
-          color={overviewMetricAccent(metric)}
-        />
-      </View>
+      {!quiet && (
+        <View style={styles.metricIcon}>
+          <AppSymbol
+            name={overviewMetricSymbol(metric)}
+            color={overviewMetricAccent(metric)}
+          />
+        </View>
+      )}
       <Text style={styles.cardTitle}>{overviewMetricTitle(metric)}</Text>
     </View>
   );
@@ -115,10 +121,12 @@ export function OverviewMetricCard({
   metric,
   width,
   chartStatus,
+  heartPlacement,
 }: {
   readonly metric: OverviewMetricProjection;
   readonly width: number | '100%';
   readonly chartStatus?: Extract<ChartStatus, 'loading' | 'stale'>;
+  readonly heartPlacement?: HeartPlacement;
 }) {
   const chartData = overviewMetricChartData(metric, chartStatus);
   const statistic = overviewMetricStatistic(metric.metric);
@@ -136,7 +144,11 @@ export function OverviewMetricCard({
   ].join('. ');
   return (
     <View
-      style={[styles.card, styles.gridCard, { width }]}
+      style={[
+        heartPlacement ? styles.heartMetric : styles.card,
+        styles.gridCard,
+        { width },
+      ]}
       testID={`overview-metric-${metric.metric}`}
     >
       <View
@@ -145,8 +157,19 @@ export function OverviewMetricCard({
         accessibilityLabel={accessibilityLabel}
         accessible
       >
-        <OverviewMetricHeading metric={metric.metric} />
-        <Text style={styles.number}>{latestValue}</Text>
+        <OverviewMetricHeading
+          metric={metric.metric}
+          quiet={Boolean(heartPlacement)}
+        />
+        <Text
+          style={[
+            styles.number,
+            heartPlacement === 'featured' && styles.heartNumber,
+            heartPlacement === 'supporting' && styles.heartSupportingNumber,
+          ]}
+        >
+          {latestValue}
+        </Text>
         <Text style={styles.detail}>
           {metric.latest.date} · {statistic}
         </Text>
@@ -167,6 +190,7 @@ export function OverviewMetricChartPlaceholder({
   width,
   status,
   emptyMessage,
+  heartPlacement,
 }: {
   readonly metric: OverviewMetric;
   readonly width: number | '100%';
@@ -175,10 +199,15 @@ export function OverviewMetricChartPlaceholder({
     'loading' | 'stale' | 'error' | 'empty'
   >;
   readonly emptyMessage?: string;
+  readonly heartPlacement?: HeartPlacement;
 }) {
   return (
     <View
-      style={[styles.card, styles.gridCard, { width }]}
+      style={[
+        heartPlacement ? styles.heartMetric : styles.card,
+        styles.gridCard,
+        { width },
+      ]}
       testID={`overview-metric-${metric}`}
     >
       <View
@@ -187,7 +216,10 @@ export function OverviewMetricChartPlaceholder({
         accessibilityLabel={overviewMetricTitle(metric)}
         accessible
       >
-        <OverviewMetricHeading metric={metric} />
+        <OverviewMetricHeading
+          metric={metric}
+          quiet={Boolean(heartPlacement)}
+        />
       </View>
       {/* Keep the chart's vertical position stable while local metric values are unavailable. */}
       <Text style={styles.number}>{'\u00a0'}</Text>
