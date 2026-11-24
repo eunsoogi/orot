@@ -1,29 +1,29 @@
 import { useLayoutEffect, useRef, useState } from 'react';
 import type { GestureResponderEvent, LayoutRectangle } from 'react-native';
 import { useNavigationRouteScrollSuspension } from '../../navigation/NavigationRouteScrollView';
-import type { OverviewMetric } from './metricSelection';
+import type { OverviewMetricChoice } from './metricSelection';
 
 interface MetricDrag {
-  readonly metric: OverviewMetric;
+  readonly metric: OverviewMetricChoice;
   readonly origin: number;
   readonly pointerId: GestureResponderEvent['nativeEvent']['identifier'];
   readonly from: number;
-  readonly selection: readonly OverviewMetric[];
+  readonly selection: readonly OverviewMetricChoice[];
   readonly centers: readonly number[];
   readonly releaseScroll?: () => void;
 }
 
 /** Measures real row centers to support variable-height labels without guessing a row height. */
 export function useOverviewMetricDrag(
-  selection: readonly OverviewMetric[],
+  selection: readonly OverviewMetricChoice[],
   disabled: boolean,
-  onMove: (metric: OverviewMetric, index: number) => void,
+  onMove: (metric: OverviewMetricChoice, index: number) => void,
 ) {
   const suspendScroll = useNavigationRouteScrollSuspension();
   const drag = useRef<MetricDrag | null>(null);
-  const measured = useRef(new Map<OverviewMetric, LayoutRectangle>());
+  const measured = useRef(new Map<OverviewMetricChoice, LayoutRectangle>());
   const [preview, setPreview] = useState<{
-    metric: OverviewMetric;
+    metric: OverviewMetricChoice;
     delta: number;
     target: number;
   } | null>(null);
@@ -75,7 +75,10 @@ export function useOverviewMetricDrag(
       setPreview({ metric: current.metric, delta: center - start, target });
     }
   };
-  const begin = (metric: OverviewMetric, event: GestureResponderEvent) => {
+  const begin = (
+    metric: OverviewMetricChoice,
+    event: GestureResponderEvent,
+  ) => {
     const pointer = event.nativeEvent;
     if (drag.current || disabled || pointer.touches.length !== 1) return false;
     const centers = selection.map(item => {
@@ -106,7 +109,7 @@ export function useOverviewMetricDrag(
     // RN Fabric uses the grant return value to mark the active native responder.
     return true;
   };
-  const measure = (metric: OverviewMetric, row: LayoutRectangle) => {
+  const measure = (metric: OverviewMetricChoice, row: LayoutRectangle) => {
     const previous = measured.current.get(metric);
     measured.current.set(metric, row);
     // Invalidate the captured layout if Dynamic Type/rotation moves any target.

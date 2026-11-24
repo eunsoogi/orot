@@ -72,6 +72,7 @@ test('stored overview choices keep exact source, BPM and type without reading un
 
     const selected = [
       'walkingHeartRate',
+      'workoutHeartRate',
       'heartRate',
       'restingHeartRate',
     ] as const;
@@ -84,6 +85,7 @@ test('stored overview choices keep exact source, BPM and type without reading un
       signal,
     );
     expect(selection).toEqual(selected);
+    expect(chart.metrics).not.toHaveProperty('workoutHeartRate');
     expect(chart.metrics.restingHeartRate).toMatchObject({
       metric: 'restingHeartRate',
       unit: 'count/min',

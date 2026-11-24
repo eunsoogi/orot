@@ -10,6 +10,18 @@ export const overviewMetrics = [
   'walkingHeartRate',
 ] as const;
 export type OverviewMetric = (typeof overviewMetrics)[number];
+export const overviewMetricChoices = [
+  ...overviewMetrics,
+  'workoutHeartRate',
+] as const;
+/** Workout heart rate is selectable but is not a projected local snapshot metric. */
+export type OverviewMetricChoice = (typeof overviewMetricChoices)[number];
+export function isOverviewSnapshotMetric(
+  metric: OverviewMetricChoice,
+): metric is OverviewMetric {
+  return metric !== 'workoutHeartRate';
+}
+
 export function isOverviewDerivedHeartRate(
   metric: OverviewMetric,
 ): metric is 'restingHeartRate' | 'walkingHeartRate' {
@@ -29,20 +41,20 @@ export const defaultOverviewMetrics: readonly OverviewMetric[] = [
 /** Selection is local presentation state, independent of HealthKit authorization and sync. */
 export function validateOverviewMetricSelection(
   value: unknown,
-): OverviewMetric[] {
+): OverviewMetricChoice[] {
   if (
     !Array.isArray(value) ||
     value.length < minimumOverviewMetricCount ||
-    value.some(metric => !overviewMetrics.includes(metric)) ||
+    value.some(metric => !overviewMetricChoices.includes(metric)) ||
     new Set(value).size !== value.length
   )
     throw new Error('Invalid Home metric selection.');
-  return value as OverviewMetric[];
+  return value as OverviewMetricChoice[];
 }
 
 export async function loadOverviewMetricSelection(
   repository: Pick<RecordRepository, 'getSyncCheckpoint'>,
-): Promise<OverviewMetric[]> {
+): Promise<OverviewMetricChoice[]> {
   const checkpoint = await repository.getSyncCheckpoint(selectionKey);
   if (!checkpoint) return [...defaultOverviewMetrics];
   return validateOverviewMetricSelection(JSON.parse(checkpoint.value));
@@ -50,7 +62,7 @@ export async function loadOverviewMetricSelection(
 
 export async function saveOverviewMetricSelection(
   repository: Pick<RecordRepository, 'transaction'>,
-  selection: readonly OverviewMetric[],
+  selection: readonly OverviewMetricChoice[],
   now: () => string = () => new Date().toISOString(),
 ): Promise<void> {
   const valid = validateOverviewMetricSelection(selection);

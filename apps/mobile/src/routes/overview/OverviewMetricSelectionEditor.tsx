@@ -1,12 +1,17 @@
-import { Pressable, StyleSheet, View } from 'react-native';
+import { Pressable, View } from 'react-native';
 import { AppButton } from '../../layout/AppButton';
 import { AppSymbol } from '../../layout/AppSymbol';
 import { AppText as Text } from '../../layout/AppText';
 import { appColors } from '../../layout/appColors';
 import { t } from '../../i18n';
-import { overviewMetrics, type OverviewMetric } from './metricSelection';
+import {
+  overviewMetricChoices,
+  type OverviewMetricChoice,
+  type OverviewMetric,
+} from './metricSelection';
 import { useOverviewMetricDrag } from './useOverviewMetricDrag';
 import { overviewMetricStyles as styles } from './overviewMetricStyles';
+import { overviewMetricReorderStyles as reorderStyles } from './overviewMetricReorderStyles';
 
 /** Separates selection from reordering so a handle gesture never toggles its metric. */
 export function OverviewMetricSelectionEditor({
@@ -22,18 +27,22 @@ export function OverviewMetricSelectionEditor({
 }: {
   readonly canSave: boolean;
   readonly onCancel: () => void;
-  readonly onMove: (metric: OverviewMetric, index: number) => void;
+  readonly onMove: (metric: OverviewMetricChoice, index: number) => void;
   readonly onSave: () => void;
-  readonly onToggle: (metric: OverviewMetric) => void;
+  readonly onToggle: (metric: OverviewMetricChoice) => void;
   readonly saveError: boolean;
   readonly saving: boolean;
-  readonly selection: readonly OverviewMetric[];
+  readonly selection: readonly OverviewMetricChoice[];
   readonly title: (metric: OverviewMetric) => string;
 }) {
+  const choiceTitle = (metric: OverviewMetricChoice) =>
+    metric === 'workoutHeartRate'
+      ? t('healthRecords.workoutHeartRate.overviewTitle')
+      : title(metric);
   const drag = useOverviewMetricDrag(selection, saving, onMove);
   const choices = [
     ...selection,
-    ...overviewMetrics.filter(metric => !selection.includes(metric)),
+    ...overviewMetricChoices.filter(metric => !selection.includes(metric)),
   ];
   return (
     <View
@@ -64,7 +73,7 @@ export function OverviewMetricSelectionEditor({
               ]}
             >
               <Pressable
-                accessibilityLabel={title(metric)}
+                accessibilityLabel={choiceTitle(metric)}
                 accessibilityRole="checkbox"
                 accessibilityState={{ checked: selected, disabled: saving }}
                 disabled={saving}
@@ -73,7 +82,9 @@ export function OverviewMetricSelectionEditor({
                 testID={`overview-metric-selection-${metric}`}
               >
                 <View style={styles.selectionLabel}>
-                  <Text style={styles.selectionTitle}>{title(metric)}</Text>
+                  <Text style={styles.selectionTitle}>
+                    {choiceTitle(metric)}
+                  </Text>
                   <Text
                     style={styles.selectionStatus}
                     testID={`overview-metric-selection-status-${metric}`}
@@ -123,7 +134,7 @@ export function OverviewMetricSelectionEditor({
                   ]}
                   accessibilityHint={t('overview.metricReorderHint')}
                   accessibilityLabel={t('overview.metricReorder', {
-                    metric: title(metric),
+                    metric: choiceTitle(metric),
                   })}
                   accessibilityRole="adjustable"
                   accessibilityState={{ disabled: saving }}
@@ -215,27 +226,3 @@ export function OverviewMetricSelectionEditor({
     </View>
   );
 }
-
-const reorderStyles = StyleSheet.create({
-  // Place the handle on the leading edge without changing control order.
-  row: { flexDirection: 'row-reverse', alignItems: 'center', gap: 6 },
-  checkbox: { flex: 1, minWidth: 0 },
-  handle: {
-    alignSelf: 'stretch',
-    minHeight: 44,
-    width: 44,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  dragged: { zIndex: 1 },
-  dragSurface: { backgroundColor: appColors.surface },
-  target: {
-    position: 'absolute',
-    left: 0,
-    right: 0,
-    height: 2,
-    backgroundColor: appColors.primary,
-  },
-  targetBefore: { top: 0 },
-  targetAfter: { bottom: 0 },
-});

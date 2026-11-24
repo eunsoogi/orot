@@ -14,6 +14,7 @@ import {
   defaultOverviewMetrics,
   saveOverviewMetricSelection,
   type OverviewMetric,
+  type OverviewMetricChoice,
 } from './metricSelection';
 import type { OverviewMetricProjection } from './metricProjection';
 
@@ -30,7 +31,7 @@ const discardedReadRetryDelays = [100, 300] as const;
 /** Reads encrypted local data on entry; selecting metrics never invokes permission or synchronization flows. */
 export function useOverviewMetrics() {
   const focused = useIsFocused();
-  const [selection, setSelection] = useState<readonly OverviewMetric[]>(
+  const [selection, setSelection] = useState<readonly OverviewMetricChoice[]>(
     defaultOverviewMetrics,
   );
   const [metrics, setMetrics] = useState<
@@ -98,7 +99,7 @@ export function useOverviewMetrics() {
     const currentLoadGeneration = loadGeneration.current;
     setState(hasSnapshot.current ? 'refreshing' : 'loading');
     const publish = (
-      nextSelection: readonly OverviewMetric[],
+      nextSelection: readonly OverviewMetricChoice[],
       nextMetrics: SelectedOverviewSnapshot['chart'],
     ) => {
       if (!active || currentLoadGeneration !== loadGeneration.current) return;
@@ -165,7 +166,7 @@ export function useOverviewMetrics() {
       controller.abort();
     };
   }, [focused, attempt]);
-  const save = useCallback(async (next: readonly OverviewMetric[]) => {
+  const save = useCallback(async (next: readonly OverviewMetricChoice[]) => {
     const storage = require('../../storage/secureDatabase');
     await saveOverviewMetricSelection(await storage.openLocalStorage(), next);
     // An older refresh may finish after this write; it must not replace the saved choice.

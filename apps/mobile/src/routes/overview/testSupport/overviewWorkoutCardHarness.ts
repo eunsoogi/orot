@@ -1,0 +1,132 @@
+import { NativeModules } from 'react-native';
+import { createRecordRepository, runMigrations } from '@orot/storage';
+import { openSqliteTestDatabase } from '../../../../../../packages/storage/__tests__/sqliteTestDatabase';
+import {
+  openLocalAgentMemoryDatabase,
+  isCurrentLocalAgentMemoryDatabase,
+} from '../../../storage/secureDatabase';
+import { guardedNativeDatabase } from '../../../storage/protectedReadEpoch';
+import { conversationExecutionNative } from '../../../ragConversation/conversationExecutionNative';
+import { healthKitSample } from '../../../healthkit/commonObservations/testSupport';
+import {
+  mapCommonObservationSample,
+  toCommonObservationRecord,
+} from '../../../healthkit/commonObservations/mapper';
+
+type Protection = NonNullable<ReturnType<typeof conversationExecutionNative>>;
+type ProtectionEvent = Parameters<Parameters<Protection['subscribe']>[0]>[0];
+export const one = 'B09CB262-D06E-485C-A600-BEEA45828A97';
+export const two = 'FE6E3FEA-0BCA-402B-BED3-E2838C9F4B1F';
+export const values = {
+  status: 'available',
+  minimum: 60,
+  mean: 90,
+  maximum: 130,
+};
+const original = NativeModules.HealthKitModule;
+
+function fixture(id: string, hoursAgo: number) {
+  const start = new Date(Date.now() - hoursAgo * 3600000).toISOString();
+  const end = new Date(Date.parse(start) + 60000).toISOString();
+  const mapped = mapCommonObservationSample(
+    'workouts',
+    healthKitSample('workouts', {
+      id,
+      startDate: start,
+      endDate: end,
+    }),
+  );
+  if (mapped.status !== 'mapped') throw new Error('Broken synthetic workout.');
+  return toCommonObservationRecord(mapped.observation, end);
+}
+
+export async function setup() {
+  const { database, close } = openSqliteTestDatabase(':memory:');
+  await runMigrations(database);
+  const guarded = guardedNativeDatabase(database);
+  const repository = createRecordRepository(guarded);
+  const first = fixture(one, 1);
+  const second = fixture(two, 2);
+  await repository.put('health_observation', first);
+  await repository.put('health_observation', second);
+  await repository.put('health_observation', { ...first, id: 'forged' });
+  const statements = jest.spyOn(database, 'execute');
+  jest.mocked(openLocalAgentMemoryDatabase).mockResolvedValue(guarded);
+  let currentOwner = true;
+  jest
+    .mocked(isCurrentLocalAgentMemoryDatabase)
+    .mockImplementation(owner => owner === guarded && currentOwner);
+  let protectedData = true;
+  let protectedProbe: (() => Promise<boolean>) | undefined;
+  const subscribers = new Set<(event: ProtectionEvent) => void>();
+  jest.mocked(conversationExecutionNative).mockReturnValue({
+    bridgeAvailable: true,
+    async begin() {
+      throw new Error('Unexpected execution lease');
+    },
+    end() {
+      throw new Error('Unexpected execution lease');
+    },
+    async isActive() {
+      throw new Error('Unexpected execution lease');
+    },
+    currentPhase: () => 'active',
+    protectedDataAvailable: async () =>
+      protectedProbe ? protectedProbe() : protectedData,
+    subscribe: listener => {
+      subscribers.add(listener);
+      return () => subscribers.delete(listener);
+    },
+  });
+  const queryWorkoutHeartRate = jest.fn(async (_id: string) => values);
+  const requestReadAuthorizations = jest.fn();
+  const querySamples = jest.fn();
+  NativeModules.HealthKitModule = {
+    queryWorkoutHeartRate,
+    requestReadAuthorizations,
+    querySamples,
+  };
+  return {
+    close,
+    repository,
+    first,
+    second,
+    statements,
+    replaceOwner() {
+      currentOwner = false;
+    },
+    holdSecondProbe() {
+      let enter!: () => void;
+      let release!: (value: boolean) => void;
+      const entered = new Promise<void>(resolve => {
+        enter = resolve;
+      });
+      const held = new Promise<boolean>(resolve => {
+        release = resolve;
+      });
+      let pass = true;
+      protectedProbe = async () => {
+        if (pass) {
+          pass = false;
+          return true;
+        }
+        enter();
+        return held;
+      };
+      return { entered, release };
+    },
+    queryWorkoutHeartRate,
+    requestReadAuthorizations,
+    querySamples,
+    revoke() {
+      protectedData = false;
+      for (const subscriber of subscribers)
+        subscriber({ kind: 'protectedData', available: false });
+    },
+  };
+}
+
+afterEach(() => {
+  NativeModules.HealthKitModule = original;
+  jest.clearAllMocks();
+});
