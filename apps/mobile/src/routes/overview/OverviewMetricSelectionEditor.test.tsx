@@ -5,13 +5,14 @@ import { OverviewMetricSelectionEditor } from './OverviewMetricSelectionEditor';
 import { overviewMetricTitle } from './OverviewMetricCard';
 
 test('presents choices as full-row checkboxes with selected and unselected status', async () => {
+  const onToggle = jest.fn();
   await render(
     <OverviewMetricSelectionEditor
       canSave
       onCancel={jest.fn()}
       onMove={jest.fn()}
       onSave={jest.fn()}
-      onToggle={jest.fn()}
+      onToggle={onToggle}
       saving={false}
       saveError={false}
       selection={['sleep', 'heartRate']}
@@ -32,6 +33,16 @@ test('presents choices as full-row checkboxes with selected and unselected statu
   const unselected = screen.getByRole('checkbox', { name: /체중/ });
   expect(selected.props.accessibilityState.checked).toBe(true);
   expect(unselected.props.accessibilityState.checked).toBe(false);
+  const resting = screen.getByRole('checkbox', { name: '안정 시 심박수' });
+  const walking = screen.getByRole('checkbox', { name: '걷기 평균 심박수' });
+  expect(resting.props.accessibilityState.checked).toBe(false);
+  expect(walking.props.accessibilityState.checked).toBe(false);
+  await fireEvent.press(resting);
+  await fireEvent.press(walking);
+  expect(onToggle.mock.calls).toEqual([
+    ['restingHeartRate'],
+    ['walkingHeartRate'],
+  ]);
   expect(
     screen.getByTestId('overview-metric-selection-status-sleep'),
   ).toHaveTextContent('한눈에 표시');
@@ -85,8 +96,10 @@ test('offers accessible moves only for selected metrics, bounded to the current 
       title={overviewMetricTitle}
     />,
   );
-  const first = screen.getByRole('adjustable', { name: '심박수 순서 변경' });
-  const checkbox = screen.getByRole('checkbox', { name: '심박수' });
+  const first = screen.getByRole('adjustable', {
+    name: '평균 심박수 순서 변경',
+  });
+  const checkbox = screen.getByRole('checkbox', { name: '평균 심박수' });
   expect(first.parent).toBe(checkbox.parent);
   // Keep checkbox then handle in source order while laying out the handle first.
   expect(first.parent?.children).toEqual([checkbox, first]);
@@ -94,7 +107,7 @@ test('offers accessible moves only for selected metrics, bounded to the current 
     'row-reverse',
   );
   const [label, mark] = checkbox.children;
-  expect(label).toContainElement(screen.getByText('심박수'));
+  expect(label).toContainElement(screen.getByText('평균 심박수'));
   expect(mark).toHaveStyle({ backgroundColor: appColors.primary });
   expect(StyleSheet.flatten(checkbox.props.style).flexDirection).toBe('row');
   expect(first.props.accessibilityValue.text).toBe('1 / 2');

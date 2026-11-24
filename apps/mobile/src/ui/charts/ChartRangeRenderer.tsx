@@ -21,6 +21,7 @@ export function ChartRangeRenderer({
   color,
   contrast,
   labels,
+  guideColor,
   fontSize,
   offsetY,
   onSelect,
@@ -32,6 +33,7 @@ export function ChartRangeRenderer({
   color: string;
   contrast: string;
   labels: string;
+  guideColor: string;
   fontSize: number;
   offsetY: number;
   onSelect?: ChartBucketSelect;
@@ -42,6 +44,19 @@ export function ChartRangeRenderer({
   if (!plot) return null;
   return (
     <Svg width={width} height={height} testID="chart-range-plot">
+      {plot.valueTicks.map(tick => (
+        <Line
+          key={tick.value}
+          testID="chart-range-horizontal-guide"
+          x1={0}
+          x2={width - axisLabelWidth}
+          y1={tick.y}
+          y2={tick.y}
+          stroke={guideColor}
+          strokeWidth={1}
+          pointerEvents="none"
+        />
+      ))}
       {plot.marks.map((mark, i) => (
         <G
           key={`${mark.series.id}-${mark.sourceX}-${i}`}

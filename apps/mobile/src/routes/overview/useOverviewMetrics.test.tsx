@@ -24,6 +24,9 @@ jest.mock('./metricLoader', () => ({
     quantityTruncated: false,
   })),
 }));
+jest.mock('./selectedOverviewSnapshot', () =>
+  jest.requireActual('../testSupport/overviewSnapshotMock').snapshotMock(),
+);
 
 test('revalidates the local window when the app returns to the foreground', async () => {
   jest.clearAllMocks();

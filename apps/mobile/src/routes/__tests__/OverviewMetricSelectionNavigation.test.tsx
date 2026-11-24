@@ -25,7 +25,6 @@ import { loadOverviewMetricSelection } from '../overview/metricSelection';
 import { expectMetricEditorInsets } from '../testSupport/expectMetricEditorInsets';
 import { verifyMeasuredMetricDrop } from '../testSupport/overviewMetricDragTestSupport';
 import { recentRouteProps } from '../testSupport/recentRecordsRouteTestSupport';
-
 jest.mock(
   'react-native-safe-area-context',
   () => require('react-native-safe-area-context/jest/mock').default,
@@ -45,8 +44,9 @@ jest.mock('../overview/metricLoader', () => ({
     quantityTruncated: false,
   })),
 }));
-// The real overview/navigation/SQLite preference flow is mounted. Other
-// app destinations are never opened by this integration and load no services.
+jest.mock('../overview/selectedOverviewSnapshot', () =>
+  jest.requireActual('../testSupport/overviewSnapshotMock').snapshotMock(),
+);
 jest.mock('../OverviewPreparedVisits', () => ({
   OverviewPreparedVisits: () => null,
 }));
@@ -165,12 +165,14 @@ test('separate editor discards Cancel and saves all five ordered cards into the 
     await screen.findByTestId('overview-metric-grid');
     expect(controller.getSnapshot().currentRoute.name).toBe('root');
     expect(await loadOverviewMetricSelection(records)).toEqual(initial);
-
     await openEditor();
     expect(choice('sleep').props.accessibilityState.checked).toBe(true);
     expect(choice('bodyMass').props.accessibilityState.checked).toBe(false);
     for (const metric of added) await fireEvent.press(choice(metric));
-    expect(screen.getAllByRole('checkbox')).toHaveLength(5);
+    expect(screen.getAllByRole('checkbox')).toHaveLength(7);
+    for (const metric of ['restingHeartRate', 'walkingHeartRate']) {
+      expect(choice(metric).props.accessibilityState.checked).toBe(false);
+    }
     expect(save()).toBeEnabled();
     await fireEvent.press(save());
     await screen.findByTestId('overview-metric-workouts');

@@ -23,6 +23,8 @@ function projection(
   const unit = {
     sleep: 'min',
     heartRate: 'count/min',
+    restingHeartRate: 'count/min',
+    walkingHeartRate: 'count/min',
     bodyMass: 'kg',
     steps: 'count',
     workouts: 'min',
@@ -45,6 +47,7 @@ test.each([
   ['sleep', 'min', 70.4, 70],
   ['bodyMass', 'kg', 70.25, 70.3],
   ['steps', 'count', 70.6, 71],
+  ['workouts', 'min', 48, 48],
 ] as const)(
   'routes %s through the daily chart with Home display precision',
   async (
@@ -82,8 +85,9 @@ test.each([
           },
         ],
       },
-      height: 112,
-      kind: 'bar',
+      height: 176,
+      kind: 'line',
+      lineAxis: 'day',
       title: '최근 날짜별 기록',
     });
     expect(JSON.stringify(chartPlot.mock.calls.at(-1)?.[0].data)).not.toContain(
@@ -92,27 +96,30 @@ test.each([
   },
 );
 
-test('routes daily heart extrema and an unrounded mean to the range renderer', async () => {
-  const metric = projection('heartRate', 70.25);
-  // Rounding the mean to Home text precision would put it above this range.
-  const range = { minimum: 70.24, maximum: 70.26, samples: 2 };
-  await render(
-    <OverviewMetricCard
-      metric={{ ...metric, days: [{ ...metric.days[0]!, range }] }}
-      width={320}
-    />,
-  );
-  expect(chartPlot).toHaveBeenCalledTimes(1);
-  const props = chartPlot.mock.calls.at(-1)?.[0];
-  expect(props).toMatchObject({ kind: 'range', height: 112 });
-  expect(props?.data.metric).toBe('heartRate');
-  expect(props?.data.coverage.status).toBe('ready');
-  expect(props?.data.series[0]).toMatchObject({
-    unit: 'count/min',
-    points: [{ x: '2026-10-14', value: 70.25, range, source: '건강 기록' }],
-  });
-  expect(JSON.stringify(props?.data)).not.toContain('Synthetic Watch App');
-});
+test.each(['heartRate', 'restingHeartRate', 'walkingHeartRate'] as const)(
+  'routes %s extrema and the unrounded mean to the range renderer',
+  async kind => {
+    const metric = projection(kind, 70.25);
+    // Rounding the mean to Home text precision would put it above this range.
+    const range = { minimum: 70.24, maximum: 70.26, samples: 2 };
+    await render(
+      <OverviewMetricCard
+        metric={{ ...metric, days: [{ ...metric.days[0]!, range }] }}
+        width={320}
+      />,
+    );
+    expect(chartPlot).toHaveBeenCalledTimes(1);
+    const props = chartPlot.mock.calls.at(-1)?.[0];
+    expect(props).toMatchObject({ kind: 'range', height: 176 });
+    expect(props?.data.metric).toBe('heartRate');
+    expect(props?.data.coverage.status).toBe('ready');
+    expect(props?.data.series[0]).toMatchObject({
+      unit: 'count/min',
+      points: [{ x: '2026-10-14', value: 70.25, range, source: '건강 기록' }],
+    });
+    expect(JSON.stringify(props?.data)).not.toContain('Synthetic Watch App');
+  },
+);
 
 test('keeps zero, missing days, constant values, outliers and partial today distinct', () => {
   const metric = {
@@ -152,7 +159,7 @@ test('keeps the shared chart width tied to the measured Home card content', asyn
   const container = screen.getByTestId('overview-metric-chart-container-steps');
   await act(async () => {
     container.props.onLayout({
-      nativeEvent: { layout: { x: 0, y: 0, width: 278, height: 112 } },
+      nativeEvent: { layout: { x: 0, y: 0, width: 278, height: 176 } },
     });
   });
 

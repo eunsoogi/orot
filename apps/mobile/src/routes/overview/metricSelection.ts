@@ -6,8 +6,18 @@ export const overviewMetrics = [
   'bodyMass',
   'steps',
   'workouts',
+  'restingHeartRate',
+  'walkingHeartRate',
 ] as const;
 export type OverviewMetric = (typeof overviewMetrics)[number];
+export function isOverviewDerivedHeartRate(
+  metric: OverviewMetric,
+): metric is 'restingHeartRate' | 'walkingHeartRate' {
+  return metric === 'restingHeartRate' || metric === 'walkingHeartRate';
+}
+export function isOverviewHeartRate(metric: OverviewMetric): boolean {
+  return metric === 'heartRate' || isOverviewDerivedHeartRate(metric);
+}
 export const minimumOverviewMetricCount = 2;
 // Keep the existing storage key so an upgrade preserves each user's selection.
 const selectionKey = 'home:metric-selection:v1';

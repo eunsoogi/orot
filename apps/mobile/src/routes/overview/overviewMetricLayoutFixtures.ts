@@ -4,6 +4,8 @@ import type { OverviewMetricProjection } from './metricProjection';
 const metricUnits: Record<OverviewMetric, string> = {
   sleep: 'min',
   heartRate: 'count/min',
+  restingHeartRate: 'count/min',
+  walkingHeartRate: 'count/min',
   bodyMass: 'kg',
   steps: 'count',
   workouts: 'min',

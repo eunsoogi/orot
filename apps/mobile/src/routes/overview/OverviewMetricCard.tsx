@@ -6,7 +6,7 @@ import { AppSymbol } from '../../layout/AppSymbol';
 import { appColors } from '../../layout/appColors';
 import { formatDateTime, t } from '../../i18n';
 import type { ChartData, ChartStatus } from '../../ui/charts';
-import type { OverviewMetric } from './metricSelection';
+import { isOverviewHeartRate, type OverviewMetric } from './metricSelection';
 import type { OverviewMetricProjection } from './metricProjection';
 import { overviewMetricStyles as styles } from './overviewMetricStyles';
 import {
@@ -22,6 +22,8 @@ export const overviewMetricTitle = (metric: OverviewMetric) =>
   ({
     sleep: t('overview.metricSleep'),
     heartRate: t('overview.metricHeartRate'),
+    restingHeartRate: t('healthkit.commonObservations.restingHeartRate'),
+    walkingHeartRate: t('healthkit.commonObservations.walkingHeartRateAverage'),
     bodyMass: t('overview.metricBodyMass'),
     steps: t('overview.metricSteps'),
     workouts: t('healthRecords.category.workouts'),
@@ -31,6 +33,8 @@ const overviewMetricAccent = (metric: OverviewMetric) =>
   ({
     sleep: appColors.purple,
     heartRate: appColors.pink,
+    restingHeartRate: appColors.pink,
+    walkingHeartRate: appColors.pink,
     bodyMass: appColors.primaryText,
     steps: appColors.green,
     workouts: appColors.green,
@@ -40,6 +44,8 @@ const overviewMetricSymbol = (metric: OverviewMetric) =>
   ({
     sleep: 'moon',
     heartRate: 'heart',
+    restingHeartRate: 'heart',
+    walkingHeartRate: 'heart',
     bodyMass: 'scalemass',
     steps: 'figure.walk',
     workouts: 'figure.run',
@@ -89,8 +95,9 @@ function MeasuredOverviewMetricChart({
         compact
         hideDetails
         barTooltip
-        height={112}
-        kind={metric === 'heartRate' ? 'range' : 'bar'}
+        height={176}
+        lineAxis="day"
+        kind={isOverviewHeartRate(metric) ? 'range' : 'line'}
         testID={`overview-metric-chart-${metric}`}
         title={t('overview.metricChartTitle')}
         width={chartWidth}

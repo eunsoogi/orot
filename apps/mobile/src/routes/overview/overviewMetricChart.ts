@@ -1,5 +1,6 @@
 import { t } from '../../i18n';
 import type { ChartData, ChartStatus } from '../../ui/charts';
+import { isOverviewHeartRate } from './metricSelection';
 import type { OverviewMetricProjection } from './metricProjection';
 
 /** Keeps the selected series' day buckets while generic source labels preserve Home's existing privacy. */
@@ -12,11 +13,13 @@ export function overviewMetricChartData(
     value:
       day.value === null
         ? null
-        : metric.metric === 'heartRate' && day.range
+        : isOverviewHeartRate(metric.metric) && day.range
           ? day.value
           : chartValueForDisplay(metric.metric, day.value, metric.unit),
     source: t('overview.metricChartSource'),
-    ...(metric.metric === 'heartRate' && day.range ? { range: day.range } : {}),
+    ...(isOverviewHeartRate(metric.metric) && day.range
+      ? { range: day.range }
+      : {}),
     ...(day.partial ? { partial: true } : {}),
   }));
   const recordedDays = points.filter(point => point.value !== null).length;
@@ -24,7 +27,7 @@ export function overviewMetricChartData(
     recordedDays < points.length || points.some(point => point.partial);
 
   return {
-    metric: metric.metric,
+    metric: chartMetric(metric.metric),
     coverage: {
       requested: t('overview.metricChartWindow'),
       displayed: t('overview.metricChartCoverage', {
@@ -57,7 +60,7 @@ export function overviewMetricChartPlaceholderData(
   status: Extract<ChartStatus, 'loading' | 'stale' | 'error' | 'empty'>,
 ): ChartData {
   return {
-    metric,
+    metric: chartMetric(metric),
     coverage: {
       requested: t('overview.metricChartWindow'),
       displayed: t('overview.metricChartCoverage', { recorded: 0, total: 7 }),
@@ -80,10 +83,19 @@ function chartValueForDisplay(
     return Math.round(value);
   }
   if (
-    (metric === 'heartRate' && unit === 'count/min') ||
+    (isOverviewHeartRate(metric) && unit === 'count/min') ||
     (metric === 'bodyMass' && unit === 'kg')
   ) {
     return Math.round(value * 10) / 10;
   }
   return value;
+}
+
+/** The renderer shares BPM formatting; the card and point series retain their own metric IDs. */
+function chartMetric(
+  metric: OverviewMetricProjection['metric'],
+): ChartData['metric'] {
+  return metric === 'restingHeartRate' || metric === 'walkingHeartRate'
+    ? 'heartRate'
+    : metric;
 }

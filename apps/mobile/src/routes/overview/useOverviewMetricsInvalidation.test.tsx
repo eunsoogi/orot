@@ -24,6 +24,9 @@ jest.mock('./metricLoader', () => ({
     quantityTruncated: false,
   })),
 }));
+jest.mock('./selectedOverviewSnapshot', () =>
+  jest.requireActual('../testSupport/overviewSnapshotMock').snapshotMock(),
+);
 const mockedUseIsFocused = jest.mocked(useIsFocused);
 
 beforeEach(() => {

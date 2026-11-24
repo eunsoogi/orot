@@ -7,7 +7,12 @@ import type { SqlDatabase, SqlExecutor } from '@orot/storage';
 import { currentEvidenceCondition } from '../../healthEvidence/evidenceCandidateScope';
 import { readOverviewMetricSnapshot } from './metricReadCancellation';
 import { readOverviewChartHealthContext } from '../../healthEvidence/healthContext/healthContextReport';
-import { overviewMetrics, type OverviewMetric } from './metricSelection';
+import {
+  isOverviewDerivedHeartRate,
+  overviewMetrics,
+  type OverviewMetric,
+} from './metricSelection';
+import { projectOverviewDerivedHeartRate } from './overviewDerivedHeartRate';
 import {
   projectOverviewMetric,
   type OverviewMetricProjection,
@@ -30,6 +35,7 @@ export async function loadOverviewMetrics(
   database: SqlDatabase,
   now = new Date(),
   signal?: AbortSignal,
+  selection: readonly OverviewMetric[] = [],
 ): Promise<{
   metrics: Partial<Record<OverviewMetric, OverviewMetricProjection>>;
   quantityTruncated: boolean;
@@ -38,7 +44,7 @@ export async function loadOverviewMetrics(
   // Preserve the established writer route, including its preparation.
   await database.execute('PRAGMA temp_store = MEMORY');
   return readOverviewMetricSnapshot(database, signal, tx =>
-    projectOverviewMetricSnapshot(tx, now),
+    projectOverviewMetricSnapshot(tx, now, selection),
   );
 }
 
@@ -46,6 +52,7 @@ export async function loadOverviewMetrics(
 export async function projectOverviewMetricSnapshot(
   tx: SqlExecutor,
   now: Date,
+  selection: readonly OverviewMetric[] = [],
 ) {
   const window = overviewMetricWindow(now);
   const results: Partial<Record<OverviewMetric, OverviewMetricProjection>> = {};
@@ -143,6 +150,17 @@ export async function projectOverviewMetricSnapshot(
       JSON.stringify(before) === JSON.stringify(after);
   }
   for (const metric of overviewMetrics) {
+    if (isOverviewDerivedHeartRate(metric)) {
+      if (selection.includes(metric)) {
+        const derived = await projectOverviewDerivedHeartRate(
+          tx,
+          report,
+          metric,
+        );
+        if (derived) results[metric] = derived;
+      }
+      continue;
+    }
     const concept = {
       sleep: 'sleep',
       heartRate: 'heart_rate',

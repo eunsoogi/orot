@@ -19,6 +19,7 @@ type Props = {
   selectedPointTestID?: string;
   kind: ChartKind;
   rangeAxis?: ChartAxis;
+  lineAxis?: ChartAxis;
   /** Compact charts hide metadata by default; existing consumers retain their presentation. */
   compact?: boolean;
   /** Overview removes detail UI entirely while retaining an accessible chart description. */
@@ -45,13 +46,15 @@ export function ChartPlot({
   selectedPointTestID,
   kind,
   rangeAxis = 'day',
+  lineAxis = 'time',
   compact = false,
   hideDetails = false,
   accessibleCollapsedPlot = false,
   barTooltip = false,
 }: Props) {
   const { fontScale } = useWindowDimensions();
-  const axis = kind === 'range' ? rangeAxis : kind === 'line' ? 'time' : 'day';
+  const axis =
+    kind === 'range' ? rangeAxis : kind === 'line' ? lineAxis : 'day';
   const [pageIndex, setPageIndex] = useState(0);
   const [detailsOpen, setDetailsOpen] = useState(false);
   const showDetails = !hideDetails && (!compact || detailsOpen);
@@ -148,7 +151,7 @@ export function ChartPlot({
           </View>
         )}
       {barTooltip &&
-      (kind === 'bar' || (kind === 'range' && axis === 'day')) &&
+      axis === 'day' &&
       visible &&
       positions.length > 0 &&
       width > 0 ? (
@@ -185,6 +188,7 @@ export function ChartPlot({
               height={height}
               kind={kind}
               rangeAxis={rangeAxis}
+              lineAxis={lineAxis}
             />
           ) : (
             <View style={{ height }} />

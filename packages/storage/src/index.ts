@@ -98,6 +98,7 @@ export { insertManualHistoryEntry, readManualHistoryEntry } from './manualHistor
 
 export {
   appleDerivedHeartRateCategories,
+  appleDerivedHeartRatePredicate,
   classifyAppleDerivedHeartRate,
   isAppleDerivedHeartRateCategory,
 } from './appleDerivedHeartRate';

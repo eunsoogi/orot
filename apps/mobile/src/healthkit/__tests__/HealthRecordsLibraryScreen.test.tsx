@@ -44,10 +44,15 @@ test('shows imported pressure as a chart-first category and opens a separate per
   expect(chart.props.accessibilityLabel).toContain('80 mmHg');
   expect(screen.queryByText(chart.props.accessibilityLabel)).toBeNull();
   expect(loadObservations).toHaveBeenCalledTimes(9);
-  expect(
-    screen.queryByTestId('health-record-chart-values-blood_pressure-details'),
-  ).toBeNull();
+  const id = 'health-record-chart-values-blood_pressure-details';
+  expect(screen.getByTestId(id).props.accessibilityState.expanded).toBe(false);
   expect(screen.queryByText(/요청 범위:/)).toBeNull();
+  await fireEvent.press(screen.getByTestId(id));
+  expect(screen.getByTestId(id).props.accessibilityState.expanded).toBe(true);
+  const selected = screen.getByTestId('health-record-chart-blood_pressure');
+  expect(selected.props.accessibilityLabel).toContain('120 mmHg');
+  expect(selected.props.accessibilityLabel).toContain('80 mmHg');
+  expect(loadObservations).toHaveBeenCalledTimes(9);
 
   await fireEvent.press(
     screen.getByTestId('health-record-open-detail-blood_pressure'),
