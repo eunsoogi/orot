@@ -5,6 +5,8 @@ import {
   waitFor,
   within,
 } from '@testing-library/react-native';
+import { StyleSheet } from 'react-native';
+import { providerSettingsStyles } from '../../layout/providerSettingsPresentation';
 import { VoiceSettingsPanel } from '../VoiceSettingsPanel';
 import { VoiceSettingsDockFixture } from '../testSupport/VoiceSettingsDockFixture';
 import { voiceSettingsStore } from '../voiceSettingsStore';
@@ -196,4 +198,25 @@ test('an exact commit receipt that expires before Save continuation does not mar
     await screen.findByText(/음성 모델 설정이 완료되지 않았어요/),
   ).toBeVisible();
   expect(screen.queryByTestId('voice-current-model')).toBeNull();
+});
+
+test('the OpenAI catalog card contains all refreshed voice controls', async () => {
+  await render(
+    <VoiceSettingsDockFixture livePreferences={voicePreferences()} />,
+  );
+  const card = screen.getByTestId('voice-openai-catalog-card');
+  const inside = within(card);
+  expect(StyleSheet.flatten(card.props.style)).toEqual(
+    StyleSheet.flatten(providerSettingsStyles.catalogAccount),
+  );
+  expect(inside.getByTestId('voice-account-details')).toBeVisible();
+  const refresh = inside.getByTestId('voice-model-refresh');
+  expect(inside.queryByTestId('openai-voice-pair-form')).toBeNull();
+  expect(voiceSettingsStore.discoverModels).not.toHaveBeenCalled();
+  await waitFor(() => expect(refresh).toBeEnabled());
+  await fireEvent.press(refresh);
+  expect(await inside.findByTestId('voice-model-gpt-live-1.1')).toBeVisible();
+  expect(await inside.findByTestId('live-voice-language')).toBeVisible();
+  expect(inside.getByTestId('live-voice-voice')).toBeVisible();
+  expect(inside.getByTestId('voice-tool-model-gpt-6-sol')).toBeVisible();
 });
