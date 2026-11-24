@@ -35,16 +35,17 @@ function Detail({
 }
 
 function harness() {
-  let listener: ((status: AppStateStatus) => void) | undefined;
+  // AppState fans out to the report-access guard and the browser trip observer.
+  const listeners = new Set<(status: AppStateStatus) => void>();
   const previous = AppState.currentState;
   AppState.currentState = 'active';
   jest
     .spyOn(AppState, 'addEventListener')
     .mockImplementation((_event, next) => {
-      listener = next;
+      listeners.add(next);
       return {
         remove: () => {
-          listener = undefined;
+          listeners.delete(next);
         },
       };
     });
@@ -62,7 +63,7 @@ function harness() {
     phase: async (phase: AppStateStatus) => {
       await act(() => {
         AppState.currentState = phase;
-        listener?.(phase);
+        for (const listener of listeners) listener(phase);
       });
     },
     restore: () => {

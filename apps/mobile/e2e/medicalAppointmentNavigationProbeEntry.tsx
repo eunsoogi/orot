@@ -36,7 +36,26 @@ const homeAppointments =
         fixtureNow,
       );
 
-const appointmentRepository = createNavigationProbeRepository(homeAppointments);
+// Give the real App route a long deterministic list without HealthKit seeding
+// or relying on manual form timing. This flag is read only in this probe entry.
+const edgeScrollAppointments: Appointment[] =
+  launchSettings.OROT_TEST_APPOINTMENT_EDGE_SCROLL === 'YES'
+    ? Array.from({ length: 16 }, (_, index) => ({
+        id: `synthetic-edge-appointment-${index}`,
+        clinicLabel: `합성 예약 ${index + 1}`,
+        status: 'scheduled',
+        effectiveAt: new Date(
+          fixtureNow + (index + 1) * 86_400_000,
+        ).toISOString(),
+        recordedAt: new Date(fixtureNow).toISOString(),
+        ingestedAt: new Date(fixtureNow).toISOString(),
+        provenance: { origin: 'user_reported', sourceRecordIds: [] },
+        reviewState: { status: 'unreviewed' },
+      }))
+    : [];
+const appointmentRepository = createNavigationProbeRepository(
+  edgeScrollAppointments.length ? edgeScrollAppointments : homeAppointments,
+);
 
 type ManualAppointmentInput = Parameters<AppointmentRepository['create']>[0];
 

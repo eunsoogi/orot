@@ -1,3 +1,4 @@
+import { useNavigationEdgeVerticalScroll } from '../navigation/navigationEdgeScroll';
 import { useNavigationContentInset } from '../navigation/useNavigationContentInset';
 import { AppButton as Button } from '../layout/AppButton';
 import { AppText as Text } from '../layout/AppText';
@@ -17,8 +18,7 @@ import { emptyCalendarAutoSyncState } from './calendarAutoSync';
 import type { CalendarAutoSyncState } from './calendarAutoSync';
 import { useCalendarLinking } from './useCalendarLinking';
 import { eventFromAppointment } from './calendarMonthEvents';
-import { BottomNavigationMenu } from '../navigation/BottomNavigationMenu';
-import { navigationText } from '../i18n/navigation';
+import { CalendarRouteActions } from './CalendarRouteActions';
 import { useCalendarNavigationLeaveState } from './useCalendarNavigationLeaveState';
 
 interface CalendarLinkingScreenProps {
@@ -51,6 +51,10 @@ export default function CalendarLinkingScreen({
   onOpenRecording,
 }: CalendarLinkingScreenProps) {
   const navigationInset = useNavigationContentInset();
+  const edge = useNavigationEdgeVerticalScroll({
+    ownerWidth: adaptiveScheduleLayout && !embeddedInHubScroll ? undefined : 0,
+    trailingPadding: 20,
+  });
   const calendar = useCalendarLinking(repository, bridge, calendarSync);
   const queryWindow: CalendarQueryWindow | null = calendarSync.query
     ? calendarQueryWindowFromCoverage(calendarSync.query)
@@ -217,7 +221,13 @@ export default function CalendarLinkingScreen({
   return (
     <View style={styles.screen}>
       <ScrollView
-        contentContainerStyle={[styles.container, navigationInset]}
+        style={edge.scrollViewStyle}
+        contentContainerStyle={[
+          styles.container,
+          navigationInset,
+          edge.contentStyle,
+        ]}
+        {...edge.indicatorProps}
         testID="calendar-screen"
       >
         {scrollHeader ? (
@@ -225,26 +235,11 @@ export default function CalendarLinkingScreen({
         ) : null}
         {content}
       </ScrollView>
-      {/* Keep route controls outside the calendar scroller and inside its safe area. */}
-      {onBack ? (
-        <BottomNavigationMenu
-          onBack={onBack}
-          primaryAction={
-            onOpenRecording
-              ? {
-                  label: navigationText.recording.label,
-                  accessibilityLabel:
-                    navigationText.recording.accessibilityLabel,
-                  onPress: onOpenRecording,
-                  testID: 'navigation-recording',
-                  systemImageName: 'mic',
-                }
-              : undefined
-          }
-          testID="calendar-back"
-          disabled={calendar.saving}
-        />
-      ) : null}
+      <CalendarRouteActions
+        onBack={onBack}
+        onOpenRecording={onOpenRecording}
+        disabled={calendar.saving}
+      />
     </View>
   );
 }

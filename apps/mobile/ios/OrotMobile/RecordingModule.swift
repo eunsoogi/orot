@@ -71,14 +71,21 @@ public final class RecordingModule: RCTEventEmitter, AVAudioPlayerDelegate {
             object: nil,
             queue: nil,
         ) { [weak self] _ in
-            self?.workQueue.async { [weak self] in self?.pauseForBackgrounding() }
+            // Leaving the foreground stops playback, never an already consented capture.
+            self?.workQueue.async { [weak self] in self?.stopPlayback() }
         })
         observers.append(NotificationCenter.default.addObserver(
             forName: UIApplication.didEnterBackgroundNotification,
             object: nil,
             queue: nil,
         ) { [weak self] _ in
-            self?.workQueue.async { [weak self] in self?.cancelPendingStart() }
+            self?.workQueue.async { [weak self] in
+                guard let self else { return }
+                cancelPendingStart()
+                if status == .recording {
+                    RecordingCaptureDiagnostics.emit(.backgrounded, clockMs: currentDurationMs())
+                }
+            }
         })
         observePlaybackRouteChanges()
     }
@@ -120,18 +127,6 @@ public final class RecordingModule: RCTEventEmitter, AVAudioPlayerDelegate {
         @unknown default:
             break
         }
-    }
-
-    func pauseForBackgrounding() {
-        // Saved playback does not resume behind another screen; release its player and session together.
-        stopPlayback()
-        guard status == .recording else { return }
-        RecordingCaptureDiagnostics.emit(.backgrounded, clockMs: currentDurationMs())
-        recorder?.pause()
-        deactivateAudioSession()
-        stopTimer()
-        status = .paused
-        emitState()
     }
 
     func startTimer() {

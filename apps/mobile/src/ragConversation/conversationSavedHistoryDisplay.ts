@@ -83,10 +83,25 @@ export function savedHistoryTranscript(
 ): readonly DisplayMessage[] {
   if (!saved.length) return live;
   const liveIds = new Set(live.map(message => message.toolMessageId));
+  const rejectedOpenings = new Map<string, DisplayMessage['initialResponse']>();
+  for (const message of live)
+    if (message.rejectedOpeningTurnId && message.initialResponse)
+      rejectedOpenings.set(
+        message.rejectedOpeningTurnId,
+        message.initialResponse,
+      );
   const historical: DisplayMessage[] = [];
   const mounted: { after: number; messages: DisplayMessage[] }[] = [];
   for (const { row, questionId, answerId, afterLiveId } of saved) {
     if (liveIds.has(row.id)) continue;
+    const shown = rejectedOpenings.get(row.id);
+    // Keep the live pair only when it is the exact archived opening.
+    if (
+      row.kind === 'opening' &&
+      shown?.callId === row.initialResponse.callId &&
+      shown.text === row.initialResponse.text
+    )
+      continue;
     const origin = {
       restoredHistory: true as const,
       savedHistoryDisplayOnly: true as const,

@@ -2,13 +2,12 @@ import {
   ActivityIndicator,
   StyleSheet,
   useColorScheme,
-  ScrollView,
   View,
 } from 'react-native';
 import { useMemo } from 'react';
 import { AppText as Text } from '../../layout/AppText';
 import { t } from '../../i18n';
-import { useNavigationContentInset } from '../../navigation/useNavigationContentInset';
+import { MeasuredRouteScrollView } from '../../navigation/MeasuredRouteScrollView';
 import { SavedQuestionsSection } from '../../nextVisitQuestions/SavedQuestionsSection';
 import { AppointmentSection } from '../../nextVisitQuestions/NextVisitComponents';
 import { savedVisitPresentation } from '../../nextVisitQuestions/savedVisitPresentation';
@@ -25,7 +24,6 @@ export function SavedVisitQuestionsRoute(props: NextVisitQuestionsRouteProps) {
     () => createNextVisitQuestionsTheme(colorScheme === 'dark'),
     [colorScheme],
   );
-  const inset = useNavigationContentInset();
   const appointmentId =
     route.appointment.status === 'ready'
       ? route.appointment.appointment.id
@@ -36,9 +34,9 @@ export function SavedVisitQuestionsRoute(props: NextVisitQuestionsRouteProps) {
     null,
   );
   return (
-    <ScrollView
+    <MeasuredRouteScrollView
       style={styles.screen}
-      contentContainerStyle={[styles.page, inset]}
+      contentStyle={styles.page}
       testID="saved-visit-questions-screen"
     >
       <View style={styles.content} testID="saved-visit-questions-content">
@@ -85,7 +83,7 @@ export function SavedVisitQuestionsRoute(props: NextVisitQuestionsRouteProps) {
           <Text>{t('visitQuestions.saved.emptyForVisit')}</Text>
         ) : null}
       </View>
-    </ScrollView>
+    </MeasuredRouteScrollView>
   );
 }
 

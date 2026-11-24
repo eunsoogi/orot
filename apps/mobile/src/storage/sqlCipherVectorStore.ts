@@ -200,7 +200,8 @@ export class SqlCipherVectorStore extends VectorStore {
     const hits = await searchVectorSnapshot(query, async () => {
       let snapshot!: VectorSearchSnapshot;
       await this.database.transaction(async transaction => {
-        const storage = this.transactionStorage(transaction);
+        const storage =
+          await SqlCipherRagEmbeddingStorage.forVectorRead(transaction);
         const candidates = await eligibleVectorChunks(chunks, storage);
         const ids = candidates.map(chunk => chunk.id);
         const vectors = new Map(

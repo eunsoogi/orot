@@ -9,6 +9,7 @@ import type {
   EncounterApproval,
   EncounterGraphPort,
   EncounterGraphOptions,
+  EncounterTranscript,
 } from '@orot/agent-runtime';
 import { openLocalStorage } from '../../storage/secureDatabase';
 import { openLocalAgentMemoryDatabase } from '../../storage/secureDatabase';
@@ -27,8 +28,9 @@ export function createEncounterGraphPort(
   model: EncounterModelOptions,
   requireCurrentSession = false,
   onDiagnostic?: EncounterGraphOptions['onDiagnostic'],
+  expectedTranscript?: EncounterTranscript,
 ): EncounterGraphPort {
-  const load: EncounterGraphPort['load'] = async (sourceId, signal) => {
+  const loadCurrent: EncounterGraphPort['load'] = async (sourceId, signal) => {
     requireEncounterActive(signal);
     const transcript = await repository.transaction(async (writer, sql) => {
       if (!sql)
@@ -39,7 +41,18 @@ export function createEncounterGraphPort(
     return transcript;
   };
   return {
-    load,
+    async load(sourceId, signal) {
+      const transcript = await loadCurrent(sourceId, signal);
+      // Model selection and session setup can yield after the user starts review.
+      // Do not let a different transcript become the input to that same action.
+      if (
+        expectedTranscript &&
+        encounterCanonical(transcript) !==
+          encounterCanonical(expectedTranscript)
+      )
+        throw new Error('The selected transcript changed before extraction.');
+      return transcript;
+    },
     extract: (transcript, signal) =>
       extractEncounterCandidates({
         transcript,
@@ -47,7 +60,7 @@ export function createEncounterGraphPort(
         signal,
         onDiagnostic,
         isCurrent: async () =>
-          encounterCanonical(await load(transcript.sourceId, signal)) ===
+          encounterCanonical(await loadCurrent(transcript.sourceId, signal)) ===
           encounterCanonical(transcript),
       }),
     conflicts: async (candidates, signal) => {
@@ -75,14 +88,16 @@ export async function runLocalEncounterProcessing(input: {
   signal?: AbortSignal;
   approval?: EncounterApproval;
   requireCurrentReviewSession?: boolean;
+  expectedTranscript?: EncounterTranscript;
   onDiagnostic?: EncounterGraphOptions['onDiagnostic'];
 }) {
   if (input.signal?.aborted) return { status: 'cancelled' as const };
   const database = await openLocalAgentMemoryDatabase();
   // Open the existing marker owner before installing source-linked checkpoint cleanup triggers.
   await new SqlCipherAgentMemoryStorage(database).listRemovedSourceIds();
+  const { expectedTranscript, ...graphInput } = input;
   return runEncounterProcessingGraph({
-    ...input,
+    ...graphInput,
     checkpointer: new SqliteCheckpointSaver(
       createLangGraphCheckpointStorage(database, {
         sourceRecordId: input.sourceId,
@@ -94,6 +109,7 @@ export async function runLocalEncounterProcessing(input: {
       input.model,
       input.requireCurrentReviewSession,
       input.onDiagnostic,
+      expectedTranscript,
     ),
   });
 }

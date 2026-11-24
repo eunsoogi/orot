@@ -5,7 +5,7 @@ import { useConversationModelConfirmation } from './useConversationModelConfirma
 import { t } from '../../i18n';
 import { APPLE_PCC_PROVIDER_ID } from './privateCloudCompute';
 import { ModelSelectionTabs } from './ModelSelectionTabs';
-import { useNavigationContentInset } from '../../navigation/useNavigationContentInset';
+import { useProviderSelectionScrollLane } from './useProviderSelectionScrollLane';
 import { AppButton as Button } from '../../layout/AppButton';
 import { AppText as Text } from '../../layout/AppText';
 import { useEffect, useMemo, useState } from 'react';
@@ -39,7 +39,9 @@ export default function ProviderSelectionScreen({
   onSelectionCommitted,
   onNavigationStateChange,
 }: ProviderSelectionScreenProps) {
-  const navigationInset = useNavigationContentInset();
+  const { edge, contentStyle, onLayout } = useProviderSelectionScrollLane(
+    Boolean(navigationRouteKey) && presentation !== 'feature',
+  );
   const search = useSavedSearchChoices(selectionStore);
   const [savedSelection, setSavedSelection] =
     useState<ProviderSelection | null>(null);
@@ -133,18 +135,15 @@ export default function ProviderSelectionScreen({
     savedModelId: savedSelection?.modelId,
     presentation,
   });
+  const host = { testID: 'provider-selection-scroll-lane', onLayout };
   return (
-    <View style={styles.root}>
+    <View style={styles.root} {...host}>
       <ScrollView
-        // The page owns scroll clearance once, including confirmation and recovery below the catalog.
-        contentContainerStyle={[styles.container, navigationInset]}
-        style={styles.scrollView}
+        {...edge.indicatorProps}
+        contentContainerStyle={contentStyle}
+        style={[styles.scrollView, edge.scrollViewStyle]}
         testID={
-          presentation === 'settings-provider'
-            ? 'settings-provider-screen'
-            : presentation === 'settings-accounts'
-              ? 'settings-accounts-screen'
-              : 'provider-selection-screen'
+          presentation.replace('feature', 'provider-selection') + '-screen'
         }
       >
         {onBack && !navigationRouteKey ? (

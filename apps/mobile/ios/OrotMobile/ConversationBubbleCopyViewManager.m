@@ -1,7 +1,13 @@
+#import <QuartzCore/QuartzCore.h>
 #import <React/RCTView.h>
 #import <React/RCTViewManager.h>
+#import <React/UIView+React.h>
 #import <UIKit/UIKit.h>
 
+// The pinned Fabric facade is Objective-C++, but exposes this Objective-C getter.
+@protocol OrotBubblePaintContainer <NSObject>
+- (nullable UIView *)contentView;
+@end
 /// UIKit owns the long press, lift, haptic, placement and dismissal. The React
 /// view never leaves its transcript layout and no second renderer copies it.
 @interface OrotConversationBubbleCopyView : RCTView <UIContextMenuInteractionDelegate>
@@ -15,10 +21,12 @@
 @property(nonatomic, strong, nullable) UIContextMenuInteraction *copyInteraction;
 @property(nonatomic) NSUInteger copyRevision;
 @property(nonatomic) BOOL observingAvailability;
+@property(nonatomic, strong, nullable) NSUUID *previewMenuIdentifier;
+@property(nonatomic, weak, nullable) UIView *previewPaintView;
+@property(nonatomic) NSUInteger previewOpenRevision;
+@property(nonatomic) NSUInteger previewCloseRevision;
 @end
-
 @implementation OrotConversationBubbleCopyView
-
 - (void)stopObservingAvailability {
     if (!self.observingAvailability) {
         return;
@@ -28,17 +36,16 @@
     [center removeObserver:self name:UIApplicationWillResignActiveNotification object:nil];
     [center removeObserver:self name:UIApplicationProtectedDataWillBecomeUnavailable object:nil];
 }
-
 - (void)retireCopyMenu {
     self.copyRevision += 1;
+    self.previewMenuIdentifier = nil;
+    self.previewPaintView = nil;
     [self.copyInteraction dismissMenu];
     [self stopObservingAvailability];
 }
-
 - (void)availabilityChanged:(NSNotification *)notification {
     [self retireCopyMenu];
 }
-
 - (void)observeAvailability {
     if (self.observingAvailability) {
         return;
@@ -54,7 +61,6 @@
                    name:UIApplicationProtectedDataWillBecomeUnavailable
                  object:nil];
 }
-
 - (void)setCopyOwner:(NSString *)copyOwner {
     if (_copyOwner == copyOwner || [_copyOwner isEqualToString:copyOwner]) {
         return;
@@ -62,7 +68,6 @@
     [self retireCopyMenu];
     _copyOwner = [copyOwner copy];
 }
-
 - (void)setCopyText:(NSString *)copyText {
     if (_copyText == copyText || [_copyText isEqualToString:copyText]) {
         return;
@@ -74,14 +79,12 @@
         [self addInteraction:self.copyInteraction];
     }
 }
-
 - (void)didMoveToWindow {
     [super didMoveToWindow];
     if (!self.window) {
         [self retireCopyMenu];
     }
 }
-
 - (BOOL)canCopyRevision:(NSUInteger)revision {
     UIApplication *application = UIApplication.sharedApplication;
     UIWindow *window = self.window;
@@ -92,18 +95,96 @@
            application.applicationState == UIApplicationStateActive &&
            application.isProtectedDataAvailable;
 }
+- (nullable UIView *)paintedBubbleView {
+    Class interop = NSClassFromString(@"RCTLegacyViewManagerInteropComponentView");
+    UIView *facade = nil;
+    UIView *parent = self.superview;
+    // Fabric mounts its Paper content directly, or in its one overflow container.
+    for (NSUInteger level = 0; interop && level < 2 && parent; level++, parent = parent.superview) {
+        if ([parent isKindOfClass:interop] && [parent respondsToSelector:@selector(contentView)] &&
+            [(UIView<OrotBubblePaintContainer> *)parent contentView] == self) {
+            facade = parent;
+            break;
+        }
+    }
+    NSString *role =
+        self.reactAccessibilityElement.accessibilityIdentifier ?: facade.accessibilityIdentifier;
+    if ([role isEqualToString:@"conversation-user-message"]) {
+        return facade;
+    }
+    NSString *body = [role isEqualToString:@"conversation-assistant-message"]
+                         ? @"conversation-message-body"
+                     : [role isEqualToString:@"conversation-assistant-opening-message"]
+                         ? @"conversation-opening-body"
+                         : nil;
+    Class fabricView = NSClassFromString(@"RCTViewComponentView");
+    UIView *paint = nil;
+    for (UIView *child in self.subviews) {
+        if (body && fabricView && [child isKindOfClass:fabricView] &&
+            [child.accessibilityIdentifier isEqualToString:body]) {
+            if (paint) {
+                return nil;
+            }
+            paint = child;
+        }
+    }
+    return paint;
+}
+- (nullable UITargetedPreview *)
+    targetedPreviewForInteraction:(UIContextMenuInteraction *)interaction
+                    configuration:(UIContextMenuConfiguration *)configuration
+                       dismissing:(BOOL)dismissing {
+    NSUInteger revision = dismissing ? self.previewCloseRevision : self.previewOpenRevision;
+    UIView *paint = self.previewPaintView;
+    if (interaction != self.copyInteraction ||
+        ![self.previewMenuIdentifier isEqual:configuration.identifier] ||
+        ![self canCopyRevision:revision] || !paint || paint != [self paintedBubbleView] ||
+        paint.window != self.window || paint.hidden || paint.alpha <= 0 ||
+        CGRectIsEmpty(paint.bounds)) {
+        return nil;
+    }
+    UIPreviewParameters *parameters = [UIPreviewParameters new];
+    parameters.backgroundColor = UIColor.clearColor;
+    if (paint.layer.cornerRadius > 0 &&
+        [paint.layer.cornerCurve isEqualToString:kCACornerCurveCircular]) {
+        parameters.visiblePath = [UIBezierPath bezierPathWithRoundedRect:paint.bounds
+                                                            cornerRadius:paint.layer.cornerRadius];
+    }
+    return [[UITargetedPreview alloc] initWithView:paint parameters:parameters];
+}
+
+- (nullable UITargetedPreview *)contextMenuInteraction:(UIContextMenuInteraction *)interaction
+                                         configuration:(UIContextMenuConfiguration *)configuration
+                 highlightPreviewForItemWithIdentifier:(id<NSCopying>)identifier {
+    return [self targetedPreviewForInteraction:interaction
+                                 configuration:configuration
+                                    dismissing:NO];
+}
+
+- (nullable UITargetedPreview *)contextMenuInteraction:(UIContextMenuInteraction *)interaction
+                                         configuration:(UIContextMenuConfiguration *)configuration
+                 dismissalPreviewForItemWithIdentifier:(id<NSCopying>)identifier {
+    return [self targetedPreviewForInteraction:interaction
+                                 configuration:configuration
+                                    dismissing:YES];
+}
 
 - (UIContextMenuConfiguration *)contextMenuInteraction:(UIContextMenuInteraction *)interaction
                         configurationForMenuAtLocation:(CGPoint)location {
-    if (![self canCopyRevision:self.copyRevision]) {
+    if (interaction != self.copyInteraction || ![self canCopyRevision:self.copyRevision]) {
         return nil;
     }
     NSUInteger revision = ++self.copyRevision;
+    NSUUID *menuIdentifier = NSUUID.UUID;
+    self.previewMenuIdentifier = menuIdentifier;
+    self.previewPaintView = [self paintedBubbleView];
+    self.previewOpenRevision = revision;
+    self.previewCloseRevision = revision;
     [self observeAvailability];
     __weak OrotConversationBubbleCopyView *weakView = self;
     NSString *label = self.copyLabel;
     return [UIContextMenuConfiguration
-        configurationWithIdentifier:nil
+        configurationWithIdentifier:menuIdentifier
                     previewProvider:nil
                      actionProvider:^UIMenu *(NSArray<UIMenuElement *> *suggested) {
                        UIAction *copy = [UIAction
@@ -117,6 +198,7 @@
                                      }
                                      // One fresh explicit menu action owns this single local write.
                                      view.copyRevision += 1;
+                                     view.previewCloseRevision = view.copyRevision;
                                      [UIPasteboard.generalPasteboard
                                          setItems:@[ @{@"public.utf8-plain-text" : view.copyText} ]
                                           options:@{
@@ -130,7 +212,25 @@
 - (void)contextMenuInteraction:(UIContextMenuInteraction *)interaction
        willEndForConfiguration:(UIContextMenuConfiguration *)configuration
                       animator:(id<UIContextMenuInteractionAnimating>)animator {
-    [self stopObservingAvailability];
+    if (interaction != self.copyInteraction ||
+        ![self.previewMenuIdentifier isEqual:configuration.identifier]) {
+        return;
+    }
+    id<NSCopying> identifier = configuration.identifier;
+    __weak OrotConversationBubbleCopyView *weakView = self;
+    void (^finish)(void) = ^{
+      OrotConversationBubbleCopyView *view = weakView;
+      if ([view.previewMenuIdentifier isEqual:identifier]) {
+          view.previewMenuIdentifier = nil;
+          view.previewPaintView = nil;
+          [view stopObservingAvailability];
+      }
+    };
+    if (animator) {
+        [animator addCompletion:finish];
+    } else {
+        finish();
+    }
 }
 @end
 
