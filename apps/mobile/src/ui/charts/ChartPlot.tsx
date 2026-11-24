@@ -23,6 +23,8 @@ type Props = {
   compact?: boolean;
   /** Overview removes detail UI entirely while retaining an accessible chart description. */
   hideDetails?: boolean;
+  /** Preserve the chart image and summary before the user requests details. */
+  accessibleCollapsedPlot?: boolean;
   /** Opt-in selection without restoring the removed details disclosure. */
   barTooltip?: boolean;
 };
@@ -45,6 +47,7 @@ export function ChartPlot({
   rangeAxis = 'day',
   compact = false,
   hideDetails = false,
+  accessibleCollapsedPlot = false,
   barTooltip = false,
 }: Props) {
   const { fontScale } = useWindowDimensions();
@@ -52,6 +55,8 @@ export function ChartPlot({
   const [pageIndex, setPageIndex] = useState(0);
   const [detailsOpen, setDetailsOpen] = useState(false);
   const showDetails = !hideDetails && (!compact || detailsOpen);
+  const accessiblePlot =
+    hideDetails || (accessibleCollapsedPlot && !showDetails);
   const canShow =
     data.coverage.status !== 'permission' && data.coverage.status !== 'empty';
   const pages = canShow ? chartWindows(data, axis) : [];
@@ -158,15 +163,15 @@ export function ChartPlot({
         />
       ) : (
         <View
-          accessible={hideDetails}
-          accessibilityRole={hideDetails ? 'image' : undefined}
+          accessible={accessiblePlot}
+          accessibilityRole={accessiblePlot ? 'image' : undefined}
           accessibilityLabel={
-            hideDetails
+            accessiblePlot
               ? chartAccessibilitySummary(visible, axis, title)
               : undefined
           }
           testID={
-            hideDetails && selectedPointTestID
+            accessiblePlot && selectedPointTestID
               ? selectedPointTestID
               : testID
                 ? `${testID}-plot`

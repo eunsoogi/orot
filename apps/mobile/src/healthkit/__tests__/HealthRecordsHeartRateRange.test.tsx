@@ -93,7 +93,9 @@ test('keeps preview line measurements opt-in and adjustable', async () => {
   );
   expect(screen.queryByText(/그래프는 저장된 측정값/)).toBeNull();
   const selectedId = 'health-record-chart-steps';
-  expect(screen.queryByTestId(selectedId)).toBeNull();
+  const fullSummary = screen.getByTestId(selectedId);
+  expect(fullSummary.props.accessibilityRole).toBe('image');
+  expect(fullSummary.props.accessibilityLabel).toContain('72');
   await fireEvent.press(
     screen.getByTestId('health-record-chart-values-steps-details'),
   );

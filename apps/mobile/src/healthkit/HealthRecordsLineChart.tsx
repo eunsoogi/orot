@@ -136,6 +136,7 @@ export function HealthRecordsLineChart({
       <ChartPlot
         data={data}
         compact={preview}
+        accessibleCollapsedPlot={preview && !previewRange}
         hideDetails={previewRange}
         barTooltip={previewRange}
         width={width}
