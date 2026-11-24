@@ -4,6 +4,7 @@ import { AppText as Text } from '../../layout/AppText';
 import { AppButton } from '../../layout/AppButton';
 import { t } from '../../i18n';
 import type { ChartStatus } from '../../ui/charts';
+import { isOverviewDerivedHeartRate } from './metricSelection';
 import { useOverviewMetrics } from './useOverviewMetrics';
 import { overviewMetricStyles as styles } from './overviewMetricStyles';
 import {
@@ -112,7 +113,9 @@ export function OverviewMetrics({ onEdit }: { readonly onEdit?: () => void }) {
                 width={gridLayout.cardWidth}
                 emptyMessage={
                   data.state === 'ready'
-                    ? metric !== 'sleep' && data.quantityTruncated
+                    ? metric !== 'sleep' &&
+                      !isOverviewDerivedHeartRate(metric) &&
+                      data.quantityTruncated
                       ? t('overview.metricTruncated')
                       : t('overview.metricWindowEmpty')
                     : undefined

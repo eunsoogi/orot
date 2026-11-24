@@ -34,7 +34,7 @@ export const overviewKo = {
   'overview.metricWindowEmpty': '최근 14일과 오늘에 기록이 없어요.',
   'overview.metricTruncated': '기록이 많아 이 지표를 모두 확인하지 못했어요.',
   'overview.metricSleep': '기록된 수면',
-  'overview.metricHeartRate': '심박수',
+  'overview.metricHeartRate': '평균 심박수',
   'overview.metricBodyMass': '체중',
   'overview.metricSteps': '걸음수',
   'overview.duration.hoursMinutes': '{hours}시간 {minutes}분',

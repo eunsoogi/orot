@@ -70,9 +70,10 @@ async function readSecureOverviewProjection(input: {
             throw new Error('Overview preference snapshot is read-only.');
           },
         });
+        const selection = await loadOverviewMetricSelection(preferences);
         return {
-          selection: await loadOverviewMetricSelection(preferences),
-          chart: await projectOverviewMetricSnapshot(tx, input.now),
+          selection,
+          chart: await projectOverviewMetricSnapshot(tx, input.now, selection),
         };
       },
       input.publish,

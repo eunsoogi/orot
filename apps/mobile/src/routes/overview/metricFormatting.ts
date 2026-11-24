@@ -18,6 +18,8 @@ const localizedUnitKeys: Partial<
 > = {
   sleep: { min: 'overview.metricUnit.minutes' },
   heartRate: { 'count/min': 'overview.metricUnit.countPerMinute' },
+  restingHeartRate: { 'count/min': 'overview.metricUnit.countPerMinute' },
+  walkingHeartRate: { 'count/min': 'overview.metricUnit.countPerMinute' },
   steps: { count: 'overview.metricUnit.steps' },
 };
 
@@ -26,6 +28,8 @@ export function overviewMetricStatistic(metric: OverviewMetric): string {
   return {
     sleep: t('overview.dailySum'),
     heartRate: t('overview.dailyMean'),
+    restingHeartRate: t('overview.dailyMean'),
+    walkingHeartRate: t('overview.dailyMean'),
     bodyMass: t('overview.dailyLatest'),
     steps: t('overview.dailySum'),
     workouts: t('overview.dailySum'),

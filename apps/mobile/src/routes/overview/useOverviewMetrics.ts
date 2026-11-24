@@ -142,14 +142,17 @@ export function useOverviewMetrics() {
           }
           return;
         }
-        const [fallbackSelection, chart] = await Promise.all([
-          storage.openLocalStorage().then(loadOverviewMetricSelection),
-          storage
-            .openLocalAgentMemoryDatabase()
-            .then(database =>
-              loadOverviewMetrics(database, now, controller.signal),
-            ),
-        ]);
+        const fallbackSelection = await storage
+          .openLocalStorage()
+          .then(loadOverviewMetricSelection);
+        if (!isCurrent()) return;
+        const database = await storage.openLocalAgentMemoryDatabase();
+        const chart = await loadOverviewMetrics(
+          database,
+          now,
+          controller.signal,
+          fallbackSelection,
+        );
         publish(fallbackSelection, chart);
       } catch {
         if (isCurrent()) setState(hasSnapshot.current ? 'stale' : 'failed');
