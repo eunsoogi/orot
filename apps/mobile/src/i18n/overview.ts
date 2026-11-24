@@ -1,4 +1,7 @@
 export const overviewKo = {
+  'overview.sleepTimeAsleep': '수면 시간',
+  'overview.sleepStagesUnavailable': '기록된 수면 단계가 없어요.',
+  'overview.sleepStageInterval': '{stage}, {start}부터 {end}까지',
   'visitDayQuestions.open': '진료 당일 질문 보기',
   'visitDayQuestions.title': '진료 당일 물어볼 질문',
   'visitDayQuestions.empty':

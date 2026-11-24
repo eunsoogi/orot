@@ -1,3 +1,4 @@
+import type { OverviewSleepEpisode } from './overviewSleepEpisode';
 import type { OverviewChartHealthContext } from '../../healthEvidence/healthContext/healthContextReport';
 import type { ChartRange } from '../../ui/charts/types';
 import { isOverviewHeartRate, type OverviewMetric } from './metricSelection';
@@ -10,6 +11,7 @@ export interface OverviewMetricDay {
 }
 export interface OverviewMetricProjection {
   readonly metric: OverviewMetric;
+  readonly sleepEpisode?: OverviewSleepEpisode;
   readonly unit: string;
   readonly source: string;
   readonly measuredAt: string | null;

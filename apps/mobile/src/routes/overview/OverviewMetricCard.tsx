@@ -1,3 +1,4 @@
+import { OverviewSleepStageTimeline } from './OverviewSleepStageTimeline';
 import { useState } from 'react';
 import { View } from 'react-native';
 import { ChartPlot } from '../../ui/charts';
@@ -129,10 +130,14 @@ export function OverviewMetricCard({
   readonly heartPlacement?: HeartPlacement;
 }) {
   const chartData = overviewMetricChartData(metric, chartStatus);
-  const statistic = overviewMetricStatistic(metric.metric);
+  const statistic =
+    metric.metric === 'sleep'
+      ? t('overview.sleepTimeAsleep')
+      : overviewMetricStatistic(metric.metric);
+
   const latestValue = formatOverviewMetricValue(
     metric.metric,
-    metric.latest.value,
+    metric.sleepEpisode?.asleepMinutes ?? metric.latest.value,
     metric.unit,
   );
   const accessibilityLabel = [
@@ -179,7 +184,14 @@ export function OverviewMetricCard({
             : t('overview.measurementUnknown')}
         </Text>
       </View>
-      <MeasuredOverviewMetricChart metric={metric.metric} data={chartData} />
+      {metric.metric === 'sleep' ? (
+        <OverviewSleepStageTimeline
+          episode={metric.sleepEpisode}
+          timeZone={metric.timeZone}
+        />
+      ) : (
+        <MeasuredOverviewMetricChart metric={metric.metric} data={chartData} />
+      )}
     </View>
   );
 }
