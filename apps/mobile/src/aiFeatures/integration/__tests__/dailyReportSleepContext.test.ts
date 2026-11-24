@@ -82,10 +82,12 @@ test('overlapping stages merge within a source, never count in-bed time or sum d
   ];
   const facts = dailyReportSleepContext(values, sources(values), window());
   expect(facts).toHaveLength(2);
-  expect(facts.every(f => f.text.includes('약 3시간 0분'))).toBe(true);
+  expect(
+    facts.every(f => f.text.includes('기록된 수면 시간은 3시간 0분')),
+  ).toBe(true);
   expect(facts[0]!.sourceReferences).toHaveLength(3);
-  expect(facts[0]!.text).toContain('밤 전체가 아닐 수');
-  expect(facts[0]!.text).toContain('다른 출처와 합산하지');
+  expect(facts[0]!.text).toContain('보고서 구간');
+  expect(facts[0]!.text).not.toContain('판단할 수 없어요');
 });
 
 test('DST elapsed intervals are clipped by civil-day bounds and conflicting or unknown stages do not become zero sleep', () => {
@@ -104,7 +106,7 @@ test('DST elapsed intervals are clipped by civil-day bounds and conflicting or u
   );
   expect(
     dailyReportSleepContext(values, sources(values), calendar)[0]!.text,
-  ).toContain('약 2시간 0분');
+  ).toContain('기록된 수면 시간은 2시간 0분');
   values.push(
     sample(
       'awake',
@@ -121,7 +123,7 @@ test('DST elapsed intervals are clipped by civil-day bounds and conflicting or u
   ];
   const text = dailyReportSleepContext(unknown, sources(unknown), window())[0]!
     .text;
-  expect(text).toContain('잠을 자지 않았다는 뜻은 아니');
+  expect(text).toContain('잠든 구간은 기록되지 않았어요');
   expect(text).toContain('알 수 없는 단계');
   expect(text).not.toContain('0시간');
   expect(dailyReportSleepContext([], [], window())).toEqual([]);
@@ -148,7 +150,7 @@ test('sleep interpretation enters exact consent, remains cited after save, and i
     const result = await run(calendarTestRequest());
     if (result.status !== 'completed') throw new Error(JSON.stringify(result));
     const fact = result.report.supportedContext.find(c =>
-      c.text.includes('약 3시간 0분'),
+      c.text.includes('기록된 수면 시간은 3시간 0분'),
     );
     expect(fact?.section).toBe('patterns');
     expect(fact?.sourceReferences).toEqual([
@@ -158,7 +160,7 @@ test('sleep interpretation enters exact consent, remains cited after save, and i
       consent.mock.calls[0]![0].payload,
     );
     expect(JSON.stringify(generate.mock.calls[0]![0])).toContain(
-      '약 3시간 0분',
+      '기록된 수면 시간은 3시간 0분',
     );
     const storage = createDailyReportStorage(connection.database, native.read);
     expect((await storage.lookup(result.context.identity)).status).toBe(
@@ -207,6 +209,6 @@ test('sub-minute and future intervals remain truthful and source summaries are e
   );
   const facts = dailyReportSleepContext(many, sources(many), window());
   expect(facts).toHaveLength(4);
-  expect(facts[3]!.text).toContain('최대 세 그룹');
+  expect(facts[3]!.text).toContain('일부 출처만');
   expect(facts[3]!.sourceReferences).toHaveLength(4);
 });

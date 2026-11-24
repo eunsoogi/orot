@@ -1,3 +1,4 @@
+import { emptyDailyActivityCoverage } from './dailyReportActivityCoverage';
 import { readSelectedEvidenceRows } from '../readSelectedEvidenceRows';
 import { dailyReportOccurrence } from './dailyReportOccurrence';
 import { dailyReportCandidateOrder } from './dailyReportCandidateOrder';
@@ -194,6 +195,22 @@ export async function readDailyReportSnapshot(
           doseCoverage.limitationCodes = doseCoverage.limitationCodes.filter(
             code => code !== 'medication_names_not_resolved',
           );
+      }
+      const observationCoverage = coverage.find(
+        item => item.source === 'health_observation',
+      );
+      // This is a result of the same protected query, never a second sync probe.
+      if (
+        calendar.dataWindow &&
+        !scope.sourceIds &&
+        observationCoverage?.status === 'unknown' &&
+        observationCoverage.limitationCodes.every(
+          code => code === 'source_sync_unknown',
+        )
+      ) {
+        coverage.push(
+          ...emptyDailyActivityCoverage(values, calendar.generationCutoff),
+        );
       }
       const history = await readDailyReportHistory(
         tx,

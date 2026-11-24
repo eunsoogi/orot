@@ -34,14 +34,7 @@ test('generated synthesis uses the exact consented payload and retained sources,
         (request.messages[1] as { content: string }).content,
       );
       expect(payload.context.localDate).toBe('2035-01-01');
-      expect(payload.context.coverage).toEqual(
-        expect.arrayContaining([
-          expect.objectContaining({
-            source: 'system_calendar',
-            status: 'unknown',
-          }),
-        ]),
-      );
+      expect(payload.context.coverage).toBeUndefined();
       const guidanceIndex = payload.facts.findIndex(
         (fact: { role: string }) => fact.role === 'guidance',
       );

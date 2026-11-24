@@ -150,13 +150,14 @@ test.each([
     'dailyReport.systemCalendar.notIncluded',
   ],
 ] as const)(
-  'shows one accurate note for retained %s without claiming there were no plans',
+  'retains the %s audit metadata without a report caveat',
   (code, key) => {
     const report = saved([
       { source: 'system_calendar', status: 'unknown', limitationCodes: [code] },
     ]);
     const text = conversationDailyReportText(report);
-    expect(text.split(t(key))).toHaveLength(2);
+    expect(text).not.toContain(t(key));
+    expect(report.report.coverage[0]!.limitationCodes).toEqual([code]);
     expect(text).toContain(report.report.observations[0]!.text);
   },
 );
