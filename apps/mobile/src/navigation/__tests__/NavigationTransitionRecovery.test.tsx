@@ -144,3 +144,28 @@ test.each(['resize', 'foreground'] as const)(
     expect(motions).toHaveLength(1);
   },
 );
+
+test.each(['inactive', 'background'] as const)(
+  'does not leave a shared root cover after a tab change commits during %s',
+  async phase => {
+    const original = AppState.currentState;
+    AppState.currentState = 'active';
+    try {
+      const rendered = await render(view('records'));
+      AppState.currentState = phase;
+      // A root deep link or deferred action can choose a tab during interruption.
+      // No native fade completion is delivered while the scene is suspended.
+      await rendered.rerender(view('conversation'));
+      // On the stock path model the outgoing compositor settling at opaque.
+      if (motions[0]) await act(() => motions[0]!.value.setValue(1));
+      AppState.currentState = 'active';
+      // Observe the first visible JS frame before any resumed client event or touch.
+      expectUnlocked();
+      expect(motions).toHaveLength(0);
+      expect(screen.getByTestId('retained-draft')).toBeVisible();
+      await rendered.unmount();
+    } finally {
+      AppState.currentState = original;
+    }
+  },
+);
