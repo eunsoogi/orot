@@ -5,15 +5,12 @@ import {
   observeContinuedConversationActivity,
   revokeContinuedConversationWork,
 } from './conversationContinuedWork';
-import {
-  clearDrainedConversationPause,
-  registerConversationPause,
-} from './conversationDeferredPause';
+import { registerConversationPause } from './conversationDeferredPause';
 import { adoptConversationLifetimeLease } from './conversationLifetimeLeaseAdoption';
 import { takeWarmExecution } from './conversationWarmExecutionHandoff';
 import { interruptConversationLifetime } from './conversationLifetimeInterruption';
 import { createExecutionDiagnostics } from './conversationExecutionDiagnostics';
-import { waitForWorkflowContinue } from './conversationWorkflowContinueWait';
+import { persistConversationPause } from './conversationWorkflowContinueWait';
 import { requiresConversationDecisionAbort } from './conversationApprovalBoundary';
 import type { ConversationExecutionAdapter } from './conversationExecutionLease';
 import type {
@@ -149,23 +146,13 @@ export function createConversationRequestLifetime(input: {
           ),
         onWorkflowPaused: async (
           reason: ConversationCheckpointPauseReason = 'background-paused',
-        ) => {
-          const entry = owners.get(controller);
-          if (
-            !entry ||
-            entries.get(entry.id) !== entry ||
-            controller.signal.aborted
-          )
-            return false;
-          clearDrainedConversationPause(entry);
-          entry.diagnose('workflow-checkpoint-paused', reason);
-          await entry.turn
-            .interruptRequest('interrupted', reason)
-            .catch(() => {});
-          entry.release?.();
-          entry.release = undefined;
-          return waitForWorkflowContinue(entry, input, entries);
-        },
+        ) =>
+          persistConversationPause(
+            owners.get(controller),
+            reason,
+            input,
+            entries,
+          ),
         onExecutionState: (state: 'working' | 'local' | 'decision') => {
           const entry = owners.get(controller);
           if (

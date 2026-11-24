@@ -2,7 +2,11 @@ import {
   adoptContinuedConversationLease,
   continuedOpportunityObserver,
 } from './conversationContinuedWork';
-import { requestOwnedConversationPause } from './conversationDeferredPause';
+import {
+  clearDrainedConversationPause,
+  requestOwnedConversationPause,
+} from './conversationDeferredPause';
+import type { ConversationCheckpointPauseReason } from './conversationCheckpointInterruption';
 import type { ConversationExecutionAdapter } from './conversationExecutionLease';
 import { beginConversationExecutionLease } from './conversationExecutionLease';
 import type { ConversationLifetimeEntry } from './conversationRequestLifetime';
@@ -91,4 +95,27 @@ export async function waitForWorkflowContinue(
     });
     if (entry.controller.signal.aborted) finish(false);
   });
+}
+
+/** Persist the pause before offering Continue. A Stop that wins during the write
+ * owns the short lease until its separate durable interruption fence settles. */
+export async function persistConversationPause(
+  entry: ConversationLifetimeEntry | undefined,
+  reason: ConversationCheckpointPauseReason,
+  input: Parameters<typeof waitForWorkflowContinue>[1],
+  entries: Map<number, ConversationLifetimeEntry>,
+) {
+  if (!entry) return false;
+  const current = () =>
+    entries.get(entry.id) === entry &&
+    !entry.status &&
+    !entry.controller.signal.aborted;
+  if (!current()) return false;
+  clearDrainedConversationPause(entry);
+  entry.diagnose('workflow-checkpoint-paused', reason);
+  await entry.turn.interruptRequest('interrupted', reason).catch(() => {});
+  if (!current()) return false;
+  entry.release?.();
+  entry.release = undefined;
+  return waitForWorkflowContinue(entry, input, entries);
 }
