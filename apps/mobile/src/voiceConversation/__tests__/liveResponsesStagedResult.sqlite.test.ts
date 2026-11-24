@@ -153,7 +153,11 @@ test('real app local-data root lends only current guarded reads and never a data
     const local = await openAiFeatureLocalData();
     const lease = local.borrowLiveHealthProof?.();
     expect(lease?.current()).toBe(true);
-    expect(Object.keys(lease!)).toEqual(['current', 'dispose']);
+    expect(Object.keys(lease!)).toEqual([
+      'current',
+      'beforeDispatch',
+      'dispose',
+    ]);
     await database.execute('SELECT n FROM synthetic_read_epoch');
     expect(lease?.current()).toBe(true);
     await database.execute('INSERT INTO synthetic_read_epoch VALUES (1)');
@@ -166,6 +170,50 @@ test('real app local-data root lends only current guarded reads and never a data
     expect(fresh?.current()).toBe(false);
     expect(lease?.current()).toBe(false);
     expect(local.borrowLiveHealthProof?.()?.current()).toBe(true);
+  } finally {
+    f.close();
+  }
+});
+
+test('holds the protected retirement through queued native settlement and never resends', async () => {
+  const f = await fixture();
+  try {
+    let entered!: () => void;
+    const queued = new Promise<void>(resolve => {
+      entered = resolve;
+    });
+    let acknowledge!: (delivered: boolean) => void;
+    const nativeSettlement = new Promise<boolean>(resolve => {
+      acknowledge = resolve;
+    });
+    const settle = jest.fn(() => {
+      entered();
+      return nativeSettlement;
+    });
+    const retire = jest.fn();
+    const release = jest.fn();
+    const execute = createLiveResponsesHealthToolExecutor({
+      ...f.input,
+      holdDelivery: (_call, beforeDispatch) => {
+        const unregister = beforeDispatch(retire);
+        if (!unregister) return;
+        return () => {
+          release();
+          unregister();
+        };
+      },
+      settle,
+    });
+    const running = execute(call, f.controller.signal);
+    await queued;
+    expect(settle).toHaveBeenCalledTimes(1);
+    expect(release).not.toHaveBeenCalled();
+    await f.edit();
+    expect(retire).toHaveBeenCalledTimes(1);
+    acknowledge(false);
+    await running;
+    expect(release).toHaveBeenCalledTimes(1);
+    expect(settle).toHaveBeenCalledTimes(1);
   } finally {
     f.close();
   }

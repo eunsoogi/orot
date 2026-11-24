@@ -4,6 +4,7 @@ import { LocalEvidenceReferenceRegistry } from '../aiFeatures/integration/eviden
 import { bindHealthContextTool } from '../aiFeatures/integration/bindHealthContextTool';
 import { jsonByteLength } from '../aiFeatures/integration/evidenceUtils';
 import { liveHeartRateAggregate } from './liveHeartRateAggregate';
+import { parseLiveHealthRequestScope } from './liveHealthRequestScope';
 import {
   measureLiveHealth as timed,
   measureLiveHealthSync as timedSync,
@@ -38,33 +39,6 @@ type Authority = Readonly<{
 const maxResultBytes = 8_192;
 const validId = (id: unknown): id is string =>
   typeof id === 'string' && id.length > 0 && id.length <= 256;
-function parseScope(args: string) {
-  if (typeof args !== 'string' || args.length > 1_024) return;
-  let value: unknown;
-  try {
-    value = JSON.parse(args);
-  } catch {
-    return undefined;
-  }
-  if (!value || typeof value !== 'object' || Array.isArray(value))
-    return undefined;
-  const record = value as Record<string, unknown>;
-  if (
-    Object.keys(record).length !== 2 ||
-    !Object.hasOwn(record, 'topic') ||
-    !Object.hasOwn(record, 'days') ||
-    record.topic !== 'measurements' ||
-    typeof record.days !== 'number' ||
-    !Number.isInteger(record.days) ||
-    record.days < 3 ||
-    record.days > 31
-  )
-    return undefined;
-  return Object.freeze({
-    topic: record.topic as 'measurements',
-    days: record.days,
-  });
-}
 function identity(owner: Owner) {
   return [
     owner.backend,
@@ -89,6 +63,11 @@ export function createLiveResponsesHealthToolExecutor(input: {
     output: string,
   ) => Promise<null | (() => boolean)>;
   readonly openData: () => Promise<AiFeatureLocalData>;
+  readonly holdDelivery?: (
+    call: LiveManagedHealthCall,
+    beforeDispatch: (retire: () => void) => (() => void) | undefined,
+    signal: AbortSignal,
+  ) => (() => void) | undefined;
   readonly settle: (
     callId: string,
     challengeId: string,
@@ -124,7 +103,9 @@ export function createLiveResponsesHealthToolExecutor(input: {
       seen.add(call.challengeId);
       started = true;
       const scope =
-        call.name === 'orot_health_context' ? parseScope(call.args) : undefined;
+        call.name === 'orot_health_context'
+          ? parseLiveHealthRequestScope(call.args)
+          : undefined;
       if (!scope) return;
       const owner = await timed('grant_lookup', () => input.resolveOwner(call));
       if (
@@ -227,12 +208,21 @@ export function createLiveResponsesHealthToolExecutor(input: {
           timed('source_reproof', () =>
             registry.revalidateEvidence(result.items, signal),
           ),
-      }).admit(approved => {
-        // The native bridge retains its one-result guard.
-        started = false;
-        return timed('native_handoff', () =>
-          input.settle(call.callId, call.challengeId, approved),
+      }).admit(async approved => {
+        const release = input.holdDelivery?.(
+          call,
+          proof.beforeDispatch,
+          signal,
         );
+        if (input.holdDelivery && !release) return;
+        started = false;
+        try {
+          await timed('native_handoff', () =>
+            input.settle(call.callId, call.challengeId, approved),
+          );
+        } finally {
+          release?.();
+        }
       });
     } catch {
       // Protected read/approval failures cannot produce a provider result or imply consent.

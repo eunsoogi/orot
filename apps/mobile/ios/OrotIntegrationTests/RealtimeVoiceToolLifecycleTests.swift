@@ -166,6 +166,12 @@ extension RealtimeVoiceLifecycleTests {
         duplicate.insert(frames[0], at: 1)
         XCTAssertNil(LiveQueuedToolPermit(current: { true }).prepare(duplicate))
         XCTAssertNil(LiveQueuedToolPermit(current: { true }).prepare(Array(frames.prefix(1))))
+
+        verifyAQueuedResultCannotSubmitAfterExactSourceRetirement()
+        verifyOutputDoesNotAcknowledgeUntilTheExactContinuationSubmits()
+        verifyClearingAfterFirstSubmissionSuppressesContinuation()
+        verifyDeadlineRejectsBothUnissuedAndPartiallySubmittedStalledQueues()
+        verifyLastHopRejectsElapsedDeadlineBeforeItsMainQueueCallbackRuns()
     }
 
     func testManagedToolPortCannotBorrowAnotherLiveCallEpochOrResumeStaleQueue() throws {
