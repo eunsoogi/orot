@@ -9,6 +9,8 @@ export interface DisplayMessage extends RagConversationMessage {
   readonly savedPossibilityNarrative?: true;
   /** App-owned terminal clarification and its question are for display only. */
   readonly localClarification?: true;
+  /** A retained photo reply is prose, never an actionable report or image. */
+  readonly directPhotoReply?: true;
   readonly archivedCitationTarget?: import('./useArchivedCitationOpen').ArchivedCitationTarget;
   readonly savedCitations?: readonly import('./savedArchivedCitations').SavedArchivedCitation[];
   readonly restoredHistory?: true;

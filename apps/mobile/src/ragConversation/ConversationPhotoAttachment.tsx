@@ -37,7 +37,7 @@ export function ConversationPhotoAttachment({
   readonly status: 'empty' | 'preparing' | 'ready' | 'transferring' | 'error';
   readonly previewData?: string;
   readonly deliveryReady?: boolean;
-  readonly deliveryMode?: 'ocr';
+  readonly deliveryMode?: 'ocr' | 'image';
   readonly hasPhoto?: boolean;
   readonly errorReason?: PhotoDraftFailure;
   readonly cleanupPending?: boolean;
@@ -108,14 +108,18 @@ export function ConversationPhotoAttachment({
           )}
         </Text>
       ) : null}
-      {status === 'ready' && (!deliveryReady || deliveryMode !== 'ocr') ? (
+      {status === 'ready' && (!deliveryReady || !deliveryMode) ? (
         <Text accessibilityLiveRegion="polite" style={styles.status}>
           {t('ragConversation.photo.unavailable')}
         </Text>
       ) : null}
-      {status === 'ready' && deliveryReady && deliveryMode === 'ocr' ? (
+      {status === 'ready' && deliveryReady && deliveryMode ? (
         <Text style={styles.status}>
-          {t('ragConversation.photo.ocrDisclosure')}
+          {t(
+            deliveryMode === 'image'
+              ? 'ragConversation.photo.imageDisclosure'
+              : 'ragConversation.photo.ocrDisclosure',
+          )}
         </Text>
       ) : null}
       {cleanupPending && onRetryCleanup ? (

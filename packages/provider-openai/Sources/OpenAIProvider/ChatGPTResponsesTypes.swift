@@ -4,6 +4,7 @@ import Foundation
 public enum ChatGPTResponsesMessage: Equatable, Sendable {
     case system(String)
     case user(String)
+    case userPhoto(text: String, normalizedJPEG: Data)
     case assistant(String)
     case functionCall(callID: String, name: String, argumentsJSON: String)
     case functionCallOutput(callID: String, output: String)
@@ -42,6 +43,15 @@ public struct ChatGPTResponsesRequest: Equatable, Sendable {
     public let tools: [ChatGPTResponsesToolDefinition]
     public let toolChoice: String?
     public let publicWebQuery: String?
+    var containsDirectPhoto: Bool {
+        messages.contains {
+            if case .userPhoto = $0 {
+                return true
+            }
+            return false
+        }
+    }
+
     /// Native-only transport identity. Never included in a remote request.
     public let transportScope: String?
 

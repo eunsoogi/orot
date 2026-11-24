@@ -69,7 +69,7 @@ export function ConversationComposer({
     readonly onRetryCleanup?: () => void;
     /** The session owner has bound the selected attachment to its actual sender. */
     readonly deliveryReady?: boolean;
-    readonly deliveryMode?: 'ocr';
+    readonly deliveryMode?: 'ocr' | 'image';
     readonly onSelect: () => void;
     readonly onRemove: () => void;
   };
@@ -167,13 +167,13 @@ export function ConversationComposer({
                   !(
                     photo?.status === 'ready' &&
                     photo.deliveryReady &&
-                    photo.deliveryMode === 'ocr'
+                    Boolean(photo.deliveryMode)
                   )) ||
                 photo?.status === 'preparing' ||
                 photo?.status === 'transferring' ||
                 photo?.status === 'error' ||
                 (photo?.status === 'ready' &&
-                  (!photo.deliveryReady || photo.deliveryMode !== 'ocr'))))
+                  (!photo.deliveryReady || !photo.deliveryMode))))
           }
           onPress={() => {
             // Guard the current callback as well as the native disabled state.

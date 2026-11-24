@@ -25,6 +25,11 @@ public final class OpenAIProviderModule: RCTEventEmitter {
         startNativeResponse(payload, requestId: requestId, issuedClientID: issuedClientID, steerable: false)
     }
 
+    @objc(startPhotoResponse:requestId:issuedClientID:)
+    public func startPhotoResponse(_ payload: NSDictionary, requestId: String, issuedClientID: String) {
+        startNativeResponse(payload, requestId: requestId, issuedClientID: issuedClientID, steerable: false, photo: true)
+    }
+
     @objc(startSteerableResponse:requestId:issuedClientID:)
     public func startSteerableResponse(_ payload: NSDictionary, requestId: String, issuedClientID: String) {
         startNativeResponse(payload, requestId: requestId, issuedClientID: issuedClientID, steerable: true)
@@ -44,7 +49,7 @@ public final class OpenAIProviderModule: RCTEventEmitter {
         }
     }
 
-    private func startNativeResponse(_ payload: NSDictionary, requestId: String, issuedClientID: String, steerable: Bool) {
+    private func startNativeResponse(_ payload: NSDictionary, requestId: String, issuedClientID: String, steerable: Bool, photo: Bool = false) {
         let registration = responseRequests.register(requestId, issuedClientID: issuedClientID) {
             [weak self] requestID, packet in
             self?.sendEvent(
@@ -69,7 +74,7 @@ public final class OpenAIProviderModule: RCTEventEmitter {
         let task = Task { [weak self] in
             guard let self, responseRequests.isActive(slot) else { return }
             do {
-                let request = try ChatGPTResponsesRequestDecoder.decode(payload)
+                let request = try ChatGPTResponsesRequestDecoder.decode(payload, allowDirectPhoto: photo)
                 var handle: ChatGPTSteerableResponse?
                 let stream: AsyncThrowingStream<ChatGPTSteerableEvent, Error>
                 if steerable {

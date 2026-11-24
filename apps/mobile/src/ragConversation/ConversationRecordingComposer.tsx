@@ -12,7 +12,7 @@ import type { ConversationScreenProps } from './ConversationScreenProps';
 
 type Props = Omit<
   ComponentProps<typeof ConversationSteeringComposer>,
-  'onSend' | 'onCancel'
+  'onSend' | 'onCancel' | 'renderTrailingAction'
 > & {
   readonly routeKey?: string;
   readonly isEntryCurrent?: () => boolean;
@@ -70,10 +70,11 @@ export function ConversationRecordingComposer({
         photo={
           photo && {
             ...photo,
-            pickerDisabled: photo.pickerDisabled || !!attachment.selected,
+            pickerDisabled:
+              photo.pickerDisabled || attachment.open || !!attachment.selected,
           }
         }
-        trailingAction={
+        renderTrailingAction={directPhotoOwned =>
           attachment.enabled ? (
             <>
               <ComposerInlineAction
@@ -81,6 +82,7 @@ export function ConversationRecordingComposer({
                 accessibilityLabel={t('ragConversation.recording.select')}
                 disabled={
                   composer.disabled ||
+                  directPhotoOwned ||
                   session.busy ||
                   !!session.preparingSend ||
                   Boolean(photo && photo.status !== 'empty')
