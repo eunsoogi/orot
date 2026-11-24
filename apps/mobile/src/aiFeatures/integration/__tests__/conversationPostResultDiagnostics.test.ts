@@ -117,6 +117,7 @@ test('history exceptions propagate unchanged while false validity never starts c
   expect(await fixture(async () => false).run()).toEqual({
     status: 'failure',
     kind: 'retrieval_failed',
+    discardUnverifiedDraft: true,
   });
   expect(diagnostic.mock.calls.at(-1)).toEqual([
     'rag',

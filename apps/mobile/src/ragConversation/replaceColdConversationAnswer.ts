@@ -2,7 +2,10 @@ import type { ConversationCheckpointPauseReason } from './conversationCheckpoint
 import { getRagConversationFailureCopy } from './copy';
 import type { DisplayMessage } from './ConversationMessage';
 import type { ConversationSession } from './conversationSessionTypes';
-import type { RagConversationOutcome } from './outcome';
+import {
+  conversationEvidenceRejectsDraft,
+  type RagConversationOutcome,
+} from './outcome';
 import type { ColdConversationSourceOwner } from '../aiFeatures/integration/coldConversationSourceResolvers';
 import { answerUsesDeletedHealthEvidence } from './conversationHealthDeletion';
 
@@ -71,16 +74,39 @@ export function replaceColdConversationAnswer(input: {
 export function withoutColdRecovery(
   session: ConversationSession,
   responseId: number,
+  outcome?: RagConversationOutcome,
 ) {
-  return session.messages.map(message =>
-    message.id === responseId
-      ? {
-          ...message,
-          coldResume: undefined,
-          ...coldPreviewPatch(session, message),
-        }
-      : message,
-  );
+  const rejectDraft = outcome && conversationEvidenceRejectsDraft(outcome);
+  return session.messages.flatMap(message => {
+    if (message.id !== responseId) return [message];
+    if (rejectDraft) {
+      const pending = session.pendingMessage;
+      const opening =
+        pending?.id === responseId && !pending.withholdHealthBody
+          ? (pending.initialResponse ?? message.initialResponse)
+          : undefined;
+      // Preserve only the independently reviewed opening on its exact original turn.
+      return opening && opening.source !== 'receipt'
+        ? [
+            {
+              id: message.id,
+              role: 'assistant' as const,
+              content: '',
+              initialResponse: opening,
+              rejectedOpeningTurnId: message.toolMessageId,
+              incomplete: true,
+            },
+          ]
+        : [];
+    }
+    return [
+      {
+        ...message,
+        coldResume: undefined,
+        ...coldPreviewPatch(session, message),
+      },
+    ];
+  });
 }
 
 /** Terminal cold outcomes cannot offer the already-claimed execution again. */

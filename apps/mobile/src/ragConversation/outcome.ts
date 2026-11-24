@@ -50,10 +50,23 @@ export type RagConversationOutcome =
   | {
       readonly status: 'failure';
       readonly kind: RagConversationFailureKind;
+      /** Final evidence admission rejected after dispatch: no opaque body may survive. */
+      readonly discardUnverifiedDraft?: true;
       /** Safe retry, refresh, or evidence-review guidance for a saved-question preflight failure. */
       readonly visitQuestionRecovery?: VisitQuestionPreflightRecovery;
     }
   | { readonly status: 'unavailable' };
+
+/** Evidence rejection is terminal for opaque UI drafts, not for independent reviews. */
+export function conversationEvidenceRejectsDraft(
+  outcome: RagConversationOutcome,
+) {
+  return (
+    outcome.status === 'failure' &&
+    (outcome.kind === 'stale_evidence' ||
+      outcome.discardUnverifiedDraft === true)
+  );
+}
 
 /** Maps closed provider error codes without copying request or provider text into UI state. */
 export function providerFailureKind(

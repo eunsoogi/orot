@@ -1,5 +1,9 @@
 import { getRagConversationFailureCopy } from './copy';
-import type { RagConversationFailureKind } from './outcome';
+import {
+  conversationEvidenceRejectsDraft,
+  type RagConversationFailureKind,
+  type RagConversationOutcome,
+} from './outcome';
 import type {
   ConversationSession,
   PendingTurn,
@@ -14,12 +18,21 @@ export function conversationFailureReporter(
   id: number,
 ) {
   return (
-    kind: RagConversationFailureKind,
+    failure:
+      | RagConversationFailureKind
+      | Extract<RagConversationOutcome, { status: 'failure' }>,
     partialCopy?: string,
     rejectedOpeningTurnId?: string,
   ) => {
+    const kind = typeof failure === 'string' ? failure : failure.kind;
     const failureCopy = getRagConversationFailureCopy(kind);
-    if (kind === 'validation_failed' || kind === 'provider_refused') {
+    if (
+      kind === 'validation_failed' ||
+      kind === 'provider_refused' ||
+      (typeof failure !== 'string'
+        ? conversationEvidenceRejectsDraft(failure)
+        : kind === 'stale_evidence')
+    ) {
       const { pendingMessage: pending, messages } = find(id);
       const opening = pending?.initialResponse;
       // A separately reviewed opening may stay visible. A receipt is not an
