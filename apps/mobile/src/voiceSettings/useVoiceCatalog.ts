@@ -63,7 +63,7 @@ export function useVoiceCatalog() {
     const unsubscribe = voiceSettingsStore.subscribe(() => {
       if (
         revision.current !== null &&
-        !voiceSettingsStore.accountRevisionMatches(revision.current)
+        voiceSettingsStore.accountRevisionMatches?.(revision.current) !== true
       ) {
         // Retire the old owner's choices before the next keychain read settles.
         revision.current = null;

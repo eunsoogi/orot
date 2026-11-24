@@ -8,6 +8,7 @@ export function modelSettingsVoiceFixture() {
     })),
     save: jest.fn(async () => {}),
     accountStatus: jest.fn(async () => ({ connected: false, revision: 1 })),
+    accountRevisionMatches: (revision: number) => revision === 1,
     discoverModels: jest.fn(async () => ({ revision: 1, ids: [] as string[] })),
     subscribe: jest.fn(() => () => {}),
   };

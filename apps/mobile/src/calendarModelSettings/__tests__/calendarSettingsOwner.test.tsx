@@ -29,6 +29,7 @@ test('replacement calendar and voice owners discard the old draft and same-revis
     voice: {
       ...modelSettingsVoiceFixture(),
       accountStatus: async () => ({ connected: true, revision: 1 }),
+      accountRevisionMatches: revision => revision === 1,
       discoverModels: async () => ({ revision: 1, ids: ['gpt-6-luna'] }),
     },
     calendarOption: modelId => ({
@@ -108,6 +109,7 @@ test('keeps the Decisions label before, during and after explicit catalog discov
     voice: {
       ...modelSettingsVoiceFixture(),
       accountStatus: async () => ({ connected: true, revision: 3 }),
+      accountRevisionMatches: revision => revision === 3,
       discoverModels,
     },
     calendarOption: modelId => ({

@@ -48,6 +48,7 @@ export function createSettingsConsentUiServices(
         });
       },
       accountStatus: async () => ({ connected: true, revision: 1 }),
+      accountRevisionMatches: revision => revision === 1,
       discoverModels: async signal => {
         if (signal?.aborted) throw new Error('Synthetic catalog cancelled');
         return {
