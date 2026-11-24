@@ -61,7 +61,8 @@ final class LiveResponsesToolBridge {
     private var owner: Owner?
     private var delegation: (id: String, response: String, offset: Int)?
     private var pending: [Request] = []
-    private var received = Set<String>()
+    // Only event kind is retained beside each receipt ID. The one pending Request holds the validated scope.
+    private var received: [String: Bool] = [:]
     private var created = false, spent = false
     private var progress = 0
     private var approvalSettled = false, retired = false
@@ -90,8 +91,26 @@ final class LiveResponsesToolBridge {
         if delegation == nil, envelope["type"] as? String == "session.input_transcript.delta" {
             return
         }
-        guard let id = envelope["event_id"] as? String, RealtimeVoiceToolLease.validID(id),
-              received.insert(id).inserted else { return }
+        guard let id = envelope["event_id"] as? String, RealtimeVoiceToolLease.validID(id) else { return }
+        let event = envelope["event"] as? [String: Any]
+        let repeatedItem = event?["item"] as? [String: Any]
+        let itemKind = repeatedItem?["type"] as? String
+        let scopedToolItem = envelope["type"] as? String == "response.event"
+            && (envelope["delegation_id"] as? String).map { $0 == delegation?.id } == true
+            && event?["type"] as? String == "response.output_item.done"
+            && itemKind != "message" && itemKind != "reasoning"
+        if let prior = received[id] {
+            if prior || scopedToolItem {
+                // Same receipt only if it still identifies the same validated request.
+                // The terminal event has no output list to recover a conflicting item from.
+                guard prior, scopedToolItem, let item = repeatedItem, let delegation,
+                      let previous = pending.first,
+                      toolRequest(item, owner: owner, delegationID: delegation.id, responseID: delegation.response) == previous
+                else { retire(); return }
+            }
+            return
+        }
+        received[id] = scopedToolItem
         if envelope["type"] as? String == "session.delegation.created" {
             guard let item = envelope["delegation"] as? [String: Any], item["type"] as? String == "delegation",
                   item["target"] as? String == "responses", let delegationID = item["id"] as? String,
@@ -136,13 +155,9 @@ final class LiveResponsesToolBridge {
             if item["type"] as? String == "message" || item["type"] as? String == "reasoning" {
                 return
             }
-            guard item["type"] as? String == "function_call", let name = item["name"] as? String,
-                  name == admission.functionName, let functionID = item["call_id"] as? String,
-                  RealtimeVoiceToolLease.validID(functionID), let arguments = item["arguments"] as? String,
-                  let fields = Self.arguments(arguments, tool: name) else { retire(); return }
-            let request = Request(owner: owner, delegationID: delegation.id, responseID: delegation.response,
-                                  functionID: functionID, name: name, query: fields["query"] as? String,
-                                  topic: fields["topic"] as? String, days: fields["days"] as? Int)
+            guard let request = toolRequest(item, owner: owner, delegationID: delegation.id, responseID: delegation.response)
+            else { retire(); return }
+            let functionID = request.functionID
             if let previous = pending.first(where: { $0.functionID == functionID }) {
                 if previous != request {
                     retire()
@@ -174,6 +189,15 @@ final class LiveResponsesToolBridge {
                 runBatch([], current: current, send: send)
             }
         }
+    }
+
+    private func toolRequest(_ item: [String: Any], owner: Owner, delegationID: String, responseID: String) -> Request? {
+        guard item["type"] as? String == "function_call", let name = item["name"] as? String,
+              name == admission.functionName, let functionID = item["call_id"] as? String,
+              RealtimeVoiceToolLease.validID(functionID), let arguments = item["arguments"] as? String,
+              let fields = Self.arguments(arguments, tool: name) else { return nil }
+        return Request(owner: owner, delegationID: delegationID, responseID: responseID, functionID: functionID,
+                       name: name, query: fields["query"] as? String, topic: fields["topic"] as? String, days: fields["days"] as? Int)
     }
 
     private func runBatch(_ results: [(Request, String)], current: @escaping () -> Bool,
