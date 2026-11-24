@@ -39,8 +39,14 @@ function exactImportedGroup(references: readonly EvidenceReference[]) {
   if (!source || references.length < 2 || references.length > 50) return;
   const ids = new Set<string>();
   for (const reference of references) {
-    const locator = reference.locator as Record<string, unknown> | undefined;
-    if (reference.sourceId !== source || locator?.kind === 'manual_history')
+    const locator = reference.locator;
+    if (
+      reference.sourceId !== source ||
+      (locator &&
+        typeof locator === 'object' &&
+        !Array.isArray(locator) &&
+        locator.kind === 'manual_history')
+    )
       return;
     for (const id of [
       source,
