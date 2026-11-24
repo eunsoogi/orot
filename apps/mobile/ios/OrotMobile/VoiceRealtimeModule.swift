@@ -39,7 +39,7 @@ final class VoiceRealtimeModule: RCTEventEmitter {
     func openLiveCall(_ identifier: String, model: String, apiKey: String, options: NSDictionary,
                       resolver resolve: @escaping RCTPromiseResolveBlock, rejecter reject: @escaping RCTPromiseRejectBlock)
     {
-        DispatchQueue.main.async {
+        DispatchQueue.main.async { [self] in
             guard self.active == nil else { reject("VOICE_BUSY", "Voice is already active.", nil); return }
             guard Set(options.allKeys.compactMap { $0 as? String }).isSubset(of: ["language", "voice", "responsesGrant"]),
                   let language = options["language"] as? String, let voice = options["voice"] as? String
