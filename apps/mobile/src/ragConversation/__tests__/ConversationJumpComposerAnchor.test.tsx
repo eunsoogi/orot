@@ -1,4 +1,4 @@
-import { fireEvent, render, screen } from '@testing-library/react-native';
+import { act, fireEvent, render, screen } from '@testing-library/react-native';
 import { ScrollView, Text } from 'react-native';
 import { ConversationComposer } from '../ConversationComposer';
 import { ConversationHistory } from '../ConversationHistory';
@@ -123,8 +123,11 @@ test('the above-field hit target floats over only passive padding and still uses
   );
   const view = await render(scenario());
   const measured = (id: string, frame: { y: number; height: number }) =>
-    fireEvent(screen.getByTestId(id), 'layout', {
-      nativeEvent: { layout: { x: 0, width: 300, ...frame } },
+    act(() => {
+      // Native onLayout belongs to this node; don't bubble to the outer host.
+      screen.getByTestId(id).props.onLayout?.({
+        nativeEvent: { layout: { x: 0, width: 300, ...frame } },
+      });
     });
   const overlayId = 'conversation-floating-composer-overlay';
   const frameId = 'rag-conversation-composer';
