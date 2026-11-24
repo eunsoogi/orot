@@ -1,14 +1,14 @@
-import { stageLiveResponsesResult } from "./stageLiveResponsesResult";
-import type { AiFeatureLocalData } from "../aiFeatures/integration/localData";
-import { LocalEvidenceReferenceRegistry } from "../aiFeatures/integration/evidenceRegistry";
-import { bindHealthContextTool } from "../aiFeatures/integration/bindHealthContextTool";
-import { jsonByteLength } from "../aiFeatures/integration/evidenceUtils";
-import { liveHeartRateAggregate } from "./liveHeartRateAggregate";
-import { parseLiveHealthRequestScope } from "./liveHealthRequestScope";
+import { stageLiveResponsesResult } from './stageLiveResponsesResult';
+import type { AiFeatureLocalData } from '../aiFeatures/integration/localData';
+import { LocalEvidenceReferenceRegistry } from '../aiFeatures/integration/evidenceRegistry';
+import { bindHealthContextTool } from '../aiFeatures/integration/bindHealthContextTool';
+import { jsonByteLength } from '../aiFeatures/integration/evidenceUtils';
+import { liveHeartRateAggregate } from './liveHeartRateAggregate';
+import { parseLiveHealthRequestScope } from './liveHealthRequestScope';
 import {
   measureLiveHealth as timed,
   measureLiveHealthSync as timedSync,
-} from "./liveHealthLatency";
+} from './liveHealthLatency';
 export type LiveManagedHealthCall = Readonly<{
   callId: string;
   sessionId: string | number;
@@ -20,16 +20,16 @@ export type LiveManagedHealthCall = Readonly<{
   args: string;
 }>;
 type Owner = Readonly<{
-  backend: "openai-live-responses";
+  backend: 'openai-live-responses';
   backendModel: string;
-  recipient: "OpenAI Responses (Live)";
-  resultKind: "health_aggregate";
+  recipient: 'OpenAI Responses (Live)';
+  resultKind: 'health_aggregate';
   grantID: string;
   generation: string;
   credentialEpoch: string;
   current(): boolean;
 }>;
-type Scope = Readonly<{ topic: "measurements"; days: number }>;
+type Scope = Readonly<{ topic: 'measurements'; days: number }>;
 type Authority = Readonly<{
   call: LiveManagedHealthCall;
   owner: Owner;
@@ -38,7 +38,7 @@ type Authority = Readonly<{
 }>;
 const maxResultBytes = 8_192;
 const validId = (id: unknown): id is string =>
-  typeof id === "string" && id.length > 0 && id.length <= 256;
+  typeof id === 'string' && id.length > 0 && id.length <= 256;
 function identity(owner: Owner) {
   return [
     owner.backend,
@@ -103,7 +103,7 @@ export function createLiveResponsesHealthToolExecutor(input: {
       seen.add(call.challengeId);
       started = true;
       const scope =
-        call.name === "orot_health_context"
+        call.name === 'orot_health_context'
           ? parseLiveHealthRequestScope(call.args)
           : undefined;
       const challengeProtected = () =>
@@ -115,13 +115,13 @@ export function createLiveResponsesHealthToolExecutor(input: {
       // Proof the native boundary before fetching the initial receipt; held
       // later approvals still require a new receipt after each protection check.
       if (!scope || !(await confirmProtection(challengeProtected))) return;
-      const owner = await timed("grant_lookup", () => input.resolveOwner(call));
+      const owner = await timed('grant_lookup', () => input.resolveOwner(call));
       if (
         !owner ||
-        owner.backend !== "openai-live-responses" ||
-        owner.recipient !== "OpenAI Responses (Live)" ||
-        owner.resultKind !== "health_aggregate" ||
-        !["gpt-6-luna", "gpt-6-sol"].includes(owner.backendModel) ||
+        owner.backend !== 'openai-live-responses' ||
+        owner.recipient !== 'OpenAI Responses (Live)' ||
+        owner.resultKind !== 'health_aggregate' ||
+        !['gpt-6-luna', 'gpt-6-sol'].includes(owner.backendModel) ||
         !/^[\da-f]{64}$/u.test(owner.generation) ||
         !/^[\da-f]{64}$/u.test(owner.credentialEpoch) ||
         owner.grantID !== `${owner.generation}-model`
@@ -135,7 +135,7 @@ export function createLiveResponsesHealthToolExecutor(input: {
         captured.current() === true &&
         latest.current() === true;
       const reproof = () =>
-        timed("owner_reproof", async () => {
+        timed('owner_reproof', async () => {
           if (!(await confirmProtection(current))) return false;
           const fresh = await input.resolveOwner(call);
           if (
@@ -149,26 +149,26 @@ export function createLiveResponsesHealthToolExecutor(input: {
         });
       if (!current()) return;
       const authority = Object.freeze({ call, owner: captured, scope, signal });
-      const confirmed = await timed("local_confirmation", () =>
+      const confirmed = await timed('local_confirmation', () =>
         input.confirm(authority),
       );
       if (confirmed !== true || !(await reproof())) return;
-      const data = await timed("data_open", () => input.openData());
+      const data = await timed('data_open', () => input.openData());
       if (!current()) return;
       const registry = new LocalEvidenceReferenceRegistry();
-      const candidate = bindHealthContextTool(data, registry, "rag");
+      const candidate = bindHealthContextTool(data, registry, 'rag');
       const parsed = candidate?.parseInput({
         topics: [scope.topic],
         days: scope.days,
-        detail: "summary",
+        detail: 'summary',
       });
       if (!candidate || !parsed || !current()) return;
-      const result = await timed("evidence_lookup", () =>
+      const result = await timed('evidence_lookup', () =>
         candidate.search({
           operationRunId: call.responseId,
           operationKey: call.toolCallId,
           input: parsed,
-          allowedScope: { sourceKinds: ["personal_record"] },
+          allowedScope: { sourceKinds: ['personal_record'] },
           resultLimit: 1,
           maxPayloadBytes: maxResultBytes,
           signal,
@@ -176,15 +176,15 @@ export function createLiveResponsesHealthToolExecutor(input: {
       );
       if (
         !current() ||
-        "status" in result ||
+        'status' in result ||
         result.items.length !== 1 ||
-        result.items.some((item) => item.sourceKind !== "personal_record") ||
+        result.items.some(item => item.sourceKind !== 'personal_record') ||
         result.coverage.some(
-          (coverage) => coverage.truncated || coverage.gaps.length,
+          coverage => coverage.truncated || coverage.gaps.length,
         )
       )
         return;
-      const payload = timedSync("result_projection", () =>
+      const payload = timedSync('result_projection', () =>
         liveHeartRateAggregate(result.items[0]!.content, scope.days),
       );
       if (
@@ -194,7 +194,7 @@ export function createLiveResponsesHealthToolExecutor(input: {
       )
         return;
       const output = JSON.stringify(payload);
-      const authorized = await timed("result_confirmation", () =>
+      const authorized = await timed('result_confirmation', () =>
         input.authorizeResult(authority, output),
       );
       if (!authorized || !authorized() || !(await reproof())) return;
@@ -207,10 +207,10 @@ export function createLiveResponsesHealthToolExecutor(input: {
         proof,
         current: () => current() && authorized(),
         reproveSource: () =>
-          timed("source_reproof", () =>
+          timed('source_reproof', () =>
             registry.revalidateEvidence(result.items, signal),
           ),
-      }).admit(async (approved) => {
+      }).admit(async approved => {
         const release = input.holdDelivery?.(
           call,
           proof.beforeDispatch,
@@ -219,7 +219,7 @@ export function createLiveResponsesHealthToolExecutor(input: {
         if (input.holdDelivery && !release) return;
         started = false;
         try {
-          await timed("native_handoff", () =>
+          await timed('native_handoff', () =>
             input.settle(call.callId, call.challengeId, approved),
           );
         } finally {
