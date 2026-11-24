@@ -57,6 +57,7 @@ final class LiveResponsesToolBridge {
     typealias Request = LiveResponsesAdmission.Request
 
     private let admission: LiveResponsesAdmission
+    private let registry: LiveNativeToolRegistry
     private let discard: () -> Void
     private var owner: Owner?
     private var delegation: (id: String, response: String, offset: Int)?
@@ -67,8 +68,8 @@ final class LiveResponsesToolBridge {
     private var progress = 0
     private var approvalSettled = false, retired = false
     private var cancel: (() -> Void)?
-    init(admission: LiveResponsesAdmission, discard: @escaping () -> Void) {
-        self.admission = admission; self.discard = discard
+    init(admission: LiveResponsesAdmission, registry: LiveNativeToolRegistry, discard: @escaping () -> Void) {
+        self.admission = admission; self.registry = registry; self.discard = discard
     }
 
     func retire() {
@@ -193,7 +194,7 @@ final class LiveResponsesToolBridge {
 
     private func toolRequest(_ item: [String: Any], owner: Owner, delegationID: String, responseID: String) -> Request? {
         guard item["type"] as? String == "function_call", let name = item["name"] as? String,
-              name == admission.functionName, let functionID = item["call_id"] as? String,
+              registry.allows(name), let functionID = item["call_id"] as? String,
               RealtimeVoiceToolLease.validID(functionID), let arguments = item["arguments"] as? String,
               let fields = Self.arguments(arguments, tool: name) else { return nil }
         return Request(owner: owner, delegationID: delegationID, responseID: responseID, functionID: functionID,

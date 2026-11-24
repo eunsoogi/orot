@@ -45,7 +45,8 @@ extension RealtimeVoiceCall {
                     }
                     var event = Self.configuration(model: model, language: language, voice: voice)
                     if let managedAdmission {
-                        guard let configuration = managedAdmission.configuration(),
+                        guard let registry = LiveNativeToolRegistry(admission: managedAdmission),
+                              let configuration = registry.configuration(for: managedAdmission),
                               var session = event["session"] as? [String: Any],
                               socket.admitResponsesTransport({ [weak self] in
                                   guard let self else { return false }
@@ -53,8 +54,9 @@ extension RealtimeVoiceCall {
                               }) else { fail(); return }
                         managedResponsesTransport = true
                         session["delegation"] = configuration
+                        session["instructions"] = Self.instructions(language: language, tools: registry.eligible)
                         event["session"] = session
-                        managedResponses = LiveResponsesToolBridge(admission: managedAdmission) { [weak self] in
+                        managedResponses = LiveResponsesToolBridge(admission: managedAdmission, registry: registry) { [weak self] in
                             guard let self, liveSocketEpoch == epoch else { return }
                             if socket.discardManagedToolFrames() {
                                 fail()
@@ -91,16 +93,18 @@ extension RealtimeVoiceCall {
         if voice != "default" {
             audio["output"] = ["voice": voice]
         }
-        let base = "You are Orot, a helpful voice assistant. Speak concisely. Do not claim to access records or perform actions."
-        let instructions = switch language {
-        case "ko": base + " Prefer Korean in this conversation."
-        case "en": base + " Prefer English in this conversation."
-        default: base
-        }
-        // Register neither tools nor an automatic Responses delegation.
-        let session: [String: Any] = ["model": model, "audio": audio, "instructions": instructions,
+        // Audio-only startup registers neither tools nor automatic Responses delegation.
+        let session: [String: Any] = ["model": model, "audio": audio, "instructions": instructions(language: language),
                                       "delegation": ["type": "client"]]
         return ["type": "session.start", "session": session]
+    }
+
+    static func instructions(language: String, tools: [LiveNativeToolRegistry.Name] = []) -> String {
+        let base = "You are Orot, a helpful voice assistant. Speak concisely. "
+        let capability = tools.isEmpty ? "Do not claim to access records or perform actions." :
+            tools.map(\.instruction).joined(separator: " ")
+        return base + capability + (language == "ko" ? " Prefer Korean in this conversation." :
+            language == "en" ? " Prefer English in this conversation." : "")
     }
 
     func pause(_ identifier: String) throws {
