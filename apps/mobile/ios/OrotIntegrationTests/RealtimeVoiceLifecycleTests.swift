@@ -30,6 +30,7 @@ final class RealtimeVoiceLifecycleTests: OrotFailFastTestCase {
     }
 
     func testSessionConfigurationGatesAudioAndStopClosesEverything() async throws {
+        try await assertConnectingCueFencesCaptureAndDoesNotRepeatOnResume()
         try RealtimeVoiceNativeRegistryAssertions.assertAudioOnlySessionAdvertisesNoToolsOrRecordAccess()
         try RealtimeVoiceNativeRegistryAssertions.assertExactOwnedRegistryMatchesWireAndRejectsUnknownOrRevokedAdmission()
         let audio = Audio(), socket = Socket()
@@ -106,6 +107,7 @@ final class RealtimeVoiceLifecycleTests: OrotFailFastTestCase {
     }
 
     func testOldCaptureFailureCannotStopNewCall() async throws {
+        try await assertConnectingCueWaitsForAdmissionAndLateStopCannotSendOnNextAttempt()
         let audio = Audio(), socket = Socket()
         let call = fixture(audio, socket)
         await opening(call, socket: socket)

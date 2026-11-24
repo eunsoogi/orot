@@ -3,7 +3,7 @@ import Foundation
 import XCTest
 
 extension RealtimeVoiceLifecycleTests {
-    func testConnectingCueFencesCaptureAndDoesNotRepeatOnResume() async throws {
+    func assertConnectingCueFencesCaptureAndDoesNotRepeatOnResume() async throws {
         let cue = HeldConnectingCue(), socket = Socket(), audio = Audio()
         let call = connectingFixture(audio, socket, cue)
         await opening(call, socket: socket)
@@ -29,7 +29,7 @@ extension RealtimeVoiceLifecycleTests {
         try call.stop("call")
     }
 
-    func testConnectingCueWaitsForAdmissionAndLateStopCannotSendOnNextAttempt() async throws {
+    func assertConnectingCueWaitsForAdmissionAndLateStopCannotSendOnNextAttempt() async throws {
         let cue = HeldConnectingCue(), socket = Socket(), audio = Audio()
         var allowed = false
         let call = connectingFixture(audio, socket, cue, allowed: { allowed })
