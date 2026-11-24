@@ -1,3 +1,4 @@
+import { hasTypedHeartRateSource } from './typedHeartRateReusePolicy';
 import type {
   EvidenceBatch,
   EvidenceItem,
@@ -91,6 +92,10 @@ export function createConversationArtifactTool(
       for (const [index, metadata] of page.items.entries()) {
         const detail = await discovery.read(metadata.id, request.signal);
         if (!detail || detail.metadata.revision !== metadata.revision) {
+          omitted++;
+          continue;
+        }
+        if (hasTypedHeartRateSource(detail.sources, registry)) {
           omitted++;
           continue;
         }

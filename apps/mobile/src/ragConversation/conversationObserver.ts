@@ -56,6 +56,12 @@ export type RagConversationObserver = Pick<
     text: string,
     signal: AbortSignal,
   ) => Promise<boolean>;
+  /** Express approval of this selected metric and period, not broad health access. */
+  readonly confirmTypedHeartRate?: (
+    scope: import('../aiFeatures/integration/conversationHeartRateRequest').ConversationHeartRateRequest,
+    recipient: import('../aiFeatures/integration/conversationHeartRateModelOwner').TypedHeartRateRecipient,
+    signal: AbortSignal,
+  ) => Promise<boolean>;
   /** Opt-in is from the composer dispatch, never inferred from typed route or model output. */
   readonly inputOrigin?: 'composer' | 'shortcut';
   /** Exact live composer capability to ask the selected model for a presentation hint. */

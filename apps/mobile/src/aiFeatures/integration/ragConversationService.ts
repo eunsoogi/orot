@@ -148,7 +148,7 @@ export function createRagConversationService(
         ),
       });
       if (searchPlan.eager.status === 'cancelled') return run.cancelled;
-      const { tools, generated, localRetrievalFailed } =
+      const { toolExecution, generated, localRetrievalFailed } =
         createConversationToolBundle({
           data,
           registry,
@@ -174,7 +174,7 @@ export function createRagConversationService(
         operationRunId: searchPlan.operationRunId,
         consent,
         registry,
-        tools,
+        ...toolExecution,
         external,
       });
       const execution = conversationMutationExecution({

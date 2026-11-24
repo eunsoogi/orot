@@ -1,3 +1,5 @@
+import { isAppleDerivedHeartRateCategory } from '@orot/storage';
+import { supportedTypedHeartRatePeriod } from '../typedHeartRateWindow';
 import type {
   HealthContextReport,
   HealthContextTopic,
@@ -49,6 +51,7 @@ export function parseHealthContextScope(
           'timeZone',
           'dataAvailableThrough',
           'doseHistory',
+          'typedHeartRateCategory',
         ].includes(key),
     ) ||
     !['fromInclusive', 'toExclusive', 'timeZone'].every(
@@ -61,8 +64,28 @@ export function parseHealthContextScope(
     typeof w.dataAvailableThrough !== 'string'
   )
     return undefined;
+  const category = w.typedHeartRateCategory;
+  if (
+    category !== undefined &&
+    (v.topic !== 'measurements' ||
+      w.doseHistory !== undefined ||
+      w.dataAvailableThrough !== undefined ||
+      (category !== 'ordinary_average' &&
+        (typeof category !== 'string' ||
+          !isAppleDerivedHeartRateCategory(category))))
+  )
+    return undefined;
   try {
-    validateHealthContextCalendar(w as unknown as HealthContextWindow);
+    if (category === undefined) {
+      validateHealthContextCalendar(w as unknown as HealthContextWindow);
+    } else if (
+      w.timeZone !== 'UTC' ||
+      !supportedTypedHeartRatePeriod(
+        w.fromInclusive as string,
+        w.toExclusive as string,
+      )
+    )
+      return undefined;
     if (w.doseHistory !== undefined) {
       const d = w.doseHistory as Record<string, unknown>;
       if (
@@ -91,6 +114,7 @@ export function parseHealthContextScope(
         fromInclusive: w.fromInclusive as string,
         toExclusive: w.toExclusive as string,
         timeZone: w.timeZone as string,
+        ...(category ? { typedHeartRateCategory: category } : {}),
         ...(w.dataAvailableThrough
           ? { dataAvailableThrough: w.dataAvailableThrough as string }
           : {}),
@@ -127,6 +151,7 @@ export function healthContextRevision(
     quantities: report.quantities,
     medications: report.medications,
     ...(report.doseHistory ? { doseHistory: report.doseHistory } : {}),
+    ...(report.typedHeartRate ? { typedHeartRate: report.typedHeartRate } : {}),
     sleep: report.sleep,
     symptoms: report.symptoms,
     limitations: report.limitations,

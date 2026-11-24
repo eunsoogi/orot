@@ -1,3 +1,4 @@
+import { createTypedHeartRateModelOwner } from './conversationHeartRateModelOwner';
 import type { RagConversationServiceDependencies } from './ragConversationServiceDependencies';
 import type { RagConversationObserver } from '../../ragConversation/service';
 import type { createResearchInputTracker } from './researchInputTracker';
@@ -44,7 +45,7 @@ export function conversationExternalEvidence(input: {
       throw new Error('Conversation research owner is no longer current.');
   };
   const provider = selected.provider;
-  return createSelectedExternalEvidence({
+  const external = createSelectedExternalEvidence({
     selected:
       recoveredOwnerIsCurrent && provider.searchPublicWeb
         ? {
@@ -85,6 +86,15 @@ export function conversationExternalEvidence(input: {
     validateResearchInputs: researchInputs.revalidate,
     onResearchRetained: researchInputs.recordResearch,
   });
+  return {
+    ...external,
+    ...(observer?.confirmTypedHeartRate && !input.restored
+      ? {
+          createTypedHeartRateOwner: () =>
+            createTypedHeartRateModelOwner(selected),
+        }
+      : {}),
+  };
 }
 
 /** Keep public search observation and cancellation tied to the same turn. */

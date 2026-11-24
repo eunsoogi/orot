@@ -3,6 +3,18 @@ export const healthContextCopyKo = {
   'healthContextCopy.systolic': '수축기 혈압',
   'healthContextCopy.diastolic': '이완기 혈압',
   'healthContextCopy.heartRate': '심박수',
+  'healthContextCopy.ordinaryHeartRate': '평균 심박수',
+  'healthContextCopy.restingHeartRate': '휴식기 심박수',
+  'healthContextCopy.walkingHeartRate': '걷기 평균 심박수',
+  'healthContextCopy.confirmTypedHeartRateTitle':
+    '이 심박수 기록을 조회할까요?',
+  'healthContextCopy.confirmTypedHeartRateExclusive':
+    '종료 시각은 포함하지 않아요.',
+  'healthContextCopy.confirmTypedHeartRateRemote':
+    '이 집계만 위 AI에 전달해 이번 답변에 사용해요.',
+  'healthContextCopy.confirmTypedHeartRateLocal':
+    '이 집계만 기기에서 처리해 이번 답변에 사용해요.',
+  'healthContextCopy.confirmTypedHeartRateAction': '조회 허용',
   'healthContextCopy.workoutOverlap': '운동 기록과 시간이 겹치는 심박',
   'healthContextCopy.noWorkoutOverlap': '운동 기록과 시간이 겹치지 않는 심박',
   'healthContextCopy.activityUnknown': '활동 맥락 미확인 심박',

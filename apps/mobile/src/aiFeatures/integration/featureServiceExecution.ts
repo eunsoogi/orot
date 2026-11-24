@@ -1,3 +1,8 @@
+import { guardTypedHeartRateProvider } from './typedHeartRateProviderGuard';
+import {
+  hasTypedHeartRateSource,
+  type TypedHeartRateDispatch,
+} from './typedHeartRateReusePolicy';
 import type { createExternalConversationEvidence } from './externalConversationEvidence';
 import { EVIDENCE_WORKFLOW_BUDGET } from '../../agent/evidenceWorkflowBudget';
 import { providerDiagnostic } from '../../providers/diagnostics';
@@ -106,6 +111,7 @@ export function executionOptions(input: {
   readonly consent: MultiAgentWorkflowOptions['consent'];
   readonly registry: LocalEvidenceReferenceRegistry;
   readonly tools: readonly EvidenceSearchTool[];
+  readonly typedHeartRateDispatch?: TypedHeartRateDispatch;
   readonly external?: Pick<
     ReturnType<typeof createExternalConversationEvidence>,
     'validates'
@@ -148,7 +154,12 @@ export function executionOptions(input: {
           : {}),
       },
     },
-    provider: input.selected.provider,
+    provider: input.typedHeartRateDispatch
+      ? guardTypedHeartRateProvider(
+          input.selected.provider,
+          input.typedHeartRateDispatch,
+        )
+      : input.selected.provider,
     tools: input.tools,
     consent: input.consent,
     revalidateEvidence: (
@@ -167,6 +178,18 @@ export function executionOptions(input: {
       const local = references.filter(
         reference => reference.sourceKind !== 'external_medical',
       );
+      if (hasTypedHeartRateSource(local, input.registry)) {
+        const dispatch = input.typedHeartRateDispatch;
+        if (!dispatch) return Promise.resolve(false);
+        const current = () =>
+          dispatch.revalidate(input.registry, local, signal);
+        return current().then(
+          async active =>
+            active &&
+            (await input.registry.revalidateEvidence(local, signal)) &&
+            (await current()),
+        );
+      }
       return local.length
         ? input.registry.revalidateEvidence(local, signal)
         : Promise.resolve(true);

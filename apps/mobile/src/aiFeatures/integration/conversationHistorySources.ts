@@ -1,3 +1,4 @@
+import { hasTypedHeartRateSource } from './typedHeartRateReusePolicy';
 import { validateCaptureHistory } from './evidenceCaptureBatch';
 import { readSelectedConversationHistory } from './readSelectedConversationHistory';
 import { ConversationHistoryFailure } from './conversationHistoryFailure';
@@ -104,16 +105,21 @@ export async function conversationHistorySources(input: {
       input.signal,
       recover,
     );
+    let privateTypedOmissions = 0;
     const selected = expected.flatMap(item => {
       const turn = turns.find(
         candidate =>
           candidate.id === item.id && candidate.question === item.question,
       );
+      if (turn && hasTypedHeartRateSource(turn.sources, input.registry)) {
+        privateTypedOmissions++;
+        return [];
+      }
       return turn ? [turn] : [];
     });
     if (input.signal.aborted)
       throw new ConversationHistoryFailure('history_cancelled');
-    if (!recover && selected.length !== expected.length)
+    if (!recover && selected.length + privateTypedOmissions !== expected.length)
       throw new ConversationHistoryFailure('history_turn_unavailable');
     if (!(await ownerIsCurrent()))
       throw new ConversationHistoryFailure('history_session_changed');

@@ -27,6 +27,33 @@ export function presentHealthContext(
   report: HealthContextReport,
   filterRedacted = false,
 ): readonly EvidenceSourceDetailSection[] {
+  const typed = report.typedHeartRate;
+  if (typed && typed.category === scope.window.typedHeartRateCategory) {
+    const label = {
+      ordinary_average: 'healthContextCopy.ordinaryHeartRate',
+      resting_heart_rate: 'healthContextCopy.restingHeartRate',
+      walking_heart_rate_average: 'healthContextCopy.walkingHeartRate',
+    } as const;
+    return [
+      {
+        title: t(label[typed.category]),
+        rows: [
+          {
+            label: t('healthContextCopy.period'),
+            value: `${scope.window.fromInclusive} ~ ${scope.window.toExclusive}`,
+          },
+          {
+            label: t('healthContextCopy.heartRate'),
+            value: `${new Intl.NumberFormat('ko-KR', { maximumFractionDigits: 2 }).format(typed.meanBpm)} BPM`,
+          },
+          {
+            label: t('healthContextCopy.sampleCount'),
+            value: String(typed.sampleCount),
+          },
+        ],
+      },
+    ];
+  }
   const projected = projectHealthContext(report);
   const result: EvidenceSourceDetailSection[] = [
     {

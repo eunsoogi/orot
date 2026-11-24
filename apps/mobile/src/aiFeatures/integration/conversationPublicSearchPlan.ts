@@ -36,6 +36,15 @@ export async function conversationPublicSearchPlan(
     toolPolicy: {
       publicSearchSucceeded: deferred || eager.status === 'success',
       literatureOnly,
+      ...(!literatureOnly &&
+      (!input.entryIntent || input.entryIntent === 'conversation')
+        ? {
+            typedHeartRateOwner: {
+              operationRunId: input.runId,
+              signal: input.signal,
+            },
+          }
+        : {}),
     },
     eager,
     // Completed preflight status/budget only; no reusable authorization is persisted.

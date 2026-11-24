@@ -1,3 +1,4 @@
+import { hasTypedHeartRateSource } from './typedHeartRateReusePolicy';
 import { createColdResearchSourceReader } from './coldResearchSourceReader';
 import type { ConversationArtifactSource } from '../../ragConversation/conversationArtifactSources';
 import { isConversationPhotoSource } from '../../ragConversation/conversationArtifactSources';
@@ -34,6 +35,10 @@ export async function restoreColdConversationRegistry(input: {
   const sources: readonly ConversationArtifactSource[] = JSON.parse(
     JSON.stringify(input.sources),
   );
+  if (hasTypedHeartRateSource(sources.map(source => source.reference)))
+    throw new Error(
+      'A new typed heart-rate approval is required for this request.',
+    );
   const photos = sources.filter(isConversationPhotoSource);
   if (photos.length && !input.photo)
     throw new Error('Cold photo owner is required.');

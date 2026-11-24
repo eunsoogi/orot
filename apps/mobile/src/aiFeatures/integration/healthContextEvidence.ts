@@ -32,6 +32,24 @@ export function healthContextContent(
   const reusable = detail === 'summary' && isImmutableReportSnapshot(report);
   const cached = reusable ? summaryContent.get(report) : undefined;
   if (cached?.topic === scope.topic) return cached.content;
+  if (scope.window.typedHeartRateCategory !== undefined) {
+    const typed = report.typedHeartRate;
+    if (!typed || typed.category !== scope.window.typedHeartRateCategory)
+      return '';
+    const { category, meanBpm, sampleCount, unit } = typed;
+    const { fromInclusive, toExclusive } = scope.window;
+    return (
+      'typed_heart_rate: ' +
+      JSON.stringify({
+        category,
+        fromInclusive,
+        toExclusive,
+        unit,
+        meanBpm,
+        sampleCount,
+      })
+    );
+  }
   const projected = projectHealthContext(report, detail);
   const { period, calendarDays, partialDates, limitations } = projected;
   const facts =

@@ -61,7 +61,9 @@ export function createHealthContextReader(
       // The binding and the later generation-fenced SQL must use the same values,
       // even if the caller changes its request while the transaction is queued.
       const prepareMeasurements =
-        topics.length === 1 && topics[0] === 'measurements';
+        window.typedHeartRateCategory === undefined &&
+        topics.length === 1 &&
+        topics[0] === 'measurements';
       if (prepareMeasurements) {
         window = {
           ...window,

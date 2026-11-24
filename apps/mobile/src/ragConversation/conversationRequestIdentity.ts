@@ -1,3 +1,4 @@
+import { confirmTypedHeartRate } from './confirmTypedHeartRate';
 import { confirmHistorySave } from './confirmHistorySave';
 import type { ConversationSessionOptions } from './conversationSessionTypes';
 import type { createConversationTurnRetention } from './conversationTurnRetention';
@@ -16,6 +17,7 @@ export function requestIdentityObserver(
         retentionRequestCreatedAt: turn.requestCreatedAt,
         openWorkflowContinuation: turn.openWorkflowContinuation,
         confirmHistorySave,
+        confirmTypedHeartRate,
       }
     : {};
 }

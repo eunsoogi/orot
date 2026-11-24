@@ -1,3 +1,5 @@
+import type { TypedHeartRateCategory } from '../typedHeartRateEvidence';
+
 export const HEALTH_CONTEXT_TOPICS = [
   'medications',
   'measurements',
@@ -11,6 +13,8 @@ export interface HealthContextWindow {
   readonly fromInclusive: string;
   readonly toExclusive: string;
   readonly timeZone: string;
+  /** Private typed selection: never supplied by the generic health-context tool. */
+  readonly typedHeartRateCategory?: TypedHeartRateCategory;
   /** Optional ingestion cutoff for reproducible snapshots; occurrence time still selects the day. */
   readonly dataAvailableThrough?: string;
   readonly doseHistory?: {
@@ -103,6 +107,14 @@ export interface HealthContextReport {
   readonly days: readonly HealthContextDay[];
   readonly quantities: readonly HealthQuantitySeries[];
   readonly medications: readonly HealthMedicationProfile[];
+  /** Typed tool facts and exact local membership are separate from generic quantities. */
+  readonly typedHeartRate?: {
+    readonly category: TypedHeartRateCategory;
+    readonly unit: 'BPM';
+    readonly meanBpm: number;
+    readonly sampleCount: number;
+    readonly membershipRevision: string;
+  };
   readonly doseHistory?: HealthDoseHistory;
   readonly sleep: readonly HealthSleepDay[];
   readonly symptoms: {

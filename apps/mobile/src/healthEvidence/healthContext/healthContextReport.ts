@@ -1,3 +1,4 @@
+import { readTypedHeartRateContext } from './typedHeartRateContext';
 import { observeReportAggregateSql } from './reportCalculationDiagnostic';
 import type { SqlExecutor } from '@orot/storage';
 import { readHealthContextGeneration } from './generation';
@@ -96,6 +97,17 @@ async function readHealthContext(
       topics.some(topic => !HEALTH_CONTEXT_TOPICS.includes(topic))
     )
       throw new RangeError('Invalid health context topics.');
+    if (window.typedHeartRateCategory !== undefined) {
+      if (
+        purpose !== 'full' ||
+        topics.length !== 1 ||
+        topics[0] !== 'measurements'
+      )
+        throw new RangeError(
+          'Typed heart rate requires a dedicated measurement scope.',
+        );
+      return readTypedHeartRateContext(executor, window, signal);
+    }
     if (!preparedCalendar) trace?.('calendar', 'started');
     const days =
       preparedCalendar?.days ??
