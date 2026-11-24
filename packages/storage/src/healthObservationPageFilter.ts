@@ -54,9 +54,7 @@ export function healthObservationPagePredicate(
   filter: HealthObservationPageFilter,
   cursor: HealthObservationCursor | null,
 ): { where: string; parameters: SqlValue[]; order: string } {
-  if (!HEALTH_OBSERVATION_PAGE_CATEGORIES.includes(filter.category)) {
-    throw new Error('Health observation category is invalid.');
-  }
+  const scope = healthObservationCategoryScope(filter.category);
   const to = localQueryTimestampKey(TimestampSchema.parse(filter.toInclusive));
   const from =
     filter.fromInclusive === undefined
@@ -68,19 +66,8 @@ export function healthObservationPagePredicate(
   if (overlap && (category !== 'workouts' || from === null || from >= to)) {
     throw new Error('Workout overlap period is invalid.');
   }
-  const derived = isAppleDerivedHeartRateCategory(category);
-  const clauses = [
-    derived ? appleDerivedHeartRatePredicate(category) : `(${categoryExpression}) = ?`,
-    `(${timeExpression}) ${overlap ? '<' : '<='} ?`,
-  ];
-  const parameters: SqlValue[] = derived ? [to] : [category, to];
-  if (category === 'other') {
-    // Existing category index still seeks Other. Null legacy metadata must remain visible there.
-    const derivedPredicates = appleDerivedHeartRateCategories
-      .map((item) => `(${appleDerivedHeartRatePredicate(item)})`)
-      .join(' OR ');
-    clauses.push(`NOT COALESCE((${derivedPredicates}), 0)`);
-  }
+  const clauses = [scope.where, `(${timeExpression}) ${overlap ? '<' : '<='} ?`];
+  const parameters: SqlValue[] = [...scope.parameters, to];
   if (from !== null) {
     // Do not gate the workout cohort by start alone: a genuine workout may cross from.
     clauses.push(
@@ -99,4 +86,18 @@ export function healthObservationPagePredicate(
     parameters.push(key, key, cursor.id);
   }
   return { where: clauses.join(' AND '), parameters, order: `(${timeExpression}) DESC, id ASC` };
+}
+
+/** Indexed category admission shared by ordinary paging and per-day windows. */
+export function healthObservationCategoryScope(category: HealthObservationPageCategory) {
+  if (!HEALTH_OBSERVATION_PAGE_CATEGORIES.includes(category))
+    throw new Error('Health observation category is invalid.');
+  if (isAppleDerivedHeartRateCategory(category))
+    return { where: appleDerivedHeartRatePredicate(category), parameters: [] as SqlValue[] };
+  const admitted = `(${categoryExpression}) = ?`;
+  if (category !== 'other') return { where: admitted, parameters: [category] };
+  const derived = appleDerivedHeartRateCategories
+    .map((item) => `(${appleDerivedHeartRatePredicate(item)})`)
+    .join(' OR ');
+  return { where: admitted + ` AND NOT COALESCE((${derived}), 0)`, parameters: [category] };
 }

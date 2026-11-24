@@ -1,3 +1,7 @@
+import {
+  HealthRecordsMonthChartPanel,
+  type HealthRecordsMonthChartInput,
+} from './HealthRecordsMonthChartPanel';
 import { StyleSheet, View } from 'react-native';
 import type { HealthObservation } from '@orot/domain';
 import { HealthRecordsSleepChart } from './HealthRecordsSleepChart';
@@ -21,6 +25,7 @@ import {
 interface HealthRecordsCategoryCardProps {
   readonly category: HealthObservationCategory;
   readonly hasMore?: boolean;
+  readonly monthChart?: HealthRecordsMonthChartInput;
   readonly loadState: 'loading' | 'ready' | 'failed';
   readonly observations: readonly HealthObservation[];
   readonly onOpenDetail: (selection: HealthRecordsDetailSelection) => void;
@@ -33,6 +38,7 @@ export function HealthRecordsCategoryCard({
   loadState,
   observations,
   onOpenDetail,
+  monthChart,
 }: HealthRecordsCategoryCardProps) {
   const title = healthRecordCategoryTitle(category);
   const appearance = healthRecordCategoryPresentation[category];
@@ -64,7 +70,8 @@ export function HealthRecordsCategoryCard({
         }
         body={
           <>
-            {recentObservations.length === 0 ? (
+            {recentObservations.length === 0 &&
+            (!monthChart || category === 'other') ? (
               <Text
                 style={styles.eventSummary}
                 testID={'health-record-category-empty-' + category}
@@ -81,7 +88,12 @@ export function HealthRecordsCategoryCard({
                       )}
               </Text>
             ) : null}
-            {recentObservations.length > 0 && category === 'sleep' ? (
+            {monthChart && category !== 'other' ? (
+              <HealthRecordsMonthChartPanel
+                category={category}
+                {...monthChart}
+              />
+            ) : recentObservations.length > 0 && category === 'sleep' ? (
               <HealthRecordsSleepChart
                 observations={recentObservations}
                 hasMore={hasMore}

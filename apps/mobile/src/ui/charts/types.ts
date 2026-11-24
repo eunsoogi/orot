@@ -34,9 +34,14 @@ export type ChartSeries = {
 };
 export type ChartPresentation =
   'whole-bpm-overview' | 'whole-bpm-derived-records';
+export type ChartTimeWindow = {
+  readonly fromInclusive: string;
+  readonly toInclusive: string;
+};
 export type ChartData = {
   metric: ChartMetric;
   presentation?: ChartPresentation;
   coverage: ChartCoverage;
+  xWindow?: ChartTimeWindow;
   series: readonly ChartSeries[];
 };

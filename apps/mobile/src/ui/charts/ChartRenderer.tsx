@@ -1,3 +1,4 @@
+import { placeChartWindow } from './chartWindowPositions';
 import {
   BarChart,
   ChartKitProvider,
@@ -78,6 +79,7 @@ export function ChartRenderer({
               key={unit}
               series={unitData.series}
               axis={rangeAxis}
+              xWindow={data.xWindow}
               wholeBpm={usesWholeBpm(data.metric, unit, data.presentation)}
               width={width}
               height={chartHeight}
@@ -92,8 +94,11 @@ export function ChartRenderer({
           );
         const line =
           kind === 'line' ? lineSegments(unitData, lineAxis) : undefined;
-        const rows =
-          line?.rows ?? (kind === 'bar' ? chartRows(unitData, 'day') : []);
+        const rows = placeChartWindow(
+          line?.rows ?? (kind === 'bar' ? chartRows(unitData, 'day') : []),
+          data.xWindow,
+          kind === 'bar' ? 'day' : 'time',
+        );
         if (rows.length === 0) return null;
 
         const baseSeries = unitData.series.map(item => ({
