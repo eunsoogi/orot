@@ -1,4 +1,11 @@
 import {
+  authorizeVoicePairPublication,
+  assertPendingVoicePairGrant,
+  writeSettingsVoicePairSelection,
+  type SettingsVoicePairSelection,
+} from './settingsVoicePairSelection';
+import {
+  assertSettingsActivationToken,
   clearSettingsConsentReceipts,
   commitSettingsConsentRows,
   settingsConsentReceiptSchema,
@@ -24,10 +31,6 @@ const validDomain = (domain: SettingsConsentDomain) => {
 const validSlot = (slot: SettingsConsentSlot) => {
   if (!settingsConsentSlots.includes(slot))
     throw new Error('Invalid consent slot');
-};
-const validToken = (token: string) => {
-  if (!/^[A-Za-z0-9_-]{16,128}$/.test(token))
-    throw new Error('Invalid activation identity');
 };
 
 /** Pending grants never authorize transmission. Selection and activation are separate
@@ -92,11 +95,12 @@ export function createSettingsConsentStorage(database: SqlDatabase) {
     }[],
     stillValid: () => boolean,
     sealExplicitly = false,
+    voicePair?: SettingsVoicePairSelection,
   ) {
     const entries = decisions.map(({ slot, token, domain }) => {
       validSlot(slot);
       validDomain(domain);
-      validToken(token);
+      assertSettingsActivationToken(token);
       return { slot, token, domain };
     });
     if (
@@ -106,6 +110,7 @@ export function createSettingsConsentStorage(database: SqlDatabase) {
       new Set(entries.map(entry => entry.token)).size !== entries.length
     )
       throw new Error('Invalid joint permission activation');
+    authorizeVoicePairPublication(voicePair, entries, sealExplicitly);
     await ensure();
     const receipt = sealExplicitly ? entries[0]!.token : null;
     await commitSettingsConsentRows(
@@ -120,12 +125,11 @@ export function createSettingsConsentStorage(database: SqlDatabase) {
           );
           if (pending.rows.length !== 1)
             throw new Error('Pending permission unavailable');
-          const value = pending.rows[0].grant_json;
-          if (
-            typeof value !== 'string' ||
-            !parseSettingsConsentGrant(JSON.parse(value))
-          )
-            throw new Error('Pending permission invalid');
+          assertPendingVoicePairGrant(
+            voicePair,
+            slot,
+            pending.rows[0].grant_json,
+          );
           if (!stillValid()) throw new Error('Settings selection changed');
           await tx.execute(
             `DELETE FROM settings_inference_grants WHERE slot = ? AND domain = ? AND state = 'active'`,
@@ -150,6 +154,7 @@ export function createSettingsConsentStorage(database: SqlDatabase) {
           }
           if (!stillValid()) throw new Error('Settings selection changed');
         }
+        if (voicePair) await writeSettingsVoicePairSelection(tx, voicePair);
       },
       receipt,
       stillValid,
@@ -191,7 +196,7 @@ export function createSettingsConsentStorage(database: SqlDatabase) {
     ) {
       validSlot(slot);
       validDomain(domain);
-      validToken(token);
+      assertSettingsActivationToken(token);
       const parsed = parseSettingsConsentGrant(grant);
       if (!parsed) throw new Error('Invalid settings permission');
       await ensure();
@@ -214,7 +219,7 @@ export function createSettingsConsentStorage(database: SqlDatabase) {
     },
     activateTogether,
     async cancel(token: string) {
-      validToken(token);
+      assertSettingsActivationToken(token);
       await ensure();
       await database.transaction(async tx => {
         await tx.execute(

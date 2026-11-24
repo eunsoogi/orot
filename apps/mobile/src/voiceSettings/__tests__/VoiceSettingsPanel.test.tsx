@@ -1,3 +1,4 @@
+import { saveReviewedOpenAiVoicePair } from '../saveReviewedOpenAiVoicePair';
 import * as voiceConsentView from '../testSupport/voiceSettingsAlerts';
 import { waitForRefreshEnabled } from '../testSupport/voiceSettingsViewFixture';
 import { hasLiveVoiceRuntime } from '../voiceRuntimeCapability';
@@ -10,6 +11,9 @@ import {
 } from '@testing-library/react-native';
 import { VoiceSettingsPanel } from '../VoiceSettingsPanel';
 import { voiceSettingsStore } from '../voiceSettingsStore';
+jest.mock('../saveReviewedOpenAiVoicePair', () => ({
+  saveReviewedOpenAiVoicePair: jest.fn(async () => () => true),
+}));
 // Native account/grant coordination has SQLite service tests; retain this view's original persistence assertions.
 jest.mock('../../agent/execution/saveModelSettingsConsent', () => ({
   saveModelSettingsConsent: async (input: {
@@ -33,7 +37,7 @@ jest.mock(
 );
 jest.mock('../voiceRuntimeCapability', () => ({
   hasLiveVoiceRuntime: jest.fn(() => false),
-  hasLiveResponsesRuntime: () => false,
+  hasLiveResponsesRuntime: () => true,
 }));
 beforeEach(() => {
   jest.clearAllMocks();
@@ -48,7 +52,7 @@ beforeEach(() => {
     .mockResolvedValue({ connected: true, revision: 1 });
   jest.mocked(voiceSettingsStore.discoverModels).mockResolvedValue({
     revision: 1,
-    ids: ['gpt-live-1.1', 'gpt-text'],
+    ids: ['gpt-live-1.1', 'gpt-6-luna', 'gpt-text'],
   });
   jest.mocked(voiceSettingsStore.save).mockResolvedValue();
 });
@@ -81,15 +85,8 @@ it('does not present a static catalog or credentials and refreshes only explicit
     /선택한 AI.*OpenAI API - GPT-Live-1.1/s,
   );
   expect(view.queryByText(/자동 전환하지 않아요/)).toBeNull();
-  await fireEvent.press(view.getByTestId('voice-settings-save'));
-  await voiceConsentView.tapVoiceSettingsAlertButton('동의');
-  await waitFor(() =>
-    expect(voiceSettingsStore.save).toHaveBeenCalledWith({
-      mode: 'openai-api',
-      model: 'gpt-live-1.1',
-      expectedAccountRevision: 1,
-    }),
-  );
+  expect(view.getByTestId('voice-settings-save')).toBeDisabled();
+  expect(saveReviewedOpenAiVoicePair).not.toHaveBeenCalled();
 });
 it('marks retained results stale and disables API selection after a failed refresh', async () => {
   const view = await render(<VoiceSettingsPanel />);
@@ -105,11 +102,8 @@ it('marks retained results stale and disables API selection after a failed refre
   await waitFor(() =>
     expect(view.getByText(/API 인증 또는 모델 접근/)).toBeTruthy(),
   );
-  expect(view.getByText(/이전 조회 목록/)).toBeTruthy();
-  expect(
-    view.getByTestId('voice-model-gpt-live-1.1').props.accessibilityState
-      .disabled,
-  ).toBe(true);
+  expect(view.queryByTestId('openai-voice-pair-form')).toBeNull();
+  expect(view.queryByTestId('voice-model-gpt-live-1.1')).toBeNull();
 });
 it('preserves unavailable saved selection and never silently substitutes local', async () => {
   jest.mocked(voiceSettingsStore.load).mockResolvedValue({
@@ -201,6 +195,7 @@ it('keeps settings quiet without starting a call or granting runtime consent', a
   await fireEvent.press(view.getByTestId('voice-model-gpt-live-1.1'));
   voiceConsentView.expectNoInlineVoiceConsent(view);
   expect(voiceSettingsStore.save).not.toHaveBeenCalled();
+  await fireEvent.press(view.getByTestId('voice-tool-model-gpt-6-luna'));
   await fireEvent.press(view.getByTestId('voice-settings-save'));
   expect(voiceSettingsStore.save).not.toHaveBeenCalled();
   await voiceConsentView.expectLiveSettingsDisclosure(view);
@@ -220,30 +215,4 @@ it('reports failed persistence without claiming the selected model was saved', a
     expect(view.getByText(/저장하지 못했습니다/)).toBeTruthy(),
   );
   expect(view.queryByText(/음성 설정을 저장했습니다/)).toBeNull();
-});
-it('uses the same summary for distinct draft and saved states', async () => {
-  const view = await render(<VoiceSettingsPanel />);
-  const summary = await view.findByTestId('voice-current-model');
-  expect(summary).toHaveTextContent(/Apple - Apple 시스템 음성/);
-  expect(voiceSettingsStore.discoverModels).not.toHaveBeenCalled();
-  const refresh = view.getByTestId('voice-model-refresh');
-  expect(refresh.props.accessibilityState).toMatchObject({
-    disabled: false,
-    busy: false,
-  });
-  await fireEvent.press(refresh);
-  const api = await view.findByTestId('voice-model-gpt-live-1.1');
-  await fireEvent.press(api);
-  expect(summary).toHaveTextContent(/선택한 AI.*OpenAI API - GPT-Live-1.1/s);
-  await fireEvent.press(view.getByTestId('voice-model-apple-system-speech'));
-  expect(summary).toHaveTextContent(/현재 선택:.*Apple - Apple 시스템 음성/s);
-  expect(voiceSettingsStore.save).not.toHaveBeenCalled();
-  await fireEvent.press(api);
-  await fireEvent.press(view.getByTestId('voice-settings-save'));
-  await voiceConsentView.tapVoiceSettingsAlertButton('동의');
-  await waitFor(() =>
-    expect(summary).toHaveTextContent(
-      /현재 선택:.*OpenAI API - GPT-Live-1\.1/s,
-    ),
-  );
 });

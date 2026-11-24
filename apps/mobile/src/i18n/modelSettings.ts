@@ -50,8 +50,10 @@ export const modelSettingsKo = {
   'modelSettings.liveResponsesConsentScope':
     'OpenAI가 이 통화와 관련된 대화 내용을 {model}로 처리해요. 앱은 요청하고 승인한 기간의 일반 심박수를 기기에서 집계해요. 3일 이상에 걸쳐 측정값이 3개 이상일 때만 반올림한 평균과 표본 수를 계산하며, 그 결과를 별도로 확인하고 동의한 경우에만 전송해요. 개별 수치, 측정 시각, 메모, 투약 정보와 이전 대화를 앱이 자동으로 첨부하지 않아요.',
   'modelSettings.liveResponsesConsentNotice':
-    '기존 OpenAI API 계정을 사용하며 음성 통화와 별도로 API 사용료가 발생할 수 있어요. 설정에서 언제든 끌 수 있어요.',
+    '기존 OpenAI API 계정을 사용하며 음성 통화와 별도로 API 사용료가 발생할 수 있어요. 설정의 개인정보 보호에서 동의를 철회할 수 있어요.',
   'modelSettings.liveVoiceUnselected': '선택',
+  'modelSettings.liveVoicePairRecovery':
+    '음성 모델 설정이 완료되지 않았어요. 새로고침한 뒤 두 모델을 선택하고 다시 저장하세요.',
   'modelSettings.liveVoicePreferenceLoading': '음성 설정을 불러오는 중이에요.',
   'modelSettings.liveVoicePreferenceUnavailable':
     '저장된 음성 설정을 사용할 수 없어요.',
@@ -94,7 +96,7 @@ export const modelSettingsKo = {
 
   'modelSettings.confirmLanguage': '이 AI 사용',
   'modelSettings.languageTab': '대화 모델',
-  'modelSettings.voiceTab': '보이스 모델',
+  'modelSettings.voiceTab': '음성 모델',
   'modelSettings.languageTitle': 'AI 선택',
   'modelSettings.languagePrompt': '질문에 답할 AI를 선택해 주세요.',
   'modelSettings.localProcessing': '기기 안에서 처리',
@@ -110,7 +112,7 @@ export const modelSettingsKo = {
   'modelSettings.apiRequired': 'API 계정 연결 필요',
   'modelSettings.refreshVoice': '음성 모델 새로고침',
   'modelSettings.manageApi': 'OpenAI API 연결 관리',
-  'modelSettings.confirmVoice': '이 보이스 사용',
+  'modelSettings.confirmVoice': '저장',
   'modelSettings.modelNameUnknown': '모델 이름을 확인할 수 없어요.',
   'modelSettings.currentSelection': '현재 선택:',
   'modelSettings.voiceConsent':

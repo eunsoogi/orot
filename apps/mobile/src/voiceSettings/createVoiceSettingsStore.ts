@@ -1,17 +1,15 @@
 import { createVoiceConsentIdentity } from './voiceConsentIdentity';
 import { createConsentGeneration } from '../agent/execution/consentGeneration';
 import { discoverApiModels } from './voiceApiModelCatalog';
-import { localVoiceModel, validVoiceModel } from './voiceModels';
+import { validVoiceModel } from './voiceModels';
 import {
   legacyVoiceCredentials,
   liveVoiceCredentials,
   readVoiceCallCredentials,
 } from './readVoiceCallCredentials';
-import {
-  ACCESSIBLE,
-  getGenericPassword,
-  setGenericPassword,
-} from 'react-native-keychain';
+import { voiceSettingsKeychainRecord } from './voiceSettingsKeychainRecord';
+import { createVoicePairSettingsAdapter } from './createVoicePairSettingsAdapter';
+import type { SettingsVoicePairSelection } from '../storage/settingsVoicePairSelection';
 
 import type {
   VoiceMode,
@@ -25,66 +23,63 @@ export function createVoiceSettingsStore(input: {
   service: string;
   beginSettingsMutation(changesCredential: boolean): () => void;
   beginCredentialMutation(): () => void;
+  readVoicePairSelection?: () => Promise<SettingsVoicePairSelection | null>;
+  readVoicePairActive?: (
+    pair: SettingsVoicePairSelection,
+  ) => Promise<(() => boolean) | null>;
 }) {
   const { service } = input;
   let accountRevision = 0;
   const listeners = new Set<() => void>();
   let saving: Promise<void> = Promise.resolve();
-  const defaults: StoredVoiceSettings = {
-    mode: 'local',
-    model: localVoiceModel,
-    apiKey: '',
+  const { read, write } = voiceSettingsKeychainRecord(service);
+  const enqueue = (work: () => Promise<void>) => {
+    const next = saving.catch(() => undefined).then(work);
+    saving = next;
+    return next;
   };
 
-  /** Invalid or inaccessible state fails closed, never changes the processing destination. */
-  async function read(): Promise<StoredVoiceSettings> {
-    const value = await getGenericPassword({ service });
-    if (!value) return { ...defaults };
-    const parsed = JSON.parse(value.password) as StoredVoiceSettings;
-    if (
-      !parsed ||
-      !['local', 'openai-api'].includes(parsed.mode) ||
-      typeof parsed.model !== 'string' ||
-      !validVoiceModel(parsed.mode, parsed.model) ||
-      typeof parsed.apiKey !== 'string' ||
-      (parsed.credentialEpoch !== undefined &&
-        !/^[a-f0-9]{64}$/.test(parsed.credentialEpoch))
-    ) {
-      throw new Error('Voice settings unavailable');
-    }
-    return parsed;
-  }
+  const paired = createVoicePairSettingsAdapter({
+    read,
+    write,
+    enqueue,
+    settle: () => saving.catch(() => undefined),
+    readSelection: input.readVoicePairSelection,
+    readPairActive: input.readVoicePairActive,
+    currentRevision: () => accountRevision,
+    beginMutation: () => input.beginSettingsMutation(false),
+  });
 
   const readAfterSettings = async () => {
     await saving.catch(() => undefined);
-    return read();
+    return paired.readEffective();
   };
 
+  async function loadVoicePairPresentation() {
+    const value = await paired.readDisplayed();
+    const settings: VoiceSettings = {
+      mode: value.mode,
+      model: value.model,
+      hasApiKey: Boolean(value.apiKey),
+      ...(value.pairAwaitingActivation ? { pairAwaitingActivation: true } : {}),
+    };
+    return { settings, pairPresentationCurrent: value.pairPresentationCurrent };
+  }
   /** Keep credentials out of React state and saved-settings readbacks. No network validation occurs. */
   const store = {
-    ...createVoiceConsentIdentity({
-      read,
-      enqueue(work) {
-        const next = saving.catch(() => undefined).then(work);
-        saving = next;
-        return next;
-      },
-      async write(value) {
-        const saved = await setGenericPassword(
-          'voice-settings',
-          JSON.stringify(value),
-          { service, accessible: ACCESSIBLE.WHEN_UNLOCKED_THIS_DEVICE_ONLY },
-        );
-        if (!saved) throw new Error('Credential identity could not be saved');
-      },
-    }),
+    ...createVoiceConsentIdentity({ read, enqueue, write }),
+    stageVoicePair: paired.stageVoicePair,
+    loadCommittedVoicePair: paired.loadCommittedVoicePair,
+    legacyVoiceRollbackEpoch: paired.legacyVoiceRollbackEpoch,
+    activateVoicePair: paired.activateVoicePair,
+    captureVoicePairPublication: paired.captureVoicePairPublication,
+    loadVoicePairPresentation,
     async load(): Promise<VoiceSettings> {
-      const value = await read();
-      return {
-        mode: value.mode,
-        model: value.model,
-        hasApiKey: Boolean(value.apiKey),
-      };
+      const { settings, pairPresentationCurrent } =
+        await loadVoicePairPresentation();
+      return pairPresentationCurrent?.() === false
+        ? { ...settings, pairAwaitingActivation: true }
+        : settings;
     },
     realtimeCredentials(expectedModel: string) {
       return readVoiceCallCredentials(
@@ -132,21 +127,16 @@ export function createVoiceSettingsStore(input: {
           ) {
             throw new Error('Voice configuration is incomplete');
           }
-          const saved = await setGenericPassword(
-            'voice-settings',
-            JSON.stringify({
-              mode: value.mode,
-              model,
-              apiKey,
-              credentialEpoch: value.removeKey
-                ? undefined
-                : value.replacementKey?.trim()
-                  ? createConsentGeneration()
-                  : prior.credentialEpoch,
-            }),
-            { service, accessible: ACCESSIBLE.WHEN_UNLOCKED_THIS_DEVICE_ONLY },
-          );
-          if (!saved) throw new Error('Voice settings could not be saved');
+          await write({
+            mode: value.mode,
+            model,
+            apiKey,
+            credentialEpoch: value.removeKey
+              ? undefined
+              : value.replacementKey?.trim()
+                ? createConsentGeneration()
+                : prior.credentialEpoch,
+          });
           if (value.removeKey || value.replacementKey?.trim())
             accountRevision += 1;
           listeners.forEach(listener => listener());
@@ -167,16 +157,11 @@ export function createVoiceSettingsStore(input: {
             (apiKey && !/^[\x21-\x7e]+$/.test(apiKey))
           )
             throw new Error('Invalid API credential');
-          const saved = await setGenericPassword(
-            'voice-settings',
-            JSON.stringify({
-              ...prior,
-              apiKey,
-              credentialEpoch: apiKey ? createConsentGeneration() : undefined,
-            }),
-            { service, accessible: ACCESSIBLE.WHEN_UNLOCKED_THIS_DEVICE_ONLY },
-          );
-          if (!saved) throw new Error('API account could not be saved');
+          await write({
+            ...prior,
+            apiKey,
+            credentialEpoch: apiKey ? createConsentGeneration() : undefined,
+          });
           accountRevision += 1;
           listeners.forEach(listener => listener());
         });

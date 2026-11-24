@@ -7,7 +7,7 @@ import { voiceSettingsStore } from '../voiceSettingsStore';
 
 jest.mock('../voiceRuntimeCapability', () => ({
   hasLiveVoiceRuntime: () => true,
-  hasLiveResponsesRuntime: () => false,
+  hasLiveResponsesRuntime: () => true,
 }));
 jest.mock('../voiceSettingsStore', () => ({
   voiceSettingsStore: {
@@ -26,7 +26,7 @@ beforeEach(() => {
     .mockResolvedValue({ connected: true, revision: 1 });
   jest.mocked(voiceSettingsStore.discoverModels).mockResolvedValue({
     revision: 1,
-    ids: ['gpt-live-1.1'],
+    ids: ['gpt-live-1.1', 'gpt-6-luna'],
   });
 });
 
@@ -49,7 +49,7 @@ test.each([
   ['local', ''],
   ['openai-api', 'gpt-realtime-2.1'],
 ] as const)(
-  'only the actively selected Live draft displays voice preferences (%s / %s)',
+  'only a freshly discovered eligible API catalog displays voice preferences (%s / %s)',
   async (mode, model) => {
     jest
       .mocked(voiceSettingsStore.load)
@@ -60,14 +60,12 @@ test.each([
     expect(view.queryByTestId('live-voice-language')).toBeNull();
     expect(read).not.toHaveBeenCalled();
     await fireEvent.press(view.getByTestId('voice-model-refresh'));
-    const live = await view.findByTestId('voice-model-gpt-live-1.1');
-    expect(view.queryByTestId('live-voice-language')).toBeNull();
-    await fireEvent.press(live);
+    await view.findByTestId('voice-model-gpt-live-1.1');
     await view.findByTestId('live-voice-language');
     expect(view.getByTestId('live-voice-voice')).toBeTruthy();
     await fireEvent.press(view.getByTestId('voice-model-apple-system-speech'));
-    expect(view.queryByTestId('live-voice-language')).toBeNull();
-    expect(view.queryByTestId('live-voice-voice')).toBeNull();
+    expect(view.getByTestId('live-voice-language')).toBeTruthy();
+    expect(view.getByTestId('live-voice-voice')).toBeTruthy();
     expect(write).not.toHaveBeenCalled();
     expect(voiceSettingsStore.save).not.toHaveBeenCalled();
     expect(view.getAllByTestId('voice-settings-save')).toHaveLength(1);
@@ -82,13 +80,15 @@ test('saved Live shows the saved catalog preference, with the adjacent option co
   });
   const { props } = preferences();
   const view = await render(<VoiceSettingsPanel livePreferences={props} />);
+  expect(view.queryByTestId('live-voice-preferences')).toBeNull();
+  await fireEvent.press(await view.findByTestId('voice-model-refresh'));
   const group = await view.findByTestId('live-voice-preferences');
   const language = view.getByTestId('live-voice-language');
   const button = view.getByRole('button', { name: '목소리 언어' });
   expect(language).toBeTruthy();
   expect(view.getByText('한국어')).toBeTruthy();
   expect(view.getByText('노을 · 한국어')).toBeTruthy();
-  const pane = view.getByTestId('openai-voice-model-pane-speech');
+  const pane = view.getByTestId('openai-voice-preferences');
   const shellInset =
     StyleSheet.flatten(pane.parent?.props.style).paddingHorizontal ?? 0;
   const boxInset = StyleSheet.flatten(group.props.style).paddingHorizontal;

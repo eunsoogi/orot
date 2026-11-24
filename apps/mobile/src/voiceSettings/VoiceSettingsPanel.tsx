@@ -1,11 +1,9 @@
-import { modelPresentation } from '../providers/selection/savedModelPresentation';
-import ProviderSelectionOptionCard from '../providers/selection/ProviderSelectionOptionCard';
-import { applePrivateCloudComputeProvider } from '../providers/apple';
-import { APPLE_PCC_MODEL_ID } from '../providers/selection/privateCloudCompute';
 import { t } from '../i18n';
+import { modelPresentation } from '../providers/selection/savedModelPresentation';
+
 import { ModelSelectionSummary } from '../layout/ModelSelectionSummary';
 import { View } from 'react-native';
-import { useRef, useState, type ComponentProps } from 'react';
+import { useMemo, useState, type ComponentProps } from 'react';
 import { AppText as Text } from '../layout/AppText';
 import { AppButton as Button } from '../layout/AppButton';
 import { providerSettingsStyles as styles } from '../layout/providerSettingsPresentation';
@@ -19,14 +17,20 @@ import {
 import { liveModel } from './liveVoicePreferences';
 import { useModelSettingsServices } from '../agent/execution/ModelSettingsServices';
 import { voiceSettingsStore } from './voiceSettingsStore';
-import { liveVoicePreferencesKeychain } from './liveVoicePreferencesKeychain';
+import { openAiVoicePreferencesDraftReader } from './openAiVoiceFormRead';
 import { voiceModels } from './voiceModels';
 import { VoiceModelOption } from './VoiceModelOption';
-import { OpenAiVoiceModelSection } from './OpenAiVoiceModelSection';
-import type { OpenAiVoiceModelTab } from './OpenAiVoiceModelTabs';
+import { VoiceSettingsUnavailablePccOption } from './VoiceSettingsUnavailablePccOption';
+import { OpenAiVoiceCatalogStatus } from './OpenAiVoiceCatalogStatus';
+import { OpenAiVoiceToolOptions } from './OpenAiVoiceToolOptions';
+import { OpenAiVoicePairForm } from './OpenAiVoicePairForm';
+import { VoiceCatalogAccount } from './VoiceCatalogAccount';
 import { LiveVoicePreferencesPanel } from './LiveVoicePreferencesPanel';
-import { LiveResponsesSettingsPanel } from './LiveResponsesSettingsPanel';
-import { useLiveVoiceSettingsSave } from './useLiveVoiceSettingsSave';
+import type { LiveResponsesBackend } from './liveResponsesSettingsIdentity';
+import { selectOpenAiVoicePair } from './reviewOpenAiVoicePair';
+import { usePreviouslyReviewedVoicePair } from './usePreviouslyReviewedVoicePair';
+import { useOpenAiVoicePairSave } from './useOpenAiVoicePairSave';
+import type { LiveVoicePreferencesDraft } from './LiveVoicePreferencesPanel';
 /** Local and API providers are sibling sections; a hidden tab must not own navigation actions. */
 export function VoiceSettingsPanel({
   onOpenAccounts,
@@ -38,58 +42,85 @@ export function VoiceSettingsPanel({
   readonly livePreferences?: ComponentProps<typeof LiveVoicePreferencesPanel>;
 }) {
   const { voice } = useModelSettingsServices();
-  const [apiTab, setApiTab] = useState<OpenAiVoiceModelTab>('speech');
-  const [toolBusy, setToolBusy] = useState(false);
-  const [toolCanSave, setToolCanSave] = useState(false);
-  const toolSave = useRef<(() => void) | null>(null);
   const catalog = useVoiceCatalog();
   const selection = useVoiceSelection(catalog);
-  const liveAvailable = hasLiveVoiceRuntime();
   const { mode, model, savedModel, savedMode, busy, failedLoad, message } =
     selection;
-  const canApproveNew = catalog.fresh && catalog.ids.includes(model);
-  const disabled =
-    busy ||
-    failedLoad ||
-    (mode === 'openai-api' &&
-      (!liveAvailable ||
-        model !== liveModel ||
-        !catalog.connected ||
-        (!canApproveNew && savedModel !== model)));
-  const {
-    confirmSave,
-    setPrefs,
-    prefsBusy,
-    prefsFailed,
-    saveRevision,
-    disclosureSheet,
-  } = useLiveVoiceSettingsSave({
-    active: active && apiTab === 'speech',
-    disabled,
-    canApproveNew,
-    mode,
-    model,
-    savedModel,
-    revision: catalog.revision,
-    save: selection.save,
-    store: livePreferences?.store ?? liveVoicePreferencesKeychain,
+  const [tool, setTool] = useState<{
+    revision: number;
+    model: LiveResponsesBackend;
+  }>();
+  const [preferences, setPrefs] = useState<{
+    revision: number;
+    draft: LiveVoicePreferencesDraft | null;
+  }>();
+  const [speechRevision, setSpeechRevision] = useState<number>();
+  const revision = catalog.revision;
+  const preferencesReader = useMemo(
+    () =>
+      revision === null ? null : openAiVoicePreferencesDraftReader(revision),
+    [revision],
+  );
+  const eligible =
+    revision !== null &&
+    hasLiveVoiceRuntime() &&
+    hasLiveResponsesRuntime() &&
+    catalog.ids.includes(liveModel) &&
+    catalog.toolIds.length > 0;
+  usePreviouslyReviewedVoicePair({
+    revision,
+    eligible:
+      active &&
+      eligible &&
+      catalog.fresh &&
+      catalog.connected &&
+      savedMode === 'openai-api' &&
+      savedModel === liveModel &&
+      mode === savedMode &&
+      model === savedModel &&
+      voice === voiceSettingsStore,
+    hasDraft: speechRevision === revision || tool?.revision === revision,
+    allowed: catalog.toolIds,
+    restore: (owner, backend) => {
+      setSpeechRevision(owner);
+      setTool({ revision: owner, model: backend });
+    },
   });
-  const speechTab = apiTab === 'speech';
-  // One navigation action commits only the visible draft; an approval cannot apply the other pane.
-  const saveDisabled = speechTab
-    ? disabled || prefsBusy || toolBusy
-    : !toolCanSave || busy || prefsBusy || toolBusy;
-  const saveLabel = speechTab
-    ? t('modelSettings.confirmVoice')
-    : t('modelSettings.saveToolModel');
+  const pair = selectOpenAiVoicePair({
+    revision,
+    fresh: catalog.fresh && eligible && catalog.connected,
+    speechIds: catalog.ids,
+    toolIds: catalog.toolIds,
+    speechModel:
+      mode === 'openai-api' && speechRevision === revision ? model : undefined,
+    backendModel: tool?.revision === revision ? tool.model : undefined,
+  });
+  const apiDraft =
+    mode === 'openai-api' || (revision !== null && tool?.revision === revision);
+  const pairedSave = useOpenAiVoicePairSave({
+    active: active && !failedLoad && !busy,
+    pair,
+    preferences:
+      preferences?.revision === revision
+        ? preferences.draft?.preferences
+        : undefined,
+    onSaved: value => selection.markPairSaved(value.speechModel),
+    onUnavailable: selection.markPairUnavailable,
+  });
+  const saveDisabled =
+    busy || failedLoad || pairedSave.busy || (apiDraft && !pair);
+  const saveLabel = t('modelSettings.confirmVoice');
   const requestSave = () => {
-    if (!saveDisabled) (speechTab ? confirmSave : toolSave.current)?.();
+    if (!saveDisabled) {
+      if (apiDraft) void pairedSave.save();
+      else void selection.save();
+    }
   };
   const hasDock = useVoiceSettingsRouteSave({
     active,
     label: saveLabel,
     disabled: saveDisabled,
-    busy: busy || prefsBusy || toolBusy,
+    busy: busy || pairedSave.busy,
     onPress: requestSave,
   });
   const displayedChoice = voiceModels.find(item => item.id === model);
@@ -104,22 +135,34 @@ export function VoiceSettingsPanel({
         <VoiceModelOption
           key={item.id}
           item={item}
-          selected={model === item.id}
+          selected={
+            model === item.id &&
+            (item.mode === 'local' || speechRevision === revision)
+          }
           disabled={
             busy ||
-            toolBusy ||
+            pairedSave.busy ||
             failedLoad ||
-            (item.mode === 'openai-api' && (!liveAvailable || !catalog.fresh))
+            (item.mode === 'openai-api' && (!eligible || !catalog.fresh))
           }
           onPress={() => {
-            if (item.mode === 'local') setApiTab('speech');
+            if (item.mode === 'openai-api' && revision !== null)
+              setSpeechRevision(revision);
+            else if (item.mode === 'local') {
+              setSpeechRevision(undefined);
+              setTool(undefined);
+            }
             selection.choose(item.mode, item.id);
           }}
         />
       ));
   return (
     <View testID="voice-settings-panel">
-      {savedModel !== null && !failedLoad ? (
+      {selection.pairAwaitingActivation ? (
+        <Text accessibilityRole="alert">
+          {t('modelSettings.liveVoicePairRecovery')}
+        </Text>
+      ) : savedModel !== null && !failedLoad ? (
         <ModelSelectionSummary
           label={t(
             model !== savedModel || mode !== savedMode
@@ -133,100 +176,62 @@ export function VoiceSettingsPanel({
           testID="voice-current-model"
         />
       ) : null}
-      {active && apiTab === 'speech' ? disclosureSheet : null}
+      {active ? pairedSave.disclosureSheet : null}
       <View style={styles.section} testID="voice-model-group-local">
         <Text accessibilityRole="header" style={styles.heading}>
           Apple
         </Text>
         {choices('local')}
-        {/* Display-only: PCC has no voice runtime and must never enter voiceModels or save. */}
-        <ProviderSelectionOptionCard
-          option={{
-            provider: applePrivateCloudComputeProvider,
-            modelId: APPLE_PCC_MODEL_ID,
-            displayName: 'Apple Intelligence',
-            privacyBoundary: 'selected-context-remote',
-            availability: {
-              status: 'unavailable',
-              message: t('provider.pcc.entitlementRequired'),
-            },
-          }}
-          requirements={{ inputTypes: ['text'] }}
-          disabled
-          selected={false}
-          index={0}
-          onPress={() => undefined}
-        />
+        <VoiceSettingsUnavailablePccOption />
       </View>
-      <OpenAiVoiceModelSection
-        catalog={catalog}
-        onOpenAccounts={onOpenAccounts}
-        selected={apiTab}
-        onSelect={setApiTab}
-        disabled={busy || prefsBusy || toolBusy}
-        speech={
-          <>
-            {choices('openai-api')}
-            {active &&
-            !failedLoad &&
-            mode === 'openai-api' &&
-            model === liveModel &&
-            liveAvailable &&
-            (livePreferences ||
-              (voice === voiceSettingsStore &&
-                catalog.connected &&
-                catalog.revision !== null)) ? (
+      <View style={styles.section} testID="voice-model-group-openai-api">
+        <Text accessibilityRole="header" style={styles.heading}>
+          OpenAI API
+        </Text>
+        <VoiceCatalogAccount
+          catalog={catalog}
+          onOpenAccounts={onOpenAccounts}
+        />
+        <OpenAiVoicePairForm
+          fresh={active && catalog.fresh}
+          eligible={eligible}
+          speech={choices('openai-api')}
+          preferences={
+            revision !== null &&
+            (livePreferences || voice === voiceSettingsStore) ? (
               <LiveVoicePreferencesPanel
-                onDraftChange={setPrefs}
-                busy={busy || prefsBusy}
-                saveRevision={saveRevision}
+                key={revision}
+                onDraftChange={draft =>
+                  setPrefs(previous =>
+                    previous?.revision === revision && previous.draft === draft
+                      ? previous
+                      : { revision, draft },
+                  )
+                }
+                busy={busy || pairedSave.busy}
                 {...(livePreferences ?? {
                   ready: true,
-                  store: liveVoicePreferencesKeychain,
-                  authorityRevision: catalog.revision!,
+                  store: preferencesReader!,
+                  authorityRevision: revision,
                 })}
               />
-            ) : null}
-          </>
-        }
-        tools={
-          active &&
-          !failedLoad &&
-          voice === voiceSettingsStore &&
-          savedMode === 'openai-api' &&
-          savedModel === liveModel &&
-          catalog.connected &&
-          catalog.revision !== null &&
-          hasLiveResponsesRuntime() ? (
-            <LiveResponsesSettingsPanel
-              key={catalog.revision}
-              active={apiTab === 'tools'}
-              onBusyChange={setToolBusy}
-              ownerRevision={catalog.revision}
-              allowedModels={catalog.fresh ? catalog.toolIds : []}
-              saveRef={toolSave}
-              onSaveStateChange={setToolCanSave}
+            ) : null
+          }
+          tools={
+            <OpenAiVoiceToolOptions
+              models={catalog.toolIds}
+              selected={tool?.revision === revision ? tool.model : undefined}
+              disabled={busy || failedLoad || pairedSave.busy}
+              choose={value => {
+                if (revision !== null) setTool({ revision, model: value });
+              }}
             />
-          ) : (
-            <Text style={styles.detail}>
-              {t(
-                savedMode === 'openai-api' && savedModel === liveModel
-                  ? 'modelSettings.liveResponsesUnavailable'
-                  : 'modelSettings.liveResponsesSelectVoice',
-              )}
-            </Text>
-          )
-        }
-      />
+          }
+        />
+        <OpenAiVoiceCatalogStatus catalog={catalog} />
+      </View>
       {active ? (
         <View style={styles.section}>
-          {speechTab &&
-          mode === 'openai-api' &&
-          (!liveAvailable || model !== liveModel) ? (
-            <Text accessibilityRole="alert">
-              {t('modelSettings.liveVoiceUnavailableNoFallback')}
-            </Text>
-          ) : null}
           {!hasDock ? (
             <Button
               title={saveLabel}
@@ -235,13 +240,8 @@ export function VoiceSettingsPanel({
               onPress={requestSave}
             />
           ) : null}
-          {speechTab && prefsFailed ? (
-            <Text accessibilityRole="alert">
-              {t('modelSettings.liveVoicePreferenceSaveFailed')}
-            </Text>
-          ) : null}
-          {speechTab && message ? (
-            <Text accessibilityRole="alert">{message}</Text>
+          {pairedSave.error || message ? (
+            <Text accessibilityRole="alert">{pairedSave.error || message}</Text>
           ) : null}
         </View>
       ) : null}

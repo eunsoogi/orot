@@ -5,19 +5,15 @@ import {
   waitFor,
   within,
 } from '@testing-library/react-native';
-import { StyleSheet } from 'react-native';
-import { providerCatalogContentInset } from '../../layout/providerSettingsPresentation';
 import { VoiceSettingsPanel } from '../VoiceSettingsPanel';
 import { VoiceSettingsDockFixture } from '../testSupport/VoiceSettingsDockFixture';
 import { voiceSettingsStore } from '../voiceSettingsStore';
 import { createLiveVoicePreferenceStore } from '../liveVoicePreferenceStore';
-import {
-  loadLiveResponsesSettings,
-  saveLiveResponsesSettings,
-} from '../liveResponsesSettings';
-import type { LiveResponsesBackend } from '../liveResponsesSettingsIdentity';
-import { createRealtimeSettingsPermission } from '../../voiceConversation/createRealtimeSettingsPermission';
+import { saveReviewedOpenAiVoicePair } from '../saveReviewedOpenAiVoicePair';
 
+jest.mock('../saveReviewedOpenAiVoicePair', () => ({
+  saveReviewedOpenAiVoicePair: jest.fn(async () => () => true),
+}));
 jest.mock('../voiceRuntimeCapability', () => ({
   hasLiveVoiceRuntime: () => true,
   hasLiveResponsesRuntime: () => true,
@@ -32,27 +28,11 @@ jest.mock('../voiceSettingsStore', () => ({
     subscribe: jest.fn(() => () => {}),
   },
 }));
-jest.mock('../liveResponsesSettings', () => ({
-  loadLiveResponsesSettings: jest.fn(),
-  saveLiveResponsesSettings: jest.fn(),
-  revokeLiveResponsesSettings: jest.fn(),
-}));
-jest.mock('../../voiceConversation/createRealtimeSettingsPermission', () => ({
-  createRealtimeSettingsPermission: jest.fn(() => ({
-    authorize: async () => true,
-    current: () => true,
-    stop: () => {},
-  })),
-}));
 jest.mock(
   'react-native-safe-area-context',
   () => require('react-native-safe-area-context/jest/mock').default,
 );
 
-const tab = (name: 'speech' | 'tools') =>
-  screen.getByTestId(`openai-voice-model-tab-${name}`);
-const row = (model: LiveResponsesBackend) =>
-  screen.getByTestId(`live-responses-backend-${model}`);
 const write = jest.fn(async () => {});
 function voicePreferences() {
   return {
@@ -86,154 +66,134 @@ beforeEach(() => {
   });
 });
 
-test('the OpenAI-only sub-tabs separate choice and approval, keep drafts, and reopen independent saved models', async () => {
-  let saved: LiveResponsesBackend = 'gpt-6-luna';
-  jest.mocked(loadLiveResponsesSettings).mockImplementation(async () => ({
-    kind: 'active',
-    credentialEpoch: 'a'.repeat(64),
-    nativeGrant: {
-      backendModel: saved,
-      grantID: 'test-grant',
-      generation: 'test-generation',
-    },
-    current: () => true,
-    subscribe: () => () => {},
-  }));
-  jest.mocked(saveLiveResponsesSettings).mockImplementation(async input => {
-    expect(input.isCurrent()).toBe(true);
-    expect(input.audioCurrent()).toBe(true);
-    saved = input.backendModel;
-  });
-  const props = voicePreferences();
-  const view = await render(
-    <VoiceSettingsDockFixture livePreferences={props} />,
+test('shared dock never persists half a pair across decline; a complete fresh pair commits once', async () => {
+  await render(
+    <VoiceSettingsDockFixture livePreferences={voicePreferences()} />,
   );
-  await screen.findByTestId('live-voice-voice');
-  const local = within(screen.getByTestId('voice-model-group-local'));
-  expect(local.getByTestId('voice-model-apple-system-speech')).toBeTruthy();
-  expect(local.queryByTestId('openai-voice-model-tabs')).toBeNull();
-  const strip = screen.getByTestId('openai-voice-model-tabs');
-  expect(StyleSheet.flatten(strip.props.style)).toMatchObject({
-    marginHorizontal: providerCatalogContentInset,
-  });
-  expect(StyleSheet.flatten(strip.parent?.props.style)).not.toHaveProperty(
-    'paddingHorizontal',
-  );
-  expect(tab('speech')).toHaveTextContent('음성 모델');
-  expect(tab('tools')).toHaveTextContent('도구 호출 모델');
-  expect(screen.queryByTestId('live-responses-setting')).toBeNull();
+  const refresh = () => screen.getByTestId('voice-model-refresh');
+  const save = () => screen.getByTestId('voice-settings-shared-dock-save');
+  await waitFor(() => expect(refresh()).toBeEnabled());
+  const apple = within(screen.getByTestId('voice-model-group-local'));
+  expect(apple.getByTestId('voice-model-apple-system-speech')).toBeTruthy();
+  expect(screen.queryByRole('tab')).toBeNull();
+  expect(screen.queryByTestId('openai-voice-pair-form')).toBeNull();
   expect(voiceSettingsStore.discoverModels).not.toHaveBeenCalled();
-  const language = () => screen.getByRole('button', { name: '목소리 언어' });
-  await fireEvent.press(language());
-  await fireEvent.press(screen.getByRole('radio', { name: '영어' }));
-  expect(language()).toHaveProp('accessibilityValue', { text: '영어' });
-
-  await fireEvent.press(screen.getByTestId('voice-model-refresh'));
-  const speechRow = await screen.findByTestId('voice-model-gpt-live-1.1');
-  expect(StyleSheet.flatten(speechRow.props.style)).toMatchObject({
-    padding: providerCatalogContentInset,
-  });
-  await fireEvent.press(tab('tools'));
-  expect(tab('tools').props.accessibilityState).toMatchObject({
-    selected: true,
-  });
-  expect(screen.queryByTestId('live-voice-voice')).toBeNull();
-  expect(screen.queryByTestId('live-voice-language')).toBeNull();
+  expect(save()).toBeDisabled();
+  await fireEvent.press(refresh());
+  const speech = await screen.findByTestId('voice-model-gpt-live-1.1');
+  await fireEvent.press(speech);
+  expect(save()).toBeDisabled();
+  await fireEvent.press(screen.getByTestId('voice-tool-model-gpt-6-sol'));
+  expect(save()).toBeEnabled();
   expect(screen.queryByTestId('voice-settings-save')).toBeNull();
   expect(screen.queryByTestId('live-responses-enable')).toBeNull();
-  expect(screen.getAllByText('도구 호출 모델')).toHaveLength(1);
-  expect(screen.queryByText(/gpt-6-luna를 권장/)).toBeNull();
-  expect(screen.getByTestId('voice-settings-shared-dock-save')).toBeDisabled();
-  expect(row('gpt-6-luna').props.accessibilityState).toMatchObject({
-    selected: true,
-    disabled: false,
-  });
-  expect(row('gpt-6-sol')).toBeEnabled();
-  expect(StyleSheet.flatten(row('gpt-6-sol').props.style)).toMatchObject({
-    padding: providerCatalogContentInset,
-  });
-  expect(screen.getAllByTestId(/^live-responses-backend-/)).toHaveLength(2);
+  expect(screen.queryByTestId('live-responses-disable')).toBeNull();
   expect(screen.queryByText('gpt-unrelated')).toBeNull();
-  expect(screen.getByTestId('live-responses-active-model')).toHaveTextContent(
-    /OpenAI API - GPT-6 Luna/,
-  );
-  await fireEvent.press(row('gpt-6-sol'));
-  expect(row('gpt-6-sol').props.accessibilityState).toMatchObject({
-    selected: true,
-  });
-  await fireEvent.press(tab('speech'));
-  expect(screen.getByTestId('live-voice-voice')).toBeTruthy();
-  expect(language()).toHaveProp('accessibilityValue', { text: '영어' });
-  await fireEvent.press(tab('tools'));
-  expect(row('gpt-6-sol').props.accessibilityState).toMatchObject({
-    selected: true,
-  });
-  expect(screen.getByTestId('live-responses-active-model')).toHaveTextContent(
-    /GPT-6 Luna/,
-  );
-  expect(voiceSettingsStore.discoverModels).toHaveBeenCalledTimes(1);
-  expect(saveLiveResponsesSettings).not.toHaveBeenCalled();
-  expect(createRealtimeSettingsPermission).not.toHaveBeenCalled();
-  expect(screen.queryByTestId('inference-disclosure-recipient')).toBeNull();
-
-  const apply = () =>
-    fireEvent.press(screen.getByTestId('voice-settings-shared-dock-save'));
-  await apply();
+  expect(screen.getByTestId('live-voice-language')).toBeVisible();
+  expect(screen.getByTestId('live-voice-voice')).toBeVisible();
+  await fireEvent.press(save());
   expect(
     await screen.findByTestId('inference-disclosure-recipient'),
-  ).toHaveTextContent(/OpenAI Responses \(Live\)/);
-  expect(screen.getByText(/별도로 API 사용료/)).toBeTruthy();
+  ).toHaveTextContent(/OpenAI Live/);
+  await fireEvent.press(screen.getByTestId('inference-disclosure-allow'));
+  await waitFor(() =>
+    expect(
+      screen.getByTestId('inference-disclosure-recipient'),
+    ).toHaveTextContent(/OpenAI Responses/),
+  );
+  expect(saveReviewedOpenAiVoicePair).not.toHaveBeenCalled();
   await fireEvent.press(screen.getByTestId('inference-disclosure-cancel'));
-  expect(saveLiveResponsesSettings).not.toHaveBeenCalled();
-  await waitFor(() => expect(tab('tools')).toBeEnabled());
-  await apply();
+  expect(voiceSettingsStore.save).not.toHaveBeenCalled();
+  expect(write).not.toHaveBeenCalled();
+  expect(saveReviewedOpenAiVoicePair).not.toHaveBeenCalled();
+  await waitFor(() => expect(save()).toBeEnabled());
+  await fireEvent.press(save());
   await fireEvent.press(
     await screen.findByTestId('inference-disclosure-allow'),
   );
   await waitFor(() =>
-    expect(screen.getByTestId('live-responses-active-model')).toHaveTextContent(
-      /GPT-6 Sol/,
-    ),
+    expect(
+      screen.getByTestId('inference-disclosure-recipient'),
+    ).toHaveTextContent(/OpenAI Responses/),
   );
-  expect(saveLiveResponsesSettings).toHaveBeenCalledTimes(1);
+  await fireEvent.press(screen.getByTestId('inference-disclosure-allow'));
+  await waitFor(() =>
+    expect(saveReviewedOpenAiVoicePair).toHaveBeenCalledTimes(1),
+  );
+  expect(saveReviewedOpenAiVoicePair).toHaveBeenCalledWith(
+    expect.objectContaining({
+      pair: {
+        speechModel: 'gpt-live-1.1',
+        backendModel: 'gpt-6-sol',
+        accountRevision: 1,
+      },
+    }),
+  );
   expect(voiceSettingsStore.save).not.toHaveBeenCalled();
   expect(write).not.toHaveBeenCalled();
-  await view.unmount();
-
-  await render(<VoiceSettingsDockFixture livePreferences={props} />);
-  expect(await screen.findByTestId('voice-current-model')).toHaveTextContent(
-    /GPT-Live-1\.1/,
-  );
-  await fireEvent.press(tab('tools'));
-  expect(
-    await screen.findByTestId('live-responses-active-model'),
-  ).toHaveTextContent(/GPT-6 Sol/);
-  expect(voiceSettingsStore.discoverModels).toHaveBeenCalledTimes(1);
 });
 
-test('a saved Apple speech selection cannot acquire or display an OpenAI tool choice', async () => {
+it('uses the same summary for distinct draft and saved states', async () => {
   jest.mocked(voiceSettingsStore.load).mockResolvedValue({
     mode: 'local',
     model: 'apple-system-speech',
     hasApiKey: true,
   });
-  jest.mocked(voiceSettingsStore.discoverModels).mockResolvedValue({
-    revision: 1,
-    ids: ['gpt-6-luna', 'gpt-6-sol', 'gpt-unrelated'],
-  });
-  await render(<VoiceSettingsPanel />);
-  expect(await screen.findByTestId('voice-current-model')).toHaveTextContent(
-    /Apple - Apple 시스템 음성/,
-  );
+  const view = await render(<VoiceSettingsPanel />);
+  const summary = await view.findByTestId('voice-current-model');
+  expect(summary).toHaveTextContent(/Apple - Apple 시스템 음성/);
   expect(voiceSettingsStore.discoverModels).not.toHaveBeenCalled();
-  await fireEvent.press(screen.getByTestId('voice-model-refresh'));
-  expect(await screen.findByText(/GPT-Live-1.1을 찾지 못했어요/)).toBeTruthy();
-  await fireEvent.press(tab('tools'));
-  expect(screen.queryByTestId('live-responses-setting')).toBeNull();
-  expect(screen.queryByTestId('live-responses-backend-gpt-6-luna')).toBeNull();
-  expect(screen.getByText(/먼저 OpenAI API 음성 모델을 적용/)).toBeTruthy();
-  expect(loadLiveResponsesSettings).not.toHaveBeenCalled();
-  expect(voiceSettingsStore.discoverModels).toHaveBeenCalledTimes(1);
+  const refresh = view.getByTestId('voice-model-refresh');
+  expect(refresh.props.accessibilityState).toMatchObject({
+    disabled: false,
+    busy: false,
+  });
+  await fireEvent.press(refresh);
+  const api = await view.findByTestId('voice-model-gpt-live-1.1');
+  await fireEvent.press(api);
+  expect(summary).toHaveTextContent(/선택한 AI.*OpenAI API - GPT-Live-1.1/s);
+  await fireEvent.press(view.getByTestId('voice-model-apple-system-speech'));
+  expect(summary).toHaveTextContent(/현재 선택:.*Apple - Apple 시스템 음성/s);
   expect(voiceSettingsStore.save).not.toHaveBeenCalled();
-  expect(createRealtimeSettingsPermission).not.toHaveBeenCalled();
+  await fireEvent.press(api);
+  await fireEvent.press(view.getByTestId('voice-tool-model-gpt-6-luna'));
+  await fireEvent.press(view.getByTestId('voice-settings-save'));
+  await fireEvent.press(await view.findByTestId('inference-disclosure-allow'));
+  await waitFor(() =>
+    expect(
+      view.getByTestId('inference-disclosure-recipient'),
+    ).toHaveTextContent(/OpenAI Responses/),
+  );
+  await fireEvent.press(view.getByTestId('inference-disclosure-allow'));
+  await waitFor(() =>
+    expect(summary).toHaveTextContent(
+      /현재 선택:.*OpenAI API - GPT-Live-1\.1/s,
+    ),
+  );
+});
+
+test('an exact commit receipt that expires before Save continuation does not mark the pair active', async () => {
+  jest.mocked(saveReviewedOpenAiVoicePair).mockResolvedValueOnce(() => false);
+  await render(
+    <VoiceSettingsDockFixture livePreferences={voicePreferences()} />,
+  );
+  const refresh = () => screen.getByTestId('voice-model-refresh');
+  await waitFor(() => expect(refresh()).toBeEnabled());
+  await fireEvent.press(refresh());
+  await fireEvent.press(await screen.findByTestId('voice-model-gpt-live-1.1'));
+  await fireEvent.press(screen.getByTestId('voice-tool-model-gpt-6-sol'));
+  await fireEvent.press(screen.getByTestId('voice-settings-shared-dock-save'));
+  await fireEvent.press(
+    await screen.findByTestId('inference-disclosure-allow'),
+  );
+  await waitFor(() =>
+    expect(
+      screen.getByTestId('inference-disclosure-recipient'),
+    ).toHaveTextContent(/OpenAI Responses/),
+  );
+  await fireEvent.press(screen.getByTestId('inference-disclosure-allow'));
+  expect(
+    await screen.findByText(/음성 모델 설정이 완료되지 않았어요/),
+  ).toBeVisible();
+  expect(screen.queryByTestId('voice-current-model')).toBeNull();
 });

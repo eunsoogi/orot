@@ -1,3 +1,5 @@
+import { readSettingsVoicePairSelection } from '../storage/settingsVoicePairSelection';
+import { currentVoicePairAuthorities } from './voicePairAuthorities';
 import { createVoiceSettingsStore } from './createVoiceSettingsStore';
 import {
   apiCredentialMutation,
@@ -10,6 +12,11 @@ export const voiceSettingsStore = createVoiceSettingsStore({
   service: 'com.orot.mobile.voice-settings.v1',
   beginSettingsMutation: beginVoiceSettingsMutation,
   beginCredentialMutation: () => apiCredentialMutation.begin(),
+  readVoicePairActive: currentVoicePairAuthorities,
+  readVoicePairSelection: () =>
+    import('../storage/secureDatabase')
+      .then(module => module.openLocalAgentMemoryDatabase())
+      .then(readSettingsVoicePairSelection),
 });
 
 /** The local adapter must never consume an API model selection or authorize external audio. */

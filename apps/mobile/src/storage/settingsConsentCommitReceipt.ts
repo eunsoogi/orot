@@ -47,3 +47,8 @@ export async function commitSettingsConsentRows(
   }
   if (!committed) throw new Error('Joint permission commit was not confirmed');
 }
+
+export const assertSettingsActivationToken = (token: string) => {
+  if (!/^[A-Za-z0-9_-]{16,128}$/.test(token))
+    throw new Error('Invalid activation identity');
+};

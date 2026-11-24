@@ -210,3 +210,40 @@ extension RealtimeVoiceLifecycleTests {
         }
     }
 }
+
+extension RealtimeVoiceLifecycleTests {
+    func testPairNativeAdmissionRequiresProtectedPublicationWitnessAndBothAuthorities() throws {
+        let response = String(repeating: "a", count: 64)
+        let epoch = String(repeating: "b", count: 64)
+        let audio = String(repeating: "c", count: 64)
+        let grant = try XCTUnwrap(LiveResponsesSettingsGrant([
+            "backendModel": "gpt-6-luna", "generation": response, "grantID": response + "-model",
+        ]))
+        var witness: String?
+        var audioStatus = "active"
+        var candidates: [[String: Any]] = [[
+            "pair": ["version": 1, "credentialEpoch": epoch, "speechModel": "gpt-live-1.1",
+                     "backendModel": "gpt-6-luna", "voiceGeneration": audio, "responsesGeneration": response],
+        ]]
+        let read: (String, String) -> [String: Any]? = { service, account in
+            if account == "voice-settings" {
+                var record: [String: Any] = ["mode": "local", "apiKey": "synthetic", "credentialEpoch": epoch,
+                                             "pairCandidates": candidates]
+                if let witness { record["effectiveResponsesGeneration"] = witness }
+                return record
+            }
+            guard account == "settings-consent-authority" else { return nil }
+            return service.hasSuffix(".voice")
+                ? ["version": 1, "generation": audio, "status": audioStatus]
+                : ["version": 1, "generation": response, "status": "active"]
+        }
+        XCTAssertFalse(grant.isCurrent(key: "synthetic", read: read))
+        witness = response
+        XCTAssertTrue(grant.isCurrent(key: "synthetic", read: read))
+        audioStatus = "revoked"
+        XCTAssertFalse(grant.isCurrent(key: "synthetic", read: read))
+        audioStatus = "active"
+        candidates.append(candidates[0])
+        XCTAssertFalse(grant.isCurrent(key: "synthetic", read: read))
+    }
+}

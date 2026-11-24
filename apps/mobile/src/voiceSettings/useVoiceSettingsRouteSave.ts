@@ -1,6 +1,6 @@
 import { useNavigationRouteActions } from '../navigation/useNavigationRouteActions';
 
-/** One stable dock action for both OpenAI panes and the existing local voice picker. */
+/** One stable dock action for the paired OpenAI form and the existing local voice picker. */
 export function useVoiceSettingsRouteSave({
   active,
   label,

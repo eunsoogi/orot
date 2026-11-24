@@ -60,7 +60,7 @@ export function LiveVoicePreferencesPanel({
   saveRevision = 0,
   systemLanguage = systemVoiceLanguage(),
 }: {
-  readonly store: LiveVoicePreferenceStore;
+  readonly store: Pick<LiveVoicePreferenceStore, 'load'>;
   readonly ready: boolean;
   readonly authorityRevision: number;
   readonly onDraftChange?: (draft: LiveVoicePreferencesDraft | null) => void;
@@ -104,7 +104,7 @@ export function LiveVoicePreferencesPanel({
     };
   }, [opacity]);
   const current = useRef<{
-    store: LiveVoicePreferenceStore;
+    store: Pick<LiveVoicePreferenceStore, 'load'>;
     revision: number;
     save: number;
   }>(undefined);
@@ -209,30 +209,29 @@ export function LiveVoicePreferencesPanel({
         onToggle={() => setOpen(open === 'language' ? undefined : 'language')}
         onSelect={selectLanguage}
       />
-      {language ? (
-        <Animated.View style={{ opacity }}>
-          <LiveVoiceCatalogSelect
-            label={t('modelSettings.liveVoiceName')}
-            testID="live-voice-voice"
-            options={visibleVoices.map(id => [id, voiceLabel(id)] as const)}
-            value={compatible ? draft.voice : undefined}
-            expanded={open === 'voice'}
-            busy={busy}
-            onToggle={() => setOpen(open === 'voice' ? undefined : 'voice')}
-            onSelect={(voice: LiveVoice) => {
-              setDraft({ ...draft, language, voice });
-              setOpen(undefined);
-            }}
-          />
-          {!compatible ? (
-            <Text>
-              {t('modelSettings.liveVoiceSavedLabel', {
-                voice: voiceLabel(draft.voice),
-              })}
-            </Text>
-          ) : null}
-        </Animated.View>
-      ) : null}
+      <Animated.View style={{ opacity: language ? opacity : 1 }}>
+        <LiveVoiceCatalogSelect
+          label={t('modelSettings.liveVoiceName')}
+          testID="live-voice-voice"
+          options={visibleVoices.map(id => [id, voiceLabel(id)] as const)}
+          value={compatible ? draft.voice : undefined}
+          expanded={open === 'voice'}
+          busy={busy || !language}
+          onToggle={() => setOpen(open === 'voice' ? undefined : 'voice')}
+          onSelect={(voice: LiveVoice) => {
+            if (!language) return;
+            setDraft({ ...draft, language, voice });
+            setOpen(undefined);
+          }}
+        />
+        {language && !compatible ? (
+          <Text>
+            {t('modelSettings.liveVoiceSavedLabel', {
+              voice: voiceLabel(draft.voice),
+            })}
+          </Text>
+        ) : null}
+      </Animated.View>
     </View>
   );
 }
