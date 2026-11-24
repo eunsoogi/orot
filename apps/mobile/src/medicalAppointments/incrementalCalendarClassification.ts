@@ -8,8 +8,8 @@ import { calendarEventsMatch } from './calendarEvidence';
 import {
   canStoreClassifiedCalendarBatches,
   exactKeys,
+  reviewExactCalendarCandidates,
 } from './calendarClassificationWitnesses';
-import { createClassificationCandidates } from './classificationCandidates';
 import {
   classifyCalendarEvents,
   type ClassifyCalendarEventsInput,
@@ -25,16 +25,14 @@ export async function classifyCalendarEventsIncrementally(
   },
   cache: CalendarClassificationCache | undefined,
 ): Promise<ClassificationRunResult> {
-  // Unknown/native older adapters leave existing behavior unchanged, not an invented cache hit.
-  if (
-    !cache ||
-    !input.bridge.listUpcomingEvents ||
-    (input.events.length > 0 && !exactKeys(input.events).some(Boolean))
-  ) {
+  // Legacy adapters without persistent native verification keep their existing manual workflow.
+  if (!cache || !input.bridge.listUpcomingEvents) {
     input.onWorkPlan?.(input.events.length);
     return classifyCalendarEvents(input);
   }
-  const base = createClassificationCandidates(input.events);
+  const { keys, candidates: base } = reviewExactCalendarCandidates(
+    input.events,
+  );
   const rejected = (
     status: 'cancelled' | 'unavailable',
   ): ClassificationRunResult => ({
@@ -44,7 +42,17 @@ export async function classifyCalendarEventsIncrementally(
     totalBatches: 0,
   });
   if (input.signal.aborted) return rejected('cancelled');
-  const keys = exactKeys(input.events);
+  // A recurring occurrence without an original identity or a duplicate native
+  // key cannot safely be cached. Leave it for explicit manual review, not every AI rerun.
+  if (keys.length && !keys.some(Boolean)) {
+    input.onWorkPlan?.(0);
+    return {
+      status: 'complete',
+      candidates: base,
+      completedBatches: 0,
+      totalBatches: 0,
+    };
+  }
   const readCurrentSnapshot = async () => {
     const live = await input.bridge.listUpcomingEvents!();
     if (input.signal.aborted || live.access !== 'fullAccess') return;
@@ -77,7 +85,7 @@ export async function classifyCalendarEventsIncrementally(
       : undefined,
   );
   const missing = input.events.flatMap((event, index) =>
-    reused[index] ? [] : [{ event, index }],
+    keys[index] && !reused[index] ? [{ event, index }] : [],
   );
   input.onWorkPlan?.(missing.length);
   const hasReused = reused.some(Boolean);

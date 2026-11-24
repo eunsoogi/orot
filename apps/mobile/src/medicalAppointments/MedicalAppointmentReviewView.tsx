@@ -62,6 +62,9 @@ export function MedicalAppointmentReviewView(props: Props) {
   const reused = props.candidates.filter(
     item => item.reusedClassification,
   ).length;
+  const unresolved = props.candidates.filter(
+    item => item.unresolvedCalendarIdentity,
+  ).length;
   const medical = props.candidates.filter(isConfidentMedical);
   const unavailable =
     props.providerUnavailable ||
@@ -94,6 +97,9 @@ export function MedicalAppointmentReviewView(props: Props) {
     .join('\n');
   const resultNotice = [
     props.message,
+    unresolved
+      ? t('medicalAppointments.unresolvedIdentity', { count: unresolved })
+      : '',
     !props.queryComplete ? copy.incompleteCalendar : '',
   ]
     .filter(Boolean)

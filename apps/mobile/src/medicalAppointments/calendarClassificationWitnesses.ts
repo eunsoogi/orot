@@ -1,6 +1,7 @@
 import { isCalendarClassificationWitness } from '@orot/storage';
 import type { CalendarEvent } from '../calendar/types';
 import type { ClassificationRunResult } from './classificationWorkflow';
+import { createClassificationCandidates } from './classificationCandidates';
 
 /** Never create a reuse key for an ambiguous native occurrence or a competing snapshot. */
 export function exactKeys(events: readonly CalendarEvent[]) {
@@ -29,4 +30,18 @@ export function canStoreClassifiedCalendarBatches(
     failure === 'incomplete_result' ||
     failure === 'budget_exceeded'
   );
+}
+
+/** Unknown native identity is a local review outcome, never a cache hit or an AI miss. */
+export function reviewExactCalendarCandidates(
+  events: readonly CalendarEvent[],
+) {
+  const keys = exactKeys(events);
+  const candidates = createClassificationCandidates(events).map(
+    (candidate, index) =>
+      keys[index]
+        ? candidate
+        : { ...candidate, unresolvedCalendarIdentity: true as const },
+  );
+  return { keys, candidates };
 }

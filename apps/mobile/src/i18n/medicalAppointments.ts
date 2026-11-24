@@ -14,6 +14,8 @@ export const medicalAppointmentsKo = {
   'medicalAppointments.checkingPriorResults': '이전에 분류한 일정 확인 중',
   'medicalAppointments.reusedResults':
     '기존 분류 {reused}건 재사용 · 새로 분류 {classified}건',
+  'medicalAppointments.unresolvedIdentity':
+    '일정 {count}건은 같은 일정인지 확인할 수 없어 분류하지 않았어요. 캘린더에서 직접 확인해 주세요.',
   'medicalAppointments.progress': '일정 분류 중',
   'medicalAppointments.savingResults': '분류한 일정을 저장하고 있어요.',
   'medicalAppointments.reviewResults': '분류된 일정',
