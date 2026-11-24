@@ -45,6 +45,7 @@ function exactImportedGroup(references: readonly EvidenceReference[]) {
       (locator &&
         typeof locator === 'object' &&
         !Array.isArray(locator) &&
+        'kind' in locator &&
         locator.kind === 'manual_history')
     )
       return;
