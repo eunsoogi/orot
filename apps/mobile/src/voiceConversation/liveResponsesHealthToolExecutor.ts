@@ -205,7 +205,6 @@ export function createLiveResponsesHealthToolExecutor(input: {
         )
       )
         return;
-      // Provider output omits locators, revisions and internal IDs.
       const payload = liveHeartRateAggregate(
         result.items[0]!.content,
         scope.days,
@@ -221,19 +220,18 @@ export function createLiveResponsesHealthToolExecutor(input: {
       if (!authorized || !authorized() || !(await reproof())) return;
       const proof = data.borrowLiveHealthProof?.();
       if (!proof) return;
-      const staged = stageLiveResponsesResult({
+      await stageLiveResponsesResult({
+        id: call.toolCallId,
         output,
         signal,
-        current: () => current() && authorized() && proof.current(),
+        proof,
+        current: () => current() && authorized(),
         reproveSource: () => registry.revalidateEvidence(result.items, signal),
+      }).admit(approved => {
+        // The native bridge retains its one-result guard.
+        started = false;
+        return input.settle(call.callId, call.challengeId, approved);
       });
-      await staged
-        .admit(approved => {
-          // No additional JS await separates the last check from native admission.
-          started = false;
-          return input.settle(call.callId, call.challengeId, approved);
-        })
-        .finally(proof.dispose);
     } catch {
       // Protected read/approval failures cannot produce a provider result or imply consent.
     } finally {

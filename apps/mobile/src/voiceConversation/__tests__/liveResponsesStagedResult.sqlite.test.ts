@@ -5,7 +5,7 @@ import {
   isCurrentLocalAgentMemoryDatabase,
   openLocalAgentMemoryDatabase,
 } from '../../storage/secureDatabase';
-import { stageLiveResponsesResult } from '../stageLiveResponsesResult';
+import { stageLiveResponsesResults } from '../stageLiveResponsesResult';
 import { createLiveResponsesHealthToolExecutor } from '../liveResponsesHealthToolExecutor';
 import { call, fixture } from '../testSupport/liveResponsesProtectedFixture';
 
@@ -81,12 +81,18 @@ test('staging sends nothing and two admission contenders cannot replay the appro
     release = resolve;
   });
   const reproveSource = jest.fn(() => source);
-  const handoff = jest.fn(async (_approved: string) => undefined);
-  const staged = stageLiveResponsesResult({
-    output: 'synthetic-approved-bytes',
+  const handoff = jest.fn(async (_approved: readonly unknown[]) => undefined);
+  const staged = stageLiveResponsesResults({
     signal: new AbortController().signal,
-    current: () => true,
-    reproveSource,
+    proof: { current: () => true, dispose: () => {} },
+    results: [
+      {
+        id: 'first',
+        output: 'synthetic-approved-bytes',
+        current: () => true,
+        reproveSource,
+      },
+    ],
   });
   expect(handoff).not.toHaveBeenCalled();
   const admitting = staged.admit(handoff);
@@ -96,7 +102,9 @@ test('staging sends nothing and two admission contenders cannot replay the appro
   release(true);
   await admitting;
   await staged.admit(handoff);
-  expect(handoff.mock.calls).toEqual([['synthetic-approved-bytes']]);
+  expect(handoff.mock.calls).toEqual([
+    [[{ id: 'first', output: 'synthetic-approved-bytes' }]],
+  ]);
 });
 
 test('only a guarded proof can admit the local outcome, even with exact consent', async () => {
