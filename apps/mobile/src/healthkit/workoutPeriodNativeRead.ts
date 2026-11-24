@@ -1,5 +1,9 @@
 import { NativeModules, Platform } from 'react-native';
 import type { PeriodWorkout, WorkoutPeriod } from './workoutPeriodCohort';
+import {
+  validatedRecordsWorkoutDays,
+  type RecordsWorkoutDay,
+} from './recordsWorkoutDayWitness';
 
 export type WorkoutPeriodResult =
   | { status: 'unavailable' | 'emptyVisible' }
@@ -14,6 +18,7 @@ export type WorkoutPeriodResult =
       membershipRevision: string;
       fromInclusive: string;
       toExclusive: string;
+      days?: readonly RecordsWorkoutDay[];
     };
 
 let nextCall = 0;
@@ -24,6 +29,7 @@ export async function readWorkoutPeriodHeartRate(
   period: WorkoutPeriod,
   cohort: readonly PeriodWorkout[],
   signal: AbortSignal,
+  recordsMonthChart?: { readonly timeZone: string },
 ): Promise<WorkoutPeriodResult> {
   if (signal.aborted || Platform.OS !== 'ios') return unavailable;
   const api = NativeModules.HealthKitModule as
@@ -31,6 +37,7 @@ export async function readWorkoutPeriodHeartRate(
         queryWorkoutPeriodHeartRate?(
           request: WorkoutPeriod & {
             callId: string;
+            recordsMonthChart?: { readonly timeZone: string };
             workouts: readonly PeriodWorkout[];
           },
         ): Promise<unknown>;
@@ -46,6 +53,7 @@ export async function readWorkoutPeriodHeartRate(
     const result = await api.queryWorkoutPeriodHeartRate({
       ...period,
       callId,
+      ...(recordsMonthChart ? { recordsMonthChart } : {}),
       workouts: cohort,
     });
     if (signal.aborted || !result || typeof result !== 'object')
@@ -89,8 +97,16 @@ export async function readWorkoutPeriodHeartRate(
       !/^v1:[0-9a-f]{64}$/u.test(membershipRevision)
     )
       return unavailable;
+    const days =
+      recordsMonthChart &&
+      validatedRecordsWorkoutDays(
+        result as { days?: unknown; timeZone?: unknown },
+        { ...period, sampleCount, minimum, mean, maximum },
+        recordsMonthChart.timeZone,
+      );
     return {
       ...period,
+      ...(days ? { days } : {}),
       status: 'available',
       sampleCount,
       minimum,

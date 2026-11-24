@@ -10,6 +10,10 @@ export const healthRecordsKo = {
   'healthRecords.workout.cardio': '유산소 운동',
   'healthRecords.workout.interval': '인터벌 운동',
   'healthRecords.workout.minutes': '{minutes}분',
+  'healthRecords.workoutHeartRate.recordsSource':
+    '건강 앱이 운동에 연결한 최근 한 달 심박수',
+  'healthRecords.workoutHeartRate.recordsChartUnavailable':
+    '날짜별 운동 심박수를 확인할 수 없어요.',
   'healthRecords.workoutHeartRate.overviewTitle': '운동 심박수',
   'healthRecords.workoutHeartRate.periodLabel': '오늘 포함 최근 7일',
   'healthRecords.workoutHeartRate.periodAverage': '평균 {mean} bpm',

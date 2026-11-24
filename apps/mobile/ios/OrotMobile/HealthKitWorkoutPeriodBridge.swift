@@ -40,11 +40,13 @@ private final class WorkoutPeriodReadCall: @unchecked Sendable {
     let from: String
     let to: String
     let period: WorkoutPeriodQuantityAccumulator.Window
+    let requestedTimeZone: String?
+    let timeZone: TimeZone?
     let workouts: [WorkoutPeriodHealthKitProducer.OwnedWorkout]
     let resolve: RCTPromiseResolveBlock
 
     init?(_ raw: NSDictionary, resolve: @escaping RCTPromiseResolveBlock) {
-        guard raw.count == 4, let id = raw["callId"] as? String,
+        guard raw.count == 4 || raw.count == 5, let id = raw["callId"] as? String,
               id.count <= 64, id.hasPrefix("workout-period-"),
               let from = raw["fromInclusive"] as? String, let to = raw["toExclusive"] as? String,
               let input = raw["workouts"] as? [[String: String]], input.count <= 512
@@ -52,6 +54,18 @@ private final class WorkoutPeriodReadCall: @unchecked Sendable {
         let iso = ISO8601DateFormatter()
         iso.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
         guard let start = iso.date(from: from), let end = iso.date(from: to), start < end else { return nil }
+        let requestedTimeZone: String?
+        if raw.count == 5 {
+            guard let chart = raw["recordsMonthChart"] as? [String: String], chart.count == 1,
+                  let identifier = chart["timeZone"], identifier.count <= 64,
+                  identifier.range(of: "^[A-Za-z0-9_+/-]+$", options: .regularExpression) != nil,
+                  Self.isRecordsMonth(from: start, throughExclusive: end)
+            else { return nil }
+            requestedTimeZone = identifier
+        } else {
+            requestedTimeZone = nil
+        }
+        let timeZone = requestedTimeZone.flatMap(TimeZone.init(identifier:))
         var workouts: [WorkoutPeriodHealthKitProducer.OwnedWorkout] = []
         for row in input {
             guard row.count == 4, let rawID = row["id"], let workoutID = UUID(uuidString: rawID),
@@ -65,9 +79,22 @@ private final class WorkoutPeriodReadCall: @unchecked Sendable {
         self.id = id
         self.from = from
         self.to = to
+        self.requestedTimeZone = requestedTimeZone
+        self.timeZone = timeZone
         period = .init(start: start, end: end)
         self.workouts = workouts
         self.resolve = resolve
+    }
+
+    /// Match Records' existing rolling UTC Gregorian month, with no caller-selected wide windows.
+    private static func isRecordsMonth(from start: Date, throughExclusive end: Date) -> Bool {
+        let inclusiveEnd = end.addingTimeInterval(-0.001)
+        var calendar = Calendar(identifier: .gregorian)
+        calendar.timeZone = TimeZone(secondsFromGMT: 0)!
+        guard end.timeIntervalSince(start) <= 31 * 86400 + 0.002,
+              let expectedStart = calendar.date(byAdding: .month, value: -1, to: inclusiveEnd)
+        else { return false }
+        return abs(expectedStart.timeIntervalSince(start)) < 0.0001
     }
 }
 
@@ -89,6 +116,7 @@ private enum WorkoutPeriodBridgeOperations {
         let work = Task {
             let outcome = await WorkoutPeriodHealthKitProducer.capture(
                 store: store, period: call.period, completeCohort: call.workouts,
+                timeZone: call.timeZone,
                 isCurrent: { active[call.id]?.call === call },
             )
             guard active[call.id]?.call === call else { return }
@@ -97,13 +125,24 @@ private enum WorkoutPeriodBridgeOperations {
             case .unavailable: call.resolve(["status": "unavailable"])
             case .emptyVisible: call.resolve(["status": "emptyVisible"])
             case let .available(witness):
-                call.resolve([
+                var result: [String: Any] = [
                     "status": "available", "fromInclusive": call.from, "toExclusive": call.to,
                     "sampleCount": witness.stats.sampleCount, "minimum": witness.stats.minimum,
                     "mean": witness.stats.mean, "maximum": witness.stats.maximum,
                     "firstSampleAtMs": witness.firstSampleAtMs, "lastSampleAtMs": witness.lastSampleAtMs,
                     "membershipRevision": witness.membershipRevision,
-                ])
+                ]
+                if let timeZone = call.requestedTimeZone, let days = witness.days {
+                    result["timeZone"] = timeZone
+                    result["days"] = days.map { day in
+                        [
+                            "date": day.date, "sampleCount": day.statistics.sampleCount,
+                            "minimum": day.statistics.minimum, "mean": day.statistics.mean,
+                            "maximum": day.statistics.maximum,
+                        ] as [String: Any]
+                    }
+                }
+                call.resolve(result)
             }
         }
         let expiry = Task {

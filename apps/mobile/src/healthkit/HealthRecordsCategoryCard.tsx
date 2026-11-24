@@ -4,6 +4,7 @@ import {
 } from './HealthRecordsMonthChartPanel';
 import { StyleSheet, View } from 'react-native';
 import type { HealthObservation } from '@orot/domain';
+import { HealthRecordsWorkoutMonthHeartRate } from './HealthRecordsWorkoutMonthHeartRate';
 import { HealthRecordsSleepChart } from './HealthRecordsSleepChart';
 import { AppButton } from '../layout/AppButton';
 import { AppText as Text } from '../layout/AppText';
@@ -26,6 +27,7 @@ interface HealthRecordsCategoryCardProps {
   readonly category: HealthObservationCategory;
   readonly hasMore?: boolean;
   readonly monthChart?: HealthRecordsMonthChartInput;
+  readonly workoutMonthSelected?: boolean;
   readonly loadState: 'loading' | 'ready' | 'failed';
   readonly observations: readonly HealthObservation[];
   readonly onOpenDetail: (selection: HealthRecordsDetailSelection) => void;
@@ -39,6 +41,7 @@ export function HealthRecordsCategoryCard({
   observations,
   onOpenDetail,
   monthChart,
+  workoutMonthSelected = false,
 }: HealthRecordsCategoryCardProps) {
   const title = healthRecordCategoryTitle(category);
   const appearance = healthRecordCategoryPresentation[category];
@@ -106,6 +109,16 @@ export function HealthRecordsCategoryCard({
                 observations={recentObservations}
                 hasMore={hasMore}
                 loadState={loadState}
+              />
+            ) : null}
+            {category === 'workouts' && workoutMonthSelected && monthChart ? (
+              <HealthRecordsWorkoutMonthHeartRate
+                key={
+                  monthChart.window.fromInclusive +
+                  '/' +
+                  monthChart.window.toInclusive
+                }
+                window={monthChart.window}
               />
             ) : null}
           </>

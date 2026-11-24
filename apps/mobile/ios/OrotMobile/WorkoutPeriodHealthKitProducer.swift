@@ -21,6 +21,7 @@ enum WorkoutPeriodHealthKitProducer {
         let firstSampleAtMs: Int64
         let lastSampleAtMs: Int64
         let membershipRevision: String
+        let days: [WorkoutPeriodDailyRollup.Day]?
     }
 
     enum Outcome {
@@ -39,6 +40,7 @@ enum WorkoutPeriodHealthKitProducer {
         store: HKHealthStore,
         period: Accumulator.Window,
         completeCohort: [OwnedWorkout],
+        timeZone: TimeZone? = nil,
         isCurrent: @MainActor () -> Bool,
     ) async -> Outcome {
         let deadline = DispatchTime.now() + .seconds(15)
@@ -127,6 +129,7 @@ enum WorkoutPeriodHealthKitProducer {
             var last: Date?
             var seen = 0
             var verifiedSources = Set<UUID>()
+            var dayRollup = timeZone.flatMap { WorkoutPeriodDailyRollup(period: period, timeZone: $0) }
             func accept(_ parent: HKQuantitySample, start: Date, end: Date, bpm: Double, route: Accumulator.RetrievalRoute) -> Bool {
                 guard active(), seen < expected, parent.quantityType == heartRate,
                       Accumulator.retrievalRoute(quantityCount: parent.count) == route,
@@ -139,6 +142,7 @@ enum WorkoutPeriodHealthKitProducer {
                 seen += 1
                 accumulator.accept(parentID: parent.uuid, start: start, end: end, bpm: bpm)
                 if windows.contains(where: { $0.contains(start: start, end: end) }) {
+                    dayRollup?.accept(start: start, bpm: bpm)
                     first = first.map { min($0, start) } ?? start
                     last = last.map { max($0, start) } ?? start
                     // Keep multiplicity, including multiple identical values from one series.
@@ -181,6 +185,7 @@ enum WorkoutPeriodHealthKitProducer {
                     stats: stats, firstSampleAtMs: Int64(first.timeIntervalSince1970 * 1000),
                     lastSampleAtMs: Int64(last.timeIntervalSince1970 * 1000),
                     membershipRevision: "v1:" + revision,
+                    days: dayRollup?.verifiedDays(expectedCount: stats.sampleCount),
                 ))
             }
         } catch {
