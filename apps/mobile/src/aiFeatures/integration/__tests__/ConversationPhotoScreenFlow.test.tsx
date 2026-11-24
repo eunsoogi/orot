@@ -33,6 +33,7 @@ const send = () => fireEvent.press(screen.getByTestId('rag-conversation-send'));
 
 test('the real screen holds image pixels until Settings consent and saves only its completed reply in the selected session', async () => {
   const fixture = await directPhotoComposerFixture();
+  const options = fixture.createOptions();
   const ordinarySend = jest.fn();
   let store!: ConversationSessions;
   function Screen() {
@@ -47,7 +48,7 @@ test('the real screen holds image pixels until Settings consent and saves only i
   }
   try {
     const view = await render(
-      <ConversationSessionsProvider options={fixture.options}>
+      <ConversationSessionsProvider options={options}>
         <Screen />
       </ConversationSessionsProvider>,
     );

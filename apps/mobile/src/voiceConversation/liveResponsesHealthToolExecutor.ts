@@ -5,7 +5,6 @@ import { LocalEvidenceReferenceRegistry } from '../aiFeatures/integration/eviden
 import { toolsFor } from '../aiFeatures/integration/featureServiceExecution';
 import { jsonByteLength } from '../aiFeatures/integration/evidenceUtils';
 import { liveHeartRateAggregate } from './liveHeartRateAggregate';
-
 export type LiveManagedHealthCall = Readonly<{
   callId: string;
   sessionId: string | number;
@@ -36,7 +35,6 @@ type Authority = Readonly<{
 const maxResultBytes = 8_192;
 const validId = (id: unknown): id is string =>
   typeof id === 'string' && id.length > 0 && id.length <= 256;
-
 function parseScope(args: string) {
   if (typeof args !== 'string' || args.length > 1_024) return;
   let value: unknown;
@@ -75,7 +73,6 @@ function identity(owner: Owner) {
     owner.credentialEpoch,
   ];
 }
-
 /** Execute one explicitly approved, bounded aggregate. No provider, generic tool dispatch,
  * data retention, or implicit reuse of a text-model grant occurs in this adapter. */
 export function createLiveResponsesHealthToolExecutor(input: {
@@ -222,17 +219,21 @@ export function createLiveResponsesHealthToolExecutor(input: {
       const output = JSON.stringify(payload);
       const authorized = await input.authorizeResult(authority, output);
       if (!authorized || !authorized() || !(await reproof())) return;
+      const proof = data.borrowLiveHealthProof?.();
+      if (!proof) return;
       const staged = stageLiveResponsesResult({
         output,
         signal,
-        current: () => current() && authorized(),
+        current: () => current() && authorized() && proof.current(),
         reproveSource: () => registry.revalidateEvidence(result.items, signal),
       });
-      await staged.admit(approved => {
-        // No additional JS await separates the last check from native admission.
-        started = false;
-        return input.settle(call.callId, call.challengeId, approved);
-      });
+      await staged
+        .admit(approved => {
+          // No additional JS await separates the last check from native admission.
+          started = false;
+          return input.settle(call.callId, call.challengeId, approved);
+        })
+        .finally(proof.dispose);
     } catch {
       // Protected read/approval failures cannot produce a provider result or imply consent.
     } finally {

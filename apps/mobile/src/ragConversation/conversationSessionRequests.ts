@@ -196,9 +196,11 @@ export function createConversationSessionRequests(
           return;
         lifetime.outcome(controller, outcome);
         if (outcome.status === 'failure' || outcome.status === 'unavailable') {
-          const kind =
-            outcome.status === 'failure' ? outcome.kind : 'unavailable';
-          fail(kind, undefined, retained?.toolMessageId);
+          fail(
+            outcome.status === 'failure' ? outcome : 'unavailable',
+            undefined,
+            retained?.toolMessageId,
+          );
           return;
         }
         if (outcome.status === 'answer')

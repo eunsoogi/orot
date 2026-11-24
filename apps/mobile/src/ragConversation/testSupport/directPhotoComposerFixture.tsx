@@ -59,7 +59,10 @@ export async function directPhotoComposerFixture({
   );
   const memorySave = jest.fn(saveOrdinaryConversationMemoryNote);
   const strict = jest.fn();
-  const options: Parameters<typeof createConversationSessions>[0] = {
+  // Each store has its own local IDs; never share a retention registry between owners.
+  const createOptions = (): NonNullable<
+    Parameters<typeof createConversationSessions>[0]
+  > => ({
     ordinaryMemory: permission?.enabled
       ? {
           capture: memoryCapture,
@@ -81,8 +84,8 @@ export async function directPhotoComposerFixture({
       createId: () => 'unexpected',
       now: () => date,
     }),
-  };
-  const store = createConversationSessions(options);
+  });
+  const store = createConversationSessions(createOptions());
   await store.attachExisting('selected', 0, date);
 
   let listener: ((event: ChatGPTPlanNativeEvent) => void) | undefined;
@@ -191,7 +194,7 @@ export async function directPhotoComposerFixture({
   );
   return {
     store,
-    options,
+    createOptions,
     storage,
     optedIn: permission?.enabled === true,
     memoryCapture,

@@ -186,7 +186,7 @@ export function createConversationColdRequest(
         input.lifetime.outcome(controller, result.outcome);
         input.update(id, {
           error: coldOutcomeFailure(result.outcome),
-          messages: withoutColdRecovery(latest, bubble.id),
+          messages: withoutColdRecovery(latest, bubble.id, result.outcome),
         });
       }
     } catch {
