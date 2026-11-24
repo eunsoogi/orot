@@ -17,6 +17,15 @@ export function formatChartPosition(
   return axis === 'day' ? value : formatDateTime(new Date(value));
 }
 
+/** Aggregated display intervals still use their exact local calendar bounds. */
+export function formatChartPointPosition(
+  point: ChartPoint,
+  axis: 'time' | 'day',
+): string {
+  if (axis === 'day' && point.period) return t('chart.dayRange', point.period);
+  return formatChartPosition(point.x, axis);
+}
+
 /** Compact daily ticks fit the plot while selected-point details retain the full date. */
 export function formatChartTick(value: string, axis: 'time' | 'day'): string {
   return axis === 'day'
@@ -64,7 +73,8 @@ export function usesWholeBpm(
   presentation: ChartPresentation | undefined,
 ): boolean {
   return (
-    presentation === 'whole-bpm-overview' &&
+    (presentation === 'whole-bpm-overview' ||
+      presentation === 'whole-bpm-derived-records') &&
     metric === 'heartRate' &&
     unit === 'count/min'
   );

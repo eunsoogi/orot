@@ -91,6 +91,11 @@ export function ChartPlot({
       accessibilityState={{ busy: data.coverage.status === 'loading' }}
     >
       {showDetails ? <Text accessibilityRole="header">{title}</Text> : null}
+      {visible?.series.some(series =>
+        series.points.some(point => point.period),
+      ) ? (
+        <Text>{t('chart.groupedHeartRate')}</Text>
+      ) : null}
       {showDetails || !['ready', 'partial'].includes(data.coverage.status) ? (
         <Text accessibilityState={{ busy: data.coverage.status === 'loading' }}>
           {t(`chart.state.${data.coverage.status}`)}

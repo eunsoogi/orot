@@ -73,6 +73,9 @@ export function HealthRecordsLineChart({
       : t(`chart.state.${status}`);
     return {
       metric: metrics[category] ?? 'heartRate',
+      ...(previewRange && category !== 'heart_rate'
+        ? { presentation: 'whole-bpm-derived-records' as const }
+        : {}),
       coverage: {
         requested: healthRecordPeriodTitle('month'),
         displayed,
@@ -89,7 +92,13 @@ export function HealthRecordsLineChart({
         return [...pointsByUnit].flatMap(
           ([unit, unitPoints]): ChartSeries[] => {
             if (previewRange) {
-              return heartRatePreviewSeries(unit, unitPoints, records, hasMore);
+              return heartRatePreviewSeries(
+                unit,
+                unitPoints,
+                records,
+                hasMore,
+                category !== 'heart_rate',
+              );
             }
             const measurements = unitPoints.map(point => ({
               x: point.effectiveAt,
