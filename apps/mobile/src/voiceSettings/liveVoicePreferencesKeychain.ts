@@ -32,7 +32,14 @@ export const liveVoicePreferencesKeychain = createLiveVoicePreferenceStore({
  * settings consent/broker must validate ownership before carrying credentials. */
 export async function loadLiveCallSettings() {
   const credentials = await voiceSettingsStore.liveCredentials();
-  const result = await liveVoicePreferencesKeychain.load();
+  const pair = await voiceSettingsStore.loadCommittedVoicePair?.();
+  const result = pair
+    ? {
+        kind: 'ready' as const,
+        owner: pair.pair.credentialEpoch,
+        preferences: pair.preferences,
+      }
+    : await liveVoicePreferencesKeychain.load();
   const current = await voiceSettingsStore.liveCredentials();
   if (
     result.kind !== 'ready' ||

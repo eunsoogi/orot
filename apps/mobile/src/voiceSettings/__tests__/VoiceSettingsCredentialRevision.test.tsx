@@ -7,10 +7,7 @@ import {
 } from '@testing-library/react-native';
 import { VoiceSettingsPanel } from '../VoiceSettingsPanel';
 import { voiceSettingsStore } from '../voiceSettingsStore';
-import {
-  loadLiveResponsesSettings,
-  saveLiveResponsesSettings,
-} from '../liveResponsesSettings';
+import { saveReviewedOpenAiVoicePair } from '../saveReviewedOpenAiVoicePair';
 import type { LiveResponsesBackend } from '../liveResponsesSettingsIdentity';
 import { createRealtimeSettingsPermission } from '../../voiceConversation/createRealtimeSettingsPermission';
 
@@ -28,10 +25,8 @@ jest.mock('../voiceSettingsStore', () => ({
     subscribe: jest.fn(() => () => {}),
   },
 }));
-jest.mock('../liveResponsesSettings', () => ({
-  loadLiveResponsesSettings: jest.fn(),
-  saveLiveResponsesSettings: jest.fn(),
-  revokeLiveResponsesSettings: jest.fn(),
+jest.mock('../saveReviewedOpenAiVoicePair', () => ({
+  saveReviewedOpenAiVoicePair: jest.fn(),
 }));
 jest.mock('../../voiceConversation/createRealtimeSettingsPermission', () => ({
   createRealtimeSettingsPermission: jest.fn(() => ({
@@ -45,10 +40,8 @@ jest.mock(
   () => require('react-native-safe-area-context/jest/mock').default,
 );
 
-const tab = (name: 'speech' | 'tools') =>
-  screen.getByTestId(`openai-voice-model-tab-${name}`);
 const row = (model: LiveResponsesBackend) =>
-  screen.getByTestId(`live-responses-backend-${model}`);
+  screen.getByTestId(`voice-tool-model-${model}`);
 beforeEach(() => {
   jest.clearAllMocks();
   jest.mocked(voiceSettingsStore.load).mockResolvedValue({
@@ -76,15 +69,13 @@ test('retires the previous credential catalog and its unapplied draft while the 
     notifyAccountChange = listener;
     return () => {};
   });
-  jest.mocked(loadLiveResponsesSettings).mockResolvedValue({ kind: 'off' });
   await render(<VoiceSettingsPanel />);
   const refresh = () => screen.getByTestId('voice-model-refresh');
   await waitFor(() => expect(refresh()).toBeEnabled());
   await fireEvent.press(refresh());
-  await screen.findByTestId('voice-model-gpt-live-1.1');
-  await fireEvent.press(tab('tools'));
+  await fireEvent.press(await screen.findByTestId('voice-model-gpt-live-1.1'));
   await fireEvent.press(
-    await screen.findByTestId('live-responses-backend-gpt-6-sol'),
+    await screen.findByTestId('voice-tool-model-gpt-6-sol'),
   );
   expect(screen.getByTestId('voice-settings-save')).toBeEnabled();
 
@@ -104,13 +95,11 @@ test('retires the previous credential catalog and its unapplied draft while the 
     revision = 2;
     notifyAccountChange();
   });
-  expect(screen.queryByTestId('live-responses-setting')).toBeNull();
+  expect(screen.queryByTestId('openai-voice-pair-form')).toBeNull();
   expect(screen.getByTestId('voice-settings-save')).toBeDisabled();
-  await fireEvent.press(tab('speech'));
   expect(screen.queryByTestId('voice-model-gpt-live-1.1')).toBeNull();
-  await fireEvent.press(tab('tools'));
   expect(voiceSettingsStore.discoverModels).toHaveBeenCalledTimes(1);
-  expect(saveLiveResponsesSettings).not.toHaveBeenCalled();
+  expect(saveReviewedOpenAiVoicePair).not.toHaveBeenCalled();
   expect(createRealtimeSettingsPermission).not.toHaveBeenCalled();
 
   jest.mocked(voiceSettingsStore.discoverModels).mockResolvedValue({
@@ -119,16 +108,14 @@ test('retires the previous credential catalog and its unapplied draft while the 
   });
   await act(async () => resolveStatus({ connected: true, revision: 2 }));
   expect(await screen.findByTestId('voice-settings-save')).toBeDisabled();
-  await fireEvent.press(tab('speech'));
   await fireEvent.press(refresh());
   await screen.findByTestId('voice-model-gpt-live-1.1');
-  await fireEvent.press(tab('tools'));
   expect(row('gpt-6-sol')).toBeEnabled();
   expect(row('gpt-6-sol')).toHaveProp(
     'accessibilityState',
     expect.objectContaining({ selected: false }),
   );
-  expect(screen.queryByTestId('live-responses-backend-gpt-6-luna')).toBeNull();
+  expect(screen.queryByTestId('voice-tool-model-gpt-6-luna')).toBeNull();
   expect(screen.getByTestId('voice-settings-save')).toBeDisabled();
   expect(voiceSettingsStore.discoverModels).toHaveBeenCalledTimes(2);
 });
@@ -138,27 +125,26 @@ test('lists only freshly discovered supported tool choices and explains empty an
     revision: 1,
     ids: ['gpt-live-1.1', 'gpt-unrelated'],
   });
-  jest.mocked(loadLiveResponsesSettings).mockResolvedValue({ kind: 'off' });
   await render(<VoiceSettingsPanel />);
   const refresh = () => screen.getByTestId('voice-model-refresh');
   await waitFor(() => expect(refresh()).toBeEnabled());
   await fireEvent.press(refresh());
-  await screen.findByTestId('voice-model-gpt-live-1.1');
-  await fireEvent.press(tab('tools'));
   expect(
-    screen.getByText(/사용할 수 있는 도구 호출 모델이 없어요/),
+    await screen.findByText(/사용할 수 있는 도구 호출 모델이 없어요/),
   ).toBeTruthy();
-  expect(screen.queryAllByTestId(/^live-responses-backend-/)).toHaveLength(0);
+  expect(screen.queryAllByTestId(/^voice-tool-model-/)).toHaveLength(0);
   expect(screen.getByTestId('voice-settings-save')).toBeDisabled();
   jest.mocked(voiceSettingsStore.discoverModels).mockResolvedValueOnce({
     revision: 1,
-    ids: ['gpt-6-sol', 'gpt-unrelated'],
+    ids: ['gpt-live-1.1', 'gpt-6-sol', 'gpt-unrelated'],
   });
   await fireEvent.press(refresh());
   await fireEvent.press(
-    await screen.findByTestId('live-responses-backend-gpt-6-sol'),
+    await screen.findByTestId('voice-tool-model-gpt-6-sol'),
   );
-  expect(screen.queryAllByTestId(/^live-responses-backend-/)).toHaveLength(1);
+  expect(screen.queryAllByTestId(/^voice-tool-model-/)).toHaveLength(1);
+  expect(screen.getByTestId('voice-settings-save')).toBeDisabled();
+  await fireEvent.press(screen.getByTestId('voice-model-gpt-live-1.1'));
   expect(screen.getByTestId('voice-settings-save')).toBeEnabled();
 
   let fail!: (reason: Error) => void;
@@ -168,11 +154,11 @@ test('lists only freshly discovered supported tool choices and explains empty an
     }),
   );
   await fireEvent.press(refresh());
-  expect(screen.queryAllByTestId(/^live-responses-backend-/)).toHaveLength(0);
+  expect(screen.queryAllByTestId(/^voice-tool-model-/)).toHaveLength(0);
   expect(screen.getByTestId('voice-settings-save')).toBeDisabled();
   await act(async () => fail(new Error('network')));
-  expect(screen.queryAllByTestId(/^live-responses-backend-/)).toHaveLength(0);
+  expect(screen.queryAllByTestId(/^voice-tool-model-/)).toHaveLength(0);
   expect(screen.getByTestId('voice-settings-save')).toBeDisabled();
   expect(voiceSettingsStore.discoverModels).toHaveBeenCalledTimes(3);
-  expect(saveLiveResponsesSettings).not.toHaveBeenCalled();
+  expect(saveReviewedOpenAiVoicePair).not.toHaveBeenCalled();
 });

@@ -62,11 +62,15 @@ export async function loadLiveResponsesSettings(
   try {
     const owned = captureOwner();
     if (!owned()) return { kind: 'unavailable' };
+    const pair = await voiceSettingsStore.loadCommittedVoicePair?.();
     const state = await authority().reviewState();
     if (!owned() || !state) return { kind: 'unavailable' };
     if (state.kind === 'revoked')
-      return state.current() ? { kind: 'off' } : { kind: 'unavailable' };
+      return !pair && state.current()
+        ? { kind: 'off' }
+        : { kind: 'unavailable' };
     if (state.kind === 'unset') {
+      if (pair) return { kind: 'unavailable' };
       const prior = await readBinding();
       return owned() && state.current() && !prior
         ? { kind: 'off' }
@@ -83,7 +87,16 @@ export async function loadLiveResponsesSettings(
       credential !== expectedCredentialEpoch
     )
       return { kind: 'unavailable' };
-    const metadata = await readBinding();
+    if (
+      pair &&
+      (pair.pair.voiceGeneration !== audio.generation ||
+        pair.pair.responsesGeneration !== state.generation ||
+        pair.pair.credentialEpoch !== credential)
+    )
+      return { kind: 'unavailable' };
+    const metadata = pair
+      ? binding(state.generation, credential, pair.pair.backendModel)
+      : await readBinding();
     if (!metadata) return { kind: 'unavailable' };
     const expected = binding(
       state.generation,

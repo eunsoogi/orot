@@ -178,53 +178,6 @@ extension RealtimeVoiceSocket {
     }
 }
 
-/// The bridge's options identify a grant but cannot establish one. Resolve ownership from
-/// all three device-bound stores; no missing, suspended, mismatched or old record can open.
-struct LiveResponsesSettingsGrant {
-    let backendModel: String
-    let grantID: String
-    let generation: String
-
-    init?(_ payload: Any) {
-        guard let object = payload as? [String: String], object.count == 3,
-              let model = object["backendModel"], ["gpt-6-luna", "gpt-6-sol"].contains(model),
-              let generation = object["generation"], Self.valid(generation),
-              let grantID = object["grantID"], grantID == generation + "-model" else { return nil }
-        backendModel = model; self.grantID = grantID; self.generation = generation
-    }
-
-    func isCurrent(key: String, read: (String, String) -> [String: Any]? = LiveResponsesSettingsGrant.read) -> Bool {
-        guard let authority = read("com.orot.mobile.settings-consent-authority.v1.voice-responses", "settings-consent-authority"),
-              authority.count == 3, authority["version"] as? Int == 1, authority["status"] as? String == "active",
-              authority["generation"] as? String == generation,
-              let selection = read("com.orot.mobile.live-responses-settings.v1", "live-responses-settings"), selection.count == 5,
-              selection["version"] as? Int == 1, selection["backendModel"] as? String == backendModel,
-              selection["grantID"] as? String == grantID, selection["generation"] as? String == generation,
-              let owner = selection["credentialEpoch"] as? String, Self.valid(owner),
-              let credential = read("com.orot.mobile.voice-settings.v1", "voice-settings"),
-              credential["mode"] as? String == "openai-api", credential["model"] as? String == "gpt-live-1.1",
-              credential["apiKey"] as? String == key, credential["credentialEpoch"] as? String == owner else { return false }
-        guard let finalAuthority = read("com.orot.mobile.settings-consent-authority.v1.voice-responses", "settings-consent-authority"),
-              finalAuthority.count == 3, finalAuthority["version"] as? Int == 1,
-              finalAuthority["status"] as? String == "active",
-              finalAuthority["generation"] as? String == generation else { return false }
-        return !key.isEmpty
-    }
-
-    private static func valid(_ value: String) -> Bool {
-        value.utf8.count == 64 && value.utf8.allSatisfy { (48 ... 57).contains($0) || (97 ... 102).contains($0) }
-    }
-
-    private static func read(_ service: String, _ account: String) -> [String: Any]? {
-        let query: [String: Any] = [kSecClass as String: kSecClassGenericPassword, kSecAttrService as String: service,
-                                    kSecAttrAccount as String: account, kSecReturnData as String: true,
-                                    kSecMatchLimit as String: kSecMatchLimitOne, kSecAttrSynchronizable as String: false]
-        var value: CFTypeRef?
-        guard SecItemCopyMatching(query as CFDictionary, &value) == errSecSuccess, let data = value as? Data else { return nil }
-        return (try? JSONSerialization.jsonObject(with: data)) as? [String: Any]
-    }
-}
-
 extension LiveResponsesToolBridge {
     static func arguments(_ payload: String, tool: String) -> [String: Any]? {
         guard payload.utf8.count <= 2048,

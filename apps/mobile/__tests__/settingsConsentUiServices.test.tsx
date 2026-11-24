@@ -23,7 +23,7 @@ jest.mock('../src/voiceSettings/voiceRuntimeCapability', () => ({
 }));
 
 // The real screen and tab panels use synthetic services, not application singletons.
-test('conversation and calendar Save require shared disclosure before grants and never invoke a provider', async () => {
+test('Conversation, Calendar and paired Voice Save require explicit disclosures before grants and never invoke a provider', async () => {
   const db = openSqliteTestDatabase(':memory:');
   const states = new Map<SettingsConsentSlot, ConsentAuthorityState>();
   const selections = new Map<SettingsConsentSlot, ProviderSelection>();
@@ -37,6 +37,12 @@ test('conversation and calendar Save require shared disclosure before grants and
         states.set(slot, state);
       },
     }),
+    voiceResponsesAuthority: {
+      read: async () => states.get('voice-responses') ?? null,
+      write: async state => {
+        states.set('voice-responses', state);
+      },
+    },
     selection: slot => ({
       load: async () => selections.get(slot) ?? null,
       save: async value => {
@@ -138,6 +144,12 @@ test('conversation and calendar Save require shared disclosure before grants and
     await fireEvent.press(await view.findByTestId('voice-model-refresh'));
     const voice = await view.findByTestId('voice-model-gpt-live-1.1');
     await fireEvent.press(voice);
+    expect(
+      view.getByTestId('voice-settings-save').props.accessibilityState.disabled,
+    ).toBe(true);
+    await fireEvent.press(
+      await view.findByTestId('voice-tool-model-gpt-6-luna'),
+    );
     expect(view.queryByTestId('inference-disclosure-sheet')).toBeNull();
     await fireEvent.press(view.getByTestId('voice-settings-save'));
     expect(
@@ -149,11 +161,23 @@ test('conversation and calendar Save require shared disclosure before grants and
       '동의',
     );
     await fireEvent.press(view.getByTestId('inference-disclosure-allow'));
+    await waitFor(() =>
+      expect(
+        view.getByTestId('inference-disclosure-recipient'),
+      ).toHaveTextContent('OpenAI Responses (Live)'),
+    );
+    expect(states.get('voice')).toBeUndefined();
+    expect(states.get('voice-responses')).toBeUndefined();
+    expect(await grants.read('voice', 'model')).toBeNull();
+    expect(await grants.read('voice-responses', 'model')).toBeNull();
+    await fireEvent.press(view.getByTestId('inference-disclosure-allow'));
     await waitFor(() => expect(states.get('voice')?.status).toBe('active'));
+    expect(states.get('voice-responses')?.status).toBe('active');
     expect((await input.fixture.inspect()).observations).toEqual({
       conversation: 'authorized',
       calendar: 'authorized',
       voice: 'authorized',
+      voiceResponses: 'authorized',
     });
     expect(provider).not.toHaveBeenCalled();
     for (const spy of forbidden) expect(spy).not.toHaveBeenCalled();

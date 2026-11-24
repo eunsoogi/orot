@@ -168,7 +168,7 @@ test('unsupported locale requires a named language, then only matching voices ap
     />,
   );
   const language = await screen.findByRole('button', { name: '목소리 언어' });
-  expect(screen.queryByRole('button', { name: '목소리' })).toBeNull();
+  expect(screen.getByRole('button', { name: '목소리' })).toBeDisabled();
   await fireEvent.press(language);
   expect(screen.queryByRole('radio', { name: '자동 감지' })).toBeNull();
   await fireEvent.press(screen.getByRole('radio', { name: '한국어' }));
@@ -212,7 +212,7 @@ test('production locale reads the first preferred Apple language, not the format
       (await screen.findByTestId('live-voice-language')).props
         .accessibilityValue,
     ).toEqual({ text: '선택' });
-    expect(screen.queryByTestId('live-voice-voice')).toBeNull();
+    expect(screen.getByTestId('live-voice-voice')).toBeDisabled();
   } finally {
     settings.mockRestore();
   }

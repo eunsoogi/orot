@@ -23,12 +23,15 @@ final class SettingsConsentUITests: OrotFailFastTestCase {
         tap(app, "model-tab-voice", scroll: "settings-provider-screen")
         tap(app, "voice-model-refresh", scroll: "settings-provider-screen")
         tap(app, "voice-model-gpt-live-1.1", scroll: "settings-provider-screen")
+        tap(app, "voice-tool-model-gpt-6-luna", scroll: "settings-provider-screen")
         let disclosure = node(app, "model-settings-transmission-disclosure")
         XCTAssertFalse(disclosure.exists)
         tap(app, "voice-settings-save", scroll: "settings-provider-screen")
         let voiceApproval = node(app, "inference-disclosure-recipient")
         XCTAssertTrue(UITestConditions.exists(voiceApproval))
         XCTAssertTrue(UITestConditions.text(voiceApproval).contains("OpenAI Live API"))
+        tap(app, "inference-disclosure-allow", scroll: "inference-disclosure-content")
+        XCTAssertTrue(wait { UITestConditions.text(voiceApproval).contains("OpenAI Responses (Live)") })
         tap(app, "inference-disclosure-allow", scroll: "inference-disclosure-content")
         XCTAssertTrue(wait { self.node(app, "voice-current-model").exists && UITestConditions.text(self.node(app, "voice-current-model")).contains("GPT-Live-1.1") })
         inspect(app, expected: "authorized")
@@ -132,7 +135,7 @@ final class SettingsConsentUITests: OrotFailFastTestCase {
         let status = node(app, "settings-consent-native-status")
         XCTAssertTrue(wait {
             let text = UITestConditions.text(status)
-            return ["conversation", "calendar", "voice"].allSatisfy {
+            return ["conversation", "calendar", "voice", "voiceResponses"].allSatisfy {
                 text.contains("\"\($0)\":\"\(expected)\"")
             } && text.contains("\"providerExecution\":\"not-configured\"") && text.contains("\"synthetic\":true")
         })

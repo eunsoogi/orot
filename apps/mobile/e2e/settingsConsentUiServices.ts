@@ -1,3 +1,5 @@
+import type { ConsentAuthorityPersistence } from '../src/agent/execution/consentAuthority';
+import { createSettingsConsentVoicePairFixture } from './settingsConsentVoicePairFixture';
 import type { ModelSettingsServices } from '../src/agent/execution/ModelSettingsServices';
 import type { ProviderSelectionOption } from '../src/providers/selection/types';
 import {
@@ -8,10 +10,46 @@ import {
 /** Only a synthetic catalog and never-invoked provider are exposed. Real UI saves
  * still pass through the same coordinator into the isolated protected stores. */
 export function createSettingsConsentUiServices(
-  input: Parameters<typeof createSettingsConsentPersistenceFixture>[0],
+  input: Parameters<typeof createSettingsConsentPersistenceFixture>[0] & {
+    readonly voiceResponsesAuthority?: ConsentAuthorityPersistence;
+  },
 ) {
-  const fixture = createSettingsConsentPersistenceFixture(input);
+  const pair = input.voiceResponsesAuthority
+    ? createSettingsConsentVoicePairFixture({
+        database: input.database,
+        voice: input.authority('voice'),
+        tools: input.voiceResponsesAuthority,
+        generation: input.generation,
+      })
+    : undefined;
   const voiceSelection = input.selection('voice');
+  const loadVoiceSelection = async () =>
+    (await pair?.selection()) ?? voiceSelection.load();
+  const fixture = createSettingsConsentPersistenceFixture({
+    ...input,
+    voiceOwner: pair?.audio,
+    selection: slot =>
+      slot === 'voice'
+        ? { ...voiceSelection, load: loadVoiceSelection }
+        : input.selection(slot),
+    credentialEpoch: slot =>
+      slot === 'voice' && pair
+        ? Promise.resolve(pair.credentialEpoch)
+        : (input.credentialEpoch?.(slot) ??
+          Promise.resolve(`synthetic-${slot}-credential`)),
+  });
+  const inspectPair = async (
+    status: Awaited<ReturnType<typeof fixture.inspect>>,
+  ) =>
+    pair
+      ? {
+          ...status,
+          observations: {
+            ...status.observations,
+            voiceResponses: await pair.inspectTools(),
+          },
+        }
+      : status;
   const services: ModelSettingsServices = {
     calendar: input.selection('calendar'),
     calendarOption(modelId) {
@@ -23,9 +61,12 @@ export function createSettingsConsentUiServices(
       };
     },
     saveConsent: fixture.saveConsent,
+    ...(pair
+      ? { voicePair: { runtimeAvailable: true, commit: pair.commit } }
+      : {}),
     voice: {
       async load() {
-        const selection = await voiceSelection.load();
+        const selection = await loadVoiceSelection();
         return {
           mode:
             selection?.providerId === 'openai-live' ? 'openai-api' : 'local',
@@ -85,7 +126,14 @@ export function createSettingsConsentUiServices(
   return {
     services,
     options,
-    fixture,
+    fixture: {
+      ...fixture,
+      inspect: async () => inspectPair(await fixture.inspect()),
+      revoke: async (retainSqlRows?: boolean) => {
+        await pair?.revokeTools();
+        return inspectPair(await fixture.revoke(retainSqlRows));
+      },
+    },
     selectionStore: input.selection('conversation'),
   };
 }

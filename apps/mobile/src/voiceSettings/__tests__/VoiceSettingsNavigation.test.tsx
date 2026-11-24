@@ -32,7 +32,7 @@ jest.mock(
 );
 jest.mock('../voiceRuntimeCapability', () => ({
   hasLiveVoiceRuntime: () => true,
-  hasLiveResponsesRuntime: () => false,
+  hasLiveResponsesRuntime: () => true,
 }));
 function Fixture() {
   const { host, actions } = useNavigationPrimaryActionHost('models');
@@ -69,7 +69,7 @@ beforeEach(() => {
     .mockResolvedValue({ connected: true, revision: 3 });
   jest
     .mocked(voiceSettingsStore.discoverModels)
-    .mockResolvedValue({ revision: 3, ids: ['gpt-live-1.1'] });
+    .mockResolvedValue({ revision: 3, ids: ['gpt-live-1.1', 'gpt-6-luna'] });
   jest.mocked(voiceSettingsStore.save).mockResolvedValue();
 });
 it('shares tab and section presentation and routes voice confirmation only while visible', async () => {
@@ -106,16 +106,13 @@ it('shares tab and section presentation and routes voice confirmation only while
     view.getByTestId('voice-model-gpt-live-1.1').props.accessibilityState
       .selected,
   ).toBe(true);
+  expect(view.getByTestId('dock-confirm-voice-model')).toBeDisabled();
+  await fireEvent.press(view.getByTestId('voice-tool-model-gpt-6-luna'));
   await fireEvent.press(view.getByTestId('dock-confirm-voice-model'));
-  await fireEvent.press(await view.findByTestId('inference-disclosure-allow'));
-  await waitFor(() =>
-    expect(voiceSettingsStore.save).toHaveBeenCalledWith({
-      mode: 'openai-api',
-      model: 'gpt-live-1.1',
-      expectedAccountRevision: 3,
-    }),
-  );
-  expect(voiceSettingsStore.save).toHaveBeenCalledTimes(1);
+  await view.findByTestId('inference-disclosure-allow');
+  await fireEvent.press(view.getByTestId('model-tab-language'));
+  expect(view.queryByTestId('inference-disclosure-allow')).toBeNull();
+  expect(voiceSettingsStore.save).not.toHaveBeenCalled();
 });
 it('retains a catalog completion across tabs without registering a hidden action', async () => {
   let resolve!: (value: { revision: number; ids: string[] }) => void;
@@ -132,7 +129,7 @@ it('retains a catalog completion across tabs without registering a hidden action
   await fireEvent.press(view.getByTestId('voice-model-refresh'));
   await fireEvent.press(view.getByTestId('model-tab-language'));
   await act(async () => {
-    resolve({ revision: 3, ids: ['gpt-live-1.1'] });
+    resolve({ revision: 3, ids: ['gpt-live-1.1', 'gpt-6-luna'] });
   });
   expect(view.queryByTestId('dock-confirm-voice-model')).toBeNull();
   await fireEvent.press(view.getByTestId('model-tab-voice'));

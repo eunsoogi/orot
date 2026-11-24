@@ -65,12 +65,15 @@ test('native resource names and cleanup remain within the exact synthetic UUID',
     .selection('conversation')
     .save({ providerId: 'synthetic', modelId: 'synthetic' });
   await created.recoveryCredential.write('synthetic-recovery-epoch');
+  const tools = { version: 1, status: 'active', generation: 'a'.repeat(64) };
+  await created.voiceResponsesAuthority.write(tools);
   created.close();
   const reopened = await openSettingsConsentNativeStore(id, false);
   expect(await reopened.selection('conversation').load()).toEqual({
     providerId: 'synthetic',
     modelId: 'synthetic',
   });
+  expect(await reopened.voiceResponsesAuthority.read()).toEqual(tools);
   expect(await reopened.recoveryCredential.read()).toBe(
     'synthetic-recovery-epoch',
   );
@@ -95,6 +98,7 @@ test('native resource names and cleanup remain within the exact synthetic UUID',
       'authority-calendar',
       'selection-calendar',
       'authority-voice',
+      'authority-voice-responses',
       'selection-voice',
       'recovery-credential',
       'database-key',
@@ -102,7 +106,7 @@ test('native resource names and cleanup remain within the exact synthetic UUID',
       .map(suffix => `com.orot.test.${id}.${suffix}`)
       .sort(),
   );
-  expect(resetGenericPassword).toHaveBeenCalledTimes(8);
+  expect(resetGenericPassword).toHaveBeenCalledTimes(9);
   expect(jest.mocked(open).mock.results[1].value.delete).toHaveBeenCalledTimes(
     1,
   );

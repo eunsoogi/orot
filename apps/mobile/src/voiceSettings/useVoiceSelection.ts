@@ -2,7 +2,10 @@ import { useVoiceConsentSave } from './useVoiceConsentSave';
 import { t } from '../i18n';
 import { useEffect, useRef, useState } from 'react';
 import { localVoiceModel } from './voiceModels';
-import type { VoiceMode } from './voiceSettingsStore';
+import {
+  voiceSettingsStore as ownedVoiceSettingsStore,
+  type VoiceMode,
+} from './voiceSettingsStore';
 import { useModelSettingsServices } from '../agent/execution/ModelSettingsServices';
 import type { useVoiceCatalog } from './useVoiceCatalog';
 
@@ -15,6 +18,7 @@ export function useVoiceSelection(catalog: ReturnType<typeof useVoiceCatalog>) {
   const [saved, setSaved] = useState<{ mode: VoiceMode; model: string } | null>(
     null,
   );
+  const [pairAwaitingActivation, setPairAwaitingActivation] = useState(false);
   const [busy, setBusy] = useState(true);
   const [failedLoad, setFailedLoad] = useState(false);
   const [message, setMessage] = useState('');
@@ -27,10 +31,21 @@ export function useVoiceSelection(catalog: ReturnType<typeof useVoiceCatalog>) {
     setBusy(true);
     setFailedLoad(false);
     setSaved(null);
-    voiceSettingsStore
-      .load()
-      .then(value => {
+    setPairAwaitingActivation(false);
+    const presentation =
+      voiceSettingsStore === ownedVoiceSettingsStore &&
+      typeof ownedVoiceSettingsStore.loadVoicePairPresentation === 'function'
+        ? ownedVoiceSettingsStore.loadVoicePairPresentation()
+        : voiceSettingsStore
+            .load()
+            .then(settings => ({ settings, pairPresentationCurrent: null }));
+    presentation
+      .then(({ settings: value, pairPresentationCurrent }) => {
         if (!mounted.current || version !== owner.current) return;
+        setPairAwaitingActivation(
+          value.pairAwaitingActivation === true ||
+            pairPresentationCurrent?.() === false,
+        );
         setMode(value.mode);
         setModel(value.model);
         setSaved({ mode: value.mode, model: value.model });
@@ -60,6 +75,7 @@ export function useVoiceSelection(catalog: ReturnType<typeof useVoiceCatalog>) {
     try {
       await saveConsent(mode, model, current);
       if (!current()) return false;
+      setPairAwaitingActivation(false);
       setSaved({ mode, model });
       setMessage(t('modelSettings.voiceSaved'));
       return true;
@@ -78,8 +94,18 @@ export function useVoiceSelection(catalog: ReturnType<typeof useVoiceCatalog>) {
     savedMode: saved?.mode,
     busy,
     failedLoad,
+    pairAwaitingActivation,
     message,
     save,
+    markPairUnavailable() {
+      setPairAwaitingActivation(true);
+      setMessage('');
+    },
+    markPairSaved(nextModel: string) {
+      setPairAwaitingActivation(false);
+      setSaved({ mode: 'openai-api', model: nextModel });
+      setMessage(t('modelSettings.voiceSaved'));
+    },
     choose: (nextMode: VoiceMode, nextModel: string) => {
       setMode(nextMode);
       setModel(nextModel);
