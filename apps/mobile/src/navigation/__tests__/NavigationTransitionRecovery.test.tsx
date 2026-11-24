@@ -6,6 +6,7 @@ import { NavigationContentTransition } from '../NavigationContentTransition';
 type Completion = (result: { finished: boolean }) => void;
 const motions: { value: Animated.Value; complete: Completion }[] = [];
 let foreground: () => void;
+let departure: (state: 'inactive' | 'background') => void;
 let resize: () => void;
 const removals: jest.Mock[] = [];
 
@@ -25,6 +26,7 @@ beforeEach(() => {
     .spyOn(AppState, 'addEventListener')
     .mockImplementation((_event, callback) => {
       foreground = () => callback('active');
+      departure = state => callback(state);
       const remove = jest.fn();
       removals.push(remove);
       return { remove };
@@ -164,6 +166,48 @@ test.each(['inactive', 'background'] as const)(
       expect(motions).toHaveLength(0);
       expect(screen.getByTestId('retained-draft')).toBeVisible();
       await rendered.unmount();
+    } finally {
+      AppState.currentState = original;
+    }
+  },
+);
+
+test.each(['inactive', 'background'] as const)(
+  '%s retires an opaque in-flight root veil even if return emits no lifecycle callback',
+  async phase => {
+    const original = AppState.currentState;
+    AppState.currentState = 'active';
+    try {
+      const rendered = await render(view('records'));
+      await rendered.rerender(view('conversation'));
+      await act(() => motions[0]!.complete({ finished: true }));
+      const draft = screen.getByTestId('retained-draft', {
+        includeHiddenElements: true,
+      });
+      await fireEvent.changeText(draft, 'preserve the edited draft');
+      let opacity = 1;
+      const value = motions[0]!.value;
+      const listener = value.addListener(update => {
+        opacity = update.value;
+      });
+      await act(() => value.setValue(1));
+      expect(
+        screen.getByTestId('navigation-content-transition', {
+          includeHiddenElements: true,
+        }).props.pointerEvents,
+      ).toBe('none');
+      AppState.currentState = phase;
+      await act(() => departure(phase));
+      // Same-layout return, no native animation completion or AppState event, no user touch.
+      AppState.currentState = 'active';
+      expectUnlocked();
+      expect(opacity).toBe(0);
+      expect(screen.getByTestId('retained-draft')).toBe(draft);
+      expect(draft.props.value).toBe('preserve the edited draft');
+      await act(() => motions[1]!.complete({ finished: true }));
+      expectUnlocked();
+      expect(motions).toHaveLength(2);
+      value.removeListener(listener);
     } finally {
       AppState.currentState = original;
     }

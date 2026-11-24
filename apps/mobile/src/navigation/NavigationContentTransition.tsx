@@ -36,6 +36,10 @@ export function NavigationContentTransition({
     children,
   });
   const [enterPending, setEnterPending] = useState(false);
+  const transitionPending =
+    displayed.transitionKey !== transitionKey || enterPending;
+  const pendingCover = useRef(transitionPending);
+  pendingCover.current = transitionPending;
   // Glass descendants require alpha 1 at every ancestor, including while mounting.
   // A sibling veil fades the content without alpha-compositing its UIKit material.
   const veilOpacity = useRef(new Animated.Value(0)).current;
@@ -62,7 +66,14 @@ export function NavigationContentTransition({
       setEnterPending(false);
     };
     const appState = AppState.addEventListener('change', state => {
-      if (state === 'active') settle();
+      // Retire a visual-only cover before UIKit can interrupt its driver. A
+      // later same-layout return need not deliver another React phase event.
+      if (
+        state === 'active' ||
+        (pendingCover.current &&
+          (state === 'inactive' || state === 'background'))
+      )
+        settle();
     });
     const dimensions = Dimensions.addEventListener('change', settle);
     return () => {
@@ -160,9 +171,6 @@ export function NavigationContentTransition({
     reduceMotion,
     transitionKey,
   ]);
-
-  const transitionPending =
-    displayed.transitionKey !== transitionKey || enterPending;
 
   useNavigationCoverDiagnostic(transitionPending);
   return (
