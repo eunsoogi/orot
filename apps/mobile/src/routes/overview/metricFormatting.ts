@@ -1,6 +1,6 @@
 import { formatHealthDuration } from '../../i18n/healthDuration';
 import { formatNumber, t, type TranslationKey } from '../../i18n';
-import type { OverviewMetric } from './metricSelection';
+import { isOverviewHeartRate, type OverviewMetric } from './metricSelection';
 
 type OverviewMetricUnitTranslationKey = Extract<
   TranslationKey,
@@ -51,7 +51,10 @@ export function formatOverviewMetricValue(
   if (!unitKey)
     return `${formatNumber(value, { maximumFractionDigits: 1 })} ${unit}`;
 
-  const wholeValue = metric === 'sleep' || metric === 'steps';
+  const wholeValue =
+    metric === 'sleep' ||
+    metric === 'steps' ||
+    (isOverviewHeartRate(metric) && unit === 'count/min');
   const displayedValue = wholeValue ? Math.round(value) : value;
   const maximumFractionDigits = wholeValue ? 0 : 1;
   return `${formatNumber(displayedValue, { maximumFractionDigits })}${t(unitKey)}`;

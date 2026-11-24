@@ -1,7 +1,10 @@
 import Svg, { Circle, G, Line, Rect, Text as SvgText } from 'react-native-svg';
-import { formatNumber } from '../../i18n';
 import { chartRangeGeometry } from './chartRangeGeometry';
-import { formatChartTick, formatChartTimeTick } from './format';
+import {
+  formatChartTick,
+  formatChartTimeTick,
+  formatRangeAxisValue,
+} from './format';
 import type { ChartAxis, ChartSeries } from './types';
 
 export type ChartBucketSelect = (
@@ -25,6 +28,7 @@ export function ChartRangeRenderer({
   fontSize,
   offsetY,
   onSelect,
+  wholeBpm = false,
 }: {
   series: readonly ChartSeries[];
   axis: ChartAxis;
@@ -37,6 +41,7 @@ export function ChartRangeRenderer({
   fontSize: number;
   offsetY: number;
   onSelect?: ChartBucketSelect;
+  wholeBpm?: boolean;
 }) {
   // Keep scale labels away from range strokes; compact widths still expose exact values to AX.
   const axisLabelWidth = width >= 10 * fontSize ? 3.8 * fontSize : 0;
@@ -81,7 +86,18 @@ export function ChartRangeRenderer({
               fill="transparent"
             />
           ) : null}
-          {mark.high === mark.low ? (
+          {mark.high === mark.low && wholeBpm ? (
+            <Line
+              testID="chart-range-flat"
+              x1={mark.x - 3}
+              x2={mark.x + 3}
+              y1={mark.mean}
+              y2={mark.mean}
+              stroke={color}
+              strokeWidth={Math.min(mark.stroke, 6)}
+              strokeLinecap="round"
+            />
+          ) : mark.high === mark.low ? (
             <Circle
               testID="chart-range-single"
               cx={mark.x}
@@ -122,7 +138,7 @@ export function ChartRangeRenderer({
               fill={labels}
               fontSize={fontSize}
             >
-              {formatNumber(tick.value, { maximumFractionDigits: 1 })}
+              {formatRangeAxisValue(tick.value, wholeBpm)}
             </SvgText>
           ))
         : null}

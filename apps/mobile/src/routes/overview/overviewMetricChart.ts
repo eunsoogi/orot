@@ -13,7 +13,7 @@ export function overviewMetricChartData(
     value:
       day.value === null
         ? null
-        : isOverviewHeartRate(metric.metric) && day.range
+        : isOverviewHeartRate(metric.metric) && metric.unit === 'count/min'
           ? day.value
           : chartValueForDisplay(metric.metric, day.value, metric.unit),
     source: t('overview.metricChartSource'),
@@ -28,6 +28,9 @@ export function overviewMetricChartData(
 
   return {
     metric: chartMetric(metric.metric),
+    ...(isOverviewHeartRate(metric.metric) && metric.unit === 'count/min'
+      ? { presentation: 'whole-bpm-overview' as const }
+      : {}),
     coverage: {
       requested: t('overview.metricChartWindow'),
       displayed: t('overview.metricChartCoverage', {
@@ -82,10 +85,7 @@ function chartValueForDisplay(
   ) {
     return Math.round(value);
   }
-  if (
-    (isOverviewHeartRate(metric) && unit === 'count/min') ||
-    (metric === 'bodyMass' && unit === 'kg')
-  ) {
+  if (metric === 'bodyMass' && unit === 'kg') {
     return Math.round(value * 10) / 10;
   }
   return value;
