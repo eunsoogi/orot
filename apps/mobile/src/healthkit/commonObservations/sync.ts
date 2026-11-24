@@ -1,4 +1,5 @@
 import { notifyWorkoutImportCommitted } from '../workoutImportEvents';
+import { reportDerivedHeartRateShape as reportShape } from './derivedHeartRateShapeDiagnostic';
 import { refreshRecentDiscreteHeartRate } from './refreshRecentDiscreteHeartRate';
 import { commitHealthKitChanges } from '../commitHealthKitChanges';
 import { healthKitSampleChangesCheckpointKey } from '../sampleChangesCheckpoint';
@@ -118,6 +119,7 @@ async function syncCommonObservationChangesExclusive(
     const rejectedCount = mappings.filter(
       mapping => mapping.status === 'skipped',
     ).length;
+    reportShape(feature, 'derived_mapped', mappings.length - rejectedCount);
     if (rejectedCount > 0) {
       // Do not advance past a sample this version cannot represent; a later app can retry it.
       return result(
@@ -194,6 +196,7 @@ async function syncCommonObservationChangesExclusive(
       );
     }
 
+    reportShape(feature, 'derived_committed', candidates.length);
     cursor = nextCursor;
     cursorAdvanced ||= pageCursorAdvanced;
     pageCount += 1;

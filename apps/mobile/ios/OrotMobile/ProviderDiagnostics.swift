@@ -13,12 +13,21 @@ final class OrotProviderDiagnostics: NSObject {
         let enabled = arguments.contains("-OROT_PROVIDER_DIAGNOSTICS")
         return [
             "enabled": enabled,
+            "derivedHeartRateShapeEnabled": enabled && arguments.contains("-OROT_DERIVED_HEART_RATE_SHAPE"),
             "historyValidationCostEnabled": enabled && arguments.contains("-OROT_HISTORY_VALIDATION_COST"),
         ]
     }
 
     @objc func report(_ feature: String, stage: String, outcome: String) {
         guard ProcessInfo.processInfo.arguments.contains("-OROT_PROVIDER_DIAGNOSTICS") else { return }
+        if ["derived_mapped", "derived_committed"].contains(stage) {
+            guard ProcessInfo.processInfo.arguments.contains("-OROT_DERIVED_HEART_RATE_SHAPE"),
+                  ["restingHeartRate", "walkingHeartRateAverage"].contains(feature),
+                  let count = Int(outcome), (0 ... 200).contains(count),
+                  String(count) == outcome else { return }
+            NSLog("OROT_DERIVED_HEART_RATE_SHAPE phase=%@ feature=%@ count=%d", stage, feature, count)
+            return
+        }
         if stage.hasPrefix("daily_report_data_") {
             // Detailed Daily Report timing accepts no dynamic stage or content.
             let stages = [
