@@ -28,7 +28,13 @@ test.each(cases)(
         items:
           code === 'history_turn_unavailable'
             ? []
-            : [{ id: 'synthetic-turn', question: 'SYNTHETIC_PRIVATE' }],
+            : [
+                {
+                  id: 'synthetic-turn',
+                  question: 'SYNTHETIC_PRIVATE',
+                  sources: [],
+                },
+              ],
         unavailableCount: code === 'history_page_unavailable' ? 1 : 0,
       }),
       activeSessionVersion: async () =>
