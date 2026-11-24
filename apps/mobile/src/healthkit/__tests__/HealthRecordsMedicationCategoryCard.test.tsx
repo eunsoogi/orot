@@ -1,7 +1,7 @@
 import { act, fireEvent, render, screen } from '@testing-library/react-native';
 import { Dimensions } from 'react-native';
 import { HealthRecordsMedicationCategoryCard } from '../HealthRecordsMedicationCategoryCard';
-import { medicationMonthFixture } from './medicationMonthFixture';
+import { medicationMonthFixture } from '../testSupport/medicationMonthFixture';
 
 const period = {
   fromInclusive: '2026-09-30T03:00:00Z',

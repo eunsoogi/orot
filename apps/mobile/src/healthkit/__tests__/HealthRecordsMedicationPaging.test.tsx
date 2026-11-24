@@ -1,3 +1,4 @@
+import { medicationMonthFixture } from '../testSupport/medicationMonthFixture';
 import { act, fireEvent, render, screen } from '@testing-library/react-native';
 import { HealthRecordsMedicationDetailScreen } from '../HealthRecordsMedicationDetailScreen';
 import { HealthRecordsLibraryScreen } from '../HealthRecordsLibraryScreen';
@@ -69,25 +70,49 @@ test('medication detail requests the selected period and appends its next page',
   );
 });
 
-test('medication overview shows scalar totals rather than the bounded sample size', async () => {
+test('medication overview uses month statistics rather than the bounded page or lifetime count', async () => {
   await render(
     <HealthRecordsLibraryScreen
       loadObservations={async () => ({ records: [], nextCursor: null })}
       onBack={jest.fn()}
       onOpenHealthImport={jest.fn()}
       onOpenDetail={jest.fn()}
-      loadMedicationData={async () => ({
-        definitions: [],
-        doseEvents: [],
-        totalDefinitions: 12,
-        totalDoseEvents: 20000,
-      })}
+      loadMedicationData={async request => {
+        const empty = medicationMonthFixture(request);
+        const month = empty.monthlyTaken;
+        if (!month || month.status !== 'complete')
+          throw new Error('Missing fixture month.');
+        return {
+          ...empty,
+          totalDefinitions: 12,
+          totalDoseEvents: 20000,
+          monthlyTaken: {
+            ...month,
+            observedCount: 302,
+            takenCount: 123,
+            unverifiedCount: 9,
+            medications: [
+              {
+                medicationId: 'synthetic',
+                name: 'Synthetic chart',
+                count: 123,
+              },
+            ],
+          },
+        };
+      }}
     />,
   );
   await fireEvent.press(screen.getByTestId('health-record-filter-all'));
   expect(screen.queryByTestId('health-records-empty')).toBeNull();
   await fireEvent.press(screen.getByTestId('health-record-filter-medications'));
-  expect(await screen.findByText('12개 약 · 20000개 복용 기록')).toBeTruthy();
+  expect(
+    await screen.findByTestId('health-record-medications-count'),
+  ).toHaveTextContent('복용 확인 123건');
+  expect(
+    screen.getByLabelText('Synthetic chart, 복용 확인 123건'),
+  ).toBeTruthy();
+  expect(screen.queryByText(/20000/u)).toBeNull();
 });
 
 test('unloaded medication history stays pending and paging failure preserves rows until retry', async () => {

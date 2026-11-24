@@ -1,4 +1,4 @@
-import { medicationMonthFixture } from '../../healthkit/__tests__/medicationMonthFixture';
+import { medicationMonthFixture } from '../../healthkit/testSupport/medicationMonthFixture';
 import { act, fireEvent, render, screen } from '@testing-library/react-native';
 import { NavigationContext } from '@react-navigation/native';
 import { healthObservation } from '../../../../../packages/storage/__tests__/localQueryTestSupport';

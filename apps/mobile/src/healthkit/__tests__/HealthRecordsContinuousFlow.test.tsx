@@ -1,4 +1,4 @@
-import { medicationMonthFixture } from './medicationMonthFixture';
+import { medicationMonthFixture } from '../testSupport/medicationMonthFixture';
 import {
   act,
   fireEvent,

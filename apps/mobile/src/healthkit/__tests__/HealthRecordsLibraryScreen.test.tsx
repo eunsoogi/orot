@@ -1,4 +1,4 @@
-import { medicationMonthFixture } from './medicationMonthFixture';
+import { medicationMonthFixture } from '../testSupport/medicationMonthFixture';
 import { fireEvent, render, screen } from '@testing-library/react-native';
 import { mapBloodPressureCorrelation } from '../bloodPressure/mapper';
 import { correlation, correlationAt } from '../bloodPressure/testSupport';
