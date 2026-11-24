@@ -65,7 +65,21 @@ extension RealtimeVoiceLifecycleTests {
                 socket.received?(["type": "session.input_transcript.delta", "event_id": "lead-in-\(index)",
                                   "start_ms": 1, "end_ms": 2, "delta": "synthetic"])
             }
-            for event in managedEvents() {
+            let events = managedEvents()
+            socket.received?(events[0])
+            socket.received?(events[1])
+            for index in 0 ..< 80 {
+                socket.received?(["type": "response.event", "event_id": "reasoning-\(index)",
+                                  "delegation_id": "delegation-a",
+                                  "event": ["type": "response.output_item.done", "item": ["type": "reasoning"]]])
+                socket.received?(["type": "session.input_transcript.delta", "event_id": "active-speech-\(index)",
+                                  "start_ms": 1, "end_ms": 2, "delta": "synthetic"])
+            }
+            // A replay cannot retire the live operation even if its payload is different.
+            socket.received?(["type": "session.input_transcript.delta", "event_id": "active-speech-0",
+                              "start_ms": 6, "end_ms": 7, "delta": "synthetic"])
+            for event in events.dropFirst(2) {
+                socket.received?(event)
                 socket.received?(event)
             }
             await fulfillment(of: [queued], timeout: 2)

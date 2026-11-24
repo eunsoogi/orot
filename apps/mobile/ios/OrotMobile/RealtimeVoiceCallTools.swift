@@ -73,6 +73,7 @@ final class LiveResponsesToolBridge {
     func retire() {
         guard !retired else { return }
         retired = true
+        received.removeAll()
         let stop = cancel
         cancel = nil
         stop?()
@@ -85,14 +86,12 @@ final class LiveResponsesToolBridge {
         guard !retired, current(), admission.backendAllowed() else { retire(); return }
         guard self.owner == nil || self.owner == owner else { retire(); return }
         self.owner = owner
-        // Speech before a delegation cannot supersede it or consume its replay budget.
+        // Speech before a delegation cannot supersede it; do not retain its event IDs.
         if delegation == nil, envelope["type"] as? String == "session.input_transcript.delta" {
             return
         }
         guard let id = envelope["event_id"] as? String, RealtimeVoiceToolLease.validID(id),
-              !received.contains(id) else { return }
-        guard received.count < 64 else { retire(); return }
-        received.insert(id)
+              received.insert(id).inserted else { return }
         if envelope["type"] as? String == "session.delegation.created" {
             guard let item = envelope["delegation"] as? [String: Any], item["type"] as? String == "delegation",
                   item["target"] as? String == "responses", let delegationID = item["id"] as? String,
