@@ -77,7 +77,6 @@ describe('callback route bottom navigation', () => {
         id: 'page:primary',
         testID: 'navigation-recording',
         systemImageName: 'mic',
-        titleBelowImage: true,
       }),
     ]);
 

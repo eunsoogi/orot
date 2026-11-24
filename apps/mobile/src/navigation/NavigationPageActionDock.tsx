@@ -7,6 +7,7 @@ import {
   useWindowDimensions,
 } from 'react-native';
 import { navigationText } from '../i18n/navigation';
+import { pageActionDescriptor } from './navigationActionDescriptor';
 import { NavigationActionButton } from './NavigationActionButton';
 import type { NavigationSurface } from './NavigationActionBar';
 import {
@@ -29,6 +30,7 @@ export function NavigationPageActionDock({
   actions,
   capacity,
   compactBottom = false,
+  reserveLeadingAction = false,
   disabled,
   isDarkAppearance,
   isRail,
@@ -41,6 +43,7 @@ export function NavigationPageActionDock({
   actions: readonly NavigationRouteAction[];
   capacity: number;
   compactBottom?: boolean;
+  reserveLeadingAction?: boolean;
   disabled: boolean;
   isDarkAppearance: boolean;
   isRail: boolean;
@@ -90,9 +93,14 @@ export function NavigationPageActionDock({
   ]);
   const contentFrame = useNavigationContentFrame();
   const availableWidth = contentFrame?.availableContentFrame.width ?? width;
+  // Retain the 72-point fallback Back target and a separate gap when sharing a row.
+  const contextualClearance = reserveLeadingAction ? 88 : 0;
   const bottomCapacity = Math.max(
     1,
-    Math.floor((availableWidth - 40) / (120 * Math.max(1, fontScale))),
+    Math.floor(
+      (availableWidth - 40 - contextualClearance) /
+        (120 * Math.max(1, fontScale)),
+    ),
   );
   const split = nativeBottom
     ? metrics?.revision === revision
@@ -151,26 +159,8 @@ export function NavigationPageActionDock({
   };
   const more = navigationPageOverflowAction(showOverflow);
   const shown = overflow.length ? [...visible, more] : visible;
-  const describe = (action: NavigationRouteAction): NavigationGlassAction => ({
-    id: `page:${action.id}`,
-    label: action.navigationLabel ?? action.label,
-    accessibilityLabel: action.accessibilityLabel,
-    testID: action.testID,
-    disabled: disabled || action.disabled,
-    busy: action.busy,
-    primary: true,
-    // Bottom actions retain their supplied symbol and place the title below it;
-    // the narrow rail keeps its existing icon-only presentation.
-    ...(isRail
-      ? { systemImageName: action.systemImageName ?? 'ellipsis' }
-      : action.systemImageName
-        ? {
-            systemImageName: action.systemImageName,
-            showsTitleWithSystemImage: true,
-            titleBelowImage: true,
-          }
-        : {}),
-  });
+  const describe = (action: NavigationRouteAction) =>
+    pageActionDescriptor(action, disabled);
   const descriptors = shown.map(describe);
   useLayoutEffect(() => {
     if (!nativeBottom || !metrics || metrics.revision !== revision) return;
@@ -234,7 +224,7 @@ export function NavigationPageActionDock({
             disabled={disabled || action.disabled === true}
             isDarkAppearance={isDarkAppearance}
             key={action.id}
-            label={action.navigationLabel ?? action.label}
+            symbol={action.systemImageName}
             onPress={() => dispatch(action.id)}
             primary
             testID={action.testID}
@@ -245,4 +235,6 @@ export function NavigationPageActionDock({
   );
 }
 
-const styles = StyleSheet.create({ actions: { flexDirection: 'row', gap: 8 } });
+const styles = StyleSheet.create({
+  actions: { flexDirection: 'row', justifyContent: 'flex-end', gap: 8 },
+});

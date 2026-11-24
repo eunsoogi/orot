@@ -64,7 +64,8 @@ export function navigationBottomPlan({
     return {
       navWidth,
       pageWidth,
-      pageLeft: left + 4 + Math.max(0, remaining) / 2,
+      // Keep the page controls at the trailing edge, leaving room for Home when present.
+      pageLeft: left + 4 + Math.max(0, remaining),
       fits: root
         ? navWidth + (pageCount ? pageWidth + 8 : 0) <= rowWidth + 0.01
         : pageCount === 0

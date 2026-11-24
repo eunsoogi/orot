@@ -156,7 +156,6 @@ describe('native bottom navigation toolbar', () => {
         accessibilityLabel: '이전 화면으로 돌아가기',
         testID: 'navigation-back',
         systemImageName: 'chevron.backward',
-        showsTitleWithSystemImage: true,
       }),
     );
     expect(actions.slice(1).every(action => action.rootTab === true)).toBe(

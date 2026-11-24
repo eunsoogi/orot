@@ -113,7 +113,7 @@ export function NavigationActionBar<Name extends string>({
           accessibilityLabel={navigationText.back.accessibilityLabel}
           disabled={backDisabled}
           isDarkAppearance={isDarkAppearance}
-          label={navigationText.back.label}
+          symbol="chevron.backward"
           onPress={() => {
             if (routeBackAction) {
               settleNavigationRequest(
@@ -162,7 +162,7 @@ const snapshotRouteFallback = 'navigation';
 const styles = StyleSheet.create({
   actions: {
     flexDirection: 'row',
-    justifyContent: 'space-evenly',
+    justifyContent: 'flex-start',
     gap: 8,
   },
   rootTabs: {

@@ -156,3 +156,23 @@ test('does not move an explicitly primary root action into More', () => {
     }),
   ).toBeNull();
 });
+
+test('keeps one contextual action trailing with or without Back', () => {
+  const plan = (
+    navigation: readonly NavigationGlassAction[],
+    navigationWidths: readonly number[],
+  ) =>
+    navigationBottomPlan({
+      width: 390,
+      navigation,
+      navigationWidths,
+      pageWidths: [50],
+      moreWidth: 50,
+    })!;
+  const lone = plan([], []);
+  const withBack = plan(detail.slice(0, 1), [50]);
+  const withHome = plan(detail, [50, 55]);
+  expect(lone.pageLeft + lone.pageWidth).toBe(390 - 16 - 20);
+  expect(withBack.pageLeft).toBe(lone.pageLeft);
+  expect(withHome.pageLeft).toBe(withBack.pageLeft - 55);
+});

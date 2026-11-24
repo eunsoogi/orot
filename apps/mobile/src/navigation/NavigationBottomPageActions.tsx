@@ -32,7 +32,7 @@ export function NavigationBottomPageActions({
   surface: NavigationSurface;
 }) {
   const descriptors = actions.map((action, index) => ({
-    ...pageActionDescriptor(action, disabled, false),
+    ...pageActionDescriptor(action, disabled),
     layoutWidth: pageWidths?.[index],
   }));
   if (includeMore)
@@ -65,7 +65,7 @@ export function NavigationBottomPageActions({
             busy={action.busy}
             disabled={disabled || action.disabled === true}
             isDarkAppearance={isDarkAppearance}
-            label={action.navigationLabel ?? action.label}
+            symbol={action.systemImageName}
             onPress={() => dispatch(`page:${action.id}`)}
             primary
             testID={action.testID}
@@ -78,7 +78,7 @@ export function NavigationBottomPageActions({
             }
             disabled={disabled}
             isDarkAppearance={isDarkAppearance}
-            label={navigationText.navigationOverflow.label}
+            symbol="ellipsis"
             onPress={onMore}
             primary
             testID="navigation-page-action-overflow"
@@ -89,4 +89,6 @@ export function NavigationBottomPageActions({
   );
 }
 
-const styles = StyleSheet.create({ actions: { flexDirection: 'row', gap: 8 } });
+const styles = StyleSheet.create({
+  actions: { flexDirection: 'row', justifyContent: 'flex-end', gap: 8 },
+});

@@ -159,8 +159,6 @@ test('retains the page action icon and its label below on the bottom bar', async
   expect(surface.props.pageMetricsRequest.actions[0]).toEqual(
     expect.objectContaining({
       systemImageName: 'checkmark',
-      showsTitleWithSystemImage: true,
-      titleBelowImage: true,
     }),
   );
   expect(surface.props.actions[0]).toEqual(
@@ -169,8 +167,6 @@ test('retains the page action icon and its label below on the bottom bar', async
       label: 'Save',
       accessibilityLabel: 'Save symptom record',
       systemImageName: 'checkmark',
-      showsTitleWithSystemImage: true,
-      titleBelowImage: true,
     }),
   );
 });

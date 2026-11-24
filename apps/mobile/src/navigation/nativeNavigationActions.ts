@@ -40,7 +40,6 @@ export function createNativeNavigationBindings<Name extends string>({
       accessibilityLabel: navigationText.back.accessibilityLabel,
       testID: 'navigation-back',
       systemImageName: 'chevron.backward',
-      showsTitleWithSystemImage: true,
       disabled: backDisabled,
     });
   }

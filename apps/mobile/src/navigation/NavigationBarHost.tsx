@@ -37,10 +37,49 @@ export function NavigationBarHost({
   status?: 'pending' | 'unfit';
 }) {
   const isDark = useColorScheme() === 'dark';
+  const contextualFallback =
+    !isRightRail && !hasRootTabs && !singleRow && !status;
+  // Key both siblings so a compact/rail transition never remounts the measured surface.
+  const leading = (
+    <View
+      key="navigation"
+      pointerEvents={status ? 'none' : 'box-none'}
+      accessibilityElementsHidden={Boolean(status)}
+      importantForAccessibility={status ? 'no-hide-descendants' : 'auto'}
+      style={
+        status ? styles.measurementHost : isRightRail ? styles.fill : undefined
+      }
+    >
+      {surfacePosition}
+    </View>
+  );
+  const page = pageDock ? (
+    <View
+      key="page"
+      pointerEvents="box-none"
+      style={
+        isRightRail
+          ? styles.pageRail
+          : singleRow
+            ? hasRootTabs
+              ? { width: pageWidth }
+              : [styles.trailingPage, { left: pageLeft, width: pageWidth }]
+            : undefined
+      }
+    >
+      {pageDock}
+    </View>
+  ) : null;
   const content = (
     <View
       pointerEvents="box-none"
-      testID={singleRow ? 'navigation-bottom-single-row' : undefined}
+      testID={
+        singleRow
+          ? 'navigation-bottom-single-row'
+          : contextualFallback
+            ? 'navigation-contextual-fallback-row'
+            : undefined
+      }
       style={
         status
           ? styles.statusHost
@@ -48,39 +87,14 @@ export function NavigationBarHost({
             ? styles.fill
             : singleRow && hasRootTabs
               ? styles.bottomRow
-              : undefined
+              : contextualFallback
+                ? styles.contextualFallbackRow
+                : undefined
       }
     >
-      {pageDock ? (
-        <View
-          pointerEvents="box-none"
-          style={
-            isRightRail
-              ? styles.pageRail
-              : singleRow
-                ? hasRootTabs
-                  ? { width: pageWidth }
-                  : [styles.centeredPage, { left: pageLeft, width: pageWidth }]
-                : undefined
-          }
-        >
-          {pageDock}
-        </View>
-      ) : null}
-      <View
-        pointerEvents={status ? 'none' : 'box-none'}
-        accessibilityElementsHidden={Boolean(status)}
-        importantForAccessibility={status ? 'no-hide-descendants' : 'auto'}
-        style={
-          status
-            ? styles.measurementHost
-            : isRightRail
-              ? styles.fill
-              : undefined
-        }
-      >
-        {surfacePosition}
-      </View>
+      {contextualFallback || (singleRow && !hasRootTabs)
+        ? [leading, page]
+        : [page, leading]}
       {status ? (
         <Text
           accessibilityRole={status === 'unfit' ? 'alert' : 'progressbar'}
