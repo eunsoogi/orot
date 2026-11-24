@@ -12,7 +12,10 @@ import { ConversationPreviousOutputs } from './ConversationPreviousOutputs';
 import { ConversationInitialResponse } from './ConversationInitialResponse';
 import { ConversationBubbleEntrance } from './ConversationBubbleEntrance';
 import { conversationBubbleKey } from './conversationBubbleEntrances';
-import { ConversationMessageBubbles } from './ConversationMessageBubbles';
+import {
+  ConversationMessageBubbles,
+  ConversationBubbleBody,
+} from './ConversationMessageBubbles';
 import { ConversationToolEvents } from './ConversationToolEvents';
 import { ConversationDailyReportIdentity } from './ConversationMessageReceipt';
 import { HealthSummaryCard } from './HealthSummaryCard';
@@ -85,9 +88,6 @@ export function ConversationMessage({
     </Text>
   ) : null;
   const activityBeforeText = compact && message.streaming;
-  const bodyStyle = user
-    ? styles.userMessageBody
-    : [styles.assistantBody, activityBeforeText && styles.compactStreamingBody];
   return (
     <ConversationMessageBubbles
       message={message}
@@ -101,15 +101,10 @@ export function ConversationMessage({
       }}
     >
       <ConversationBubbleEntrance
-        entranceKey={conversationBubbleKey(
-          user ? 'user' : 'assistant',
-          message.id,
-        )}
+        entranceKey={conversationBubbleKey(message.role, message.id)}
         restored={message.restoredHistory || message.id <= 0}
-        copyMenu={copyMenus?.body}
-        testID={
-          user ? 'conversation-user-message' : 'conversation-assistant-message'
-        }
+        copyMenu={user ? copyMenus?.body : undefined}
+        testID={`conversation-${message.role}-message`}
         style={
           user
             ? styles.userMessage
@@ -122,7 +117,11 @@ export function ConversationMessage({
         {!user && message.dailyReport ? (
           <ConversationDailyReportIdentity report={message.dailyReport} />
         ) : null}
-        <View testID="conversation-message-body" style={bodyStyle}>
+        <ConversationBubbleBody
+          user={user}
+          compactStreaming={activityBeforeText}
+          copyMenu={user ? undefined : copyMenus?.body}
+        >
           <ConversationPreviousOutputs
             outputs={beforeAnswer ? undefined : message.previousOutputs}
           />
@@ -243,7 +242,7 @@ export function ConversationMessage({
             </View>
           ) : null}
           {citations}
-        </View>
+        </ConversationBubbleBody>
       </ConversationBubbleEntrance>
     </ConversationMessageBubbles>
   );

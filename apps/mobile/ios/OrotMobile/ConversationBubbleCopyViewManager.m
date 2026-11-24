@@ -109,26 +109,14 @@
     }
     NSString *role =
         self.reactAccessibilityElement.accessibilityIdentifier ?: facade.accessibilityIdentifier;
-    if ([role isEqualToString:@"conversation-user-message"]) {
-        return facade;
-    }
-    NSString *body = [role isEqualToString:@"conversation-assistant-message"]
-                         ? @"conversation-message-body"
-                     : [role isEqualToString:@"conversation-assistant-opening-message"]
-                         ? @"conversation-opening-body"
-                         : nil;
-    Class fabricView = NSClassFromString(@"RCTViewComponentView");
-    UIView *paint = nil;
-    for (UIView *child in self.subviews) {
-        if (body && fabricView && [child isKindOfClass:fabricView] &&
-            [child.accessibilityIdentifier isEqualToString:body]) {
-            if (paint) {
-                return nil;
-            }
-            paint = child;
-        }
-    }
-    return paint;
+    // Anchor the lift on the same Fabric surface that owns the gesture. UIKit
+    // can lift this facade and its children together; targeting its inner
+    // assistant body from a different host left only the background visible.
+    return ([role isEqualToString:@"conversation-user-message"] ||
+            [role isEqualToString:@"conversation-message-body"] ||
+            [role isEqualToString:@"conversation-opening-body"])
+               ? facade
+               : nil;
 }
 - (nullable UITargetedPreview *)
     targetedPreviewForInteraction:(UIContextMenuInteraction *)interaction
