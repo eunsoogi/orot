@@ -119,7 +119,8 @@ test('the real screen holds image pixels until Settings consent and saves only i
         ?.savedHistoryDisplay?.map(item => item.row),
     ).toEqual([
       expect.objectContaining({
-        question: '합성 질문',
+        // Only the approved answer and photo marker are saved, not the typed prompt.
+        question: '',
         answer: '합성 이미지 설명',
         directPhoto: true,
       }),
