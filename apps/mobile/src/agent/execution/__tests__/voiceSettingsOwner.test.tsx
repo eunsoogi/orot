@@ -32,6 +32,7 @@ function services(): ModelSettingsServices {
       }),
       save: async () => {},
       accountStatus: async () => ({ connected: true, revision: 1 }),
+      accountRevisionMatches: revision => revision === 1,
       discoverModels: async () => ({
         revision: 1,
         ids: ['gpt-realtime-2.1-mini'],

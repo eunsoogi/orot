@@ -12,7 +12,12 @@ import { saveModelSettingsConsent } from './saveModelSettingsConsent';
 export interface ModelSettingsServices {
   readonly voice: Pick<
     typeof voiceSettingsStore,
-    'load' | 'save' | 'accountStatus' | 'discoverModels' | 'subscribe'
+    | 'load'
+    | 'save'
+    | 'accountStatus'
+    | 'accountRevisionMatches'
+    | 'discoverModels'
+    | 'subscribe'
   >;
   readonly calendar: ProviderSelectionStore;
   readonly calendarOption: typeof createCalendarDecisionsOption;

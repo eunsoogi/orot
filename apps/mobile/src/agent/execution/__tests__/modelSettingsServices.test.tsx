@@ -33,6 +33,7 @@ function services(
       }),
       save: async () => {},
       accountStatus: async () => ({ connected: false, revision: 1 }),
+      accountRevisionMatches: revision => revision === 1,
       discoverModels: async () => ({ revision: 1, ids: [] }),
       subscribe: () => () => {},
     },

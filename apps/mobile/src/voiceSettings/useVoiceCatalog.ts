@@ -2,6 +2,10 @@ import { t } from '../i18n';
 import { useEffect, useRef, useState } from 'react';
 import { useModelSettingsServices } from '../agent/execution/ModelSettingsServices';
 import { voiceModels } from './voiceModels';
+import { isLiveResponsesBackend } from './liveResponsesSettingsIdentity';
+
+const isSpeechModel = (id: string) =>
+  voiceModels.some(model => model.mode === 'openai-api' && model.id === id);
 
 const errors: Record<string, string> = {
   access: t('modelSettings.accessError'),
@@ -57,6 +61,17 @@ export function useVoiceCatalog() {
     };
     load();
     const unsubscribe = voiceSettingsStore.subscribe(() => {
+      if (
+        revision.current !== null &&
+        voiceSettingsStore.accountRevisionMatches?.(revision.current) !== true
+      ) {
+        // Retire the old owner's choices before the next keychain read settles.
+        revision.current = null;
+        setConnected(false);
+        setIds([]);
+        setFresh(false);
+        setMessage(t('modelSettings.checkingAccount'));
+      }
       load();
     });
     // These refs are request state, not a mounted DOM/native node. Invalidate all
@@ -72,7 +87,7 @@ export function useVoiceCatalog() {
     };
   }, [voiceSettingsStore]);
   const refresh = async () => {
-    if (busy || !connected) return;
+    if (busy || !connected || revision.current === null) return;
     const request = ++generation.current;
     controller.current?.abort();
     const abort = new AbortController();
@@ -86,15 +101,14 @@ export function useVoiceCatalog() {
       if (request !== generation.current) return;
       if (result.revision !== revision.current)
         throw new Error('account-changed');
-      const supported = result.ids.filter(id =>
-        voiceModels.some(
-          model => model.mode === 'openai-api' && model.id === id,
-        ),
+      // Keep both approved subsets from the same explicit account refresh.
+      const supported = result.ids.filter(
+        id => isSpeechModel(id) || isLiveResponsesBackend(id),
       );
       setIds(supported);
       setFresh(true);
       setMessage(
-        supported.length
+        supported.some(isSpeechModel)
           ? t('modelSettings.modelListNotice')
           : t('modelSettings.noSupportedVoice'),
       );
@@ -111,7 +125,8 @@ export function useVoiceCatalog() {
   };
   return {
     connected,
-    ids,
+    ids: ids.filter(isSpeechModel),
+    toolIds: ids.filter(isLiveResponsesBackend),
     busy,
     fresh,
     message,

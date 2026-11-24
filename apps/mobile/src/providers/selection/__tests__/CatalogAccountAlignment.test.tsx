@@ -97,6 +97,7 @@ test.each([230, 532])(
             connected: true,
             busy: false,
             ids: [],
+            toolIds: [],
             fresh: true,
             message: '',
             revision: 1,

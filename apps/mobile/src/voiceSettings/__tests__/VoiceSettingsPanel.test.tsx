@@ -22,6 +22,7 @@ jest.mock('../voiceSettingsStore', () => ({
     load: jest.fn(),
     save: jest.fn(),
     accountStatus: jest.fn(),
+    accountRevisionMatches: jest.fn(() => true),
     discoverModels: jest.fn(),
     subscribe: jest.fn(() => () => {}),
   },
@@ -180,9 +181,7 @@ it('ignores a late catalog response after disconnection', async () => {
   jest
     .mocked(voiceSettingsStore.accountStatus)
     .mockResolvedValue({ revision: 2, connected: false });
-  await act(async () => {
-    changed();
-  });
+  await act(async () => changed());
   await act(async () => {
     resolve({ revision: 1, ids: ['gpt-realtime-2.1'] });
   });

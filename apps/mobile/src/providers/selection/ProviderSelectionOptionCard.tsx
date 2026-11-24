@@ -1,10 +1,6 @@
 import { t } from '../../i18n';
 import { APPLE_PCC_PROVIDER_ID } from './privateCloudCompute';
-import { AppText as Text } from '../../layout/AppText';
-import { Pressable, StyleSheet, View } from 'react-native';
-import { AppSymbol } from '../../layout/AppSymbol';
-import { providerSettingsStyles as shared } from '../../layout/providerSettingsPresentation';
-import { appColors } from '../../layout/appColors';
+import { ProviderModelChoiceRow } from './ProviderModelChoiceRow';
 import { isProviderSelectionOptionSelectable } from './providerSelection';
 import { providerSelectionText } from './text';
 import type {
@@ -37,46 +33,26 @@ export default function ProviderSelectionOptionCard({
   const blockedMessage = getBlockedMessage(option, requirements);
   const selectable = blockedMessage === null && !disabled;
   return (
-    <Pressable
+    <ProviderModelChoiceRow
       key={`${option.provider.id}:${option.modelId}`}
-      accessibilityRole="radio"
-      accessibilityState={{ disabled: !selectable, selected }}
+      testID={`provider-option-${index}`}
+      title={catalogModelLabel ?? option.displayName}
+      detail={
+        catalogModelLabel ||
+        (hideLocalSubtitle && option.privacyBoundary === 'on-device')
+          ? undefined
+          : option.privacyBoundary === 'on-device'
+            ? t('modelSettings.localProcessing')
+            : option.provider.id === APPLE_PCC_PROVIDER_ID
+              ? t('provider.pcc.processing')
+              : option.modelId
+      }
+      icon={option.privacyBoundary === 'on-device' ? 'sparkles' : 'brain'}
+      blockedMessage={blockedMessage}
+      selected={selected}
       disabled={!selectable}
       onPress={onPress}
-      style={shared.option}
-      testID={`provider-option-${index}`}
-    >
-      <View style={shared.icon}>
-        <AppSymbol
-          name={option.privacyBoundary === 'on-device' ? 'sparkles' : 'brain'}
-          color={appColors.primaryText}
-        />
-      </View>
-      <View style={shared.copy}>
-        <Text style={shared.title}>
-          {catalogModelLabel ?? option.displayName}
-        </Text>
-        {catalogModelLabel ||
-        (hideLocalSubtitle && option.privacyBoundary === 'on-device') ? null : (
-          <Text style={shared.detail}>
-            {option.privacyBoundary === 'on-device'
-              ? t('modelSettings.localProcessing')
-              : option.provider.id === APPLE_PCC_PROVIDER_ID
-                ? t('provider.pcc.processing')
-                : option.modelId}
-          </Text>
-        )}
-        {blockedMessage ? (
-          <Text accessibilityRole="alert" style={styles.unavailable}>
-            {blockedMessage}
-          </Text>
-        ) : null}
-      </View>
-      <AppSymbol
-        name={selected ? 'checkmark.circle.fill' : 'circle'}
-        color={appColors.text}
-      />
-    </Pressable>
+    />
   );
 }
 
@@ -93,7 +69,3 @@ function getBlockedMessage(
     ? null
     : providerSelectionText.unsupportedCapabilities;
 }
-
-const styles = StyleSheet.create({
-  unavailable: { color: appColors.danger },
-});
