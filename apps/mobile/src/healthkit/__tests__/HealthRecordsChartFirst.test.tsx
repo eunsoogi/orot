@@ -95,7 +95,7 @@ test('Sleep unions measured asleep intervals per local day without plotting awak
   ]);
 });
 
-test('Sleep mounts a minutes bar and keeps its detail action below chart and no-data states', async () => {
+test('Sleep mounts a daily minutes line and keeps its detail action below chart and no-data states', async () => {
   const end = new Date(Date.now() - 5 * 60000);
   const start = new Date(end.getTime() - 10 * 60000);
   const renderSleep = (stage: string) => (
@@ -109,7 +109,11 @@ test('Sleep mounts a minutes bar and keeps its detail action below chart and no-
   const view = await render(renderSleep('3'));
   const chart = view.getByTestId('health-record-chart-values-sleep');
   const opts = JSON.parse(chart.props.children);
-  expect(opts).toMatchObject({ kind: 'bar' });
+  expect(opts).toMatchObject({
+    kind: 'line',
+    lineAxis: 'day',
+    barTooltip: true,
+  });
   expect(opts.data.series[0].unit).toBe('min');
   expect(
     opts.data.series[0].points.reduce(

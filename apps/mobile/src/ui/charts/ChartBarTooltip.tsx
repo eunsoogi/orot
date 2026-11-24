@@ -30,7 +30,11 @@ export function ChartBarTooltip({
   const owner = useRef(Symbol()).current;
   const touchedIndex = useRef(-1);
   const entries = data.series
-    .flatMap(series => series.points.map(point => ({ series, point })))
+    .flatMap(series =>
+      series.points
+        .filter(point => kind !== 'line' || point.value !== null)
+        .map(point => ({ series, point })),
+    )
     .sort((a, b) => a.point.x.localeCompare(b.point.x));
   const [selected, setSelected] = useState<number | null>(null);
   const entry = selected === null ? undefined : entries[selected];
