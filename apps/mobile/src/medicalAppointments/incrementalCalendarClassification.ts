@@ -159,18 +159,19 @@ export async function classifyCalendarEventsIncrementally(
       : undefined;
   await cache.commit(generation, staged, pruneTo, input.signal);
   if (input.signal.aborted) return rejected('cancelled');
-  if (result.status !== 'complete') return compose(result, false);
-  // A native edit while the protected write was queued cannot show an old hit.
-  if (hasReused) {
+  // A native edit while the protected write awaited must not publish cached
+  // hits or the completed rows of an admitted partial result.
+  if (hasReused || result.status === 'partial') {
     if (!(await readCurrentSnapshot()))
       return rejected(input.signal.aborted ? 'cancelled' : 'unavailable');
     try {
-      // A wipe that committed during the final native read also retires the hit.
+      // A wipe during the final native read retires the whole result.
       await cache.startIfCurrent(generation, input.signal, () => undefined);
     } catch {
       return rejected(input.signal.aborted ? 'cancelled' : 'unavailable');
     }
   }
+  if (result.status !== 'complete') return compose(result, false);
   return input.events.length
     ? compose(result, true)
     : { ...result, status: 'empty' };
