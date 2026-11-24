@@ -21,7 +21,9 @@ export interface HealthKitAutoSyncResult {
 interface RunHealthKitAutoSyncOptions {
   readonly repository: CommonObservationRepository;
   readonly healthKit: Pick<HealthKitNativeModule, 'querySampleChanges'> &
-    Partial<Pick<HealthKitNativeModule, 'queryMedicationDefinitions'>>;
+    Partial<
+      Pick<HealthKitNativeModule, 'queryMedicationDefinitions' | 'querySamples'>
+    >;
   readonly now: () => string;
   /** Set by explicit medication access/re-import actions, never ordinary app foreground refresh. */
   readonly refreshMedicationDoseHistory?: boolean;
@@ -115,6 +117,16 @@ async function runRequestedFeatures(
           permissionPreviouslyRequested: true,
           repository: options.repository,
           now: options.now,
+          ...(options.healthKit.querySamples &&
+          (feature === 'restingHeartRate' ||
+            feature === 'walkingHeartRateAverage')
+            ? {
+                refreshDerivedSamples: options.healthKit.querySamples.bind(
+                  options.healthKit,
+                ),
+                derivedAutoSyncRequest: request.updatedAt,
+              }
+            : {}),
         });
         retryable ||= result.status !== 'complete' && result.status !== 'empty';
       }

@@ -1,3 +1,6 @@
+import { runHealthKitAutoSync } from '../../autoSync';
+import { rememberHealthKitAutoSyncRequest } from '../../autoSyncCheckpoint';
+import { subscribeLocalSourceDeletion } from '../../../storage/localDataClearEvents';
 import { createRecordRepository, runMigrations } from '@orot/storage';
 import { openSqliteTestDatabase } from '../../../../../../packages/storage/__tests__/sqliteTestDatabase';
 import {
@@ -130,4 +133,75 @@ test('only derived accepted metadata may add extrema; malformed stats leave the 
   if (generic.status !== 'mapped')
     throw new Error('Expected valid synthetic raw quantity');
   expect(generic.observation.heartRateSampleSummary).toBeUndefined();
+});
+
+test('ordinary opted-in sync enriches an anchored legacy sample once without permissions or deletion', async () => {
+  const f = openSqliteTestDatabase(':memory:');
+  const deleted = jest.fn();
+  const unsubscribe = subscribeLocalSourceDeletion(deleted);
+  try {
+    await runMigrations(f.database);
+    const repository = createRecordRepository(f.database);
+    await syncCommonObservationChanges({
+      feature,
+      repository,
+      healthKit: healthKit([
+        page({ addedSamples: [sample('known', false)], cursor: 'old-anchor' }),
+      ]),
+      now: clock,
+    });
+    await rememberHealthKitAutoSyncRequest(repository, feature, clock);
+    const wire = healthKit([
+      page({ cursor: 'old-anchor' }),
+      page({ cursor: 'old-anchor' }),
+    ]);
+    const querySamples = jest.fn(async () => ({
+      availability: 'available' as const,
+      status: 'completed' as const,
+      readAuthorization: 'notObservable' as const,
+      samples: [sample('known', true), sample('unknown', true)],
+    }));
+    const options = {
+      repository,
+      healthKit: { ...wire, querySamples },
+      now: clock,
+    };
+    const read = () =>
+      repository.get(
+        'health_observation',
+        commonObservationRecordId(feature, 'known'),
+      );
+    const original = await read();
+    expect(original?.heartRateSampleSummary).toBeUndefined();
+    await expect(runHealthKitAutoSync(options)).resolves.toMatchObject({
+      status: 'complete',
+      attemptedFeatures: [feature],
+    });
+    expect(await read()).toEqual({
+      ...original,
+      heartRateSampleSummary: summary,
+    });
+    await expect(runHealthKitAutoSync(options)).resolves.toMatchObject({
+      status: 'complete',
+    });
+    expect(querySamples).toHaveBeenCalledTimes(1);
+    expect(querySamples).toHaveBeenCalledWith(
+      expect.objectContaining({ feature, sampleKind: feature, limit: 500 }),
+    );
+    expect(wire.querySampleChanges).toHaveBeenCalledTimes(2);
+    expect(wire.querySampleChanges).toHaveBeenCalledWith(
+      expect.objectContaining({ cursor: 'old-anchor' }),
+    );
+    expect(wire.requestReadAuthorization).not.toHaveBeenCalled();
+    expect(
+      await repository.get(
+        'health_observation',
+        commonObservationRecordId(feature, 'unknown'),
+      ),
+    ).toBeNull();
+    expect(deleted).not.toHaveBeenCalled();
+  } finally {
+    unsubscribe();
+    f.close();
+  }
 });
