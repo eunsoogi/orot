@@ -57,7 +57,7 @@ final class RealtimeConnectingCue: NSObject, AVAudioPlayerDelegate, RealtimeConn
     static func wave() -> Data {
         let sampleCount = 1360
         var data = Data()
-        func append<T: FixedWidthInteger>(_ number: T) {
+        func append(_ number: some FixedWidthInteger) {
             var littleEndian = number.littleEndian
             withUnsafeBytes(of: &littleEndian) { data.append(contentsOf: $0) }
         }
