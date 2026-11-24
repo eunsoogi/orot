@@ -104,7 +104,7 @@ extension RealtimeVoiceLifecycleTests {
     }
 
     func testManagedReadNeverStartsOnNullOrMismatchedDelegationAndLateResultCannotCrossStop() async throws {
-        for mode in ["null", "wrong", "stop", "new-speech", "second-call"] {
+        for mode in ["null", "wrong", "stop", "new-speech", "second-call", "conflicting-replay", "conflicting-scope"] {
             let socket = ManagedResponseFixtureSocket()
             let configured = expectation(description: "test-only Live config \(mode)")
             socket.configured = { configured.fulfill() }
@@ -129,9 +129,9 @@ extension RealtimeVoiceLifecycleTests {
                 } else if mode == "wrong" {
                     events[1]["delegation_id"] = "other-delegation"
                 } else {
-                    let item = ["type": "function_call", "call_id": "function-b", "name": "orot_reviewed_memory",
-                                "arguments": #"{"query":"synthetic-only"}"#]
-                    events.insert(["type": "response.event", "event_id": "second-item-event", "delegation_id": "delegation-a",
+                    let item = ["type": "function_call", "call_id": mode == "conflicting-scope" ? "function-a" : "function-b", "name": "orot_reviewed_memory",
+                                "arguments": mode == "conflicting-scope" ? #"{"query":"different"}"# : #"{"query":"synthetic-only"}"#]
+                    events.insert(["type": "response.event", "event_id": mode == "second-call" ? "second-item-event" : "item-event", "delegation_id": "delegation-a",
                                    "event": ["type": "response.output_item.done", "item": item]], at: events.count - 1)
                 }
             }
@@ -147,7 +147,7 @@ extension RealtimeVoiceLifecycleTests {
             if mode == "new-speech" {
                 socket.received?(["type": "session.input_transcript.delta", "event_id": "new-speech-event",
                                   "start_ms": 6, "end_ms": 7, "delta": "synthetic"])
-            } else if mode != "second-call" {
+            } else if ["null", "wrong", "stop"].contains(mode) {
                 try call.stop("fixture-call")
             }
             late?("{\"status\":\"stale\"}")
@@ -156,7 +156,7 @@ extension RealtimeVoiceLifecycleTests {
             await fulfillment(of: [turn], timeout: 2)
             XCTAssertEqual(hits, entered == nil ? 0 : 1)
             XCTAssertTrue(socket.managed.isEmpty)
-            if mode == "new-speech" || mode == "second-call" {
+            if !["null", "wrong", "stop"].contains(mode) {
                 try call.stop("fixture-call")
             }
         }
