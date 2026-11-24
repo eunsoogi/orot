@@ -58,7 +58,7 @@ test('moves the whole-list retry while retaining pagination recovery inline', as
   ).toBeTruthy();
 });
 
-test('routes the library import entry through its existing navigation callback', async () => {
+test('exposes the Health Data settings action through the shared dock', async () => {
   const open = jest.fn();
   function Fixture() {
     const { host, actions } = useNavigationPrimaryActionHost('library');
@@ -87,6 +87,8 @@ test('routes the library import entry through its existing navigation callback',
   }
   await render(<Fixture />);
   expect(screen.queryByTestId('health-records-open-health-import')).toBeNull();
-  await fireEvent.press(screen.getByTestId('dock-open-health-import'));
+  const action = screen.getByRole('button', { name: '건강 데이터 설정 열기' });
+  expect(action.props.testID).toBe('dock-open-health-data-settings');
+  await fireEvent.press(action);
   expect(open).toHaveBeenCalledTimes(1);
 });
