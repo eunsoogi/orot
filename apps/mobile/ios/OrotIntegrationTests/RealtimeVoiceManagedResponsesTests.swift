@@ -61,7 +61,7 @@ extension RealtimeVoiceLifecycleTests {
             XCTAssertEqual(delegation?["type"] as? String, "responses")
             XCTAssertEqual((delegation?["responses"] as? [String: Any])?["model"] as? String, backend)
             socket.received?(started())
-            for index in 0..<64 {
+            for index in 0 ..< 64 {
                 socket.received?(["type": "session.input_transcript.delta", "event_id": "lead-in-\(index)",
                                   "start_ms": 1, "end_ms": 2, "delta": "synthetic"])
             }
