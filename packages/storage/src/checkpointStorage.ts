@@ -31,7 +31,12 @@ export interface CheckpointBundle extends StoredCheckpoint {
 
 export interface LangGraphCheckpointStorage {
   ensureSchema(): Promise<void>;
-  saveCheckpoint(threadId: string, namespace: string, checkpoint: StoredCheckpoint): Promise<void>;
+  saveCheckpoint(
+    threadId: string,
+    namespace: string,
+    checkpoint: StoredCheckpoint,
+    signal?: AbortSignal,
+  ): Promise<void>;
   saveWrites(
     threadId: string,
     namespace: string,
@@ -98,10 +103,13 @@ export function createLangGraphCheckpointStorage(
   return {
     ensureSchema,
 
-    async saveCheckpoint(threadId, namespace, checkpoint) {
+    async saveCheckpoint(threadId, namespace, checkpoint, signal) {
       await ensureSchema();
       await database.transaction(async (transaction) => {
+        if (signal?.aborted) throw new Error('Checkpoint write cancelled.');
         await bindCheckpointSource(transaction, threadId, options.sourceRecordId);
+        // Cancel only before dispatching SQL; the transaction rolls back any tentative binding.
+        if (signal?.aborted) throw new Error('Checkpoint write cancelled.');
         await transaction.execute(
           `INSERT INTO langgraph_checkpoints
              (thread_id, checkpoint_ns, checkpoint_id, parent_checkpoint_id,
