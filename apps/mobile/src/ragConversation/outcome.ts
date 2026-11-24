@@ -57,6 +57,17 @@ export type RagConversationOutcome =
     }
   | { readonly status: 'unavailable' };
 
+/** Evidence rejection is terminal for opaque UI drafts, not for independent reviews. */
+export function conversationEvidenceRejectsDraft(
+  outcome: RagConversationOutcome,
+) {
+  return (
+    outcome.status === 'failure' &&
+    (outcome.kind === 'stale_evidence' ||
+      outcome.discardUnverifiedDraft === true)
+  );
+}
+
 /** Maps closed provider error codes without copying request or provider text into UI state. */
 export function providerFailureKind(
   code: ProviderErrorCode | undefined,

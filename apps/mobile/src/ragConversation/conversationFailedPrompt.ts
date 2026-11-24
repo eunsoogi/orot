@@ -1,7 +1,8 @@
 import { getRagConversationFailureCopy } from './copy';
-import type {
-  RagConversationFailureKind,
-  RagConversationOutcome,
+import {
+  conversationEvidenceRejectsDraft,
+  type RagConversationFailureKind,
+  type RagConversationOutcome,
 } from './outcome';
 import type {
   ConversationSession,
@@ -28,8 +29,9 @@ export function conversationFailureReporter(
     if (
       kind === 'validation_failed' ||
       kind === 'provider_refused' ||
-      kind === 'stale_evidence' ||
-      (typeof failure !== 'string' && failure.discardUnverifiedDraft)
+      (typeof failure !== 'string'
+        ? conversationEvidenceRejectsDraft(failure)
+        : kind === 'stale_evidence')
     ) {
       const { pendingMessage: pending, messages } = find(id);
       const opening = pending?.initialResponse;
