@@ -1,5 +1,6 @@
 import { act, fireEvent, render, screen } from '@testing-library/react-native';
 import { ChartPlot } from '../ChartPlot';
+import { lineSegments } from '../model';
 import type { ChartData } from '../types';
 
 jest.mock('react-native-chart-kit/v2', () => {
@@ -74,7 +75,7 @@ test('passes compact daily ticks while keeping full dates in keys and values', a
   expect(previous.props.accessibilityLabel).toContain('1걸음');
 });
 
-test('daily lines keep gaps, date labels, horizontal guides and exact measurement selection', async () => {
+test('daily lines bridge gaps with only real endpoints and keep missing rows unselectable', async () => {
   const [first, last] = data.series[0]!.points;
   const partial: ChartData = {
     ...data,
@@ -108,11 +109,19 @@ test('daily lines keep gaps, date labels, horizontal guides and exact measuremen
   });
   expect(chart.props.showHorizontalGridLines).toBe(true);
   expect(chart.props.showVerticalGridLines).toBe(false);
-  expect(
-    chart.props.series.map((segment: { yKey: string }) => segment.yKey),
-  ).toEqual(['segment_0', 'segment_1']);
+  expect(chart.props.series).toMatchObject([
+    { yKey: 'segment_0' },
+    { yKey: 'segment_1', strokeDasharray: [4, 4], dot: false },
+    { yKey: 'segment_2' },
+  ]);
+  expect(chart.props.series[0]).not.toHaveProperty('strokeDasharray');
+  expect(chart.props.series[2]).not.toHaveProperty('strokeDasharray');
   const rows = chart.props.data as { x: number }[];
-  expect(rows[1]).toEqual({ x: Date.parse('2026-10-09') });
+  expect(rows).toEqual([
+    { x: Date.parse('2026-10-08'), segment_0: 1, segment_1: 1 },
+    { x: Date.parse('2026-10-09') },
+    { x: Date.parse('2026-10-10'), segment_1: 2, segment_2: 2 },
+  ]);
   expect(chart.props.formatXLabel(rows[1]!.x)).toBe('10/09');
   await fireEvent(plot, 'accessibilityAction', {
     nativeEvent: { actionName: 'increment' },
@@ -121,14 +130,46 @@ test('daily lines keep gaps, date labels, horizontal guides and exact measuremen
   await fireEvent(plot, 'accessibilityAction', {
     nativeEvent: { actionName: 'increment' },
   });
+  expect(plot.props.accessibilityLabel).toContain('2걸음');
+  expect(plot.props.accessibilityLabel).not.toContain('2026-10-09');
+  await act(() =>
+    chart.props.interaction.onSelect({
+      raw: rows[1],
+      series: [],
+      position: { x: 100, y: 30 },
+    }),
+  );
   expect(plot.props.accessibilityLabel).toContain('측정되지 않음');
+  expect(plot.props.accessibilityValue).toBeUndefined();
   await act(() =>
     chart.props.interaction.onSelect({
       raw: rows[2],
-      series: [{ key: 'segment_1', value: 2 }],
+      series: [
+        { key: 'segment_1', value: 2 },
+        { key: 'segment_2', value: 2 },
+      ],
       position: { x: 210, y: 16 },
     }),
   );
   expect(plot.props.accessibilityLabel).toContain('2026-10-10');
   expect(plot.props.accessibilityLabel).toContain('2걸음');
+});
+
+test('daily sparse observations bridge implicit missing calendar days without creating rows', () => {
+  const series = data.series[0]!;
+  const points = [series.points[0]!, { ...series.points[1]!, x: '2026-10-12' }];
+  const daily = lineSegments(
+    { ...data, series: [{ ...series, points }] },
+    'day',
+  );
+  expect(daily.rows).toHaveLength(2);
+  expect(daily.segments.filter(item => item.bridge)).toEqual([
+    { id: 'segment_1', seriesId: 'steps', bridge: true },
+  ]);
+  const instants = lineSegments(
+    { ...data, series: [{ ...series, points }] },
+    'time',
+  );
+  expect(instants.segments).toHaveLength(1);
+  expect(instants.segments[0]?.bridge).toBeUndefined();
 });

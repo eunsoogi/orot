@@ -46,7 +46,7 @@ export function sleepPreviewPoints(
     )
       continue;
     let start = Date.parse(record.effectiveAt);
-    // Dates beyond the visible window cannot create future chart bars.
+    // Dates beyond the visible window cannot create future plot values.
     const finish = Math.min(Date.parse(record.endedAt), now.getTime());
     if (!Number.isFinite(start) || !Number.isFinite(finish) || start >= finish)
       continue;
@@ -138,7 +138,8 @@ export function HealthRecordsSleepChart({
         width={width}
         height={200}
         title={title}
-        kind="bar"
+        kind="line"
+        lineAxis="day"
         testID="health-record-chart-values-sleep"
         selectedPointTestID="health-record-chart-sleep"
       />

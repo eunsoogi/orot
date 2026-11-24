@@ -43,14 +43,15 @@ export function chartRows(data: ChartData, axis: 'time' | 'day'): ChartRow[] {
   return result;
 }
 
-/** Split only at explicit missing observations; unrelated series times are not gaps. */
-export function lineSegments(data: ChartData) {
+/** A daily line may bridge absent dates without adding a measurement to them. */
+export function lineSegments(data: ChartData, axis: 'time' | 'day' = 'time') {
   const rows: ChartRow[] = chartRows(data, 'time').map(row => ({ x: row.x }));
   const positions = new Map(rows.map(row => [row.x, row]));
-  const segments: { id: string; seriesId: string }[] = [];
+  const segments: { id: string; seriesId: string; bridge?: true }[] = [];
   for (const series of data.series) {
     let current: string | undefined;
     let previousTime: number | undefined;
+    let lastMeasured: { time: number; value: number } | undefined;
     const points = [...series.points].sort(
       (a, b) => Date.parse(a.x) - Date.parse(b.x),
     );
@@ -63,6 +64,23 @@ export function lineSegments(data: ChartData) {
         current = undefined;
         continue;
       }
+      if (
+        axis === 'day' &&
+        lastMeasured &&
+        time - lastMeasured.time > 86400_000
+      ) {
+        // End the solid run; the dashed geometry has only its two observed endpoints.
+        current = undefined;
+        const id = `segment_${segments.length}`;
+        segments.push({ id, seriesId: series.id, bridge: true });
+        const start = positions.get(lastMeasured.time);
+        const end = positions.get(time);
+        if (start && end) {
+          start[id] = lastMeasured.value;
+          end[id] = point.value;
+        }
+      }
+      lastMeasured = { time, value: point.value };
       if (!current) {
         current = `segment_${segments.length}`;
         segments.push({ id: current, seriesId: series.id });

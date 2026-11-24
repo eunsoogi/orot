@@ -90,7 +90,8 @@ export function ChartRenderer({
               onSelect={onBarSelect}
             />
           );
-        const line = kind === 'line' ? lineSegments(unitData) : undefined;
+        const line =
+          kind === 'line' ? lineSegments(unitData, lineAxis) : undefined;
         const rows =
           line?.rows ?? (kind === 'bar' ? chartRows(unitData, 'day') : []);
         if (rows.length === 0) return null;
@@ -110,6 +111,9 @@ export function ChartRenderer({
                 unitData.series.findIndex(item => item.id === segment.seriesId)
               ]!,
               yKey: segment.id,
+              ...(segment.bridge
+                ? { strokeDasharray: [4, 4], strokeOpacity: 0.6, dot: false }
+                : {}),
             }))
           : baseSeries;
         const xLabel = (value: string | number | Date) =>
@@ -162,9 +166,12 @@ export function ChartRenderer({
                         onSelect: event => {
                           const segment = line?.segments.find(
                             candidate =>
-                              candidate.id ===
-                              event.series.find(item => item.value != null)
-                                ?.key,
+                              !candidate.bridge &&
+                              event.series.some(
+                                item =>
+                                  item.key === candidate.id &&
+                                  item.value != null,
+                              ),
                           );
                           const x = event.raw?.x;
                           onBarSelect(
