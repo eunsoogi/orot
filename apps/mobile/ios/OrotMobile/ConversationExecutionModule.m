@@ -20,10 +20,12 @@ RCT_EXTERN_METHOD(isActive : (NSString *)requestId resolver : (RCTPromiseResolve
 RCT_EXTERN_METHOD(signalBackgroundCommit : (NSString *)requestId token : (NSString *)
                       token resolver : (RCTPromiseResolveBlock)
                           resolve rejecter : (RCTPromiseRejectBlock)reject)
-RCT_EXTERN_METHOD(backgroundContinuedGrant : (NSString *)requestId token : (NSString *)token
-                      resolver : (RCTPromiseResolveBlock)resolve rejecter : (RCTPromiseRejectBlock)reject)
-RCT_EXTERN_METHOD(signalContinuedBackgroundCommit : (NSString *)requestId token : (NSString *)token
-                      grant : (NSString *)grant resolver : (RCTPromiseResolveBlock)resolve rejecter : (RCTPromiseRejectBlock)reject)
+RCT_EXTERN_METHOD(backgroundContinuedGrant : (NSString *)requestId token : (NSString *)
+                      token resolver : (RCTPromiseResolveBlock)
+                          resolve rejecter : (RCTPromiseRejectBlock)reject)
+RCT_EXTERN_METHOD(signalContinuedBackgroundCommit : (NSString *)requestId token : (NSString *)
+                      token grant : (NSString *)grant resolver : (RCTPromiseResolveBlock)
+                          resolve rejecter : (RCTPromiseRejectBlock)reject)
 RCT_EXTERN_METHOD(signalBackgroundFailure : (NSString *)token)
 #endif
 RCT_EXTERN_METHOD(protectedDataAvailable : (RCTPromiseResolveBlock)

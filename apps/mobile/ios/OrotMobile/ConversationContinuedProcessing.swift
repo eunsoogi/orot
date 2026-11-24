@@ -43,7 +43,9 @@ final class ConversationContinuedProcessing {
     #if OROT_TESTS && targetEnvironment(simulator)
         // A submitted or queued task has no witness. Only the real launched BG task does.
         private var fixtureGrantWitness: UUID?
-        var activeFixtureGrant: String? { active ? fixtureGrantWitness?.uuidString : nil }
+        var activeFixtureGrant: String? {
+            active ? fixtureGrantWitness?.uuidString : nil
+        }
     #endif
 
     init(status: @escaping (String, Int?) -> Void, expired: @escaping () -> Void) {
@@ -205,7 +207,6 @@ func conversationContinuedWorkIsActive(_ work: Any?) -> Bool {
             return (continuedGrantWithoutShortLease(requestId) as? ConversationContinuedProcessing)?.activeFixtureGrant
         }
 
-
         /// A test failure wakes the host without exposing request text or changing production behavior.
         @objc(signalBackgroundFailure:)
         func signalBackgroundFailure(_ token: String) {
@@ -217,8 +218,11 @@ func conversationContinuedWorkIsActive(_ work: Any?) -> Bool {
 
         @objc(backgroundContinuedGrant:token:resolver:rejecter:)
         func backgroundContinuedGrant(_ requestId: String, token: String, resolve: RCTPromiseResolveBlock, reject _: RCTPromiseRejectBlock) {
-            if let grant = fixtureContinuedGrant(requestId, token: token) { resolve(grant) }
-            else { resolve(NSNull()) }
+            if let grant = fixtureContinuedGrant(requestId, token: token) {
+                resolve(grant)
+            } else {
+                resolve(NSNull())
+            }
         }
 
         @objc(signalContinuedBackgroundCommit:token:grant:resolver:rejecter:)
