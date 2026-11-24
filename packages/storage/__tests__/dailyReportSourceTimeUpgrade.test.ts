@@ -1,3 +1,4 @@
+import { rewindBeforeMemoryMetadata } from './historicalMigrationSupport';
 import { createVisitQuestionRecordRepository, openEncryptedStorage, runMigrations } from '../src';
 import type { SqlDatabase, SqlTransaction } from '../src';
 import { createDatabase, options } from './sourceEvidenceTestSupport';
@@ -104,7 +105,7 @@ test.each([12, 13, 14])(
         await database.execute('DROP TABLE daily_report_heads');
         await database.execute('DROP TABLE daily_report_revisions');
       }
-      await database.execute(`PRAGMA user_version = ${version}`);
+      await rewindBeforeMemoryMetadata(database, version);
       await runMigrations(database);
       expect(
         (
@@ -113,7 +114,7 @@ test.each([12, 13, 14])(
           )
         ).rows,
       ).toHaveLength(1);
-      expect((await database.execute('PRAGMA user_version')).rows[0].user_version).toBe(18);
+      expect((await database.execute('PRAGMA user_version')).rows[0].user_version).toBe(19);
       expect(await repository.get('source_record', source.id)).toEqual(source);
       expect((await database.execute('SELECT * FROM daily_report_heads')).rows).toHaveLength(
         version >= 13 ? 1 : 0,
@@ -137,7 +138,7 @@ test('rolls back the partial version fourteen rebuild without changing version o
   try {
     await restoreOldSourceSchema(database);
     await database.execute("INSERT INTO daily_report_heads VALUES ('synthetic-day', 'run', 1, 0)");
-    await database.execute('PRAGMA user_version = 13');
+    await rewindBeforeMemoryMetadata(database, 13);
     const failing: SqlDatabase = {
       ...database,
       transaction(operation) {
@@ -163,7 +164,7 @@ test('rolls back the partial version fourteen rebuild without changing version o
     const columns = await database.execute('PRAGMA table_info(source_records)');
     expect(columns.rows.find((row) => row.name === 'effective_at')?.notnull).toBe(1);
     await runMigrations(database);
-    expect((await database.execute('PRAGMA user_version')).rows[0].user_version).toBe(18);
+    expect((await database.execute('PRAGMA user_version')).rows[0].user_version).toBe(19);
   } finally {
     await database.closeAsync?.();
   }

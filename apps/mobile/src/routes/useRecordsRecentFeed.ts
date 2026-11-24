@@ -1,5 +1,7 @@
 import { useMemo, useRef, useState } from 'react';
 import { loadRecentMaterial } from '../generatedReports/recentMaterialReader';
+import { readProtectedRecentMaterialPage } from '../generatedReports/certifiedRecentMaterialPage';
+import { subscribeAgentMemoryVisibility } from '../storage/agentMemoryVisibilityEvents';
 import { t } from '../i18n';
 import { useNavigationRouteRefresh } from '../navigation/navigationRouteRefresh';
 import { subscribeRecentSourceSaved } from '../storage/recentSourceEvents';
@@ -26,6 +28,7 @@ export function useRecordsRecentFeed(props: RecordsRecentSourcesProps) {
     active = true,
     ownership,
     tabAuthority,
+    recentMaterialReadyLease,
     showAll = false,
     pagedAudio = false,
     pagedDocuments = false,
@@ -42,13 +45,35 @@ export function useRecordsRecentFeed(props: RecordsRecentSourcesProps) {
     onOpenRecording,
     onOpenSavedRecordings,
   } = props;
+  const scopedMaterial = useMemo(() => {
+    if (!recentMaterialReadyLease) return undefined;
+    const lease = recentMaterialReadyLease;
+    return {
+      load: (
+        before?: Parameters<typeof loadRecentMaterial>[0],
+        options?: Parameters<typeof readProtectedRecentMaterialPage>[2],
+      ) => {
+        if (!options) throw new Error('Missing protected Records request.');
+        return readProtectedRecentMaterialPage(lease, before, options);
+      },
+      subscribe: (current: () => boolean, invalidate: () => void) =>
+        subscribeAgentMemoryVisibility(
+          lease.database,
+          () => lease.isCurrent() && current(),
+          invalidate,
+        ),
+    };
+  }, [recentMaterialReadyLease]);
   const reports = useRecentSavedMaterial(
     active,
     ownership,
-    loadRecentMaterial,
+    scopedMaterial?.load ?? loadRecentMaterial,
     showAll,
     Boolean(onOpenReport),
     tabAuthority,
+    undefined,
+    Boolean(scopedMaterial),
+    scopedMaterial?.subscribe,
   );
   const media = useRecentSavedMaterial(
     active,

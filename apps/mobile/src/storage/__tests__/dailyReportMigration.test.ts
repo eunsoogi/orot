@@ -1,3 +1,4 @@
+import { rewindBeforeMemoryMetadata } from '../../../../../packages/storage/__tests__/historicalMigrationSupport';
 import { runMigrations } from '@orot/storage';
 import { openSqliteTestDatabase } from '../../../../../packages/storage/__tests__/sqliteTestDatabase';
 
@@ -14,12 +15,12 @@ test('upgrades version twelve without assigning daily identities to legacy summa
       'INSERT INTO symptom_summary_runs VALUES (?, ?, ?, ?)',
       ['legacy', '2035-01-01T00:00:00Z', 'legacy', '{}'],
     );
-    await connection.database.execute('PRAGMA user_version = 12');
+    await rewindBeforeMemoryMetadata(connection.database, 12);
     await runMigrations(connection.database);
     expect(
       (await connection.database.execute('PRAGMA user_version')).rows[0]
         ?.user_version,
-    ).toBe(18);
+    ).toBe(19);
     expect(
       (
         await connection.database.execute(

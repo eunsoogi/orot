@@ -13,6 +13,7 @@ import {
 import { useEffect, useMemo, useState } from 'react';
 import { AppState, StyleSheet, View } from 'react-native';
 import { useRecapRecovery } from './src/transcription/useRecapRecovery';
+import { RecentMaterialReadinessHost } from './src/routes/RecentMaterialReadinessContext';
 import { eventKitCalendarBridge } from './src/calendar/calendarBridge';
 import { useCalendarAutoSync } from './src/calendar/useCalendarAutoSync';
 import { loadRecordingSummaries } from './src/recording/loadRecordingSummaries';
@@ -89,7 +90,6 @@ function App({
     createNavigationController<AppNavigationRoute>('root'),
   );
   const backupPreparation = useBackupPreparation();
-
   useEffect(() => {
     let previousState = AppState.currentState;
     // Launch and foreground refreshes query only categories with a prior explicit import request.
@@ -105,7 +105,6 @@ function App({
     });
     return () => subscription.remove();
   }, []);
-
   function openRecording() {
     selectActiveTab('records');
     appNavigation.push('recording');
@@ -239,7 +238,7 @@ function App({
       controller={appNavigation}
       {...{ activeTab, loadAppointments, loadRecordings }}
     >
-      {shell}
+      <RecentMaterialReadinessHost>{shell}</RecentMaterialReadinessHost>
     </overview.AppOverviewDataBoundary>
   );
 }

@@ -1,71 +1,35 @@
 import { createAgentMemory } from '@orot/agent-memory';
-import type {
-  SqlDatabase,
-  SqlResult,
-  SqlTransaction,
-  SqlValue,
-} from '@orot/storage';
+import { runMigrations } from '@orot/storage';
+import type { SqlDatabase } from '@orot/storage';
+import { openSqliteTestDatabase } from '../../../../../packages/storage/__tests__/sqliteTestDatabase';
+import { guardedNativeDatabase } from '../protectedReadEpoch';
 import { SqlCipherAgentMemoryStorage } from '../agentMemoryStorage';
 
 declare const require: (specifier: string) => unknown;
-
-interface TestStatement {
-  all(...parameters: SqlValue[]): Array<Record<string, SqlValue>>;
-  run(...parameters: SqlValue[]): { changes: number };
-}
-
-interface TestConnection {
-  prepare(query: string): TestStatement;
-  exec(query: string): void;
-  close(): void;
-}
 
 interface TestFileSystem {
   mkdtempSync(prefix: string): string;
   rmSync(path: string, options: { recursive: boolean; force: boolean }): void;
 }
 
-const { DatabaseSync } = require('node:sqlite') as {
-  DatabaseSync: new (path: string) => TestConnection;
-};
 const { mkdtempSync, rmSync } = require('node:fs') as TestFileSystem;
 const { tmpdir } = require('node:os') as { tmpdir(): string };
 const { join } = require('node:path') as { join(...parts: string[]): string };
 
-function openDatabase(path: string): SqlDatabase {
-  // Use real SQLite so deletion batches and restart reads exercise the persisted adapter contract.
-  const connection = new DatabaseSync(path);
-  const execute = async (
-    query: string,
-    parameters: SqlValue[] = [],
-  ): Promise<SqlResult> => {
-    const statement = connection.prepare(query);
-    if (query.trim().toUpperCase().startsWith('SELECT')) {
-      return { rows: statement.all(...parameters) };
-    }
-    return { rows: [], rowsAffected: statement.run(...parameters).changes };
-  };
-  return {
-    execute,
-    async transaction(
-      operation: (transaction: SqlTransaction) => Promise<void>,
-    ) {
-      connection.exec('BEGIN IMMEDIATE');
-      const transaction: SqlTransaction = {
-        execute,
-        commit: () => ({ rows: [] }),
-        rollback: () => ({ rows: [] }),
-      };
-      try {
-        await operation(transaction);
-        connection.exec('COMMIT');
-      } catch (error) {
-        connection.exec('ROLLBACK');
-        throw error;
-      }
-    },
-    closeAsync: async () => connection.close(),
-  };
+async function openDatabase(path: string): Promise<SqlDatabase> {
+  const sqlite = openSqliteTestDatabase(path);
+  const database = guardedNativeDatabase({
+    ...sqlite.database,
+    closeAsync: async () => sqlite.close(),
+  });
+  // Match production: register the guarded owner and migrate before any Memory writer.
+  try {
+    await runMigrations(database);
+    return database;
+  } catch (error) {
+    await database.closeAsync();
+    throw error;
+  }
 }
 
 const embedder = {
@@ -95,21 +59,37 @@ const unlinkedMemory = {
   provenance: { sourceIds: [], reviewState: 'human_reviewed' as const },
 };
 
+/** Read witness metadata without fetching the saved body. */
+async function readWitness(database: SqlDatabase, id: string) {
+  return (
+    await database.execute(
+      'SELECT recent_metadata_version AS version, recent_created_at_ms AS clock FROM agent_memory_records WHERE id = ?',
+      [id],
+    )
+  ).rows[0];
+}
+
 describe('SQLCipher-backed agent-memory deletion', () => {
   it('removes linked and unlinked memory through Rememori and persists after database reopen', async () => {
     const directory = mkdtempSync(join(tmpdir(), 'orot-agent-memory-delete-'));
     const databasePath = join(directory, 'agent-memory.sqlite');
-    let database = openDatabase(databasePath);
+    let database = await openDatabase(databasePath);
     try {
-      await database.execute(
-        'CREATE TABLE transcript_segments (id TEXT PRIMARY KEY NOT NULL, payload_json TEXT NOT NULL)',
-      );
       const memory = await createAgentMemory({
         embedder,
         storage: new SqlCipherAgentMemoryStorage(database),
       });
       const linkedId = await memory.remember(linkedMemory);
       const unlinkedId = await memory.remember(unlinkedMemory);
+      expect(await readWitness(database, linkedId)).toEqual({
+        version: null,
+        clock: null,
+      });
+      const unlinkedWitness = await readWitness(database, unlinkedId);
+      expect(unlinkedWitness).toEqual({
+        version: 1,
+        clock: expect.any(Number),
+      });
 
       await expect(memory.forgetAll(['synthetic-source-2'])).resolves.toBe(2);
       await expect(memory.recall(linkedMemory.text)).resolves.toEqual([]);
@@ -117,10 +97,12 @@ describe('SQLCipher-backed agent-memory deletion', () => {
       await memory.close();
       await database.closeAsync?.();
 
-      database = openDatabase(databasePath);
+      database = await openDatabase(databasePath);
       const storage = new SqlCipherAgentMemoryStorage(database);
       const reopened = await createAgentMemory({ embedder, storage });
       await expect(storage.listRecords()).resolves.toEqual([]);
+      expect(await readWitness(database, linkedId)).toBeUndefined();
+      expect(await readWitness(database, unlinkedId)).toBeUndefined();
       // Memory-row IDs remain fenced too, including the unlinked memory identity.
       await expect(storage.listRemovedSourceIds()).resolves.toEqual(
         [
@@ -145,15 +127,21 @@ describe('SQLCipher-backed agent-memory deletion', () => {
     const directory = mkdtempSync(
       join(tmpdir(), 'orot-agent-memory-rollback-'),
     );
-    const database = openDatabase(join(directory, 'agent-memory.sqlite'));
+    const database = await openDatabase(join(directory, 'agent-memory.sqlite'));
     try {
-      await database.execute(
-        'CREATE TABLE transcript_segments (id TEXT PRIMARY KEY NOT NULL, payload_json TEXT NOT NULL)',
-      );
       const storage = new SqlCipherAgentMemoryStorage(database);
       const memory = await createAgentMemory({ embedder, storage });
       const linkedId = await memory.remember(linkedMemory);
       const unlinkedId = await memory.remember(unlinkedMemory);
+      expect(await readWitness(database, linkedId)).toEqual({
+        version: null,
+        clock: null,
+      });
+      const unlinkedWitness = await readWitness(database, unlinkedId);
+      expect(unlinkedWitness).toEqual({
+        version: 1,
+        clock: expect.any(Number),
+      });
       await database.execute(`
         CREATE TRIGGER reject_memory_delete
         BEFORE DELETE ON agent_memory_records
@@ -175,6 +163,7 @@ describe('SQLCipher-backed agent-memory deletion', () => {
           }),
         ]),
       );
+      expect(await readWitness(database, unlinkedId)).toEqual(unlinkedWitness);
       await expect(storage.listRemovedSourceIds()).resolves.toEqual([]);
       const recalled = await memory.recall(unlinkedMemory.text);
       expect(recalled).toHaveLength(2);

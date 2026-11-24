@@ -3,6 +3,7 @@ import {
   localQueryTimestampKey,
   localQueryTimestampKeyExpression,
   type SqlDatabase,
+  type SqlExecutor,
 } from '@orot/storage';
 import {
   recentMaterialTimestamp,
@@ -19,7 +20,7 @@ export type RecentMaterialRow =
       readonly origin: 'memory';
       readonly createdAt: string;
     };
-type CatalogCursor = Pick<GeneratedReportRow, 'createdAt' | 'key'>;
+export type CatalogCursor = Pick<GeneratedReportRow, 'createdAt' | 'key'>;
 
 /** Discover typed saved outputs, not conversation wording. SQL returns metadata only.
  * Older summary stores remain metadata-visible without optional policy tables;
@@ -43,11 +44,12 @@ export function listRecentMaterial(
   return readCatalog(database, before, true, signal);
 }
 
-async function readCatalog(
-  database: SqlDatabase,
+export async function readCatalog(
+  database: SqlExecutor,
   before: CatalogCursor | undefined,
   feed: boolean,
   signal?: AbortSignal,
+  limit = 20,
 ): Promise<readonly RecentMaterialRow[]> {
   if (signal?.aborted) return [];
   const tables = new Set(
@@ -176,7 +178,7 @@ async function readCatalog(
     WHERE julianday(createdAt) IS NOT NULL AND createdAt GLOB '[0-9][0-9][0-9][0-9]-[0-9][0-9]-[0-9][0-9]T*'
       ${feed ? 'AND unavailable=0' : ''}
       AND (? IS NULL OR ${clock}<? OR (${clock}=? AND key COLLATE BINARY<?))
-    ORDER BY ${clock} DESC,key COLLATE BINARY DESC LIMIT 20`,
+    ORDER BY ${clock} DESC,key COLLATE BINARY DESC LIMIT ${limit}`,
     [
       ...(includeNotes
         ? [
