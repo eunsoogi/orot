@@ -102,6 +102,7 @@ test('live RAG checks only requested descendants, preserving protected and abort
     await runMigrations(db.database);
     let statements = 0;
     let returnedRows = 0;
+    let groupedRejectionHadPayload = false;
     let pause: (() => void) | undefined;
     const observe =
       (port: SqlExecutor): SqlExecutor['execute'] =>
@@ -109,7 +110,15 @@ test('live RAG checks only requested descendants, preserving protected and abort
         const result = await port.execute(sql, params);
         statements += 1;
         returnedRows += result.rows.length;
-        if (sql.includes('AS all_live')) pause?.();
+        if (
+          result.rows.some(
+            row => row.state === 'rejected' && row.payload_json !== null,
+          )
+        ) {
+          groupedRejectionHadPayload = true;
+        }
+        if (sql.includes('AS all_live') || sql.includes('END AS state'))
+          pause?.();
         return result;
       };
     const traced: SqlDatabase = {
@@ -157,7 +166,15 @@ test('live RAG checks only requested descendants, preserving protected and abort
         openMemoryDatabase: async () => db.database,
       });
     const validate = bind(records);
-    const legacy = bind({ ...records, hasSourceDeletionReferences: undefined });
+    const noGrouping = {
+      ...records,
+      sourceRecords: { ...records.sourceRecords, readDeletionGroup: undefined },
+    };
+    const legacy = bind({
+      ...noGrouping,
+      hasSourceDeletionReferences: undefined,
+    });
+    const serial = bind(noGrouping);
     const live = [ref('descendant-1'), ref('descendant-2')];
     const signal = new AbortController().signal;
     statements = 0;
@@ -167,9 +184,14 @@ test('live RAG checks only requested descendants, preserving protected and abort
     expect(returnedRows).toBe(300);
     statements = 0;
     returnedRows = 0;
-    expect(await validate(live, signal)).toBe(true);
+    expect(await serial(live, signal)).toBe(true);
     expect(statements).toBe(6);
     expect(returnedRows).toBe(4);
+    statements = 0;
+    returnedRows = 0;
+    expect(await validate(live, signal)).toBe(true);
+    expect(statements).toBe(1);
+    expect(returnedRows).toBe(1);
     expect(await validate([ref('descendant-0')], signal)).toBe(false);
     expect(await validate([ref('absent')], signal)).toBe(false);
     const stopped = new AbortController();
@@ -178,7 +200,44 @@ test('live RAG checks only requested descendants, preserving protected and abort
     pause = undefined;
     await records.delete('encounter', 'descendant-1');
     expect(await validate(live, signal)).toBe(false);
-    expect(downstream).toHaveBeenCalledTimes(2);
+    await expect(
+      db.database.transaction(async tx => {
+        await tx.execute(
+          'INSERT INTO source_deletion_tombstones (source_id) VALUES (?)',
+          ['descendant-2'],
+        );
+        throw new Error('synthetic rollback');
+      }),
+    ).rejects.toThrow('synthetic rollback');
+    expect(
+      await validate([ref('descendant-2'), ref('descendant-3')], signal),
+    ).toBe(true);
+    const linked = (await records.get('encounter', 'descendant-3'))!;
+    await records.put('encounter', {
+      ...linked,
+      provenance: { origin: 'derived', sourceRecordIds: [other.id] },
+    });
+    expect(
+      await validate([ref('descendant-2'), ref('descendant-3')], signal),
+    ).toBe(false);
+    await db.database.execute(
+      'INSERT INTO source_deletion_tombstones (source_id) VALUES (?)',
+      ['descendant-2'],
+    );
+    expect(
+      await validate([ref('descendant-2'), ref('descendant-4')], signal),
+    ).toBe(false);
+    const missingSource = ['descendant-4', 'descendant-5'].map(id => ({
+      ...ref(id),
+      sourceId: 'no-imported-source',
+    }));
+    expect(await validate(missingSource, signal)).toBe(true);
+    downstream.mockResolvedValueOnce(false);
+    expect(
+      await validate([ref('descendant-4'), ref('descendant-5')], signal),
+    ).toBe(false);
+    expect(downstream).toHaveBeenCalledTimes(6);
+    expect(groupedRejectionHadPayload).toBe(false);
   } finally {
     db.close();
   }

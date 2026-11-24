@@ -1,7 +1,11 @@
 import { RecordIdSchema } from '@orot/domain';
 import { STORAGE_TABLES, type RecordKind } from './contracts';
-import { sourceDeletionDependencyPredicate } from './sourceDeletionReferences';
+import {
+  SOURCE_DELETION_TOMBSTONES_TABLE,
+  sourceDeletionDependencyPredicate,
+} from './sourceDeletionReferences';
 import type { SqlDatabase } from './sql';
+import { decodeStoredRecord } from './recordPersistence';
 
 const belongsToSource = [
   'wanted.value = ?2',
@@ -51,3 +55,41 @@ export async function hasExactSourceDeletionReferences(
   });
   return complete && !signal.aborted;
 }
+
+/** Check one imported source and all exact IDs in one SQLite statement. An
+ * absent source keeps the app's existing structured-record fallback. */
+async function readExactSourceDeletionGroup(
+  database: SqlDatabase,
+  sourceRecordId: string,
+  referenceIds: readonly string[],
+  signal: AbortSignal,
+): Promise<'current' | 'missing_source' | 'rejected'> {
+  if (signal.aborted || referenceIds.length === 0) return 'rejected';
+  const sourceId = RecordIdSchema.parse(sourceRecordId);
+  const ids = [...new Set(referenceIds.map((id) => RecordIdSchema.parse(id)))];
+  if (!ids.includes(sourceId) || ids.length > pageSize) return 'rejected';
+  const result = await database.execute(
+    `SELECT state, CASE WHEN state = 'current' THEN payload_json ELSE NULL END AS payload_json
+    FROM (SELECT CASE
+      WHEN EXISTS (
+        SELECT 1 FROM ${SOURCE_DELETION_TOMBSTONES_TABLE} AS removed
+        JOIN json_each(?1) AS wanted ON wanted.value = removed.source_id
+      ) THEN 'rejected'
+      WHEN source.id IS NULL THEN 'missing_source'
+      WHEN EXISTS (
+        SELECT 1 FROM json_each(?1) AS wanted WHERE NOT (${belongsToSource.join(' OR ')})
+      ) THEN 'rejected'
+      ELSE 'current'
+    END AS state, source.payload_json
+    FROM (SELECT 1) AS one LEFT JOIN source_records AS source ON source.id = ?2)`,
+    [JSON.stringify(ids), sourceId],
+  );
+  if (signal.aborted) return 'rejected';
+  const state = result.rows[0]?.state;
+  if (state === 'current') decodeStoredRecord('source_record', result.rows[0]?.payload_json);
+  return state === 'current' || state === 'missing_source' ? state : 'rejected';
+}
+
+export const sourceDeletionGroupReader =
+  (database: SqlDatabase) => (sourceId: string, ids: readonly string[], signal: AbortSignal) =>
+    readExactSourceDeletionGroup(database, sourceId, ids, signal);
