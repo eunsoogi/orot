@@ -1,3 +1,4 @@
+import { readTypedHeartRateContext } from './typedHeartRateContext';
 import { observeReportAggregateSql } from './reportCalculationDiagnostic';
 import type { SqlExecutor } from '@orot/storage';
 import { readHealthContextGeneration } from './generation';
@@ -19,10 +20,7 @@ import { HEALTH_CONTEXT_TOPICS } from './types';
 import { traceHealthContext, type HealthContextTrace } from './trace';
 import type { measureHistoryValidationCost } from '../../providers/conversationHistoryDiagnostic';
 
-import {
-  withHealthContextCalendar,
-  type HealthContextCalendarScope,
-} from './calendarReadScope';
+import { withHealthContextCalendar, type HealthContextCalendarScope } from './calendarReadScope';
 type ChartQuantitySeries = Omit<HealthQuantitySeries, 'days'> & {
   readonly days: readonly Omit<HealthQuantityDay, 'activityContext'>[];
 };
@@ -68,9 +66,7 @@ export function readOverviewChartHealthContext(
 }
 
 /** Reusable inside an existing transaction: no nested transactions, raw history transfer or implicit native reads. */
-export function readHealthContextReport(
-  ...inputs: ReportInputs
-): Promise<HealthContextReport> {
+export function readHealthContextReport(...inputs: ReportInputs): Promise<HealthContextReport> {
   return readHealthContext('full', ...inputs);
 }
 
@@ -88,21 +84,21 @@ async function readHealthContext(
     preparedCalendar,
   ]: ReportInputs
 ): Promise<HealthContextReport> {
-  return withHealthContextCalendar(calendarScope, async calendar => {
+  return withHealthContextCalendar(calendarScope, async (calendar) => {
     executor = observeReportAggregateSql(executor, diagnosticOwner);
     if (signal?.aborted) throw new Error('Health context was cancelled.');
-    if (
-      !topics.length ||
-      topics.some(topic => !HEALTH_CONTEXT_TOPICS.includes(topic))
-    )
+    if (!topics.length || topics.some((topic) => !HEALTH_CONTEXT_TOPICS.includes(topic)))
       throw new RangeError('Invalid health context topics.');
+    if (window.typedHeartRateCategory !== undefined) {
+      if (purpose !== 'full' || topics.length !== 1 || topics[0] !== 'measurements')
+        throw new RangeError('Typed heart rate requires a dedicated measurement scope.');
+      return readTypedHeartRateContext(executor, window, signal);
+    }
     if (!preparedCalendar) trace?.('calendar', 'started');
     const days =
       preparedCalendar?.days ??
       (restorationWorkspace?.measureCost
-        ? restorationWorkspace.measureCost('artifact_report_calendar', () =>
-            calendar.read(window),
-          )
+        ? restorationWorkspace.measureCost('artifact_report_calendar', () => calendar.read(window))
         : calendar.read(window));
     if (!preparedCalendar) trace?.('calendar', 'completed');
     const selected = new Set(topics);
@@ -149,12 +145,7 @@ async function readHealthContext(
       : { medications: [], truncated: false };
     const sleep = selected.has('sleep')
       ? await traceHealthContext(trace, 'sleep', () =>
-          readHealthSleepContext(
-            executor,
-            days,
-            signal,
-            window.dataAvailableThrough,
-          ),
+          readHealthSleepContext(executor, days, signal, window.dataAvailableThrough),
         )
       : { days: [], unsupportedCategories: false };
     const symptoms = selected.has('symptoms')
@@ -166,7 +157,7 @@ async function readHealthContext(
     return {
       window,
       days,
-      quantities: quantities.series.filter(series =>
+      quantities: quantities.series.filter((series) =>
         series.concept === 'step_count' || series.concept === 'workout_duration'
           ? selected.has('activity')
           : selected.has('measurements'),
@@ -178,9 +169,7 @@ async function readHealthContext(
       sleep: sleep.days,
       symptoms,
       limitations: [
-        ...(quantities.truncated
-          ? ['quantity_sensor_series_limit_reached']
-          : []),
+        ...(quantities.truncated ? ['quantity_sensor_series_limit_reached'] : []),
         ...(medications.truncated ? ['medication_catalog_limit_reached'] : []),
         ...(sleep.unsupportedCategories
           ? ['unsupported_sleep_categories_excluded_from_duration']

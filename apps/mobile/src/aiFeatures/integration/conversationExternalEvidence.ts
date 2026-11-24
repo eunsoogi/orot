@@ -1,3 +1,4 @@
+import { createTypedHeartRateModelOwner } from './conversationHeartRateModelOwner';
 import type { RagConversationServiceDependencies } from './ragConversationServiceDependencies';
 import type { RagConversationObserver } from '../../ragConversation/service';
 import type { createResearchInputTracker } from './researchInputTracker';
@@ -11,9 +12,7 @@ import { runDefaultPublicSearch } from './defaultPublicSearch';
 
 /** Share the conversation's consent and retention boundaries with literature tools. */
 export function conversationExternalEvidence(input: {
-  selected: Awaited<
-    ReturnType<RagConversationServiceDependencies['selectedAi']>
-  >;
+  selected: Awaited<ReturnType<RagConversationServiceDependencies['selectedAi']>>;
   consent: RagConversationServiceDependencies['consent'];
   queryConsent: RagConversationServiceDependencies['queryConsent'];
   externalEvidence: RagConversationServiceDependencies['externalEvidence'];
@@ -36,15 +35,11 @@ export function conversationExternalEvidence(input: {
   // An omitted history can leave no references, but never releases the recovered
   // owner's fence at optional network dispatches.
   const checkOwner = async (signal?: AbortSignal) => {
-    if (
-      signal?.aborted ||
-      !(await recoveredOwnerIsCurrent?.()) ||
-      signal?.aborted
-    )
+    if (signal?.aborted || !(await recoveredOwnerIsCurrent?.()) || signal?.aborted)
       throw new Error('Conversation research owner is no longer current.');
   };
   const provider = selected.provider;
-  return createSelectedExternalEvidence({
+  const external = createSelectedExternalEvidence({
     selected:
       recoveredOwnerIsCurrent && provider.searchPublicWeb
         ? {
@@ -85,6 +80,12 @@ export function conversationExternalEvidence(input: {
     validateResearchInputs: researchInputs.revalidate,
     onResearchRetained: researchInputs.recordResearch,
   });
+  return {
+    ...external,
+    ...(observer?.confirmTypedHeartRate && !input.restored
+      ? { createTypedHeartRateOwner: () => createTypedHeartRateModelOwner(selected) }
+      : {}),
+  };
 }
 
 /** Keep public search observation and cancellation tied to the same turn. */
@@ -96,10 +97,7 @@ export function conversationPublicSearch(input: {
   signal: AbortSignal;
 }) {
   return runDefaultPublicSearch({
-    tool: observeConversationTool(
-      input.external.publicWebTool,
-      input.observer?.onToolEvent,
-    ),
+    tool: observeConversationTool(input.external.publicWebTool, input.observer?.onToolEvent),
     operationRunId: input.runId,
     request: input.question,
     signal: input.signal,

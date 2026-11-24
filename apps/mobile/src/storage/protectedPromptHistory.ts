@@ -15,16 +15,15 @@ const owner = `SELECT s.id FROM conversation_artifact_sessions s
  JOIN conversation_artifact_generation g ON g.singleton=1 AND g.generation=s.generation
  WHERE s.id=? AND s.version=? AND s.hidden=0
  AND NOT EXISTS (SELECT 1 FROM conversation_artifact_removed_sessions d WHERE d.id=s.id)`;
+const document = `CASE WHEN json_valid(a.result_json) THEN a.result_json ELSE '{}' END`;
 const visible = `NOT EXISTS (SELECT 1 FROM conversation_deleted_artifacts d WHERE d.id=a.id)
  AND NOT EXISTS (SELECT 1 FROM conversation_invalid_parents d WHERE d.id=a.id)
  AND NOT EXISTS (SELECT 1 FROM conversation_requests r WHERE r.id=a.id AND r.session_id=a.session_id
-   AND (r.status <> 'completed' OR r.input_json IS NOT NULL))`;
-const document = `CASE WHEN json_valid(a.result_json) THEN a.result_json ELSE '{}' END`;
+   AND (r.status <> 'completed' OR r.input_json IS NOT NULL))
+ AND NOT EXISTS (SELECT 1 FROM json_each(${document}, '$.sources') source
+   WHERE json_type(source.value, '$.scope.window.typedHeartRateCategory') IS NOT NULL)`;
 
-export function createProtectedPromptHistory(
-  database: SqlExecutor,
-  ensure: () => Promise<void>,
-) {
+export function createProtectedPromptHistory(database: SqlExecutor, ensure: () => Promise<void>) {
   return {
     /** Read only committed text; no source blobs, attachment data or tool rows may cross. */
     async readProtectedPromptHistory(
@@ -60,12 +59,7 @@ export function createProtectedPromptHistory(
         )
         SELECT r.id, r.created_at, r.question, r.answer FROM owner o
         LEFT JOIN text_rows r ON 1 ORDER BY r.created_at ASC, r.id ASC)`,
-        [
-          sessionId,
-          version,
-          JSON.stringify([...new Set(expectedIds)]),
-          Number(includeRecent),
-        ],
+        [sessionId, version, JSON.stringify([...new Set(expectedIds)]), Number(includeRecent)],
       );
       if (signal.aborted || !rows.length) return null;
       const turns: PromptTurn[] = [];

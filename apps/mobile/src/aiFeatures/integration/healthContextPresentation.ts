@@ -9,16 +9,9 @@ import type { EvidenceSourceDocument } from './evidenceSourceDocument';
 
 /** Keep the privacy label with the restored period source. */
 export function presentHealthContextDocument(
-  document: Extract<
-    EvidenceSourceDocument,
-    { sourceKind: 'health_context_period' }
-  >,
+  document: Extract<EvidenceSourceDocument, { sourceKind: 'health_context_period' }>,
 ) {
-  return presentHealthContext(
-    document.scope,
-    document.report,
-    document.filterRedacted,
-  );
+  return presentHealthContext(document.scope, document.report, document.filterRedacted);
 }
 
 /** Show calculated facts and their calendar scope directly; there is no model-written replacement for the original data. */
@@ -27,6 +20,30 @@ export function presentHealthContext(
   report: HealthContextReport,
   filterRedacted = false,
 ): readonly EvidenceSourceDetailSection[] {
+  const typed = report.typedHeartRate;
+  if (typed && typed.category === scope.window.typedHeartRateCategory) {
+    const label = {
+      ordinary_average: 'healthContextCopy.ordinaryHeartRate',
+      resting_heart_rate: 'healthContextCopy.restingHeartRate',
+      walking_heart_rate_average: 'healthContextCopy.walkingHeartRate',
+    } as const;
+    return [
+      {
+        title: t(label[typed.category]),
+        rows: [
+          {
+            label: t('healthContextCopy.period'),
+            value: `${scope.window.fromInclusive} ~ ${scope.window.toExclusive}`,
+          },
+          {
+            label: t('healthContextCopy.heartRate'),
+            value: `${new Intl.NumberFormat('ko-KR', { maximumFractionDigits: 2 }).format(typed.meanBpm)} BPM`,
+          },
+          { label: t('healthContextCopy.sampleCount'), value: String(typed.sampleCount) },
+        ],
+      },
+    ];
+  }
   const projected = projectHealthContext(report);
   const result: EvidenceSourceDetailSection[] = [
     {
@@ -155,12 +172,10 @@ export function presentHealthContext(
                   minutes: projected.sleep.meanRecordedDailyMinutes,
                 }),
         },
-        ...Object.entries(projected.sleep.stageMinutes).map(
-          ([stage, minutes]) => ({
-            label: stages[stage] ?? stage,
-            value: t('healthContextCopy.minutesValue', { minutes }),
-          }),
-        ),
+        ...Object.entries(projected.sleep.stageMinutes).map(([stage, minutes]) => ({
+          label: stages[stage] ?? stage,
+          value: t('healthContextCopy.minutesValue', { minutes }),
+        })),
         {
           label: t('healthContextCopy.aggregationBasis'),
           value: t('healthContextCopy.sleepOverlapNotice'),
@@ -178,7 +193,7 @@ export function presentHealthContext(
             days: report.symptoms.recordedDays,
           }),
         },
-        ...report.symptoms.latest.map(entry => ({
+        ...report.symptoms.latest.map((entry) => ({
           label: new Date(entry.effectiveAt).toLocaleString('ko-KR', {
             timeZone: scope.window.timeZone,
           }),

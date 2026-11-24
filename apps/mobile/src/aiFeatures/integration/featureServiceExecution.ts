@@ -1,3 +1,5 @@
+import { guardTypedHeartRateProvider } from './typedHeartRateProviderGuard';
+import { hasTypedHeartRateSource, type TypedHeartRateDispatch } from './typedHeartRateReusePolicy';
 import type { createExternalConversationEvidence } from './externalConversationEvidence';
 import { EVIDENCE_WORKFLOW_BUDGET } from '../../agent/evidenceWorkflowBudget';
 import { providerDiagnostic } from '../../providers/diagnostics';
@@ -52,8 +54,7 @@ export function toolsFor(
       allowHealthOverview: healthOverview,
       observeRankedSearch: feature === 'rag',
       rag: data.rag,
-      prepareChunks: (chunks, signal) =>
-        indexChangedFeatureEvidence(data, { chunks }, signal),
+      prepareChunks: (chunks, signal) => indexChangedFeatureEvidence(data, { chunks }, signal),
       async loadSnapshot(query, request) {
         const scope = request.allowedScope;
         const next = await loadFeatureEvidenceSnapshot(
@@ -65,9 +66,7 @@ export function toolsFor(
             ...(request.input.view === 'health_overview'
               ? { selection: 'health_overview' as const }
               : {}),
-            ...(scope.sourceIds
-              ? { sourceIds: registry.localSourceIds(scope.sourceIds) }
-              : {}),
+            ...(scope.sourceIds ? { sourceIds: registry.localSourceIds(scope.sourceIds) } : {}),
             ...(scope.timeRange ? { timeRange: scope.timeRange } : {}),
           },
           // Ordinary raw search never sends reviewed-memory items. Keep the
@@ -86,14 +85,9 @@ export function toolsFor(
       maxResults: localResultLimit,
       snapshot,
       rag: data.rag,
-      prepareChunks: (chunks, signal) =>
-        indexChangedFeatureEvidence(data, { chunks }, signal),
+      prepareChunks: (chunks, signal) => indexChangedFeatureEvidence(data, { chunks }, signal),
       async loadSnapshot(_query, request) {
-        const next = await loadFeatureMemorySnapshot(
-          data,
-          registry,
-          request.signal,
-        );
+        const next = await loadFeatureMemorySnapshot(data, registry, request.signal);
         return next;
       },
     }),
@@ -106,19 +100,14 @@ export function executionOptions(input: {
   readonly consent: MultiAgentWorkflowOptions['consent'];
   readonly registry: LocalEvidenceReferenceRegistry;
   readonly tools: readonly EvidenceSearchTool[];
-  readonly external?: Pick<
-    ReturnType<typeof createExternalConversationEvidence>,
-    'validates'
-  > & {
+  readonly typedHeartRateDispatch?: TypedHeartRateDispatch;
+  readonly external?: Pick<ReturnType<typeof createExternalConversationEvidence>, 'validates'> & {
     readonly usesPublicWeb?: boolean;
   };
   readonly medicalExplanation?: boolean;
-  readonly consentPurpose:
-    'symptom_summary' | 'disease_hypotheses' | 'record_conversation';
+  readonly consentPurpose: 'symptom_summary' | 'disease_hypotheses' | 'record_conversation';
 }) {
-  const generatedArtifacts = input.tools.some(
-    tool => tool.sourceKind === 'generated_artifact',
-  );
+  const generatedArtifacts = input.tools.some((tool) => tool.sourceKind === 'generated_artifact');
   return {
     execution: {
       operationRunId: input.operationRunId,
@@ -148,25 +137,31 @@ export function executionOptions(input: {
           : {}),
       },
     },
-    provider: input.selected.provider,
+    provider: input.typedHeartRateDispatch
+      ? guardTypedHeartRateProvider(input.selected.provider, input.typedHeartRateDispatch)
+      : input.selected.provider,
     tools: input.tools,
     consent: input.consent,
-    revalidateEvidence: (
-      references: readonly EvidenceReference[],
-      signal: AbortSignal,
-    ) => {
+    revalidateEvidence: (references: readonly EvidenceReference[], signal: AbortSignal) => {
       if (signal.aborted) return Promise.resolve(false);
       // A completed empty lookup has no source revision to invalidate. Coverage
       // and task grounding still decide whether this evidence can support an answer.
       if (references.length === 0) return Promise.resolve(true);
       const external = references.filter(
-        reference => reference.sourceKind === 'external_medical',
+        (reference) => reference.sourceKind === 'external_medical',
       );
-      if (external.some(reference => !input.external?.validates(reference)))
+      if (external.some((reference) => !input.external?.validates(reference)))
         return Promise.resolve(false);
-      const local = references.filter(
-        reference => reference.sourceKind !== 'external_medical',
-      );
+      const local = references.filter((reference) => reference.sourceKind !== 'external_medical');
+      if (hasTypedHeartRateSource(local, input.registry)) {
+        const dispatch = input.typedHeartRateDispatch;
+        if (!dispatch) return Promise.resolve(false);
+        const current = () => dispatch.revalidate(input.registry, local, signal);
+        return current().then(
+          async (active) =>
+            active && (await input.registry.revalidateEvidence(local, signal)) && (await current()),
+        );
+      }
       return local.length
         ? input.registry.revalidateEvidence(local, signal)
         : Promise.resolve(true);

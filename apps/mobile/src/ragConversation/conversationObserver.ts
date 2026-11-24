@@ -26,9 +26,7 @@ export type RagConversationObserver = Pick<
     signal: AbortSignal,
   ) => Promise<boolean>;
   readonly onSteeringReady?: (
-    store: NonNullable<
-      import('@orot/agent-runtime').WorkflowOperationJournal['steering']
-    >,
+    store: NonNullable<import('@orot/agent-runtime').WorkflowOperationJournal['steering']>,
   ) => void;
   readonly openWorkflowContinuation?: (
     identity: import('../storage/conversationWorkflowContinuationIdentity').ConversationContinuationIdentity,
@@ -37,9 +35,7 @@ export type RagConversationObserver = Pick<
     import('./conversationWorkflowContinuation').ConversationWorkflowContinuation['persisted']
   >;
   /** Status-only provider observation starts inside authorized, current model invocation. */
-  readonly onProviderExecution?: (
-    signal?: AbortSignal,
-  ) => (() => void) | undefined;
+  readonly onProviderExecution?: (signal?: AbortSignal) => (() => void) | undefined;
   readonly backgroundStatusForLease?: () => ConversationGraphBackgroundStatus;
   readonly onBackgroundTool?: NonNullable<MultiAgentInvocation['onToolEvent']>;
   readonly onAcceptedSearch?: NonNullable<
@@ -47,13 +43,14 @@ export type RagConversationObserver = Pick<
   >;
   /** Owned pause/continue controls never submit a new question. */
   readonly onWorkflowPauseController?: (requestPause: () => void) => void;
-  readonly onWorkflowPaused?: (
-    reason?: ConversationCheckpointPauseReason,
-  ) => Promise<boolean>;
+  readonly onWorkflowPaused?: (reason?: ConversationCheckpointPauseReason) => Promise<boolean>;
   readonly onExecutionState?: (state: 'working' | 'local' | 'decision') => void;
   /** Confirm an ambiguous model-selected user statement locally; never authorizes provider transfer. */
-  readonly confirmHistorySave?: (
-    text: string,
+  readonly confirmHistorySave?: (text: string, signal: AbortSignal) => Promise<boolean>;
+  /** Express approval of this selected metric and period, not broad health access. */
+  readonly confirmTypedHeartRate?: (
+    scope: import('../aiFeatures/integration/conversationHeartRateRequest').ConversationHeartRateRequest,
+    recipient: import('../aiFeatures/integration/conversationHeartRateModelOwner').TypedHeartRateRecipient,
     signal: AbortSignal,
   ) => Promise<boolean>;
   /** Opt-in is from the composer dispatch, never inferred from typed route or model output. */
@@ -87,9 +84,7 @@ export type RagConversationObserver = Pick<
   readonly retentionSession?: { readonly id: string; readonly version: number };
   /** The checkpoint and explicit photo consent are owned by this specific turn. */
   /** Fresh decision surface for a protected cold photo; no saved grant is accepted. */
-  readonly confirmPhotoResume?: NonNullable<
-    RagConversationObserver['photoInput']
-  >['confirm'];
+  readonly confirmPhotoResume?: NonNullable<RagConversationObserver['photoInput']>['confirm'];
   readonly photoInput?: {
     readonly submitted: import('./conversationSubmittedInput').ConversationSubmittedInput;
     readonly stagingGeneration: number;
@@ -126,9 +121,7 @@ export type RagConversationObserver = Pick<
     readonly question: string;
   }[];
   readonly artifactContinuation?: ArtifactContinuation | null;
-  readonly onArtifactContinuation?: (
-    value: ArtifactContinuation | null,
-  ) => void;
+  readonly onArtifactContinuation?: (value: ArtifactContinuation | null) => void;
   /** Summary and conversation commits are independent; cancellation waits for the summary write. */
   readonly onSummarySaveStart?: () => void;
   readonly onSummarySaveSettled?: (committed: boolean) => void;
@@ -139,9 +132,7 @@ export type RagConversationObserver = Pick<
   ) => Promise<void>;
   /** Receives a closed local terminal result; no model prose or source payload is saved. */
   readonly onLocalVisitClarification?: (signal: AbortSignal) => Promise<void>;
-  readonly onRetentionFailure?: (
-    retryPreparation?: PrepareConversationRetention,
-  ) => void;
+  readonly onRetentionFailure?: (retryPreparation?: PrepareConversationRetention) => void;
   /** Private preview preparation is separate from validated answer retention. */
   readonly onPreviewBoundary?: () => Promise<number>;
   readonly onPreviewPrepared?: (

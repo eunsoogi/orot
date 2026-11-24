@@ -1,8 +1,5 @@
-import type {
-  EvidenceBatch,
-  EvidenceItem,
-  EvidenceSearchTool,
-} from '@orot/agent-runtime';
+import { hasTypedHeartRateSource } from './typedHeartRateReusePolicy';
+import type { EvidenceBatch, EvidenceItem, EvidenceSearchTool } from '@orot/agent-runtime';
 import type { AiFeatureLocalData } from './localData';
 import type { LocalEvidenceReferenceRegistry } from './evidenceRegistry';
 import { registerArtifactSource } from './artifactLineage';
@@ -57,23 +54,15 @@ export function createConversationArtifactTool(
         request.resultLimit < 1 ||
         request.resultLimit > 8 ||
         (request.executionLimits !== 'unbounded' &&
-          (!Number.isSafeInteger(request.maxPayloadBytes) ||
-            request.maxPayloadBytes < 2048)) ||
+          (!Number.isSafeInteger(request.maxPayloadBytes) || request.maxPayloadBytes < 2048)) ||
         !data.conversationArtifactDiscovery
       )
-        throw new Error(
-          'The conversation artifact search scope is unavailable.',
-        );
+        throw new Error('The conversation artifact search scope is unavailable.');
       const query = parsed.query as string;
       const scope = options.scope ?? request.operationRunId;
       const token = parsed.cursor as string | undefined;
       const continuation = token ? cursorState.tokens.get(token) : undefined;
-      if (
-        token &&
-        (!continuation ||
-          continuation.scope !== scope ||
-          continuation.query !== query)
-      )
+      if (token && (!continuation || continuation.scope !== scope || continuation.query !== query))
         throw new Error('The conversation artifact cursor is invalid.');
       const discovery = await data.conversationArtifactDiscovery(registry);
       const page = await discovery.search({
@@ -91,6 +80,10 @@ export function createConversationArtifactTool(
       for (const [index, metadata] of page.items.entries()) {
         const detail = await discovery.read(metadata.id, request.signal);
         if (!detail || detail.metadata.revision !== metadata.revision) {
+          omitted++;
+          continue;
+        }
+        if (hasTypedHeartRateSource(detail.sources, registry)) {
           omitted++;
           continue;
         }
@@ -177,36 +170,22 @@ export function createConversationArtifactTool(
           registrations.push(() => {
             for (const source of detail.sources)
               if (source.sourceKind !== 'external_medical')
-                registerArtifactSource(
-                  registry,
-                  request.operationRunId,
-                  source,
-                  {
-                    id: metadata.id,
-                    revision: metadata.revision,
-                    sourceStatus,
-                    catalog: 'conversation',
-                  },
-                );
+                registerArtifactSource(registry, request.operationRunId, source, {
+                  id: metadata.id,
+                  revision: metadata.revision,
+                  sourceStatus,
+                  catalog: 'conversation',
+                });
           });
       }
-      if (request.signal.aborted)
-        throw new Error('Conversation search was cancelled.');
-      if (
-        items.length &&
-        !(await registry.revalidateEvidence(items, request.signal))
-      )
+      if (request.signal.aborted) throw new Error('Conversation search was cancelled.');
+      if (items.length && !(await registry.revalidateEvidence(items, request.signal)))
         throw new Error('A saved conversation changed during search.');
-      if (
-        items.length &&
-        !(await discovery.revalidatePage(parents, request.signal))
-      )
+      if (items.length && !(await discovery.revalidatePage(parents, request.signal)))
         throw new Error('A saved conversation changed during search.');
       for (const register of registrations) register();
       const nextCursor = resumeCursor ?? page.nextCursor;
-      const nextToken = nextCursor
-        ? `conversation-page-${++cursorState.sequence}`
-        : undefined;
+      const nextToken = nextCursor ? `conversation-page-${++cursorState.sequence}` : undefined;
       if (nextToken && nextCursor) {
         if (cursorState.tokens.size >= 1024)
           cursorState.tokens.delete(cursorState.tokens.keys().next().value!);
@@ -219,10 +198,8 @@ export function createConversationArtifactTool(
         coverage: [
           {
             sourceKind: 'generated_artifact',
-            searchedSourceIds: items.map(item => item.sourceId),
-            gaps: omitted
-              ? ['Some saved AI results could not be included.']
-              : [],
+            searchedSourceIds: items.map((item) => item.sourceId),
+            gaps: omitted ? ['Some saved AI results could not be included.'] : [],
             truncated: Boolean(omitted || nextToken),
             selectionMethod: 'paged_retrieval',
             ...(nextToken ? { nextCursor: nextToken } : {}),

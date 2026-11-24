@@ -22,9 +22,7 @@ import * as voiceSelection from './conversationVoiceSelection';
 import { prepareConversationPhoto as preparePhoto } from './conversationPhotoService';
 import * as targets from './conversationEntryTargets';
 import { conversationExternalEvidence } from './conversationExternalEvidence';
-export function createRagConversationService(
-  deps: RagConversationServiceDependencies,
-) {
+export function createRagConversationService(deps: RagConversationServiceDependencies) {
   const {
     consent: consentPort,
     loadLocalData,
@@ -57,8 +55,7 @@ export function createRagConversationService(
         resolveDailyReport: deps.resolveDailyReport,
         signal,
       });
-      if (target.failure)
-        return voiceSelection.conversationTargetFailure(signal, target.failure);
+      if (target.failure) return voiceSelection.conversationTargetFailure(signal, target.failure);
       const report = target.report;
       stage = 'selection';
       const early =
@@ -77,16 +74,12 @@ export function createRagConversationService(
         }));
       if (early) return early;
       stage = 'selection';
-      const selected = await voiceSelection.resolveConversationSelection(
-        observer,
-        selectedAi,
-      );
+      const selected = await voiceSelection.resolveConversationSelection(observer, selectedAi);
       if (!selected) return { status: 'failure', kind: 'consent_required' };
       const current = report?.isCurrent;
       opening = start(selected, request, observer, consent, signal, current);
       stage = 'data';
-      const data =
-        target.data ?? (await withProviderStage('rag', 'data', loadLocalData));
+      const data = target.data ?? (await withProviderStage('rag', 'data', loadLocalData));
       const photoEvidence = await preparePhoto({
         photo,
         question: request,
@@ -148,15 +141,14 @@ export function createRagConversationService(
         ),
       });
       if (searchPlan.eager.status === 'cancelled') return run.cancelled;
-      const { tools, generated, localRetrievalFailed } =
-        createConversationToolBundle({
-          data,
-          registry,
-          observer,
-          researchInputs,
-          external,
-          ...searchPlan.toolPolicy,
-        });
+      const { toolExecution, generated, localRetrievalFailed } = createConversationToolBundle({
+        data,
+        registry,
+        observer,
+        researchInputs,
+        external,
+        ...searchPlan.toolPolicy,
+      });
       const retention = createConversationRetentionBridge({
         observer,
         registry,
@@ -174,7 +166,7 @@ export function createRagConversationService(
         operationRunId: searchPlan.operationRunId,
         consent,
         registry,
-        tools,
+        ...toolExecution,
         external,
       });
       const execution = conversationMutationExecution({
@@ -189,8 +181,7 @@ export function createRagConversationService(
         history,
       });
       stage = 'workflow';
-      if (!(await historyIsCurrent()))
-        return { status: 'failure', kind: 'retrieval_failed' };
+      if (!(await historyIsCurrent())) return { status: 'failure', kind: 'retrieval_failed' };
       const outcome = await run.observeConversationMain(ragRunner)(
         run.conversationRunRequest({
           continuation: searchPlan.continuation,
@@ -207,12 +198,7 @@ export function createRagConversationService(
           search: searchPlan.eager,
           registry,
           workflow: {
-            ...run.conversationRunWorkflow(
-              execution,
-              historyIsCurrent,
-              guardHistory,
-              searchPlan,
-            ),
+            ...run.conversationRunWorkflow(execution, historyIsCurrent, guardHistory, searchPlan),
             initialSearch: searchPlan.initialSearch,
           },
         }),

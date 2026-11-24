@@ -1,3 +1,5 @@
+import { createTypedHeartRateDispatch } from './typedHeartRateReusePolicy';
+import { createConversationHeartRateTool } from './conversationHeartRateTool';
 import { europePmcConversationTool } from './explicitConversationLiteratureRoute';
 import type { RagConversationObserver } from '../../ragConversation/conversationObserver';
 import type { AiFeatureLocalData } from './localData';
@@ -17,7 +19,7 @@ const recordingClarificationTool: EvidenceSearchTool = {
   sourceKind: 'personal_record',
   execution: 'local_read_only',
   inputSchema: { type: 'object', properties: {}, additionalProperties: false },
-  parseInput: value =>
+  parseInput: (value) =>
     value !== null &&
     typeof value === 'object' &&
     !Array.isArray(value) &&
@@ -36,6 +38,7 @@ export function createConversationToolBundle(input: {
   readonly external: ReturnType<typeof conversationExternalEvidence>;
   readonly publicSearchSucceeded: boolean;
   readonly literatureOnly?: boolean;
+  readonly typedHeartRateOwner?: { readonly operationRunId: string; readonly signal: AbortSignal };
   readonly artifactPaging?: unknown;
   readonly researchPaging?: { snapshot: unknown; operationRunId: string };
 }) {
@@ -47,11 +50,65 @@ export function createConversationToolBundle(input: {
     input.researchPaging,
     input.artifactPaging,
   );
+  const typedModel = input.typedHeartRateOwner && input.external.createTypedHeartRateOwner?.();
+  const typedHeartRateDispatch = typedModel ? createTypedHeartRateDispatch() : undefined;
+  const typed =
+    typedHeartRateDispatch &&
+    typedModel &&
+    input.typedHeartRateOwner &&
+    !input.literatureOnly &&
+    input.data.readHealthContext &&
+    input.data.acquireHeartRateSourceEpoch &&
+    input.observer?.inputOrigin === 'composer' &&
+    !input.observer.expectedVoiceSelection &&
+    !input.observer.photoInput &&
+    input.observer.confirmTypedHeartRate
+      ? createConversationHeartRateTool({
+          read: input.data.readHealthContext,
+          acquireSourceEpoch: input.data.acquireHeartRateSourceEpoch,
+          registry: input.registry,
+          owner: input.typedHeartRateOwner,
+          model: typedModel,
+          dispatch: typedHeartRateDispatch,
+          observer: input.observer,
+        })
+      : undefined;
+  const external = input.external.tools.map((tool) =>
+    typed && tool.execution === 'external_read_only'
+      ? {
+          ...tool,
+          async search(...args: Parameters<typeof tool.search>) {
+            if (typedHeartRateDispatch?.active()) return { status: 'consent_required' as const };
+            return tool.search(...args);
+          },
+          ...(tool.prepareAuthorizedSearch
+            ? {
+                async prepareAuthorizedSearch(
+                  ...args: Parameters<NonNullable<typeof tool.prepareAuthorizedSearch>>
+                ) {
+                  if (typedHeartRateDispatch?.active())
+                    return { status: 'consent_required' as const };
+                  const prepared = await tool.prepareAuthorizedSearch!(...args);
+                  if (prepared.status !== 'authorized') return prepared;
+                  return {
+                    status: 'authorized' as const,
+                    dispatch: async () =>
+                      typedHeartRateDispatch?.active()
+                        ? { status: 'consent_required' as const }
+                        : prepared.dispatch(),
+                  };
+                },
+              }
+            : {}),
+        }
+      : tool,
+  );
   const tools = [
     ...observeLocalSearchFailures(
       input.researchInputs.wrap([
         ...toolsFor(undefined, input.data, input.registry, 6, true, 'rag'),
         ...generated.tools,
+        ...(typed ? [typed] : []),
         ...(!input.literatureOnly &&
         input.observer?.inputOrigin === 'composer' &&
         input.observer.recordingClarification
@@ -63,12 +120,15 @@ export function createConversationToolBundle(input: {
       },
     ),
     ...(input.literatureOnly
-      ? input.external.tools.filter(
-          tool => tool.id === europePmcConversationTool,
-        )
+      ? external.filter((tool) => tool.id === europePmcConversationTool)
       : input.publicSearchSucceeded || !input.external.publicWebTool
-        ? input.external.tools
+        ? external
         : []),
   ];
-  return { tools, generated, localRetrievalFailed: () => failed };
+  return {
+    tools,
+    toolExecution: { tools, typedHeartRateDispatch },
+    generated,
+    localRetrievalFailed: () => failed,
+  };
 }

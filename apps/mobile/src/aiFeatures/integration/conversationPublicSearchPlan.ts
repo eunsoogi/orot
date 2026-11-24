@@ -3,10 +3,7 @@ import type { ConversationIntent } from './conversationIntent';
 import type { MultiAgentCheckpointState } from '@orot/agent-runtime';
 import type { ConversationWorkflowContinuation } from '../../ragConversation/conversationWorkflowContinuation';
 import { conversationPublicSearch } from './conversationExternalEvidence';
-import {
-  defaultPublicSearchInput,
-  type DefaultPublicSearchResult,
-} from './defaultPublicSearch';
+import { defaultPublicSearchInput, type DefaultPublicSearchResult } from './defaultPublicSearch';
 
 /** Retained turns perform their first external lookup inside the durable graph, not before it. */
 export async function conversationPublicSearchPlan(
@@ -15,14 +12,9 @@ export async function conversationPublicSearchPlan(
     entryIntent?: ConversationIntent;
   },
 ) {
-  const literatureOnly = explicitConversationLiteratureRoute(
-    input.question,
-    input.entryIntent,
-  );
+  const literatureOnly = explicitConversationLiteratureRoute(input.question, input.entryIntent);
   const tool = literatureOnly ? undefined : input.external.publicWebTool;
-  const deferred = Boolean(
-    input.question && input.continuation && tool?.prepareAuthorizedSearch,
-  );
+  const deferred = Boolean(input.question && input.continuation && tool?.prepareAuthorizedSearch);
   const eager: DefaultPublicSearchResult =
     !literatureOnly && !deferred && input.question
       ? await conversationPublicSearch(input)
@@ -36,6 +28,9 @@ export async function conversationPublicSearchPlan(
     toolPolicy: {
       publicSearchSucceeded: deferred || eager.status === 'success',
       literatureOnly,
+      ...(!literatureOnly && (!input.entryIntent || input.entryIntent === 'conversation')
+        ? { typedHeartRateOwner: { operationRunId: input.runId, signal: input.signal } }
+        : {}),
     },
     eager,
     // Completed preflight status/budget only; no reusable authorization is persisted.
@@ -56,9 +51,7 @@ export async function conversationPublicSearchPlan(
       return { status };
     },
     // This display-only status never authorizes a query or substitutes for its retained evidence.
-    onInitialSearchStatus(
-      value: MultiAgentCheckpointState['initialSearchStatus'],
-    ) {
+    onInitialSearchStatus(value: MultiAgentCheckpointState['initialSearchStatus']) {
       if (deferred && value && value !== 'pending') status = value;
     },
   };
