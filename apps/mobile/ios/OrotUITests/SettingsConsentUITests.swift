@@ -36,11 +36,9 @@ final class SettingsConsentUITests: OrotFailFastTestCase {
         XCTAssertTrue(wait { self.node(app, "voice-current-model").exists && UITestConditions.text(self.node(app, "voice-current-model")).contains("GPT-Live-1.1") })
         inspect(app, expected: "authorized")
         app.terminate()
-        launch(app, identifier, "reopen")
+        launch(app, identifier, "reopen", canonicalQueue: true)
         inspect(app, expected: "authorized")
-        // Retain SQL grant rows deliberately: the durable authority tombstone must deny them after restart.
-        tap(app, "settings-consent-native-revoke")
-        inspect(app, expected: "renewal_required")
+        verifyCanonicalQueueAndHeldRevocation(app)
         app.terminate()
         launch(app, identifier, "reopen")
         inspect(app, expected: "renewal_required")
@@ -53,22 +51,74 @@ final class SettingsConsentUITests: OrotFailFastTestCase {
     }
 
     @MainActor
-    private func launch(_ app: XCUIApplication, _ identifier: String, _ phase: String, boundaries: Bool = false) {
+    private func launch(_ app: XCUIApplication, _ identifier: String, _ phase: String,
+                        boundaries: Bool = false, canonicalQueue: Bool = false)
+    {
         app.launchArguments = [
             "-OROT_TEST_SCENARIO", "settings-provider-layout",
             "-OROT_SETTINGS_CONSENT", "synthetic",
             "-OROT_SETTINGS_CONSENT_FIXTURE", identifier,
             "-OROT_SETTINGS_CONSENT_PHASE", phase,
         ]
-        if boundaries {
+        if boundaries || canonicalQueue {
             app.launchArguments += ["-OROT_TEST_HOST", "-OROT_SETTINGS_CONSENT_BOUNDARIES", "synthetic"]
         }
+        if canonicalQueue {
+            app.launchArguments += ["-OROT_SETTINGS_CONSENT_CANONICAL_QUEUE", "synthetic"]
+        }
         app.launch()
-        if boundaries {
+        if canonicalQueue {
+            XCTAssertTrue(UITestConditions.exists(node(app, "settings-canonical-queue-status")))
+        } else if boundaries {
             XCTAssertTrue(UITestConditions.exists(node(app, "settings-boundary-status")))
         } else if phase != "cleanup" {
             XCTAssertTrue(UITestConditions.exists(node(app, "settings-consent-native-inspect")))
         }
+    }
+
+    /// The exact known paired Settings grant must work through the test bridge only.
+    @MainActor
+    private func verifyCanonicalQueueAndHeldRevocation(_ app: XCUIApplication) {
+        let prefix = "settings-canonical-queue-"
+        let status = node(app, prefix + "status")
+        let invocations = node(app, prefix + "invocations")
+        let completed = node(app, prefix + "completed")
+        func expectStatus(_ expected: String) {
+            XCTAssertTrue(wait { UITestConditions.text(status) == expected })
+        }
+        func expectInvocations(_ expected: Int) {
+            XCTAssertTrue(wait { UITestConditions.text(invocations) == String(expected) })
+        }
+        tap(app, prefix + "review")
+        expectStatus("review")
+        tap(app, prefix + "deny-review")
+        expectStatus("rejected")
+        tap(app, prefix + "allow")
+        XCTAssertTrue(wait { UITestConditions.text(completed) == "2" })
+        expectStatus("rejected")
+        expectInvocations(0)
+        tap(app, prefix + "review")
+        expectStatus("review")
+        tap(app, prefix + "approve")
+        expectStatus("approved")
+        for (index, scenario) in ["allow", "deny", "replace"].enumerated() {
+            tap(app, prefix + scenario)
+            expectStatus("queue-\(scenario)-passed")
+            expectInvocations(index + 1)
+        }
+
+        // Retain stored pair/SQL rows deliberately while invalidating the authority witness.
+        tap(app, prefix + "review")
+        expectStatus("review")
+        tap(app, "settings-consent-native-revoke")
+        inspect(app, expected: "renewal_required")
+        tap(app, prefix + "approve")
+        expectStatus("rejected")
+        expectInvocations(3)
+        tap(app, prefix + "allow")
+        XCTAssertTrue(wait { UITestConditions.text(completed) == "8" })
+        expectStatus("rejected")
+        expectInvocations(3)
     }
 
     /// Separate UUIDs keep credential mutation and bridge cancellation independent.
