@@ -92,13 +92,7 @@ export function HealthRecordsLineChart({
         return [...pointsByUnit].flatMap(
           ([unit, unitPoints]): ChartSeries[] => {
             if (previewRange) {
-              return heartRatePreviewSeries(
-                unit,
-                unitPoints,
-                records,
-                hasMore,
-                category !== 'heart_rate',
-              );
+              return heartRatePreviewSeries(unit, unitPoints, records, hasMore);
             }
             const measurements = unitPoints.map(point => ({
               x: point.effectiveAt,
