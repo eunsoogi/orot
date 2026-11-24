@@ -6,7 +6,7 @@ import {
   toCommonObservationRecord,
 } from '../../healthkit/commonObservations/mapper';
 import { healthKitSample } from '../../healthkit/commonObservations/testSupport';
-import { loadOverviewMetrics } from './metricLoader';
+import { loadSelectedOverviewSnapshot } from './selectedOverviewSnapshot';
 import {
   loadOverviewMetricSelection,
   saveOverviewMetricSelection,
@@ -61,7 +61,12 @@ test('stored overview choices keep exact source, BPM and type without reading un
       'sleep',
       'heartRate',
     ]);
-    const defaultRead = await loadOverviewMetrics(database, now);
+    const signal = new AbortController().signal;
+    const { chart: defaultRead } = await loadSelectedOverviewSnapshot(
+      database,
+      now,
+      signal,
+    );
     expect(defaultRead.metrics.restingHeartRate).toBeUndefined();
     expect(defaultRead.metrics.walkingHeartRate).toBeUndefined();
 
@@ -73,7 +78,12 @@ test('stored overview choices keep exact source, BPM and type without reading un
     await saveOverviewMetricSelection(repository, selected);
     const saved = await loadOverviewMetricSelection(repository);
     expect(saved).toEqual(selected);
-    const chart = await loadOverviewMetrics(database, now, undefined, saved);
+    const { selection, chart } = await loadSelectedOverviewSnapshot(
+      database,
+      now,
+      signal,
+    );
+    expect(selection).toEqual(selected);
     expect(chart.metrics.restingHeartRate).toMatchObject({
       metric: 'restingHeartRate',
       unit: 'count/min',
@@ -93,7 +103,11 @@ test('stored overview choices keep exact source, BPM and type without reading un
       chart.metrics.walkingHeartRate?.days.filter(day => day.value !== null),
     ).toHaveLength(1);
     await repository.delete('health_observation', walking.id);
-    const deleted = await loadOverviewMetrics(database, now, undefined, saved);
+    const { chart: deleted } = await loadSelectedOverviewSnapshot(
+      database,
+      now,
+      signal,
+    );
     expect(deleted.metrics.walkingHeartRate).toBeUndefined();
     expect(deleted.metrics.restingHeartRate?.latest.value).toBe(58);
   } finally {

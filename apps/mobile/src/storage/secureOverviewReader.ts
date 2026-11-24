@@ -4,20 +4,16 @@ import {
   open,
   type DB,
 } from '@op-engineering/op-sqlite';
-import { createRecordRepository } from '@orot/storage';
 import { conversationExecutionNative } from '../ragConversation/conversationExecutionNative';
-import { projectOverviewMetricSnapshot } from '../routes/overview/metricLoader';
-import { loadOverviewMetricSelection } from '../routes/overview/metricSelection';
+import {
+  readSelectedOverviewProjection,
+  type SelectedOverviewSnapshot,
+} from '../routes/overview/selectedOverviewSnapshot';
 import { acquireIndependentReadEpoch } from './protectedReadEpoch';
 import {
   readIndependentOverviewSnapshot,
   type OverviewReadOutcome,
 } from '../routes/overview/independentOverviewSnapshot';
-
-type OverviewProjection = {
-  selection: Awaited<ReturnType<typeof loadOverviewMetricSelection>>;
-  chart: Awaited<ReturnType<typeof projectOverviewMetricSnapshot>>;
-};
 
 /** The key-capable secure opener calls this narrow chart reader only after
  * existing writer initialization. No source/agent repository is exposed. */
@@ -27,7 +23,7 @@ async function readSecureOverviewProjection(input: {
   open: () => DB;
   now: Date;
   signal: AbortSignal;
-  publish: (value: OverviewProjection) => void;
+  publish: (value: SelectedOverviewSnapshot) => void;
 }): Promise<OverviewReadOutcome> {
   const protection = conversationExecutionNative();
   if (!protection?.bridgeAvailable) return 'unavailable';
@@ -62,20 +58,7 @@ async function readSecureOverviewProjection(input: {
       input.open,
       current,
       confirm,
-      async tx => {
-        // Read only the existing preference key from the exact chart snapshot.
-        const preferences = createRecordRepository({
-          execute: tx.execute,
-          async transaction() {
-            throw new Error('Overview preference snapshot is read-only.');
-          },
-        });
-        const selection = await loadOverviewMetricSelection(preferences);
-        return {
-          selection,
-          chart: await projectOverviewMetricSnapshot(tx, input.now, selection),
-        };
-      },
+      tx => readSelectedOverviewProjection(tx, input.now),
       input.publish,
     );
   } finally {
@@ -96,7 +79,7 @@ export function createSecureOverviewReader(
   return async (
     now: Date,
     signal: AbortSignal,
-    publish: (value: OverviewProjection) => void,
+    publish: (value: SelectedOverviewSnapshot) => void,
   ): Promise<OverviewReadOutcome> => {
     if (signal.aborted) return 'discarded';
     await readyWriter();

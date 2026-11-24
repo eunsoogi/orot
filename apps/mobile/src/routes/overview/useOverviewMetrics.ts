@@ -6,10 +6,12 @@ import {
   subscribeLocalDataClear,
   subscribeLocalSourceDeletion,
 } from '../../storage/localDataClearEvents';
-import { loadOverviewMetrics } from './metricLoader';
+import {
+  loadSelectedOverviewSnapshot,
+  type SelectedOverviewSnapshot,
+} from './selectedOverviewSnapshot';
 import {
   defaultOverviewMetrics,
-  loadOverviewMetricSelection,
   saveOverviewMetricSelection,
   type OverviewMetric,
 } from './metricSelection';
@@ -97,7 +99,7 @@ export function useOverviewMetrics() {
     setState(hasSnapshot.current ? 'refreshing' : 'loading');
     const publish = (
       nextSelection: readonly OverviewMetric[],
-      nextMetrics: Awaited<ReturnType<typeof loadOverviewMetrics>>,
+      nextMetrics: SelectedOverviewSnapshot['chart'],
     ) => {
       if (!active || currentLoadGeneration !== loadGeneration.current) return;
       if (selectionReadGeneration === selectionGeneration.current)
@@ -142,18 +144,14 @@ export function useOverviewMetrics() {
           }
           return;
         }
-        const fallbackSelection = await storage
-          .openLocalStorage()
-          .then(loadOverviewMetricSelection);
         if (!isCurrent()) return;
         const database = await storage.openLocalAgentMemoryDatabase();
-        const chart = await loadOverviewMetrics(
+        const snapshot = await loadSelectedOverviewSnapshot(
           database,
           now,
           controller.signal,
-          fallbackSelection,
         );
-        publish(fallbackSelection, chart);
+        publish(snapshot.selection, snapshot.chart);
       } catch {
         if (isCurrent()) setState(hasSnapshot.current ? 'stale' : 'failed');
       }
