@@ -1,7 +1,4 @@
-import {
-  createLiveResponsesHealthToolExecutor,
-  type LiveManagedHealthCall,
-} from '../liveResponsesHealthToolExecutor';
+import { createLiveResponsesHealthToolExecutor } from '../liveResponsesHealthToolExecutor';
 import { call, fixture } from '../testSupport/liveResponsesProtectedFixture';
 
 test('confirmation precedes any SQLite read; one exact aggregate goes only to the same native challenge', async () => {
