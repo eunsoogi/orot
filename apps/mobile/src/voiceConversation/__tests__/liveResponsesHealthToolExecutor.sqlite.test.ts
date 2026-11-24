@@ -139,3 +139,37 @@ test('a reviewed-memory only Settings receipt cannot authorize health data', asy
     f.close();
   }
 });
+
+test('the admitted health read uses the canonical adapter without constructing unrelated searches', async () => {
+  const f = await fixture();
+  try {
+    const unrelatedRag = jest.fn(() => {
+      throw new Error(
+        'Unrelated search must not initialize for this managed call.',
+      );
+    });
+    const execute = createLiveResponsesHealthToolExecutor({
+      ...f.input,
+      async openData() {
+        const data = await f.input.openData();
+        return Object.defineProperty(data, 'rag', { get: unrelatedRag });
+      },
+    });
+    await execute(call, f.controller.signal);
+    expect(unrelatedRag).not.toHaveBeenCalled();
+    expect(f.read).toHaveBeenCalled();
+    expect(f.settle).toHaveBeenCalledTimes(1);
+    const bytes = f.settle.mock.calls[0]?.[2];
+    expect(bytes).not.toBeNull();
+    expect(JSON.parse(bytes!)).toEqual({
+      topic: 'measurements',
+      metric: 'heart_rate',
+      unit: 'count/min',
+      days: 7,
+      sampleCount: 3,
+      meanOfRecordedDailyMeans: 72,
+    });
+  } finally {
+    f.close();
+  }
+});
