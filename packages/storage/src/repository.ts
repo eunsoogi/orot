@@ -1,3 +1,4 @@
+import { clearCalendarClassificationCache } from './calendarClassificationCache';
 import { readHealthObservationPage } from './healthObservationPages';
 import { readHealthMedicationPage } from './healthMedicationPages';
 import type { HealthMedicationPage, HealthMedicationPageRequest } from './healthMedicationPages';
@@ -146,6 +147,7 @@ export function createRecordRepository(database: SqlDatabase): RecordRepository 
       let deleted: DeletedLocalDataReferences = { sourceRecordIds: [] };
       await database.transaction(async (transaction) => {
         await clearResearchArtifacts(transaction);
+        await clearCalendarClassificationCache(transaction);
         // Fence conversations begun before this wipe, even when no source records exist.
         const conversationStore = await transaction.execute(
           "SELECT name FROM sqlite_master WHERE type = 'table' AND name = ?",

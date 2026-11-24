@@ -16,7 +16,7 @@ describe('manual history schema migration', () => {
     await rewindBeforeMemoryMetadata(database, 2);
     await runMigrations(database);
 
-    expect((await database.execute('PRAGMA user_version')).rows[0].user_version).toBe(19);
+    expect((await database.execute('PRAGMA user_version')).rows[0].user_version).toBe(20);
     expect(await repository.get('source_record', sampleRecord.id)).toEqual(sampleRecord);
     await database.execute(
       'INSERT INTO manual_history_entries ' +
@@ -58,7 +58,7 @@ describe('manual history schema migration', () => {
     await rewindBeforeMemoryMetadata(database, 10);
     await runMigrations(database);
 
-    expect((await database.execute('PRAGMA user_version')).rows[0].user_version).toBe(19);
+    expect((await database.execute('PRAGMA user_version')).rows[0].user_version).toBe(20);
     expect(await repository.get('source_record', sampleRecord.id)).toEqual(sampleRecord);
     expect(
       (

@@ -103,3 +103,10 @@ export {
   isAppleDerivedHeartRateCategory,
 } from './appleDerivedHeartRate';
 export type { AppleDerivedHeartRateCategory } from './appleDerivedHeartRate';
+
+export { isCalendarClassificationWitness } from './calendarClassificationCache';
+export type {
+  CalendarClassificationWitness,
+  CalendarClassificationCache,
+  CachedCalendarDecision,
+} from './calendarClassificationCache';

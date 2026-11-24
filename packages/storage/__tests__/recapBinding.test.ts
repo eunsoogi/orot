@@ -46,7 +46,7 @@ it.each([13, 14, 15])(
       await fixture.database.execute('DROP TABLE recap_bindings');
       await rewindBeforeMemoryMetadata(fixture.database, version);
       await runMigrations(fixture.database);
-      expect((await fixture.database.execute('PRAGMA user_version')).rows[0].user_version).toBe(19);
+      expect((await fixture.database.execute('PRAGMA user_version')).rows[0].user_version).toBe(20);
       expect(
         await fixture.records.get('source_record', fixture.result.recordingSourceId),
       ).not.toBeNull();
