@@ -10,6 +10,7 @@ import type {
 import { t } from '../../i18n';
 import type { RagConversationObserver } from '../../ragConversation/service';
 import type { AiFeatureLocalData } from './localData';
+import { observeAnswerMemoryProviderOwner } from './conversationAnswerMemoryProviderOwner';
 
 const toolId = 'remember-conversation-answer';
 const toolVersion = '1';
@@ -32,6 +33,7 @@ export function conversationAnswerMemoryAction(input: {
   observer?: RagConversationObserver;
   admittedAnswerIds: ReadonlySet<string>;
   terminalRunId?: string;
+  remoteOwner?: NonNullable<RagConversationObserver['templateProposalOwner']>;
 }) {
   const { data, observer } = input;
   const owner = observer?.retentionSession;
@@ -51,6 +53,7 @@ export function conversationAnswerMemoryAction(input: {
           operation: AnswerMemoryTerminalOperation,
         ) => Promise<AnswerMemoryBookmarkDisposition | undefined>;
         operation?: AnswerMemoryTerminalOperation;
+        guard?: ReturnType<typeof observeAnswerMemoryProviderOwner>;
       }
     | undefined;
   let pendingConfirmation:
@@ -72,25 +75,30 @@ export function conversationAnswerMemoryAction(input: {
     )
       return;
     pendingConfirmation = undefined;
-    const disposition = await pending.confirm(pending.operation);
-    if (
-      !disposition ||
-      disposition !== pending.disposition ||
-      offered.signal.aborted
-    )
-      return;
-    receipt = disposition;
-    return {
-      committed: disposition === 'saved',
-      value: {
-        answer: t(
-          disposition === 'saved'
-            ? 'historyDisplay.savedConversationMemory'
-            : 'historyDisplay.conversationMemoryAlreadySaved',
-        ),
-        answerKind: 'conversation',
-      },
-    };
+    try {
+      if (pending.guard && !(await pending.guard.recheck())) return;
+      const disposition = await pending.confirm(pending.operation);
+      if (
+        !disposition ||
+        disposition !== pending.disposition ||
+        offered.signal.aborted
+      )
+        return;
+      receipt = disposition;
+      return {
+        committed: disposition === 'saved',
+        value: {
+          answer: t(
+            disposition === 'saved'
+              ? 'historyDisplay.savedConversationMemory'
+              : 'historyDisplay.conversationMemoryAlreadySaved',
+          ),
+          answerKind: 'conversation',
+        },
+      };
+    } finally {
+      pending.guard?.dispose();
+    }
   };
   const available =
     observer?.inputOrigin === 'composer' &&
@@ -107,6 +115,7 @@ export function conversationAnswerMemoryAction(input: {
       actions: [] as LocalActionTool[],
       receipt: () => 'not_attempted' as const,
       confirmTerminal: undefined,
+      dispose: undefined,
     };
   }
   const actions: LocalActionTool[] = [
@@ -130,6 +139,7 @@ export function conversationAnswerMemoryAction(input: {
           : undefined;
       },
       async authorize(value, signal, terminal) {
+        prepared?.guard?.dispose();
         prepared = undefined;
         if (
           !exactTarget(value) ||
@@ -143,39 +153,52 @@ export function conversationAnswerMemoryAction(input: {
           return false;
         // The selected tool, not model prose or a keyword match, owns the receipt.
         receipt = 'not_saved';
-        const current = () =>
-          !signal.aborted &&
-          observer?.expectedConversationModel?.isCurrent?.() !== false;
-        const storage = await data.openConversationArtifactStorage?.();
-        if (!storage || !current()) return false;
-        const operation: AnswerMemoryTerminalOperation | undefined =
-          input.terminalRunId && terminal
-            ? { ...terminal, toolId, toolVersion }
-            : undefined;
-        const source = await storage.prepareAnswerMemory(
-          {
-            id: target.id,
-            owner,
-            currentRequestId,
-            current,
-          },
-          operation,
-        );
-        if (
-          !source ||
-          !current() ||
-          !(await confirm(source.preview, signal)) ||
-          !current()
-        )
-          return false;
-        prepared = {
-          signal,
-          save: source.commit,
-          saveTerminal: source.commitTerminal,
-          confirm: source.confirmTerminalCommit,
-          operation,
-        };
-        return true;
+        const guard = input.remoteOwner
+          ? observeAnswerMemoryProviderOwner(input.remoteOwner, signal)
+          : undefined;
+        let keep = false;
+        try {
+          const current = () =>
+            !signal.aborted &&
+            (!guard || guard.isCurrent()) &&
+            observer?.expectedConversationModel?.isCurrent?.() !== false;
+          if (guard && !(await guard.recheck())) return false;
+          const storage = await data.openConversationArtifactStorage?.();
+          if (!storage || !current()) return false;
+          const operation: AnswerMemoryTerminalOperation | undefined =
+            input.terminalRunId && terminal
+              ? { ...terminal, toolId, toolVersion }
+              : undefined;
+          const source = await storage.prepareAnswerMemory(
+            {
+              id: target.id,
+              owner,
+              currentRequestId,
+              current,
+            },
+            operation,
+          );
+          if (
+            !source ||
+            !current() ||
+            !(await confirm(source.preview, signal)) ||
+            !current() ||
+            (guard && !(await guard.recheck()))
+          )
+            return false;
+          prepared = {
+            signal,
+            save: source.commit,
+            saveTerminal: source.commitTerminal,
+            confirm: source.confirmTerminalCommit,
+            operation,
+            guard,
+          };
+          keep = true;
+          return true;
+        } finally {
+          if (!keep) guard?.dispose();
+        }
       },
       async execute({ input: value, signal, operationRunId, operationKey }) {
         const approved = prepared;
@@ -188,17 +211,25 @@ export function conversationAnswerMemoryAction(input: {
           (input.terminalRunId &&
             (approved.operation?.operationRunId !== operationRunId ||
               approved.operation?.operationKey !== operationKey))
-        )
+        ) {
+          approved?.guard?.dispose();
           throw new Error('The original answer has not been confirmed.');
-        if (approved.operation) {
-          const disposition = await approved.saveTerminal(approved.operation);
-          if (!disposition)
-            throw new Error('The original answer is unavailable.');
-          pendingConfirmation = { ...approved, disposition };
-        } else {
-          if (!(await approved.save()))
-            throw new Error('The original answer is unavailable.');
-          receipt = 'saved';
+        }
+        try {
+          if (approved.guard && !(await approved.guard.recheck()))
+            throw new Error('The answer owner changed.');
+          if (approved.operation) {
+            const disposition = await approved.saveTerminal(approved.operation);
+            if (!disposition)
+              throw new Error('The original answer is unavailable.');
+            pendingConfirmation = { ...approved, disposition };
+          } else {
+            if (!(await approved.save()))
+              throw new Error('The original answer is unavailable.');
+            receipt = 'saved';
+          }
+        } finally {
+          if (!pendingConfirmation) approved.guard?.dispose();
         }
         // Only a checked commit receipt. Do not resend the protected answer as evidence.
         return { items: [], coverage: [], conflicts: [] };
@@ -209,5 +240,10 @@ export function conversationAnswerMemoryAction(input: {
     actions,
     receipt: () => receipt,
     confirmTerminal: input.terminalRunId ? confirmTerminal : undefined,
+    dispose: () => {
+      prepared?.guard?.dispose();
+      pendingConfirmation?.guard?.dispose();
+      prepared = pendingConfirmation = undefined;
+    },
   };
 }

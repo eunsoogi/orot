@@ -3,6 +3,7 @@ import { conversationAuthoredMemoryAction } from './conversationAuthoredMemoryAc
 import { conversationHealthSummaryBookmarkAction } from './conversationHealthSummaryBookmarkAction';
 import { APPLE_PROVIDER_ID } from '@orot/provider-apple';
 import { conversationAnswerMemoryAction } from './conversationAnswerMemoryAction';
+import { conversationAnswerMemoryProviderOwner } from './conversationAnswerMemoryProviderOwner';
 import { conversationHistoryAction } from './conversationHistoryAction';
 import {
   bindConversationPhotoExecution,
@@ -23,6 +24,7 @@ export function conversationMutationExecution(input: {
   observer?: RagConversationObserver;
   question: string;
   history: FreshConversationHistory;
+  remoteAnswerMemory?: boolean;
 }) {
   const {
     baseExecution,
@@ -43,12 +45,16 @@ export function conversationMutationExecution(input: {
     conversationAuthoredMemoryAction({ data, observer, question });
   const reportBookmark =
     localModel && conversationHealthSummaryBookmarkAction(observer);
+  const remoteOwner = input.remoteAnswerMemory
+    ? conversationAnswerMemoryProviderOwner(selected, observer)
+    : undefined;
   const answerMemory =
-    localModel &&
+    (localModel || remoteOwner) &&
     conversationAnswerMemoryAction({
       data,
       observer,
       terminalRunId: baseExecution.execution.operationRunId,
+      remoteOwner,
       admittedAnswerIds: new Set([
         ...(history.historicalDialogueParents ?? []).map(turn => turn.id),
         ...history.references.flatMap(reference => {
@@ -87,6 +93,7 @@ export function conversationMutationExecution(input: {
           sessionVersion: observer!.retentionSession!.version,
         })
       : execution,
+    disposeAnswerMemory: answerMemory ? answerMemory.dispose : undefined,
     memorySaved: () =>
       settleConversationMemoryReceipt({
         authored: authoredMemory ? authoredMemory.receipt() : undefined,
