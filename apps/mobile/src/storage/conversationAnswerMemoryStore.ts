@@ -2,6 +2,15 @@ import type { SqlDatabase, SqlExecutor } from '@orot/storage';
 import { decodeConversationArtifact } from './conversationArtifactCodec';
 import { assertConversationArtifactCurrent } from './conversationArtifactFreshness';
 import { withWritePeriodCalculations } from './writePeriodCalculationScope';
+import {
+  type AnswerMemoryBookmarkDisposition,
+  type AnswerMemoryTerminalOperation,
+  confirmTerminalAnswerBookmark,
+  sameAnswerMemoryTerminalOperation,
+  validAnswerMemoryTerminalOperation,
+  writeLegacyAnswerBookmark,
+  writeTerminalAnswerBookmark,
+} from './conversationAnswerMemoryTerminalReceipt';
 
 type Owner = { readonly id: string; readonly version: number };
 type Source = { readonly id: string; readonly owner: Owner };
@@ -83,8 +92,17 @@ export function createConversationAnswerMemory(
     WHERE r.status='completed' AND r.input_json IS NULL AND r.interruption_reason IS NULL
       AND NOT EXISTS (SELECT 1 FROM conversation_deleted_artifacts WHERE id=a.id)
       AND NOT EXISTS (SELECT 1 FROM conversation_artifact_removed_sessions WHERE id=s.id)`;
-  async function prepareAnswerMemory(input: Request) {
-    if (!input.current()) return;
+  async function prepareAnswerMemory(
+    input: Request,
+    operation?: AnswerMemoryTerminalOperation,
+  ) {
+    if (
+      !input.current() ||
+      (operation && !validAnswerMemoryTerminalOperation(operation))
+    )
+      return;
+    const terminal = operation ? { ...operation } : undefined;
+    if (terminal) input = { ...input, owner: { ...input.owner } };
     await ensure();
     let captured: string | undefined;
     let preview: string | undefined;
@@ -125,30 +143,45 @@ export function createConversationAnswerMemory(
     if (!captured || !preview || !input.current()) return;
     const expected = captured;
     let consumed = false;
+    async function commit(supplied?: AnswerMemoryTerminalOperation) {
+      if (
+        consumed ||
+        !input.current() ||
+        (terminal
+          ? !supplied || !sameAnswerMemoryTerminalOperation(terminal, supplied)
+          : supplied)
+      )
+        return;
+      consumed = true;
+      let committed: AnswerMemoryBookmarkDisposition | undefined;
+      await database
+        .transaction(async tx => {
+          if (!(await admit(tx, expected))) return;
+          await setupConversationAnswerMemory(tx);
+          const disposition = terminal
+            ? await writeTerminalAnswerBookmark(tx, input, terminal)
+            : await writeLegacyAnswerBookmark(tx, input.id);
+          if (!disposition) return;
+          if (!(await admit(tx, expected)) || !input.current())
+            throw new Error('The original answer or request changed.');
+          tx.commit();
+          committed = disposition;
+        })
+        .catch(error => {
+          if (!committed) throw error;
+        });
+      return committed;
+    }
     return {
       preview,
-      async commit() {
-        if (consumed || !input.current()) return false;
-        consumed = true;
-        let committed = false;
-        await database
-          .transaction(async tx => {
-            if (!(await admit(tx, expected))) return;
-            await setupConversationAnswerMemory(tx);
-            await tx.execute(
-              'INSERT INTO saved_conversation_answer_refs VALUES (?,?) ON CONFLICT(artifact_id) DO NOTHING',
-              [input.id, new Date().toISOString()],
-            );
-            if (!(await admit(tx, expected)) || !input.current())
-              throw new Error('The original answer or request changed.');
-            tx.commit();
-            committed = true;
-          })
-          .catch(error => {
-            if (!committed) throw error;
-          });
-        return committed;
-      },
+      commit: async (supplied?: AnswerMemoryTerminalOperation) =>
+        (await commit(supplied)) === 'saved',
+      commitTerminal: (supplied: AnswerMemoryTerminalOperation) =>
+        terminal ? commit(supplied) : Promise.resolve(undefined),
+      confirmTerminalCommit: (op: AnswerMemoryTerminalOperation) =>
+        confirmTerminalAnswerBookmark(database, input, terminal, op, tx =>
+          admit(tx, expected),
+        ),
     };
   }
   return {

@@ -20,6 +20,7 @@ export async function finishRagConversation(input: {
   const annotated =
     input.outcome.status === 'answer' &&
     !input.outcome.committedAnswerMemory &&
+    !input.outcome.alreadySavedAnswerMemory &&
     !input.skipPublicSearchNotice &&
     input.publicSearch.status !== 'success'
       ? {

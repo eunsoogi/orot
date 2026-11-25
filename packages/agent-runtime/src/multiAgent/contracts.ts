@@ -140,6 +140,7 @@ export interface MultiAgentWorkflowOptions<TResult = JsonValue>
   /** Host-owned query stays in protected invocation context, never graph channels. */
   readonly initialSearch?: { readonly toolId: string; readonly input: JsonObject };
   readonly actions?: readonly import('./actionContracts').LocalActionTool[];
+  readonly confirmTerminalLocalAction?: import('./actionContracts').ConfirmTerminalLocalAction<TResult>;
   readonly tools: readonly import('./evidenceContracts').EvidenceSearchTool[];
   readonly consent: ExecutionConsentPort;
   readonly revalidateEvidence: (

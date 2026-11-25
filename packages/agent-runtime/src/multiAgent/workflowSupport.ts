@@ -5,7 +5,7 @@ import { canRecoverCommittedActions, recoverCommittedAction } from './recoverCom
 import { restoreOrderedEvidenceBatches } from './evidenceRestoration';
 import { validInitialEvidenceSearch, validInitialSearchResume } from './initialEvidenceSearch';
 import { validResumeShape } from './resumeShape';
-import { actionContract, validLocalActions } from './actionContracts';
+import { actionContract, isNonresumableActionPhase, validLocalActions } from './actionContracts';
 import type {
   MultiAgentCheckpointState,
   AllowedEvidenceScope,
@@ -46,7 +46,7 @@ function validEvidenceTool(tool: EvidenceSearchTool, scope: AllowedEvidenceScope
 }
 
 export function validIdentity<TResult>(options: MultiAgentWorkflowOptions<TResult>): boolean {
-  const { execution, provider, task } = options;
+  const { execution, provider, task, actions, confirmTerminalLocalAction } = options;
   const id = /^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$/u;
   const evidenceOnly = validPhotoInput(options);
   return (
@@ -69,7 +69,7 @@ export function validIdentity<TResult>(options: MultiAgentWorkflowOptions<TResul
     provider.capabilities.inputTypes.includes('text') &&
     new Set(options.tools.map((tool) => tool.id)).size === options.tools.length &&
     options.tools.every((tool) => validEvidenceTool(tool, execution.allowedScope)) &&
-    validLocalActions(options.actions, execution.allowedScope) &&
+    validLocalActions(actions, execution.allowedScope, confirmTerminalLocalAction) &&
     new Set([
       ...options.tools.map((tool) => tool.id),
       ...(options.actions ?? []).map((action) => action.id),
@@ -131,8 +131,7 @@ export function resumeState<TResult>(
         !isEvidenceReference(reference) ||
         !isEvidenceReferenceWithinScope(reference, options.execution.allowedScope),
     ) ||
-    saved.terminal ||
-    saved.phase === 'complete' ||
+    isNonresumableActionPhase(saved, options.actions) ||
     (saved.pendingOperation && !isVerifiedPendingActionRecovery(options, saved)) ||
     (saved.awaitingAuthorization !== undefined &&
       (!options.operationJournal?.loadPrepared ||

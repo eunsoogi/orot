@@ -40,6 +40,7 @@ export type RagConversationOutcome =
       readonly authoredRoutineSpan?: string;
       /** Only the host’s committed local answer bookmark can set this receipt. */
       readonly committedAnswerMemory?: true;
+      readonly alreadySavedAnswerMemory?: true;
       readonly a2uiPresentation?: import('./conversationA2UI').ConversationA2UINode;
       readonly a2uiLocalDraft?: import('./conversationA2UILocalDraft').ConversationA2UILocalDraft;
       readonly dailyReport?: import('./conversationDisplayMessage').DisplayMessage['dailyReport'];

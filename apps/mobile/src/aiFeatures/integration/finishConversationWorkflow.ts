@@ -89,6 +89,13 @@ export function answerMemoryOutcome(
           : 'answer_memory_not_saved',
       discardUnverifiedDraft: true,
     };
+  if (receipt === 'already_saved')
+    return {
+      status: 'answer',
+      answer: t('historyDisplay.conversationMemoryAlreadySaved'),
+      citations: [],
+      alreadySavedAnswerMemory: true,
+    };
   return receipt !== 'not_attempted'
     ? {
         status: 'answer',

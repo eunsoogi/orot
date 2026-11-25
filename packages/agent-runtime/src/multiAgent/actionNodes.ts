@@ -21,6 +21,7 @@ import type { WorkflowState } from './state';
  * prove a result. No grant is serialized and cancellation is checked before dispatch.
  */
 export function createActionNodes<TResult>(context: RuntimeContext<TResult>) {
+  let terminalClaimed = false;
   return {
     prepareAction(state: WorkflowState) {
       const tool = context.options.actions?.find((item) => item.id === state.selectedToolId);
@@ -51,6 +52,24 @@ export function createActionNodes<TResult>(context: RuntimeContext<TResult>) {
         stop(context, 'The local action handoff is invalid.', 'invalid_output');
         return completeState();
       }
+      const operationRunId = state.operationRunId;
+      const operationKeyValue = state.pendingOperation.operationKey;
+      const terminal = tool.completion === 'host_terminal';
+      const confirmTerminal = context.options.confirmTerminalLocalAction;
+      if (
+        terminal &&
+        (!confirmTerminal ||
+          terminalClaimed ||
+          state.committedAction ||
+          operationRunId !== context.options.execution.operationRunId ||
+          !Number.isSafeInteger(state.toolCalls) ||
+          state.toolCalls < 1 ||
+          operationKeyValue !== operationKey('tool', state.toolCalls))
+      ) {
+        stop(context, 'The terminal local action owner is invalid.', 'invalid_output');
+        return completeState();
+      }
+      if (terminal) terminalClaimed = true;
       const approval =
         context.options.checkpointer && context.options.operationJournal?.loadPrepared
           ? context.pause?.approvalSignal(context.signal)
@@ -65,6 +84,7 @@ export function createActionNodes<TResult>(context: RuntimeContext<TResult>) {
         }
       };
       try {
+        const terminalInput = terminal ? canonicalJson(input) : undefined;
         if (context.signal.aborted) {
           canceled(context);
           return completeState();
@@ -76,7 +96,11 @@ export function createActionNodes<TResult>(context: RuntimeContext<TResult>) {
         }
         notify(Boolean(approval));
         const decision = await observeUntilAbort(
-          tool.authorize(input, approvalSignal),
+          tool.authorize(
+            input,
+            approvalSignal,
+            terminal ? { operationRunId, operationKey: operationKeyValue } : undefined,
+          ),
           approvalSignal,
         );
         if (approvalSignal.aborted && !context.signal.aborted && approval) {
@@ -115,12 +139,47 @@ export function createActionNodes<TResult>(context: RuntimeContext<TResult>) {
           sources: [],
         };
         emitToolEvent(context, context.activeToolEvent);
+        if (terminal && terminalInput !== canonicalJson(input)) {
+          stop(context, 'The terminal local action input changed.', 'invalid_output');
+          return completeState();
+        }
         const batch = await tool.execute({
           input,
           operationRunId: state.operationRunId,
           operationKey: state.pendingOperation.operationKey,
           signal: approvalSignal,
         });
+        if (terminal && confirmTerminal && terminalInput !== undefined) {
+          if (context.signal.aborted || approvalSignal.aborted) {
+            canceled(context);
+            return completeState();
+          }
+          if (batch.items.length || batch.coverage.length || batch.conflicts.length) {
+            stop(context, 'A terminal local action cannot export evidence.', 'invalid_output');
+            return completeState();
+          }
+          const result = await confirmTerminal({
+            operationRunId,
+            operationKey: operationKeyValue,
+            toolId: tool.id,
+            toolVersion: tool.version,
+            input: JSON.parse(terminalInput),
+            signal: approvalSignal,
+          });
+          if (context.signal.aborted || approvalSignal.aborted) {
+            canceled(context);
+            return completeState();
+          }
+          if (!result) {
+            stop(context, 'The terminal local action receipt is unavailable.', 'unavailable');
+            return completeState();
+          }
+          finishToolEvent(context, 'completed', []);
+          context.researchInput = undefined;
+          context.pendingNativeToolCallId = undefined;
+          context.outcome = { status: 'result', value: result.value, citations: [] };
+          return { ...completeState(), committedAction: result.committed !== false };
+        }
         // The transaction's successful result is truthful even if cancellation arrives afterward.
         finishToolEvent(context, 'completed', batch.items);
         if (context.signal.aborted) {
