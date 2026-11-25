@@ -185,7 +185,9 @@ final class CanonicalLiveNativeCallReview {
     func retire(_ call: String) {
         switch phase {
         case let .reviewing(_, scope, _)?, let .approved(scope, _)?:
-            if scope.call == call { phase = nil }
+            if scope.call == call {
+                phase = nil
+            }
         case nil:
             break
         }
