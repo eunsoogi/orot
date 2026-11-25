@@ -123,9 +123,8 @@ test('Records combines same-day observations only within their exact source', as
     },
   );
   const opts = { includeHiddenElements: true };
-  expect(screen.getAllByTestId('chart-range-span', opts)).toHaveLength(1);
-  expect(screen.getAllByTestId('chart-range-mean', opts)).toHaveLength(1);
-  expect(screen.getAllByTestId('chart-range-flat', opts)).toHaveLength(3);
+  expect(screen.getAllByTestId(/^line-dot\./u, opts)).toHaveLength(4);
+  expect(screen.queryByTestId('chart-range-span', opts)).toBeNull();
   const plot = screen.getByTestId(
     'health-record-chart-values-resting_heart_rate-plot',
   );
@@ -133,4 +132,5 @@ test('Records combines same-day observations only within their exact source', as
     '최저 60 BPM, 최고 89 BPM, 평균 67 BPM',
   );
   expect(plot.props.accessibilityLabel).not.toContain('최고 100 BPM');
+  expect(plot.props.accessibilityLabel).not.toContain(day(3));
 });
