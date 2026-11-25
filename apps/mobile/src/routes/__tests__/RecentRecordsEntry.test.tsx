@@ -132,7 +132,7 @@ test('first Records entry after v17 upgrade waits for both first pages without a
   }
 });
 
-test('a genuinely failed indexed query offers Retry and publishes both streams once certified', async () => {
+test('a failed indexed query keeps the verified report visible and offers Retry', async () => {
   const f = openInterleavableRecentSourceDatabase();
   let mounted: Awaited<ReturnType<typeof mountRecords>> | undefined;
   try {
@@ -142,7 +142,8 @@ test('a genuinely failed indexed query offers Retry and publishes both streams o
     expect(
       await screen.findByTestId('records-recent-sources-error'),
     ).toBeTruthy();
-    expect(screen.queryByTestId('records-recent-source-visit:30')).toBeNull();
+    expect(screen.getByTestId('records-recent-source-visit:30')).toBeTruthy();
+    expect(screen.queryByText('Synthetic carried-forward file')).toBeNull();
     expect(jest.mocked(loadRecentSourceMaterial)).toHaveBeenCalledTimes(1);
     await rewindBeforeMemoryMetadata(f.database, 17);
     await runMigrations(f.database);
@@ -193,6 +194,7 @@ test('a fresh native denial after startup contention prevents the deferred media
       await screen.findByTestId('records-recent-sources-error'),
     ).toBeTruthy();
     expect(screen.queryByText('Synthetic carried-forward file')).toBeNull();
+    expect(screen.queryByTestId('records-recent-source-visit:30')).toBeNull();
   } finally {
     startup.resolve();
     await operation?.catch(() => undefined);

@@ -21,6 +21,19 @@ import {
 import { useRecentPageDemand } from './useRecentPageDemand';
 import { useRecentSavedMaterial } from './useRecentSavedMaterial';
 import { refreshRecentPages } from './recentPageRefresh';
+import type { RecentPageState } from './requestRecentSavedMaterialPage';
+
+function recentStreamHasError(state: RecentPageState) {
+  return state === 'failed' || state === 'refused';
+}
+
+function missingFailedFrontier(stream: {
+  readonly state: RecentPageState;
+  readonly more: boolean;
+  readonly rows: readonly unknown[];
+}) {
+  return stream.state === 'failed' && stream.more && stream.rows.length === 0;
+}
 
 /** Independent cursor streams share one visible depth without blocking healthy sources. */
 export function useRecordsRecentFeed(props: RecordsRecentSourcesProps) {
@@ -140,10 +153,15 @@ export function useRecordsRecentFeed(props: RecordsRecentSourcesProps) {
     }
   }
   useNavigationRouteRefresh(showAll && active && streams.length > 0, refresh);
-  // Keep a certified common prefix; unresolved cursors can hide newer rows.
+  // A live, unresolved cursor can hide newer rows. A genuine error with
+  // refreshed native admission may instead show verified rows from the other
+  // source with Retry, but that partial list is not a pagination boundary.
+  const partial = streams.some(missingFailedFrontier);
   const certified = certifiedRecentPrefix(records, [
-    ...(onOpenReport ? [recentStreamFrontier(reports, 'material')] : []),
-    ...(pagedAudio || pagedDocuments
+    ...(onOpenReport && !missingFailedFrontier(reports)
+      ? [recentStreamFrontier(reports, 'material')]
+      : []),
+    ...((pagedAudio || pagedDocuments) && !missingFailedFrontier(media)
       ? [recentStreamFrontier(media, 'source')]
       : []),
   ]);
@@ -151,6 +169,7 @@ export function useRecordsRecentFeed(props: RecordsRecentSourcesProps) {
   const hasKnownMore = certified.length > limit;
   const canAdvance =
     !refreshing &&
+    !partial &&
     (hasKnownMore ||
       (Boolean(onOpenReport) && reportDemand.canAdvance) ||
       ((pagedAudio || pagedDocuments) && mediaDemand.canAdvance));
@@ -180,7 +199,7 @@ export function useRecordsRecentFeed(props: RecordsRecentSourcesProps) {
       return;
     }
     for (const stream of streams) {
-      if (stream.state === 'failed') stream.loadMore();
+      if (recentStreamHasError(stream.state)) stream.loadMore();
     }
     if (legacyRecordingState === 'failed') onRetryRecordings();
     if (legacyDocumentState === 'failed') onRetryDocuments();
@@ -224,8 +243,9 @@ export function useRecordsRecentFeed(props: RecordsRecentSourcesProps) {
     openRecord,
     isCurrent: reports.isRouteCurrent,
     more:
-      hasKnownMore ||
-      streams.some(stream => stream.more && stream.rows.length > 0),
+      !partial &&
+      (hasKnownMore ||
+        streams.some(stream => stream.more && stream.rows.length > 0)),
     isLoading:
       legacyRecordingState === 'loading' ||
       legacyDocumentState === 'loading' ||
@@ -235,10 +255,10 @@ export function useRecordsRecentFeed(props: RecordsRecentSourcesProps) {
       ),
     canAdvance,
     loadErrors: [
-      reports.state === 'failed'
+      recentStreamHasError(reports.state)
         ? t('records.recent.savedMaterialLoadError')
         : null,
-      media.state === 'failed' ? t('records.recent.loadError') : null,
+      recentStreamHasError(media.state) ? t('records.recent.loadError') : null,
       legacyRecordingState === 'failed'
         ? t('recording.library.loadError')
         : null,

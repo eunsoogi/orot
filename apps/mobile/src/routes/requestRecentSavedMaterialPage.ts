@@ -48,7 +48,12 @@ function isWitnessedPage<Row>(
 }
 
 type Ref<T> = { current: T };
-export type RecentPageState = 'idle' | 'loading' | 'ready' | 'failed';
+export type RecentPageState =
+  | 'idle'
+  | 'loading'
+  | 'ready'
+  | 'failed'
+  | 'refused';
 export type LoadRecentPage<Row> = ((
   before?: RecentPageRow,
   options?: {
@@ -207,7 +212,9 @@ export async function requestRecentSavedMaterialPage<Row extends RecentPageRow>(
     } else publish();
     return true;
   } catch {
-    if (current()) {
+    // Only a failure under current native admission can leave another
+    // independently verified stream visible. Lock or bridge denial fails closed.
+    if ((await verify()) && current()) {
       setState('failed');
       epoch?.fail();
     }
