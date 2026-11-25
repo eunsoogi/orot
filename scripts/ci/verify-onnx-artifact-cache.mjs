@@ -27,7 +27,7 @@ export function onnxArchivePins(manifest, root = cacheRoot) {
     if (archive.startsWith('pod-archive-onnxruntime-extensions-') !== extension)
       throw new Error('ONNX archive does not match its declared binary target.');
     // SwiftPM's standard artifact cache uses the original URL with its separators escaped.
-    return { target, path: join(root, url.replace(/[^a-z0-9]/giu, '_')), checksum };
+    return { target, url, archive, path: join(root, url.replace(/[^a-z0-9]/giu, '_')), checksum };
   });
 }
 
