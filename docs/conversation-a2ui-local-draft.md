@@ -36,3 +36,17 @@ The native switch writes only a Boolean to the existing ephemeral owner
 store. It has no registered action, cannot submit or save anything, and is
 retired on owner loss. A later reply and reopened history do not inherit the
 checked state or show the old control. Versions through v34 are unchanged.
+
+## Temporary choice between answer parts
+
+From task v36, an ordinary final surface with two distinct accepted answer
+parts can instead append one v1 Basic Catalog ChoicePicker. Its literal
+mutually exclusive options are the app-owned first and second labels and
+enums. The protocol seeds the exact local choice path with an empty list.
+The renderer projects that list as an empty or one-choice scalar in the
+same ephemeral owner store and provides a local clear control.
+
+Choice options do not add claims to the answer. The active view can change
+or clear its selection without an action event, provider response, or saved
+state. Switching owners or restoring the archived answer cannot transfer a
+previous choice. Previous task versions retain their original admissions.

@@ -102,11 +102,11 @@ export function bindLiveConversationA2UILocalDraft(
     plan &&
     has(plan, ['fieldId', 'kind']) &&
     isId(plan.fieldId) &&
-    plan.kind === 'checkbox'
+    (plan.kind === 'checkbox' || plan.kind === 'choice')
   ) {
     approvals.set(
       root,
-      Object.freeze({ fieldId: plan.fieldId, kind: 'checkbox' }),
+      Object.freeze({ fieldId: plan.fieldId, kind: plan.kind }),
     );
     return root;
   }

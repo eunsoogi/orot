@@ -3,6 +3,14 @@ import { createConversationA2UIInteractions } from './conversationA2UIInteractio
 export const localA2UICheckLabel = '이 화면에서만 확인 표시';
 export const localA2UICheckPath = '/local/checked';
 
+export const localA2UIChoicePath = '/local/choice';
+export const localA2UIChoiceLabel = '이 화면에서만 항목 선택';
+export const localA2UIChoiceClearLabel = '선택 지우기';
+export const localA2UIChoices = Object.freeze([
+  Object.freeze({ label: '첫 번째 항목', value: 'first' }),
+  Object.freeze({ label: '두 번째 항목', value: 'second' }),
+] as const);
+
 export const localA2UIDraftFieldLabel = '이 화면에서만 쓰는 메모';
 export const localA2UIDraftResetLabel = '메모 지우기';
 export const localA2UIDraftPath = '/local/draft';
@@ -13,7 +21,8 @@ export const localA2UIDraftResetAction = 'orot:reset-local-draft';
  * become native behavior or leave this mounted draft. */
 export type ConversationA2UILocalDraft =
   | Readonly<{ fieldId: string; resetId: string; kind?: never }>
-  | Readonly<{ fieldId: string; kind: 'checkbox' }>;
+  | Readonly<{ fieldId: string; kind: 'checkbox' }>
+  | Readonly<{ fieldId: string; kind: 'choice' }>;
 
 export function mountConversationA2UILocalDraft(
   approved: ConversationA2UILocalDraft,
@@ -23,7 +32,8 @@ export function mountConversationA2UILocalDraft(
   const owner = {};
   const { fieldId } = approved;
   const checkbox = approved.kind === 'checkbox';
-  const resetId = checkbox ? undefined : approved.resetId;
+  const choice = approved.kind === 'choice';
+  const resetId = approved.kind === undefined ? approved.resetId : undefined;
   const store = createConversationA2UIInteractions({
     owner,
     surfaceId,
@@ -32,7 +42,11 @@ export function mountConversationA2UILocalDraft(
     fields: [
       {
         componentId: fieldId,
-        path: checkbox ? localA2UICheckPath : localA2UIDraftPath,
+        path: checkbox
+          ? localA2UICheckPath
+          : choice
+            ? localA2UIChoicePath
+            : localA2UIDraftPath,
         kind: checkbox ? 'boolean' : 'text',
         initial: checkbox ? false : '',
       },
@@ -49,7 +63,15 @@ export function mountConversationA2UILocalDraft(
     : undefined;
   return {
     change(componentId: string, value: string | boolean) {
-      return componentId === fieldId && store.write(field, value);
+      // Protocol [] or a single choice is projected into this scalar store.
+      // No model string, arbitrary value, or user text can become a choice.
+      return (
+        componentId === fieldId &&
+        (!choice ||
+          value === '' ||
+          localA2UIChoices.some(option => option.value === value)) &&
+        store.write(field, value)
+      );
     },
     reset(componentId: string) {
       if (!reset || componentId !== resetId) return false;

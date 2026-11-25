@@ -1,3 +1,4 @@
+import { withFinalConversationChoice } from './conversationA2UIChoiceTask';
 import { withFinalConversationCheckbox } from './conversationA2UICheckboxTask';
 import { withFinalConversationCardWeight } from './conversationA2UICardWeightTask';
 import { withFinalConversationCaption } from './conversationA2UICaptionTask';
@@ -29,6 +30,8 @@ export function versionedConversationMemoryTasks(
   const conversationTaskV33 = withFinalConversationCaption(conversationTaskV32);
   const conversationTaskV34 =
     withFinalConversationCardWeight(conversationTaskV33);
+  const conversationTaskV35 =
+    withFinalConversationCheckbox(conversationTaskV34);
   return {
     conversationTaskV25,
     conversationTaskV26,
@@ -47,7 +50,8 @@ export function versionedConversationMemoryTasks(
       v32: conversationTaskV32,
       v33: conversationTaskV33,
       v34: conversationTaskV34,
+      v35: conversationTaskV35,
     },
-    ragConversationTask: withFinalConversationCheckbox(conversationTaskV34),
+    ragConversationTask: withFinalConversationChoice(conversationTaskV35),
   };
 }
