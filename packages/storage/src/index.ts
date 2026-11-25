@@ -119,3 +119,12 @@ export type {
   CalendarClassificationCache,
   CachedCalendarDecision,
 } from './calendarClassificationCache';
+
+export {
+  fallbackProvenance,
+  periodRecordKinds,
+  periodRecordingIndex,
+  periodRemovalIndexDefinitions,
+  singletonProvenance,
+  singletonProvenanceValue,
+} from './periodProvenanceIndexes';

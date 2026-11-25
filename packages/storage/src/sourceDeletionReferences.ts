@@ -8,6 +8,9 @@ import {
   type SqlTimingObserver,
 } from './ownedSqlTiming';
 
+import { readTrustedOrderedPeriodIndexes } from './periodProvenanceIndexes';
+import { sourceSnapshotHealthCandidates } from './sourceSnapshotHealthCandidates';
+
 type References = readonly { kind: string; id: string }[];
 
 export interface TypedSourceDeletionReader {
@@ -34,12 +37,18 @@ export async function readSourceDeletionSnapshot(
   database: SqlDatabase,
   sourceId: string,
   observe?: SqlTimingObserver<OwnedSqlPhase>,
+  options?: { readonly useIndexedHealthCandidates: true },
 ) {
   let references: References = [];
   await timeOwnedSqlTransaction(
     database,
     async (tx) => {
-      references = await listTypedSourceDeletionReferences(tx, sourceId);
+      const id = RecordIdSchema.parse(sourceId);
+      references = await materializeTypedReferences(
+        tx,
+        id,
+        options?.useIndexedHealthCandidates ? await readTrustedOrderedPeriodIndexes(tx) : undefined,
+      );
     },
     observe,
   );
@@ -144,7 +153,14 @@ export async function listTypedSourceDeletionReferences(
   executor: SqlExecutor,
   sourceRecordId: string,
 ): Promise<readonly { kind: string; id: string }[]> {
-  const sourceId = RecordIdSchema.parse(sourceRecordId);
+  return materializeTypedReferences(executor, RecordIdSchema.parse(sourceRecordId));
+}
+
+async function materializeTypedReferences(
+  executor: SqlExecutor,
+  sourceId: string,
+  indexedTables?: ReadonlySet<string>,
+): Promise<References> {
   const references = new Map<string, { kind: string; id: string }>();
   const add = (kind: string, value: unknown) => {
     if (typeof value !== 'string') throw new Error('A deletion reference ID is invalid.');
@@ -172,13 +188,13 @@ export async function listTypedSourceDeletionReferences(
     // The live trigger keeps its original SQL. This snapshot can resolve the recording's
     // target set once per statement instead of joining it again for every record edge.
     const predicate = sourceDeletionDependencyPredicate(kind, table, snapshotSource, true);
+    const select = indexedTables?.has(table)
+      ? sourceSnapshotHealthCandidates(table, predicate)
+      : `SELECT ${table}.id FROM ${table} WHERE ${predicate}`;
     const rows = await executor.execute(
-      // Keep SELECT as the outer statement so SQL adapters can classify this
-      // read and return its rows; the target CTE remains inside the same snapshot.
-      `SELECT id FROM (
-        ${snapshotTranscriptSets}
-        SELECT ${table}.id FROM ${table} WHERE ${predicate}
-      ) AS exact_deletion_snapshot`,
+      // Outer SELECT is required by the storage adapters. The original source
+      // and transcript queries and record-family order do not change.
+      `SELECT id FROM (${snapshotTranscriptSets} ${select}) AS exact_deletion_snapshot`,
       [sourceId],
     );
     for (const row of rows.rows) add(kind, row.id);
