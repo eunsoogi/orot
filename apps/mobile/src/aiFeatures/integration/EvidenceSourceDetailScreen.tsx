@@ -1,6 +1,7 @@
+import { beginSourceOpenTiming } from '../../providers/sourceOpenDiagnostic';
 import { EvidenceRouteScrollView } from './EvidenceRouteScrollView';
 import { useNavigationRouteActions } from '../../navigation/useNavigationRouteActions';
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { StyleSheet, View } from 'react-native';
 import type { EvidenceReference } from '@orot/agent-runtime';
 import { t } from '../../i18n';
@@ -47,6 +48,7 @@ export function EvidenceSourceDetailScreen({
   sourceOwner,
   readColdSource,
 }: EvidenceSourceDetailScreenProps) {
+  const timingRef = useRef<ReturnType<typeof beginSourceOpenTiming>>(undefined);
   const [attempt, setAttempt] = useState(0);
   const [sourceStack, setSourceStack] = useState<readonly EvidenceReference[]>(
     [],
@@ -91,15 +93,22 @@ export function EvidenceSourceDetailScreen({
   useEffect(() => {
     const controller = new AbortController();
     let mounted = true;
+    const timing = beginSourceOpenTiming(
+      controller.signal,
+      'source_open_detail_start',
+    );
+    timingRef.current = timing;
     setState({ status: 'loading' });
-    // A cold alias without its owner-bound reader is unavailable, never a global lookup.
     const reading = sourceOwner
       ? (readColdSource?.(sourceOwner, selectedReference, controller.signal) ??
         Promise.resolve<EvidenceSourceReadResult>({ status: 'unavailable' }))
       : readSource(selectedReference, controller.signal);
     reading
       .then(result => {
-        if (mounted) setState(result);
+        if (!mounted) return;
+        if (result.status === 'available')
+          timing?.mark('source_open_detail_proof');
+        setState(result);
       })
       .catch(() => {
         if (mounted) setState({ status: 'unavailable' });
@@ -123,7 +132,6 @@ export function EvidenceSourceDetailScreen({
     >
       {lane => (
         <>
-          {/* Integrated routes use the shared bottom menu; standalone probes retain local Back. */}
           {navigationRouteKey ? null : (
             <AppButton
               accessibilityLabel={navigationText.back.accessibilityLabel}
@@ -139,7 +147,13 @@ export function EvidenceSourceDetailScreen({
               testID="ai-feature-source-previous"
             />
           ) : null}
-          <Text accessibilityRole="header" style={styles.heading}>
+          <Text
+            accessibilityRole="header"
+            onLayout={() =>
+              timingRef.current?.mark('source_open_detail_header')
+            }
+            style={styles.heading}
+          >
             {t('sourceDisplay.inspect')}
           </Text>
           <Text style={styles.subtitle}>{t('sourceDisplay.citedRecords')}</Text>
@@ -194,6 +208,9 @@ export function EvidenceSourceDetailScreen({
                 routeKey={navigationRouteKey}
                 edgeLane={lane}
                 sections={presentation}
+                onContentLayout={() =>
+                  timingRef.current?.mark('source_open_detail_ready')
+                }
               />
               {state.document.sourceKind === 'generated_artifact' &&
               'analysis' in state.document ? (
