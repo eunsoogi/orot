@@ -53,7 +53,7 @@ index 23505cd4b6b5ffe0973f617fd9acc9728480c32d..8773a336ec924af73ba3eb3dd4cba4de
  
    bool isConsuming = true;
 diff --git a/cpp/OPDatabase.cpp b/cpp/OPDatabase.cpp
-index 23da58eae5dd260b6848ea37b23e86cea66d7a7f..3062fdc7134d7ef9f661739f75c012d4c854a7a2 100644
+index 23da58e..e4dc29b 100644
 --- a/cpp/OPDatabase.cpp
 +++ b/cpp/OPDatabase.cpp
 @@ -1,4 +1,8 @@
@@ -85,7 +85,7 @@ index 23da58eae5dd260b6848ea37b23e86cea66d7a7f..3062fdc7134d7ef9f661739f75c012d4
  
      if (delete_db_name.empty()) {
        throw std::runtime_error("[op-sqlite][delete] delete() is not supported "
-@@ -500,8 +510,19 @@ void OPDatabase::create_jsi_functions(jsi::Runtime &rt,
+@@ -500,15 +510,27 @@ void OPDatabase::create_jsi_functions(jsi::Runtime &rt,
          [this, query, params]() {
  #ifdef OP_SQLITE_USE_LIBSQL
            auto status = opsqlite_libsql_execute(db, query, &params);
@@ -106,7 +106,16 @@ index 23da58eae5dd260b6848ea37b23e86cea66d7a7f..3062fdc7134d7ef9f661739f75c012d4
  #endif
            return status;
          },
-@@ -850,6 +871,9 @@ void OPDatabase::invalidate() {
+         [](jsi::Runtime &rt, std::any prev) {
+           auto status = std::any_cast<BridgeResult>(std::move(prev));
+           return create_js_rows(rt, status);
+-        });
++        },
++        orot_trace_saved_memory_delete(query));
+   }));
+ 
+   js_object.setProperty(rt, "executeWithHostObjects", HFN(this) {
+@@ -850,6 +872,9 @@ void OPDatabase::invalidate() {
  
    // Drain in-flight thread pool work before closing the db handle.
    thread_pool->wait_finished();
@@ -149,6 +158,233 @@ index 9e387a6b8b7545bdadf7fdb2f70aafda4d45b069..52433cfff29dfa6f9cb7930a784d77cf
    std::string db_name;
    std::string delete_db_name;
    std::shared_ptr<jsi::Value> update_hook_callback;
+diff --git a/cpp/OPUtils.cpp b/cpp/OPUtils.cpp
+index f62f7e1..cd0f268 100644
+--- a/cpp/OPUtils.cpp
++++ b/cpp/OPUtils.cpp
+@@ -1,4 +1,5 @@
+ 
++#include <atomic>
+ #include "OPUtils.hpp"
+ #include "OPSmartHostObject.hpp"
+ #include "OPTypes.hpp"
+@@ -371,16 +372,87 @@ void log_to_console(jsi::Runtime &runtime, const std::string &message) {
+   log.call(runtime, jsi::String::createFromUtf8(runtime, message));
+ }
+ 
++namespace {
++std::atomic<OrotSavedMemoryDeleteLog> orot_saved_memory_delete_logger{nullptr};
++
++enum class MemoryDeleteBoundary {
++  queued,
++  workerEntered,
++  sqlReturned,
++  sqlFailed,
++  callbackSchedulingFailed,
++  generationRetired,
++  jsEntered,
++  jsReturned,
++};
++
++void trace_memory_delete(bool active, MemoryDeleteBoundary boundary) noexcept {
++  if (!active) return;
++  const auto logger = orot_saved_memory_delete_logger.load(std::memory_order_relaxed);
++  if (!logger) return;
++  const char *stage;
++  const char *outcome = "completed";
++  switch (boundary) {
++  case MemoryDeleteBoundary::queued:
++    stage = "saved_memory_delete_native_queue";
++    outcome = "started";
++    break;
++  case MemoryDeleteBoundary::workerEntered:
++    stage = "saved_memory_delete_native_sql";
++    outcome = "started";
++    break;
++  case MemoryDeleteBoundary::sqlReturned:
++    stage = "saved_memory_delete_native_sql";
++    break;
++  case MemoryDeleteBoundary::sqlFailed:
++    stage = "saved_memory_delete_native_sql";
++    outcome = "failed";
++    break;
++  case MemoryDeleteBoundary::callbackSchedulingFailed:
++    stage = "saved_memory_delete_native_callback";
++    outcome = "failed";
++    break;
++  case MemoryDeleteBoundary::generationRetired:
++    stage = "saved_memory_delete_native_callback";
++    outcome = "cancelled";
++    break;
++  case MemoryDeleteBoundary::jsEntered:
++    stage = "saved_memory_delete_native_callback";
++    outcome = "started";
++    break;
++  case MemoryDeleteBoundary::jsReturned:
++    stage = "saved_memory_delete_native_callback";
++    break;
++  default:
++    return;
++  }
++  logger(stage, outcome);
++}
++} // namespace
++
++void enable_orot_saved_memory_diagnostics(OrotSavedMemoryDeleteLog logger) {
++  orot_saved_memory_delete_logger.store(logger, std::memory_order_relaxed);
++}
++
++bool orot_trace_saved_memory_delete(const std::string &statement) {
++  return orot_saved_memory_delete_logger.load(std::memory_order_relaxed) &&
++         statement == "DELETE FROM manual_history_entries WHERE id = ?";
++}
++
+ jsi::Value
+ promisify(jsi::Runtime &rt, std::shared_ptr<ThreadPool> thread_pool,
+           std::function<std::any()> lambda,
+           std::function<jsi::Value(jsi::Runtime &rt, std::any result)>
+-              resolve_callback) {
++              resolve_callback,
++          bool trace_saved_memory_delete) {
+   auto promise_constructor = rt.global().getPropertyAsFunction(rt, "Promise");
+ 
+-  auto executor =
+-      HFN3(lambda = std::move(lambda),
+-           resolve_callback = std::move(resolve_callback), thread_pool) {
++  auto executor = jsi::Function::createFromHostFunction(
++      rt, jsi::PropNameID::forAscii(rt, ""), 0,
++      [lambda = std::move(lambda), resolve_callback = std::move(resolve_callback),
++       thread_pool, trace_saved_memory_delete](
++          jsi::Runtime &rt, const jsi::Value &, const jsi::Value *args,
++          size_t) -> jsi::Value {
+     auto resolve = std::make_shared<jsi::Value>(rt, args[0]);
+     auto reject = std::make_shared<jsi::Value>(rt, args[1]);
+ 
+@@ -394,18 +466,28 @@ promisify(jsi::Runtime &rt, std::shared_ptr<ThreadPool> thread_pool,
+ 
+     auto task = [lambda = lambda, resolve_callback = resolve_callback,
+                  resolve = std::move(resolve), reject = std::move(reject),
+-                 invoker, alive]() {
++                 invoker, alive, trace_saved_memory_delete]() {
+       if (invoker == nullptr) {
++        trace_memory_delete(trace_saved_memory_delete,
++                            MemoryDeleteBoundary::generationRetired);
+         return;
+       }
+ 
++      trace_memory_delete(trace_saved_memory_delete,
++                          MemoryDeleteBoundary::workerEntered);
++      bool sql_finished = false;
+       try {
+         std::any result = lambda();
++        sql_finished = true;
++        trace_memory_delete(trace_saved_memory_delete,
++                            MemoryDeleteBoundary::sqlReturned);
+ 
+         // This generation is gone. Posting now would schedule onto a runtime
+         // that is being torn down, where asFunction() sees an already
+         // invalidated PointerValue.
+         if (alive != nullptr && !alive->load()) {
++          trace_memory_delete(trace_saved_memory_delete,
++                              MemoryDeleteBoundary::generationRetired);
+           return;
+         }
+ 
+@@ -413,11 +495,19 @@ promisify(jsi::Runtime &rt, std::shared_ptr<ThreadPool> thread_pool,
+         // so it can be safely disposed on the JS thread
+         invoker->invokeAsync(
+             [result = std::move(result), resolve = resolve, reject = reject,
+-             resolve_callback = resolve_callback](jsi::Runtime &rt) mutable {
++             resolve_callback, trace_saved_memory_delete](jsi::Runtime &rt) mutable {
++              trace_memory_delete(trace_saved_memory_delete,
++                                  MemoryDeleteBoundary::jsEntered);
+               auto jsi_result = resolve_callback(rt, std::move(result));
+               resolve->asObject(rt).asFunction(rt).call(rt, jsi_result);
++              trace_memory_delete(trace_saved_memory_delete,
++                                  MemoryDeleteBoundary::jsReturned);
+             });
+       } catch (std::runtime_error &e) {
++        trace_memory_delete(
++            trace_saved_memory_delete,
++            sql_finished ? MemoryDeleteBoundary::callbackSchedulingFailed
++                         : MemoryDeleteBoundary::sqlFailed);
+         // On Android RN is broken and does not correctly match
+         // runtime_error to the generic exception We have to
+         // explicitly catch it
+@@ -427,32 +517,51 @@ promisify(jsi::Runtime &rt, std::shared_ptr<ThreadPool> thread_pool,
+         // so it can be safely disposed on the JS thread
+         auto what = e.what();
+         if (alive != nullptr && !alive->load()) {
++          trace_memory_delete(trace_saved_memory_delete,
++                              MemoryDeleteBoundary::generationRetired);
+           return;
+         }
+         invoker->invokeAsync([what = std::string(what), resolve = resolve,
+-                              reject = reject](jsi::Runtime &rt) {
++                              reject = reject,
++                              trace_saved_memory_delete](jsi::Runtime &rt) {
++          trace_memory_delete(trace_saved_memory_delete,
++                              MemoryDeleteBoundary::jsEntered);
+           auto errorCtr = rt.global().getPropertyAsFunction(rt, "Error");
+           auto error = errorCtr.callAsConstructor(
+               rt, jsi::String::createFromAscii(rt, what));
+           reject->asObject(rt).asFunction(rt).call(rt, error);
++          trace_memory_delete(trace_saved_memory_delete,
++                              MemoryDeleteBoundary::jsReturned);
+         });
+       } catch (std::exception &exc) {
++        trace_memory_delete(
++            trace_saved_memory_delete,
++            sql_finished ? MemoryDeleteBoundary::callbackSchedulingFailed
++                         : MemoryDeleteBoundary::sqlFailed);
+         auto what = exc.what();
+         if (alive != nullptr && !alive->load()) {
++          trace_memory_delete(trace_saved_memory_delete,
++                              MemoryDeleteBoundary::generationRetired);
+           return;
+         }
+         // resolve is also captured in the invokeAsync lambda
+         // so it can be safely disposed on the JS thread
+         invoker->invokeAsync([what = std::string(what), resolve = resolve,
+-                              reject = reject](jsi::Runtime &rt) {
++                              reject = reject,
++                              trace_saved_memory_delete](jsi::Runtime &rt) {
++          trace_memory_delete(trace_saved_memory_delete,
++                              MemoryDeleteBoundary::jsEntered);
+           auto errorCtr = rt.global().getPropertyAsFunction(rt, "Error");
+           auto error = errorCtr.callAsConstructor(
+               rt, jsi::String::createFromAscii(rt, what));
+           reject->asObject(rt).asFunction(rt).call(rt, error);
++          trace_memory_delete(trace_saved_memory_delete,
++                              MemoryDeleteBoundary::jsReturned);
+         });
+       }
+     };
+ 
++    trace_memory_delete(trace_saved_memory_delete, MemoryDeleteBoundary::queued);
+     thread_pool->queue_work(task);
+ 
+     return jsi::Value(nullptr);
+diff --git a/cpp/OPUtils.hpp b/cpp/OPUtils.hpp
+index 03baada..5c9463f 100644
+--- a/cpp/OPUtils.hpp
++++ b/cpp/OPUtils.hpp
+@@ -50,10 +50,14 @@ bool folder_exists(const std::string &name);
+ bool file_exists(const std::string &path);
+ 
+ void log_to_console(jsi::Runtime &rt, const std::string &message);
++using OrotSavedMemoryDeleteLog = void (*)(const char *, const char *);
++void enable_orot_saved_memory_diagnostics(OrotSavedMemoryDeleteLog logger);
++bool orot_trace_saved_memory_delete(const std::string &statement);
+ 
+ jsi::Value
+ promisify(jsi::Runtime &rt, std::shared_ptr<ThreadPool> thread_pool, std::function<std::any()> lambda,
+           std::function<jsi::Value(jsi::Runtime &rt, std::any result)>
+-              resolve_callback);
++              resolve_callback,
++          bool trace_saved_memory_delete = false);
+ 
+ } // namespace opsqlite
 diff --git a/cpp/OrotCachedExecute.cpp b/cpp/OrotCachedExecute.cpp
 new file mode 100644
 index 0000000000000000000000000000000000000000..55b8ae69a3ed44e4a12cb12a76b64263c78b2f6a
@@ -2455,6 +2691,41 @@ index 88cd811629616b55ed2caee0066007c108fb35d0..b3812bf532abe3ee7a17b9dc487ceaff
          int bCmp = memcmp(pCsr->zLeTerm, zTerm, nCmp);
          if( bCmp<0 || (bCmp==0 && pCsr->nLeTerm<nTerm) ){
            pCsr->bEof = 1;
+diff --git a/ios/OPSQLite.mm b/ios/OPSQLite.mm
+index 23fcd6c..df71277 100644
+--- a/ios/OPSQLite.mm
++++ b/ios/OPSQLite.mm
+@@ -1,5 +1,6 @@
+ #import "OPSQLite.h"
+ #import "../cpp/OPSqlite.hpp"
++#import "../cpp/OPUtils.hpp"
+ #import <React/RCTBridge+Private.h>
+ #import <React/RCTLog.h>
+ #import <React/RCTUtils.h>
+@@ -12,6 +13,11 @@
+ // RCTBridgeProxy implements `-(void *)runtime` directly (see
+ // React/Base/RCTBridgeProxy.mm), so a lightweight duck-typed protocol
+ // dodges the need to import either concrete, architecture-specific class.
++static void logOrotSavedMemoryDelete(const char *stage, const char *outcome) {
++  NSLog(@"OROT_PROVIDER_DIAGNOSTIC layer=native feature=storage stage=%s outcome=%s",
++        stage, outcome);
++}
++
+ @protocol OPSQLiteRuntimeProvider <NSObject>
+ - (void *)runtime;
+ @end
+@@ -120,6 +126,11 @@ RCT_EXPORT_BLOCKING_SYNCHRONOUS_METHOD(install) {
+   NSString *sqlite_vec_path = @"";
+ #endif
+ 
++  opsqlite::enable_orot_saved_memory_diagnostics(
++      [[[NSProcessInfo processInfo] arguments]
++          containsObject:@"-OROT_PROVIDER_DIAGNOSTICS"]
++          ? logOrotSavedMemoryDelete
++          : nullptr);
+   _generationAlive =
+       opsqlite::install(runtime, callInvoker, [documentPath UTF8String],
+                        [sqlite_vec_path UTF8String]);
 diff --git a/op-sqlite.podspec b/op-sqlite.podspec
 index 905d8e957656f7c3b159ac6ba20be7209de3e14b..7239932a1e20221b8e276f761035d975514ddcbc 100644
 --- a/op-sqlite.podspec
