@@ -32,6 +32,7 @@ import type { ConversationA2UINode } from './conversationA2UI';
 import type { ConversationA2UILocalDraft } from './conversationA2UILocalDraft';
 import { versionedConversationA2UITasks } from './conversationA2UIFrameSequence';
 import { withProactiveMemory } from './proactiveConversationMemory';
+import { withReplyPreferenceSpan } from './authoredReplyPreferenceSpan';
 export interface RagConversationMessage {
   readonly role: 'user' | 'assistant';
   readonly content: string;
@@ -39,6 +40,7 @@ export interface RagConversationMessage {
 export interface GroundedRagAnswer {
   readonly answer: string;
   readonly proactiveMemory?: true;
+  readonly replyPreferenceSpan?: string;
   readonly a2uiPresentation?: ConversationA2UINode;
   readonly a2uiLocalDraft?: ConversationA2UILocalDraft;
   /** Omitted legacy values remain grounded; only explicit social/clarifying replies need no sources. */
@@ -231,5 +233,7 @@ export const {
   conversationTaskV21,
   conversationTaskV22,
   conversationTaskV23,
-  ragConversationTask,
+  ragConversationTask: conversationTaskV24,
 } = versionedConversationA2UITasks(conversationTaskV20, allowsOrdinaryA2UI);
+
+export const ragConversationTask = withReplyPreferenceSpan(conversationTaskV24);

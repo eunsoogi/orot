@@ -10,9 +10,10 @@ import {
   decodeConversationArtifact,
   type ConversationArtifact,
 } from '../storage/conversationArtifactCodec';
-import type {
-  ConversationRetentionCandidate,
-  PrepareConversationRetention,
+import {
+  type ConversationRetentionCandidate,
+  type PrepareConversationRetention,
+  withoutLiveMemoryAdvice,
 } from './conversationRetention';
 import { RetainedSourceInvalidError } from '../aiFeatures/integration/retainedSourceError';
 export function createConversationTurnRetention(
@@ -57,8 +58,7 @@ export function createConversationTurnRetention(
   const materialize = (candidate: ConversationRetentionCandidate) => {
     const value = decodeConversationArtifact(
       JSON.stringify({
-        ...candidate,
-        proactiveMemory: undefined, // Model advice is live-only, never retention authority.
+        ...withoutLiveMemoryAdvice(candidate),
         ...opening.openingMetadata(),
         ...delivery.deliveryMetadata(),
         id: input.turnId,

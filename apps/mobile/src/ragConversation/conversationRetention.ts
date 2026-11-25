@@ -18,6 +18,7 @@ export interface ConversationRetentionCandidate {
   /** Local layout only; not provider history or authority. */
   readonly archivedA2UILayout?: ArchivedA2UILayout;
   readonly proactiveMemory?: true;
+  readonly replyPreferenceSpan?: string;
   readonly providerId: string;
   readonly modelId: string;
   /** Preserve the selected exploration mode without persisting route identifiers. */
@@ -41,3 +42,14 @@ export interface ConversationRetentionCandidate {
 export type PrepareConversationRetention = (
   signal: AbortSignal,
 ) => Promise<ConversationRetentionCandidate>;
+
+/** Model memory advice is live-only, never archived or recoverable as authority. */
+export function withoutLiveMemoryAdvice(
+  candidate: ConversationRetentionCandidate,
+) {
+  return {
+    ...candidate,
+    proactiveMemory: undefined,
+    replyPreferenceSpan: undefined,
+  };
+}
