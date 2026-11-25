@@ -83,3 +83,12 @@ native protected data. Dismissal, losing the message or screen, and native
 protection loss close it. No protocol action or provider call is emitted. Older
 task contracts still reject Modal, and the owned archive stores the same
 verified prose as inline layout and cannot reopen a sheet.
+
+
+Fresh v33 ordinary replies additionally accept one Basic Catalog Text
+`variant: "caption"` for the exact last prose paragraph of a single static
+completed surface, after at least one body paragraph. The app uses its
+existing scaled caption style, does not infer a caption from phrasing, and
+keeps the original copy text. Caption is not a heading or action; Modal, Tabs,
+weights and incremental caption updates do not use this variant. The existing
+archive keeps the exact caption paragraph readable as ordinary body text.

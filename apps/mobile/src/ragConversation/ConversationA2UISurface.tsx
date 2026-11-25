@@ -1,3 +1,4 @@
+import { isFinalConversationCaption } from './conversationA2UICaptionTask';
 import { ConversationA2UITabs } from './ConversationA2UITabs';
 import {
   ConversationA2UIModal,
@@ -115,7 +116,11 @@ function SurfaceNode({
     return (
       <AppText
         allowFontScaling
-        style={node.variant === 'caption' ? styles.caption : styles.body}
+        style={
+          node.variant === 'caption' || isFinalConversationCaption(node)
+            ? styles.caption
+            : styles.body
+        }
       >
         {node.text}
       </AppText>
