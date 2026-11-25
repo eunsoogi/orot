@@ -119,7 +119,12 @@ test('shows saved audio review details, plays the recording and segment, and hid
   expect(screen.queryByText('iOS 27')).toBeNull();
 
   await fireEvent.press(screen.getByTestId('recording-playback-button'));
-  expect(playback.playRange).toHaveBeenCalledWith(source.id, 0, 372000);
+  expect(playback.playRange).toHaveBeenCalledWith(
+    source.id,
+    0,
+    372000,
+    expect.any(Symbol),
+  );
   await fireEvent.press(screen.getByTestId('transcript-play-0'));
   expect(transcript.play).toHaveBeenCalledWith(segment);
   await fireEvent.press(screen.getByTestId('transcript-edit-0'));
