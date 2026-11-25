@@ -65,6 +65,7 @@ export function beginOrdinaryConversationMemoryTask(
   const current = () => active && !signal.aborted;
   return {
     discard,
+    hasPendingProposal: () => current() && source !== undefined && proposed,
     attach(identity: OrdinaryConversationCompletionIdentity) {
       if (!current() || source || identity.question !== question) return;
       source = identity;
@@ -108,7 +109,10 @@ export function beginOrdinaryConversationMemoryTask(
           ? { ...source, replyPreferenceSpan: preference }
           : { ...source, authoredRoutineSpan: routine || undefined };
     },
-    async finish(ownerCurrent: () => boolean) {
+    async finish(
+      ownerCurrent: () => boolean,
+      admitSettlement: () => boolean = () => true,
+    ) {
       if (finishing) return false;
       finishing = true;
       const exact = source;
@@ -125,6 +129,8 @@ export function beginOrdinaryConversationMemoryTask(
         if (
           !receipt?.isCurrent() ||
           (receipt.scope ?? 'reply-preferences') !== selectedScope ||
+          !canCommit() ||
+          !admitSettlement() ||
           !canCommit()
         )
           return false;
