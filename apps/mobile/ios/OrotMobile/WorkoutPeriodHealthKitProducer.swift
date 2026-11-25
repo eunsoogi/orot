@@ -3,6 +3,23 @@ import Foundation
 import HealthKit
 import UIKit
 
+/// The opt-in trace accepts only fixed code-owned marks and a monotonic duration.
+enum WorkoutPeriodDiagnostics {
+    enum Mark: String {
+        case requestRejected, bridgeBusy, started, unavailable, empty, available, cancelled, timeout
+        case workoutObjectsRead, associatedParentsRead, quantitiesRead
+    }
+
+    private static let enabled = ProcessInfo.processInfo.arguments.contains("-OROT_PROVIDER_DIAGNOSTICS")
+
+    static func report(_ mark: Mark, since start: DispatchTime? = nil) {
+        guard enabled else { return }
+        let elapsed = start.map { (DispatchTime.now().uptimeNanoseconds - $0.uptimeNanoseconds) / 1_000_000 } ?? 0
+        NSLog("OROT_PROVIDER_DIAGNOSTIC layer=app feature=workout_period stage=%@ elapsed_ms=%ld",
+              mark.rawValue, Int(min(elapsed, 300_000)))
+    }
+}
+
 /// Private local producer; not the React bridge. The caller must first obtain a complete,
 /// stable imported cohort from protected storage. It must re-check that scope before use.
 @MainActor
@@ -43,7 +60,8 @@ enum WorkoutPeriodHealthKitProducer {
         timeZone: TimeZone? = nil,
         isCurrent: @MainActor () -> Bool,
     ) async -> Outcome {
-        let deadline = DispatchTime.now() + .seconds(15)
+        let started = DispatchTime.now()
+        let deadline = started + .seconds(15)
         func active() -> Bool {
             DispatchTime.now() < deadline && !Task.isCancelled && isCurrent() && UIApplication.shared.isProtectedDataAvailable &&
                 UIApplication.shared.applicationState != .background
@@ -62,6 +80,7 @@ enum WorkoutPeriodHealthKitProducer {
                 predicates: [.workout(HKQuery.predicateForObjects(with: allIDs))],
                 sortDescriptors: [], limit: maxWorkouts + 1,
             ).result(for: store)
+            WorkoutPeriodDiagnostics.report(.workoutObjectsRead, since: started)
             guard active(), Set(workouts.map(\.uuid)) == allIDs,
                   workouts.count == completeCohort.count
             else { return .unavailable }
@@ -114,6 +133,7 @@ enum WorkoutPeriodHealthKitProducer {
                 }
                 guard parentCounts.count <= maxParents else { return .unavailable }
             }
+            WorkoutPeriodDiagnostics.report(.associatedParentsRead, since: started)
             guard active() else { return .unavailable }
             guard !parentCounts.isEmpty else { return .emptyVisible }
             var expected = 0
@@ -171,6 +191,7 @@ enum WorkoutPeriodHealthKitProducer {
                     else { return .unavailable }
                 }
             }
+            WorkoutPeriodDiagnostics.report(.quantitiesRead, since: started)
             guard active(), seen == expected else { return .unavailable }
             switch accumulator.finish(completed: true) {
             case .emptyVisible: return .emptyVisible
