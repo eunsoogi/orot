@@ -109,7 +109,9 @@ it('keeps a focused, visibly pending confirmation until the actual deletion sett
   await fireEvent.press(screen.getByTestId('manual-history-delete'));
   await fireEvent.press(screen.getByTestId('manual-history-confirm-delete'));
   expect(
-    screen.getByTestId('manual-history-confirm-delete-progress'),
+    screen.getByTestId('manual-history-confirm-delete-progress', {
+      includeHiddenElements: true,
+    }),
   ).toBeTruthy();
   expect(
     screen.getByTestId('manual-history-confirm-delete').props
