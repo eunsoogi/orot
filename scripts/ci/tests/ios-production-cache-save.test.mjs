@@ -4,8 +4,18 @@ import { expandedActionSteps } from './fixtures/ios-workflow.mjs';
 
 test('only verified production outputs are cached before later integration or UI failures', () => {
   const steps = expandedActionSteps('.github/actions/ios-production-validation/action.yml');
-  const restores = steps.filter((step) => step.uses?.startsWith('actions/cache/restore@'));
-  const saves = steps.filter((step) => step.uses?.startsWith('actions/cache/save@'));
+  // The raw upstream archive cache is independently verified before build, not a production output.
+  const onnxPaths = '${{ steps.onnx_archive_paths.outputs.paths }}';
+  const isOnnxArchive = (step) =>
+    step.with?.path === onnxPaths &&
+    (step.id === 'onnx_archive_restore' ||
+      step.with?.key === '${{ steps.onnx_archive_restore.outputs.cache-primary-key }}');
+  const restores = steps.filter(
+    (step) => step.uses?.startsWith('actions/cache/restore@') && !isOnnxArchive(step),
+  );
+  const saves = steps.filter(
+    (step) => step.uses?.startsWith('actions/cache/save@') && !isOnnxArchive(step),
+  );
   assert.equal(
     restores.length,
     1,

@@ -1,0 +1,34 @@
+name: Reuse verified ONNX SwiftPM archives
+description: Restore only the two original HTTPS artifacts and verify their pinned bytes before Xcode resolves them.
+runs:
+  using: composite
+  steps:
+    - name: Identify exact SwiftPM cache entries
+      id: onnx_archive_paths
+      shell: bash
+      run: node scripts/ci/verify-onnx-artifact-cache.mjs paths "$GITHUB_OUTPUT"
+    - name: Restore exact pinned archives
+      id: onnx_archive_restore
+      uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9
+      with:
+        path: ${{ steps.onnx_archive_paths.outputs.paths }}
+        key: orot-onnx-swiftpm-archives-v1-${{ hashFiles('vendor/onnxruntime-swift-package-manager/Package.swift') }}
+    - name: Resolve original binary artifacts on cache miss
+      if: steps.onnx_archive_restore.outputs.cache-hit != 'true'
+      shell: bash
+      # Use the upstream SwiftPM URLs and checksums with normal TLS. A real
+      # upstream outage on a cold runner must still fail; never repack an archive.
+      run: |
+        set -euo pipefail
+        scratch="$(mktemp -d "$RUNNER_TEMP/orot-onnx-resolve.XXXXXX")"
+        scripts/ci/run-command.sh ios-onnx-resolve artifacts/ios-focus/onnx-resolver.log -- node scripts/ci/fail-on-warning.mjs -- xcrun swift package \
+          --package-path vendor/onnxruntime-swift-package-manager --scratch-path "$scratch" resolve
+    - name: Verify both original archives before build or cache save
+      shell: bash
+      run: node scripts/ci/verify-onnx-artifact-cache.mjs verify
+    - name: Save only independently verified archives
+      if: steps.onnx_archive_restore.outputs.cache-hit != 'true' && github.ref == 'refs/heads/main'
+      uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9
+      with:
+        path: ${{ steps.onnx_archive_paths.outputs.paths }}
+        key: ${{ steps.onnx_archive_restore.outputs.cache-primary-key }}
