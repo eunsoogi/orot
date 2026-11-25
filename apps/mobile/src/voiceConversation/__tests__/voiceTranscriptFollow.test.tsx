@@ -1,5 +1,5 @@
 import { fireEvent, render, screen } from '@testing-library/react-native';
-import { ScrollView } from 'react-native';
+import { AccessibilityInfo, ScrollView } from 'react-native';
 import { VoiceTranscriptViewport } from '../VoiceTranscriptViewport';
 
 const lines = [
@@ -14,6 +14,11 @@ const scroll = (y: number, height = 100, content = 300) =>
       layoutMeasurement: { width: 300, height },
     },
   });
+beforeEach(() => {
+  jest
+    .spyOn(AccessibilityInfo, 'isReduceMotionEnabled')
+    .mockResolvedValue(true);
+});
 afterEach(() => jest.restoreAllMocks());
 
 test('new speech geometry does not turn a followed transcript into reader scroll-back', async () => {
