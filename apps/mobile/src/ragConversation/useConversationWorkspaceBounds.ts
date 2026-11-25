@@ -6,6 +6,7 @@ import { useNavigationContentFrame } from '../navigation/navigationContentFrame'
 import { observeNavigationTest } from '../navigation/navigationTestObservation';
 import { useNavigationOcclusion } from '../navigation/useNavigationContentInset';
 import { conversationWorkspaceOcclusion } from './conversationWorkspaceOcclusion';
+import { clipConversationToKeyboard } from './conversationKeyboardClip';
 import { conversationHingeLayout } from './conversationHingeLayout';
 import { conversationProfileVisualLift } from './conversationWorkspaceLayout';
 
@@ -145,11 +146,10 @@ export function useConversationWorkspaceBounds(routeKey?: string) {
         width: Math.min(fallback?.width ?? width, limits.width),
         height: Math.min(fallback?.height ?? height, limits.height),
       };
-  const plan = conversationHingeLayout(
-    geometry,
+  const plan = clipConversationToKeyboard(
+    conversationHingeLayout(geometry, hostBounds, fontScale, shared !== null),
     hostBounds,
-    fontScale,
-    shared !== null,
+    geometry?.dockedKeyboardFrame,
   );
   const workspaceOcclusion = conversationWorkspaceOcclusion(
     occlusion,

@@ -23,6 +23,8 @@ extension RootNavigationUITests {
         let keyboard = app.keyboards.firstMatch
         XCTAssertTrue(UITestConditions.exists(keyboard), app.debugDescription)
         XCTAssertGreaterThan(keyboard.frame.height, 100)
+        XCTAssertTrue(input.isHittable, "The keyboard must not obscure the focused composer")
+        XCTAssertLessThanOrEqual(input.frame.maxY, keyboard.frame.minY + 1)
         try NavigationUITestConditions.assertSharedViewport(app, keyboard: keyboard, testCase: self)
         for identifier in ["navigation-back"] {
             let action = try NavigationUITestConditions.navigationAction(app, identifier)

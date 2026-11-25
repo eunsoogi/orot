@@ -1,3 +1,4 @@
+import React
 import UIKit
 
 extension NavigationGlassSurfaceView {
@@ -79,5 +80,44 @@ extension NavigationGlassSurfaceView {
         guard let parent = controls.superview else { return }
         parent.setNeedsLayout()
         parent.layoutIfNeeded()
+    }
+}
+
+@objc(NavigationGlassViewManager)
+final class NavigationGlassViewManager: RCTViewManager {
+    override static func requiresMainQueueSetup() -> Bool {
+        true
+    }
+
+    override func view() -> UIView! {
+        NavigationGlassSurfaceView()
+    }
+}
+
+/// Sends only physical control geometry; a sensor ignores notifications from other windows.
+enum NavigationSurfaceGeometry {
+    static func publish(_ view: UIView, side: String, actions: [NavigationActionDescriptor]) {
+        #if OROT_TESTS
+            // Record requests separately so a missing callback differs from a guarded-out publication.
+            TestLifecycleObservation.record("navigation-frame-publication-request", fields: ["side": side, "attached": view.window != nil, "hidden": view.isHidden])
+        #endif
+        // Primary-only bottom actions do not replace the side navigation's measured frame.
+        guard actions.contains(where: { $0.rootTab || $0.id == "back" || $0.id == "home" }) else { return }
+        var ancestor: UIView? = view
+        while let current = ancestor {
+            guard !current.isHidden, current.alpha > 0.01 else { return }
+            ancestor = current.superview
+        }
+        view.layoutIfNeeded()
+        guard !view.isHidden, let window = view.window, !view.bounds.isEmpty else { return }
+        let frame = view.convert(view.bounds, to: window)
+        #if OROT_TESTS
+            TestLifecycleObservation.record("navigation-frame-published", fields: ["side": side, "frame": ["x": Double(frame.minX), "y": Double(frame.minY), "width": Double(frame.width), "height": Double(frame.height)]])
+        #endif
+        NotificationCenter.default.post(name: Notification.Name("OrotNavigationSurfaceGeometryDidChange"),
+                                        object: view, userInfo: ["side": side, "frame": [
+                                            "x": Double(frame.minX), "y": Double(frame.minY),
+                                            "width": Double(frame.width), "height": Double(frame.height),
+                                        ]])
     }
 }
