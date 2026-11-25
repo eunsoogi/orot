@@ -131,6 +131,7 @@ export function HistoryMemoryDetail({
             </Text>
             <ManualHistoryEntryDetails
               readingLayout
+              provenanceNote={t('manualHistory.provenance')}
               entry={record}
               history={history}
               deleting={saving}
@@ -147,7 +148,9 @@ export function HistoryMemoryDetail({
             ) : null}
           </>
         ))}
-      <Text style={styles.provenance}>{t('manualHistory.provenance')}</Text>
+      {(!repository || editing) && (
+        <Text style={styles.provenance}>{t('manualHistory.provenance')}</Text>
+      )}
     </View>
   );
 }
@@ -162,9 +165,9 @@ async function openHistoryRepository() {
 const styles = StyleSheet.create({
   content: { gap: 14, minWidth: 0 },
   title: {
-    color: appColors.text,
-    fontSize: 20,
-    lineHeight: 28,
+    color: appColors.secondary,
+    fontSize: 15,
+    lineHeight: 22,
     fontWeight: '600',
   },
   provenance: { color: appColors.secondary, fontSize: 14, lineHeight: 20 },

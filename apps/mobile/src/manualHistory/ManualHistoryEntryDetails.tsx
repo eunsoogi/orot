@@ -1,10 +1,10 @@
 import { useState } from 'react';
-import { StyleSheet, View } from 'react-native';
+import { View } from 'react-native';
 import { AppButton as Button } from '../layout/AppButton';
 import { AppText as Text } from '../layout/AppText';
-import { appColors } from '../layout/appColors';
 import { t } from '../i18n';
 import type { ManualHistoryScreenRecord } from './types';
+import { manualHistoryEntryDetailsStyles as styles } from './manualHistoryEntryDetailsStyles';
 
 interface ManualHistoryEntryDetailsProps {
   entry: ManualHistoryScreenRecord;
@@ -14,6 +14,7 @@ interface ManualHistoryEntryDetailsProps {
   onDelete: () => void | Promise<void>;
   deleting: boolean;
   readingLayout?: boolean;
+  provenanceNote?: string;
 }
 
 function effectiveDateLabel(
@@ -48,6 +49,7 @@ export default function ManualHistoryEntryDetails({
   onDelete,
   deleting,
   readingLayout = false,
+  provenanceNote,
 }: ManualHistoryEntryDetailsProps) {
   const [confirmDelete, setConfirmDelete] = useState(false);
   return (
@@ -55,26 +57,38 @@ export default function ManualHistoryEntryDetails({
       style={readingLayout ? styles.reading : styles.container}
       testID="manual-history-detail"
     >
-      <Text accessibilityRole="header" style={styles.sectionTitle}>
-        {t('manualHistory.form.detailsLabel')}
-      </Text>
       {readingLayout ? (
-        <Text style={styles.readingBody}>{entry.details}</Text>
-      ) : null}
-      <Text
-        style={readingLayout && styles.readingMetadata}
-        testID="manual-history-date-detail"
-      >
-        {effectiveDateLabel(entry.effectiveDate)}
-      </Text>
-      {!readingLayout ? <Text>{entry.details}</Text> : null}
-      {history.length <= 1 ? (
+        <Text
+          selectable
+          style={styles.readingBody}
+          testID="history-memory-body"
+        >
+          {entry.details}
+        </Text>
+      ) : (
+        <Text accessibilityRole="header" style={styles.sectionTitle}>
+          {t('manualHistory.form.detailsLabel')}
+        </Text>
+      )}
+      <View style={readingLayout ? styles.readingFacts : styles.standardFacts}>
         <Text
           style={readingLayout && styles.readingMetadata}
-          testID="manual-history-current-status"
+          testID="manual-history-date-detail"
         >
-          {t('manualHistory.status', { review: reviewLabel(entry) })}
+          {effectiveDateLabel(entry.effectiveDate)}
         </Text>
+        {!readingLayout ? <Text>{entry.details}</Text> : null}
+        {history.length <= 1 ? (
+          <Text
+            style={readingLayout && styles.readingMetadata}
+            testID="manual-history-current-status"
+          >
+            {t('manualHistory.status', { review: reviewLabel(entry) })}
+          </Text>
+        ) : null}
+      </View>
+      {readingLayout && provenanceNote ? (
+        <Text style={styles.readingMetadata}>{provenanceNote}</Text>
       ) : null}
       {history.length > 1 ? (
         <View style={styles.history} testID="manual-history-correction-history">
@@ -129,17 +143,21 @@ export default function ManualHistoryEntryDetails({
         style={readingLayout ? styles.readingActions : styles.standardActions}
         testID={readingLayout ? 'history-memory-actions' : undefined}
       >
-        <Button
-          variant={readingLayout ? 'text' : 'secondary'}
-          size={readingLayout ? 'compact' : undefined}
-          disabled={deleting}
-          onPress={onCorrect}
-          testID="manual-history-correct"
-          title={t('manualHistory.detail.correct')}
-        />
+        {/* Keep unrelated controls out of the confirmation and its accessibility order. */}
+        {(!readingLayout || !confirmDelete) && (
+          <Button
+            variant={readingLayout ? 'text' : 'secondary'}
+            size={readingLayout ? 'compact' : undefined}
+            disabled={deleting}
+            onPress={onCorrect}
+            testID="manual-history-correct"
+            title={t('manualHistory.detail.correct')}
+          />
+        )}
         {!confirmDelete ? (
           <Button
             variant={readingLayout ? 'destructive' : 'secondary'}
+            style={readingLayout ? styles.readingDestructive : undefined}
             size={readingLayout ? 'compact' : undefined}
             disabled={deleting}
             onPress={() => setConfirmDelete(true)}
@@ -148,29 +166,46 @@ export default function ManualHistoryEntryDetails({
           />
         ) : (
           <View
-            style={[
-              styles.confirmation,
-              readingLayout && styles.readingConfirmation,
-            ]}
+            style={
+              readingLayout ? styles.readingConfirmation : styles.confirmation
+            }
             testID="manual-history-delete-confirmation"
           >
-            <Text>{t('manualHistory.detail.confirmDelete')}</Text>
-            <Button
-              variant={readingLayout ? 'destructive' : 'secondary'}
-              size={readingLayout ? 'compact' : undefined}
-              disabled={deleting}
-              onPress={onDelete}
-              testID="manual-history-confirm-delete"
-              title={t('manualHistory.detail.confirmDeleteAction')}
-            />
-            <Button
-              variant={readingLayout ? 'text' : 'secondary'}
-              size={readingLayout ? 'compact' : undefined}
-              disabled={deleting}
-              onPress={() => setConfirmDelete(false)}
-              testID="manual-history-cancel-delete"
-              title={t('manualHistory.detail.cancelDelete')}
-            />
+            <Text
+              accessibilityLiveRegion={readingLayout ? 'polite' : undefined}
+              style={readingLayout && styles.confirmationPrompt}
+            >
+              {t('manualHistory.detail.confirmDelete')}
+            </Text>
+            <View
+              style={
+                readingLayout
+                  ? styles.readingActions
+                  : styles.confirmationActions
+              }
+            >
+              <Button
+                variant={readingLayout ? 'destructive' : 'secondary'}
+                style={readingLayout ? styles.readingDestructive : undefined}
+                size={readingLayout ? 'compact' : undefined}
+                disabled={deleting}
+                busy={readingLayout && deleting}
+                onPress={() => {
+                  // The screen owns progress until the deletion settles.
+                  onDelete();
+                }}
+                testID="manual-history-confirm-delete"
+                title={t('manualHistory.detail.confirmDeleteAction')}
+              />
+              <Button
+                variant={readingLayout ? 'cancel' : 'secondary'}
+                size={readingLayout ? 'compact' : undefined}
+                disabled={deleting}
+                onPress={() => setConfirmDelete(false)}
+                testID="manual-history-cancel-delete"
+                title={t('manualHistory.detail.cancelDelete')}
+              />
+            </View>
           </View>
         )}
         {onClose ? (
@@ -187,40 +222,3 @@ export default function ManualHistoryEntryDetails({
     </View>
   );
 }
-
-const styles = StyleSheet.create({
-  container: {
-    backgroundColor: appColors.surface,
-    borderTopColor: appColors.border,
-    borderTopWidth: StyleSheet.hairlineWidth,
-    gap: 16,
-    paddingTop: 16,
-  },
-  reading: { gap: 12, minWidth: 0 },
-  readingBody: { color: appColors.text, fontSize: 18, lineHeight: 29 },
-  readingMetadata: { color: appColors.secondary, fontSize: 14, lineHeight: 20 },
-  readingVersion: { gap: 6, paddingVertical: 6 },
-  standardActions: { gap: 16 },
-  readingActions: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 8,
-    alignItems: 'center',
-  },
-  readingConfirmation: { flexBasis: '100%' },
-  sectionTitle: { color: appColors.text, fontSize: 18, fontWeight: '600' },
-  entryTitle: { color: appColors.text, fontSize: 18, fontWeight: '600' },
-  history: { gap: 8, paddingTop: 8 },
-  version: {
-    borderLeftColor: appColors.border,
-    borderLeftWidth: 2,
-    gap: 6,
-    paddingLeft: 10,
-  },
-  confirmation: {
-    backgroundColor: appColors.warningSurface,
-    borderRadius: 8,
-    gap: 8,
-    padding: 12,
-  },
-});

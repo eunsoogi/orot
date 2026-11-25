@@ -65,6 +65,61 @@ it('requires explicit confirmation and supports cancelling deletion', async () =
   expect(props.repository.delete).toHaveBeenCalledWith(record.id);
   expect(props.onChanged).toHaveBeenCalledWith('manual-history:' + record.id);
 });
+it('prioritizes selectable conversation-memory text and shows a focused confirmation', async () => {
+  AppState.currentState = 'active';
+  const props = setup();
+  const body = '대화에서 보관한 합성 본문입니다. '.repeat(18).trim();
+  const original = { ...record, details: body };
+  jest
+    .mocked(openLocalManualHistoryRepository)
+    .mockResolvedValue(props.repository);
+  props.repository.history.mockResolvedValue([original]);
+  const load = async () => unifySavedMemories([], [original]);
+  const memoryId = 'manual-history:' + original.id;
+  await render(<SavedMemoryDetail memoryId={memoryId} load={load} />);
+  const content = await screen.findByTestId('history-memory-body');
+  expect(content.props.selectable).toBe(true);
+  expect(content.props.children).toBe(body);
+  expect(screen.queryByText('상세 내용')).toBeNull();
+  expect(screen.getByTestId('manual-history-date-detail')).toBeTruthy();
+  expect(screen.getByTestId('manual-history-current-status')).toBeTruthy();
+  await fireEvent.press(screen.getByTestId('manual-history-delete'));
+  expect(screen.getByTestId('manual-history-delete-confirmation')).toBeTruthy();
+  expect(screen.queryByTestId('manual-history-correct')).toBeNull();
+  expect(screen.getByTestId('history-memory-body').props.children).toBe(body);
+  expect(props.repository.delete).not.toHaveBeenCalled();
+  await fireEvent.press(screen.getByTestId('manual-history-cancel-delete'));
+  expect(screen.getByTestId('manual-history-correct')).toBeTruthy();
+  expect(props.repository.delete).not.toHaveBeenCalled();
+});
+
+it('keeps a focused, visibly pending confirmation until the actual deletion settles', async () => {
+  const props = setup();
+  let finish!: () => void;
+  props.repository.delete.mockImplementation(
+    () =>
+      new Promise(resolve => {
+        finish = () => resolve(true);
+      }),
+  );
+  await render(<HistoryMemoryDetail record={record} {...props} />);
+  await fireEvent.press(screen.getByTestId('manual-history-delete'));
+  await fireEvent.press(screen.getByTestId('manual-history-confirm-delete'));
+  expect(
+    screen.getByTestId('manual-history-confirm-delete-progress', {
+      includeHiddenElements: true,
+    }),
+  ).toBeTruthy();
+  expect(
+    screen.getByTestId('manual-history-confirm-delete').props
+      .accessibilityState,
+  ).toEqual(expect.objectContaining({ busy: true, disabled: true }));
+  expect(props.onChanged).not.toHaveBeenCalled();
+  await act(async () => finish());
+  expect(props.repository.delete).toHaveBeenCalledTimes(1);
+  expect(props.onChanged).toHaveBeenCalledWith('manual-history:' + record.id);
+});
+
 it('corrects the existing original without creating and retains unknown date', async () => {
   const props = setup();
   await render(<HistoryMemoryDetail record={record} {...props} />);
