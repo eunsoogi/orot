@@ -2,11 +2,8 @@ import { useLayoutEffect, useState } from 'react';
 import { createRecordRepository } from '@orot/storage';
 import { conversationExecutionNative } from '../../ragConversation/conversationExecutionNative';
 import { subscribeWorkoutImportCommitted } from '../../healthkit/workoutImportEvents';
-import { loadWorkoutPeriodCohort } from '../../healthkit/workoutPeriodCohort';
-import {
-  readWorkoutPeriodHeartRate,
-  type WorkoutPeriodResult,
-} from '../../healthkit/workoutPeriodNativeRead';
+import { readOwnedWorkoutPeriod } from '../../healthkit/ownedWorkoutPeriodRead';
+import type { WorkoutPeriodResult } from '../../healthkit/workoutPeriodNativeRead';
 import {
   subscribeLocalDataClear,
   subscribeLocalSourceDeletion,
@@ -145,20 +142,13 @@ export function useOverviewWorkoutPeriodHeartRate(active: boolean): State {
         target.usable = admitted;
         if (!admitted()) return;
         const period = workoutPeriod(now);
-        const cohort = await loadWorkoutPeriodCohort(
-          createRecordRepository(database),
-          period,
-          admitted,
-        );
-        if (!cohort || !admitted() || !(await confirm(target)) || !admitted())
-          return;
-        const result = await readWorkoutPeriodHeartRate(
-          period,
-          cohort,
-          target.abort.signal,
-        );
-        if (!(await confirm(target)) || !admitted() || phase() !== 'active')
-          return;
+        const { result } = await readOwnedWorkoutPeriod(period, {
+          repository: createRecordRepository(database),
+          signal: target.abort.signal,
+          current: admitted,
+          confirm: () => confirm(target),
+        });
+        if (!result || !admitted() || phase() !== 'active') return;
         target.settled =
           result.status === 'available' || result.status === 'emptyVisible';
         if (target.settled) {
