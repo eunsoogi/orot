@@ -37,6 +37,7 @@ type ReadOwner = {
   interrupted?: boolean;
   reconfirming?: boolean;
   usable?: () => boolean;
+  recover?: () => Promise<void>;
 };
 
 declare const require: (
@@ -146,7 +147,7 @@ export function useOverviewWorkoutPeriodHeartRate(active: boolean): State {
           },
           admitNativeCohort: cohortFence.admit,
         });
-        if (!admitted()) {
+        target.recover = async () => {
           const cohort = cohortFence.dispatched() ?? observedCohort;
           if (
             cohort &&
@@ -161,20 +162,18 @@ export function useOverviewWorkoutPeriodHeartRate(active: boolean): State {
             dropTask(false);
             start(false, { database, period, cohort });
           }
-          return;
-        }
+        };
+        if (!admitted()) return await target.recover();
         if (!result || phase() !== 'active') return;
         target.settled =
           result.status === 'available' || result.status === 'emptyVisible';
         if (target.settled) {
           setState(result);
         } else if (canRecover && target.interrupted) {
-          // Resume can coalesce with the pending native call.
           dropTask(false);
           start(false);
         }
       } catch {
-        // An incomplete or rejected protected read never publishes an average.
       } finally {
         if (current(target) && !target.settled) dropTask();
       }
@@ -198,15 +197,16 @@ export function useOverviewWorkoutPeriodHeartRate(active: boolean): State {
       if (target.settled && wasInactive && !target.reconfirming) {
         target.reconfirming = true;
         confirm(target)
-          .then(
-            valid => {
-              if (current(target) && (!valid || target.usable?.() !== true))
-                retire();
-            },
-            () => {
-              if (current(target)) retire();
-            },
-          )
+          .then(async valid => {
+            if (valid && current(target) && !target.usable?.()) {
+              setState(loading);
+              await target.recover?.();
+            }
+            if (current(target) && (!valid || !target.usable?.())) retire();
+          })
+          .catch(() => {
+            if (current(target)) retire();
+          })
           .finally(() => {
             target.reconfirming = false;
           });
