@@ -42,13 +42,13 @@ const frames = [
   }),
 ];
 
-const unsafe = frames.map((frame, index) =>
+const unsafe = frames.map((originalFrame, index) =>
   index === 2
-    ? frame.replace(
+    ? originalFrame.replace(
         '"component":"CheckBox"',
         '"component":"CheckBox","action":{"event":{"name":"save"}}',
       )
-    : frame,
+    : originalFrame,
 );
 
 test.each([
