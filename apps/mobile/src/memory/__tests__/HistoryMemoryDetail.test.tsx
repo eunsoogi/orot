@@ -55,6 +55,7 @@ it('shows the original uncertainty and correction history without any create act
 it('requires explicit confirmation and supports cancelling deletion', async () => {
   const props = setup();
   await render(<HistoryMemoryDetail record={record} {...props} />);
+  expect(screen.getByTestId('history-memory-actions')).toBeTruthy();
   await fireEvent.press(screen.getByTestId('manual-history-delete'));
   expect(props.repository.delete).not.toHaveBeenCalled();
   await fireEvent.press(screen.getByTestId('manual-history-cancel-delete'));

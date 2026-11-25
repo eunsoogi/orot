@@ -54,15 +54,11 @@ export function SavedMemoryDetail({
   );
   return (
     <View
-      style={[
-        styles.section,
-        styles.detail,
-        row && !isHistoryMemory(row) ? styles.readingDetail : undefined,
-      ]}
+      style={[styles.section, styles.detail, styles.readingDetail]}
       testID="saved-memory-detail"
     >
       {(!row || !isHistoryMemory(row)) && <ReadOnlyMemoryNavigation />}
-      <Text accessibilityRole="header" style={styles.title}>
+      <Text accessibilityRole="header" style={styles.detailTitle}>
         {t('savedMemory.detailTitle')}
       </Text>
       {state === 'loading' && (
