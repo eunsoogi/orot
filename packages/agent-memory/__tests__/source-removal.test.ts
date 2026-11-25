@@ -162,11 +162,21 @@ describe('agent memory source removal', () => {
     releasePrior();
     await prior;
     await expect(deletion).resolves.toEqual({ sourceDeleted: true, memoriesDeleted: 1 });
-    expect(observations).toEqual([
+    expect(observations.slice(0, 4)).toEqual([
       ['queue', 'begin', 0],
       ['queue', 'success', 5_000],
       ['provenance', 'begin', 5_000],
       ['provenance', 'success', 5_040],
+    ]);
+    expect(observations.slice(4).map(([stage, event]) => [stage, event])).toEqual([
+      ['engine', 'begin'],
+      ['engine', 'success'],
+      ['forget', 'begin'],
+      ['forget', 'success'],
+      ['fences', 'begin'],
+      ['fences', 'success'],
+      ['commit', 'begin'],
+      ['commit', 'success'],
     ]);
     await memory.close();
   });
