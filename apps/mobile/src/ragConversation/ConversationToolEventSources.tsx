@@ -1,3 +1,4 @@
+import { beginSourceOpenTiming } from '../providers/sourceOpenDiagnostic';
 import {
   PublicToolSourceSheet,
   type PublicToolSourceChoice,
@@ -51,6 +52,7 @@ export function ConversationToolEventSources({
   const close = () => {
     publicOperation.current?.abort();
     publicOperation.current = null;
+    sheet?.timing?.retire();
     if (sheet)
       setResolving(current => {
         const next = new Set(current);
@@ -95,14 +97,20 @@ export function ConversationToolEventSources({
     const key = sourceKey(source);
     const controller = new AbortController();
     const external = source.sourceKind === 'external_medical';
+    if (external && publicOperation.current) return;
+    const timing = !selectedWebSource
+      ? beginSourceOpenTiming(
+          controller.signal,
+          external ? 'source_open_public_tap' : 'source_open_local_tap',
+        )
+      : undefined;
     if (external) {
       // A second press cannot start another lookup before React disables the chip.
-      if (publicOperation.current) return;
       publicOperation.current = controller;
       setSheet(current =>
         selectedWebSource && current?.key === key
           ? { ...current, opening: true }
-          : { key },
+          : { key, timing },
       );
     }
     activeControllers.current.add(controller);
@@ -125,6 +133,7 @@ export function ConversationToolEventSources({
         const choices = verifiedPublicToolSourceChoices(verified);
         if (!choices?.length)
           throw new Error('Public source validation failed.');
+        timing?.mark('source_open_public_proof');
         if (selectedWebSource) {
           const current = choices.find(
             choice =>
@@ -134,13 +143,20 @@ export function ConversationToolEventSources({
           if (!current) throw new Error('Public source changed.');
           await Linking.openURL(current.url);
         }
-        if (!controller.signal.aborted) setSheet({ key, choices });
+        if (!controller.signal.aborted)
+          setSheet(current => ({ key, choices, timing: current?.timing }));
       } else {
+        timing?.mark('source_open_local_admission');
         onOpenSource(verified);
       }
     } catch {
       if (!controller.signal.aborted) {
-        if (external) setSheet({ key, failed: true });
+        if (external)
+          setSheet(current => ({
+            key,
+            failed: true,
+            timing: current?.timing,
+          }));
         else {
           setErrors(current => new Set(current).add(key));
           onLinkError();
@@ -215,6 +231,8 @@ export function ConversationToolEventSources({
         <PublicToolSourceSheet
           state={sheet}
           destination={sourceKindLabel('external_medical', event.toolName)}
+          // Public web already includes “source” in its accessible name.
+          showSourceSuffix={event.toolName !== 'public-web-search'}
           close={close}
           open={choice => {
             const source = event.sources.find(

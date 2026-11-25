@@ -7,6 +7,7 @@ import { defaultVisitQuestionRouteOperations as defaults } from '../aiFeatures/i
 import { useAppointmentReminderRuntime } from '../appointmentReminders/AppointmentReminderContext';
 import { nextVisitQuestionsCopy as copy } from '../nextVisitQuestions/copy';
 import { isEligibleNextVisit } from './nextAppointment';
+import { samePreparedVisit } from '../aiFeatures/integration/visitRoutePreparation';
 
 /** This is only an entry eligibility check. The generator still performs its original current-query, fingerprint and consent validation. */
 export function canGenerateOverviewVisit(
@@ -32,18 +33,22 @@ function OverviewVisitQuestionsRoute(props: NextVisitQuestionsRouteProps) {
   const operations = useMemo(() => {
     if (!expectedId) return undefined;
     const isCurrent = async (appointment: Appointment) => {
-      const current = await defaults.loadAppointment(new Date().toISOString());
-      return (
-        appointment.id === expectedId &&
-        current?.id === expectedId &&
-        canGenerateOverviewVisit(current)
+      if (appointment.id !== expectedId) return false;
+      const now = new Date().toISOString();
+      const current = await defaults.loadAppointment(now, expectedId);
+      return Boolean(
+        current &&
+        canGenerateOverviewVisit(current, Date.parse(now)) &&
+        samePreparedVisit(current, appointment),
       );
     };
     return {
       ...defaults,
       async loadAppointment(now: string) {
-        const current = await defaults.loadAppointment(now);
-        return current?.id === expectedId && canGenerateOverviewVisit(current)
+        // Opening another visit must not move the already-selected route target.
+        const current = await defaults.loadAppointment(now, expectedId);
+        return current?.id === expectedId &&
+          canGenerateOverviewVisit(current, Date.parse(now))
           ? current
           : null;
       },

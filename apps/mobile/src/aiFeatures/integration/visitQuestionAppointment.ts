@@ -7,8 +7,9 @@ export async function loadVisitQuestionAppointment(
   now: string,
   appointmentId?: string,
 ): Promise<Appointment | null> {
+  // Load the encrypted-store adapter only when a visit request starts.
   const { openLocalRecordQueryService } =
-    await import('../../agent/localRecordQuery');
+    require('../../agent/localRecordQuery') as typeof import('../../agent/localRecordQuery');
   const service = await openLocalRecordQueryService();
   const query =
     appointmentId === undefined
@@ -16,7 +17,7 @@ export async function loadVisitQuestionAppointment(
       : selectedVisitQuery(
           service,
           await (
-            await import('../../storage/secureDatabase')
+            require('../../storage/secureDatabase') as typeof import('../../storage/secureDatabase')
           ).openLocalStorage(),
           appointmentId,
         );

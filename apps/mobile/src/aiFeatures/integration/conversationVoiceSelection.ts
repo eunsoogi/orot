@@ -1,3 +1,4 @@
+import { APPLE_PROVIDER_ID } from '@orot/provider-apple';
 import { conversationReceiptSelection } from './conversationReceiptSelection';
 import type { RagConversationObserver } from '../../ragConversation/service';
 import type { requireSelectedAi } from './provider';
@@ -26,6 +27,11 @@ export async function resolveConversationSelection(
   if (owner && !(await owner()))
     throw new Error('The conversation owner changed before consent.');
   const selected = conversationReceiptSelection(ready, observer);
+  if (
+    observer?.protectedLocalInput &&
+    (selected.provider.id !== APPLE_PROVIDER_ID || selected.remoteProcessing)
+  )
+    return null;
   return voiceSelectionMatches(observer, selected) ? selected : null;
 }
 

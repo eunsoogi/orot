@@ -7,7 +7,6 @@ final class RealtimeVoiceCall {
     enum Failure: Error { case unavailable, stopped }
     // Module-internal state is shared only with the lifecycle and event extensions.
     let audio: RealtimeAudioPort
-    let connectingCue: RealtimeConnectingCuePort?
     let socket: RealtimeSocketPort
     let ownership: AudioSessionOwnership
     let tools = RealtimeVoiceToolLease()
@@ -30,6 +29,8 @@ final class RealtimeVoiceCall {
     var ignoredResponses = Set<String>()
     var routeSignature = ""
     var ready = false
+    var audioStarting = false
+    var firstAudioStart = true
     var paused = false
     var liveSocketEpoch: UUID?
     var liveStartID: String?
@@ -47,14 +48,13 @@ final class RealtimeVoiceCall {
 
     init(audio: RealtimeAudioPort = RealtimeVoiceAudio(), socket: RealtimeSocketPort = RealtimeVoiceSocket(),
          ownership: AudioSessionOwnership = .shared, systemCall: VoiceSystemCallPort? = nil,
-         connectingCue: RealtimeConnectingCuePort? = nil,
          permission: @escaping (@escaping (Bool) -> Void) -> Void = RealtimeVoiceCall.requestPermission,
          foreground: @escaping () -> Bool = { UIApplication.shared.applicationState == .active },
          emit: @escaping (String, [String: Any]) -> Void)
     {
         self.audio = audio; self.socket = socket; self.ownership = ownership
         self.permission = permission; self.foreground = foreground; self.systemCall = systemCall
-        self.emit = emit; self.connectingCue = connectingCue
+        self.emit = emit
         audio.drained = { [weak self] in
             guard let self else { return }
             guard ready, !paused else { return }
@@ -71,11 +71,11 @@ final class RealtimeVoiceCall {
                     if id != nil {
                         VoiceSystemCallLifecycle.report(stage)
                     }
-                    if stage == .backgroundContinued {
+                    if stage == .backgroundContinued, !audioStarting {
                         return
                     }
                 } else if name == AVAudioSession.routeChangeNotification {
-                    guard ready, routeSignature != currentRoute() else { return }
+                    guard ready || audioStarting, !routeSignature.isEmpty, routeSignature != currentRoute() else { return }
                     if id != nil {
                         VoiceSystemCallLifecycle.report(.routeChanged)
                     }
@@ -89,7 +89,7 @@ final class RealtimeVoiceCall {
     }
 
     func beginAudio() {
-        guard !ready, !paused, liveIsCurrent(), let current = id, let token else { return }
+        guard !ready, !paused, !audioStarting, liveIsCurrent(), let current = id, let token else { return }
         if let systemCall, !systemCallActive {
             guard !systemCallPending, foreground() else { return }
             systemCallPending = true
@@ -132,7 +132,10 @@ final class RealtimeVoiceCall {
             } else {
                 try ownership.activate(token, category: .playAndRecord, mode: .voiceChat, options: [.defaultToSpeaker, .allowBluetoothHFP])
             }
-            try audio.start(input: { [weak self] data in
+            routeSignature = ""
+            audioStarting = true
+            let firstStart = firstAudioStart; firstAudioStart = false
+            try finishAudioStart(input: { [weak self] data in
                 guard let self else { return }
                 switch inputBudget.reserve(data.count) {
                 case .closed: return
@@ -156,11 +159,21 @@ final class RealtimeVoiceCall {
                         self?.fail()
                     }
                 }
+            }, firstStart: firstStart, ready: { [weak self] in
+                guard let self, id == current, captureEpoch == epoch, audioStarting, !paused, liveIsCurrent() else { return }
+                guard routeSignature.isEmpty || routeSignature == currentRoute() else { fail(); return }
+                routeSignature = currentRoute()
+                audioStarting = false
+                connectedDuration.markReady(current)
+                ready = true; timer?.invalidate(); timer = nil
+                let callback = opening; opening = nil; callback?(.success(()))
+                if id == current, captureEpoch == epoch, ready {
+                    state("listening")
+                }
             })
-            connectedDuration.markReady(current)
-            routeSignature = currentRoute()
-            ready = true; timer?.invalidate(); timer = nil
-            let callback = opening; opening = nil; callback?(.success(())); state("listening")
+            if audioStarting {
+                routeSignature = currentRoute()
+            }
         } catch { fail() }
     }
 
@@ -198,12 +211,12 @@ final class RealtimeVoiceCall {
         timer?.invalidate()
         liveExpiryTimer?.invalidate()
         let audio = audio, socket = socket, owned = token, ownership = ownership, systemCall = systemCall, systemCallOwner = systemCallOwner
-        let tool = tools.invalidate(), callID = id, emit = emit, cue = connectingCue
+        let tool = tools.invalidate(), callID = id, emit = emit
         DispatchQueue.main.async {
             if let tool, let callID {
                 emit("VoiceRealtimeToolCancelled", ["callId": callID, "toolCallId": tool])
             }
-            cue?.cancel(); socket.close(); audio.stop()
+            socket.close(); audio.stop()
             if let systemCallOwner {
                 systemCall?.end(owner: systemCallOwner)
             }

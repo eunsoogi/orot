@@ -59,7 +59,7 @@ it('attached questions reach only the closed recording route even with a leftove
   expect(f.save).not.toHaveBeenCalled();
 });
 
-it('never sends an explicitly local memory command with a recording, and standalone local save is unchanged', async () => {
+it('never transmits or silently saves an explicitly local memory command', async () => {
   const f = fixture();
   const controller = new AbortController();
   const active: RagConversationObserver = {
@@ -73,10 +73,10 @@ it('never sends an explicitly local memory command with a recording, and standal
   expect(f.save).not.toHaveBeenCalled();
   expect(
     await f.sendRagMessage(memoryQuestion, [], controller.signal, session),
-  ).toMatchObject({ status: 'answer' });
-  expect(f.save).toHaveBeenCalledWith(
-    expect.objectContaining({ localOnly: true }),
-    controller.signal,
-  );
+  ).toMatchObject({
+    status: 'answer',
+    answer: expect.stringContaining('저장하지 않았어요'),
+  });
+  expect(f.save).not.toHaveBeenCalled();
   expect(f.downstream).not.toHaveBeenCalled();
 });

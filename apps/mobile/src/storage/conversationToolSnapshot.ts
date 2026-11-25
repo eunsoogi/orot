@@ -1,3 +1,4 @@
+import type { SourceOpenTiming } from '../providers/sourceOpenDiagnostic';
 import type { SqlDatabase, SqlExecutor } from '@orot/storage';
 import type { committedPeriodReadOperation } from './committedPeriodReadOperation';
 import {
@@ -30,6 +31,7 @@ export function conversationToolSnapshotReader(
     selectedIds?: readonly string[],
     strictSources = false,
     call?: { readonly runId: string; readonly callId: string },
+    timing?: SourceOpenTiming,
   ) => {
     await ensure();
     const selected = conversationSelectedIds('e.message_id', selectedIds);
@@ -46,10 +48,14 @@ export function conversationToolSnapshotReader(
       createdAt: string;
       reason: 'source_unavailable' | 'unverifiable_legacy_period';
     }[] = [];
+    let enter: (() => void) | undefined;
+    let settle: (() => void) | undefined;
     const work = async (
       tx: SqlExecutor,
       calculate?: ReadOnlyPeriodValidation,
     ) => {
+      enter?.();
+      settle = timing?.span('source_open_db_work');
       // Share calculated values only inside an owned history operation. Strict/live
       // reads keep their existing independent source validation and rollback path.
       const validatePeriod = calculate
@@ -144,7 +150,14 @@ export function conversationToolSnapshotReader(
     };
     if (operation?.active && !strictSources)
       await operation.run(work, { rollbackOnFailure: true });
-    else await database.transaction(work);
+    else {
+      enter = timing?.span('source_open_db_admission');
+      try {
+        await database.transaction(work);
+      } finally {
+        settle?.();
+      }
+    }
     // One unavailable call withholds its whole turn; no sibling payload can leak via that notice.
     return {
       items: [...turns]

@@ -1,7 +1,8 @@
 import { hasConversationMemoryCommand } from '../../manualHistory/conversationHistoryIntent';
 import { conversationTemplateTarget } from './conversationTemplateTarget';
 import { proposeConversationTemplate } from './conversationTemplateProposal';
-import { trySaveExplicitConversationMemory } from './saveExplicitConversationMemory';
+import { APPLE_PROVIDER_ID } from '@orot/provider-apple';
+import { t } from '../../i18n';
 import { createConversationDailyReport } from './conversationDailyReport';
 import type { MultiAgentWorkflowOptions } from '@orot/agent-runtime';
 import type { runDiseaseHypothesisAnalysis } from '../../diseaseHypotheses/task';
@@ -96,13 +97,29 @@ export function createConversationSummaryIntegration(input: {
           } as const;
         return input.sendRagMessage(...args);
       }
-      const localMemory = trySaveExplicitConversationMemory(
-        question,
-        originalObserver,
-        input.loadData,
-        operationSignal,
-      );
-      if (localMemory) return localMemory;
+      // Preserve the old no-transfer boundary without using its grammar to
+      // decide what to store. Only the already-selected on-device model can
+      // interpret a request previously intercepted as local-only.
+      const protectedLocalInput =
+        originalObserver?.inputOrigin === 'composer' &&
+        !originalObserver.photoInput &&
+        hasConversationMemoryCommand(question);
+      if (
+        protectedLocalInput &&
+        originalObserver?.expectedConversationModel?.providerId !==
+          APPLE_PROVIDER_ID
+      )
+        return {
+          status: 'answer',
+          answer: t('historyDisplay.answerMemoryDeviceOnly'),
+          citations: [],
+        } as const;
+      if (protectedLocalInput)
+        return input.sendRagMessage(question, history, signal, {
+          ...originalObserver,
+          protectedLocalInput: true,
+          suppressContextualOpening: true,
+        });
       let observer = originalObserver;
       let context = originalContext;
       const admission = observer?.modelTemplateAdmission;

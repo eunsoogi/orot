@@ -165,7 +165,7 @@ test('a transient read failure never remounts authorized panels or interrupts pe
   ).toBeVisible();
   await act(async () => playing.resolve(95000));
   expect(play).toHaveBeenCalledTimes(1);
-  expect(play).toHaveBeenCalledWith(original.id, 0, 95000);
+  expect(play).toHaveBeenCalledWith(original.id, 0, 95000, expect.any(Symbol));
 });
 
 test('a native lock event stays revoked for the held metadata read even after native unlock', async () => {

@@ -1,3 +1,4 @@
+import type { Appointment } from '@orot/domain';
 import { useRef } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { CheckboxIndicator } from '../layout/CheckboxIndicator';
@@ -20,10 +21,12 @@ import type {
   NextVisitQuestionsTheme,
 } from './types';
 import { t } from '../i18n';
+import { VisitAppointmentCard } from './VisitContextCards';
 
 /** A conversation owner supplies state for one message and controls save completion. */
 export function InlineVisitQuestionCard<T extends NextVisitEvidenceReference>({
   state,
+  appointment,
   onChange,
   onSave,
   onOpenSource,
@@ -34,6 +37,7 @@ export function InlineVisitQuestionCard<T extends NextVisitEvidenceReference>({
   restorationWarning,
 }: {
   readonly state: InlineVisitReview<T>;
+  readonly appointment?: Appointment;
   readonly onChange: (state: InlineVisitReview<T>) => void;
   readonly onSave: (selection: InlineVisitSelection<T>) => Promise<void>;
   readonly onOpenSource: (reference: T) => void;
@@ -69,6 +73,9 @@ export function InlineVisitQuestionCard<T extends NextVisitEvidenceReference>({
       >
         {t('visitQuestions.inline.title')}
       </Text>
+      {appointment ? (
+        <VisitAppointmentCard appointment={appointment} theme={theme} />
+      ) : null}
       {state.items.map((item, index) => {
         const id = item.question.identity!.id;
         return (

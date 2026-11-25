@@ -52,8 +52,9 @@ export interface RecordingPlaybackService {
     recordingId: string,
     startMs: number,
     endMs: number,
+    owner?: symbol,
   ): Promise<RecordingPlaybackRange>;
-  stopPlayback?(): Promise<void>;
+  stopPlayback?(owner?: symbol): Promise<void>;
   subscribePlayback?(
     listener: (state: RecordingPlaybackState) => void,
   ): () => void;

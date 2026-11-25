@@ -64,9 +64,8 @@ final class LiveResponsesToolBridge {
     private let registry: LiveNativeToolRegistry
     private let discard: () -> Void
     private var owner: Owner?
-    private var delegation: (id: String, response: String, offset: Int)?
+    private var delegation: (id: String, response: String, offset: Int, timestamp: DispatchTime?)?
     private var pending: [Request] = []
-    // Only event kind is retained beside each receipt ID. The one pending Request holds the validated scope.
     private var received: [String: Bool] = [:]
     private var created = false, spent = false
     private var progress = 0
@@ -127,7 +126,7 @@ final class LiveResponsesToolBridge {
                     retire()
                 }
             } else {
-                delegation = (delegationID, responseID, offset)
+                delegation = (delegationID, responseID, offset, LiveManagedToolLatency.start())
             }
             return
         }
@@ -186,6 +185,7 @@ final class LiveResponsesToolBridge {
             return
         }
         spent = true
+        LiveManagedToolLatency.finish(.delegationToToolTerminal, since: delegation.timestamp)
         guard pending.allSatisfy(admission.mayRun), current(), admission.backendAllowed() else { retire(); return }
         cancel = admission.approve(pending) { [weak self] granted in
             DispatchQueue.main.async { [weak self] in

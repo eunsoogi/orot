@@ -53,8 +53,8 @@ test.each([
     const sheet = await screen.findByTestId(
       'conversation-public-tool-source-sheet',
     );
-    expect(within(sheet).getByRole('header')).toHaveTextContent(
-      destination + ' · 출처',
-    );
+    const heading =
+      name === 'public-web-search' ? destination : destination + ' · 출처';
+    expect(within(sheet).getByRole('header', { name: heading })).toBeTruthy();
   },
 );

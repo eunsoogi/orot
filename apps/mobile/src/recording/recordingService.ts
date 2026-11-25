@@ -1,4 +1,5 @@
 import { nativeRecordingBridge } from './nativeRecordingBridge';
+import { createRecordingPlaybackOwner } from './recordingPlaybackOwner';
 import { saveRecordingSource } from './recordingPersistence';
 import type { RecordingService } from './recordingTypes';
 
@@ -11,9 +12,7 @@ export const recordingService: RecordingService = {
   pause: () => nativeRecordingBridge.pause(),
   resume: () => nativeRecordingBridge.resume(),
   stop: () => nativeRecordingBridge.stop(),
-  playRange: (recordingId, startMs, endMs) =>
-    nativeRecordingBridge.playRange(recordingId, startMs, endMs),
-  stopPlayback: () => nativeRecordingBridge.stopPlayback(),
+  ...createRecordingPlaybackOwner(nativeRecordingBridge),
   subscribePlayback: listener =>
     nativeRecordingBridge.subscribePlayback(listener),
   saveSource: recording => saveRecordingSource(recording),

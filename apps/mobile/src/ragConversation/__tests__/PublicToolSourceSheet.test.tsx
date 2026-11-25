@@ -6,6 +6,7 @@ import {
   within,
 } from '@testing-library/react-native';
 import { Linking } from 'react-native';
+import { t } from '../../i18n';
 import { ConversationToolEventSources } from '../ConversationToolEventSources';
 import type { EvidenceReference } from '@orot/agent-runtime';
 import { conversationToolEventFixtures } from '../testSupport/conversationToolEventFixtures';
@@ -121,5 +122,32 @@ test.each(['revoked', 'changed', 'unsafe'] as const)(
     );
     expect(resolve).toHaveBeenCalledTimes(2);
     expect(url).not.toHaveBeenCalled();
+  },
+);
+
+test.each([
+  ['public-web-search', '공개 웹 출처'],
+  [
+    'europe-pmc-publication-search',
+    `${t('ragConversation.tool.sourceKind.europePmc')} · ${t('ragConversation.tool.sources')}`,
+  ],
+] as const)(
+  'uses the accessible source title for %s',
+  async (toolName, title) => {
+    await render(
+      <ConversationToolEventSources
+        event={{ ...event, toolName }}
+        sessionId="synthetic"
+        durableMessageId="turn"
+        allowSourceActions
+        resolveToolSource={async () => undefined}
+        onOpenSource={jest.fn()}
+        onLinkError={jest.fn()}
+      />,
+    );
+    await fireEvent.press(
+      screen.getByRole('button', { name: /원문 출처 확인/u }),
+    );
+    expect(screen.getByRole('header', { name: title })).toBeTruthy();
   },
 );

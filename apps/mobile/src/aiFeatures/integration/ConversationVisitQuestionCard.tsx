@@ -70,6 +70,7 @@ export function ConversationVisitQuestionCard({
     <View style={{ gap: theme.tokens.spacing.md }}>
       <InlineVisitQuestionCard
         state={visit.review}
+        appointment={visit.appointment}
         theme={theme}
         isSaving={saving}
         saveMessage={notice}

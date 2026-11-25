@@ -1,3 +1,4 @@
+import { sourceOpenTiming } from '../../providers/sourceOpenDiagnostic';
 import { conversationToolCapture } from './conversationToolCaptureBatch';
 import type { EvidenceReference } from '@orot/agent-runtime';
 import type { createConversationArtifactStorage } from '../../storage/conversationArtifactStorage';
@@ -24,24 +25,34 @@ export function bindConversationToolSource(input: {
   const original = input.registry.resolve(input.alias);
   if (!original) throw new Error('Tool source is unavailable.');
   const expected = fingerprint(input.snapshot);
-  const current = async () => {
+  const current = async (signal: AbortSignal) => {
+    const timing = sourceOpenTiming(signal);
     const type = (original.locator as { type?: unknown } | null)?.type;
     const exact =
       original.sourceKind === 'generated_artifact' &&
       (type === 'research_publication' ||
         type === 'research_web_explanation') &&
       input.storage.readToolCall;
+    const identity = [
+      input.sessionId,
+      input.runId,
+      input.callId,
+      input.messageId,
+    ] as const;
     const turns = exact
       ? [
-          await exact.call(
-            input.storage,
-            input.sessionId,
-            input.runId,
-            input.callId,
-            input.messageId,
-          ),
+          timing
+            ? await exact.call(input.storage, ...identity, timing)
+            : await exact.call(input.storage, ...identity),
         ]
-      : await input.storage.readToolTurns(input.sessionId);
+      : timing
+        ? await input.storage.readToolTurns(
+            input.sessionId,
+            undefined,
+            undefined,
+            timing,
+          )
+        : await input.storage.readToolTurns(input.sessionId);
     for (const turn of turns) {
       if (turn?.messageId !== input.messageId) continue;
       const event = turn.toolEvents.find(
@@ -56,10 +67,10 @@ export function bindConversationToolSource(input: {
     return false;
   };
   const readSource = async (signal: AbortSignal) => {
-    if (signal.aborted || !(await current()))
+    if (signal.aborted || !(await current(signal)))
       return { status: 'unavailable' as const };
     const source = await input.registry.readSource(input.alias, signal);
-    if (signal.aborted || !(await current()))
+    if (signal.aborted || !(await current(signal)))
       return { status: 'unavailable' as const };
     return source;
   };

@@ -1,4 +1,5 @@
 import { observeConversationFinalHistory } from '../../ragConversation/conversationFinalizationDiagnostics';
+import type { RagConversationOutcome } from '../../ragConversation/outcome';
 import type { RagConversationObserver } from '../../ragConversation/conversationObserver';
 import type { conversationGeneratedTools } from './conversationGeneratedTools';
 import { conversationFallbackOutcome } from './conversationFallbackOutcome';
@@ -65,4 +66,19 @@ export async function finishConversationWorkflow(
       continuation: Boolean(continuation),
     })
   );
+}
+
+/** The provider cannot create a success receipt. Render only a proven commit. */
+export function answerMemoryOutcome(
+  outcome: RagConversationOutcome,
+  committed: boolean,
+): RagConversationOutcome {
+  return committed
+    ? {
+        status: 'answer',
+        answer: t('historyDisplay.savedConversationMemory'),
+        citations: [],
+        committedAnswerMemory: true,
+      }
+    : outcome;
 }

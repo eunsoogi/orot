@@ -51,7 +51,10 @@ final class OrotProviderDiagnostics: NSObject {
             return
         }
         if ["steering_submit_admitted", "steering_enqueue_resolved", "steering_row_available",
-            "steering_row_layout", "steering_applied_observed", "steering_read_layout"].contains(stage)
+            "steering_row_layout", "steering_applied_observed", "steering_read_layout",
+            "source_open_local_tap", "source_open_public_tap", "source_open_public_show", "source_open_public_proof", "source_open_public_ready",
+            "source_open_local_admission", "source_open_detail_start", "source_open_detail_header", "source_open_detail_proof", "source_open_detail_ready",
+            "source_open_db_admission", "source_open_db_work"].contains(stage)
         {
             // These app-owned stages take only bounded monotonic elapsed milliseconds, never identities.
             guard feature == "rag", let elapsed = Int(outcome), (0 ... 300_000).contains(elapsed),
