@@ -25,6 +25,13 @@ import {
   referencesAnySource,
 } from './agentMemoryStorageRecords';
 import { writeAgentMemoryDeletionMarkers } from './agentMemoryDeletionMarkers';
+import {
+  scopedMemoryCascadeFences,
+  type ScopedMemoryCascade,
+} from './scopedMemoryCascadeFences';
+
+const allMemoryRows =
+  'SELECT id, record_json FROM agent_memory_records ORDER BY id';
 
 /** Commit memory changes and deletion fences atomically. */
 export async function commitAgentMemoryWrites(
@@ -33,8 +40,10 @@ export async function commitAgentMemoryWrites(
   removedSourceIdsToAdd: Set<string>,
   removedKinds: Map<string, readonly string[] | undefined>,
   witness?: Parameters<AgentMemoryStorageAdapter['commitBatch']>[0],
+  scopedCascade?: ScopedMemoryCascade,
 ) {
   let changed = false;
+  const committedMemoryIds: string[] = [];
   await database.transaction(async transaction => {
     if (
       [...writes.values()].some(
@@ -52,6 +61,21 @@ export async function commitAgentMemoryWrites(
         typeof row.source_id === 'string' ? [row.source_id] : [],
       ),
     );
+    const snapshot = scopedCascade?.candidates.size
+      ? await transaction.execute(allMemoryRows)
+      : undefined;
+    const scopedFences =
+      scopedCascade && snapshot
+        ? scopedMemoryCascadeFences(
+            snapshot.rows,
+            scopedCascade,
+            removedSourceIdsToAdd,
+          )
+        : undefined;
+    for (const id of scopedFences ?? []) {
+      removedSourceIdsToAdd.add(id);
+      removedKinds.set(id, undefined);
+    }
     for (const sourceId of removedSourceIdsToAdd)
       removedSourceIds.add(sourceId);
     const invalidatedSourceIds =
@@ -79,9 +103,7 @@ export async function commitAgentMemoryWrites(
       }
     }
     if (removedSourceIdsToAdd.size > 0 || invalidatedSourceIds.size > 0) {
-      const records = await transaction.execute(
-        'SELECT id, record_json FROM agent_memory_records ORDER BY id',
-      );
+      const records = snapshot ?? (await transaction.execute(allMemoryRows));
       for (const row of records.rows) {
         const record = decodeAgentMemoryRecord(row.record_json);
         // A separately requested source deletion still owns its existing hard-delete boundary.
@@ -98,7 +120,11 @@ export async function commitAgentMemoryWrites(
             'DELETE FROM agent_memory_records WHERE id = ?',
             [record.id],
           );
-          changed = (deleted.rowsAffected ?? 0) > 0 || changed;
+          if ((deleted.rowsAffected ?? 0) > 0) {
+            changed = true;
+            if (scopedFences?.has(record.id))
+              committedMemoryIds.push(record.id);
+          }
         }
       }
     }
@@ -127,5 +153,5 @@ export async function commitAgentMemoryWrites(
         removedKinds,
       )) || changed;
   });
-  return changed;
+  return { changed, committedMemoryIds };
 }

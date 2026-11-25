@@ -165,6 +165,8 @@ export class LocalAgentMemory implements AgentMemoryService {
         getEngine: () => this.getEngine(),
         runBatch: (operation) => this.runBatch(operation, undefined, observe),
       });
+      // A native cascade bypasses speculative engine mutation; reload lazily from durable rows.
+      if (this.storage.commitSourceCascade) this.engine = null;
       for (const referenceId of deletionFences) this.removedSourceIds.add(referenceId);
       const sourceDeleted = await deleteSourceRecord();
       return { sourceDeleted, memoriesDeleted };

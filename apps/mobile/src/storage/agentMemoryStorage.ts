@@ -6,6 +6,10 @@ import {
 import { observeDatabaseOwner } from './databaseOwnerDiagnostics';
 import { notifyCommittedAgentMemoryVisibility } from './agentMemoryVisibilityEvents';
 import { commitAgentMemoryWrites } from './agentMemoryStorageWrites';
+import {
+  createScopedAgentMemoryCascade,
+  type PendingBatch,
+} from './agentMemorySourceCascade';
 import type { SqlDatabase } from '@orot/storage';
 import { listInvalidatedHealthPeriods } from './healthPeriodDependencies';
 import {
@@ -26,18 +30,21 @@ import {
   referencesAnySource,
 } from './agentMemoryStorageRecords';
 
-interface PendingBatch {
-  readonly writes: Map<string, PersistedMemoryRecord | null>;
-  readonly removedSourceIds: Set<string>;
-  readonly removedKinds: Map<string, readonly string[] | undefined>;
-}
-
 /** Persists only Rememori records inside the app's existing SQLCipher database. */
 export class SqlCipherAgentMemoryStorage implements AgentMemoryStorageAdapter {
   private tableReady: Promise<void> | null = null;
   private pending: PendingBatch | null = null;
+  readonly commitSourceCascade: ReturnType<
+    typeof createScopedAgentMemoryCascade
+  >;
 
-  constructor(private readonly database: SqlDatabase) {}
+  constructor(private readonly database: SqlDatabase) {
+    this.commitSourceCascade = createScopedAgentMemoryCascade(
+      this,
+      database,
+      () => this.ensureTable(),
+    );
+  }
 
   async load(): Promise<PersistedMemoryRecord[]> {
     await this.ensureTable();
@@ -231,7 +238,7 @@ export class SqlCipherAgentMemoryStorage implements AgentMemoryStorageAdapter {
     witness?: Parameters<AgentMemoryStorageAdapter['commitBatch']>[0],
   ): Promise<void> {
     await this.ensureTable();
-    const changed = await commitAgentMemoryWrites(
+    const { changed } = await commitAgentMemoryWrites(
       this.database,
       writes,
       removedSourceIdsToAdd,

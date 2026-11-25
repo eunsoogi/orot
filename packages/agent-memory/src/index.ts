@@ -23,6 +23,7 @@ export type {
   AgentMemoryProvenance,
   AgentMemoryReviewState,
   AgentMemorySourceDate,
+  AgentMemorySourceCascade,
   AgentMemoryStorageAdapter,
   AgentMemoryToolPolicy,
   PersistedMemoryRecord,
