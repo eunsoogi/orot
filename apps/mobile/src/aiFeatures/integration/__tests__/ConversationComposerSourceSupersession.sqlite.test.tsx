@@ -7,7 +7,7 @@ import {
 } from '@testing-library/react-native';
 import { AccessibilityInfo } from 'react-native';
 import { createRecordRepository, runMigrations } from '@orot/storage';
-import { createHealthEvidenceTestDatabase } from '../../../healthEvidence/localEvidenceTestSupport';
+import { openSqliteTestDatabase } from '../../../../../../packages/storage/__tests__/sqliteTestDatabase';
 import { createLocalEvidenceData } from '../../../healthEvidence/localEvidenceData';
 import { createLocalHealthEvidenceRepository } from '../../../healthEvidence/localEvidenceRepository';
 import {
@@ -48,7 +48,7 @@ const earlier = {
 } as const;
 
 test('rejects superseded local evidence after dispatch', async () => {
-  const fixture = createHealthEvidenceTestDatabase();
+  const fixture = openSqliteTestDatabase(':memory:');
   const { database } = fixture;
   const reduceMotion = jest
     .spyOn(AccessibilityInfo, 'isReduceMotionEnabled')
@@ -60,9 +60,9 @@ test('rejects superseded local evidence after dispatch', async () => {
     await runMigrations(database);
     // The graph must revalidate the original evidence against the same real
     // SQLite rows the composer read, not against permissive mock answers.
-    jest.mocked(openLocalStorage).mockResolvedValue(
-      createRecordRepository(database),
-    );
+    jest
+      .mocked(openLocalStorage)
+      .mockResolvedValue(createRecordRepository(database));
     const storage = createConversationArtifactStorage(database);
     await storage.createSession(owner, await storage.currentGeneration());
     const base = {
@@ -174,7 +174,13 @@ test('rejects superseded local evidence after dispatch', async () => {
           request.tools?.map(tool => tool.name),
         ),
         heldSyntheses: proof.mock.calls.length,
-      }).toMatchObject({ outcomes: [], heldSyntheses: 1 });
+      }).toEqual({
+        outcomes: [],
+        invocations: expect.arrayContaining([
+          expect.arrayContaining(['local-personal-records']),
+        ]),
+        heldSyntheses: 1,
+      });
       expect(JSON.stringify(proof.mock.calls[0]?.[0].messages)).toContain(
         earlier.details,
       );
