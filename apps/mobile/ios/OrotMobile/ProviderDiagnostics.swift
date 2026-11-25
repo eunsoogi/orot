@@ -119,7 +119,7 @@ final class OrotProviderDiagnostics: NSObject {
                "opening_delivery", "opening_preflight", "opening_display", "stop_native", "stop_js", "stop_abort", "stop_settlement", "conversation_photo_flush", "conversation_preview_flush", "conversation_activity_flush", "conversation_stop_fence", "conversation_lifetime_settle", "conversation_save", "conversation_final_history_validation", "conversation_retention_capture",
                "conversation_save_prepare", "conversation_save_admission", "conversation_save_authority", "conversation_save_lineage",
                "conversation_save_persist", "conversation_save_settlement", "conversation_save_lineage_period_majority", "conversation_save_lineage_period_seen",
-               "saved_memory_modules", "saved_memory_open", "saved_memory_read", "saved_memory_wait",
+               "saved_memory_modules", "saved_memory_open", "saved_memory_read", "saved_memory_wait", "recent_records_admission", "recent_records_source_read", "recent_records_reproof",
                "database_transaction", "database_transaction_wait", "sql_schema", "sql_generation",
                "sql_aggregate", "sql_vector", "sql_health_records", "sql_artifact", "sql_other",
                "transaction_healthkit", "transaction_memory", "selection", "data", "workflow", "provider_error", "validation", "persistence",
