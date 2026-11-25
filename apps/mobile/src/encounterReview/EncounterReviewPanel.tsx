@@ -8,7 +8,10 @@ import {
 } from '../layout/MaterialLibraryRows';
 import { appColors } from '../layout/appColors';
 import { useInferenceConsent } from '../agent/execution/useInferenceConsent';
-import { EncounterReviewController } from './controller';
+import {
+  EncounterReviewController,
+  hasPendingEncounterCandidates,
+} from './controller';
 import type { EncounterReviewService, ReviewState } from './controller';
 import { localEncounterReviewService } from './localService';
 import { CandidatePanel } from './CandidatePanel';
@@ -37,14 +40,15 @@ export function EncounterReviewPanel({
   );
   const { consent, disclosureSheet } = useInferenceConsent();
   const busy = ['loading', 'running', 'saving'].includes(state.status);
+  const reviewable = hasPendingEncounterCandidates(state);
   useEffect(() => {
     controller.activate();
     controller.restore();
     return () => controller.dispose();
   }, [controller]);
   useEffect(() => {
-    onInteractionChange({ busy, dirty: state.status === 'pending' });
-  }, [busy, state.status, onInteractionChange]);
+    onInteractionChange({ busy, dirty: reviewable });
+  }, [busy, reviewable, onInteractionChange]);
   const pending = state.status === 'pending' ? state.pending : undefined;
   return (
     <View style={styles.panel} testID="encounter-review-panel">
@@ -66,7 +70,7 @@ export function EncounterReviewPanel({
           ? copy.empty
           : copy[state.status]}
       </AppText>
-      {pending ? (
+      {pending && reviewable ? (
         <MaterialLibraryRows testID="encounter-candidate-list">
           {state.candidates.map((candidate, index) => (
             <CandidatePanel
@@ -85,7 +89,7 @@ export function EncounterReviewPanel({
       ) : null}
       <EncounterReviewActions
         status={state.status}
-        hasPending={Boolean(pending)}
+        hasPending={reviewable}
         disabled={disabled}
         saveDisabled={
           disabled ||
