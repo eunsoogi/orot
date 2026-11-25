@@ -89,8 +89,8 @@ test('loading, failure, and measured-empty remain distinct without synthetic poi
   ).toBe('empty');
 });
 
-test('monthly derived heart range keeps adjacent local days and a second sensor separate', () => {
-  const { data } = buildHealthRecordsMonthChart('resting_heart_rate', window, {
+test('monthly derived heart line keeps adjacent local days and a second sensor separate', () => {
+  const chart = buildHealthRecordsMonthChart('resting_heart_rate', window, {
     kind: 'quantity',
     rows: [
       {
@@ -126,6 +126,8 @@ test('monthly derived heart range keeps adjacent local days and a second sensor 
       },
     ],
   });
+  expect(chart.kind).toBe('line');
+  const { data } = chart;
   expect(data.presentation).toBe('whole-bpm-derived-records');
   const [first, second] = data.series;
   expect(first?.id).not.toBe(second?.id);

@@ -21,3 +21,17 @@ export function ConversationScreenHeader({
     </View>
   );
 }
+
+export function createConversationScreenHeader(
+  routeKey: string | undefined,
+  onBack: () => void,
+  provider: ReactNode | undefined,
+) {
+  return (
+    <ConversationScreenHeader
+      routeKey={routeKey}
+      onBack={onBack}
+      provider={provider}
+    />
+  );
+}

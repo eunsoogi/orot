@@ -9,7 +9,7 @@ import { rememberHealthKitAutoSyncRequest } from '../autoSyncCheckpoint';
 import { runHealthKitAutoSync } from '../autoSync';
 import { ChartTooltipHost } from '../../ui/charts/ChartTooltipHost';
 
-test('normal opted-in legacy sync replaces only the observed singleton with a measured Records range', async () => {
+test('normal opted-in legacy sync retains real source statistics beneath a daily Records line', async () => {
   const f = openSqliteTestDatabase(':memory:');
   try {
     await runMigrations(f.database);
@@ -27,8 +27,8 @@ test('normal opted-in legacy sync replaces only the observed singleton with a me
     const missingSummary = healthKitSample(feature, {
       id: 'still-scalar',
       value: 76,
-      startDate: local(15, 8),
-      endDate: local(15, 9),
+      startDate: local(16, 8),
+      endDate: local(16, 9),
     });
     await syncCommonObservationChanges({
       feature,
@@ -111,10 +111,26 @@ test('normal opted-in legacy sync replaces only the observed singleton with a me
       /최저 53 BPM.*최고 82 BPM.*평균 62 BPM/u,
     );
     const svg = { includeHiddenElements: true };
-    expect(view.getByTestId('chart-range-span', svg)).toBeOnTheScreen();
-    expect(view.getByTestId('chart-range-mean', svg)).toBeOnTheScreen();
-    expect(view.getByTestId('chart-range-flat', svg)).toBeOnTheScreen();
-    expect(view.getAllByTestId('chart-range-bucket', svg)).toHaveLength(2);
+    const marks = view.getByTestId('chart-layer.data', svg).children;
+    expect(
+      marks.some(
+        path =>
+          typeof path !== 'string' &&
+          JSON.stringify(path.props.strokeDasharray) === '[4,4]',
+      ),
+    ).toBe(true);
+    expect(view.getAllByTestId(/^line-dot\./u, svg)).toHaveLength(2);
+    expect(plot.props.accessibilityLabel).not.toContain('2035-01-15');
+    await fireEvent(plot, 'accessibilityAction', {
+      nativeEvent: { actionName: 'increment' },
+    });
+    expect(plot.props.accessibilityLabel).toContain('2035-01-14');
+    await fireEvent(plot, 'accessibilityAction', {
+      nativeEvent: { actionName: 'increment' },
+    });
+    expect(plot.props.accessibilityLabel).toContain('2035-01-16');
+
+    expect(view.queryByTestId('chart-range-span', svg)).toBeNull();
   } finally {
     f.close();
   }
@@ -220,9 +236,8 @@ test.each([
       );
       expect(plot.props.accessibilityLabel).toMatch(/63 BPM/u);
       const svg = { includeHiddenElements: true };
-      expect(view.getAllByTestId('chart-range-bucket', svg)).toHaveLength(1);
-      expect(view.getByTestId('chart-range-flat', svg)).toBeOnTheScreen();
-      expect(view.queryByTestId('chart-range-span', svg)).toBeNull();
+      expect(view.getAllByTestId(/^line-dot\./u, svg)).toHaveLength(1);
+      expect(view.queryByTestId('chart-range-flat', svg)).toBeNull();
     } finally {
       f.close();
     }

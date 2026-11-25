@@ -157,6 +157,10 @@ extension RealtimeVoiceLifecycleTests {
                     socket.close()
                     socket.open(model: "gpt-live-1.1", key: fixture.key)
                 }
+                // A quiet successor is only evidence if the second task actually opened.
+                let expectedSuccessorResumes = disposition == "replaced" ? 1 : 0
+                XCTAssertEqual(taskCount, 1 + expectedSuccessorResumes)
+                XCTAssertEqual(successor.resumes, expectedSuccessorResumes)
                 original.completeFirst()
                 wait(for: [settled], timeout: 1)
                 XCTAssertEqual(ack, [disposition == "allow"])

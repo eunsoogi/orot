@@ -1,7 +1,8 @@
-import type {
-  HealthObservationMonthChart,
-  HealthObservationMonthChartLoader,
-  HealthObservationMonthWindow,
+import {
+  isAppleDerivedHeartRateCategory,
+  type HealthObservationMonthChart,
+  type HealthObservationMonthChartLoader,
+  type HealthObservationMonthWindow,
 } from '@orot/storage';
 import { useEffect, useState } from 'react';
 import { View } from 'react-native';
@@ -65,7 +66,9 @@ export function HealthRecordsMonthChartPanel({
     active?.projection,
     active?.failed,
   );
-  const usesDailyTotalTooltip = category === 'steps' || kind !== 'line';
+  const dailyLine =
+    category === 'steps' || isAppleDerivedHeartRateCategory(category);
+  const usesDailyTooltip = dailyLine || kind !== 'line';
   return (
     <View
       onLayout={event => setMeasuredWidth(event.nativeEvent.layout.width)}
@@ -76,9 +79,9 @@ export function HealthRecordsMonthChartPanel({
         compact
         width={measuredWidth}
         height={200}
-        hideDetails={usesDailyTotalTooltip}
-        barTooltip={usesDailyTotalTooltip}
-        lineAxis={category === 'steps' ? 'day' : 'time'}
+        hideDetails={usesDailyTooltip}
+        barTooltip={usesDailyTooltip}
+        lineAxis={dailyLine ? 'day' : 'time'}
         kind={kind}
         rangeAxis="day"
         title={healthRecordCategoryTitle(category)}

@@ -1,10 +1,16 @@
-import { useState } from 'react';
+import { useCallback, useContext, useState } from 'react';
 import { Pressable, StyleSheet, useWindowDimensions, View } from 'react-native';
 import { AppText } from '../layout/AppText';
 import { AppSymbol } from '../layout/AppSymbol';
 import { appColors } from '../layout/appColors';
 import { conversationA2UIIcons } from './conversationA2UIStaticCatalog';
 import type { ConversationA2UINode } from './conversationA2UI';
+import { ConversationA2UILocalDraftControls } from './ConversationA2UILocalDraftControls';
+import {
+  ConversationA2UILocalDraftOwner,
+  useOwnedConversationA2UIStamp,
+} from './conversationA2UILocalDraftOwner';
+import { conversationA2UILocalDraftFor } from './conversationA2UILocalDraftFrames';
 
 /** The caller supplies only the parser's verified tree, not wire messages.
  * No catalog values are spread into native props or turned into actions. */
@@ -16,9 +22,24 @@ export function ConversationA2UISurface({
   readonly testID?: string;
 }) {
   const { fontScale } = useWindowDimensions();
+  const owner = useContext(ConversationA2UILocalDraftOwner);
+  const draft = conversationA2UILocalDraftFor(root);
+  const surface = useOwnedConversationA2UIStamp(owner, root, !!draft);
+  const isCurrent = useCallback(
+    () => surface !== undefined && owner?.surface(root) === surface,
+    [owner, root, surface],
+  );
   return (
     <View testID={testID} style={styles.surface}>
       <SurfaceNode key={root.id} node={root} fontScale={fontScale} />
+      {draft && owner && surface ? (
+        <ConversationA2UILocalDraftControls
+          approved={draft}
+          isCurrent={isCurrent}
+          subscribe={owner.subscribe}
+          surfaceId={surface}
+        />
+      ) : null}
     </View>
   );
 }

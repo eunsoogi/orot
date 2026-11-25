@@ -1,6 +1,7 @@
 import { useMemo, useState } from 'react';
 import { View } from 'react-native';
 import type { HealthObservation } from '@orot/domain';
+import { isAppleDerivedHeartRateCategory } from '@orot/storage';
 import { AppText as Text } from '../layout/AppText';
 import { t } from '../i18n';
 import {
@@ -47,7 +48,9 @@ export function HealthRecordsLineChart({
   readonly loadState?: 'loading' | 'ready' | 'failed';
 }) {
   const [width, setWidth] = useState(0);
-  const previewRange = preview && metrics[category] === 'heartRate';
+  const derived = isAppleDerivedHeartRateCategory(category);
+  const previewRange = preview && category === 'heart_rate';
+  const dailyHeartPreview = preview && (previewRange || derived);
   const workoutBars = preview && category === 'workouts';
   const series = useMemo(
     () =>
@@ -104,7 +107,7 @@ export function HealthRecordsLineChart({
     }
     return {
       metric: metrics[category] ?? 'heartRate',
-      ...(previewRange && category !== 'heart_rate'
+      ...(derived
         ? { presentation: 'whole-bpm-derived-records' as const }
         : {}),
       coverage,
@@ -118,8 +121,15 @@ export function HealthRecordsLineChart({
         const isDiastolic = item.key.endsWith('diastolic');
         return [...pointsByUnit].flatMap(
           ([unit, unitPoints]): ChartSeries[] => {
-            if (previewRange) {
-              return heartRatePreviewSeries(unit, unitPoints, records, hasMore);
+            if (previewRange || derived) {
+              // Choose daily points before dispatch; the line never merges sources or invents observations.
+              return heartRatePreviewSeries(
+                unit,
+                unitPoints,
+                records,
+                hasMore,
+                preview,
+              );
             }
             const measurements = unitPoints.map(point => ({
               x: point.effectiveAt,
@@ -164,6 +174,8 @@ export function HealthRecordsLineChart({
     hasMore,
     loadState,
     previewRange,
+    derived,
+    preview,
     workoutBars,
   ]);
   return (
@@ -174,9 +186,9 @@ export function HealthRecordsLineChart({
       <ChartPlot
         data={data}
         compact={preview}
-        accessibleCollapsedPlot={preview && !previewRange}
-        hideDetails={previewRange || workoutBars}
-        barTooltip={previewRange || workoutBars}
+        accessibleCollapsedPlot={preview && !dailyHeartPreview}
+        hideDetails={dailyHeartPreview || workoutBars}
+        barTooltip={dailyHeartPreview || workoutBars}
         width={width}
         height={200}
         title={healthRecordCategoryTitle(category)}
@@ -184,9 +196,10 @@ export function HealthRecordsLineChart({
         legendLabelsOnly={metrics[category] === 'heartRate'}
         kind={workoutRecordsChartKind(
           workoutBars ? category : '',
-          previewRange || category === 'heart_rate' ? 'range' : 'line',
+          category === 'heart_rate' ? 'range' : 'line',
         )}
         rangeAxis={previewRange ? 'day' : 'time'}
+        lineAxis={derived ? 'day' : 'time'}
         testID={'health-record-chart-values-' + category}
         selectedPointTestID={'health-record-chart-' + category}
       />

@@ -1,5 +1,6 @@
 import { fingerprint } from '../aiFeatures/integration/evidenceUtils';
 import { dailyReportPresentation } from '../aiFeatures/integration/conversationDailyReportText';
+import { savedHistoricalReadAdmission } from './savedReportNativeProtection';
 import { readSavedHealthSummaryDetail } from './savedHealthSummaryDetail';
 import { projectGeneratedSummaryDetail } from './summaryDetail';
 import { readConversationReportEvidence } from './conversationReportEvidence';
@@ -77,10 +78,25 @@ export function createGeneratedReportReader(
         : null;
     },
     list: before => listGeneratedReports(database, before),
-    async read(row, signal) {
+    async read(row, signal, onHistoricalProtectionLost) {
       if (signal.aborted) return null;
-      const result = await readSelected(database, row, signal, dependencies);
-      return signal.aborted ? null : result;
+      const admission =
+        onHistoricalProtectionLost &&
+        savedHistoricalReadAdmission(signal, onHistoricalProtectionLost);
+      let displayed = false;
+      try {
+        const result = await readSelected(
+          database,
+          row,
+          signal,
+          dependencies,
+          admission?.confirm,
+        );
+        displayed = !signal.aborted && result !== null;
+        return displayed ? result : null;
+      } finally {
+        if (!displayed) admission?.dispose();
+      }
     },
   };
 }
@@ -92,13 +108,20 @@ async function readSelected(
     data: typeof openAiFeatureLocalData;
     records: typeof openLocalStorage;
   },
+  confirmHistorical?: () => Promise<boolean>,
 ): Promise<GeneratedReportDetail | null> {
   if (row.origin === 'conversation') {
     return readConversationReportEvidence(database, row, signal);
   }
   if (row.kind === 'health_summary')
     return row.origin === 'summary'
-      ? readSavedHealthSummaryDetail(database, row, signal, dependencies.data)
+      ? readSavedHealthSummaryDetail(
+          database,
+          row,
+          signal,
+          dependencies.data,
+          confirmHistorical,
+        )
       : null;
   if (row.kind === 'daily_report') {
     // Superseded and invalidated runs share a tombstone. Never guess the reason or
