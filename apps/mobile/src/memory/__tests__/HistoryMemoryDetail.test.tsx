@@ -1,4 +1,8 @@
 import { AppState } from 'react-native';
+import { providerDiagnostic } from '../../providers/diagnostics';
+jest.mock('../../providers/diagnostics', () => ({
+  providerDiagnostic: jest.fn(),
+}));
 import { SavedMemoryDetail } from '../SavedMemoryDetail';
 import { unifySavedMemories } from '../unifiedSavedMemories';
 import { openLocalManualHistoryRepository } from '../../manualHistory/localRepository';
@@ -192,4 +196,33 @@ it('erases an actual memory destination on background while deletion is pending'
   await act(async () => finish());
   expect(screen.queryByTestId('history-memory-detail')).toBeNull();
   expect(load).toHaveBeenCalledTimes(1);
+});
+
+it('reports only fixed approval and receipt events, with no receipt before deletion commits', async () => {
+  const props = setup();
+  let commit!: (deleted: boolean) => void;
+  props.repository.delete.mockImplementationOnce(
+    () =>
+      new Promise<boolean>(resolve => {
+        commit = resolve;
+      }),
+  );
+  const report = jest.mocked(providerDiagnostic);
+  report.mockClear();
+  await render(<HistoryMemoryDetail record={record} {...props} />);
+  await fireEvent.press(screen.getByTestId('manual-history-delete'));
+  expect(report).not.toHaveBeenCalled();
+  await fireEvent.press(screen.getByTestId('manual-history-confirm-delete'));
+  expect(report.mock.calls).toEqual([
+    ['storage', 'saved_memory_delete_confirmation', 'started'],
+  ]);
+  expect(props.onDeleted).not.toHaveBeenCalled();
+  await act(() => {
+    commit(true);
+  });
+  expect(report.mock.calls).toEqual([
+    ['storage', 'saved_memory_delete_confirmation', 'started'],
+    ['storage', 'saved_memory_delete_receipt', 'completed'],
+  ]);
+  expect(props.onDeleted).toHaveBeenCalledTimes(1);
 });

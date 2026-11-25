@@ -21,6 +21,8 @@ async function fixture() {
   const sharedExecute = jest.fn();
   const sharedTransaction = jest.fn();
   const schemaWrites = jest.fn();
+  let beforeAdmission: Promise<unknown> | undefined;
+  let beforeCommit: Promise<unknown> | undefined;
   let failQuery: ((query: string) => void) | undefined;
   // Real SQLite serializes global operations. Fail fast at the same self-wait boundary
   // instead of leaving an intentionally deadlocked transaction hanging in the runner.
@@ -31,8 +33,9 @@ async function fixture() {
       sharedExecute();
       return f.database.execute(query, args);
     },
-    transaction: operation => {
+    transaction: async operation => {
       sharedTransaction();
+      await beforeAdmission;
       return f.database.transaction(async tx => {
         owned = true;
         try {
@@ -49,6 +52,7 @@ async function fixture() {
               return tx.execute(query, args);
             },
           });
+          await beforeCommit;
         } finally {
           owned = false;
         }
@@ -89,6 +93,12 @@ async function fixture() {
     sharedExecute,
     sharedTransaction,
     schemaWrites,
+    holdAdmission: (gate: Promise<unknown>) => {
+      beforeAdmission = gate;
+    },
+    holdCommit: (gate: Promise<unknown>) => {
+      beforeCommit = gate;
+    },
     failOn: (handler: (query: string) => void) => {
       failQuery = handler;
     },
@@ -190,6 +200,55 @@ test('warm cleanup avoids no-op schema writes and removes only the owned vector'
       { chunkId: 'unrelated-chunk', vector: [2] },
     ]);
   } finally {
+    f.close();
+  }
+});
+
+function makeGate() {
+  let resolve!: () => void;
+  const promise = new Promise<void>(done => {
+    resolve = done;
+  });
+  return { promise, resolve };
+}
+
+test('traces protected admission, lineage and vectors separately from durable commit', async () => {
+  const f = await fixture();
+  const { promise: admission, resolve: admit } = makeGate();
+  const { promise: commit, resolve: persist } = makeGate();
+  const { promise: reachedCommit, resolve: reportCommit } = makeGate();
+  const events: string[][] = [];
+  const repository = await openLocalManualHistoryRepository(
+    (stage, outcome) => {
+      events.push([stage, outcome]);
+      if (stage === 'saved_memory_delete_commit' && outcome === 'started')
+        reportCommit();
+    },
+  );
+  f.holdAdmission(admission);
+  f.holdCommit(commit);
+  const deleting = repository.delete(f.corrected.id);
+  try {
+    expect(events).toEqual([['saved_memory_delete_queue', 'started']]);
+    admit();
+    await reachedCommit;
+    expect(events).toEqual([
+      ['saved_memory_delete_queue', 'started'],
+      ['saved_memory_delete_queue', 'completed'],
+      ['saved_memory_delete_lineage', 'started'],
+      ['saved_memory_delete_vectors', 'started'],
+      ['saved_memory_delete_vectors', 'completed'],
+      ['saved_memory_delete_lineage', 'completed'],
+      ['saved_memory_delete_commit', 'started'],
+    ]);
+    persist();
+    await expect(deleting).resolves.toBe(true);
+    expect(events.at(-1)).toEqual(['saved_memory_delete_commit', 'completed']);
+    expect(await f.history.list()).toEqual([]);
+  } finally {
+    admit();
+    persist();
+    await deleting.catch(() => undefined);
     f.close();
   }
 });
