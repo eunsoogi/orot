@@ -1,3 +1,5 @@
+import { APPLE_PROVIDER_ID } from '@orot/provider-apple';
+import { observeAnswerMemoryProviderOwner } from './conversationAnswerMemoryProviderOwner';
 import type { LocalActionTool } from '@orot/agent-runtime';
 import type { RagConversationObserver } from '../../ragConversation/service';
 import { exactAuthoredMemorySentence } from '../../storage/authoredMemorySelection';
@@ -13,8 +15,31 @@ export function conversationAuthoredMemoryAction(input: {
   const requestId = observer?.retentionRequestId;
   const confirm = observer?.confirmHistorySave;
   const model = observer?.expectedConversationModel;
+  const nativeProof = observer?.templateProposalOwner;
+  const onDeviceOwner =
+    observer?.protectedLocalInput === true &&
+    model?.providerId === APPLE_PROVIDER_ID &&
+    nativeProof?.providerId === model.providerId &&
+    nativeProof.modelId === model.modelId
+      ? nativeProof
+      : undefined;
+  let approved:
+    | {
+        statement: string;
+        signal: AbortSignal;
+        guard?: ReturnType<typeof observeAnswerMemoryProviderOwner>;
+      }
+    | undefined;
+  const dispose = () => {
+    approved?.guard?.dispose();
+    approved = undefined;
+  };
   let receipt: 'not_attempted' | 'not_saved' | 'saved' = 'not_attempted';
-  const result = { actions: [] as LocalActionTool[], receipt: () => receipt };
+  const result = {
+    actions: [] as LocalActionTool[],
+    receipt: () => receipt,
+    dispose,
+  };
   if (
     observer?.inputOrigin !== 'composer' ||
     observer.photoInput ||
@@ -22,7 +47,7 @@ export function conversationAuthoredMemoryAction(input: {
     !requestId ||
     !owner ||
     !confirm ||
-    !model?.isCurrent ||
+    (!model?.isCurrent && !onDeviceOwner?.current()) ||
     !data.saveConversationHistory
   )
     return result;
@@ -37,9 +62,12 @@ export function conversationAuthoredMemoryAction(input: {
       return undefined;
     return { statement: value.statement };
   };
-  let approved: { statement: string; signal: AbortSignal } | undefined;
-  const current = (signal: AbortSignal) =>
-    !signal.aborted && model.isCurrent?.() === true;
+  const current = (
+    signal: AbortSignal,
+    guard?: NonNullable<typeof approved>['guard'],
+  ) =>
+    !signal.aborted &&
+    (guard ? guard.isCurrent() : model?.isCurrent?.() === true);
   result.actions.push({
     id: 'remember-current-user-statement',
     version: '1',
@@ -55,46 +83,63 @@ export function conversationAuthoredMemoryAction(input: {
     },
     parseInput: parse,
     async authorize(value, signal) {
-      approved = undefined;
-      if (receipt !== 'not_attempted' || !current(signal)) return false;
+      dispose();
+      if (receipt !== 'not_attempted' || signal.aborted) return false;
       receipt = 'not_saved';
       const parsed = parse(value);
-      if (
-        !parsed ||
-        !(await confirm(parsed.statement, signal)) ||
-        !current(signal)
-      )
-        return false;
-      approved = { ...parsed, signal };
-      return true;
+      if (!parsed) return false;
+      const guard = onDeviceOwner
+        ? observeAnswerMemoryProviderOwner(onDeviceOwner, signal)
+        : undefined;
+      let keep = false;
+      try {
+        if (
+          !current(signal, guard) ||
+          (guard && !(await guard.recheck())) ||
+          !(await confirm(parsed.statement, signal)) ||
+          !current(signal, guard) ||
+          (guard && !(await guard.recheck()))
+        )
+          return false;
+        approved = { ...parsed, signal, guard };
+        keep = true;
+        return true;
+      } finally {
+        if (!keep) guard?.dispose();
+      }
     },
     async execute({ input: value, signal }) {
       const grant = approved;
       approved = undefined;
-      if (
-        !grant ||
-        grant.signal !== signal ||
-        !current(signal) ||
-        parse(value)?.statement !== grant.statement
-      )
-        throw new Error('A fresh authored memory approval is required.');
-      const id = await data.saveConversationHistory?.(
-        {
-          requestId,
-          sessionId: owner.id,
-          sessionVersion: owner.version,
-          question,
-          localOnly: true,
-          approvedCurrentSentence: {
-            statement: grant.statement,
-            current: () => current(signal),
+      try {
+        if (
+          !grant ||
+          grant.signal !== signal ||
+          !current(signal, grant.guard) ||
+          (grant.guard && !(await grant.guard.recheck())) ||
+          parse(value)?.statement !== grant.statement
+        )
+          throw new Error('A fresh authored memory approval is required.');
+        const id = await data.saveConversationHistory?.(
+          {
+            requestId,
+            sessionId: owner.id,
+            sessionVersion: owner.version,
+            question,
+            localOnly: true,
+            approvedCurrentSentence: {
+              statement: grant.statement,
+              current: () => current(signal, grant.guard),
+            },
           },
-        },
-        signal,
-      );
-      if (!id) throw new Error('The approved memory could not be saved.');
-      receipt = 'saved';
-      return { items: [], coverage: [], conflicts: [] };
+          signal,
+        );
+        if (!id) throw new Error('The approved memory could not be saved.');
+        receipt = 'saved';
+        return { items: [], coverage: [], conflicts: [] };
+      } finally {
+        grant?.guard?.dispose();
+      }
     },
   });
   return result;

@@ -1,3 +1,4 @@
+import { APPLE_PROVIDER_ID } from '@orot/provider-apple';
 import { createManualHistoryRepository, runMigrations } from '@orot/storage';
 import { createHealthEvidenceTestDatabase } from '../../../healthEvidence/localEvidenceTestSupport';
 import { saveConversationHealthHistory } from '../../../storage/conversationHealthHistory';
@@ -160,3 +161,64 @@ it('offers no canned-shortcut action and refuses fabricated, repeated, quoted or
     f.close();
   }
 });
+
+it.each(['valid', 'wrong-owner', 'inactive-return'] as const)(
+  'strict on-device explicit composer uses only its bound local owner: %s',
+  async mode => {
+    const f = await fixture();
+    try {
+      let retire: () => void = () => {};
+      const unwatch = jest.fn();
+      if (mode === 'inactive-return')
+        f.confirmHistorySave.mockImplementationOnce(async () => {
+          retire();
+          return true;
+        });
+      const signal = new AbortController().signal;
+      const { actions, receipt } = conversationAuthoredMemoryAction({
+        data: f.data,
+        question,
+        observer: {
+          ...f.observer,
+          protectedLocalInput: true,
+          expectedConversationModel: {
+            providerId: APPLE_PROVIDER_ID,
+            modelId: 'synthetic',
+          },
+          templateProposalOwner: {
+            providerId: APPLE_PROVIDER_ID,
+            modelId: mode === 'wrong-owner' ? 'other' : 'synthetic',
+            current: () => true,
+            recheck: async () => true,
+            watch(listener) {
+              retire = listener;
+              return unwatch;
+            },
+          },
+        },
+      });
+      if (mode === 'wrong-owner') {
+        expect(actions).toEqual([]);
+        expect(f.confirmHistorySave).not.toHaveBeenCalled();
+      } else {
+        const [tool] = actions;
+        expect(tool.parseInput({ statement: '그래 그럼' })).toBeUndefined();
+        expect(await tool.authorize(proposal, signal)).toBe(mode === 'valid');
+        if (mode === 'valid') await tool.execute(invocation(signal));
+        expect(unwatch).toHaveBeenCalledTimes(1);
+      }
+      expect(receipt()).toBe(
+        mode === 'valid'
+          ? 'saved'
+          : mode === 'wrong-owner'
+            ? 'not_attempted'
+            : 'not_saved',
+      );
+      expect((await f.notes.list()).map(note => note.details)).toEqual(
+        mode === 'valid' ? [statement] : [],
+      );
+    } finally {
+      f.close();
+    }
+  },
+);
