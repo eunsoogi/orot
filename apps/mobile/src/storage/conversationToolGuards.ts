@@ -18,6 +18,19 @@ export async function setupConversationToolGuards(tx: SqlExecutor) {
   await tx.execute(
     'CREATE TABLE IF NOT EXISTS conversation_tool_periods (artifact_id TEXT NOT NULL, session_id TEXT NOT NULL, run_id TEXT NOT NULL, call_id TEXT NOT NULL, topic TEXT NOT NULL, from_key TEXT NOT NULL, to_key TEXT NOT NULL, PRIMARY KEY (artifact_id, topic, from_key, to_key))',
   );
+  // Source-first lookup avoids probing dependencies for every saved call
+  // while the shared protected writer is held. DELETE still fires every
+  // existing per-call tombstone/lineage cleanup trigger in this transaction.
+  await tx.execute(
+    'CREATE INDEX IF NOT EXISTS conversation_tool_dependency_source ON conversation_tool_dependencies (record_kind, record_id, session_id, run_id, call_id)',
+  );
+  await tx.execute('DROP TRIGGER IF EXISTS tool_source_removed_manual_history');
+  await tx.execute(`CREATE TRIGGER tool_source_removed_manual_history AFTER DELETE ON manual_history_entries BEGIN
+    DELETE FROM conversation_tool_events
+    WHERE (session_id, run_id, call_id) IN (
+      SELECT session_id, run_id, call_id FROM conversation_tool_dependencies
+      WHERE record_kind = 'manual_history' AND record_id = OLD.id
+    ); END`);
   const erase = (table: string, condition: string) =>
     `DELETE FROM conversation_tool_events WHERE EXISTS (SELECT 1 FROM ${table} p WHERE p.session_id = conversation_tool_events.session_id AND p.run_id = conversation_tool_events.run_id AND p.call_id = conversation_tool_events.call_id AND (${condition}));`;
   await tx.execute(
@@ -32,14 +45,9 @@ export async function setupConversationToolGuards(tx: SqlExecutor) {
       `CREATE TRIGGER IF NOT EXISTS tool_source_changed_${kind} AFTER UPDATE ON ${table} WHEN OLD.id IS NOT NEW.id OR ${jsonValueChangedPredicate('OLD.payload_json', 'NEW.payload_json')} BEGIN ${erase('conversation_tool_dependencies', match)} END`,
     );
   }
-  for (const [kind, table] of [
-    ['manual_history', 'manual_history_entries'],
-    ['reviewed_memory', 'agent_memory_records'],
-  ] as const) {
-    await tx.execute(
-      `CREATE TRIGGER IF NOT EXISTS tool_source_removed_${kind} AFTER DELETE ON ${table} BEGIN ${erase('conversation_tool_dependencies', `p.record_kind = '${kind}' AND p.record_id = OLD.id`)} END`,
-    );
-  }
+  await tx.execute(
+    `CREATE TRIGGER IF NOT EXISTS tool_source_removed_reviewed_memory AFTER DELETE ON agent_memory_records BEGIN ${erase('conversation_tool_dependencies', "p.record_kind = 'reviewed_memory' AND p.record_id = OLD.id")} END`,
+  );
   await tx.execute(
     `CREATE TRIGGER IF NOT EXISTS tool_memory_changed AFTER UPDATE ON agent_memory_records WHEN ${memoryContentChangedPredicate()} BEGIN ${erase('conversation_tool_dependencies', "p.record_kind = 'reviewed_memory' AND p.record_id = OLD.id")} END`,
   );
