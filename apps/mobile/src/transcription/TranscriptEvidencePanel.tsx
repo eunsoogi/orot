@@ -14,16 +14,17 @@ import {
   type TranscriptError,
 } from './transcriptReviewPresentation';
 import TranscriptReviewSummary from './TranscriptReviewSummary';
-import type {
-  TranscriptEvidenceService,
-  TranscriptRecordingView,
+import {
+  type TranscriptEvidenceService,
+  type TranscriptRecordingView,
+  transcriptEvidenceService,
 } from './transcriptEvidenceService';
-import { transcriptEvidenceService } from './transcriptEvidenceService';
 import { transcriptEvidenceStyles as styles } from './TranscriptEvidencePanel.styles';
 
 interface TranscriptEvidencePanelProps {
   recordingSourceId?: string;
   service?: TranscriptEvidenceService;
+  playSegment?: TranscriptEvidenceService['play'];
   deletionBusy?: boolean;
   savedDetail?: boolean;
   automaticTranscriptionStatus?: 'running' | 'failed' | 'complete';
@@ -34,6 +35,7 @@ interface TranscriptEvidencePanelProps {
 export default function TranscriptEvidencePanel({
   recordingSourceId,
   service = transcriptEvidenceService,
+  playSegment = service.play,
   deletionBusy = false,
   savedDetail = false,
   automaticTranscriptionStatus,
@@ -123,7 +125,7 @@ export default function TranscriptEvidencePanel({
     setPlayingSegmentId(segment.id);
     setError(null);
     try {
-      await service.play(segment);
+      await playSegment(segment);
     } catch {
       setError('play');
     } finally {
@@ -156,7 +158,6 @@ export default function TranscriptEvidencePanel({
           {t('recording.transcript.autoProgress')}
         </Text>
       ) : null}
-      {/* Keep the rendered failure state addressable for theme-contrast probes. */}
       {error ? (
         <Text
           accessibilityRole="alert"
