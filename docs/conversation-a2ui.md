@@ -118,3 +118,18 @@ The existing final answer and evidence checks still own publication. Other
 providers do not acquire a new stream path, and arbitrary data-bound widgets
 and sendDataModel remain unsupported.
 
+
+
+## Independent sections in one reply
+
+Fresh v38 replies can compose two data-bound sections under one surface.
+The additional section repeats its own isolated template from
+`/secondaryItems`; the first retains `/items`. A reply can, for example,
+show a compact summary row followed by a vertical list of next steps.
+Each section accepts at most one whole-array replacement. The two templates
+cannot share or reference one another's nodes, bindings or generated IDs.
+
+The accepted answer order, the aggregate 64-node budget, and ordinary archive
+validation apply to the combined layout. v37 remains unchanged for restored
+requests and the existing provisional geometry path; no new layout or values
+are published provisionally for two-section replies.

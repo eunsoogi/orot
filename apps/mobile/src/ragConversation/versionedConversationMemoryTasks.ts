@@ -1,4 +1,7 @@
-import { withFinalConversationRepeatedChildren } from './conversationA2UIRepeatedChildrenTask';
+import {
+  withComposedConversationSections,
+  withFinalConversationRepeatedChildren,
+} from './conversationA2UIRepeatedChildrenTask';
 import { withFinalConversationChoice } from './conversationA2UIChoiceTask';
 import { withFinalConversationCheckbox } from './conversationA2UICheckboxTask';
 import { withFinalConversationCardWeight } from './conversationA2UICardWeightTask';
@@ -38,6 +41,10 @@ export function versionedConversationMemoryTasks(
   const conversationTaskV35 =
     withFinalConversationCheckbox(conversationTaskV34);
   const conversationTaskV36 = withFinalConversationChoice(conversationTaskV35);
+  const conversationTaskV37 = withFinalConversationRepeatedChildren(
+    conversationTaskV36,
+    allowsOrdinaryA2UI,
+  );
   return {
     conversationTaskV25,
     conversationTaskV26,
@@ -58,10 +65,8 @@ export function versionedConversationMemoryTasks(
       v34: conversationTaskV34,
       v35: conversationTaskV35,
       v36: conversationTaskV36,
+      v37: conversationTaskV37,
     },
-    ragConversationTask: withFinalConversationRepeatedChildren(
-      conversationTaskV36,
-      allowsOrdinaryA2UI,
-    ),
+    ragConversationTask: withComposedConversationSections(conversationTaskV37),
   };
 }
