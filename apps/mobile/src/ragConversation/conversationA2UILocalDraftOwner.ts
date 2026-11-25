@@ -1,4 +1,9 @@
-import { createContext, useMemo } from 'react';
+import {
+  createContext,
+  useCallback,
+  useMemo,
+  useSyncExternalStore,
+} from 'react';
 import { AppState } from 'react-native';
 import type { ConversationA2UINode } from './conversationA2UI';
 import type { ConversationSessions } from './conversationSessions';
@@ -56,5 +61,24 @@ export function useConversationA2UILocalDraftOwner(
       },
     }),
     [ownsPresentation, sessionId, store],
+  );
+}
+
+const subscribeIdle = () => () => {};
+
+/** The answer may publish before the turn clears busy. This primitive selector
+ * observes admission even when the answer body and owner context are memoized. */
+export function useOwnedConversationA2UIStamp(
+  owner: Owner | undefined,
+  root: ConversationA2UINode,
+  enabled: boolean,
+) {
+  const read = useCallback(
+    () => (enabled ? owner?.surface(root) : undefined),
+    [enabled, owner, root],
+  );
+  return useSyncExternalStore(
+    enabled && owner ? owner.subscribe : subscribeIdle,
+    read,
   );
 }
