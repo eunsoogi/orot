@@ -74,3 +74,19 @@ test('keeps the visuals below active physical reservations in their lane', () =>
     }),
   ).toBe(12);
 });
+
+test('an in-lane edge reservation only blocks lift if it reaches the profile', () => {
+  const edge = {
+    id: 'synthetic-edge-indicator',
+    kind: 'occlusion' as const,
+    frame: { x: 0, y: 40, width: 20, height: 15 },
+    isActive: true,
+    margins: { top: 0, right: 0, bottom: 0, left: 0 },
+  };
+  expect(candidate(topBar, { reservedRegions: [edge] })).toBe(12);
+  expect(
+    candidate(topBar, {
+      reservedRegions: [{ ...edge, margins: { ...edge.margins, right: 10 } }],
+    }),
+  ).toBe(0);
+});

@@ -14,6 +14,7 @@ import { t } from '../i18n';
 import type { ConversationSession } from '../ragConversation/conversationSessionTypes';
 import { AvatarSymbol } from './AppearanceEditor';
 import { defaultAssistantName } from './appearance';
+import { assistantProfileMaximumWidth } from './assistantProfileGeometry';
 import { useAssistantAppearance } from './AssistantAppearanceProvider';
 
 const stages = {
@@ -146,7 +147,7 @@ const styles = StyleSheet.create({
     flexDirection: 'column',
     alignItems: 'center',
     gap: 0,
-    maxWidth: 280,
+    maxWidth: assistantProfileMaximumWidth,
     paddingHorizontal: 16,
     paddingVertical: 0,
   },
