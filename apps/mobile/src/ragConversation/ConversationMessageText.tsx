@@ -1,12 +1,17 @@
 import { SavedPossibilityNarrative } from './SavedPossibilityNarrative';
 import { savedPossibilityNarrativeParts } from './savedPossibilityNarrativeParts';
 import { ConversationReportText } from './ConversationReportText';
-import { parseConversationReport } from './conversationReportTemplate';
+import {
+  hasConversationReportTitle,
+  parseConversationReport,
+} from './conversationReportTemplate';
 import { ConversationA2UISurface } from './ConversationA2UISurface';
 import type { ConversationA2UINode } from './conversationA2UI';
 import { memo } from 'react';
 import { AppText } from '../layout/AppText';
 import { AiResponseText } from '../layout/AiResponseText';
+import { AssistantMarkdown } from './AssistantMarkdown';
+import { parseAssistantMarkdown } from './conversationMarkdown';
 import { styles } from './ConversationScreen.styles';
 
 /** Only prose identity belongs to this memo boundary. Callbacks and source state
@@ -23,6 +28,7 @@ export const ConversationMessageText = memo(
     staticText = false,
     savedPossibilityNarrative,
     selectable = true,
+    onLinkError,
   }: {
     readonly content: string;
     readonly verifiedA2UI?: ConversationA2UINode;
@@ -32,6 +38,7 @@ export const ConversationMessageText = memo(
     readonly staticText?: boolean;
     readonly savedPossibilityNarrative?: true;
     readonly selectable?: boolean;
+    readonly onLinkError?: () => void;
   }) {
     const report =
       !user && allowReport ? parseConversationReport(content) : undefined;
@@ -59,6 +66,21 @@ export const ConversationMessageText = memo(
     // The surrounding bubble still owns any verified sources and copy menu.
     if (verifiedA2UI)
       return <ConversationA2UISurface root={verifiedA2UI} testID={testID} />;
+    // During a draft the existing text host keeps appending; only a complete
+    // ordinary answer (live or restored) can replace raw syntax with formatting.
+    const markdown =
+      !user && allowReport && !hasConversationReportTitle(content)
+        ? parseAssistantMarkdown(content)
+        : undefined;
+    if (markdown)
+      return (
+        <AssistantMarkdown
+          blocks={markdown}
+          testID={testID}
+          selectable={selectable}
+          onLinkError={onLinkError}
+        />
+      );
     const Text = user || staticText ? AppText : AiResponseText;
     return (
       <Text

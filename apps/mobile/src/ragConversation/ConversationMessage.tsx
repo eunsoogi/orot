@@ -1,3 +1,5 @@
+import { ConversationBubbleActivity } from './ConversationBubbleActivity';
+import { useConversationMarkdownLinkError } from './useConversationMarkdownLinkError';
 import type { ConversationBubbleCopyScope } from './ConversationBubbleCopyHost';
 import { conversationBubbleCopyMenus } from './conversationBubbleCopyText';
 import { conversationMessageBodyTestID } from './conversationMessageBodyTestID';
@@ -69,25 +71,12 @@ export function ConversationMessage({
       onOpenSource,
       onLinkError,
     });
+  const markdownLinkError = useConversationMarkdownLinkError(onLinkError);
   const user = message.role === 'user';
   const copyMenus = conversationBubbleCopyMenus(copyScope, message);
   const visitQuestions =
     !user && message.visitQuestions ? renderVisitQuestions?.(message) : null;
-  const activity = message.activity ? (
-    <Text
-      accessibilityLiveRegion={message.streaming ? 'none' : 'polite'}
-      style={styles.activity}
-      testID={
-        message.streaming
-          ? 'rag-conversation-progress'
-          : message.incomplete
-            ? 'rag-conversation-incomplete-activity'
-            : undefined
-      }
-    >
-      {message.activity}
-    </Text>
-  ) : null;
+  const activity = <ConversationBubbleActivity message={message} />;
   const activityBeforeText = compact && message.streaming;
   return (
     <ConversationMessageBubbles
@@ -199,6 +188,7 @@ export function ConversationMessage({
               verifiedA2UI={a2ui.select(suppliedMessage, verifiedA2UI)}
               savedPossibilityNarrative={message.savedPossibilityNarrative}
               user={user}
+              onLinkError={markdownLinkError}
               staticText={message.savedHistoryDisplayOnly}
               selectable={copyMenus === undefined}
               allowReport={

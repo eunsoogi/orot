@@ -64,6 +64,14 @@ export function parseConversationReport(
   );
 }
 
+/** A malformed explicit report still uses the intact text fallback, not generic headings. */
+export function hasConversationReportTitle(content: string): boolean {
+  return (
+    content.startsWith(`# ${possibilityReportTemplate().title}\n`) ||
+    content.startsWith(`# ${t('dailyReport.title')}\n`)
+  );
+}
+
 /** A quick choice requests a report; later free-form follow-ups remain natural dialogue.
  * These labels request organization, not extra evidence or a lower validation standard. */
 export function possibilityTemplateInstruction(
