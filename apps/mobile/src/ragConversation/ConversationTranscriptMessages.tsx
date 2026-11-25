@@ -6,6 +6,8 @@ import { conversationBubbleKey } from './conversationBubbleEntrances';
 import { ConversationMessageReceipt } from './ConversationMessageReceipt';
 import { GeneratedReportBookmark } from './GeneratedReportBookmark';
 import { Fragment, type ComponentProps, type ReactNode } from 'react';
+import { View } from 'react-native';
+import { styles } from './ConversationScreen.styles';
 import {
   ConversationMessage,
   type DisplayMessage,
@@ -106,6 +108,29 @@ export function ConversationTranscriptMessages({
     const after = message.streaming
       ? ownInstructions?.slice(afterBoundary)
       : undefined;
+    const bubble = (
+      <ConversationMessage
+        message={message}
+        copyScope={
+          sessionId === undefined
+            ? undefined
+            : { sessionId, allowed: copyingAllowed === true }
+        }
+        beforeAnswer={bubbleRows(before)}
+        {...renderMessage}
+        verifiedA2UI={
+          message.archivedA2UIPresentation
+            ? {
+                messageId: message.id,
+                root: message.archivedA2UIPresentation,
+                origin: 'owned-archive',
+              }
+            : message.a2uiPresentation
+              ? { messageId: message.id, root: message.a2uiPresentation }
+              : undefined
+        }
+      />
+    );
     rows.push(
       <ReplyMessageContainer
         key={`${message.id}:${replyFocus && message.retainedTurnId === replyFocus.messageId ? `focus-${replyFocus.generation}` : 'ordinary'}`}
@@ -121,28 +146,20 @@ export function ConversationTranscriptMessages({
         }
         onPosition={message.id === anchorId ? onAnchorLayout : undefined}
       >
-        <ConversationMessage
-          message={message}
-          copyScope={
-            sessionId === undefined
-              ? undefined
-              : { sessionId, allowed: copyingAllowed === true }
-          }
-          beforeAnswer={bubbleRows(before)}
-          {...renderMessage}
-          verifiedA2UI={
-            message.archivedA2UIPresentation
-              ? {
-                  messageId: message.id,
-                  root: message.archivedA2UIPresentation,
-                  origin: 'owned-archive',
-                }
-              : message.a2uiPresentation
-                ? { messageId: message.id, root: message.a2uiPresentation }
-                : undefined
-          }
-        />
-        {bubbleRows(after)}
+        {message.role === 'assistant' ? (
+          <View
+            style={styles.assistantBubbleSequence}
+            testID="conversation-assistant-steering-sequence"
+          >
+            {bubble}
+            {bubbleRows(after)}
+          </View>
+        ) : (
+          <>
+            {bubble}
+            {bubbleRows(after)}
+          </>
+        )}
         <GeneratedReportBookmark message={message} />
         {message.role === 'user' ? (
           <ConversationMessageReceipt

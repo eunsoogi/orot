@@ -1,4 +1,6 @@
-import { render } from '@testing-library/react-native';
+import { render, within } from '@testing-library/react-native';
+import { StyleSheet } from 'react-native';
+import { styles } from '../ConversationScreen.styles';
 import { ConversationTranscriptMessages } from '../ConversationTranscriptMessages';
 const row = {
   id: 's1',
@@ -64,4 +66,43 @@ test('retained and live receipts stay before their own answer without duplicatio
     />,
   );
   expect(screen.getAllByText('Second steering')).toHaveLength(1);
+});
+
+test('a visible response and its unapplied steering share the normal bubble gap before Read', async () => {
+  const messages = [
+    {
+      id: 4,
+      role: 'assistant' as const,
+      content: 'Current answer',
+      streaming: true,
+    },
+  ];
+  const instruction = { ...row, status: 'delivery_pending' as const };
+  const screen = await render(
+    <ConversationTranscriptMessages
+      {...props}
+      messages={messages}
+      pendingId={4}
+      instructions={[instruction]}
+    />,
+  );
+  const sequence = () =>
+    screen.getByTestId('conversation-assistant-steering-sequence');
+  expect(within(sequence()).getByText('Current answer')).toBeTruthy();
+  expect(within(sequence()).getByText(row.text)).toBeTruthy();
+  expect(StyleSheet.flatten(sequence().props.style).gap).toBe(
+    styles.assistantBubbleSequence.gap,
+  );
+  expect(screen.queryByText('읽음')).toBeNull();
+
+  await screen.rerender(
+    <ConversationTranscriptMessages
+      {...props}
+      messages={messages}
+      pendingId={4}
+      instructions={[row]}
+    />,
+  );
+  expect(within(sequence()).getByText('읽음')).toBeTruthy();
+  expect(screen.getAllByText(row.text)).toHaveLength(1);
 });
