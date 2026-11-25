@@ -21,7 +21,7 @@ extension RealtimeVoiceCall {
         do { token = try ownership.reserve() } catch { completion(.failure(error)); return }
         tools.reset(enabled: false)
         connectedDuration.begin()
-        id = identifier; paused = false; opening = completion
+        id = identifier; paused = false; opening = completion; firstAudioStart = true
         let epoch = UUID(); lifecycleEpoch = epoch
         // The key is retained only while permission/open is pending and by the authenticated socket request.
         permission { [weak self] allowed in
@@ -64,7 +64,10 @@ extension RealtimeVoiceCall {
                     }
                     socket.open(model: model, key: key)
                     guard id == identifier, lifecycleEpoch == epoch else { return }
-                    sendStartWithConnectingCue(event, startID: startID, identifier: identifier, epoch: epoch)
+                    guard token != nil, foreground() else { fail(); return }
+                    event["event_id"] = startID
+                    liveStartID = startID
+                    socket.send(event)
                 }
                 if self.foreground() {
                     begin()
@@ -112,7 +115,8 @@ extension RealtimeVoiceCall {
         guard !paused || opening != nil else { return }
         retireManagedResponses()
         guard liveIsCurrent() else { return }
-        paused = true; liveUnmuteID = nil; ready = false; captureEpoch = UUID(); lifecycleEpoch = UUID()
+        paused = true; liveUnmuteID = nil; ready = false; audioStarting = false
+        captureEpoch = UUID(); lifecycleEpoch = UUID()
         pending = nil; timer?.invalidate(); timer = nil
         let callback = opening; opening = nil
         callback?(.failure(Failure.stopped))
@@ -173,5 +177,27 @@ extension RealtimeSocketPort {
 
     func finishLive(sessionID _: String) {
         close()
+    }
+}
+
+/// Bounds copied microphone bytes waiting for the main queue; no unbounded tap callback backlog.
+final class RealtimeInputBudget {
+    private let lock = NSLock()
+    enum Result { case accepted, closed, overflow }
+    private var bytes = 0
+    private var closed = false
+    func reset() {
+        lock.lock(); closed = false; lock.unlock()
+    }
+
+    func reserve(_ count: Int) -> Result {
+        lock.lock(); defer { lock.unlock() }
+        guard !closed else { return .closed }
+        guard bytes + count <= 96000 else { closed = true; return .overflow }
+        bytes += count; return .accepted
+    }
+
+    func release(_ count: Int) {
+        lock.lock(); bytes -= count; lock.unlock()
     }
 }

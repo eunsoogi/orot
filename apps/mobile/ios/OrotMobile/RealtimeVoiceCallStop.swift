@@ -15,9 +15,8 @@ extension RealtimeVoiceCall {
         }
         let caption = observedCaptions.take(captionOwner)
         liveSessionID = nil
-        ready = false; paused = false; liveSocketEpoch = nil; liveStartID = nil; liveUnmuteID = nil; liveExpiresAt = nil
+        ready = false; audioStarting = false; paused = false; liveSocketEpoch = nil; liveStartID = nil; liveUnmuteID = nil; liveExpiresAt = nil
         liveExpiryTimer?.invalidate(); liveExpiryTimer = nil; captureEpoch = UUID(); lifecycleEpoch = UUID(); pending = nil; timer?.invalidate(); timer = nil
-        connectingCue?.cancel()
         cancelTools(); tools.enabled = false
         retireManagedResponses()
         retireMailbox?()
