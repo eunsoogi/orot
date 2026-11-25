@@ -81,7 +81,7 @@ test('workout category selection supplies one owned month read without replacing
     await fireEvent.press(screen.getByTestId('health-record-filter-all'));
     expect(lane.queryWorkoutPeriodHeartRate).not.toHaveBeenCalled();
     await fireEvent.press(screen.getByTestId('health-record-filter-workouts'));
-    await waitFor(() => expect(screen.getByText('120 BPM')).toBeTruthy());
+    await waitFor(() => expect(screen.getByLabelText(/120 BPM/)).toBeTruthy());
     expect(lane.queryWorkoutPeriodHeartRate).toHaveBeenCalledTimes(1);
     expect(lane.queryWorkoutHeartRate).not.toHaveBeenCalled();
     expect(lane.requestReadAuthorizations).not.toHaveBeenCalled();
@@ -91,7 +91,14 @@ test('workout category selection supplies one owned month read without replacing
     const heart = chart.mock.calls.find(
       child => child[0].testID === 'health-records-workout-heart-rate-chart',
     )?.[0];
-    expect(duration?.data.metric).toBe('workouts');
+    expect(duration).toMatchObject({
+      data: { metric: 'workouts' },
+      hideSeriesLegend: true,
+    });
+    expect(screen.queryByText('120 BPM')).toBeNull();
+    expect(
+      screen.queryByText('건강 앱이 운동에 연결한 최근 한 달 심박수'),
+    ).toBeNull();
     expect(heart).toMatchObject({
       kind: 'range',
       rangeAxis: 'day',
@@ -107,15 +114,15 @@ test('workout category selection supplies one owned month read without replacing
       focused = false;
       listeners.get('blur')?.();
     });
-    expect(screen.queryByText('120 BPM')).toBeNull();
+    expect(screen.queryByLabelText(/120 BPM/)).toBeNull();
     await act(() => {
       focused = true;
       listeners.get('focus')?.();
     });
-    await waitFor(() => expect(screen.getByText('120 BPM')).toBeTruthy());
+    await waitFor(() => expect(screen.getByLabelText(/120 BPM/)).toBeTruthy());
     expect(lane.queryWorkoutPeriodHeartRate).toHaveBeenCalledTimes(1);
     await act(() => lane.revoke());
-    expect(screen.queryByText('120 BPM')).toBeNull();
+    expect(screen.queryByLabelText(/120 BPM/)).toBeNull();
     await view.unmount();
   } finally {
     AppState.currentState = prior;

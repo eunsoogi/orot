@@ -180,6 +180,7 @@ export function HealthRecordsLineChart({
         width={width}
         height={200}
         title={healthRecordCategoryTitle(category)}
+        hideSeriesLegend={category === 'steps' || category === 'workouts'}
         legendLabelsOnly={metrics[category] === 'heartRate'}
         kind={workoutRecordsChartKind(
           workoutBars ? category : '',

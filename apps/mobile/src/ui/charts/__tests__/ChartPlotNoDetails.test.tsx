@@ -108,3 +108,36 @@ test('chart-only pressure keeps a concise non-color legend without detailed valu
     screen.getByTestId('pressure-plot').props.accessibilityLabel,
   ).toContain('120 mmHg');
 });
+
+test('one metric with multiple stored series can hide its raw legend and still announce values', async () => {
+  const steps = {
+    ...data,
+    series: [
+      ...data.series,
+      {
+        ...data.series[0]!,
+        id: 'secondary',
+        style: 'secondary' as const,
+        points: [{ x: '2026-01-01', value: 200, source: 'synthetic' }],
+      },
+    ],
+  };
+  const props = {
+    data: steps,
+    width: 0,
+    height: 112,
+    title: '걸음',
+    kind: 'line' as const,
+    lineAxis: 'day' as const,
+    testID: 'steps-plot',
+  };
+  const view = await render(<ChartPlot {...props} compact hideDetails />);
+  expect(screen.getByText('걸음 (실선) · count')).toBeTruthy();
+  await view.rerender(
+    <ChartPlot {...props} compact hideDetails hideSeriesLegend />,
+  );
+  expect(screen.queryByText(/실선|점선|count/)).toBeNull();
+  expect(
+    screen.getByTestId('steps-plot-plot').props.accessibilityLabel,
+  ).toContain('200걸음');
+});

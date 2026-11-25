@@ -82,6 +82,7 @@ export function HealthRecordsMonthChartPanel({
         kind={kind}
         rangeAxis="day"
         title={healthRecordCategoryTitle(category)}
+        hideSeriesLegend={category === 'steps' || category === 'workouts'}
         legendLabelsOnly={data.metric === 'heartRate'}
         testID={'health-record-chart-values-' + category}
         selectedPointTestID={'health-record-chart-' + category}

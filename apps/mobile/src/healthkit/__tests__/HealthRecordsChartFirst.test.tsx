@@ -174,6 +174,7 @@ test('Records Steps uses the shared day line and keeps its floating total toolti
       lineAxis: 'day',
       barTooltip: true,
       hideDetails: true,
+      hideSeriesLegend: true,
       data: {
         xWindow: window,
         series: [{ points: [{ x: '2026-11-08', value: 40 }] }],
