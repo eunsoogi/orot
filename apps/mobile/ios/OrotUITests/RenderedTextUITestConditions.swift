@@ -3,15 +3,35 @@ import XCTest
 
 @MainActor
 enum RenderedTextUITestConditions {
+    struct Sample {
+        let frame: CGRect
+        let appFrame: CGRect
+        let text: String
+        let screenshot: XCUIScreenshot
+    }
+
+    /// Keep geometry and compositor pixels from the same settled observation.
+    static func sample(_ element: XCUIElement, in app: XCUIApplication) -> Sample {
+        Sample(frame: element.frame, appFrame: app.frame, text: UITestConditions.text(element), screenshot: app.screenshot())
+    }
+
     /// Static text may have no activation point. Check its exact accessible text and actual rendered pixels instead of inferring visibility from hittability.
     static func verify(_ element: XCUIElement, equals expected: String, in app: XCUIApplication, testCase: XCTestCase) throws {
         XCTAssertTrue(element.exists)
-        // The screen does not change during this observation; reuse the measured frames instead of asking AX for each coordinate again.
-        let elementFrame = element.frame
-        let applicationFrame = app.frame
+        try verify(sample(element, in: app), equals: expected, attachmentName: "rendered-synthetic-review-question", testCase: testCase)
+    }
+
+    static func verify(_ sample: Sample, equals expected: String, attachmentName: String, testCase: XCTestCase) throws {
+        let elementFrame = sample.frame
+        let applicationFrame = sample.appFrame
+        let screenshot = sample.screenshot
+        let attachment = XCTAttachment(screenshot: screenshot)
+        attachment.name = attachmentName
+        attachment.lifetime = .keepAlways
+        testCase.add(attachment)
         XCTAssertFalse(elementFrame.isEmpty)
-        XCTAssertEqual(UITestConditions.text(element), expected)
-        let screenshot = app.screenshot()
+        XCTAssertFalse(applicationFrame.isEmpty)
+        XCTAssertEqual(sample.text, expected)
         let cgImage = try XCTUnwrap(screenshot.image.cgImage)
         let scaleX = CGFloat(cgImage.width) / applicationFrame.width
         let scaleY = CGFloat(cgImage.height) / applicationFrame.height
@@ -30,9 +50,5 @@ enum RenderedTextUITestConditions {
             value.components(separatedBy: .whitespacesAndNewlines).joined()
         }
         XCTAssertEqual(compact(strings.joined(separator: " ")), compact(expected), "Observed rendered text: \(strings)")
-        let attachment = XCTAttachment(screenshot: screenshot)
-        attachment.name = "rendered-synthetic-review-question"
-        attachment.lifetime = .keepAlways
-        testCase.add(attachment)
     }
 }

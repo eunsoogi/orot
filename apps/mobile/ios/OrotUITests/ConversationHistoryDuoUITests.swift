@@ -151,6 +151,73 @@ final class ConversationHistoryDuoUITests: OrotFailFastTestCase {
         )
     }
 
+    /// Observe actual compositor pixels, not just AX frames, on the measured split host.
+    @MainActor
+    func testPreparedVisitKeepsRenderedOutgoingTextInsideItsBubble() throws {
+        let app = XCUIApplication()
+        let original = XCUIDevice.shared.orientation
+        XCUIDevice.shared.orientation = .landscapeLeft
+        app.launchArguments = [
+            "-OROT_TEST_SCENARIO", "conversation-visual",
+            "-OROT_TEST_CONVERSATION_VISIT_PREPARATION", "YES",
+            "-AppleLanguages", "(ko)", "-AppleLocale", "ko_KR",
+        ]
+        app.launch()
+        defer {
+            UITestConditions.terminateStandaloneApp(app)
+            XCUIDevice.shared.orientation = original
+        }
+
+        let activity = node(app, "conversation-activity-pane")
+        let transcript = node(app, "conversation-transcript-pane")
+        let prepare = app.buttons.matching(identifier: "conversation-visit-prepare").firstMatch
+        XCTAssertTrue(UITestConditions.exists(transcript))
+        XCTAssertTrue(UITestConditions.exists(activity) && activity.frame.width > 0, "An ordinary landscape layout is not a Duo split")
+        XCTAssertLessThanOrEqual(activity.frame.maxX, transcript.frame.minX + 1)
+        XCTAssertTrue(UITestConditions.exists(prepare) && prepare.isHittable)
+        prepare.tap()
+
+        let review = node(app, "inline-visit-review")
+        let shell = node(app, "conversation-user-message")
+        let text = shell.staticTexts.firstMatch
+        XCTAssertTrue(UITestConditions.exists(review))
+        XCTAssertTrue(UITestConditions.exists(text))
+        let expected = UITestConditions.text(text)
+        XCTAssertFalse(expected.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
+
+        // Sample both stages before asserting, so a detached first paint still
+        // records what the same text and host did after foregrounding.
+        let first = (shell.frame, transcript.frame, RenderedTextUITestConditions.sample(text, in: app))
+        XCUIDevice.shared.press(.home)
+        let backgrounded = XCTNSPredicateExpectation(predicate: NSPredicate { _, _ in
+            app.state == .runningBackground || app.state == .runningBackgroundSuspended
+        }, object: nil)
+        XCTAssertEqual(UITestConditions.wait(for: [backgrounded]), .completed)
+        app.activate()
+        XCTAssertTrue(app.wait(for: .runningForeground, timeout: 10))
+        XCTAssertTrue(UITestConditions.exists(text))
+        let returned = (shell.frame, transcript.frame, RenderedTextUITestConditions.sample(text, in: app))
+        func assertPaint(_ stage: String, _ frames: (CGRect, CGRect, RenderedTextUITestConditions.Sample)) throws {
+            let (shellFrame, transcriptFrame, glyph) = frames
+            let bounds = shellFrame.insetBy(dx: 1, dy: 1)
+            try RenderedTextUITestConditions.verify(glyph, equals: expected, attachmentName: stage, testCase: self)
+            XCTAssertTrue(bounds.contains(glyph.frame), "\(stage): glyph frame \(glyph.frame), bubble frame \(bounds)")
+            XCTAssertTrue(transcriptFrame.contains(bounds), "\(stage): bubble must remain inside its transcript lane")
+        }
+        // Keep the post-return image even if the initial OCR or geometry fails.
+        let returnAttachment = XCTAttachment(screenshot: returned.2.screenshot)
+        returnAttachment.name = "bubble-after-foreground"
+        returnAttachment.lifetime = .keepAlways
+        add(returnAttachment)
+        try assertPaint("bubble-first-native-paint", first)
+        try assertPaint("bubble-after-foreground-verified", returned)
+
+        // Test the existing native gesture independently of the initial-paint assertions.
+        shell.press(forDuration: 1)
+        let copy = app.descendants(matching: .any).matching(NSPredicate(format: "label == %@", "복사")).firstMatch
+        XCTAssertTrue(UITestConditions.exists(copy))
+    }
+
     @MainActor
     private func node(_ app: XCUIApplication, _ identifier: String) -> XCUIElement {
         UITestConditions.element(app, identifier)
