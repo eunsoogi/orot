@@ -16,6 +16,17 @@ import { withConversationA2UIFrameSequence } from '../conversationA2UIFrameSeque
 import { withConversationA2UIModal } from '../conversationA2UIModalTask';
 import type { GroundedRagAnswer } from '../task';
 
+let mockFontScale = 1;
+jest.mock('react-native/Libraries/Utilities/useWindowDimensions', () => ({
+  __esModule: true,
+  default: () => ({
+    width: 520,
+    height: 844,
+    scale: 3,
+    fontScale: mockFontScale,
+  }),
+}));
+
 const answer = '첫 번째\n두 번째';
 function frame(weight: unknown = 2, parent = 'Row', secondCard = false) {
   return JSON.stringify({
@@ -66,6 +77,7 @@ function layout(raw: string[], responder = task) {
 }
 
 it('keeps direct Card proportions only at comfortable width and older archive readable', async () => {
+  mockFontScale = 1;
   const root = layout([frame()]);
   expect(root).toBeDefined();
   expect(layout([frame()], legacy)).toBeUndefined();
@@ -83,6 +95,12 @@ it('keeps direct Card proportions only at comfortable width and older archive re
   await width(371);
   expect(grow()).toEqual([undefined, undefined]);
   await width(372);
+  expect(grow()).toEqual([2, 1]);
+  mockFontScale = 1.5;
+  await ui.rerender(<ConversationA2UISurface root={root!} />);
+  expect(grow()).toEqual([undefined, undefined]);
+  mockFontScale = 1;
+  await ui.rerender(<ConversationA2UISurface root={root!} />);
   expect(grow()).toEqual([2, 1]);
 
   const twoCards = layout([frame(2, 'Row', true)])!;
