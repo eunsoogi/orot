@@ -8,8 +8,9 @@ import {
 } from '@orot/storage';
 import {
   acquireIndependentReadEpoch,
-  awaitIndependentReadSettlement,
+  awaitIndependentReadSettlementResult,
 } from './protectedReadEpoch';
+import { reportRecentMediaAdmission } from '../providers/recentMediaAdmissionDiagnostic';
 
 // Cold schema and startup writes can hold the first read queue longer than one second.
 // This applies only to a known unsettled owner, never to failed SQL or later pages.
@@ -23,7 +24,10 @@ async function tryPage(
   database: SqlDatabase,
   before: RecentSourceCursor | undefined,
   signal?: AbortSignal,
-): Promise<readonly RecentSourceRow[] | undefined> {
+): Promise<
+  | { readonly rows: readonly RecentSourceRow[] }
+  | { readonly missing: 'missing_witness' | 'revision_changed' }
+> {
   const snapshot: {
     epoch?: ReturnType<typeof acquireIndependentReadEpoch>;
     rows?: readonly RecentSourceRow[];
@@ -57,12 +61,14 @@ async function tryPage(
       });
     if (snapshot.queryFailed)
       throw new Error('Committed recent sources are unavailable.');
-    if (!signal?.aborted && snapshot.epoch?.current()) return snapshot.rows;
+    if (!signal?.aborted && snapshot.epoch?.current() && snapshot.rows)
+      return { rows: snapshot.rows };
     reportRecentSourceFailure(
       'recent_records_media_witness',
       snapshot.epoch ? new BoundReadRevisionChanged() : undefined,
       signal,
     );
+    return { missing: snapshot.epoch ? 'revision_changed' : 'missing_witness' };
   } finally {
     snapshot.epoch?.dispose();
   }
@@ -79,26 +85,50 @@ export async function readCommittedRecentSourcePage(
 ): Promise<readonly RecentSourceRow[]> {
   if (signal?.aborted) return [];
   const initial = await tryPage(database, before, signal);
-  if (initial) return initial;
+  if ('rows' in initial) return initial.rows;
+  let missing = initial.missing;
   const deadline = performance.now() + initialContentionBudgetMs;
+  const report = (outcome: Parameters<typeof reportRecentMediaAdmission>[1]) =>
+    reportRecentMediaAdmission(before ? 'next_page' : 'first_page', outcome);
+  const stop = (
+    outcome: Parameters<typeof reportRecentMediaAdmission>[1],
+  ): readonly RecentSourceRow[] => {
+    if (signal?.aborted) {
+      report('cancelled');
+      return [];
+    }
+    report(outcome);
+    throw new Error('Committed recent sources are unavailable.');
+  };
+  // A cursor from an earlier page cannot be moved on a replacement epoch.
+  if (before) return stop(missing);
   for (
     let attempt = 0;
-    !before && attempt < maxInitialContentionRetries && !signal?.aborted;
+    attempt < maxInitialContentionRetries && !signal?.aborted;
     attempt++
   ) {
     const remaining = deadline - performance.now();
-    if (
-      remaining <= 0 ||
-      !(await awaitIndependentReadSettlement(database, remaining, signal)) ||
-      signal?.aborted ||
-      (canRetry && !(await canRetry())) ||
-      signal?.aborted ||
-      performance.now() >= deadline
-    )
-      break;
+    if (remaining <= 0) return stop('budget_expired');
+    const settle = await awaitIndependentReadSettlementResult(
+      database,
+      remaining,
+      signal,
+    );
+    if (settle !== 'settled') return stop(settle);
+    if (signal?.aborted) return stop('cancelled');
+    if (canRetry && !(await canRetry())) return stop('readmission_refused');
+    if (signal?.aborted) return stop('cancelled');
+    if (performance.now() >= deadline) return stop('budget_expired');
     const fresh = await tryPage(database, before, signal);
-    if (fresh) return fresh;
+    if ('rows' in fresh) {
+      report('recovered');
+      return fresh.rows;
+    }
+    missing = fresh.missing;
   }
-  if (signal?.aborted) return [];
-  throw new Error('Committed recent sources are unavailable.');
+  return stop(
+    missing === 'revision_changed'
+      ? 'cap_revision_changed'
+      : 'cap_missing_witness',
+  );
 }

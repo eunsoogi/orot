@@ -69,4 +69,26 @@ final class ProcessDiagnosticWitnessTests: XCTestCase {
         XCTAssertFalse(witness.acceptAndContinueJS(feature: "recording_delete", stage: "private-path", outcome: "failed"))
         XCTAssertEqual(witness.snapshot()["receipts"] as? [String], [])
     }
+
+    func testRecentMediaAdmissionAcceptsOnlyClosedPageAndOutcomePairs() throws {
+        let witness = try XCTUnwrap(ProcessDiagnosticWitness.make(arguments: ["-OROT_PROVIDER_DIAGNOSTICS"]))
+        let first = [
+            "recovered", "owner_missing", "owner_detached", "settlement_failed", "wait_expired",
+            "budget_expired", "cap_missing_witness", "cap_revision_changed", "readmission_refused", "cancelled",
+        ]
+        let next = ["missing_witness", "revision_changed", "cancelled"]
+        for (stage, outcomes) in [("first_page", first), ("next_page", next)] {
+            for outcome in outcomes {
+                let expected = "OROT_PROVIDER_DIAGNOSTIC layer=app feature=records_media_admission stage=" + stage +
+                    " outcome=" + outcome
+                XCTAssertEqual(ProcessDiagnosticWitness.recordsMediaAdmissionLine(stage: stage, outcome: outcome), expected)
+                XCTAssertFalse(witness.acceptAndContinueJS(feature: "records_media_admission", stage: stage, outcome: outcome))
+            }
+        }
+        XCTAssertNil(ProcessDiagnosticWitness.recordsMediaAdmissionLine(stage: "first_page", outcome: "revision_changed"))
+        XCTAssertNil(ProcessDiagnosticWitness.recordsMediaAdmissionLine(stage: "next_page", outcome: "settlement_failed"))
+        XCTAssertNil(ProcessDiagnosticWitness.recordsMediaAdmissionLine(stage: "first_page", outcome: "raw-protected-id"))
+        XCTAssertNil(ProcessDiagnosticWitness.recordsMediaAdmissionLine(stage: "private-path", outcome: "recovered"))
+        XCTAssertEqual(witness.snapshot()["receipts"] as? [String], [])
+    }
 }
