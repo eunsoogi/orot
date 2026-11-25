@@ -56,6 +56,10 @@ function HeartReadingValue({
   const range =
     primary && value?.days.find(day => day.date === value.latest.date)?.range;
 
+  const amount = value
+    ? formatOverviewMetricValue(metric, value.latest.value, value.unit)
+    : unavailable(state);
+
   return (
     <View
       testID={`overview-metric-${metric}`}
@@ -64,6 +68,11 @@ function HeartReadingValue({
       <View style={!primary && styles.readingLine}>
         <Text style={overview.cardTitle}>{title(metric)}</Text>
         <Text
+          accessibilityLabel={
+            value
+              ? [amount, t('chart.source', { source: value.source })].join(', ')
+              : undefined
+          }
           style={
             value
               ? primary
@@ -72,9 +81,7 @@ function HeartReadingValue({
               : overview.detail
           }
         >
-          {value
-            ? formatOverviewMetricValue(metric, value.latest.value, value.unit)
-            : unavailable(state)}
+          {amount}
         </Text>
       </View>
       {value ? <Text style={overview.detail}>{value.latest.date}</Text> : null}
