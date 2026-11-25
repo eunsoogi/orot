@@ -24,11 +24,15 @@ export function canStoreClassifiedCalendarBatches(
 ) {
   if (result.status === 'complete') return true;
   if (result.status !== 'partial' || result.completedBatches < 1) return false;
-  const failure = result.failure?.status;
+  const failure = result.failure;
   return (
-    failure === 'invalid_output' ||
-    failure === 'incomplete_result' ||
-    failure === 'budget_exceeded'
+    failure?.status === 'invalid_output' ||
+    failure?.status === 'incomplete_result' ||
+    failure?.status === 'budget_exceeded' ||
+    // Rate limiting a subsequent batch never invalidated the already validated
+    // verdicts. Persist only those after the caller rechecks source and ownership.
+    (failure?.status === 'unavailable' &&
+      failure.providerErrorCode === 'rate_limited')
   );
 }
 
