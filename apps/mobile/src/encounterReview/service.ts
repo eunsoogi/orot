@@ -1,5 +1,4 @@
 import '../agent/polyfills';
-import { createLangGraphCheckpointStorage } from '@orot/storage';
 import { requireLiveCheckpointSource } from '@orot/storage';
 import type {
   EncounterApproval,
@@ -11,12 +10,7 @@ import {
   validateEncounterApproval,
 } from '@orot/agent-runtime';
 import { persistEncounterApproval } from '../agent/encounter/persistence';
-import {
-  openLocalAgentMemoryDatabase,
-  openLocalStorage,
-} from '../storage/secureDatabase';
-import { SqlCipherAgentMemoryStorage } from '../storage/agentMemoryStorage';
-import { createEncounterReviewSessions } from '../agent/encounter/reviewSession';
+import { openLocalStorage } from '../storage/secureDatabase';
 import {
   composeEncounterModel,
   encounterReadOnlyModel,
@@ -30,18 +24,8 @@ import {
 import type { EncounterReviewService, ReviewResult } from './controller';
 import type { ReviewDiagnostics, ReviewDiagnosticAttempt } from './diagnostics';
 import { createEncounterStartAdmission } from './startAdmission';
-
-async function sessions(sourceId: string) {
-  const database = await openLocalAgentMemoryDatabase();
-  await new SqlCipherAgentMemoryStorage(database).listRemovedSourceIds();
-  const storage = createLangGraphCheckpointStorage(database, {
-    sourceRecordId: sourceId,
-  });
-  return {
-    storage,
-    discovery: createEncounterReviewSessions(storage, sourceId),
-  };
-}
+import { runWithEncounterNativeAdmission } from './runNativeAdmission';
+import { openEncounterReviewSessions } from './openSessions';
 
 /** Known-source discovery precedes graph invocation; missing checkpoints must never initiate extraction on restore. */
 async function readSessionResult(
@@ -62,7 +46,7 @@ async function readSessionResult(
       throw new Error('Recording source unavailable.');
   });
   diagnostics?.stage('session_read');
-  const { storage, discovery } = await sessions(sourceId);
+  const { storage, discovery } = await openEncounterReviewSessions(sourceId);
   const session = await discovery.read();
   if (!session) {
     if (approval) diagnostics?.unavailable('session_read');
@@ -193,49 +177,58 @@ export function createEncounterReviewService(
         consent,
         resolveSelected === resolveSelectedAiProvider,
       );
-      const unavailableSelection = () => {
-        diagnostics?.unavailable('provider_selection');
-        return { status: 'unavailable' as const };
-      };
-      if (!admission.selectionCurrent()) return unavailableSelection();
-      diagnostics?.stage('session_begin');
-      const { discovery } = await sessions(sourceId);
-      // A stop while storage opens must not replace the last discoverable review.
-      if (signal.aborted) return { status: 'cancelled' };
-      if (!admission.selectionCurrent()) return unavailableSelection();
-      let session: Awaited<ReturnType<typeof discovery.begin>>;
-      try {
-        session = await discovery.begin(signal);
-      } catch (error) {
-        if (signal.aborted) return { status: 'cancelled' };
-        throw error;
-      }
-      if (signal.aborted) return { status: 'cancelled' };
-      // Keep the source-bound checkpoint thread; only its verified nonce becomes the workflow ID.
-      const executionId = discovery.executionId(session);
-      const model = composeEncounterModel(
-        sourceId,
-        executionId,
-        selected,
-        admission.consent,
-      );
-      diagnostics?.stage('graph_setup');
-      const result = await runLocalEncounterProcessing({
-        sourceId,
-        threadId: session.threadId,
-        expectedTranscript,
-        model,
+      if (!admission.selectionCurrent()) return { status: 'unavailable' };
+      return runWithEncounterNativeAdmission(
+        !selected.remoteProcessing &&
+          resolveSelected === resolveSelectedAiProvider,
         signal,
-        onDiagnostic: diagnostics?.capture,
-      });
-      if (signal.aborted) return { status: 'cancelled' };
-      diagnostics?.stage('session_readback');
-      if ((await discovery.read())?.threadId !== session.threadId) {
-        diagnostics?.unavailable('session_readback');
-        return { status: 'unavailable' };
-      }
-      if (!admission.selectionCurrent()) return unavailableSelection();
-      return admission.denied() ? { status: 'consent-denied' } : result;
+        admission.selectionCurrent,
+        async (executionSignal, confirm) => {
+          diagnostics?.stage('session_begin');
+          const { discovery } = await openEncounterReviewSessions(sourceId);
+          // A stop while storage opens must not replace the last discoverable review.
+          if (signal.aborted) return { status: 'cancelled' };
+          if (!(await confirm()) || !admission.selectionCurrent())
+            return { status: 'unavailable' };
+          let session: Awaited<ReturnType<typeof discovery.begin>>;
+          try {
+            session = await discovery.begin(executionSignal);
+          } catch (error) {
+            if (signal.aborted) return { status: 'cancelled' };
+            if (executionSignal.aborted) return { status: 'unavailable' };
+            throw error;
+          }
+          if (signal.aborted) return { status: 'cancelled' };
+          if (executionSignal.aborted) return { status: 'unavailable' };
+          // Keep the source-bound checkpoint thread; only its verified nonce becomes the workflow ID.
+          const executionId = discovery.executionId(session);
+          const model = composeEncounterModel(
+            sourceId,
+            executionId,
+            selected,
+            admission.consent,
+          );
+          diagnostics?.stage('graph_setup');
+          const result = await runLocalEncounterProcessing({
+            sourceId,
+            threadId: session.threadId,
+            expectedTranscript,
+            model,
+            signal: executionSignal,
+            onDiagnostic: diagnostics?.capture,
+          });
+          if (signal.aborted) return { status: 'cancelled' };
+          if (!(await confirm())) return { status: 'unavailable' };
+          diagnostics?.stage('session_readback');
+          if ((await discovery.read())?.threadId !== session.threadId) {
+            diagnostics?.unavailable('session_readback');
+            return { status: 'unavailable' };
+          }
+          if (!(await confirm()) || !admission.selectionCurrent())
+            return { status: 'unavailable' };
+          return admission.denied() ? { status: 'consent-denied' } : result;
+        },
+      );
     },
   };
 }
