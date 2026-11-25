@@ -5,6 +5,8 @@ import {
   type AgentProbeCursor,
 } from './attestedRecentMemoryProjection';
 import { recentMaterialTimestamp } from './recentMaterialTimestamp';
+import { BoundReadWitnessUnavailable } from '../storage/boundReadResultWitness';
+import { awaitIndependentReadSettlement } from '../storage/protectedReadEpoch';
 
 type Position = { readonly key: string; readonly clock: string };
 type Row = { readonly key: string; readonly createdAt: string };
@@ -94,13 +96,45 @@ export interface RecentMaterialReadyLease {
 export async function readProtectedRecentMaterialPage(
   lease: RecentMaterialReadyLease,
   before: CatalogCursor | undefined,
-  options: { readonly signal: AbortSignal; readonly isCurrent: () => boolean },
+  options: {
+    readonly signal: AbortSignal;
+    readonly isCurrent: () => boolean;
+    readonly canRetry?: () => Promise<boolean>;
+  },
 ) {
-  const probe = openAttestedMemoryProbe(
-    lease.database,
-    () => options.isCurrent() && lease.isCurrent(),
-    options.signal,
-  );
+  const current = () =>
+    !options.signal.aborted && options.isCurrent() && lease.isCurrent();
+  const enter = () =>
+    openAttestedMemoryProbe(lease.database, current, options.signal);
+  let probe: ReturnType<typeof enter>;
+  try {
+    probe = enter();
+  } catch (error) {
+    // A same-owner write can block the first witness entirely. Retry only this
+    // admission, not a catalog/SQLite failure or an existing pagination cursor.
+    if (
+      before ||
+      !(error instanceof BoundReadWitnessUnavailable) ||
+      !options.canRetry ||
+      !current()
+    )
+      throw error;
+    const budget = 2_500;
+    const deadline = performance.now() + budget;
+    if (
+      !(await awaitIndependentReadSettlement(
+        lease.database,
+        budget,
+        options.signal,
+      )) ||
+      !current() ||
+      !(await options.canRetry()) ||
+      !current() ||
+      performance.now() >= deadline
+    )
+      throw error;
+    probe = enter();
+  }
   const witness = { ...probe.witness, dispose: probe.close };
   const width = 20;
   type Step =
