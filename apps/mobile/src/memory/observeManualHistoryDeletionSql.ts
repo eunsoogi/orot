@@ -1,3 +1,7 @@
+import {
+  manualHistoryMemoryDelete,
+  savedMemoryDeleteExecutor,
+} from '../storage/guardedMutationBoundary';
 import type { SqlExecutor } from '@orot/storage';
 import type { SavedMemoryDeletionTrace } from './savedMemoryDeletionDiagnostics';
 
@@ -24,7 +28,14 @@ export function observeManualHistoryDeletionSql(
       if (!stage) return owner.execute(query, parameters);
       trace(stage, 'started');
       try {
-        const result = await owner.execute(query, parameters);
+        const traced =
+          query === manualHistoryMemoryDelete &&
+          savedMemoryDeleteExecutor(owner);
+        const result = await (traced &&
+        parameters?.length === 1 &&
+        typeof parameters[0] === 'string'
+          ? traced(parameters[0])
+          : owner.execute(query, parameters));
         trace(stage, 'completed');
         return result;
       } catch (error) {
