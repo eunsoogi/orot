@@ -4,6 +4,7 @@ import {
 } from './freshConversationDialogue';
 import { loadConversationHistory } from './conversationHistorySources';
 import { conversationInputsAreCurrent } from './conversationEntryTargets';
+import { ConversationHistoryFailure } from './conversationHistoryFailure';
 import { createResearchInputTracker } from './researchInputTracker';
 import type { ConversationEntryContext } from './conversationIntent';
 
@@ -16,17 +17,52 @@ export async function prepareConversationHistory(
   route?: { entry?: ConversationEntryContext; hasPhoto: boolean },
 ) {
   // A target-specific request must not substitute another report, visit or photo.
+  // A consumed daily-report task can leave reportRequest metadata on the next
+  // ordinary entry; only its typed intent or an actual selected report pins it.
   const recoverImplicitHistory =
     !!route &&
     !route.hasPhoto &&
     !report &&
     (!route.entry || route.entry.intent === 'conversation') &&
     !route.entry?.appointmentId &&
-    !route.entry?.dailyReport &&
-    !route.entry?.reportRequest;
-  const history: FreshConversationHistory =
-    (await loadFreshConversationDialogue(input, recoverImplicitHistory)) ??
+    !route.entry?.dailyReport;
+  const openStorage = input.data.openConversationArtifactStorage;
+  let promptStorage: ReturnType<NonNullable<typeof openStorage>> | undefined;
+  // A retry keeps the original protected reader, not whichever storage a
+  // later open might return after a replacement.
+  const boundInput = openStorage
+    ? {
+        ...input,
+        data: {
+          ...input.data,
+          openConversationArtifactStorage: () =>
+            (promptStorage ??= openStorage()),
+        },
+      }
+    : input;
+  const readProtectedDialogue = () =>
+    loadFreshConversationDialogue(boundInput, recoverImplicitHistory);
+  let history: FreshConversationHistory =
+    (await readProtectedDialogue()) ??
     (await loadConversationHistory({ ...input, recoverImplicitHistory }));
+  if (
+    recoverImplicitHistory &&
+    history.historicalDialogueParents?.length &&
+    history.dialogueOwnerIsCurrent &&
+    !(await history.dialogueOwnerIsCurrent())
+  ) {
+    // Retire the first batch completely. Only an exact fresh read can omit
+    // invalid parents under the same session before the opening is released.
+    const renewed = await readProtectedDialogue();
+    const current = renewed?.dialogueOwnerIsCurrent;
+    if (!renewed || !current || !(await current()) || input.signal.aborted)
+      throw new ConversationHistoryFailure(
+        input.signal.aborted ? 'history_cancelled' : 'history_sources_stale',
+      );
+    history = { ...renewed, recoveredOwnerIsCurrent: current };
+  }
+  const recoveredOwner = history.recoveredOwnerIsCurrent;
+  const dialogueOwner = history.dialogueOwnerIsCurrent;
   const sourcesAreCurrent = conversationInputsAreCurrent(
     input.registry,
     history.references,
@@ -43,8 +79,8 @@ export async function prepareConversationHistory(
     ),
     historyIsCurrent: async () =>
       (await sourcesAreCurrent()) &&
-      ((await history.recoveredOwnerIsCurrent?.()) ?? true) &&
-      ((await history.dialogueOwnerIsCurrent?.()) ?? true),
+      ((await recoveredOwner?.()) ?? true) &&
+      (dialogueOwner === recoveredOwner || ((await dialogueOwner?.()) ?? true)),
     researchInputs: createResearchInputTracker(
       input.registry,
       input.data,
