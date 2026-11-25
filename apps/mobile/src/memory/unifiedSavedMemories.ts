@@ -47,7 +47,16 @@ export function isHistoryMemory(row: SavedMemory): row is HistorySavedMemory {
   return 'sourceKind' in row && row.sourceKind === 'manual_history';
 }
 
-/** Keep original identities editable; suppress only single-source projections of present originals. */
+function isOriginalHistoryProjection(row: AgentSavedMemory, sourceId: string) {
+  return (
+    row.kind === 'task_context' &&
+    row.provenance.reviewState === 'user_stated' &&
+    row.memoryKey === 'manual-history-memory:' + sourceId
+  );
+}
+
+/** Keep original identities editable. The derived statement never owns a
+ * separate browser row, even if its older snapshot preceded correction/deletion. */
 export function unifySavedMemories(
   memories: AgentSavedMemory[],
   history: ManualHistoryScreenRecord[],
@@ -59,9 +68,9 @@ export function unifySavedMemories(
       return !(
         refs?.length === 1 &&
         refs[0].kind === 'manual_history' &&
-        ids.has(refs[0].id) &&
         row.provenance.sourceIds.length === 1 &&
-        row.provenance.sourceIds[0] === refs[0].id
+        row.provenance.sourceIds[0] === refs[0].id &&
+        (ids.has(refs[0].id) || isOriginalHistoryProjection(row, refs[0].id))
       );
     }),
     ...history.map(record => ({

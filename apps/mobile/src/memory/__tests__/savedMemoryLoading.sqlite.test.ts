@@ -1,7 +1,10 @@
 import { createAgentMemory, listSavedMemories } from '@orot/agent-memory';
-import { runMigrations } from '@orot/storage';
+import { createManualHistoryRepository, runMigrations } from '@orot/storage';
 import { createHealthEvidenceTestDatabase } from '../../healthEvidence/localEvidenceTestSupport';
 import { SqlCipherAgentMemoryStorage } from '../../storage/agentMemoryStorage';
+
+import { manualHistoryMemory } from '../userStatementMemory';
+import { unifySavedMemories } from '../unifiedSavedMemories';
 
 // Real SQLite exercises persisted rows and deletion queries, not device encryption or Keychain.
 const embedder = {
@@ -62,6 +65,55 @@ it('keeps private namespaces and deleted-source rows out of the browser', async 
         new SqlCipherAgentMemoryStorage(fixture.database),
       ),
     ).toEqual([]);
+  } finally {
+    fixture.close();
+  }
+});
+
+it('does not reopen a held manual projection after its original is corrected or deleted', async () => {
+  const fixture = createHealthEvidenceTestDatabase();
+  try {
+    await runMigrations(fixture.database);
+    const history = createManualHistoryRepository(fixture.database);
+    const storage = new SqlCipherAgentMemoryStorage(fixture.database);
+    const memory = await createAgentMemory({ storage, embedder });
+    const original = await history.create({
+      kind: 'note',
+      title: 'Synthetic original',
+      details: 'Replaced text',
+      effectiveDate: { status: 'unknown' },
+    });
+    await memory.remember(manualHistoryMemory(original));
+    await memory.remember({ ...input, text: original.details });
+    // The two loaders can observe different commits. Simulate a projection
+    // read completed just before the authoritative original changed.
+    const held = await listSavedMemories(storage);
+    expect(held).toHaveLength(2);
+    const corrected = await history.correct(original.id, {
+      kind: 'note',
+      title: 'Synthetic correction',
+      details: 'Current corrected text',
+      effectiveDate: { status: 'known', date: '2026-11-01' },
+    });
+    expect(await listSavedMemories(storage)).toHaveLength(1);
+    expect(unifySavedMemories(held, await history.list())).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          id: 'manual-history:' + corrected.id,
+          record: expect.objectContaining({
+            supersedesId: original.id,
+            effectiveDate: corrected.effectiveDate,
+          }),
+        }),
+        expect.objectContaining({ memoryKey: input.memoryKey }),
+      ]),
+    );
+    expect(unifySavedMemories(held, await history.list())).toHaveLength(2);
+    expect(await history.delete(corrected.id)).toBe(true);
+    expect(unifySavedMemories(held, await history.list())).toEqual([
+      expect.objectContaining({ memoryKey: input.memoryKey }),
+    ]);
+    await memory.close();
   } finally {
     fixture.close();
   }
