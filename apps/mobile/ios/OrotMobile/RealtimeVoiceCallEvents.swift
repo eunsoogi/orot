@@ -31,7 +31,11 @@ extension RealtimeVoiceCall {
            let call = id, let session = liveSessionID, let epoch = liveSocketEpoch,
            ready, !paused, token != nil, foreground(), liveIsCurrent()
         {
-            observedCaptions.append(event, owner: .init(call: call, session: session, epoch: epoch))
+            let owner = LiveObservedCaptionBuffer.Owner(call: call, session: session, epoch: epoch)
+            observedCaptions.append(event, owner: owner)
+            if let line = observedCaptions.displayEvent(event, owner: owner) {
+                emit("VoiceRealtimeTranscript", line)
+            }
         }
         switch type {
         case "session.started":

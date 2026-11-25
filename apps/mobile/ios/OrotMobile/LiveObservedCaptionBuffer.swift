@@ -12,6 +12,11 @@ struct LiveObservedCaptionBuffer {
     private var seen = Set<String>()
     private var lines: [[String: Any]] = []
     private var units = 0
+    private var display = LiveCaptionDisplay()
+
+    mutating func displayEvent(_ event: [String: Any], owner incoming: Owner) -> [String: Any]? {
+        display.append(event, owner: incoming)
+    }
 
     mutating func append(_ event: [String: Any], owner incoming: Owner) {
         guard owner == nil || owner == incoming, lines.count < 48,
@@ -48,5 +53,38 @@ struct LiveObservedCaptionBuffer {
         guard let encoded = try? JSONSerialization.data(withJSONObject: result),
               encoded.count <= 24000 else { return nil }
         return result
+    }
+}
+
+/** Only a rolling, already observed speech display. This state never enters a close receipt. */
+private struct LiveCaptionDisplay {
+    private var owner: LiveObservedCaptionBuffer.Owner?
+    private var seen = [String]()
+    private var order = 0
+    private var role: String?
+    private var text = ""
+
+    mutating func append(_ event: [String: Any], owner incoming: LiveObservedCaptionBuffer.Owner) -> [String: Any]? {
+        guard owner == nil || owner == incoming,
+              let eventID = event["event_id"] as? String, !eventID.isEmpty, eventID.utf8.count <= 128,
+              !seen.contains(eventID), let delta = event["delta"] as? String, !delta.isEmpty,
+              delta.utf16.count <= 2_000 else { return nil }
+        let speaker: String
+        switch event["type"] as? String {
+        case "session.input_transcript.delta": speaker = "user"
+        case "session.output_transcript.delta": speaker = "assistant"
+        default: return nil
+        }
+        if role != speaker || text.utf16.count + delta.utf16.count > 2_000 {
+            guard !delta.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else { return nil }
+            order += 1
+            role = speaker
+            text = ""
+        }
+        owner = incoming
+        if seen.count == 128 { seen.removeFirst() }
+        seen.append(eventID)
+        text += delta
+        return ["callId": incoming.call, "itemId": "observed-\(order)", "role": speaker, "text": text]
     }
 }

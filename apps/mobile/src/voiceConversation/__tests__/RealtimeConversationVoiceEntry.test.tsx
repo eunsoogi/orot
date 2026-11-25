@@ -32,8 +32,8 @@ jest.mock(
 jest.mock('../../assistantAppearance/AssistantHeader', () => ({
   AssistantHeader: () => null,
 }));
-const mockCredentials = jest.fn(async (_model: string) => ({
-  model: 'gpt-realtime-2.1',
+const mockCredentials = jest.fn(async (model: string) => ({
+  model,
   apiKey: 'synthetic-key',
 }));
 jest.mock('../../voiceSettings/voiceSettingsStore', () => ({
@@ -194,7 +194,7 @@ it.each(['session', 'model'] as const)(
       photoDrafts: { get: () => ({ status: 'empty' }) },
     } as unknown as ConversationSessions;
     const props = {
-      model: 'gpt-realtime-2.1',
+      model: 'gpt-live-1.1',
       store,
       sessionId: 1,
       busy: false,
@@ -219,6 +219,10 @@ it.each(['session', 'model'] as const)(
       }),
     );
     expect(screen.getByText(/synthetic old transcript/)).toBeTruthy();
+    await act(() =>
+      old({ callId, itemId: 'response', role: 'assistant', text: '합성 AI' }),
+    );
+    expect(screen.getByText('AI: 합성 AI')).toBeTruthy();
     if (change === 'session') snapshot.activeId = 2;
     await view.rerender(
       <RealtimeConversationVoiceEntry
@@ -236,6 +240,7 @@ it.each(['session', 'model'] as const)(
       }),
     );
     expect(screen.queryByText(/synthetic old transcript/)).toBeNull();
+    expect(screen.queryByText('AI: 합성 AI')).toBeNull();
     expect(screen.queryByText(/synthetic late transcript/)).toBeNull();
     expect(screen.getByRole('button', { name: '음성 대화 시작' })).toBeTruthy();
     alert.mockRestore();
