@@ -1,8 +1,15 @@
 import { useCallback, useContext, useState } from 'react';
-import { Pressable, StyleSheet, useWindowDimensions, View } from 'react-native';
+import { Pressable, useWindowDimensions, View } from 'react-native';
 import { AppText } from '../layout/AppText';
 import { AppSymbol } from '../layout/AppSymbol';
+import { a2uiSurfaceStyles as styles } from './conversationA2UISurfaceStyles';
 import { appColors } from '../layout/appColors';
+import type { ConversationA2UIAlignment } from './conversationA2UIAlignment';
+import {
+  a2uiNaturalRowChildren,
+  a2uiNativeAlignment,
+  a2uiStretchedColumnChild,
+} from './conversationA2UINativeAlignment';
 import { conversationA2UIIcons } from './conversationA2UIStaticCatalog';
 import type { ConversationA2UINode } from './conversationA2UI';
 import { ConversationA2UILocalDraftControls } from './ConversationA2UILocalDraftControls';
@@ -89,14 +96,35 @@ function SurfaceNode({
     );
   }
   if (node.component === 'Row')
-    return <SurfaceRow nodes={node.children} fontScale={fontScale} />;
+    return (
+      <SurfaceRow
+        nodes={node.children}
+        fontScale={fontScale}
+        alignment={node.alignment}
+      />
+    );
   return (
     // A List flows inside the owning conversation scroller; no nested viewport
     // can trap scrolling or hide its child text from assistive technology.
-    <View style={node.component === 'Card' ? styles.card : styles.stack}>
-      {node.children.map(child => (
-        <SurfaceNode key={child.id} node={child} fontScale={fontScale} />
-      ))}
+    <View
+      testID={
+        node.component === 'Column' ? 'conversation-a2ui-column' : undefined
+      }
+      style={
+        node.component === 'Card'
+          ? styles.card
+          : [styles.stack, a2uiNativeAlignment(node.alignment)]
+      }
+    >
+      {node.children.map(child =>
+        node.alignment?.justify === 'stretch' ? (
+          <View key={child.id} style={a2uiStretchedColumnChild}>
+            <SurfaceNode node={child} fontScale={fontScale} />
+          </View>
+        ) : (
+          <SurfaceNode key={child.id} node={child} fontScale={fontScale} />
+        ),
+      )}
     </View>
   );
 }
@@ -104,7 +132,9 @@ function SurfaceNode({
 function SurfaceRow({
   nodes,
   fontScale,
+  alignment,
 }: {
+  readonly alignment?: ConversationA2UIAlignment;
   readonly nodes: readonly ConversationA2UINode[];
   readonly fontScale: number;
 }) {
@@ -125,7 +155,11 @@ function SurfaceRow({
     <View
       testID="conversation-a2ui-row"
       onLayout={event => setWidth(event.nativeEvent.layout.width)}
-      style={columns ? styles.columns : styles.stack}
+      style={
+        columns
+          ? [styles.columns, a2uiNativeAlignment(alignment)]
+          : styles.stack
+      }
     >
       {nodes.map(node =>
         columns && node.component === 'Divider' ? (
@@ -136,7 +170,16 @@ function SurfaceRow({
             horizontal
           />
         ) : (
-          <View key={node.id} style={columns ? styles.column : styles.surface}>
+          <View
+            key={node.id}
+            style={
+              columns
+                ? a2uiNaturalRowChildren(alignment)
+                  ? styles.naturalColumn
+                  : styles.column
+                : styles.surface
+            }
+          >
             <SurfaceNode node={node} fontScale={fontScale} />
           </View>
         ),
@@ -181,43 +224,3 @@ function SurfaceTabs({
     </View>
   );
 }
-
-const styles = StyleSheet.create({
-  surface: { minWidth: 0 },
-  stack: { gap: 8, minWidth: 0 },
-  card: {
-    padding: 12,
-    borderRadius: 12,
-    gap: 8,
-    minWidth: 0,
-    backgroundColor: appColors.primarySoft,
-  },
-  columns: {
-    flexDirection: 'row',
-    alignItems: 'stretch',
-    gap: 12,
-    minWidth: 0,
-  },
-  column: { flex: 1, minWidth: 0 },
-  divider: {
-    backgroundColor: appColors.border,
-    alignSelf: 'stretch',
-    height: StyleSheet.hairlineWidth,
-  },
-  verticalDivider: {
-    backgroundColor: appColors.border,
-    width: StyleSheet.hairlineWidth,
-    alignSelf: 'stretch',
-  },
-  tabList: { flexDirection: 'row', flexWrap: 'wrap', gap: 6, minWidth: 0 },
-  tab: {
-    minHeight: 44,
-    maxWidth: '100%',
-    justifyContent: 'center',
-    paddingHorizontal: 12,
-    borderRadius: 8,
-  },
-  selectedTab: { backgroundColor: appColors.primarySoft },
-  body: { fontSize: 15, flexShrink: 1 },
-  caption: { fontSize: 13, color: appColors.secondary, flexShrink: 1 },
-});

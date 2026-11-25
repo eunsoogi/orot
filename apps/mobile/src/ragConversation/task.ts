@@ -30,7 +30,7 @@ import {
 } from './conversationA2UIPresentation';
 import type { ConversationA2UINode } from './conversationA2UI';
 import type { ConversationA2UILocalDraft } from './conversationA2UILocalDraft';
-import { withConversationA2UIFrameSequence } from './conversationA2UIFrameSequence';
+import { versionedConversationA2UITasks } from './conversationA2UIFrameSequence';
 import { withProactiveMemory } from './proactiveConversationMemory';
 export interface RagConversationMessage {
   readonly role: 'user' | 'assistant';
@@ -227,20 +227,9 @@ export const conversationTaskV20: TaskResponderContract<GroundedRagAnswer> = {
   },
 };
 
-export const conversationTaskV21 = withConversationA2UIFrameSequence(
-  conversationTaskV20,
-  allowsOrdinaryA2UI,
-);
-
-/** Replay of the previous version retains its original closed catalog. */
-export const conversationTaskV22 = withConversationA2UIFrameSequence(
-  conversationTaskV20,
-  allowsOrdinaryA2UI,
-  '22',
-);
-
-export const ragConversationTask = withConversationA2UIFrameSequence(
-  conversationTaskV20,
-  allowsOrdinaryA2UI,
-  '23',
-);
+export const {
+  conversationTaskV21,
+  conversationTaskV22,
+  conversationTaskV23,
+  ragConversationTask,
+} = versionedConversationA2UITasks(conversationTaskV20, allowsOrdinaryA2UI);

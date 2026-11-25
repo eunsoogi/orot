@@ -7,7 +7,7 @@ owns Copy and the plain-text or Markdown fallback. Product reports, citations,
 grounding, permissions and navigation keep their existing pathways.
 
 - New eligible requests submit an `a2uiFrames` array in the existing final
-  result (task version 22): an empty array keeps plain text, and up to twelve ordered A2UI
+  result (task version 24): an empty array keeps plain text, and up to twelve ordered A2UI
   `createSurface`, `updateComponents`, `updateDataModel` or `deleteSurface`
   messages may stage a surface with display-only controls. A malformed, foreign, unresolved or
   deleted surface cannot affect the answer. Orot commits only the final tree
@@ -29,6 +29,13 @@ grounding, permissions and navigation keep their existing pathways.
   text triggers the normal fallback. Tapping a tab changes only local
   display, and does not send an action or start a request. External media
   and general URL or SVG assets are not admitted.
+- Version 24 adds the Basic catalog's literal Row and Column `align` and
+  `justify` properties. Larger text and narrow widths still stack rows in
+  reading order. Layout hints are not accepted as style objects, bindings, or
+  actions. A version 4 archive holds these resolved hints and the same
+  paragraph arrangement, never new prose or data. Versions 21 through 23 keep
+  their prior accepted frame grammars. Scratch-area commands do not take
+  layout hints.
 - The parser bounds frame length (16,384 UTF-16 code units), components (64),
   children (16 per container), tree depth (10), dictionaries (128 aggregate
   entries), path length (6 segments) and displayed text (8,192 UTF-16 code

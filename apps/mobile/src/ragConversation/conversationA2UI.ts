@@ -1,3 +1,4 @@
+import type { ConversationA2UIAlignment } from './conversationA2UIAlignment';
 import type { ConversationA2UIStaticLeaf } from './conversationA2UIStaticCatalog';
 import {
   conversationA2UIFrameLimit,
@@ -41,6 +42,7 @@ export type ConversationA2UINode =
       readonly id: string;
       readonly component: 'Card' | RowKind;
       readonly children: readonly ConversationA2UINode[];
+      readonly alignment?: ConversationA2UIAlignment;
     };
 
 export type ConversationA2UIState =
@@ -184,6 +186,7 @@ export function applyConversationA2UIFrame(
   raw: string,
   expectedSurfaceId: string,
   allowStaticCatalog = false,
+  allowAlignment = false,
 ): ConversationA2UIState | null {
   if (
     previous &&
@@ -196,6 +199,7 @@ export function applyConversationA2UIFrame(
     raw,
     expectedSurfaceId,
     allowStaticCatalog,
+    allowAlignment,
   );
   if (frame === 'foreign') return previous;
   const invalid = {

@@ -1,3 +1,7 @@
+import {
+  conversationA2UIAlignment,
+  type ConversationA2UIAlignment,
+} from './conversationA2UIAlignment';
 import { conversationA2UIIcons } from './conversationA2UIStaticCatalog';
 import type { ConversationA2UINode } from './conversationA2UI';
 import {
@@ -12,14 +16,24 @@ type Shape =
   | 0
   | readonly [Container | 'Tabs', ...Shape[]]
   | readonly ['Divider', Axis]
-  | readonly ['Icon', Icon];
+  | readonly ['Icon', Icon]
+  | readonly [
+      'Aligned',
+      'Row' | 'Column',
+      NonNullable<ConversationA2UIAlignment['align']> | null,
+      NonNullable<ConversationA2UIAlignment['justify']> | null,
+      ...Shape[],
+    ];
 const isIcon = (value: unknown): value is Icon =>
   typeof value === 'string' && Object.hasOwn(conversationA2UIIcons, value);
 const isAxis = (value: unknown): value is Axis =>
   value === 'horizontal' || value === 'vertical';
 
 /** Contains only app-approved arrangement, not wire frames, IDs or independent prose. */
-export type ArchivedA2UILayout = Readonly<{ version: 1 | 2 | 3; tree: Shape }>;
+export type ArchivedA2UILayout = Readonly<{
+  version: 1 | 2 | 3 | 4;
+  tree: Shape;
+}>;
 
 const containers = new Set<Container>(['Card', 'Column', 'List', 'Row']);
 const container = (value: unknown): value is Container =>
@@ -29,6 +43,14 @@ const record = (value: unknown): value is Record<string, unknown> =>
 const keys = (value: Record<string, unknown>, allowed: readonly string[]) =>
   Object.keys(value).length === allowed.length &&
   allowed.every(key => Object.hasOwn(value, key));
+
+function readAlignment(align: unknown, justify: unknown) {
+  try {
+    return conversationA2UIAlignment(align, justify);
+  } catch {
+    return undefined;
+  }
+}
 
 /** Serialize only an admitted native tree reproducing the existing accepted answer. */
 export function storeConversationA2UILayout(
@@ -42,6 +64,7 @@ export function storeConversationA2UILayout(
   let visited = 0;
   let position = 0;
   let extended = false;
+  let aligned = false;
   function visit(value: unknown, depth: number): Shape | undefined {
     if (++visited > 64 || depth > 10 || !record(value)) return undefined;
     if (value.component === 'Text')
@@ -88,22 +111,46 @@ export function storeConversationA2UILayout(
       }
       return ['Tabs', ...panels];
     }
+    const hasAlignment = Object.hasOwn(value, 'alignment');
     if (
       !container(value.component) ||
-      !keys(value, ['id', 'component', 'children']) ||
+      !keys(
+        value,
+        hasAlignment
+          ? ['id', 'component', 'children', 'alignment']
+          : ['id', 'component', 'children'],
+      ) ||
       !Array.isArray(value.children) ||
       !value.children.length ||
       value.children.length > (value.component === 'Card' ? 1 : 16)
     )
       return undefined;
     const children = value.children.map(child => visit(child, depth + 1));
-    return children.every((child): child is Shape => child !== undefined)
-      ? [value.component, ...children]
-      : undefined;
+    if (!children.every((child): child is Shape => child !== undefined)) return;
+    if (hasAlignment) {
+      if (value.component !== 'Column' && value.component !== 'Row') return;
+      const input = value.alignment;
+      if (
+        !record(input) ||
+        Object.keys(input).some(key => key !== 'align' && key !== 'justify')
+      )
+        return;
+      const layout = readAlignment(input.align, input.justify);
+      if (!layout) return;
+      aligned = true;
+      return [
+        'Aligned',
+        value.component,
+        layout.align ?? null,
+        layout.justify ?? null,
+        ...children,
+      ];
+    }
+    return [value.component, ...children];
   }
   const tree = visit(root, 1);
   return tree !== undefined && position === paragraphs.length
-    ? { version: extended ? 3 : legacy ? 1 : 2, tree }
+    ? { version: aligned ? 4 : extended ? 3 : legacy ? 1 : 2, tree }
     : undefined;
 }
 
@@ -116,7 +163,10 @@ export function restoreConversationA2UILayout(
     answer.length > 8_192 ||
     !record(value) ||
     !keys(value, ['version', 'tree']) ||
-    (value.version !== 1 && value.version !== 2 && value.version !== 3)
+    (value.version !== 1 &&
+      value.version !== 2 &&
+      value.version !== 3 &&
+      value.version !== 4)
   )
     return undefined;
   const version = value.version;
@@ -139,7 +189,26 @@ export function restoreConversationA2UILayout(
         ? undefined
         : { id, component: 'Text', variant: 'body', text };
     }
-    if (version === 3 && Array.isArray(shape)) {
+    if (version === 4 && Array.isArray(shape) && shape[0] === 'Aligned') {
+      if (
+        (shape[1] !== 'Row' && shape[1] !== 'Column') ||
+        shape.length < 5 ||
+        shape.length > 20
+      )
+        return;
+      const alignment = readAlignment(
+        shape[2] === null ? undefined : shape[2],
+        shape[3] === null ? undefined : shape[3],
+      );
+      if (!alignment) return;
+      const children = shape.slice(4).map(child => visit(child, depth + 1));
+      return children.every(
+        (child): child is ConversationA2UINode => child !== undefined,
+      )
+        ? { id, component: shape[1], children, alignment }
+        : undefined;
+    }
+    if ((version === 3 || version === 4) && Array.isArray(shape)) {
       if (shape[0] === 'Divider')
         return shape.length === 2 && isAxis(shape[1])
           ? { id, component: 'Divider', axis: shape[1] }
