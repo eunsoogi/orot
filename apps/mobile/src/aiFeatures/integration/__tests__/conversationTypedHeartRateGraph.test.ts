@@ -72,6 +72,7 @@ test.each([
   Object.assign(data, {
     acquireHeartRateSourceEpoch: protectedData.acquireHeartRateSourceEpoch,
   });
+  let sourceWitnesses = 0;
   let enteredProtectedFinalWindow = false;
   let lateDeletion = false;
   let lockedDuringFinalCheck = false;
@@ -91,7 +92,9 @@ test.each([
   });
   Object.assign(data, {
     acquireHeartRateSourceEpoch: () => {
-      enteredProtectedFinalWindow = true;
+      // The first witness guards local batch publication; hold the existing
+      // adversarial case until the provider takes its separate dispatch witness.
+      enteredProtectedFinalWindow = ++sourceWitnesses >= 2;
       return protectedData.acquireHeartRateSourceEpoch!();
     },
   });

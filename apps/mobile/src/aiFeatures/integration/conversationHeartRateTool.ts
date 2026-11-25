@@ -184,35 +184,45 @@ export function createConversationHeartRateTool(input: {
         scope,
         report,
       });
-      if (
-        !(await input.registry.revalidateEvidence(
-          [evidence],
-          request.signal,
-        )) ||
-        !(await confirmedCurrent())
-      )
-        return empty('typed_heart_rate_proof_unavailable');
-      input.dispatch.bind(evidence, current, confirmedCurrent, {
-        acquire: input.acquireSourceEpoch,
-        reprove: signal =>
-          input.registry.revalidateEvidence([evidence], signal),
-        confirmDispatch: async () => {
-          if (!current()) return false;
-          // The durable recipient check can settle after the earlier native
-          // sample. Reconfirm protection at the final dispatch boundary.
-          try {
-            const native = conversationExecutionNative();
-            return (
-              native?.bridgeAvailable === true &&
-              (await native.protectedDataAvailable()) === true &&
-              current()
-            );
-          } catch {
-            return false;
-          }
-        },
-      });
-      return batch([evidence], []);
+      // Protect the tool's local result as well as the later provider dispatch.
+      // The final recipient/protection checks can suspend after SQL reproof.
+      const witness = input.acquireSourceEpoch();
+      if (!witness) return empty('typed_heart_rate_proof_unavailable');
+      try {
+        if (
+          !(await input.registry.revalidateEvidence(
+            [evidence],
+            request.signal,
+          )) ||
+          !(await confirmedCurrent()) ||
+          !current() ||
+          !witness.current()
+        )
+          return empty('typed_heart_rate_proof_unavailable');
+        input.dispatch.bind(evidence, current, confirmedCurrent, {
+          acquire: input.acquireSourceEpoch,
+          reprove: signal =>
+            input.registry.revalidateEvidence([evidence], signal),
+          confirmDispatch: async () => {
+            if (!current()) return false;
+            // The durable recipient check can settle after the earlier native
+            // sample. Reconfirm protection at the final dispatch boundary.
+            try {
+              const native = conversationExecutionNative();
+              return (
+                native?.bridgeAvailable === true &&
+                (await native.protectedDataAvailable()) === true &&
+                current()
+              );
+            } catch {
+              return false;
+            }
+          },
+        });
+        return batch([evidence], []);
+      } finally {
+        witness.dispose();
+      }
     },
   };
 }
