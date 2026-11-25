@@ -1,5 +1,5 @@
 import { act, fireEvent, render, screen } from '@testing-library/react-native';
-import { AppState } from 'react-native';
+import { AppState, Switch } from 'react-native';
 import { ConversationTranscriptMessages } from '../ConversationTranscriptMessages';
 import { conversationA2UILocalDraftFor } from '../conversationA2UILocalDraftFrames';
 import { conversationA2UICatalog } from '../conversationA2UI';
@@ -92,9 +92,9 @@ test.each([
     }
     try {
       const view = await render(<Scene />);
-      store.setDraft(1, '이 답변에 임시 확인란을 넣어 주세요.');
       let sending: Promise<void> | undefined;
       await act(async () => {
+        store.setDraft(1, '이 답변에 임시 확인란을 넣어 주세요.');
         sending = store.send(1, (question, previousMessages, signal) =>
           runRagConversationTurn(
             {
@@ -144,9 +144,11 @@ test.each([
       });
       expect(await screen.findByLabelText(fieldLabel)).toBeTruthy();
       const control = screen.getByLabelText(fieldLabel);
-      const lateChange = control.props.onValueChange as (
-        value: boolean,
-      ) => void;
+      // Get the callback from the composed React Native Switch, not its host wrapper.
+      const lateChange: unknown =
+        screen.UNSAFE_getByType(Switch).props.onValueChange;
+      if (typeof lateChange !== 'function')
+        throw new Error('Expected an owned Switch change callback.');
       expect(control.props.value).toBe(false);
       await fireEvent(control, 'valueChange', true);
       expect(screen.getByLabelText(fieldLabel).props.value).toBe(true);
@@ -154,8 +156,22 @@ test.each([
       expect(screen.getByLabelText(fieldLabel).props.value).toBe(false);
       expect(model.generate).toHaveBeenCalledTimes(1);
       await view.unmount();
-      await act(async () => lateChange(true));
       expect(screen.queryByLabelText(fieldLabel)).toBeNull();
+
+      // A new mount of this same answer must not accept the old control callback.
+      const replacement = await render(<Scene />);
+      try {
+        expect((await screen.findByLabelText(fieldLabel)).props.value).toBe(
+          false,
+        );
+        await act(async () => lateChange(true));
+        expect(screen.getByLabelText(fieldLabel).props.value).toBe(false);
+        await fireEvent(screen.getByLabelText(fieldLabel), 'valueChange', true);
+        expect(screen.getByLabelText(fieldLabel).props.value).toBe(true);
+        expect(model.generate).toHaveBeenCalledTimes(1);
+      } finally {
+        await replacement.unmount();
+      }
     } finally {
       store.dispose();
       AppState.currentState = previousAppState;
