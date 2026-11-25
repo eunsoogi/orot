@@ -189,7 +189,10 @@ final class ConversationHistoryDuoUITests: OrotFailFastTestCase {
         // records what the same text and host did after foregrounding.
         let first = (shell.frame, transcript.frame, RenderedTextUITestConditions.sample(text, in: app))
         XCUIDevice.shared.press(.home)
-        XCTAssertTrue(app.wait(for: .runningBackground, timeout: 10))
+        let backgrounded = XCTNSPredicateExpectation(predicate: NSPredicate { _, _ in
+            app.state == .runningBackground || app.state == .runningBackgroundSuspended
+        }, object: nil)
+        XCTAssertEqual(UITestConditions.wait(for: [backgrounded]), .completed)
         app.activate()
         XCTAssertTrue(app.wait(for: .runningForeground, timeout: 10))
         XCTAssertTrue(UITestConditions.exists(text))
