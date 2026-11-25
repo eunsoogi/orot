@@ -1,5 +1,5 @@
 import { useLayoutEffect, useState } from 'react';
-import { createRecordRepository } from '@orot/storage';
+import { createRecordRepository, type SqlDatabase } from '@orot/storage';
 import { conversationExecutionNative } from '../../ragConversation/conversationExecutionNative';
 import { subscribeWorkoutImportCommitted } from '../../healthkit/workoutImportEvents';
 import { readOwnedWorkoutPeriod } from '../../healthkit/ownedWorkoutPeriodRead';
@@ -92,7 +92,7 @@ export function useOverviewWorkoutPeriodHeartRate(active: boolean): State {
       }
       return false;
     }
-    async function start(canRecover = true) {
+    async function start(canRecover = true, previousDatabase?: SqlDatabase) {
       if (!mounted || task || phase() !== 'active') return;
       const now = new Date();
       const midnight = new Date(
@@ -116,7 +116,11 @@ export function useOverviewWorkoutPeriodHeartRate(active: boolean): State {
         if (!(await confirm(target))) return;
         const storage = require('../../storage/secureDatabase');
         const database = await storage.openLocalAgentMemoryDatabase();
-        if (!current(target)) return;
+        if (
+          !current(target) ||
+          (previousDatabase && database !== previousDatabase)
+        )
+          return;
         target.epoch = acquireIndependentReadEpoch(database);
         // A known writer is not evidence of no associated heart rate. Wait once,
         // then acquire a fresh snapshot of the same still-authoritative owner.
@@ -148,7 +152,35 @@ export function useOverviewWorkoutPeriodHeartRate(active: boolean): State {
           current: admitted,
           confirm: () => confirm(target),
         });
-        if (!result || !admitted() || phase() !== 'active') return;
+        if (!admitted()) {
+          // A writer can invalidate a read during the native await. Reacquire
+          // once only after the same guarded connection settles and is re-proved.
+          if (
+            canRecover &&
+            current(target) &&
+            phase() === 'active' &&
+            Date.now() < midnight.getTime() &&
+            zone === Intl.DateTimeFormat().resolvedOptions().timeZone &&
+            storage.isCurrentLocalAgentMemoryDatabase(database) &&
+            target.epoch?.current() === false &&
+            (await awaitIndependentReadSettlement(
+              database,
+              startupWriterBudgetMs,
+              target.abort.signal,
+            )) &&
+            (await confirm(target)) &&
+            current(target) &&
+            phase() === 'active' &&
+            Date.now() < midnight.getTime() &&
+            zone === Intl.DateTimeFormat().resolvedOptions().timeZone &&
+            storage.isCurrentLocalAgentMemoryDatabase(database)
+          ) {
+            dropTask(false);
+            start(false, database);
+          }
+          return;
+        }
+        if (!result || phase() !== 'active') return;
         target.settled =
           result.status === 'available' || result.status === 'emptyVisible';
         if (target.settled) {
