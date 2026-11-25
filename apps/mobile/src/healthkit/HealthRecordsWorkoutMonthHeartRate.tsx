@@ -61,10 +61,13 @@ export function HealthRecordsWorkoutMonthHeartRate({
   const [width, setWidth] = useState(0);
   const state = useRecordsWorkoutMonthHeartRate(window);
   const title = t('healthRecords.workoutHeartRate.overviewTitle');
-  // The month source and aggregate remain announced without adding prose above the chart.
+  // Announce the verified source and aggregate only after acceptance; a title
+  // must not imply HealthKit returned measurements when no read was proved.
   const accessibleTitle = [
     title,
-    t('healthRecords.workoutHeartRate.recordsSource'),
+    state.status === 'available'
+      ? t('healthRecords.workoutHeartRate.recordsSource')
+      : t('healthRecords.period.month'),
     state.status === 'available' ? formatHeartRateBpm(state.mean) : null,
   ]
     .filter(Boolean)
@@ -102,7 +105,9 @@ export function HealthRecordsWorkoutMonthHeartRate({
         <Text accessibilityRole="status">{t('healthRecords.loading')}</Text>
       ) : state.status === 'unavailable' || state.status === 'emptyVisible' ? (
         <Text accessibilityRole="status">
-          {t('healthRecords.workoutHeartRate.periodUnavailable')}
+          {state.status === 'emptyVisible'
+            ? t('healthRecords.workoutHeartRate.periodEmpty')
+            : t('healthRecords.workoutHeartRate.periodUnavailable')}
         </Text>
       ) : null}
     </View>

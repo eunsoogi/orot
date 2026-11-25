@@ -39,6 +39,14 @@ export function OverviewWorkoutHeartRateCard({
               : styles.detail)
           }
           accessibilityRole="status"
+          accessibilityLabel={
+            state.status === 'available'
+              ? [
+                  t('healthRecords.workoutHeartRate.associatedSource'),
+                  formatHeartRateBpm(state.mean),
+                ].join(', ')
+              : undefined
+          }
           testID="overview-workout-heart-rate-result"
         >
           {state.status === 'available'

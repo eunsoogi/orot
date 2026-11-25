@@ -14,6 +14,8 @@ export const healthRecordsKo = {
   'healthRecords.workout.minutes': '{minutes}분',
   'healthRecords.workoutHeartRate.recordsSource':
     '건강 앱이 운동에 연결한 최근 한 달 심박수',
+  'healthRecords.workoutHeartRate.associatedSource':
+    '건강 앱이 운동에 연결한 심박수',
   'healthRecords.workoutHeartRate.recordsChartUnavailable':
     '날짜별 운동 심박수를 확인할 수 없어요.',
   'healthRecords.workoutHeartRate.overviewTitle': '운동 심박수',
