@@ -18,6 +18,8 @@ export const historyDisplayKo = {
     '이 메시지에서 선택한 내용을 기억에 저장하지 않았어요.',
   'historyDisplay.answerMemoryNotSaved':
     '이전 답변을 기억에 저장하지 않았어요. 저장할 답변이 맞는지 확인하고 다시 시도해 주세요.',
+  'historyDisplay.conversationMemoryAlreadySaved':
+    '이미 이 기기의 기억에 저장된 답변이에요.',
   'historyDisplay.savedConversationMemory': '이 기기의 기억에 저장했어요.',
   'historyDisplay.saveTitle': '기억에 저장',
 } as const;

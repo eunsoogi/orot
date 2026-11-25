@@ -163,16 +163,24 @@ test('a mounted composer renders only the selected local tool commit receipt', a
     const action = options.workflow.actions?.find(
       item => item.id === 'remember-conversation-answer',
     );
-    if (!action) throw new Error('The local model tool is absent.');
+    if (action?.completion !== 'host_terminal')
+      throw new Error('The terminal local model tool is absent.');
     const signal = new AbortController().signal;
-    expect(await action.authorize(toolInput, signal)).toBe(true);
-    await action.execute({
-      input: toolInput,
-      operationRunId: 'synthetic-mount',
-      operationKey: 'synthetic-action',
-      signal,
-    });
-    // The visible app receipt must come from the verified tool, not this prose.
+    const operation = {
+      operationRunId: options.workflow.execution.operationRunId,
+      operationKey: 'tool-1',
+    };
+    expect(await action.authorize(toolInput, signal, operation)).toBe(true);
+    await action.execute({ input: toolInput, ...operation, signal });
+    expect(
+      await options.workflow.confirmTerminalLocalAction?.({
+        input: toolInput,
+        ...operation,
+        toolId: action.id,
+        toolVersion: action.version,
+        signal,
+      }),
+    ).toBeDefined();
     return {
       status: 'answer',
       answer: 'Untrusted model receipt.',
@@ -231,10 +239,7 @@ test('a mounted composer renders only the selected local tool commit receipt', a
     expect(
       await screen.findByText('이 기기의 기억에 저장했어요.'),
     ).toBeTruthy();
-    expect(screen.queryByText('Untrusted model receipt.')).toBeNull();
-    expect(
-      screen.queryByText('원본을 확인할 수 없어 답변을 저장하지 못했어요.'),
-    ).toBeNull();
+    expect(screen.queryByText(/Untrusted|저장하지 못했어요/u)).toBeNull();
     expect(externalSearch).not.toHaveBeenCalled();
     expect(await f.storage.listSavedConversationAnswers()).toHaveLength(1);
   } finally {

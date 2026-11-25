@@ -111,6 +111,7 @@ export function conversationCompletedAnswer(input: {
     // A generated report is retained on its own message, not selected for every later prompt.
     ...(outcome.status === 'answer' &&
     !outcome.committedAnswerMemory &&
+    !outcome.alreadySavedAnswerMemory &&
     input.retentionUnavailable &&
     !session.error
       ? { error: t('ragConversation.conversation.answerSaveSourceUnavailable') }

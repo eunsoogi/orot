@@ -148,9 +148,9 @@ export async function consumeNativeToolCall<TResult>(
     stop(context, 'The model returned an invalid tool call message.', 'invalid_output');
     return completeState();
   }
-  // This is a newly validated first tool selection, not a replayed receipt or final answer.
-  // Tasks must admit only non-clinical copy; raw provider prose must never reach the UI here.
-  if (!context.signal.aborted && state.toolCalls === 0 && !context.nativeToolMessages.length) {
+  // A local terminal selection never previews untrusted provider prose.
+  const firstTool = state.toolCalls === 0 && !context.nativeToolMessages.length;
+  if (firstTool && !context.signal.aborted && action?.completion !== 'host_terminal') {
     let initial: string | undefined;
     try {
       initial = context.options.task.initialToolResponse?.(response.text, context.options.request);

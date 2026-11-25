@@ -48,6 +48,7 @@ export function conversationMutationExecution(input: {
     conversationAnswerMemoryAction({
       data,
       observer,
+      terminalRunId: baseExecution.execution.operationRunId,
       admittedAnswerIds: new Set([
         ...(history.historicalDialogueParents ?? []).map(turn => turn.id),
         ...history.references.flatMap(reference => {
@@ -60,6 +61,9 @@ export function conversationMutationExecution(input: {
     });
   const execution = {
     ...baseExecution,
+    ...(answerMemory && answerMemory.confirmTerminal
+      ? { confirmTerminalLocalAction: answerMemory.confirmTerminal }
+      : {}),
     actions: [
       ...conversationHistoryAction({
         data,

@@ -1,6 +1,33 @@
 import type { JsonObject } from '@orot/model-runtime';
 import type { EvidenceBatch } from './evidenceContracts';
 
+/** Exact protected receipt; missing proof terminates without provider retry. */
+export type ConfirmTerminalLocalAction<TResult> = (request: {
+  readonly operationRunId: string;
+  readonly operationKey: string;
+  readonly toolId: string;
+  readonly toolVersion: string;
+  readonly input: JsonObject;
+  readonly signal: AbortSignal;
+}) => Promise<{ readonly value: TResult; readonly committed?: boolean } | undefined>;
+
+export function isTerminalAction(action: LocalActionTool | undefined): boolean {
+  return action?.completion === 'host_terminal';
+}
+
+export function isNonresumableActionPhase(
+  saved: import('./contracts').MultiAgentCheckpointState,
+  actions: readonly LocalActionTool[] | undefined,
+): boolean {
+  return (
+    saved.terminal ||
+    saved.phase === 'complete' ||
+    // Neither cold approval nor in-flight terminal writes reenter the graph.
+    (saved.phase === 'local_action' &&
+      !!actions?.some((action) => action.id === saved.selectedToolId && isTerminalAction(action)))
+  );
+}
+
 /** Explicit local mutations are not evidence-search capabilities. The host owns
  * authorization, source validation and an atomic durable idempotency receipt.
  */
@@ -9,8 +36,14 @@ export interface LocalActionTool {
   readonly version: string;
   readonly description: string;
   readonly inputSchema: JsonObject;
+  /** Return an app-owned terminal result, never a model-visible tool result. */
+  readonly completion?: 'host_terminal';
   parseInput(value: unknown): JsonObject | undefined;
-  authorize(input: JsonObject, signal: AbortSignal): Promise<boolean>;
+  authorize(
+    input: JsonObject,
+    signal: AbortSignal,
+    terminal?: { readonly operationRunId: string; readonly operationKey: string },
+  ): Promise<boolean>;
   /** Read only a proven committed result. Never dispatch or backfill an uncertain mutation. */
   recover?(request: {
     readonly evidenceReferences: readonly import('./evidenceContracts').EvidenceReference[];
@@ -40,11 +73,12 @@ export interface LocalActionTool {
 export function actionContract(actions: readonly LocalActionTool[] = []): string | undefined {
   return actions.length
     ? JSON.stringify(
-        actions.map(({ id, version, description, inputSchema }) => ({
+        actions.map(({ id, version, description, inputSchema, completion }) => ({
           id,
           version,
           description,
           inputSchema,
+          completion,
         })),
       )
     : undefined;
@@ -54,6 +88,7 @@ export function actionContract(actions: readonly LocalActionTool[] = []): string
 export function validLocalActions(
   actions: readonly LocalActionTool[] | undefined,
   scope: import('./evidenceContracts').AllowedEvidenceScope,
+  confirm?: ConfirmTerminalLocalAction<unknown>,
 ): boolean {
   return (
     !actions?.length ||
@@ -65,7 +100,12 @@ export function validLocalActions(
           /^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$/u.test(action.id) &&
           action.version.length > 0 &&
           typeof action.authorize === 'function' &&
-          typeof action.execute === 'function',
+          typeof action.execute === 'function' &&
+          (action.completion === undefined ||
+            (action.completion === 'host_terminal' &&
+              typeof confirm === 'function' &&
+              action.recover === undefined &&
+              action.recoverResult === undefined)),
       ))
   );
 }
