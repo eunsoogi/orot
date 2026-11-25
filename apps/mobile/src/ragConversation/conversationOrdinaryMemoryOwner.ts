@@ -13,15 +13,35 @@ type Turn = ReturnType<typeof createConversationTurnRetention>;
 export function createConversationOrdinaryMemoryOwner(
   port: OrdinaryConversationMemoryPort | undefined,
 ) {
-  const tasks = new Map<number, Task>();
+  const draft = new Map<number, Task>();
+  const awaitingGrant = new Map<number, Task>();
+  const displayed = new Map<number, Set<Task>>();
+  const retire = (
+    id: number,
+    owners: Map<number, Task>,
+    task = owners.get(id),
+  ) => {
+    if (!task || owners.get(id) !== task) return;
+    owners.delete(id);
+    task.discard();
+  };
+  const retireDisplayed = (id: number, task: Task) => {
+    const active = displayed.get(id);
+    if (!active?.delete(task)) return;
+    if (!active.size) displayed.delete(id);
+    task.discard();
+  };
   const discard = (id: number) => {
-    tasks.get(id)?.discard();
-    tasks.delete(id);
+    retire(id, draft);
+    retire(id, awaitingGrant);
+    for (const task of displayed.get(id) ?? []) retireDisplayed(id, task);
   };
   return {
     discard,
     dispose: () => {
-      for (const id of tasks.keys()) discard(id);
+      for (const id of draft.keys()) discard(id);
+      for (const id of awaitingGrant.keys()) discard(id);
+      for (const id of displayed.keys()) discard(id);
     },
     begin(
       id: number,
@@ -29,17 +49,22 @@ export function createConversationOrdinaryMemoryOwner(
       admissionSignal: AbortSignal,
       ordinary: boolean,
     ) {
-      discard(id);
+      // A new send replaces only an undisplayed proposal. The previous
+      // displayed completion still owns its existing detached settlement.
+      if (!ordinary) {
+        discard(id);
+        return;
+      }
+      retire(id, draft);
       const task =
-        ordinary &&
         port &&
         beginOrdinaryConversationMemoryTask(port, question, admissionSignal);
       if (!task) return;
-      tasks.set(id, task);
+      draft.set(id, task);
       return {
-        discard: () => tasks.get(id) === task && discard(id),
+        discard: () => retire(id, draft, task),
         wrap(
-          retained: Turn,
+          retained: Pick<Turn, 'ordinaryMemorySource'>,
           observer: Pick<
             RagConversationObserver,
             'onRetentionCandidate' | 'onRetentionFailure'
@@ -56,12 +81,36 @@ export function createConversationOrdinaryMemoryOwner(
           } satisfies typeof observer;
         },
         show() {
-          // Start only after the answer is published to the React session. Do
-          // not await Keychain/SQLite or add this to the user-facing reply time.
+          if (draft.get(id) !== task) return;
+          if (!task.hasPendingProposal()) {
+            retire(id, draft, task);
+            return;
+          }
+          // Before a positive current grant there is only one transient candidate.
+          // It cannot evict a still-authorized settlement.
+          draft.delete(id);
+          retire(id, awaitingGrant);
+          awaitingGrant.set(id, task);
           task
-            .finish(() => tasks.get(id) === task)
+            .finish(
+              () =>
+                awaitingGrant.get(id) === task ||
+                displayed.get(id)?.has(task) === true,
+              () => {
+                if (awaitingGrant.get(id) !== task) return false;
+                awaitingGrant.delete(id);
+                const active = displayed.get(id) ?? new Set<Task>();
+                displayed.set(id, active);
+                active.add(task);
+                // At most two eligible completed settlements, not a durable queue.
+                const oldest = active.values().next().value;
+                if (active.size > 2 && oldest) retireDisplayed(id, oldest);
+                return true;
+              },
+            )
             .finally(() => {
-              if (tasks.get(id) === task) discard(id);
+              retire(id, awaitingGrant, task);
+              retireDisplayed(id, task);
             });
         },
       };
