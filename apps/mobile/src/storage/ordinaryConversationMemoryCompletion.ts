@@ -5,6 +5,7 @@ export interface OrdinaryConversationCompletionIdentity {
   readonly sessionId: string;
   readonly sessionVersion: number;
   readonly question: string;
+  readonly replyPreferenceSpan?: string;
   readonly createdAt: string;
   /** Only the live composer owner can attach its exact retained entry mode. */
   readonly entryIntent?: 'possibilities';

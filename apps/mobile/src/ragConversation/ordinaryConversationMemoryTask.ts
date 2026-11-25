@@ -3,6 +3,10 @@ import type { LocalConversationMemoryScope } from '../storage/ordinaryConversati
 import type { OrdinaryConversationCompletionIdentity } from '../storage/ordinaryConversationMemoryCompletion';
 import type { CapturedOrdinaryConversationMemory } from '../storage/ordinaryConversationMemoryNote';
 import type { ConversationRetentionCandidate } from './conversationRetention';
+import {
+  canProposeReplyPreferenceSpan,
+  validateReplyPreferenceSpan,
+} from './authoredReplyPreferenceSpan';
 
 export type OrdinaryConversationMemoryPort = {
   capture(
@@ -23,7 +27,10 @@ export function beginOrdinaryConversationMemoryTask(
   question: string,
   signal: AbortSignal,
 ) {
-  const scope = localConversationMemoryScope(question);
+  const originalScope = localConversationMemoryScope(question);
+  const scope =
+    originalScope ??
+    (canProposeReplyPreferenceSpan(question) ? 'reply-preferences' : undefined);
   if (signal.aborted || !scope) return;
   let capture: ReturnType<typeof port.capture>;
   try {
@@ -53,8 +60,13 @@ export function beginOrdinaryConversationMemoryTask(
       // typed responses cannot overwrite this live composer witness.
       if (!current() || !source || issued) return;
       issued = true;
+      const selected =
+        originalScope === undefined &&
+        candidate.entryIntent === undefined &&
+        validateReplyPreferenceSpan(question, candidate.replyPreferenceSpan);
       proposed =
-        candidate.proactiveMemory === true &&
+        ((originalScope !== undefined && candidate.proactiveMemory === true) ||
+          Boolean(selected)) &&
         candidate.question === question &&
         candidate.status !== 'partial' &&
         !candidate.submittedInput &&
@@ -69,6 +81,8 @@ export function beginOrdinaryConversationMemoryTask(
       // neither the typed shortcut phrase nor generated report text can save.
       if (proposed && candidate.entryIntent === 'possibilities')
         source = { ...source, entryIntent: candidate.entryIntent };
+      if (proposed && selected)
+        source = { ...source, replyPreferenceSpan: selected };
     },
     async finish(ownerCurrent: () => boolean) {
       if (finishing) return false;

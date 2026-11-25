@@ -132,6 +132,12 @@ export function createConversationRetentionBridge(input: {
             input.observer?.inputOrigin === 'composer')
             ? { proactiveMemory: true as const }
             : {}),
+          ...(outcome.replyPreferenceSpan &&
+          !input.submittedInput &&
+          input.observer?.inputOrigin === 'composer' &&
+          (!input.entryContext || input.entryContext.intent === 'conversation')
+            ? { replyPreferenceSpan: outcome.replyPreferenceSpan }
+            : {}),
           providerId: input.providerId,
           modelId: input.modelId,
           ...(input.entryContext?.intent === 'possibilities'

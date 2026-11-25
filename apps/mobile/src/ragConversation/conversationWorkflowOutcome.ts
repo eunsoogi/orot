@@ -56,6 +56,9 @@ export async function conversationWorkflowOutcome(
               ...(result.value.proactiveMemory === true
                 ? { proactiveMemory: true as const }
                 : {}),
+              ...(result.value.replyPreferenceSpan
+                ? { replyPreferenceSpan: result.value.replyPreferenceSpan }
+                : {}),
               citations: [],
               ...(result.value.a2uiPresentation && !signal?.aborted
                 ? {

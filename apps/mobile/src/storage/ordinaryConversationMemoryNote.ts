@@ -6,6 +6,7 @@ import {
 } from '@orot/storage';
 import { isAuthoredRoutineMemoryStatement } from '../memory/authoredRoutineMemory';
 import { isProactiveMemoryStatement } from '../memory/userStatementMemory';
+import { validateReplyPreferenceSpan } from '../ragConversation/authoredReplyPreferenceSpan';
 import {
   readOrdinaryConversationMemoryEnrollment,
   matchesOrdinaryConversationMemoryEnrollment,
@@ -34,12 +35,24 @@ export async function saveOrdinaryConversationMemoryNote(
 ): Promise<boolean> {
   const isCurrent = () => attemptIsCurrent() && captured.isCurrent();
   const scope = captured.scope ?? 'reply-preferences';
-  const eligible =
+  let authored: string | undefined;
+  if (source.replyPreferenceSpan !== undefined) {
+    // Match the whole original at the completion boundary, then retain only
+    // this exact user-authored span. The model never supplies substitute text.
+    if (scope === 'reply-preferences' && !source.entryIntent)
+      authored = validateReplyPreferenceSpan(
+        source.question,
+        source.replyPreferenceSpan,
+      );
+  } else if (
     scope === 'reply-preferences'
       ? isProactiveMemoryStatement(source.question)
       : scope === 'authored-routine' &&
-        isAuthoredRoutineMemoryStatement(source.question);
-  if (!proposed || !isCurrent() || !eligible) return false;
+        isAuthoredRoutineMemoryStatement(source.question)
+  ) {
+    authored = source.question;
+  }
+  if (!proposed || !isCurrent() || authored === undefined) return false;
 
   let saved = false;
   await captured.database.transaction(async tx => {
@@ -68,7 +81,7 @@ export async function saveOrdinaryConversationMemoryNote(
       id,
       kind: 'note',
       title: '대화에서 기억한 내용',
-      details: source.question,
+      details: authored,
       effectiveDate: { status: 'unknown' },
       recordedAt: source.createdAt,
     });
