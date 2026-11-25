@@ -30,7 +30,6 @@ export function createRagConversationService(
     loadLocalData,
     selectedAi,
     registry,
-    ragRunner,
     createOperationRunId,
   } = deps;
   async function sendRagMessage(
@@ -176,7 +175,7 @@ export function createRagConversationService(
         ...toolExecution,
         external,
       });
-      const { execution, memorySaved } = conversationMutationExecution({
+      const mutation = conversationMutationExecution({
         baseExecution,
         photo,
         photoEvidence,
@@ -186,11 +185,13 @@ export function createRagConversationService(
         observer,
         question: request,
         history,
+        remoteAnswerMemory: !entryContext && !searchPlan.literatureOnly,
       });
       stage = 'workflow';
       if (!(await historyIsCurrent()))
         return { status: 'failure', kind: 'retrieval_failed' };
-      const outcome = await run.observeConversationMain(ragRunner)(
+      const main = run.observeConversationMain(deps.ragRunner);
+      const outcome = await main(
         run.conversationRunRequest({
           continuation: searchPlan.continuation,
           onInitialSearchStatus: searchPlan.onInitialSearchStatus,
@@ -207,7 +208,7 @@ export function createRagConversationService(
           registry,
           workflow: {
             ...run.conversationRunWorkflow(
-              execution,
+              mutation.execution,
               historyIsCurrent,
               guardHistory,
               searchPlan,
@@ -222,9 +223,9 @@ export function createRagConversationService(
           { providerId: selected.provider.id, modelId: selected.modelId },
           run.modelCheckpointScope(signal, consentPort, entryContext, photo),
         ),
-      );
+      ).finally(mutation.disposeAnswerMemory);
       return await finish.finishConversationWorkflow({
-        outcome: finish.answerMemoryOutcome(outcome, memorySaved()),
+        outcome: finish.answerMemoryOutcome(outcome, mutation.memorySaved()),
         priorDialogueOmitted: history.omitted,
         observer,
         generated,
