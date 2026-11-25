@@ -127,6 +127,9 @@
                 let first = observed.first?["item"] as? [String: String]
                 owned?.socket.close()
                 bridge?.retire()
+                let expectedSuccessorResumes = scenario == .replace ? 1 : 0
+                guard task.resumes == 1, successor.resumes == expectedSuccessorResumes
+                else { finish(["denied": true]); return }
                 finish([
                     "synthetic": true, "timedOut": timedOut, "acknowledged": acknowledged, "challenges": commands,
                     "frames": observed.count, "successorFrames": successor.messages.count,
@@ -137,9 +140,13 @@
         }
 
         private final class ProbeTask: RealtimeVoiceSocketTask {
+            private(set) var resumes = 0
             var messages: [String] = []
             var completions: [@Sendable (Error?) -> Void] = []
-            func resume() {}
+            func resume() {
+                resumes += 1
+            }
+
             func send(_ message: URLSessionWebSocketTask.Message, completionHandler: @escaping @Sendable (Error?) -> Void) {
                 guard case let .string(text) = message else { return }
                 messages.append(text)
