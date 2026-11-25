@@ -6,7 +6,7 @@ import {
   restoreConversationA2UILayout,
   storeConversationA2UILayout,
 } from '../conversationA2UIArchive';
-import { projectFinalRepeatedChildren } from '../conversationA2UIRepeatedChildren';
+import { lowerConversationRepeatedChildren } from '../conversationA2UIRepeatedChildren';
 import { createConversationSessions } from '../conversationSessions';
 import { runRagConversationTurn } from '../service';
 import { fixture, response } from '../testSupport/conversationEnvelopeFixtures';
@@ -80,7 +80,7 @@ test.each([
   'denies %s without materializing a repeated layout',
   (_label, bad) => {
     expect(
-      projectFinalRepeatedChildren([create('Column'), bad]),
+      lowerConversationRepeatedChildren([create('Column'), bad]),
     ).toBeUndefined();
   },
 );
@@ -97,20 +97,20 @@ test.each(['title', 'repeat-0-title'])(
       child: ref,
     });
     expect(
-      projectFinalRepeatedChildren([JSON.stringify(createFrame), data]),
+      lowerConversationRepeatedChildren([JSON.stringify(createFrame), data]),
     ).toBeUndefined();
   },
 );
 
 test('denies data synchronization and an extra frame', () => {
   expect(
-    projectFinalRepeatedChildren([
+    lowerConversationRepeatedChildren([
       create('Row', { sendDataModel: true }),
       data,
     ]),
   ).toBeUndefined();
   expect(
-    projectFinalRepeatedChildren([create('List'), data, data]),
+    lowerConversationRepeatedChildren([create('List'), data, data]),
   ).toBeUndefined();
 });
 
