@@ -150,6 +150,23 @@ export async function setup() {
     consumeProbe() {
       return protectedProbe?.();
     },
+    holdFirstProtectionProbe() {
+      let markStarted!: () => void;
+      let release!: (value: boolean) => void;
+      let probes = 0;
+      const entered = new Promise<void>(resolve => {
+        markStarted = resolve;
+      });
+      const held = new Promise<boolean>(resolve => {
+        release = resolve;
+      });
+      protectedProbe = async () => {
+        if (probes++ !== 0) return protectedData;
+        markStarted();
+        return held;
+      };
+      return { entered, release, probes: () => probes };
+    },
     holdSecondProbe() {
       let enter!: () => void;
       let release!: (value: boolean) => void;

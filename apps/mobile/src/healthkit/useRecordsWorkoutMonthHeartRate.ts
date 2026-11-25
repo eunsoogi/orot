@@ -15,6 +15,7 @@ import {
 } from '../storage/protectedReadEpoch';
 import { subscribeWorkoutImportCommitted } from './workoutImportEvents';
 import { workoutReadDiagnostics } from './workoutReadDiagnostics';
+import { createWorkoutProtectionProbe } from './workoutProtectionProbe';
 import { loadWorkoutPeriodCohort } from './workoutPeriodCohort';
 import {
   readWorkoutPeriodHeartRate,
@@ -83,9 +84,11 @@ export function useRecordsWorkoutMonthHeartRate({
         !abort.signal.aborted &&
         visible() &&
         Intl.DateTimeFormat().resolvedOptions().timeZone === timeZone;
-      const protection = watchSavedReportNativeProtection(abort.signal, () => {
-        if (owns()) retire();
-      });
+      const protection = watchSavedReportNativeProtection(
+        abort.signal,
+        () => owns() && retire(),
+        createWorkoutProtectionProbe(),
+      );
       if (!protection) {
         trace.report('protection', 'missing');
         if (owns()) retire();
@@ -174,8 +177,7 @@ export function useRecordsWorkoutMonthHeartRate({
           if (owns()) retire();
         } else {
           setState(next);
-          // Only a positively proved snapshot can keep an owner across refocus.
-          // A finished failed read must not prevent the next explicit focus read.
+          // Only a positively proved snapshot may retain its owner.
           if (!accepted) {
             active = undefined;
             abort.abort();
@@ -185,8 +187,6 @@ export function useRecordsWorkoutMonthHeartRate({
         }
       }
     }
-    // Protected availability may return without a second JS AppState transition.
-    // It is only a retry signal: the new read must prove protection and owner again.
     function watchRestoration() {
       try {
         return conversationExecutionNative()?.subscribe(event => {

@@ -146,3 +146,61 @@ test.each(['unavailable', 'emptyVisible'] as const)(
     }
   },
 );
+
+test.each(['restored', 'unchanged', 'revoked'] as const)(
+  'an older negative protection reply cannot discard a newer restoration: %s',
+  async outcome => {
+    const prior = AppState.currentState;
+    AppState.currentState = 'active';
+    const lane = await setup();
+    const probe = lane.holdFirstProtectionProbe();
+    lane.queryWorkoutPeriodHeartRate.mockImplementationOnce(async request => {
+      const result = resultFor(request);
+      const timeZone = Intl.DateTimeFormat().resolvedOptions().timeZone;
+      const parts = new Intl.DateTimeFormat('en-US', {
+        timeZone,
+        year: 'numeric',
+        month: '2-digit',
+        day: '2-digit',
+      }).formatToParts(new Date(result.firstSampleAtMs));
+      const date = ['year', 'month', 'day']
+        .map(type => parts.find(part => part.type === type)?.value)
+        .join('-');
+      const { sampleCount, minimum, mean, maximum } = result;
+      return {
+        ...result,
+        timeZone,
+        days: [{ date, sampleCount, minimum, mean, maximum }],
+      };
+    });
+    try {
+      const view = await openWorkoutFilter();
+      await probe.entered;
+      expect(lane.queryWorkoutPeriodHeartRate).not.toHaveBeenCalled();
+      await act(async () => {
+        if (outcome !== 'unchanged') lane.restoreProtection();
+        if (outcome === 'revoked') lane.revoke();
+        probe.release(false);
+      });
+      if (outcome === 'restored') {
+        await waitFor(() =>
+          expect(lane.queryWorkoutPeriodHeartRate).toHaveBeenCalledTimes(1),
+        );
+        await waitFor(() =>
+          expect(
+            screen.getByLabelText(/최근 한 달 심박수, 120 BPM/),
+          ).toBeTruthy(),
+        );
+        expect(probe.probes()).toBeGreaterThan(1);
+      } else {
+        expect(lane.queryWorkoutPeriodHeartRate).not.toHaveBeenCalled();
+        expect(probe.probes()).toBe(1);
+      }
+      expect(lane.requestReadAuthorizations).not.toHaveBeenCalled();
+      await view.unmount();
+    } finally {
+      lane.close();
+      AppState.currentState = prior;
+    }
+  },
+);

@@ -7,7 +7,7 @@ type ReadWaiter = {
 export function confirmOverviewWorkoutProtection<T extends ReadWaiter>(
   current: (owner: T) => boolean,
   phase: () => string,
-  protectedDataAvailable: () => Promise<boolean | null>,
+  protectedDataAvailable: (owner: T) => Promise<boolean | null>,
 ) {
   const waitForForeground = (target: T) => {
     if (!current(target)) return Promise.resolve(false);
@@ -20,7 +20,7 @@ export function confirmOverviewWorkoutProtection<T extends ReadWaiter>(
   return async (target: T) => {
     while (await waitForForeground(target)) {
       if (!current(target)) return false;
-      const available = await protectedDataAvailable();
+      const available = await protectedDataAvailable(target);
       if (!current(target) || available !== true) return false;
       if (phase() === 'active') return true;
     }

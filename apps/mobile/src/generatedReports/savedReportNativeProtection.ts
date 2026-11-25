@@ -1,3 +1,4 @@
+import type { createWorkoutProtectionProbe } from '../healthkit/workoutProtectionProbe';
 import { conversationExecutionNative } from '../ragConversation/conversationExecutionNative';
 
 /** A warm encrypted handle and JS foreground do not prove native data access.
@@ -5,6 +6,7 @@ import { conversationExecutionNative } from '../ragConversation/conversationExec
 export function watchSavedReportNativeProtection(
   signal: AbortSignal,
   onLost: () => void,
+  workoutProbe?: ReturnType<typeof createWorkoutProtectionProbe>,
 ) {
   if (signal.aborted) return undefined;
   let native: ReturnType<typeof conversationExecutionNative>;
@@ -42,6 +44,7 @@ export function watchSavedReportNativeProtection(
         (event.kind === 'protectedData' && !event.available)
       )
         revoke();
+      else if (event.kind === 'protectedData') workoutProbe?.restored();
     });
   } catch {
     revoke();
@@ -60,7 +63,9 @@ export function watchSavedReportNativeProtection(
       }
       let positive: boolean | null = null;
       try {
-        positive = await native.protectedDataAvailable();
+        positive = await (workoutProbe
+          ? workoutProbe.confirm(current, native.protectedDataAvailable)
+          : native.protectedDataAvailable());
       } catch {
         // A rejected native probe carries no positive witness.
       }
