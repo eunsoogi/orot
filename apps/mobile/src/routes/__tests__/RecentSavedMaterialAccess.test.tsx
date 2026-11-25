@@ -71,7 +71,7 @@ test('does not query a warmed database without a positive protected-data witness
   );
   expect(list).not.toHaveBeenCalled();
   expect(result.current.rows).toEqual([]);
-  expect(result.current.state).toBe('failed');
+  expect(result.current.state).toBe('refused');
 });
 
 test('a native denial while paging clears earlier rows even without a lock event', async () => {
@@ -97,7 +97,7 @@ test('a native denial while paging clears earlier rows even without a lock event
   });
   expect(list).toHaveBeenCalledTimes(1);
   expect(result.current.rows).toEqual([]);
-  expect(result.current.state).toBe('failed');
+  expect(result.current.state).toBe('refused');
 });
 
 test('an unmounted Records root cannot use a callback even if its shared stack key stays current', async () => {

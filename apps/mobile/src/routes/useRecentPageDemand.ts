@@ -1,8 +1,9 @@
 import { useEffect, useState } from 'react';
+import type { RecentPageState } from './requestRecentSavedMaterialPage';
 
 interface PageDemandStream {
   readonly pageEpoch: number;
-  readonly state: 'idle' | 'loading' | 'ready' | 'failed';
+  readonly state: RecentPageState;
   readonly more: boolean;
   readonly rows: readonly unknown[];
   readonly loadMore: () => Promise<boolean>;
