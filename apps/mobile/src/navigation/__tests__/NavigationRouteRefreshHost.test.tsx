@@ -97,7 +97,7 @@ describe('shared route refresh control', () => {
       expect(screen.getByText('Synthetic selected detail')).toBeVisible();
     },
   );
-  it('signals once per admitted gesture, not for route loads, Retry or refusal', async () => {
+  it('plays one haptic for an accepted pull only', async () => {
     const old = NativeModules.RouteRefreshFeedbackModule;
     const os = Platform.OS;
     const appState = AppState.currentState;
@@ -111,6 +111,9 @@ describe('shared route refresh control', () => {
       complete = resolve;
     });
     const read = jest.fn(async () => undefined);
+    const retry = () => {
+      read().catch(() => undefined);
+    };
     function Detail() {
       useEffect(() => {
         read().catch(() => undefined);
@@ -122,15 +125,7 @@ describe('shared route refresh control', () => {
         await read();
         await held;
       });
-      return (
-        <Text
-          onPress={() => {
-            read().catch(() => undefined);
-          }}
-        >
-          Synthetic Retry
-        </Text>
-      );
+      return <Text onPress={retry}>Synthetic Retry</Text>;
     }
     try {
       Platform.OS = 'ios';
@@ -140,7 +135,7 @@ describe('shared route refresh control', () => {
       await render(
         <NavigationRouteAdapter
           controller={controller}
-          scrollable={() => true}
+          scrollable={route => appRouteIsScrollable(route, 'conversation')}
         >
           {() => <Detail />}
         </NavigationRouteAdapter>,
