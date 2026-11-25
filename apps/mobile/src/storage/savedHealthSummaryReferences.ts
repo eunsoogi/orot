@@ -14,6 +14,7 @@ import { assertRetainedEvidenceCurrent } from './retainedEvidenceFreshness';
 import { withWritePeriodCalculations } from './writePeriodCalculationScope';
 import { RetainedSourceInvalidError } from '../aiFeatures/integration/retainedSourceError';
 import { fingerprint } from '../aiFeatures/integration/evidenceUtils';
+import { readBookmarkedHistoricalHealthSummary } from './bookmarkedHistoricalHealthSummary';
 
 type Lease = { readonly id: string; readonly version: number };
 type BookmarkInput = {
@@ -119,6 +120,17 @@ export function createSavedHealthSummaryReferences(
     };
   };
   return {
+    readBookmarkedHistoricalHealthSummary: (
+      id: string,
+      current: () => boolean,
+      confirmProtected: () => Promise<boolean>,
+    ) =>
+      readBookmarkedHistoricalHealthSummary(
+        database,
+        id,
+        current,
+        confirmProtected,
+      ),
     async bookmarkHealthSummary(input: BookmarkInput): Promise<boolean> {
       if (!input.current()) return false;
       await ensure();

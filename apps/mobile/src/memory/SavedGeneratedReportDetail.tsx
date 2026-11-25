@@ -8,6 +8,9 @@ import { AppText } from '../layout/AppText';
 import { t } from '../i18n';
 import { HealthSummaryCard } from '../ragConversation/HealthSummaryCard';
 import type { HealthSummaryResult } from '../ragConversation/healthSummary';
+import type { HistoricalBookmarkedHealthSummary } from '../storage/bookmarkedHistoricalHealthSummary';
+import { savedHistoricalReadAdmission } from '../generatedReports/savedReportNativeProtection';
+import { generatedReportCopy } from '../generatedReports/text';
 import { openSavedGeneratedReportReferences } from './openSavedGeneratedReportReferences';
 
 /** Resolve the original only on explicit local open; never treat it as authored memory. */
@@ -21,13 +24,24 @@ export function SavedGeneratedReportDetail({
   isReadCurrent: () => boolean;
 }) {
   const [result, setResult] = useState<
-    string | HealthSummaryResult | GeneratedReportDetail | null | undefined
+    | string
+    | HealthSummaryResult
+    | HistoricalBookmarkedHealthSummary
+    | GeneratedReportDetail
+    | null
+    | undefined
   >(undefined);
   useLayoutEffect(() => {
     let mounted = true;
+    const controller = new AbortController();
+    const admission = savedHistoricalReadAdmission(controller.signal, () => {
+      if (mounted && isReadCurrent()) setResult(null);
+      controller.abort();
+    });
     // The parent invalidates this exact generation inside the existing
     // AppState/deletion callbacks, before a render or unmount can commit.
-    const isCurrent = () => mounted && isReadCurrent();
+    const isCurrent = () =>
+      mounted && !controller.signal.aborted && isReadCurrent();
     if (!isCurrent()) return;
     const load = async () => {
       if (reportKind === 'disease_possibilities') {
@@ -38,8 +52,20 @@ export function SavedGeneratedReportDetail({
       }
       const storage = await openSavedGeneratedReportReferences();
       if (!isCurrent()) return null;
-      if (reportKind === 'health_summary')
-        return storage.readSavedHealthSummaryReference(artifactId, isCurrent);
+      if (reportKind === 'health_summary') {
+        const strict = await storage.readSavedHealthSummaryReference(
+          artifactId,
+          isCurrent,
+        );
+        return (
+          strict ??
+          storage.readBookmarkedHistoricalHealthSummary(
+            artifactId,
+            isCurrent,
+            admission.confirm,
+          )
+        );
+      }
       const report = await storage.readSavedGeneratedReportReference(
         artifactId,
         isCurrent,
@@ -55,6 +81,8 @@ export function SavedGeneratedReportDetail({
       });
     return () => {
       mounted = false;
+      controller.abort();
+      admission.dispose();
     };
   }, [artifactId, reportKind, isReadCurrent]);
   if (!isReadCurrent()) return null;
@@ -81,12 +109,17 @@ export function SavedGeneratedReportDetail({
       ) : 'paragraphs' in result ? (
         <GeneratedReportContent detail={result} />
       ) : (
-        <HealthSummaryCard
-          result={result}
-          showCitations={false}
-          onOpenSource={() => {}}
-          onLinkError={() => {}}
-        />
+        <>
+          {'historicalSnapshot' in result && (
+            <AppText>{generatedReportCopy.historicalHealthSummary}</AppText>
+          )}
+          <HealthSummaryCard
+            result={result}
+            showCitations={false}
+            onOpenSource={() => {}}
+            onLinkError={() => {}}
+          />
+        </>
       )}
     </View>
   );
