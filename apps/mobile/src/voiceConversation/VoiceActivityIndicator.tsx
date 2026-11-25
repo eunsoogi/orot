@@ -3,6 +3,7 @@ import { AccessibilityInfo, StyleSheet, View } from 'react-native';
 import { AppSymbol } from '../layout/AppSymbol';
 import { appColors } from '../layout/appColors';
 import { ConversationActivityBubble } from '../ragConversation/ConversationActivityBubble';
+import { AudioLevelWaveform } from '../ui/AudioLevelWaveform';
 import {
   subscribeNativeVoiceAudioLevel,
   type SubscribeVoiceAudioLevel,
@@ -12,30 +13,8 @@ import type { VoicePhase } from './voiceTurn';
 const levelExpiryMs = 240;
 const minimumUpdateMs = 65;
 const audibleFloor = 0.025;
-const waveformWeights = [0.4, 0.7, 1, 0.8, 0.45] as const;
-
-/** Keep quiet PCM levels visible without synthesizing motion from silence. */
-function VoiceWaveform({ amplitude }: { amplitude: number }) {
-  const strength = Math.min(1, Math.sqrt(amplitude) * 2.4);
-  return (
-    <View
-      testID="voice-activity-waveform"
-      // Grow within the existing frame, not the surrounding screen layout.
-      style={[
-        styles.waveform,
-        amplitude > 0 && { transform: [{ scale: 1.25 + strength * 0.15 }] },
-      ]}
-    >
-      {waveformWeights.map(weight => (
-        <View
-          key={weight}
-          testID="voice-activity-waveform-bar"
-          style={[styles.bar, { height: 4 + weight * (8 + strength * 14) }]}
-        />
-      ))}
-    </View>
-  );
-}
+const liveBarCount = 9;
+const silence = Array<number>(liveBarCount).fill(0);
 
 function useReducedMotion() {
   const [reduced, setReduced] = useState(true);
@@ -86,16 +65,18 @@ export function VoiceActivityIndicator({
   const [meter, setMeter] = useState<{
     callId: string;
     direction: string;
-    amplitude: number;
+    levels: readonly number[];
   }>();
   useEffect(() => {
     if (!active || reduced || !callId || !direction) return;
     let live = true;
     let previous = 0;
+    let levels: readonly number[] = silence;
     let last = -Infinity;
     let expiry: ReturnType<typeof setTimeout> | undefined;
     const reset = () => {
       previous = 0;
+      levels = silence;
       if (live) setMeter(undefined);
     };
     const stop = subscribe(sample => {
@@ -112,7 +93,8 @@ export function VoiceActivityIndicator({
       previous = previous
         ? previous * 0.35 + sample.level * 0.65
         : sample.level;
-      setMeter({ callId, direction, amplitude: previous });
+      levels = [...levels.slice(1), previous];
+      setMeter({ callId, direction, levels });
       clearTimeout(expiry);
       expiry = setTimeout(reset, levelExpiryMs);
     });
@@ -123,14 +105,14 @@ export function VoiceActivityIndicator({
       setMeter(undefined);
     };
   }, [active, callId, direction, reduced, subscribe]);
-  const amplitude =
+  const levels =
     active &&
     !reduced &&
     meter &&
     meter.callId === callId &&
     meter.direction === direction
-      ? meter.amplitude
-      : 0;
+      ? meter.levels
+      : silence;
   const muted = phase === 'stopped' || phase === 'ended';
   return (
     <View
@@ -143,7 +125,13 @@ export function VoiceActivityIndicator({
       ) : (
         <View testID="voice-activity-symbol">
           {direction ? (
-            <VoiceWaveform amplitude={amplitude} />
+            <AudioLevelWaveform
+              active
+              levels={levels}
+              maxBarHeight={36}
+              style={styles.waveform}
+              testID="voice-activity-waveform"
+            />
           ) : (
             <AppSymbol
               name={muted ? 'mic.slash' : 'ellipsis'}
@@ -157,21 +145,9 @@ export function VoiceActivityIndicator({
   );
 }
 const styles = StyleSheet.create({
-  waveform: {
-    width: 32,
-    height: 28,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 3,
-  },
-  bar: {
-    width: 3,
-    borderRadius: 2,
-    backgroundColor: appColors.primary,
-  },
+  waveform: { width: 59, height: 36 },
   frame: {
-    minWidth: 56,
+    minWidth: 59,
     minHeight: 36,
     alignItems: 'center',
     justifyContent: 'center',

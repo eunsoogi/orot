@@ -15,7 +15,7 @@ jest.mock('../../layout/AppSymbol', () => ({
 const hidden = { includeHiddenElements: true };
 const bars = (view: Awaited<ReturnType<typeof render>>) =>
   view
-    .queryAllByTestId('voice-activity-waveform-bar', hidden)
+    .queryAllByTestId(/^voice-activity-waveform-bar-\d+$/, hidden)
     .map(bar => Number(StyleSheet.flatten<ViewStyle>(bar.props.style)?.height));
 const old = 'live-fixture-old';
 const current = 'live-fixture';
@@ -134,34 +134,25 @@ test('quiet current microphone samples visibly change bars', async () => {
     />,
   );
   const idle = bars(view);
-  const center = () => bars(view)[2] ?? 0;
-  const scale = () => {
-    const style = StyleSheet.flatten<{
-      transform?: readonly { scale?: number }[];
-    }>(view.getByTestId('voice-activity-waveform', hidden).props.style);
-    return style?.transform?.[0]?.scale ?? 1;
-  };
-  expect(idle).toHaveLength(5);
-  expect(scale()).toBe(1);
+  const latest = () => bars(view)[idle.length - 1] ?? 0;
+  expect(idle).toEqual(Array<number>(9).fill(3));
   await act(() => emit(sample(0.03)));
   expect(bars(view)).toEqual(idle);
   await act(() => emit(sample(0.03, current, 'input')));
-  const quiet = center();
-  const quietScale = scale();
-  expect(quietScale).toBeGreaterThanOrEqual(1.25);
-  expect(quiet).toBeGreaterThan((idle[2] ?? 0) + 4);
+  const quiet = latest();
+  expect(quiet).toBeGreaterThan(7);
+  expect(bars(view).slice(0, -1)).toEqual(idle.slice(0, -1));
   await act(() => {
     jest.advanceTimersByTime(100);
     emit(sample(0.08, current, 'input'));
   });
-  expect(center()).toBeGreaterThan(quiet + 2);
-  expect(scale()).toBeGreaterThan(quietScale);
-  expect(scale()).toBeLessThanOrEqual(1.4);
+  expect(latest()).toBeGreaterThan(quiet + 2);
+  expect(bars(view)[idle.length - 2]).toBe(quiet);
+  expect(latest()).toBeLessThanOrEqual(36);
   await act(() => {
     jest.advanceTimersByTime(241);
   });
   expect(bars(view)).toEqual(idle);
-  expect(scale()).toBe(1);
 });
 
 test('reduced motion keeps a static mark and invalid or PCM-bearing input is never retained', async () => {
@@ -177,7 +168,7 @@ test('reduced motion keeps a static mark and invalid or PCM-bearing input is nev
       subscribe={subscribe}
     />,
   );
-  expect(bars(view)).toHaveLength(5);
+  expect(bars(view)).toEqual(Array<number>(9).fill(3));
   expect(subscribe).not.toHaveBeenCalled();
   for (const value of [NaN, Infinity, -1, 1.1])
     expect(parseVoiceAudioLevel(sample(value))).toBeUndefined();
