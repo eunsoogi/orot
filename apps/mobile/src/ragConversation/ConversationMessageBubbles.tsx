@@ -47,6 +47,7 @@ export function ConversationMessageBubbles({
             <ConversationInitialResponse
               key={opening.callId}
               response={opening}
+              allowLiveLayout={message.streaming && !message.restoredHistory}
             />
           </ConversationBubbleBody>
         </ConversationBubbleEntrance>

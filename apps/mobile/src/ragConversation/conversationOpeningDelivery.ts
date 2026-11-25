@@ -20,14 +20,21 @@ export function conversationOpeningDelivery(input: {
       ? pending
       : null;
   };
-  const show = (value: ReviewedOpening) => {
+  const show = (value: ReviewedOpening, presentation?: 'card') => {
     const pending = eligible();
     if (!pending || !value.text.trim()) {
       reportOpening('opening_display', 'unavailable');
       return false;
     }
     input.retained?.retainOpening(value);
-    input.publish({ ...pending, initialResponse: value });
+    input.publish({
+      ...pending,
+      initialResponse: {
+        callId: value.callId,
+        text: value.text,
+        ...(presentation ? { presentation } : {}),
+      },
+    });
     reportOpening('opening_display', 'completed');
     return true;
   };
@@ -38,7 +45,13 @@ export function conversationOpeningDelivery(input: {
   };
   return {
     /** New reviewed producer capability. Raw/preview stream tokens never get a durable write. */
-    async onReviewedOpening(value: ReviewedOpening, signal: AbortSignal) {
+    async onReviewedOpening(
+      { callId, text, presentation }: ReviewedOpening & {
+        readonly presentation?: 'card';
+      },
+      signal: AbortSignal,
+    ) {
+      const value = { callId, text };
       if (!eligible() || signal.aborted || !validOpening(value)) return false;
       input.receipt();
       try {
@@ -50,7 +63,7 @@ export function conversationOpeningDelivery(input: {
         reportOpening('opening_display', 'unavailable');
         return false;
       }
-      return !signal.aborted && show(value);
+      return !signal.aborted && show(value, presentation);
     },
     onLegacyOpening(value: ReviewedOpening) {
       // Reviewed first-tool openings still use the legacy event. Preserve live

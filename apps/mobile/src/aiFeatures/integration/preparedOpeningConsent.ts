@@ -2,6 +2,7 @@ import type { Feature } from '../../providers/diagnosticTypes';
 import { reportOpening } from './openingObservation';
 import { startRagConversationOpening } from './contextualConversationOpening';
 import type { ExecutionConsentPort } from '@orot/agent-runtime';
+import type { ConversationEntryContext } from './conversationIntent';
 
 /** The optional opening owns no user prompt until local preflight succeeds.
  * Failure closes only this gate; it never approves, reuses or dismisses another request. */
@@ -46,17 +47,34 @@ export function createPreparedOpeningConsent(
 }
 
 /** Start an opening with its own local-preparation gate; cleanup always releases waiters. */
+type RagOpeningArgs = Parameters<typeof startRagConversationOpening>;
 export function startPreparedRagOpening(
-  ...args: Parameters<typeof startRagConversationOpening>
+  selected: RagOpeningArgs[0],
+  request: string,
+  observer: RagOpeningArgs[2],
+  consent: ExecutionConsentPort,
+  signal: AbortSignal,
+  context: {
+    readonly current?: RagOpeningArgs[5];
+    readonly entryContext?: ConversationEntryContext;
+  },
 ) {
-  const gate = createPreparedOpeningConsent(args[3]);
+  const gate = createPreparedOpeningConsent(consent);
+  const intent = context.entryContext?.intent;
+  const allowA2UI =
+    (!intent || intent === 'conversation') &&
+    !context.current &&
+    !observer?.selectedRecordingTranscript &&
+    !observer?.expectedVoiceSelection &&
+    !observer?.photoInput;
   const opening = startRagConversationOpening(
-    args[0],
-    args[1],
-    args[2],
+    selected,
+    request,
+    observer,
     gate.port,
-    args[4],
-    args[5],
+    signal,
+    context.current,
+    allowA2UI,
   );
   return {
     done: opening.done,
