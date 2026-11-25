@@ -1,3 +1,4 @@
+import AVFoundation
 import CallKit
 import Foundation
 @testable import Orot
@@ -26,9 +27,7 @@ extension RealtimeVoiceLifecycleTests {
                 record["effectiveResponsesGeneration"] = witness
                 return record
             }
-            guard account == "settings-consent-authority" else {
-                return nil
-            }
+            guard account == "settings-consent-authority" else { return nil }
             return service.hasSuffix(".voice")
                 ? ["version": 1, "generation": audio, "status": audioStatus]
                 : ["version": 1, "generation": response, "status": "active"]
@@ -86,9 +85,10 @@ extension RealtimeVoiceLifecycleTests {
         socket.received?(started())
         try system.prepare?()
         system.activated?()
+        NotificationCenter.default.post(name: AVAudioSession.interruptionNotification, object: nil,
+                                        userInfo: [AVAudioSessionInterruptionTypeKey: AVAudioSession.InterruptionType.ended.rawValue])
         NotificationCenter.default.post(name: UIApplication.didEnterBackgroundNotification, object: nil)
-        XCTAssertEqual(call.id, "next")
-        XCTAssertEqual(audio.starts, 1)
+        XCTAssertTrue(call.id == "next" && audio.starts == 1)
         NotificationCenter.default.post(name: UIApplication.protectedDataWillBecomeUnavailableNotification, object: nil)
         XCTAssertNil(call.id)
         XCTAssertFalse(call.systemCallActive)
