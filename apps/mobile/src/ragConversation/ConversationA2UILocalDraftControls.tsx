@@ -1,3 +1,4 @@
+import { ConversationA2UILocalChoice } from './ConversationA2UILocalChoice';
 import { useLayoutEffect, useRef, useState } from 'react';
 import { Pressable, StyleSheet, Switch, TextInput, View } from 'react-native';
 import { AppText } from '../layout/AppText';
@@ -62,6 +63,16 @@ export function ConversationA2UILocalDraftControls({
     const next = draft.read(approved.fieldId);
     if (next !== undefined && current.current === draft)
       setState({ draft, approved, surfaceId, value: next });
+  }
+  if (approved.kind === 'choice') {
+    return typeof value === 'string' ? (
+      <ConversationA2UILocalChoice
+        value={value}
+        onChange={next => {
+          if (draft.change(approved.fieldId, next)) publish();
+        }}
+      />
+    ) : null;
   }
   if (approved.kind === 'checkbox') {
     if (typeof value !== 'boolean') return null;
