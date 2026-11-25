@@ -30,11 +30,19 @@ const frameSequenceSchema = {
     'The final tree must contain every accepted answer line or paragraph exactly once in the same order. ' +
     'Use line breaks between text items; no markup, URLs, actions, tools or duplicated text.',
 };
+const staticCatalogFrameSchema = {
+  ...frameSequenceSchema,
+  description: frameSequenceSchema.description.replace(
+    'Use only Card, Column, Row, List and body Text.',
+    'Use only Card, Column, Row, List, Divider, Icon (only info or calendarToday), Tabs and body Text. Each Tabs title and its panel text consume matching answer lines.',
+  ),
+};
 
 /** Reduce one completed provider reply in isolation. No provisional tree escapes. */
 export function acceptConversationA2UIFrameSequence(
   raw: unknown,
   answer: string,
+  allowStaticCatalog = false,
 ): ConversationA2UINode | undefined {
   if (!Array.isArray(raw) || !raw.length || raw.length > maxFinalFrames)
     return undefined;
@@ -47,13 +55,19 @@ export function acceptConversationA2UIFrameSequence(
       return undefined;
     units += frame.length;
     if (units > 2 * conversationA2UIFrameLimit) return undefined;
-    const next = applyConversationA2UIFrame(staged, frame, draftA2UISurfaceId);
+    const next = applyConversationA2UIFrame(
+      staged,
+      frame,
+      draftA2UISurfaceId,
+      allowStaticCatalog,
+    );
     // An ignored foreign frame makes the whole submitted sequence unsuitable.
     if (!next || next === staged || next.status === 'invalid') return undefined;
     staged = next;
   }
   const root = staged?.root;
-  if (!root || !matchesConversationA2UIProse(root, content)) return undefined;
+  if (!root || !matchesConversationA2UIProse(root, content, allowStaticCatalog))
+    return undefined;
   return root;
 }
 
@@ -61,10 +75,11 @@ export function acceptConversationA2UIFrameSequence(
 export function withConversationA2UIFrameSequence(
   previous: TaskResponderContract<GroundedRagAnswer>,
   eligible: (input: TaskResponderInput) => boolean,
+  taskVersion: '21' | '22' = '21',
 ): TaskResponderContract<GroundedRagAnswer> {
   return {
     ...previous,
-    taskVersion: '21',
+    taskVersion,
     createResultSchema(input) {
       const schema = previous.createResultSchema!(input);
       if (!eligible(input) || !isObject(schema.properties)) return schema;
@@ -72,7 +87,13 @@ export function withConversationA2UIFrameSequence(
       delete properties.a2ui;
       return {
         ...schema,
-        properties: { ...properties, a2uiFrames: frameSequenceSchema },
+        properties: {
+          ...properties,
+          a2uiFrames:
+            taskVersion === '22'
+              ? staticCatalogFrameSchema
+              : frameSequenceSchema,
+        },
         required: [
           ...(Array.isArray(schema.required) ? schema.required : []),
           'a2uiFrames',
@@ -96,10 +117,14 @@ export function withConversationA2UIFrameSequence(
       const root = acceptConversationA2UIFrameSequence(
         a2uiFrames,
         validated.value.answer,
+        taskVersion === '22',
       );
-      if (!root) return validated;
-      const presented = { ...validated.value, a2uiPresentation: root };
-      return { ...validated, value: presented };
+      return root
+        ? {
+            ...validated,
+            value: { ...validated.value, a2uiPresentation: root },
+          }
+        : validated;
     },
   };
 }

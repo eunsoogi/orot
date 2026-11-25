@@ -1,3 +1,19 @@
+import {
+  conversationA2UIIcons,
+  type ConversationA2UIStaticLeaf,
+} from './conversationA2UIStaticCatalog';
+import {
+  binding,
+  dataString,
+  displayText,
+  fail,
+  id,
+  keys,
+  object,
+} from './conversationA2UIWireValues';
+
+export { fail } from './conversationA2UIWireValues';
+
 /**
  * Orot's read-only subset of A2UI 1.0 (agent_to_renderer + bundled Basic).
  * https://a2ui.org/specification/v1.0/schemas/
@@ -7,13 +23,20 @@ export const conversationA2UICatalog =
   'https://a2ui.org/specification/v1_0/catalogs/basic/catalog.json';
 export const conversationA2UIFrameLimit = 16_384;
 export const maxNodes = 64;
-const maxText = 2_048;
 const maxDataKeys = 128;
-const invalidKeyCharacter = /[^a-zA-Z0-9_-]/;
 
 export type RowKind = 'Column' | 'Row' | 'List';
 export type TextVariant = 'body' | 'caption';
 export type WireNode =
+  | ConversationA2UIStaticLeaf
+  | {
+      readonly id: string;
+      readonly component: 'Tabs';
+      readonly tabs: readonly Readonly<{
+        title: string | readonly string[];
+        child: string;
+      }>[];
+    }
   | {
       readonly id: string;
       readonly component: 'Text';
@@ -40,48 +63,7 @@ type Frame =
     }
   | { readonly kind: 'delete' };
 
-export function fail(): never {
-  throw new Error('Invalid or unsupported A2UI surface');
-}
-
-// Only called on values obtained from JSON.parse or on records built in this module.
-function object(value: unknown): Record<string, unknown> {
-  if (!value || typeof value !== 'object' || Array.isArray(value)) fail();
-  return value as Record<string, unknown>;
-}
-
-function keys(record: Record<string, unknown>, allowed: readonly string[]) {
-  if (Object.keys(record).some(key => !allowed.includes(key))) fail();
-}
-
-function id(value: unknown): string {
-  if (
-    typeof value !== 'string' ||
-    !value.length ||
-    value.length > 64 ||
-    invalidKeyCharacter.test(value) ||
-    value === '__proto__' ||
-    value === 'constructor' ||
-    value === 'prototype'
-  )
-    fail();
-  return value;
-}
-
-function binding(value: unknown): readonly string[] {
-  if (typeof value !== 'string' || value.length > 320 || !value.startsWith('/'))
-    fail();
-  const parts = value.slice(1).split('/');
-  if (parts.length > 6) fail();
-  return parts.map(id);
-}
-
-function displayText(value: unknown): string {
-  if (typeof value !== 'string' || value.length > maxText) fail();
-  return value;
-}
-
-function components(value: unknown): WireNode[] {
+function components(value: unknown, allowStaticCatalog: boolean): WireNode[] {
   if (!Array.isArray(value) || value.length === 0 || value.length > maxNodes)
     fail();
   const seen = new Set<string>();
@@ -99,11 +81,49 @@ function components(value: unknown): WireNode[] {
         node.variant === null
       )
         fail();
-      if (typeof node.text === 'string')
-        return { id: nodeId, component, variant, text: displayText(node.text) };
-      const ref = object(node.text);
-      keys(ref, ['@path']);
-      return { id: nodeId, component, variant, text: binding(ref['@path']) };
+      return { id: nodeId, component, variant, text: dataString(node.text) };
+    }
+    // Reject these even on provisional V21 frames: replacing an unsupported
+    // widget before the final frame must not retroactively make V21 valid.
+    if (
+      !allowStaticCatalog &&
+      (component === 'Divider' || component === 'Icon' || component === 'Tabs')
+    )
+      fail();
+    if (component === 'Divider') {
+      keys(node, ['id', 'component', 'axis']);
+      const axis = node.axis === undefined ? 'horizontal' : node.axis;
+      if (axis !== 'horizontal' && axis !== 'vertical') fail();
+      return { id: nodeId, component, axis };
+    }
+    if (component === 'Icon') {
+      keys(node, ['id', 'component', 'name']);
+      const name = node.name;
+      if (
+        typeof name !== 'string' ||
+        !Object.hasOwn(conversationA2UIIcons, name)
+      )
+        fail();
+      return {
+        id: nodeId,
+        component,
+        name: name as keyof typeof conversationA2UIIcons,
+      };
+    }
+    if (component === 'Tabs') {
+      keys(node, ['id', 'component', 'tabs']);
+      if (
+        !Array.isArray(node.tabs) ||
+        node.tabs.length === 0 ||
+        node.tabs.length > 8
+      )
+        fail();
+      const tabs = node.tabs.map((entry: unknown) => {
+        const tab = object(entry);
+        keys(tab, ['title', 'child']);
+        return { title: dataString(tab.title), child: id(tab.child) };
+      });
+      return { id: nodeId, component, tabs };
     }
     if (component === 'Card') {
       keys(node, ['id', 'component', 'child']);
@@ -149,6 +169,7 @@ export function makeConversationA2UISurfaceId(
 export function parseConversationA2UIFrame(
   raw: string,
   expectedSurfaceId: string,
+  allowStaticCatalog = false,
 ): Frame | 'foreign' | 'invalid' {
   if (typeof raw !== 'string' || raw.length > conversationA2UIFrameLimit)
     return 'invalid';
@@ -186,7 +207,9 @@ export function parseConversationA2UIFrame(
         return {
           kind: 'create',
           components:
-            body.components === undefined ? [] : components(body.components),
+            body.components === undefined
+              ? []
+              : components(body.components, allowStaticCatalog),
           data:
             body.dataModel === undefined
               ? Object.create(null)
@@ -194,7 +217,10 @@ export function parseConversationA2UIFrame(
         };
       case 'updateComponents':
         keys(body, ['surfaceId', 'components']);
-        return { kind: 'components', components: components(body.components) };
+        return {
+          kind: 'components',
+          components: components(body.components, allowStaticCatalog),
+        };
       case 'updateDataModel': {
         keys(body, ['surfaceId', 'path', 'value']);
         const path =

@@ -1,3 +1,4 @@
+import type { ConversationA2UIStaticLeaf } from './conversationA2UIStaticCatalog';
 import {
   conversationA2UIFrameLimit,
   fail,
@@ -21,6 +22,15 @@ const maxDepth = 10;
 const maxTextTotal = 8_192;
 
 export type ConversationA2UINode =
+  | ConversationA2UIStaticLeaf
+  | {
+      readonly id: string;
+      readonly component: 'Tabs';
+      readonly tabs: readonly Readonly<{
+        title: string;
+        child: ConversationA2UINode;
+      }>[];
+    }
   | {
       readonly id: string;
       readonly component: 'Text';
@@ -87,6 +97,13 @@ function resolve(data: Data, path: readonly string[]): string | undefined {
   return current;
 }
 
+/** Every reference, including hidden tab panels, participates in one graph. */
+function childIds(component: WireNode): readonly string[] {
+  if (component.component === 'Tabs')
+    return component.tabs.map(tab => tab.child);
+  return 'children' in component ? component.children : [];
+}
+
 function buildTree(
   componentsById: ReadonlyMap<string, WireNode>,
   data: Data,
@@ -94,8 +111,7 @@ function buildTree(
   // Validate structural integrity across *all* components, even unrendered ones.
   const parents = new Set<string>();
   for (const component of componentsById.values()) {
-    if (component.component === 'Text') continue;
-    for (const child of component.children) {
+    for (const child of childIds(component)) {
       if (child === 'root' || parents.has(child)) fail();
       parents.add(child);
     }
@@ -111,10 +127,8 @@ function buildTree(
     if (previousDepth !== undefined) return previousDepth;
     active.add(id);
     let depth = 1;
-    if (component.component !== 'Text') {
-      for (const child of component.children)
-        depth = Math.max(depth, 1 + check(child));
-    }
+    for (const child of childIds(component))
+      depth = Math.max(depth, 1 + check(child));
     if (depth > maxDepth) fail();
     active.delete(id);
     subtreeDepths.set(id, depth);
@@ -125,19 +139,32 @@ function buildTree(
   let complete = true;
   let textTotal = 0;
   const visited = new Set<string>();
+  function boundedText(value: string | readonly string[]) {
+    const text = typeof value === 'string' ? value : resolve(data, value);
+    if (text !== undefined) textTotal += text.length;
+    if (textTotal > maxTextTotal) fail();
+    return text;
+  }
   function build(id: string): ConversationA2UINode | null {
     const component = componentsById.get(id);
     if (!component) return null;
     visited.add(id);
     if (component.component === 'Text') {
-      const text =
-        typeof component.text === 'string'
-          ? component.text
-          : resolve(data, component.text);
+      const text = boundedText(component.text);
       if (text === undefined) return null;
-      textTotal += text.length;
-      if (textTotal > maxTextTotal) fail();
       return { ...component, text };
+    }
+    if (component.component === 'Divider' || component.component === 'Icon')
+      return component;
+    if (component.component === 'Tabs') {
+      const tabs = [];
+      for (const tab of component.tabs) {
+        const title = boundedText(tab.title);
+        const child = build(tab.child);
+        if (!title?.trim() || !child) return null;
+        tabs.push({ title, child });
+      }
+      return { ...component, tabs };
     }
     const children: ConversationA2UINode[] = [];
     for (const child of component.children) {
@@ -156,6 +183,7 @@ export function applyConversationA2UIFrame(
   previous: ConversationA2UIState | null,
   raw: string,
   expectedSurfaceId: string,
+  allowStaticCatalog = false,
 ): ConversationA2UIState | null {
   if (
     previous &&
@@ -164,7 +192,11 @@ export function applyConversationA2UIFrame(
       previous.status === 'deleted')
   )
     return previous;
-  const frame = parseConversationA2UIFrame(raw, expectedSurfaceId);
+  const frame = parseConversationA2UIFrame(
+    raw,
+    expectedSurfaceId,
+    allowStaticCatalog,
+  );
   if (frame === 'foreign') return previous;
   const invalid = {
     status: 'invalid',

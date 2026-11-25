@@ -1,17 +1,25 @@
+import { conversationA2UIIcons } from './conversationA2UIStaticCatalog';
 import type { ConversationA2UINode } from './conversationA2UI';
 import {
   conversationA2UIFrameProse,
   conversationA2UIProse,
 } from './conversationA2UIPresentation';
 
-type Container = Exclude<
-  ConversationA2UINode,
-  { component: 'Text' }
->['component'];
-type Shape = 0 | readonly [Container, ...Shape[]];
+type Container = 'Card' | 'Column' | 'List' | 'Row';
+type Icon = keyof typeof conversationA2UIIcons;
+type Axis = 'horizontal' | 'vertical';
+type Shape =
+  | 0
+  | readonly [Container | 'Tabs', ...Shape[]]
+  | readonly ['Divider', Axis]
+  | readonly ['Icon', Icon];
+const isIcon = (value: unknown): value is Icon =>
+  typeof value === 'string' && Object.hasOwn(conversationA2UIIcons, value);
+const isAxis = (value: unknown): value is Axis =>
+  value === 'horizontal' || value === 'vertical';
 
 /** Contains only app-approved arrangement, not wire frames, IDs or independent prose. */
-export type ArchivedA2UILayout = Readonly<{ version: 1 | 2; tree: Shape }>;
+export type ArchivedA2UILayout = Readonly<{ version: 1 | 2 | 3; tree: Shape }>;
 
 const containers = new Set<Container>(['Card', 'Column', 'List', 'Row']);
 const container = (value: unknown): value is Container =>
@@ -33,6 +41,7 @@ export function storeConversationA2UILayout(
   if (!paragraphs) return undefined;
   let visited = 0;
   let position = 0;
+  let extended = false;
   function visit(value: unknown, depth: number): Shape | undefined {
     if (++visited > 64 || depth > 10 || !record(value)) return undefined;
     if (value.component === 'Text')
@@ -42,6 +51,43 @@ export function storeConversationA2UILayout(
         value.text === paragraphs![position++]
         ? 0
         : undefined;
+    if (value.component === 'Divider') {
+      if (!keys(value, ['id', 'component', 'axis']) || !isAxis(value.axis))
+        return;
+      extended = true;
+      return ['Divider', value.axis];
+    }
+    if (value.component === 'Icon') {
+      if (!keys(value, ['id', 'component', 'name']) || !isIcon(value.name))
+        return;
+      extended = true;
+      return ['Icon', value.name];
+    }
+    if (value.component === 'Tabs') {
+      if (
+        !keys(value, ['id', 'component', 'tabs']) ||
+        !Array.isArray(value.tabs) ||
+        value.tabs.length === 0 ||
+        value.tabs.length > 8
+      )
+        return;
+      extended = true;
+      const panels: Shape[] = [];
+      for (const tab of value.tabs as unknown[]) {
+        if (
+          !record(tab) ||
+          !keys(tab, ['title', 'child']) ||
+          typeof tab.title !== 'string' ||
+          !tab.title.trim() ||
+          tab.title !== paragraphs![position++]
+        )
+          return;
+        const child = visit(tab.child, depth + 1);
+        if (child === undefined) return;
+        panels.push(child);
+      }
+      return ['Tabs', ...panels];
+    }
     if (
       !container(value.component) ||
       !keys(value, ['id', 'component', 'children']) ||
@@ -57,7 +103,7 @@ export function storeConversationA2UILayout(
   }
   const tree = visit(root, 1);
   return tree !== undefined && position === paragraphs.length
-    ? { version: legacy ? 1 : 2, tree }
+    ? { version: extended ? 3 : legacy ? 1 : 2, tree }
     : undefined;
 }
 
@@ -70,11 +116,12 @@ export function restoreConversationA2UILayout(
     answer.length > 8_192 ||
     !record(value) ||
     !keys(value, ['version', 'tree']) ||
-    (value.version !== 1 && value.version !== 2)
+    (value.version !== 1 && value.version !== 2 && value.version !== 3)
   )
     return undefined;
+  const version = value.version;
   const paragraphs =
-    value.version === 1
+    version === 1
       ? conversationA2UIProse(answer)
       : conversationA2UIFrameProse(answer);
   if (!paragraphs) return undefined;
@@ -91,6 +138,28 @@ export function restoreConversationA2UILayout(
       return text === undefined
         ? undefined
         : { id, component: 'Text', variant: 'body', text };
+    }
+    if (version === 3 && Array.isArray(shape)) {
+      if (shape[0] === 'Divider')
+        return shape.length === 2 && isAxis(shape[1])
+          ? { id, component: 'Divider', axis: shape[1] }
+          : undefined;
+      if (shape[0] === 'Icon')
+        return shape.length === 2 && isIcon(shape[1])
+          ? { id, component: 'Icon', name: shape[1] }
+          : undefined;
+      if (shape[0] === 'Tabs') {
+        if (shape.length < 2 || shape.length > 9) return;
+        const tabs = [];
+        for (const panel of shape.slice(1)) {
+          const title = paragraphs![position++];
+          if (!title) return;
+          const child = visit(panel, depth + 1);
+          if (!child) return;
+          tabs.push({ title, child });
+        }
+        return { id, component: 'Tabs', tabs };
+      }
     }
     if (
       !Array.isArray(shape) ||

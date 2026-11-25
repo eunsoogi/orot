@@ -35,11 +35,21 @@ export function admitConversationA2UIPresentation(
 export function matchesConversationA2UIProse(
   root: ConversationA2UINode,
   expected: readonly string[],
+  allowStaticCatalog = false,
 ): boolean {
   let position = 0;
   function matches(node: ConversationA2UINode): boolean {
     if (node.component === 'Text')
       return node.variant === 'body' && node.text === expected[position++];
+    if (node.component === 'Divider' || node.component === 'Icon')
+      return allowStaticCatalog;
+    if (node.component === 'Tabs')
+      return (
+        allowStaticCatalog &&
+        node.tabs.every(
+          tab => tab.title === expected[position++] && matches(tab.child),
+        )
+      );
     return node.children.every(matches);
   }
   return matches(root) && position === expected.length;
