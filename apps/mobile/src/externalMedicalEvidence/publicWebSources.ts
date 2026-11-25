@@ -44,19 +44,24 @@ export function publicWebSources(
       source.url.length > 2048
     )
       return undefined;
-    try {
-      const url = new URL(source.url);
-      if (
-        !['https:', 'http:'].includes(url.protocol) ||
-        !url.hostname ||
-        url.username ||
-        url.password
-      )
-        return undefined;
-    } catch {
-      return undefined;
-    }
+    if (!isPublicWebUrl(source.url)) return undefined;
     sources.push({ title: source.title, url: source.url });
   }
   return sources;
+}
+
+/** One web URL policy for source citations and explicit Markdown link taps. */
+export function isPublicWebUrl(value: string): boolean {
+  if (value.length > 2048) return false;
+  try {
+    const url = new URL(value);
+    return (
+      ['https:', 'http:'].includes(url.protocol) &&
+      !!url.hostname &&
+      !url.username &&
+      !url.password
+    );
+  } catch {
+    return false;
+  }
 }
