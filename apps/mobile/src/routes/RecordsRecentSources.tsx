@@ -1,3 +1,5 @@
+import { useLayoutEffect } from 'react';
+import { useRecentRecordsSuspension } from './useRecentRecordsSuspension';
 import { StyleSheet, View } from 'react-native';
 import type { MedicalDocumentSourceRecord } from '../medicalDocuments/medicalDocumentImportService';
 import type { RecordingSourceRecord } from '../recording/recordingTypes';
@@ -41,6 +43,11 @@ export interface RecordsRecentSourcesProps {
 /** Renders actual local activity in one grouped timeline while preserving each existing destination. */
 export function RecordsRecentSources(props: RecordsRecentSourcesProps) {
   const { showAll = false, onViewAll, documents, documentsOpening } = props;
+  const suspension = useRecentRecordsSuspension(
+    props.active ?? true,
+    props.ownership,
+    props.tabAuthority,
+  );
   const {
     records,
     groups,
@@ -50,9 +57,18 @@ export function RecordsRecentSources(props: RecordsRecentSourcesProps) {
     isCurrent,
     more,
     isLoading,
+    isFresh,
     canAdvance,
     loadErrors,
   } = useRecordsRecentFeed(props);
+  useLayoutEffect(() => {
+    suspension.update(
+      isFresh && !isLoading,
+      loadErrors.length > 0,
+      records.length > 0,
+    );
+  });
+  if (suspension.hidden) return null;
   // A source failure must not add an error banner to records that are already usable.
   const hasRecords = records.length > 0;
   const statusAtTail = hasRecords && showAll;

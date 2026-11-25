@@ -25,6 +25,7 @@ import { useNavigationEdgeVerticalScroll } from './navigationEdgeScroll';
 interface NavigationRouteScrollPosition {
   readonly preserve: () => void;
   readonly restore: () => void;
+  readonly capture: () => (current: () => boolean) => void;
   readonly suspendScroll: () => () => void;
 }
 
@@ -94,9 +95,19 @@ export function NavigationRouteScrollView({
       preservedOffset.current = null;
     });
   }, []);
+  const capture = useCallback(() => {
+    const offset = currentOffset.current;
+    return (current: () => boolean) => {
+      requestAnimationFrame(() => {
+        if (!current()) return;
+        scrollViewRef.current?.scrollTo({ x: 0, y: offset, animated: false });
+        currentOffset.current = offset;
+      });
+    };
+  }, []);
   const position = useMemo(
-    () => ({ preserve, restore, suspendScroll }),
-    [preserve, restore, suspendScroll],
+    () => ({ preserve, restore, capture, suspendScroll }),
+    [preserve, restore, capture, suspendScroll],
   );
   const updateCurrentOffset = useCallback(
     (event: NativeSyntheticEvent<NativeScrollEvent>) => {

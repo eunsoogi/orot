@@ -221,6 +221,8 @@ export function useRecordsRecentFeed(props: RecordsRecentSourcesProps) {
   }
   return {
     records: certified,
+    isFresh:
+      streams.length > 0 && streams.every(stream => stream.state === 'ready'),
     groups,
     showMore,
     retrySources,
