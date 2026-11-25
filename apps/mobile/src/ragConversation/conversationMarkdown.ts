@@ -98,9 +98,7 @@ export function parseAssistantMarkdown(
     }
   }
   flush();
-  return (markup || blocks.length > 1) &&
-    blocks.length <= maxBlocks &&
-    runsCount <= maxRuns
+  return markup && blocks.length <= maxBlocks && runsCount <= maxRuns
     ? blocks
     : undefined;
 }

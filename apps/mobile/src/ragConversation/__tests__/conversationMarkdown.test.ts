@@ -37,3 +37,9 @@ test('admits valid inline-only links but never converts remote images', () => {
     parseAssistantMarkdown('![Photo](https://example.org/x.png)'),
   ).toBeUndefined();
 });
+
+test('plain multiline text retains its existing text path', () => {
+  expect(
+    parseAssistantMarkdown('Original first paragraph.\n\nNext paragraph.'),
+  ).toBeUndefined();
+});

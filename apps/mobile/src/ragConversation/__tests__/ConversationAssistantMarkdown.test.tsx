@@ -44,6 +44,7 @@ test.each([false, true])(
   'formats the same protected assistant answer when restored=%s',
   async restored => {
     const open = jest.spyOn(Linking, 'openURL').mockResolvedValue(undefined);
+    open.mockClear();
     const message = {
       id: 2,
       role: 'assistant' as const,
@@ -113,6 +114,7 @@ test('uses only the newest link error handler after a memoized repaint', async (
 
 test('keeps user, unsafe links, raw HTML and remote images noninteractive', async () => {
   const open = jest.spyOn(Linking, 'openURL').mockResolvedValue(undefined);
+  open.mockClear();
   await render(
     <>
       {bubble({ id: 1, role: 'user', content: '**user syntax**' })}
@@ -129,4 +131,10 @@ test('keeps user, unsafe links, raw HTML and remote images noninteractive', asyn
   expect(screen.getByText(/<img src=/u)).toBeVisible();
   expect(screen.queryByRole('link')).toBeNull();
   expect(open).not.toHaveBeenCalled();
+});
+
+test('plain paragraphs preserve the original newline separators', async () => {
+  const content = '합성 최종 답변\n\n공개 웹검색을 사용할 수 없어요.';
+  await render(bubble({ id: 2, role: 'assistant', content }));
+  expect(screen.getByText(content)).toBeVisible();
 });
