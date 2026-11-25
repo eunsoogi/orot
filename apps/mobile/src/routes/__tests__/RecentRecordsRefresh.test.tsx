@@ -159,7 +159,7 @@ test('one pull retires held More and replaces both first pages in the same Scrol
     fixture.close();
   }
 });
-test('failed refresh keeps rows and manual Retry refreshes both first pages', async () => {
+test('failed refresh keeps rows and another pull retries both first pages', async () => {
   const first = pendingVisitReports().slice(0, 1);
   reports.mockResolvedValue(first);
   await openTimeline();
@@ -175,9 +175,10 @@ test('failed refresh keeps rows and manual Retry refreshes both first pages', as
   expect(screen.getByTestId(report('30'))).toBeTruthy();
   expect(control().props.refreshing).toBe(false);
   expect(media.mock.lastCall?.[1]?.signal.aborted).toBe(true);
-  await fireEvent.press(
-    await screen.findByTestId('records-recent-partial-retry'),
-  );
+  expect(screen.queryByTestId('records-recent-partial')).toBeNull();
+  expect(screen.queryByTestId('records-recent-partial-retry')).toBeNull();
+  expect(screen.queryByTestId('records-recent-sources-retry')).toBeNull();
+  await refresh();
   expect(await screen.findByTestId(report('retried'))).toBeTruthy();
   expect(screen.queryByTestId(report('30'))).toBeNull();
   expect(reports.mock.calls.map(([cursor]) => cursor)).toEqual([
