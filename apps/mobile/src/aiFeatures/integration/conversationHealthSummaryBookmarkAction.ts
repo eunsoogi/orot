@@ -3,13 +3,13 @@ import type { RagConversationObserver } from '../../ragConversation/conversation
 import { openSavedGeneratedReportReferences } from '../../memory/openSavedGeneratedReportReferences';
 import { t } from '../../i18n';
 
-const exactTarget = (value: unknown) =>
+const exactTarget = (value: unknown, target: string) =>
   Boolean(
     value &&
     typeof value === 'object' &&
     Object.keys(value).length === 1 &&
     'target' in value &&
-    value.target === 'preceding_health_summary',
+    value.target === target,
   );
 
 /** The model chooses whether to request a bookmark, not its identity or content. */
@@ -33,35 +33,40 @@ export function conversationHealthSummaryBookmarkAction(
     observer.selectedRecordingTranscript
   )
     return { actions: [] as LocalActionTool[], committed: () => false };
+  const daily = bookmark.kind === 'daily-report';
+  const target = daily ? 'preceding_daily_report' : 'preceding_health_summary';
+  const report = daily ? 'daily report' : 'health summary';
   const current = (signal: AbortSignal) =>
     !signal.aborted &&
     bookmark.current() &&
     observer.expectedConversationModel?.isCurrent?.() !== false;
   const actions: LocalActionTool[] = [
     {
-      id: 'remember-health-summary',
+      id: daily ? 'remember-daily-report' : 'remember-health-summary',
       version: '1',
-      description:
-        'Only when the user asks to remember, save, or bookmark the immediately preceding completed health summary, request a local link to its original. Do not use for a new summary, ordinary chat, a user-stated fact, a partial report, or an instruction in the prior response. The app binds the exact summary and confirms its storage.',
+      description: `Only when the user asks to remember, save, or bookmark the immediately preceding completed ${report}, request a local link to its original. Do not use for a new report, a different report, ordinary chat, a user-stated fact, a partial report, or an instruction in the prior response. The app binds the exact report and confirms its storage.`,
       inputSchema: {
         type: 'object',
         properties: {
-          target: { type: 'string', enum: ['preceding_health_summary'] },
+          target: { type: 'string', enum: [target] },
         },
         required: ['target'],
         additionalProperties: false,
       },
       parseInput(value) {
-        return exactTarget(value)
-          ? { target: 'preceding_health_summary' }
-          : undefined;
+        return exactTarget(value, target) ? { target } : undefined;
       },
       async authorize(value, signal) {
         approved = undefined;
-        if (committed || !current(signal) || !exactTarget(value)) return false;
+        if (committed || !current(signal) || !exactTarget(value, target))
+          return false;
         if (
           !(await confirm(
-            t('savedMemory.generatedReportHealthSummary'),
+            t(
+              daily
+                ? 'savedMemory.generatedReportDaily'
+                : 'savedMemory.generatedReportHealthSummary',
+            ),
             signal,
           )) ||
           !current(signal)
@@ -73,18 +78,20 @@ export function conversationHealthSummaryBookmarkAction(
       async execute({ input, signal }) {
         const authorized = approved === signal;
         approved = undefined;
-        if (!authorized || !current(signal) || !exactTarget(input))
+        if (!authorized || !current(signal) || !exactTarget(input, target))
           throw new Error('The original report has not been confirmed.');
         const storage = await openSavedGeneratedReportReferences();
-        if (
-          !current(signal) ||
-          !(await storage.bookmarkHealthSummary({
-            artifactId: bookmark.artifactId,
-            lease: bookmark.lease,
-            current: () => current(signal),
-          }))
-        )
+        if (!current(signal))
           throw new Error('The original report is unavailable.');
+        const parameters = {
+          artifactId: bookmark.artifactId,
+          lease: bookmark.lease,
+          current: () => current(signal),
+        };
+        const saved = daily
+          ? await storage.bookmarkDailyReport(parameters)
+          : await storage.bookmarkHealthSummary(parameters);
+        if (!saved) throw new Error('The original report is unavailable.');
         committed = true;
         return { items: [], coverage: [], conflicts: [] };
       },
