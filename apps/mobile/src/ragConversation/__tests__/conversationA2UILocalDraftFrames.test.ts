@@ -46,7 +46,7 @@ const validate = (frames: unknown, prose: string) =>
   acceptConversationA2UIFrameSequence(frames, prose, true);
 const allowed = update([root, field, button, label]);
 
-test('only the coherent root owns the final local pair; v22 and copies never do', () => {
+test('only the coherent root owns the control pair', () => {
   const frames = [create, data, allowed];
   expect(validate(frames, answer)).toBeUndefined();
   const result = admitConversationA2UILocalDraftFrames(frames, answer, validate)!;
@@ -62,17 +62,26 @@ test('only the coherent root owns the final local pair; v22 and copies never do'
   expect(conversationA2UILocalDraftFor({ ...result })).toBeUndefined();
 });
 
-test('rejects arbitrary bindings, provider context, earlier ids and bad terminal order', () => {
-  const variants = [
-    [create, data, update([root, { ...field, label: '개인정보를 적으세요' }, button, label])],
-    [create, data, update([root, { ...field, value: { '@path': '/unsafe' } }, button, label])],
-    [create, data, update([root, field, { ...button, action: { event: { name: 'send', context: { next: 'unsafe' } } } }, label])],
-    [create, data, update([{ ...root, children: [...root.children, 'field'] }, field, button, label])],
-    [create, data, update([root, { ...field, id: 'body' }, button, label])],
-    [create, data, allowed, frame('deleteSurface', {})],
-    [create, allowed, data],
-  ];
-  for (const frames of variants)
-    expect(admitConversationA2UILocalDraftFrames(frames, answer, validate)).toBeUndefined();
-  expect(admitConversationA2UILocalDraftFrames([create, data, allowed], '다른 응답', validate)).toBeUndefined();
+test('rejects invalid input and terminal frames', () => {
+  const check = (frames: readonly string[], body = answer) =>
+    expect(
+      admitConversationA2UILocalDraftFrames(frames, body, validate),
+    ).toBeUndefined();
+  const after = (...items: readonly object[]) =>
+    check([create, data, update(items)]);
+  const otherLabel = { ...field, label: '개인정보를 적으세요' };
+  const otherPath = { ...field, value: { '@path': '/unsafe' } };
+  const otherAction = {
+    ...button,
+    action: { event: { name: 'send', context: { next: 'unsafe' } } },
+  };
+  const duplicateField = { ...root, children: [...root.children, 'field'] };
+  after(root, otherLabel, button, label);
+  after(root, otherPath, button, label);
+  after(root, field, otherAction, label);
+  after(duplicateField, field, button, label);
+  after(root, { ...field, id: 'body' }, button, label);
+  check([create, data, allowed, frame('deleteSurface', {})]);
+  check([create, allowed, data]);
+  check([create, data, allowed], '다른 응답');
 });

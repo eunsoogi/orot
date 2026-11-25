@@ -14,7 +14,7 @@ test('exact field and reset control only ever edit this draft', () => {
   expect(draft.change('memo', 'x'.repeat(257))).toBe(false);
 });
 
-test('old callbacks cannot reenter after retirement or affect replacement', () => {
+test('retired callbacks cannot change a replacement', () => {
   let active = true;
   const previous = mountConversationA2UILocalDraft(
     layout,

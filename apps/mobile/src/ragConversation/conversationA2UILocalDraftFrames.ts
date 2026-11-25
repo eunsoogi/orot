@@ -100,7 +100,8 @@ export function admitConversationA2UILocalDraftFrames(
     input.length > maxFrames ||
     !input.every(
       (frame): frame is string =>
-        typeof frame === 'string' && frame.length <= conversationA2UIFrameLimit,
+        typeof frame === 'string' &&
+        frame.length <= conversationA2UIFrameLimit,
     ) ||
     input.reduce((sum, frame) => sum + frame.length, 0) >
       conversationA2UIFrameLimit * 2

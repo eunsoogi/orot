@@ -51,7 +51,7 @@ const frames = [
   }),
 ];
 
-test('the finalized model response mounts a local editable control and no new request', async () => {
+test('a completed reply owns its local draft', async () => {
   const previousAppState = AppState.currentState;
   AppState.currentState = 'active';
   const model = fixture();
@@ -69,7 +69,9 @@ test('the finalized model response mounts a local editable control and no new re
   });
   function Scene() {
     const snapshot = useConversationPresentationSnapshot(store);
-    const session = snapshot.sessions.find(item => item.id === snapshot.activeId)!;
+    const session = snapshot.sessions.find(
+      item => item.id === snapshot.activeId,
+    )!;
     const owner = useConversationA2UILocalDraftOwner(store, session.id);
     return (
       <ConversationA2UILocalDraftOwner.Provider value={owner}>
@@ -86,8 +88,9 @@ test('the finalized model response mounts a local editable control and no new re
   try {
     const view = await render(<Scene />);
     store.setDraft(1, '이 화면에서 쓸 메모 칸을 주세요.');
+    let sending: Promise<void> | undefined;
     await act(async () => {
-      void store.send(1, (question, previousMessages, signal) =>
+      sending = store.send(1, (question, previousMessages, signal) =>
         runRagConversationTurn(
           {
             ...model.options,
@@ -112,13 +115,15 @@ test('the finalized model response mounts a local editable control and no new re
           citations: [],
         }),
       );
+      await sending;
     });
     expect(await screen.findByLabelText(fieldLabel)).toBeTruthy();
     expect(screen.getByText(answer)).toBeTruthy();
     const input = screen.getByLabelText(fieldLabel);
     const lateEdit = input.props.onChangeText as (text: string) => void;
-    await fireEvent.changeText(input, '합성 사용자 입력');
-    expect(screen.getByLabelText(fieldLabel).props.value).toBe('합성 사용자 입력');
+    const text = '합성 사용자 입력';
+    await fireEvent.changeText(input, text);
+    expect(screen.getByLabelText(fieldLabel).props.value).toBe(text);
     await fireEvent.press(screen.getByRole('button', { name: resetLabel }));
     expect(screen.getByLabelText(fieldLabel).props.value).toBe('');
     expect(model.generate).toHaveBeenCalledTimes(1);

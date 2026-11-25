@@ -25,6 +25,7 @@ import { conversationRequestHistory } from './conversationRequestHistory';
 import { possibilityPrompt } from './possibilityPrompt';
 import {
   conversationA2UIPresentationSchema,
+  allowsOrdinaryA2UI,
   admitConversationA2UIPresentation,
 } from './conversationA2UIPresentation';
 import type { ConversationA2UINode } from './conversationA2UI';
@@ -223,17 +224,6 @@ export const conversationTaskV20: TaskResponderContract<GroundedRagAnswer> = {
       : validated;
   },
 };
-
-function allowsOrdinaryA2UI({ context }: TaskResponderInput) {
-  if (Array.isArray(context)) return true;
-  return (
-    isObject(context) &&
-    !context.suppressA2UIPresentation &&
-    !context.photoAttachment &&
-    !context.targetEvidenceId &&
-    (!context.intent || context.intent === 'conversation')
-  );
-}
 
 export const conversationTaskV21 = withConversationA2UIFrameSequence(
   conversationTaskV20,
