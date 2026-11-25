@@ -196,6 +196,21 @@ export function createConversationHeartRateTool(input: {
         acquire: input.acquireSourceEpoch,
         reprove: signal =>
           input.registry.revalidateEvidence([evidence], signal),
+        confirmDispatch: async () => {
+          if (!current()) return false;
+          // The durable recipient check can settle after the earlier native
+          // sample. Reconfirm protection at the final dispatch boundary.
+          try {
+            const native = conversationExecutionNative();
+            return (
+              native?.bridgeAvailable === true &&
+              (await native.protectedDataAvailable()) === true &&
+              current()
+            );
+          } catch {
+            return false;
+          }
+        },
       });
       return batch([evidence], []);
     },
