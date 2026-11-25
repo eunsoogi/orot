@@ -1,3 +1,4 @@
+import type { nativeLiveManagedTools } from './nativeLiveManagedTools';
 import { matchesCanonicalLiveHealthOwner } from './bindCanonicalLiveHealthRun';
 import { readCanonicalLiveHealthStartup } from '../voiceSettings/liveCanonicalHealthSettings';
 import type { LiveResponsesSettings } from '../voiceSettings/liveResponsesSettings';
@@ -18,6 +19,9 @@ export function createCanonicalLiveSessionApproval() {
       current: () => boolean;
       protectedAvailable: () => Promise<boolean | null>;
       review: (request: RealtimeToolConfirmationRequest) => Promise<boolean>;
+      nativeReview?: NonNullable<
+        ReturnType<typeof nativeLiveManagedTools>
+      >['reviewCanonicalCall'];
     }) {
       const startup = await readCanonicalLiveHealthStartup(input.selection);
       const owned = () => !controller.signal.aborted && input.current();
@@ -34,16 +38,24 @@ export function createCanonicalLiveSessionApproval() {
         matchesCanonicalLiveHealthOwner(companion, input.selection);
       const protectedCurrent = async () =>
         current() && (await input.protectedAvailable()) === true && current();
-      if (!(await protectedCurrent())) return { kind: 'stale' } as const;
-      const approved = await input.review({
-        text: t('realtimeToolConsent.liveSessionBoundary'),
-        use: 'live-canonical-session',
-        recipient: 'OpenAI Responses (Live)',
-        model: companion.binding.backendModel,
-        signal: controller.signal,
-      });
-      if (!(await protectedCurrent())) return { kind: 'stale' } as const;
-      if (!approved || !id) return { kind: 'denied' } as const;
+      if (!id || !(await protectedCurrent())) return { kind: 'stale' } as const;
+      const approved = input.nativeReview
+        ? await input.nativeReview(
+            id,
+            companion.binding,
+            input.selection.nativeGrant,
+            controller.signal,
+          )
+        : await input.review({
+            text: t('realtimeToolConsent.liveSessionBoundary'),
+            use: 'live-canonical-session',
+            recipient: 'OpenAI Responses (Live)',
+            model: companion.binding.backendModel,
+            signal: controller.signal,
+          });
+      if (approved === null || !(await protectedCurrent()))
+        return { kind: 'stale' } as const;
+      if (!approved) return { kind: 'denied' } as const;
       approvedId = id;
       return {
         kind: 'approved',

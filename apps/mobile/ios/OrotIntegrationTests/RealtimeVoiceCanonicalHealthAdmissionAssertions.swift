@@ -68,6 +68,7 @@ extension RealtimeVoiceLifecycleTests {
         another["backendModel"] = "gpt-6-luna"
         let mismatched = try XCTUnwrap(Admission(another))
         try assertNativeReviewIsExactFreshAndSingleUse(grant, mismatched: mismatched)
+        try assertNativePresenterOnlyIssuesFromItsVisibleDecision(grant)
     }
 
     private func assertNativeReviewIsExactFreshAndSingleUse(
@@ -114,6 +115,50 @@ extension RealtimeVoiceLifecycleTests {
         try begin()(true)
         nativeCurrent = false
         XCTAssertFalse(consume(first))
+    }
+
+    private func assertNativePresenterOnlyIssuesFromItsVisibleDecision(_ grant: RealtimeVoiceCanonicalHealthAdmission) throws {
+        let scope = CanonicalLiveCallPresenter.Scope(call: "synthetic-call", capability: grant)
+        var tapped: CanonicalLiveCallPresenter.Decision?
+        var focused = true
+        var owner = true
+        var dismissed = 0
+        let review = CanonicalLiveCallPresenter(available: { focused }, show: { shown, decision in
+            XCTAssertEqual(shown, scope)
+            tapped = decision
+            return { dismissed += 1 }
+        })
+        var output: [Bool?] = []
+        func begin() {
+            review.begin(scope, current: { owner }, decide: { output.append($0) })
+        }
+        begin()
+        XCTAssertFalse(review.consume(scope))
+        try XCTUnwrap(tapped)(false)
+        XCTAssertEqual(output, [false])
+        XCTAssertFalse(review.consume(scope))
+        begin()
+        let late = try XCTUnwrap(tapped)
+        review.retire(scope.call)
+        late(true)
+        XCTAssertEqual(output, [false, nil])
+        XCTAssertEqual(dismissed, 1)
+        XCTAssertFalse(review.consume(scope))
+        begin()
+        focused = false
+        try XCTUnwrap(tapped)(true)
+        XCTAssertFalse(review.consume(scope))
+        focused = true
+        begin()
+        owner = false
+        try XCTUnwrap(tapped)(true)
+        XCTAssertFalse(review.consume(scope))
+        owner = true
+        begin()
+        try XCTUnwrap(tapped)(true)
+        XCTAssertEqual(output, [false, nil, nil, nil, true])
+        XCTAssertTrue(review.consume(scope))
+        XCTAssertFalse(review.consume(scope))
     }
 
     func assertOnlyCanonicalFieldsAndUniquelyScopedResultReferencesCross() {

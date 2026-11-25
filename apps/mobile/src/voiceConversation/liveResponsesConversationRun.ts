@@ -201,6 +201,7 @@ export function liveResponsesConversationRun(input: {
             current: ownsStart,
             protectedAvailable: protection.protectedDataAvailable,
             review: input.confirm,
+            nativeReview: native.reviewCanonicalCall,
           });
           if (result.kind === 'stale' || !ownsStart()) throw unavailable();
           if (result.kind === 'denied') {
