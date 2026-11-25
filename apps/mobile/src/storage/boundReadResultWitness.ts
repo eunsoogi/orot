@@ -8,6 +8,9 @@ const stampSql =
   'SELECT total_changes() AS local, schema_version, data_version FROM pragma_schema_version CROSS JOIN pragma_data_version';
 export class BoundReadWitnessUnavailable extends Error {}
 
+/** An owned read lost only its SQLite revision; its result is still invalid. */
+export class BoundReadRevisionChanged extends BoundReadWitnessUnavailable {}
+
 const stamp = async (tx: SqlExecutor) => {
   const { rows } = await tx.execute(stampSql);
   const values = rows[0] && [
@@ -37,7 +40,8 @@ export function createBoundReadResultWitness(
   let version: string | undefined;
   const current = () => epoch.current() && stillOwned();
   const requireCurrent = () => {
-    if (!current()) throw new BoundReadWitnessUnavailable();
+    if (!stillOwned()) throw new BoundReadWitnessUnavailable();
+    if (!epoch.current()) throw new BoundReadRevisionChanged();
   };
   const sample = async (tx: SqlExecutor) => {
     requireCurrent();
@@ -49,7 +53,7 @@ export function createBoundReadResultWitness(
     }
     requireCurrent();
     if (version !== undefined && version !== result)
-      throw new BoundReadWitnessUnavailable();
+      throw new BoundReadRevisionChanged();
     version ??= result;
   };
   return {

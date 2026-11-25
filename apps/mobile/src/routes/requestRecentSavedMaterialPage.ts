@@ -1,6 +1,7 @@
 import type { Dispatch, SetStateAction } from 'react';
 import { conversationExecutionNative } from '../ragConversation/conversationExecutionNative';
 import type { ConversationExecutionAdapter } from '../ragConversation/conversationExecutionLease';
+import { BoundReadRevisionChanged } from '../storage/boundReadResultWitness';
 import { recentPageSize } from './RecordsRecentTimeline';
 import { linkRecentRefresh, type RecentPageRefresh } from './recentPageRefresh';
 
@@ -133,14 +134,19 @@ export async function requestRecentSavedMaterialPage<Row extends RecentPageRow>(
       return false;
     }
     if (!(await verify()) || !current()) return false;
-    const response = await load(
-      before && { createdAt: before.createdAt, key: before.key },
-      {
+    const read = () =>
+      load(before && { createdAt: before.createdAt, key: before.key }, {
         signal: operation.signal,
         canRetry: verify,
         isCurrent: current,
-      },
-    );
+      });
+    const response = await read().catch(async error => {
+      // Do not retain the expired snapshot or retry schema/permission errors.
+      // The current protection and route must admit a fresh first page.
+      if (before || !(error instanceof BoundReadRevisionChanged)) throw error;
+      if (!(await verify()) || !current()) throw error;
+      return read();
+    });
     let rows: readonly Row[];
     let hasMore: boolean;
     const verifyPage = async () => {
