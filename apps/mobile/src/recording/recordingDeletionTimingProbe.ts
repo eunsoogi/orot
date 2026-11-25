@@ -95,7 +95,7 @@ export class RecordingDeletionTimingProbe implements RecordingDeletionTimingProb
     const audioEnd = findEvent('audio-cleanup', 'end');
     const listRefresh = findEvent('list-refresh', 'mark');
     const audioCleanupToListRefresh =
-      audioEnd && listRefresh
+      audioEnd && listRefresh && listRefresh.elapsedMs >= audioEnd.elapsedMs
         ? listRefresh.elapsedMs - audioEnd.elapsedMs
         : null;
     const summaryReadEvents = events.filter(
@@ -162,8 +162,13 @@ export class RecordingDeletionTimingProbe implements RecordingDeletionTimingProb
       listRefreshIndex > progressIndex &&
       orderedService &&
       (serviceIndexes[0] ?? -1) > confirmationIndex &&
+      // A durable source receipt can remove the row while staged audio cleanup
+      // remains serialized. Neither an uncommitted nor foreign list mark qualifies.
       listRefreshIndex >
-        (serviceIndexes[serviceIndexes.length - 1] ?? Number.MAX_SAFE_INTEGER);
+        events.findIndex(
+          event =>
+            event.stage === 'database-delete-commit' && event.phase === 'end',
+        );
     const durationsMs = {
       confirmationToProgress: markDelta(
         'confirmation-tap',

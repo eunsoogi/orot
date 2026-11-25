@@ -53,9 +53,16 @@ export function useRecordingDeletionTiming(
       probe
         ? withRecordingDeletionTiming(probe, 'list-summary-read', operation)
         : operation(),
-    deleteRecording: (service: RecordingLibraryService, sourceId: string) =>
-      probe
+    deleteRecording: (
+      service: RecordingLibraryService,
+      sourceId: string,
+      onCommitted: () => void,
+    ) => {
+      if (service.deleteRecordingWithCommit)
+        return service.deleteRecordingWithCommit(sourceId, onCommitted, probe);
+      return probe
         ? service.deleteRecording(sourceId, probe)
-        : service.deleteRecording(sourceId),
+        : service.deleteRecording(sourceId);
+    },
   };
 }

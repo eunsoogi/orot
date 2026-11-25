@@ -184,3 +184,33 @@ test('observer errors never replace the operation result or error', async () => 
   expect(observer.mark).toHaveBeenCalledWith('list-refresh');
   expect(observer.finish).toHaveBeenCalledWith('failure');
 });
+
+test('accepts an actual list commit before staged audio cleanup ends without a fictitious duration', () => {
+  let now = 0;
+  const probe = new RecordingDeletionTimingProbe(() => ++now);
+  probe.mark('confirmation-tap');
+  probe.mark('progress-presented');
+  probe.mark('busy-committed');
+  for (const stage of [
+    'source-read',
+    'stop-check',
+    'audio-staging',
+    'memory-open',
+    'derived-data-cleanup',
+    'database-delete-commit',
+  ] as const) {
+    probe.begin(stage);
+    probe.end(stage, 'success');
+  }
+  probe.begin('audio-cleanup');
+  probe.mark('list-refresh');
+  expect(probe.snapshot().complete).toBe(false);
+  probe.end('audio-cleanup', 'success');
+  probe.finish('success');
+  probe.mark('busy-settled');
+  expect(probe.snapshot()).toMatchObject({
+    complete: true,
+    succeeded: true,
+    durationsMs: { audioCleanupToListRefresh: null },
+  });
+});
