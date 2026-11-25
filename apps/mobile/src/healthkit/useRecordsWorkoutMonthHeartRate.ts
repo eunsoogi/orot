@@ -172,7 +172,7 @@ export function useRecordsWorkoutMonthHeartRate({
     function watchRestoration() {
       try {
         return conversationExecutionNative()?.subscribe(event => {
-          if (event.kind === 'protectedData' && event.available) void read();
+          if (event.kind === 'protectedData' && event.available) read();
         });
       } catch {
         // Only the per-request watcher may authorize a read.
