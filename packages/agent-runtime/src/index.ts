@@ -81,6 +81,7 @@ export type {
   TaskResultValidation,
 } from './multiAgent/contracts';
 export type { EvidenceSearchRuntime } from './multiAgent/evidenceContracts';
+export type { ConversationLayoutSkeleton } from './multiAgent/responderStreamEvent';
 export { DEFAULT_MULTI_AGENT_BUDGET, MAX_MULTI_AGENT_BUDGET } from './multiAgent/contracts';
 export type {
   ConversationToolEvent,

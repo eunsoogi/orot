@@ -1,7 +1,9 @@
-import type { LanguageModelStreamEvent } from '@orot/model-runtime';
+import type { ModelTextObserver } from './modelCall';
 import type { TaskResponderInput } from './contracts';
 import { reportTaskStreamEvent, type RuntimeContext } from './runtimeContext';
 import { projectDisplayTextUpdate } from './streamProjection';
+
+const maxLayoutStreamUnits = 36_000;
 
 /** Projects only approved text and preserves replacements without exposing raw JSON. */
 export function projectedTaskText<TResult>(
@@ -21,13 +23,16 @@ export function createTaskTextObserver<TResult>(
   context: RuntimeContext<TResult>,
   input: TaskResponderInput,
   prefix = '',
-):
-  | ((event: Extract<LanguageModelStreamEvent, { type: 'text_delta' | 'text_snapshot' }>) => void)
-  | undefined {
+): ModelTextObserver | undefined {
   if (!context.onTaskStreamEvent || !context.options.task.projectStreamedText) return undefined;
+  const projectLayout =
+    !prefix && context.options.provider.id.startsWith('chatgpt-plan:')
+      ? context.options.task.projectStreamedLayout
+      : undefined;
   let rawOutput = '';
   let displayed = prefix;
-  return (event) => {
+  const buffered: ModelTextObserver = (event) => {
+    if (context.signal.aborted) return;
     rawOutput = event.type === 'text_delta' ? rawOutput + event.text : event.text;
     const projected = projectedTaskText(context, input, rawOutput);
     const next = prefix + (projected ? (prefix ? '\n\n' : '') + projected : '');
@@ -36,4 +41,26 @@ export function createTaskTextObserver<TResult>(
     reportTaskStreamEvent(context, update);
     displayed = next;
   };
+  if (!projectLayout) return buffered;
+  let layoutRaw: string | undefined = '';
+  let priorLayout: ReturnType<typeof projectLayout>;
+  return Object.assign(buffered, {
+    projectOwnedTransport(event: Parameters<ModelTextObserver>[0]) {
+      if (context.signal.aborted) return;
+      const old = event.type === 'text_snapshot' ? '' : layoutRaw;
+      layoutRaw =
+        old !== undefined && old.length + event.text.length <= maxLayoutStreamUnits
+          ? old + event.text
+          : undefined;
+      let layout: typeof priorLayout;
+      try {
+        layout = layoutRaw === undefined ? undefined : projectLayout(layoutRaw, input);
+      } catch {
+        layout = undefined;
+      }
+      if (layout?.kind === priorLayout?.kind && layout?.slots === priorLayout?.slots) return;
+      priorLayout = layout;
+      reportTaskStreamEvent(context, { type: 'layout_skeleton', layout });
+    },
+  });
 }

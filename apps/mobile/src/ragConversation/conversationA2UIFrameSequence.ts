@@ -19,6 +19,7 @@ import {
 } from './conversationA2UILocalDraftFrames';
 import { isObject } from './taskHistory';
 import type { GroundedRagAnswer } from './task';
+import { projectConversationA2UISkeleton } from './conversationA2UISkeleton';
 
 const maxFinalFrames = 12;
 
@@ -103,6 +104,9 @@ export function withConversationA2UIFrameSequence(
   return {
     ...previous,
     taskVersion,
+    projectStreamedLayout(raw, input) {
+      return eligible(input) ? projectConversationA2UISkeleton(raw) : undefined;
+    },
     createResultSchema(input) {
       const schema = previous.createResultSchema!(input);
       if (!eligible(input) || !isObject(schema.properties)) return schema;

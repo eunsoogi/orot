@@ -3,6 +3,8 @@ export type { MultiAgentResponderStreamEvent } from './responderStreamEvent';
 import type { LocalActionRecoveryLifecycle } from './localActionRecoveryLifecycle';
 import type { InitialToolResponseContract } from './initialToolResponseContract';
 import type { EvidenceRestoration } from './evidenceRestoration';
+import type { TaskResultValidation } from './taskResultValidation';
+export type { TaskClarificationValue, TaskResultValidation } from './taskResultValidation';
 import type { MultiAgentPhase } from './actionContracts';
 export type { MultiAgentPhase } from './actionContracts';
 import type {
@@ -71,15 +73,6 @@ export interface TaskResponderInput {
     readonly remainingResearchCycles: number | null;
   };
 }
-export type TaskResultValidation<TResult> =
-  | { readonly status: 'valid'; readonly value: TResult }
-  | { readonly status: 'invalid'; readonly reason: string }
-  | { readonly status: 'needs_clarification'; readonly message: string };
-/** Task-approved result shape whose display copy may survive an evidence-coverage stop. */
-export interface TaskClarificationValue {
-  readonly status: 'needs_clarification';
-  readonly message: string;
-}
 export interface TaskResponderContract<TResult = JsonValue> extends InitialToolResponseContract {
   readonly taskType: string;
   readonly taskVersion: string;
@@ -89,6 +82,10 @@ export interface TaskResponderContract<TResult = JsonValue> extends InitialToolR
   readonly createResultSchema?: (input: TaskResponderInput) => JsonObject;
   /** Projects only approved display text from partial structured JSON; omitted tasks never expose raw tokens. */
   projectStreamedText?(rawOutput: string, input: TaskResponderInput): string | undefined;
+  projectStreamedLayout?(
+    raw: string,
+    input: TaskResponderInput,
+  ): import('./responderStreamEvent').ConversationLayoutSkeleton | undefined;
   /** Allows bounded external truncation only; gaps, conflicts and local truncation still block. */
   readonly allowBoundedExternalEvidence?: boolean;
   /** Accepts ranked local hits only when coverage explicitly records a completed ranked search. */

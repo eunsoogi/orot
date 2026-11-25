@@ -5,6 +5,7 @@ import {
   type ConversationToolEvent,
 } from '@orot/agent-runtime';
 import { applyWorkflowStreamEvent } from '../agent/workflowActivity';
+import { layoutSkeletonPublisher } from './ownedLayoutSkeleton';
 import { progressCopy } from './conversationProgress';
 import { getRagConversationCopy } from './copy';
 import { t } from '../i18n';
@@ -42,6 +43,7 @@ export function createConversationTurnActivity(input: {
           update: input.update,
           retain: input.retained?.retainDelivery,
         });
+  const layout = layoutSkeletonPublisher(input);
   let events: readonly ConversationToolEvent[] = input.initialToolEvents ?? [];
   let writing = Promise.resolve();
   const failedCalls = new Set<string>();
@@ -128,6 +130,7 @@ export function createConversationTurnActivity(input: {
       for (const event of events)
         if (event.status === 'started') observe({ ...event, status });
     },
+    setLayoutCurrent: layout.setCurrent,
     async flush() {
       await writing;
       if (failedCalls.size && input.current())
@@ -158,6 +161,10 @@ export function createConversationTurnActivity(input: {
       },
       onTaskStreamEvent(event: Parameters<typeof applyWorkflowStreamEvent>[1]) {
         const pending = input.find(input.id)?.pendingMessage;
+        if (event.type === 'layout_skeleton') {
+          layout.publish(pending, event.layout);
+          return;
+        }
         if (event.type === 'steering_availability') {
           if (input.current() && pending?.id === input.responseId)
             input.update(input.id, { steeringDeliveryMode: event.mode });
@@ -177,6 +184,7 @@ export function createConversationTurnActivity(input: {
                   ? [...(pending.previousOutputs ?? []), pending.content]
                   : pending.previousOutputs,
                 content: '',
+                layoutSkeleton: undefined,
                 initialResponse: pending.initialResponse,
               },
             });

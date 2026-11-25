@@ -11,7 +11,7 @@ export function conversationStreamObservers(
 ) {
   return {
     // Retained clinical prose still requires final validation. The runtime admits only
-    // task-allowlisted initial receipts and content-free transport availability.
+    // task-allowlisted initial receipts and content-free transport or layout.
     onTaskStreamEvent: hasRetainedInputs
       ? (
           event: Parameters<
@@ -20,7 +20,8 @@ export function conversationStreamObservers(
         ) => {
           if (
             event.type === 'initial_response' ||
-            event.type === 'steering_availability'
+            event.type === 'steering_availability' ||
+            event.type === 'layout_skeleton'
           )
             observer?.onTaskStreamEvent?.(event);
         }

@@ -55,6 +55,7 @@ export interface DisplayMessage extends RagConversationMessage {
   readonly previousOutputs?: readonly string[];
   readonly activity?: string;
   readonly streaming?: boolean;
+  readonly layoutSkeleton?: import('@orot/agent-runtime').ConversationLayoutSkeleton;
   readonly incomplete?: boolean;
   readonly coldResume?: { readonly attempt: number };
   readonly interruptionReason?: import('./conversationExecutionLease').ConversationRecoveryReason;

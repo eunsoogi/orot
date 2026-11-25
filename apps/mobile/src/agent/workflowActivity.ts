@@ -42,7 +42,8 @@ export function applyWorkflowStreamEvent(
   if (
     event.type === 'initial_response' ||
     event.type === 'steering_applied' ||
-    event.type === 'steering_availability'
+    event.type === 'steering_availability' ||
+    event.type === 'layout_skeleton'
   )
     return current;
   if (event.type === 'started') return '';

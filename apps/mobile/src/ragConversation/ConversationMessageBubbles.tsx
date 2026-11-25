@@ -1,5 +1,6 @@
 import { useConversationFinalCommitDiagnostic } from './conversationFinalCommitDiagnostic';
 import { ConversationPreviousOutputs } from './ConversationPreviousOutputs';
+import { ConversationA2UILiveSkeleton } from './ConversationA2UILiveSkeleton';
 import type { ReactNode } from 'react';
 import { View } from 'react-native';
 import { ConversationBubbleEntrance } from './ConversationBubbleEntrance';
@@ -33,7 +34,11 @@ export function ConversationMessageBubbles({
 }) {
   const { opening, showBody } = conversationBubblePaint(message, presentation);
   useConversationFinalCommitDiagnostic(message, Boolean(showBody));
-  if (!opening && !beforeAnswer) return showBody ? children : null;
+  const layout =
+    message.streaming && !message.content && !message.restoredHistory
+      ? message.layoutSkeleton
+      : undefined;
+  if (!opening && !beforeAnswer && !layout) return showBody ? children : null;
   return (
     <View style={styles.assistantBubbleSequence}>
       {opening ? (
@@ -58,6 +63,7 @@ export function ConversationMessageBubbles({
         </View>
       ) : null}
       {beforeAnswer}
+      {layout ? <ConversationA2UILiveSkeleton layout={layout} /> : null}
       {showBody ? children : null}
     </View>
   );
