@@ -86,7 +86,12 @@ test('explicit composer start reaches the real Live modal without the discarded 
         identity: { sessionId: 1, providerId: 'openai-live', turnId: callId },
       });
       firstCaption({ callId, itemId: '1', role: 'user', text: '합성 질문' });
-      firstCaption({ callId, itemId: '2', role: 'assistant', text: '합성 응답' });
+      firstCaption({
+        callId,
+        itemId: '2',
+        role: 'assistant',
+        text: '합성 응답',
+      });
       firstCaption({
         callId: 'live-999-9',
         itemId: '2',
@@ -105,7 +110,12 @@ test('explicit composer start reaches the real Live modal without the discarded 
     snapshot.activeId = 2;
     await view.rerender(<ConversationVoiceEntry sessionId={2} {...props} />);
     await act(() =>
-      firstCaption({ callId, itemId: '3', role: 'assistant', text: '이전 통화' }),
+      firstCaption({
+        callId,
+        itemId: '3',
+        role: 'assistant',
+        text: '이전 통화',
+      }),
     );
     expect(screen.queryByText(/합성 질문|합성 응답|이전 통화/)).toBeNull();
   } finally {
