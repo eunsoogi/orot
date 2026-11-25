@@ -29,13 +29,16 @@ final class RealtimeVoiceCanonicalHealthMailbox {
     private let emit: (String, [String: Any]) -> Void
     private var pending: (request: Request, ticket: Ticket, finish: (String?) -> Void)?
     private var approved: (request: Request, output: String, ticket: Ticket)?
-    private var used = false
+    // Remain one-shot unless the owner explicitly installs a serial companion.
+    private let invocationLimit: Int
+    private var seenFunctions = Set<String>()
     private var retired = false
 
     init(call: String, baseline: LiveResponsesSettingsGrant, capability: RealtimeVoiceCanonicalHealthAdmission,
          authority: LiveNativeResultDispatchAuthority, key: String,
          read: @escaping (String, String) -> [String: Any]? = RealtimeVoiceCanonicalHealthAdmission.read,
-         owns: @escaping (Request) -> Bool, emit: @escaping (String, [String: Any]) -> Void)
+         permitSerialInvocations: Bool = false, owns: @escaping (Request) -> Bool,
+         emit: @escaping (String, [String: Any]) -> Void)
     {
         self.call = call
         self.baseline = baseline
@@ -43,6 +46,7 @@ final class RealtimeVoiceCanonicalHealthMailbox {
         self.authority = authority
         self.key = key
         self.read = read
+        invocationLimit = permitSerialInvocations ? 128 : 1
         self.owns = owns
         self.emit = emit
     }
@@ -58,7 +62,9 @@ final class RealtimeVoiceCanonicalHealthMailbox {
     }
 
     func begin(_ request: Request, finish: @escaping (String?) -> Void) -> (() -> Void) {
-        guard !used, pending == nil, approved == nil, request.valid, current(request) else {
+        guard pending == nil, approved == nil, seenFunctions.count < invocationLimit,
+              !seenFunctions.contains(request.function), request.valid, current(request)
+        else {
             finish(nil)
             return {}
         }
@@ -71,7 +77,7 @@ final class RealtimeVoiceCanonicalHealthMailbox {
             finish(nil)
             return {}
         }
-        used = true
+        seenFunctions.insert(request.function)
         pending = (request, ticket, finish)
         emit("VoiceRealtimeManagedToolCall", [
             "callId": call, "sessionId": request.session, "responseId": request.response,

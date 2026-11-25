@@ -39,6 +39,8 @@ export function canonicalLiveHealthDeclaration(
 /** Private peer transport for one canonical serial health-read capability.
  * Never passes the broader health report under the legacy aggregate receipt. */
 export function createCanonicalLiveHealthRead(input: {
+  /* Testable companion contract; callers without explicit serial admission stay one-shot. */
+  readonly permitSerialInvocations?: boolean;
   readonly resolve: (
     call: LiveManagedHealthCall,
   ) => Promise<CanonicalHealthLiveReceipt | undefined>;
@@ -67,13 +69,26 @@ export function createCanonicalLiveHealthRead(input: {
     exactResult: string | null,
   ) => Promise<unknown>;
 }) {
-  let used = false;
+  const seenChallenges = new Set<string>();
+  const seenCalls = new Set<string>();
+  const limit = input.permitSerialInvocations === true ? 128 : 1;
+  let active = false;
   return async (raw: LiveManagedHealthCall, signal: AbortSignal) => {
     const call = Object.freeze({ ...raw });
     const owns = () => !signal.aborted && input.owns(call);
-    if (used || !owns() || call.name !== name || call.args.length > 1024)
+    if (
+      active ||
+      seenChallenges.size >= limit ||
+      seenChallenges.has(call.challengeId) ||
+      seenCalls.has(call.toolCallId) ||
+      !owns() ||
+      call.name !== name ||
+      call.args.length > 1024
+    )
       return;
-    used = true;
+    seenChallenges.add(call.challengeId);
+    seenCalls.add(call.toolCallId);
+    active = true;
     let settled = false;
     try {
       const receipt = await input.resolve(call);
@@ -167,6 +182,7 @@ export function createCanonicalLiveHealthRead(input: {
           // Native owner may have independently retired. Never retry or reopen.
         }
       }
+      active = false;
     }
   };
 }
