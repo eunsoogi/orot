@@ -101,9 +101,11 @@ export function useRecentRecordsSuspension(
         currentFeed.current;
       if (!current() || !protection?.bridgeAvailable) return;
       held.current = undefined;
-      void isProtectedDataReadable(protection).then(allowed => {
-        if (allowed && current()) value.restore(current);
-      });
+      isProtectedDataReadable(protection)
+        .then(allowed => {
+          if (allowed && current()) value.restore(current);
+        })
+        .catch(() => undefined);
     },
   };
 }
