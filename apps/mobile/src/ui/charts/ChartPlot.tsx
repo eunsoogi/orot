@@ -24,6 +24,8 @@ type Props = {
   compact?: boolean;
   /** Overview removes detail UI entirely while retaining an accessible chart description. */
   hideDetails?: boolean;
+  /** Omit raw legend units; keep source in the selected mark when needed. */
+  legendLabelsOnly?: boolean;
   /** Preserve the chart image and summary before the user requests details. */
   accessibleCollapsedPlot?: boolean;
   /** Opt-in selection without restoring the removed details disclosure. */
@@ -49,6 +51,7 @@ export function ChartPlot({
   lineAxis = 'time',
   compact = false,
   hideDetails = false,
+  legendLabelsOnly = false,
   accessibleCollapsedPlot = false,
   barTooltip = false,
 }: Props) {
@@ -65,6 +68,12 @@ export function ChartPlot({
   const pages = canShow ? chartWindows(data, axis) : [];
   const page = Math.min(pageIndex, Math.max(0, pages.length - 1));
   const visible = pages[page];
+  const measuredSeries =
+    visible?.series.filter(series => series.points.length > 0) ?? [];
+  const showLegend =
+    (showDetails || (hideDetails && measuredSeries.length > 1)) &&
+    (!legendLabelsOnly ||
+      new Set(measuredSeries.map(series => series.label)).size > 1);
   const positions = visible
     ? [
         ...new Set(
@@ -131,25 +140,19 @@ export function ChartPlot({
         </View>
       )}
       {/* Multiple measured lines still need labels when detailed prose is hidden. */}
-      {visible &&
-        (showDetails ||
-          (hideDetails &&
-            visible.series.filter(series => series.points.length > 0).length >
-              1)) && (
-          <View style={styles.legend}>
-            {visible.series
-              .filter(series => series.points.length > 0)
-              .map(series => (
-                <Text key={series.id}>
-                  {series.label}
-                  {kind === 'line' && data.series.length > 1
-                    ? ` (${t(series.style === 'primary' ? 'chart.solidLine' : 'chart.dashedLine')})`
-                    : ''}
-                  {series.unit ? ` · ${series.unit}` : ''}
-                </Text>
-              ))}
-          </View>
-        )}
+      {visible && showLegend && (
+        <View style={styles.legend}>
+          {measuredSeries.map(series => (
+            <Text key={series.id}>
+              {series.label}
+              {kind === 'line' && data.series.length > 1
+                ? ` (${t(series.style === 'primary' ? 'chart.solidLine' : 'chart.dashedLine')})`
+                : ''}
+              {!legendLabelsOnly && series.unit ? ` · ${series.unit}` : ''}
+            </Text>
+          ))}
+        </View>
+      )}
       {barTooltip &&
       axis === 'day' &&
       visible &&
@@ -162,6 +165,7 @@ export function ChartPlot({
           height={height}
           title={title}
           kind={kind}
+          includeSelectedSource={legendLabelsOnly}
           testID={testID ? `${testID}-plot` : undefined}
         />
       ) : (

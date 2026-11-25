@@ -14,6 +14,7 @@ type Props = {
   title: string;
   testID?: string;
   kind?: 'bar' | 'range' | 'line';
+  includeSelectedSource?: boolean;
 };
 
 /** A selected measured mark publishes its point to the route's unclipped tooltip host. */
@@ -24,6 +25,7 @@ export function ChartBarTooltip({
   title,
   testID,
   kind = 'bar',
+  includeSelectedSource = false,
 }: Props) {
   const tooltip = useChartTooltip();
   const source = useRef<ComponentRef<typeof View>>(null);
@@ -58,6 +60,12 @@ export function ChartBarTooltip({
         item.series.unit,
         data.presentation,
       ),
+      // Monthly records use the category as the series title, not the source.
+      includeSelectedSource &&
+      item.point.source !== item.series.label &&
+      item.point.source
+        ? t('chart.source', { source: item.point.source })
+        : '',
       item.point.partial ? t('chart.partialValue') : '',
     ]
       .filter(Boolean)
