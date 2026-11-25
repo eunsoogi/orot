@@ -38,6 +38,10 @@ export async function saveOrdinaryConversationMemoryNote(
 ): Promise<boolean> {
   const isCurrent = () => attemptIsCurrent() && captured.isCurrent();
   const scope = captured.scope ?? 'reply-preferences';
+  // Possibilities follow-ups use the same grants. The exact retained mode,
+  // along with the full original request and completion, is rechecked in SQL.
+  const spanEntryAllowed =
+    source.entryIntent === undefined || source.entryIntent === 'possibilities';
   let authored: string | undefined;
   if (
     source.replyPreferenceSpan !== undefined &&
@@ -45,7 +49,7 @@ export async function saveOrdinaryConversationMemoryNote(
   )
     return false;
   if (source.authoredRoutineSpan !== undefined) {
-    if (scope === 'authored-routine' && !source.entryIntent)
+    if (scope === 'authored-routine' && spanEntryAllowed)
       authored = validateAuthoredRoutineSpan(
         source.question,
         source.authoredRoutineSpan,
@@ -53,7 +57,7 @@ export async function saveOrdinaryConversationMemoryNote(
   } else if (source.replyPreferenceSpan !== undefined) {
     // Match the whole original at the completion boundary, then retain only
     // this exact user-authored span. The model never supplies substitute text.
-    if (scope === 'reply-preferences' && !source.entryIntent)
+    if (scope === 'reply-preferences' && spanEntryAllowed)
       authored = validateReplyPreferenceSpan(
         source.question,
         source.replyPreferenceSpan,
