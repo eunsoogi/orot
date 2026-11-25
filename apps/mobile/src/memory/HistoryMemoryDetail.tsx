@@ -22,10 +22,12 @@ import type {
 export function HistoryMemoryDetail({
   record,
   onChanged,
+  onDeleted,
   openRepository = openHistoryRepository,
 }: {
   readonly record: ManualHistoryScreenRecord;
   readonly onChanged: (id: string) => void;
+  readonly onDeleted: () => void;
   readonly openRepository?: () => Promise<ManualHistoryScreenRepository>;
 }) {
   const [repository, setRepository] =
@@ -86,7 +88,8 @@ export function HistoryMemoryDetail({
       } else {
         const removed = await repository.delete(record.id);
         if (!removed) throw new Error('Original unavailable');
-        if (alive.current) onChanged('manual-history:' + record.id);
+        // Publish a commit receipt, not a generic change that rereads the entire library.
+        if (alive.current) onDeleted();
       }
     } catch {
       if (alive.current)
