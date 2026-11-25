@@ -1,6 +1,5 @@
 import { act, fireEvent, render, screen } from '@testing-library/react-native';
 import { AppState } from 'react-native';
-import { AppButton } from '../../layout/AppButton';
 import { appointment } from '../../agent/visitQuestions/testing/persistenceFixtures';
 import { fingerprint } from '../../aiFeatures/integration/evidenceUtils';
 import { conversationSavedHistoryDisplayOption } from '../../aiFeatures/integration/conversationSavedHistoryDisplayOption';
@@ -112,7 +111,8 @@ test.each([
       } as unknown as ReturnType<typeof useConversationSessions>);
       const open = jest.mocked(openSavedGeneratedReportReferences);
       open.mockClear().mockResolvedValue(f.storage);
-      const route = Object.assign(() => true, {
+      let routeVisible = true;
+      const route = Object.assign(() => routeVisible, {
         subscribeRoot(cb: (visible: boolean) => void) {
           visibility.add(cb);
           return () => {
@@ -145,22 +145,39 @@ test.each([
         expect(await screen.findByText(originalText)).toBeVisible();
         expect(screen.getByText(reason)).toBeVisible();
         if (mode === 'visible-lock' || mode === 'route') {
-          const stalePress = screen.UNSAFE_getByType(AppButton).props.onPress;
+          let releaseProtection!: (available: boolean) => void;
+          const protection = new Promise<boolean>(resolve => {
+            releaseProtection = resolve;
+          });
+          confirm.mockReturnValueOnce(protection);
+          const previousChecks = confirm.mock.calls.length;
+          await act(async () => {
+            await fireEvent.press(screen.getByTestId(saveButton));
+          });
+          expect(confirm).toHaveBeenCalledTimes(previousChecks + 1);
           await act(() => {
-            if (mode === 'route')
-              visibility.forEach(cb => {
-                cb(false);
-                cb(true);
-              });
-            else
+            if (mode === 'route') {
+              routeVisible = false;
+              visibility.forEach(cb => cb(false));
+              routeVisible = true;
+              visibility.forEach(cb => cb(true));
+            } else {
               nativeListeners.forEach(cb =>
                 cb({ kind: 'protectedData', available: false } as Event),
               );
+              nativeListeners.forEach(cb =>
+                cb({ kind: 'protectedData', available: true } as Event),
+              );
+            }
           });
           expect(screen.queryByText(originalText)).toBeNull();
           await act(async () => {
-            await stalePress();
+            releaseProtection(true);
+            await protection;
           });
+          expect(screen.queryByText(originalText)).toBeNull();
+          expect(screen.queryByTestId(saveButton)).toBeNull();
+          expect(screen.getByTestId(previewButton)).toBeVisible();
           expect(await pinCount()).toBe(0);
           return;
         }
