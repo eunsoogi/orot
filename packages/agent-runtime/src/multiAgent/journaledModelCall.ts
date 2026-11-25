@@ -41,6 +41,7 @@ export async function journaledModelCall<TResult>(
     signal: AbortSignal,
     request: LanguageModelRequest,
   ) => Promise<ModelCallOutcome | 'ready' | undefined>,
+  revalidateRejectedCompletion?: () => Promise<boolean>,
 ): Promise<ModelCallOutcome | undefined> {
   const { options, signal, activeModelOperation: operation } = context;
   const journal = options.operationJournal;
@@ -161,7 +162,11 @@ export async function journaledModelCall<TResult>(
           liveSteeringReserved: context.midTurnSteeringBudget?.used === true,
         }),
       });
-      if (!stored) return { status: 'unavailable', errorCode: 'invalid_request' };
+      if (!stored) {
+        // A stale source may refuse the journal write, independently of the provider.
+        if (revalidateRejectedCompletion && !(await revalidateRejectedCompletion())) return;
+        return { status: 'unavailable', errorCode: 'invalid_request' };
+      }
       await steering?.acknowledge(operationId);
     }
     // Any unconfirmed failure leaves the durable intent untouched and cannot be replayed.
