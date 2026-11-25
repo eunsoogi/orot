@@ -1,5 +1,5 @@
 import { AppState } from 'react-native';
-import { useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { createConversationPhotoImageSend } from '../aiFeatures/integration/sendConversationPhotoImage';
 import { chatGPTPlanDirectPhoto } from '@orot/provider-openai';
 import { t } from '../i18n';
@@ -33,11 +33,11 @@ export function useConversationDirectPhoto(
   owner.current = isEntryCurrent;
   const sessionId = session.id;
   const routeVisible = isEntryCurrent?.() ?? true;
-  const clear = () => {
+  const clear = useCallback(() => {
     active.current?.abort();
     active.current = null;
     publish?.(null);
-  };
+  }, [publish]);
   useEffect(() => {
     visible.current = true;
     const stateChange = AppState.addEventListener('change', value => {
@@ -51,14 +51,14 @@ export function useConversationDirectPhoto(
       stateChange.remove();
       clear();
     };
-  }, [store, sessionId]);
+  }, [clear, store, sessionId]);
 
   useEffect(() => {
     if (!routeVisible) {
       clear();
       setState({});
     }
-  }, [routeVisible]);
+  }, [clear, routeVisible]);
 
   const current = () => {
     const snapshot = store.getSnapshot();
