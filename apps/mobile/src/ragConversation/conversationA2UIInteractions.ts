@@ -215,7 +215,9 @@ export function createConversationA2UIInteractions(input: {
     consumeAction(target: Target, receipt: object): Action | undefined {
       if (!valid(target)) return;
       const prepared = pending.get(receipt);
-      if (!prepared || prepared.event.componentId !== target.componentId) return;
+      if (!prepared || prepared.event.componentId !== target.componentId) {
+        return;
+      }
       pending.delete(receipt);
       const { event, timestamp } = prepared;
       try {
