@@ -11,10 +11,15 @@ import {
   subscribeLocalDataClear,
   subscribeLocalSourceDeletion,
 } from '../../storage/localDataClearEvents';
-import { acquireIndependentReadEpoch } from '../../storage/protectedReadEpoch';
+import {
+  acquireIndependentReadEpoch,
+  awaitIndependentReadSettlement,
+} from '../../storage/protectedReadEpoch';
 
 type State = WorkoutPeriodResult | { status: 'loading' };
 const unavailable = { status: 'unavailable' } as const;
+const loading = { status: 'loading' } as const;
+const startupWriterBudgetMs = 2_500;
 const briefInactiveMs = 5_000;
 type Epoch = ReturnType<typeof acquireIndependentReadEpoch>;
 type ReadOwner = {
@@ -66,10 +71,10 @@ export function useOverviewWorkoutPeriodHeartRate(active: boolean): State {
       retired?.epoch?.dispose();
       if (mounted && showUnavailable) setState(unavailable);
     }
-    function retire() {
+    function retire(showUnavailable = true) {
       clearTimeout(boundary);
       boundary = undefined;
-      dropTask();
+      dropTask(showUnavailable);
     }
     const current = (target: ReadOwner) =>
       mounted && task === target && !target.abort.signal.aborted;
@@ -109,13 +114,28 @@ export function useOverviewWorkoutPeriodHeartRate(active: boolean): State {
         },
         Math.max(1, midnight.getTime() - now.getTime()),
       );
-      setState({ status: 'loading' });
+      setState(loading);
       try {
         if (!(await confirm(target))) return;
         const storage = require('../../storage/secureDatabase');
         const database = await storage.openLocalAgentMemoryDatabase();
         if (!current(target)) return;
         target.epoch = acquireIndependentReadEpoch(database);
+        // A known writer is not evidence of no associated heart rate. Wait once,
+        // then acquire a fresh snapshot of the same still-authoritative owner.
+        if (!target.epoch) {
+          if (
+            !(await awaitIndependentReadSettlement(
+              database,
+              startupWriterBudgetMs,
+              target.abort.signal,
+            )) ||
+            !(await confirm(target)) ||
+            !storage.isCurrentLocalAgentMemoryDatabase(database)
+          )
+            return;
+          target.epoch = acquireIndependentReadEpoch(database);
+        }
         const admitted = () =>
           current(target) &&
           Date.now() < midnight.getTime() &&
@@ -198,7 +218,11 @@ export function useOverviewWorkoutPeriodHeartRate(active: boolean): State {
           inactiveSince ??= Date.now();
           if (task && !task.settled) task.interrupted = true;
         } else if (phase() === 'active') foreground();
-        else retire();
+        else if (phase() === 'background') {
+          retire(false);
+          // Drop protected data now, without announcing a failed read before resume.
+          setState(loading);
+        } else retire();
       }
     });
     const unsubscribeImport = subscribeWorkoutImportCommitted(() => {
@@ -206,7 +230,7 @@ export function useOverviewWorkoutPeriodHeartRate(active: boolean): State {
       start();
     });
     const unsubscribeClear = subscribeLocalDataClear(retire);
-    const unsubscribeDelete = subscribeLocalSourceDeletion(retire);
+    const unsubscribeDelete = subscribeLocalSourceDeletion(() => retire());
     start();
     return () => {
       mounted = false;
