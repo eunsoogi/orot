@@ -14,7 +14,10 @@ import { useAiFeatureFlowNavigation } from './useAiFeatureFlowNavigation';
 import { useAiFeatureSharedNavigationState } from './AiFeatureSharedNavigationState';
 import { NavigationPrimaryActionContext } from '../../navigation/useNavigationPrimaryAction';
 import { useAppointmentReminderRuntime } from '../../appointmentReminders/AppointmentReminderContext';
-import { useConversationSessions } from '../../ragConversation/ConversationSessionsContext';
+import {
+  useConversationSessions,
+  useRootConversationVisibilitySubscription,
+} from '../../ragConversation/ConversationSessionsContext';
 import { useConversationVisibility } from './useConversationVisibility';
 import type { AiFeatureFlowProps } from './AiFeatureFlowProps';
 export type { AiFeatureFlowProps } from './AiFeatureFlowProps';
@@ -55,11 +58,16 @@ export function AiFeatureFlow({
     sourceDetailOpen,
     sourceReference,
   } = useAiFeatureFlowNavigation(navigation, onOpenArticle);
+  const rootVisibility = useRootConversationVisibilitySubscription();
   const isConversationVisible = useConversationVisibility(
     isEntryCurrent ?? isRouteCurrent,
     sourceDetailOpen,
     providerSelectionOpen,
     Boolean(isRouteCurrent),
+    {
+      route: navigation.ownership,
+      subscribeRoot: canonicalConversationRoot ? rootVisibility : undefined,
+    },
   );
   const ownsConversationPresentation = useConversationVisibility(
     isRouteCurrent ?? isEntryCurrent,

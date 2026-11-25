@@ -1,6 +1,10 @@
 import { openSavedGeneratedReportReferences } from '../memory/openSavedGeneratedReportReferences';
 import { dispatchConversationMessage } from './conversationVisitDispatch';
 import { Alert, AppState } from 'react-native';
+import {
+  captureReportBookmarkOwner,
+  type ReportBookmarkVisibility,
+} from './reportBookmarkOwnership';
 import { t } from '../i18n';
 import type { ConversationSessions } from './conversationSessions';
 import { visibleSavedHistoryDisplay } from './conversationSavedHistoryDisplay';
@@ -8,7 +12,7 @@ import { visibleSavedHistoryDisplay } from './conversationSavedHistoryDisplay';
 type Owner = Readonly<{
   store: ConversationSessions;
   id: number;
-  current?: () => boolean;
+  current?: ReportBookmarkVisibility;
 }>;
 type Target = Readonly<{ artifactId: string; runId: string; date: string }>;
 
@@ -83,11 +87,17 @@ export function handleExplicitDailyReportBookmark(owner: Owner): boolean {
           : 'savedMemory.generatedReportUnavailable',
       ),
     );
+  const capture = captureReportBookmarkOwner({
+    store,
+    sessionId: id,
+    current: owner.current,
+  });
   const save = async (target: Target) => {
     const current = () => {
       const active = currentReportBookmarkOwner(owner);
       const now = store.savedReportLease(id);
       return Boolean(
+        capture.current() &&
         lease &&
         now?.id === lease.id &&
         now.version === lease.version &&
@@ -101,7 +111,10 @@ export function handleExplicitDailyReportBookmark(owner: Owner): boolean {
         ),
       );
     };
-    if (!lease || !current()) return;
+    if (!lease || !current()) {
+      capture.close();
+      return;
+    }
     try {
       const bookmarks = await openSavedGeneratedReportReferences();
       const saved = await bookmarks.bookmarkDailyReport({
@@ -114,26 +127,34 @@ export function handleExplicitDailyReportBookmark(owner: Owner): boolean {
       notice(saved ? 'generatedReportSaved' : 'generatedReportUnavailable');
     } catch {
       if (current()) notice('generatedReportUnavailable');
+    } finally {
+      capture.close();
     }
   };
   if (selected.length === 1 && selected[0]) save(selected[0]);
-  else if (selected.length > 1)
+  else if (selected.length > 1 && selected.length <= 4)
     Alert.alert(
       t('savedMemory.generatedReportDaily'),
       t('savedMemory.pickGeneratedReport'),
-      selected.length <= 4
-        ? [
-            ...selected.map(target => ({
-              text: target.date,
-              onPress: () => {
-                save(target);
-              },
-            })),
-            { text: t('savedMemory.close'), style: 'cancel' },
-          ]
-        : undefined,
+      [
+        ...selected.map(target => ({
+          text: target.date,
+          onPress: () => {
+            save(target);
+          },
+        })),
+        {
+          text: t('savedMemory.close'),
+          style: 'cancel',
+          onPress: capture.close,
+        },
+      ],
+      { onDismiss: capture.close },
     );
-  else notice('generatedReportUnavailable');
+  else {
+    capture.close();
+    notice('generatedReportUnavailable');
+  }
   return true;
 }
 
