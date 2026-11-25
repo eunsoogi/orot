@@ -95,11 +95,10 @@ final class CanonicalLiveCallPresenter {
             """,
             preferredStyle: .alert,
         )
-        weak var visibleAlert = alert
         var observers: [NSObjectProtocol] = []
         var timeout: DispatchWorkItem?
         var resolved = false
-        let finish: Decision = { decision in
+        let finish: Decision = { [weak alert] decision in
             guard !resolved else { return }
             resolved = true
             timeout?.cancel()
@@ -107,7 +106,7 @@ final class CanonicalLiveCallPresenter {
             observers.forEach { NotificationCenter.default.removeObserver($0) }
             observers.removeAll()
             if decision == nil {
-                MainActor.assumeIsolated { visibleAlert?.dismiss(animated: false) }
+                MainActor.assumeIsolated { alert?.dismiss(animated: false) }
             }
             decide(decision)
         }
