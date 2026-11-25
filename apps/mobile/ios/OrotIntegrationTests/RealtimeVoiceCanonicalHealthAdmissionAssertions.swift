@@ -64,6 +64,56 @@ extension RealtimeVoiceLifecycleTests {
         status = "active"
         epoch = String(repeating: "d", count: 64)
         XCTAssertFalse(grant.current(base: old, key: "synthetic-test-only", read: read))
+        var another = companion
+        another["backendModel"] = "gpt-6-luna"
+        let mismatched = try XCTUnwrap(Admission(another))
+        try assertNativeReviewIsExactFreshAndSingleUse(grant, mismatched: mismatched)
+    }
+
+    private func assertNativeReviewIsExactFreshAndSingleUse(
+        _ grant: RealtimeVoiceCanonicalHealthAdmission, mismatched: RealtimeVoiceCanonicalHealthAdmission,
+    ) throws {
+        var tick: TimeInterval = 1
+        var nativeCurrent = true
+        let review = CanonicalLiveNativeCallReview(now: { tick })
+        let first = CanonicalLiveNativeCallReview.Scope(call: "first", capability: grant)
+        let second = CanonicalLiveNativeCallReview.Scope(call: "second", capability: grant)
+        func begin() throws -> ((Bool) -> Void) {
+            try XCTUnwrap(review.begin(first, current: { nativeCurrent }))
+        }
+        func consume(_ scope: CanonicalLiveNativeCallReview.Scope) -> Bool {
+            review.consume(scope, current: { nativeCurrent })
+        }
+        XCTAssertFalse(consume(first))
+        try begin()(false)
+        XCTAssertFalse(consume(first))
+        try begin()(true)
+        XCTAssertFalse(consume(second))
+        XCTAssertFalse(consume(first))
+        try begin()(true)
+        XCTAssertFalse(consume(.init(call: first.call, capability: mismatched)))
+        XCTAssertFalse(consume(first))
+        let old = try begin()
+        let fresh = try begin()
+        old(true)
+        XCTAssertFalse(consume(first))
+        fresh(true)
+        XCTAssertTrue(consume(first))
+        XCTAssertFalse(consume(first))
+        let abandoned = try begin()
+        review.retire(first.call)
+        abandoned(true)
+        XCTAssertFalse(consume(first))
+        try begin()(true)
+        tick += 30
+        XCTAssertFalse(consume(first))
+        let expiredReview = try begin()
+        tick += 30
+        expiredReview(true)
+        XCTAssertFalse(consume(first))
+        try begin()(true)
+        nativeCurrent = false
+        XCTAssertFalse(consume(first))
     }
 
     func assertOnlyCanonicalFieldsAndUniquelyScopedResultReferencesCross() {

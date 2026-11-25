@@ -132,3 +132,62 @@ struct RealtimeVoiceCanonicalHealthAdmission: Equatable {
         return (try? JSONSerialization.jsonObject(with: data)) as? [String: Any]
     }
 }
+
+/// Main-queue, in-memory ownership for the native per-call review. Neither a
+/// bridge field nor a saved Settings grant can mint or serialize a review.
+final class CanonicalLiveNativeCallReview {
+    struct Scope: Equatable {
+        let call: String
+        let capability: RealtimeVoiceCanonicalHealthAdmission
+    }
+
+    private enum Phase {
+        case reviewing(UUID, Scope, started: TimeInterval)
+        case approved(Scope, issued: TimeInterval)
+    }
+
+    private let now: () -> TimeInterval
+    private var phase: Phase?
+    private static let validity: TimeInterval = 30
+
+    init(now: @escaping () -> TimeInterval = { ProcessInfo.processInfo.systemUptime }) {
+        self.now = now
+    }
+
+    /// Only a native presenter should receive this callback. A fresh begin
+    /// invalidates an earlier uncompleted review or unclaimed authorization.
+    func begin(_ scope: Scope, current: @escaping () -> Bool) -> ((Bool) -> Void)? {
+        phase = nil
+        guard RealtimeVoiceToolLease.validID(scope.call), current() else { return nil }
+        let nonce = UUID()
+        phase = .reviewing(nonce, scope, started: now())
+        return { [weak self] approved in
+            guard let self, case let .reviewing(expected, pending, started)? = phase,
+                  nonce == expected, scope == pending
+            else { return }
+            phase = nil
+            guard approved, fresh(since: started), current() else { return }
+            phase = .approved(scope, issued: now())
+        }
+    }
+
+    func consume(_ scope: Scope, current: () -> Bool) -> Bool {
+        guard case let .approved(expected, issued)? = phase else { return false }
+        phase = nil
+        return expected == scope && fresh(since: issued) && current()
+    }
+
+    private func fresh(since begin: TimeInterval) -> Bool {
+        let elapsed = now() - begin
+        return elapsed >= 0 && elapsed < Self.validity
+    }
+
+    func retire(_ call: String) {
+        switch phase {
+        case let .reviewing(_, scope, _)?, let .approved(scope, _)?:
+            if scope.call == call { phase = nil }
+        case nil:
+            break
+        }
+    }
+}
