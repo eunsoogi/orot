@@ -153,6 +153,17 @@ it('offers no canned-shortcut action and refuses fabricated, repeated, quoted or
       `${statement} ${statement}`,
       `“${statement}” ${question}`,
       `${question} 비밀번호 값은 합성값이에요.`,
+      `취소된 계획: ${statement}`,
+      `2026-11-25 18:30: ${statement}`,
+      `기억하지 마: ${statement}`,
+      `API key: ${statement}`,
+      `https://example.test: ${statement}`,
+      `기억해줘: 취소된 계획: ${statement}`,
+      `기억해줘: ${statement} 보관하지 마세요.`,
+      `기억해줘: “${statement}”`,
+      `기억해줘: ${statement} ${statement}`,
+      `과거 건강 기록으로 저장해: ${statement}`,
+      `save as past health history: ${statement}`,
     ])
       expect(actionsFor(text)[0].parseInput(proposal)).toBeUndefined();
     expect(f.confirmHistorySave).not.toHaveBeenCalled();
@@ -162,10 +173,18 @@ it('offers no canned-shortcut action and refuses fabricated, repeated, quoted or
   }
 });
 
-it.each(['valid', 'wrong-owner', 'inactive-return'] as const)(
+it.each([
+  'valid',
+  'valid-control-label',
+  'wrong-owner',
+  'inactive-return',
+] as const)(
   'strict on-device explicit composer uses only its bound local owner: %s',
   async mode => {
-    const f = await fixture();
+    const original =
+      mode === 'valid-control-label' ? `기억해줘: ${statement}` : question;
+    const succeeds = mode === 'valid' || mode === 'valid-control-label';
+    const f = await fixture({ persisted: original });
     try {
       let retire: () => void = () => {};
       const unwatch = jest.fn();
@@ -177,7 +196,7 @@ it.each(['valid', 'wrong-owner', 'inactive-return'] as const)(
       const signal = new AbortController().signal;
       const { actions, receipt } = conversationAuthoredMemoryAction({
         data: f.data,
-        question,
+        question: original,
         observer: {
           ...f.observer,
           protectedLocalInput: true,
@@ -203,19 +222,22 @@ it.each(['valid', 'wrong-owner', 'inactive-return'] as const)(
       } else {
         const [tool] = actions;
         expect(tool.parseInput({ statement: '그래 그럼' })).toBeUndefined();
-        expect(await tool.authorize(proposal, signal)).toBe(mode === 'valid');
-        if (mode === 'valid') await tool.execute(invocation(signal));
+        expect(await tool.authorize(proposal, signal)).toBe(succeeds);
+        if (succeeds) {
+          expect(f.confirmHistorySave).toHaveBeenCalledWith(statement, signal);
+          await tool.execute(invocation(signal));
+        }
         expect(unwatch).toHaveBeenCalledTimes(1);
       }
       expect(receipt()).toBe(
-        mode === 'valid'
+        succeeds
           ? 'saved'
           : mode === 'wrong-owner'
             ? 'not_attempted'
             : 'not_saved',
       );
       expect((await f.notes.list()).map(note => note.details)).toEqual(
-        mode === 'valid' ? [statement] : [],
+        succeeds ? [statement] : [],
       );
     } finally {
       f.close();
