@@ -28,6 +28,7 @@ export function heartRatePreviewSeries(
   input: readonly Measurement[],
   records: ReadonlyMap<string, HealthObservation>,
   partial: boolean,
+  limitPreviewDays = true,
 ): ChartSeries[] {
   const grouped = new Map<string, { label: string; measurements: Point[] }>();
   for (const item of input) {
@@ -61,6 +62,7 @@ export function heartRatePreviewSeries(
         ...(partial ? { partial: true } : {}),
       })),
     }));
+  if (!limitPreviewDays) return series;
   // Preserve all sources on selected days while bounding distinct tick dates.
   const selectedDays = new Set(
     selectHealthRecordPreviewRanks(

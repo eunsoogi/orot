@@ -1,7 +1,8 @@
-import type {
-  HealthObservationMonthChart,
-  HealthObservationMonthChartLoader,
-  HealthObservationMonthWindow,
+import {
+  isAppleDerivedHeartRateCategory,
+  type HealthObservationMonthChart,
+  type HealthObservationMonthChartLoader,
+  type HealthObservationMonthWindow,
 } from '@orot/storage';
 import type {
   ChartData,
@@ -61,8 +62,13 @@ export function buildHealthRecordsMonthChart(
   failed = false,
 ): { data: ChartData; kind: ChartKind } {
   const metric = metrics[category];
+  const derived = isAppleDerivedHeartRateCategory(category);
   const kind =
-    metric === 'heartRate' ? 'range' : metric === 'workouts' ? 'bar' : 'line';
+    category === 'heart_rate'
+      ? 'range'
+      : metric === 'workouts'
+        ? 'bar'
+        : 'line';
   const groups = new Map<
     string,
     ChartSeries & { points: Array<ChartSeries['points'][number]> }
@@ -91,9 +97,9 @@ export function buildHealthRecordsMonthChart(
     };
     const total = category === 'steps' || category === 'workouts';
     item.points.push({
-      // Steps stay in their existing local daily buckets when switching renderer.
+      // Derived estimates and Steps keep their existing local day keys on the line.
       x:
-        kind !== 'line' || category === 'steps'
+        kind !== 'line' || derived || category === 'steps'
           ? localDay(row.effectiveAt)
           : row.effectiveAt,
       value: 'minutes' in row ? row.minutes : total ? row.sum : row.mean,
@@ -110,9 +116,6 @@ export function buildHealthRecordsMonthChart(
     });
     groups.set(id, item);
   }
-  const derived =
-    category === 'resting_heart_rate' ||
-    category === 'walking_heart_rate_average';
   const status = failed
     ? 'error'
     : !projection
