@@ -143,8 +143,14 @@ private final class HeldReadyCueAudio: RealtimeVoiceReadyCueAudioPort {
     }
 
     func append(_: Data) throws {}
-    func cancel() -> Int { 0 }
-    func stop() { input = nil }
+
+    func cancel() -> Int {
+        0
+    }
+
+    func stop() {
+        input = nil
+    }
 }
 
 private final class HeldReadyCueSystemCall: VoiceSystemCallPort {
