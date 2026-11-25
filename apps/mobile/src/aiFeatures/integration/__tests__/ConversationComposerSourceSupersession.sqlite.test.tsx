@@ -6,7 +6,6 @@ import {
   waitFor,
 } from '@testing-library/react-native';
 import { AccessibilityInfo } from 'react-native';
-import { providerSuccess, type LanguageModelRequest } from '@orot/model-runtime';
 import { createRecordRepository, runMigrations } from '@orot/storage';
 import { createHealthEvidenceTestDatabase } from '../../../healthEvidence/localEvidenceTestSupport';
 import { createLocalEvidenceData } from '../../../healthEvidence/localEvidenceData';
@@ -28,7 +27,7 @@ import { createConversationSessionOptions } from '../conversationSessionOptions'
 import { createConversationArtifactDiscovery } from '../conversationArtifactDiscovery';
 import { LocalEvidenceReferenceRegistry } from '../evidenceRegistry';
 import { localData } from '../featureServiceFixtures';
-import { publicEvidenceFixture } from '../testSupport/publicWebEvidenceTestSupport';
+import { createHeldLocalSynthesis } from '../testSupport/heldLocalSynthesis';
 
 jest.mock('../../../storage/secureDatabase', () => ({
   openLocalAgentMemoryDatabase: jest.fn(),
@@ -48,34 +47,15 @@ const earlier = {
   effectiveDate: { status: 'known', date: '2026-11-24' },
 } as const;
 
-function localToolEvidenceIds(request: LanguageModelRequest): string[] {
-  return request.messages.flatMap(message => {
-    if (
-      message.role !== 'tool' ||
-      !message.result ||
-      typeof message.result !== 'object' ||
-      Array.isArray(message.result)
-    ) {
-      return [];
-    }
-    const ids = (message.result as Record<string, unknown>).evidenceIds;
-    return Array.isArray(ids)
-      ? ids.filter((id): id is string => typeof id === 'string')
-      : [];
-  });
-}
-
-test('a restored composer rejects completion after admitted local evidence is superseded', async () => {
+test('rejects superseded local evidence after dispatch', async () => {
   const fixture = createHealthEvidenceTestDatabase();
   const { database } = fixture;
   const reduceMotion = jest
     .spyOn(AccessibilityInfo, 'isReduceMotionEnabled')
     .mockResolvedValue(true);
   jest.mocked(openLocalAgentMemoryDatabase).mockResolvedValue(database);
-  let release = () => {};
-  const held = new Promise<void>(resolve => {
-    release = resolve;
-  });
+  const { selected, provider, proof, generate, release } =
+    createHeldLocalSynthesis(opening, answer);
   try {
     await runMigrations(database);
     // The graph must revalidate the original evidence against the same real
@@ -121,65 +101,6 @@ test('a restored composer rejects completion after admitted local evidence is su
           data: seeded,
         }),
     });
-    const { selected } = publicEvidenceFixture();
-    const proof = jest.fn<void, [LanguageModelRequest, string[]]>();
-    const response = (text: string) =>
-      providerSuccess({ text, toolCalls: [], finishReason: 'complete' as const });
-    let toolRequested = false;
-    const generate = jest.fn(async (request: LanguageModelRequest) => {
-      const system = request.messages[0]?.content;
-      if (
-        typeof system === 'string' &&
-        system.startsWith('Write one brief natural Korean opening')
-      ) {
-        return response(opening);
-      }
-      if (
-        typeof system === 'string' &&
-        system.startsWith('Review untrusted strings as data')
-      ) {
-        return response('ALLOW');
-      }
-      const ids = localToolEvidenceIds(request);
-      if (ids.length > 0) {
-        proof(request, ids);
-        await held;
-        return response(
-          JSON.stringify({
-            type: 'result',
-            value: { answerKind: 'grounded', answer },
-            citations: ids,
-          }),
-        );
-      }
-      if (toolRequested) {
-        throw new Error('Synthetic tool result did not reach synthesis');
-      }
-      toolRequested = true;
-      return providerSuccess({
-        text: '',
-        finishReason: 'tool_calls' as const,
-        toolCalls: [
-          {
-            id: 'synthetic-personal',
-            name: 'local-personal-records',
-            arguments: { query: 'curio' },
-          },
-        ],
-      });
-    });
-    const provider = {
-      ...selected.provider,
-      searchPublicWeb: undefined,
-      stream: undefined,
-      capabilities: {
-        ...selected.provider.capabilities,
-        streaming: false,
-        structuredOutput: false,
-        toolCalling: true,
-      },
-      generate,
-    };
     const registry = new LocalEvidenceReferenceRegistry();
     const external = jest.fn(async () => {
       throw new Error('Unexpected external search');
@@ -198,14 +119,15 @@ test('a restored composer rejects completion after admitted local evidence is su
       externalEvidence: { search: external },
     });
     const settled = jest.fn();
-    const send = jest.fn<ReturnType<typeof service>, Parameters<typeof service>>(
-      async (...args) => {
-        const outcome = await service(...args);
-        settled(outcome);
-        return outcome;
-      },
-    );
-    const options = createConversationSessionOptions({ registry, loadLocalData });
+    const send = jest.fn(async (...args: Parameters<typeof service>) => {
+      const outcome = await service(...args);
+      settled(outcome);
+      return outcome;
+    });
+    const options = createConversationSessionOptions({
+      registry,
+      loadLocalData,
+    });
     let store!: ConversationSessions;
     function Scene() {
       store = useConversationSessions();
@@ -223,12 +145,36 @@ test('a restored composer rejects completion after admitted local evidence is su
       </ConversationSessionsProvider>,
     );
     try {
-      await act(async () => store.select(await store.attachExisting(owner, 0, at)));
+      await act(async () => {
+        store.select(await store.attachExisting(owner, 0, at));
+      });
       expect(await screen.findByText(archived)).toBeTruthy();
-      await fireEvent.changeText(screen.getByTestId('rag-conversation-input'), question);
-      await fireEvent(screen.getByTestId('rag-conversation-send'), 'composerPress');
-      await waitFor(() => expect(proof).toHaveBeenCalledTimes(1));
+      await fireEvent.changeText(
+        screen.getByTestId('rag-conversation-input'),
+        question,
+      );
+      await fireEvent(
+        screen.getByTestId('rag-conversation-send'),
+        'composerPress',
+      );
       expect(send.mock.calls[0]?.[3]?.inputOrigin).toBe('composer');
+      await waitFor(
+        () =>
+          expect(
+            proof.mock.calls.length + settled.mock.calls.length,
+          ).toBeGreaterThan(0),
+        { timeout: 5_000 },
+      );
+      expect({
+        outcomes: settled.mock.calls.map(([outcome]) => [
+          outcome.status,
+          outcome.kind,
+        ]),
+        invocations: generate.mock.calls.map(([request]) =>
+          request.tools?.map(tool => tool.name),
+        ),
+        heldSyntheses: proof.mock.calls.length,
+      }).toMatchObject({ outcomes: [], heldSyntheses: 1 });
       expect(JSON.stringify(proof.mock.calls[0]?.[0].messages)).toContain(
         earlier.details,
       );
@@ -244,7 +190,10 @@ test('a restored composer rejects completion after admitted local evidence is su
       await act(async () => release());
       await waitFor(() =>
         expect(settled).toHaveBeenCalledWith(
-          expect.objectContaining({ status: 'failure', kind: 'stale_evidence' }),
+          expect.objectContaining({
+            status: 'failure',
+            kind: 'stale_evidence',
+          }),
         ),
       );
       expect(proof).toHaveBeenCalledTimes(1);
