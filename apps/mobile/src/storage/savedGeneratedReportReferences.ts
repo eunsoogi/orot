@@ -1,3 +1,4 @@
+import { createSavedVisitQuestionReferences } from './savedVisitQuestionReferences';
 import {
   createDailyReportBookmark,
   visibleDailyReportBookmarks,
@@ -28,7 +29,7 @@ type Original = NonNullable<
 export type SavedGeneratedReportReference = Readonly<{
   artifactId: string;
   savedAt: string;
-  reportKind?: 'health_summary' | 'disease_possibilities';
+  reportKind?: 'health_summary' | 'disease_possibilities' | 'visit_questions';
 }>;
 
 /** The bookmark belongs to the protected generated artifact, not the model's memory corpus. */
@@ -68,6 +69,7 @@ export function createSavedGeneratedReportReferences(
     database,
     ensure,
   );
+  const visit = createSavedVisitQuestionReferences(database, ensure);
   const setting = dailyReportAutomaticMemorySetting(database, ensure);
   const bookmarkDailyReport = createDailyReportBookmark(
     database,
@@ -77,6 +79,7 @@ export function createSavedGeneratedReportReferences(
   return {
     ...summary,
     ...possibilities,
+    ...visit,
     bookmarkDailyReport: (input: Parameters<typeof bookmarkDailyReport>[0]) =>
       bookmarkDailyReport(input),
     // The application must mint the token before starting an explicit live request.
@@ -93,6 +96,7 @@ export function createSavedGeneratedReportReferences(
       const summaries = [
         ...(await summary.listSavedHealthSummaryReferences()),
         ...(await possibilities.listSavedDiseasePossibilityReferences()),
+        ...(await visit.listSavedVisitQuestionReferences()),
       ];
       if (!(await catalogExists())) return summaries;
       const { rows } = await database.execute(
