@@ -26,6 +26,7 @@ type Available = Extract<WorkoutPeriodResult, { status: 'available' }>;
 export async function readOwnedWorkoutPeriod(
   period: WorkoutPeriod,
   owner: Owner,
+  requireVisiblePeriodMatch = false,
 ) {
   const scope = Object.freeze({ ...period });
   const read = async (): Promise<WorkoutPeriodResult | undefined> => {
@@ -57,6 +58,9 @@ export async function readOwnedWorkoutPeriod(
         scope,
         cohort,
         owner.signal,
+        requireVisiblePeriodMatch
+          ? { requireVisiblePeriodMatch: true }
+          : undefined,
       );
       return current() && (await owner.confirm()) && current()
         ? result
@@ -78,6 +82,15 @@ export async function readOwnedWorkoutPeriod(
     );
   };
   return { result, reprove };
+}
+
+/** Candidate local proof for an explicitly scoped Conversation workout read.
+ * This is not a provider dispatch fence and is not offered by Conversation yet. */
+export function readLocalConversationWorkoutPeriod(
+  period: WorkoutPeriod,
+  owner: Owner,
+) {
+  return readOwnedWorkoutPeriod(period, owner, true);
 }
 
 function equalProof(left: Available, right: Available): boolean {

@@ -45,6 +45,7 @@ private final class WorkoutPeriodReadCall: @unchecked Sendable {
     let requestedTimeZone: String?
     let timeZone: TimeZone?
     let workouts: [WorkoutPeriodHealthKitProducer.OwnedWorkout]
+    let requireVisiblePeriodMatch: Bool
     let resolve: RCTPromiseResolveBlock
 
     init?(_ raw: NSDictionary, resolve: @escaping RCTPromiseResolveBlock) {
@@ -56,8 +57,10 @@ private final class WorkoutPeriodReadCall: @unchecked Sendable {
         let iso = ISO8601DateFormatter()
         iso.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
         guard let start = iso.date(from: from), let end = iso.date(from: to), start < end else { return nil }
+        let strict = raw["workoutCohortPolicy"] as? String == "exact-visible-native-cohort"
+        guard !strict || (raw.count == 5 && end.timeIntervalSince(start) <= 31 * 86400) else { return nil }
         let requestedTimeZone: String?
-        if raw.count == 5 {
+        if raw.count == 5 && !strict {
             guard let chart = raw["recordsMonthChart"] as? [String: String], chart.count == 1,
                   let identifier = chart["timeZone"], identifier.count <= 64,
                   identifier.range(of: "^[A-Za-z0-9_+/-]+$", options: .regularExpression) != nil,
@@ -85,6 +88,7 @@ private final class WorkoutPeriodReadCall: @unchecked Sendable {
         self.timeZone = timeZone
         period = .init(start: start, end: end)
         self.workouts = workouts
+        requireVisiblePeriodMatch = strict
         self.resolve = resolve
     }
 
@@ -122,7 +126,7 @@ private enum WorkoutPeriodBridgeOperations {
         let work = Task {
             let outcome = await WorkoutPeriodHealthKitProducer.capture(
                 store: store, period: call.period, completeCohort: call.workouts,
-                timeZone: call.timeZone,
+                timeZone: call.timeZone, requireVisiblePeriodMatch: call.requireVisiblePeriodMatch,
                 isCurrent: { active[call.id]?.call === call },
             )
             guard active[call.id]?.call === call else { return }
@@ -143,6 +147,9 @@ private enum WorkoutPeriodBridgeOperations {
                     "firstSampleAtMs": witness.firstSampleAtMs, "lastSampleAtMs": witness.lastSampleAtMs,
                     "membershipRevision": witness.membershipRevision,
                 ]
+                if call.requireVisiblePeriodMatch {
+                    result["workoutCohortPolicy"] = "exact-visible-native-cohort"
+                }
                 if let timeZone = call.requestedTimeZone, let days = witness.days {
                     result["timeZone"] = timeZone
                     result["days"] = days.map { day in

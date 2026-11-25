@@ -41,6 +41,7 @@ enum WorkoutPeriodHealthKitProducer {
         period: Accumulator.Window,
         completeCohort: [OwnedWorkout],
         timeZone: TimeZone? = nil,
+        requireVisiblePeriodMatch: Bool = false,
         isCurrent: @MainActor () -> Bool,
     ) async -> Outcome {
         let started = DispatchTime.now()
@@ -56,20 +57,27 @@ enum WorkoutPeriodHealthKitProducer {
             WorkoutPeriodDiagnostics.report(.nativeGateRejected, since: started)
             return .unavailable
         }
-        if completeCohort.isEmpty {
+        if completeCohort.isEmpty && !requireVisiblePeriodMatch {
             return .emptyVisible
         }
         do {
             let heartRate = HKQuantityType(.heartRate)
             let allIDs = Set(completeCohort.map(\.id))
-            let workouts = try await HKSampleQueryDescriptor(
-                predicates: [.workout(HKQuery.predicateForObjects(with: allIDs))],
-                sortDescriptors: [], limit: maxWorkouts + 1,
+            let predicate = requireVisiblePeriodMatch
+                ? HKQuery.predicateForSamples(withStart: period.start, end: period.end, options: [])
+                : HKQuery.predicateForObjects(with: allIDs)
+            let rows = try await HKSampleQueryDescriptor(
+                predicates: [.workout(predicate)], sortDescriptors: [], limit: maxWorkouts + 1,
             ).result(for: store)
             WorkoutPeriodDiagnostics.report(.workoutObjectsRead, since: started)
-            guard active(), Set(workouts.map(\.uuid)) == allIDs,
-                  workouts.count == completeCohort.count
+            guard active(), rows.count <= maxWorkouts else { return .unavailable }
+            let workouts = requireVisiblePeriodMatch
+                ? rows.filter { period.overlaps(start: $0.startDate, end: $0.endDate) } : rows
+            guard Accumulator.exactCohort(imported: allIDs, observed: workouts.map(\.uuid))
             else { return .unavailable }
+            if workouts.isEmpty {
+                return .emptyVisible
+            }
             let byID = Dictionary(uniqueKeysWithValues: workouts.map { ($0.uuid, $0) })
             var parentCounts: [UUID: Int] = [:]
             var parentWindows: [UUID: Set<Accumulator.Window>] = [:]

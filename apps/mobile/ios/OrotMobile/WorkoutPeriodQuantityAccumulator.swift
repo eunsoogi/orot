@@ -6,10 +6,18 @@ struct WorkoutPeriodQuantityAccumulator {
         let start: Date
         let end: Date
 
+        func overlaps(start candidateStart: Date, end candidateEnd: Date) -> Bool {
+            candidateStart < end && start < candidateEnd
+        }
+
         func contains(start candidateStart: Date, end candidateEnd: Date) -> Bool {
             candidateStart >= start && candidateStart < end &&
                 candidateEnd >= candidateStart && candidateEnd <= end
         }
+    }
+
+    static func exactCohort(imported: Set<UUID>, observed: [UUID]) -> Bool {
+        observed.count == imported.count && Set(observed) == imported
     }
 
     enum RetrievalRoute: Equatable {
