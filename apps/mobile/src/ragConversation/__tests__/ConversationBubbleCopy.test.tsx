@@ -206,9 +206,23 @@ test.each(['live', 'restored', 'pending shortcut', 'without copy'] as const)(
     );
     const shell = screen.getByTestId('conversation-user-message');
     const body = within(shell).getByTestId('conversation-message-body');
-    expect(StyleSheet.flatten(shell.props.style)).toMatchObject({
+    const isolated = mode === 'live' || mode === 'restored';
+    let position = shell;
+    if (isolated) {
+      let parent = shell.parent;
+      while (parent && typeof parent.type !== 'string') parent = parent.parent;
+      if (!parent) throw new Error('Missing outgoing bubble wrapper');
+      position = parent;
+      const surfaceStyle = StyleSheet.flatten(shell.props.style);
+      expect(surfaceStyle).not.toHaveProperty('alignSelf');
+      expect(surfaceStyle).not.toHaveProperty('maxWidth');
+      expect(surfaceStyle).not.toHaveProperty('transform');
+    }
+    expect(StyleSheet.flatten(position.props.style)).toMatchObject({
       alignSelf: 'flex-end',
       maxWidth: '85%',
+    });
+    expect(StyleSheet.flatten(shell.props.style)).toMatchObject({
       borderRadius: 18,
     });
     expect(StyleSheet.flatten(shell.props.style)).not.toHaveProperty('padding');

@@ -7,7 +7,10 @@ import {
   ConversationBubbleEntranceContext,
 } from '../ConversationBubbleEntrance';
 import type { ConversationBubbleCopy } from '../ConversationBubbleCopyHost';
-import { createConversationBubbleEntrances } from '../conversationBubbleEntrances';
+import {
+  conversationBubbleKey,
+  createConversationBubbleEntrances,
+} from '../conversationBubbleEntrances';
 import { styles } from '../ConversationScreen.styles';
 import { trackEntrances } from '../testSupport/bubbleEntranceMotion';
 
@@ -34,6 +37,14 @@ jest.mock('../ConversationBubbleCopyHost', () => {
 test('ordinary Copy keeps one surface and exact text across live and restored presentation', async () => {
   const { start } = trackEntrances();
   const receipts = createConversationBubbleEntrances();
+  receipts.observe({
+    messages: [],
+    presentation: {
+      showCitations: false,
+      showToolActivity: false,
+      canResume: false,
+    },
+  });
   const raw = '합성 질문: 줄바꿈\n**사용자 일반 텍스트**';
   const bubble = (restored: boolean) => (
     <ConversationBubbleEntranceContext.Provider
@@ -41,7 +52,7 @@ test('ordinary Copy keeps one surface and exact text across live and restored pr
     >
       <AppText testID="adjacent-report">합성 진료 질문</AppText>
       <ConversationBubbleEntrance
-        entranceKey="synthetic-outgoing"
+        entranceKey={conversationBubbleKey('user', 1)}
         restored={restored}
         isolateUserCopyPaint
         copyMenu={{
