@@ -140,7 +140,7 @@ export function VoiceTranscriptViewport({
   );
 }
 // Animate inline foreground runs, not opacity on the entire wrapping paragraph.
-const VoiceCaptionLine = memo(function VoiceCaptionLine({
+const VoiceCaptionLine = memo(function VoiceCaptionLineInner({
   speaker,
   text,
   runs,
