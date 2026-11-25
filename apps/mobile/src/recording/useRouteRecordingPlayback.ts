@@ -15,7 +15,7 @@ export function useRouteRecordingPlayback(
       subscribePlayback: service.subscribePlayback,
       playRange(id, start, end) {
         if (!current || id !== sourceId)
-          return Promise.reject(new Error('Saved recording route is inactive.'));
+          return Promise.reject(new Error('Inactive recording detail.'));
         dispatched = true;
         return service.playRange(id, start, end, owner);
       },
@@ -38,6 +38,6 @@ export function useRouteRecordingPlayback(
       playback,
     };
   }, [active, service, sourceId]);
-  useLayoutEffect(lease.enter, [lease]);
+  useLayoutEffect(() => lease.enter(), [lease]);
   return lease.playback;
 }
