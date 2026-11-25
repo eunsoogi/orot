@@ -136,13 +136,10 @@ test('quiet current microphone samples visibly change bars', async () => {
   const idle = bars(view);
   const center = () => bars(view)[2] ?? 0;
   const scale = () => {
-    const { transform } = StyleSheet.flatten<ViewStyle>(
-      view.getByTestId('voice-activity-waveform', hidden).props.style,
-    );
-    return Array.isArray(transform)
-      ? ((transform.find(value => 'scale' in value) as { scale: number })
-          ?.scale ?? 1)
-      : 1;
+    const { transform } = StyleSheet.flatten<{
+      transform?: readonly { scale?: number }[];
+    }>(view.getByTestId('voice-activity-waveform', hidden).props.style);
+    return transform?.[0]?.scale ?? 1;
   };
   expect(idle).toHaveLength(5);
   expect(scale()).toBe(1);
