@@ -1,11 +1,6 @@
-import {
-  conversationA2UICatalog,
-  conversationA2UIFrameLimit,
-} from './conversationA2UI';
-import {
-  conversationA2UIProse,
-  draftA2UISurfaceId,
-} from './conversationA2UIPresentation';
+import { conversationA2UICatalog } from './conversationA2UI';
+import { envelope, readReplacements } from './conversationA2UIRepeatedWire';
+import { conversationA2UIProse } from './conversationA2UIPresentation';
 import {
   displayText,
   fail,
@@ -21,20 +16,6 @@ const maxTemplateDepth = 4;
 const maxGraphNodes = 64;
 const relativeKey = /^[A-Za-z][A-Za-z0-9_-]{0,31}$/u;
 type Node = Record<string, unknown> & { id: string };
-
-function envelope(
-  raw: unknown,
-  operation: 'createSurface' | 'updateDataModel',
-) {
-  if (typeof raw !== 'string' || raw.length > conversationA2UIFrameLimit)
-    fail();
-  const message = object(JSON.parse(raw) as unknown);
-  keys(message, ['version', operation]);
-  const body = object(message[operation]);
-  if (message.version !== '1.0' || body.surfaceId !== draftA2UISurfaceId)
-    fail();
-  return body;
-}
 
 /** Templates are closed, shallow owned trees. No nested repetition,
  * cross-tree refs, shared children, absolute bindings or callable functions. */
@@ -145,8 +126,10 @@ function referencesTemplate(node: Node, ownedIds: ReadonlySet<string>) {
  * publish text; provisional callers must discard everything except geometry. */
 export function lowerConversationRepeatedChildren(
   raw: unknown,
+  composed = false,
 ): readonly string[] | undefined {
-  if (!Array.isArray(raw) || !raw.length || raw.length > 2) return;
+  if (!Array.isArray(raw) || !raw.length || raw.length > (composed ? 3 : 2))
+    return;
   try {
     const create = envelope(raw[0], 'createSurface');
     keys(create, [
@@ -165,8 +148,7 @@ export function lowerConversationRepeatedChildren(
     )
       return;
     const nodes = new Map<string, Node>();
-    let repeated: Node | undefined;
-    let templateRoot: string | undefined;
+    const sections = new Map<string, { node: Node; root: string }>();
     for (const item of create.components as unknown[]) {
       const node = object(item);
       const nodeId = id(node.id);
@@ -180,37 +162,49 @@ export function lowerConversationRepeatedChildren(
         typeof node.children === 'object' &&
         !Array.isArray(node.children)
       ) {
-        if (repeated) fail();
         const binding = object(node.children);
         keys(binding, ['path', 'componentId']);
-        if (binding.path !== itemsPath) fail();
-        templateRoot = id(binding.componentId);
-        repeated = validated;
+        const path = binding.path;
+        if (path !== itemsPath && !(composed && path === '/secondaryItems'))
+          fail();
+        if (sections.has(path)) fail();
+        sections.set(path, { node: validated, root: id(binding.componentId) });
       }
     }
-    if (!repeated || !templateRoot) return;
-    const { template, fields } = collectTemplate(nodes, templateRoot);
+    if (!sections.has(itemsPath) || (composed && sections.size !== 2)) return;
     const data = object(create.dataModel);
-    keys(data, ['items']);
-    let rows = readRows(data.items, fields);
-    if (raw.length === 2) {
-      const update = envelope(raw[1], 'updateDataModel');
-      keys(update, ['surfaceId', 'path', 'value']);
-      if (update.path !== itemsPath) fail();
-      rows = readRows(update.value, fields);
+    keys(
+      data,
+      [...sections.keys()].map(path => path.slice(1)),
+    );
+    const updates = readReplacements(raw.slice(1), sections);
+    const originals = new Set<string>();
+    const derived = new Map<string, Node>();
+    const childLists = new Map<string, string[]>();
+    // Isolate both trees against all declarations and one another before
+    // emitting anything that can reach the accepted prose validator.
+    for (const [path, { node, root }] of sections) {
+      const { template, fields } = collectTemplate(nodes, root);
+      for (const name of template.keys()) {
+        if (originals.has(name)) fail();
+        originals.add(name);
+      }
+      let rows = readRows(data[path.slice(1)], fields);
+      if (updates.has(path)) rows = readRows(updates.get(path), fields);
+      childLists.set(
+        node.id,
+        rows.map((_, index) => `repeat-${index}-${root}`),
+      );
+      for (const clone of materialize(template, rows, nodes)) {
+        if (derived.has(clone.id) || derived.size >= maxGraphNodes) fail();
+        derived.set(clone.id, clone);
+      }
     }
-    if (
-      nodes.size - template.size + rows.length * template.size >
-      maxGraphNodes
-    )
-      fail();
-    const children = rows.map((_, index) => `repeat-${index}-${templateRoot}`);
-    const clones = materialize(template, rows, nodes);
-    const isolated = new Set<string>([
-      ...template.keys(),
-      ...clones.map(node => node.id),
-    ]);
-    const ordinary = [...nodes.values()].filter(node => !template.has(node.id));
+    if (nodes.size - originals.size + derived.size > maxGraphNodes) fail();
+    const isolated = new Set([...originals, ...derived.keys()]);
+    const ordinary = [...nodes.values()].filter(
+      node => !originals.has(node.id),
+    );
     if (ordinary.some(node => referencesTemplate(node, isolated))) fail();
     return [
       JSON.stringify({
@@ -221,9 +215,11 @@ export function lowerConversationRepeatedChildren(
           sendDataModel: create.sendDataModel,
           components: [
             ...ordinary.map(node =>
-              node === repeated ? { ...node, children } : node,
+              childLists.has(node.id)
+                ? { ...node, children: childLists.get(node.id) }
+                : node,
             ),
-            ...clones,
+            ...derived.values(),
           ],
         },
       }),

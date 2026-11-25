@@ -51,3 +51,45 @@ export function withFinalConversationRepeatedChildren(
     },
   };
 }
+
+/** Version 38 adds a terminal-only second isolated data-bound section.
+ * The existing geometry-only observer remains the v37 observer. */
+export function withComposedConversationSections(
+  previous: TaskResponderContract<GroundedRagAnswer>,
+): TaskResponderContract<GroundedRagAnswer> {
+  return {
+    ...previous,
+    taskVersion: '38',
+    createResultSchema(input) {
+      const schema =
+        previous.createResultSchema?.(input) ?? previous.resultSchema;
+      if (!isObject(schema.properties)) return schema;
+      const frames = schema.properties.a2uiFrames;
+      if (!isObject(frames) || typeof frames.description !== 'string')
+        return schema;
+      return {
+        ...schema,
+        properties: {
+          ...schema.properties,
+          a2uiFrames: {
+            ...frames,
+            description:
+              frames.description +
+              ' One final surface can also compose two repeated List, Row, or Column sections using the same child template form. The second section uses "/secondaryItems" and dataModel.secondaryItems. The sections must have distinct template trees with no shared nodes or bindings. Each array can be replaced at most once, by its whole path. Both sections together must render the exact accepted answer in order.',
+          },
+        },
+      };
+    },
+    validateResult(value, input) {
+      if (!isObject(value)) return previous.validateResult(value, input);
+      const projected = lowerConversationRepeatedChildren(
+        value.a2uiFrames,
+        true,
+      );
+      return previous.validateResult(
+        projected ? { ...value, a2uiFrames: projected } : value,
+        input,
+      );
+    },
+  };
+}
