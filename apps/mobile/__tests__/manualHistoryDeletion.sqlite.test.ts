@@ -10,28 +10,30 @@ import {
   openLocalStorage,
   openLocalAgentMemoryDatabase,
 } from '../src/storage/secureDatabase';
-import { createLocalE5RagService } from '../src/rag/localE5RagService';
 jest.mock('../src/storage/secureDatabase', () => ({
   openLocalStorage: jest.fn(),
   openLocalAgentMemoryDatabase: jest.fn(),
-}));
-jest.mock('../src/rag/localE5RagService', () => ({
-  createLocalE5RagService: jest.fn(),
 }));
 async function fixture() {
   const f = openSqliteTestDatabase(':memory:');
   let owned = false;
   const lineageReads = jest.fn();
+  const sharedExecute = jest.fn();
+  const sharedTransaction = jest.fn();
+  const schemaWrites = jest.fn();
+  let failQuery: ((query: string) => void) | undefined;
   // Real SQLite serializes global operations. Fail fast at the same self-wait boundary
   // instead of leaving an intentionally deadlocked transaction hanging in the runner.
   const database: SqlDatabase = {
     execute: (query, args) => {
       if (owned)
         throw new Error('Global SQL queued behind its own transaction');
+      sharedExecute();
       return f.database.execute(query, args);
     },
-    transaction: operation =>
-      f.database.transaction(async tx => {
+    transaction: operation => {
+      sharedTransaction();
+      return f.database.transaction(async tx => {
         owned = true;
         try {
           await operation({
@@ -42,16 +44,22 @@ async function fixture() {
                 query.includes('FROM manual_history_entries WHERE')
               )
                 lineageReads();
+              if (query.startsWith('CREATE ')) schemaWrites();
+              failQuery?.(query);
               return tx.execute(query, args);
             },
           });
         } finally {
           owned = false;
         }
-      }),
+      });
+    },
   };
   await runMigrations(database);
-  const history = createManualHistoryRepository(database);
+  const ids = ['conversation-local-memory:original', 'correction', 'unrelated'];
+  const history = createManualHistoryRepository(database, {
+    createId: () => ids.shift()!,
+  });
   const original = await history.create({
     kind: 'diagnosis_history',
     title: 'Synthetic original',
@@ -66,17 +74,10 @@ async function fixture() {
     correctionNote: 'Synthetic correction',
   });
   const vectors = new SqlCipherRagEmbeddingStorage(database);
-  const prepare = jest.fn(() => vectors.prepare());
-  const deleteChunks = jest.fn((_chunks, ids, tx) =>
-    vectors.deleteEvidence(ids, [], tx),
-  );
   jest
     .mocked(openLocalStorage)
     .mockResolvedValue({ manualHistory: history } as never);
   jest.mocked(openLocalAgentMemoryDatabase).mockResolvedValue(database);
-  jest
-    .mocked(createLocalE5RagService)
-    .mockReturnValue({ prepare, deleteChunks } as never);
   return {
     ...f,
     database,
@@ -84,12 +85,17 @@ async function fixture() {
     original,
     corrected,
     lineageReads,
-    prepare,
-    deleteChunks,
+    vectors,
+    sharedExecute,
+    sharedTransaction,
+    schemaWrites,
+    failOn: (handler: (query: string) => void) => {
+      failQuery = handler;
+    },
     repository: await openLocalManualHistoryRepository(),
   };
 }
-test('cold RAG schema prepares outside deletion while lineage and tombstones commit together', async () => {
+test('cold cleanup admits one writer and commits the conversation memory lineage with its tombstones', async () => {
   const f = await fixture();
   try {
     const unrelated = await f.history.create({
@@ -99,9 +105,13 @@ test('cold RAG schema prepares outside deletion while lineage and tombstones com
       effectiveDate: { status: 'unknown' },
     });
     f.lineageReads.mockClear();
+    f.sharedExecute.mockClear();
+    f.sharedTransaction.mockClear();
     await expect(f.repository.delete(f.corrected.id)).resolves.toBe(true);
     // The older path traversed both versions twice (eight point reads).
     expect(f.lineageReads).toHaveBeenCalledTimes(4);
+    expect(f.sharedExecute).not.toHaveBeenCalled();
+    expect(f.sharedTransaction).toHaveBeenCalledTimes(1);
     expect(await f.history.list()).toEqual([unrelated]);
     const rows = await f.database.execute(
       'SELECT source_record_id FROM rag_embedding_removed_sources ORDER BY source_record_id',
@@ -117,12 +127,14 @@ test('cold RAG schema prepares outside deletion while lineage and tombstones com
 test('schema failure leaves correction lineage intact', async () => {
   const f = await fixture();
   try {
-    f.prepare.mockRejectedValueOnce(new Error('Synthetic schema failure'));
+    f.failOn(query => {
+      if (query.startsWith('CREATE TABLE'))
+        throw new Error('Synthetic schema failure');
+    });
     await expect(f.repository.delete(f.corrected.id)).rejects.toThrow(
       'Synthetic schema failure',
     );
     expect(await f.history.history(f.corrected.id)).toHaveLength(2);
-    expect(f.deleteChunks).not.toHaveBeenCalled();
   } finally {
     f.close();
   }
@@ -130,11 +142,53 @@ test('schema failure leaves correction lineage intact', async () => {
 test('vector cleanup failure rolls back source deletion', async () => {
   const f = await fixture();
   try {
-    f.deleteChunks.mockRejectedValueOnce(new Error('Synthetic vector failure'));
+    f.failOn(query => {
+      if (
+        query.startsWith('INSERT OR IGNORE INTO rag_embedding_removed_sources')
+      )
+        throw new Error('Synthetic vector failure');
+    });
     await expect(f.repository.delete(f.corrected.id)).rejects.toThrow(
       'Synthetic vector failure',
     );
     expect(await f.history.history(f.corrected.id)).toHaveLength(2);
+  } finally {
+    f.close();
+  }
+});
+
+test('warm cleanup avoids no-op schema writes and removes only the owned vector', async () => {
+  const f = await fixture();
+  try {
+    const model = {
+      id: 'synthetic',
+      revision: 'one',
+      dimension: 1,
+      modelSha256: 'model',
+      tokenizerSha256: 'tokenizer',
+    };
+    await f.vectors.upsertBatch(model, [
+      {
+        chunkId: 'owned-chunk',
+        sourceRecordIds: [f.original.id],
+        vector: [1],
+      },
+      {
+        chunkId: 'unrelated-chunk',
+        sourceRecordIds: ['synthetic-unrelated-source'],
+        vector: [2],
+      },
+    ]);
+    f.schemaWrites.mockClear();
+    f.sharedExecute.mockClear();
+    f.sharedTransaction.mockClear();
+    await expect(f.repository.delete(f.corrected.id)).resolves.toBe(true);
+    expect(f.schemaWrites).not.toHaveBeenCalled();
+    expect(f.sharedExecute).not.toHaveBeenCalled();
+    expect(f.sharedTransaction).toHaveBeenCalledTimes(1);
+    expect(await f.vectors.listForModel(model)).toEqual([
+      { chunkId: 'unrelated-chunk', vector: [2] },
+    ]);
   } finally {
     f.close();
   }
