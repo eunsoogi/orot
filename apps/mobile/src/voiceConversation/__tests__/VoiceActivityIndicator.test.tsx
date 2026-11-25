@@ -1,5 +1,5 @@
 import { act, render } from '@testing-library/react-native';
-import { AccessibilityInfo } from 'react-native';
+import { AccessibilityInfo, StyleSheet, type ViewStyle } from 'react-native';
 import { VoiceActivityIndicator } from '../VoiceActivityIndicator';
 import {
   parseVoiceAudioLevel,
@@ -13,6 +13,10 @@ jest.mock('../../layout/AppSymbol', () => ({
   },
 }));
 const hidden = { includeHiddenElements: true };
+const bars = (view: Awaited<ReturnType<typeof render>>) =>
+  view
+    .queryAllByTestId('voice-activity-waveform-bar', hidden)
+    .map(bar => Number(StyleSheet.flatten<ViewStyle>(bar.props.style).height));
 const old = 'live-fixture-old';
 const current = 'live-fixture';
 const sample = (
@@ -64,26 +68,27 @@ test('only current rendered output moves, then stops for silence, expiry, owner 
       subscribe={subscribe}
     />,
   );
-  const active = () => view.queryByText('waveform/34', hidden);
+  const idle = bars(view);
+  const active = () => bars(view).some((height, i) => height > (idle[i] ?? 0));
   const emitNow = async (packet: VoiceAudioLevel) => {
     await act(() => emit(packet));
   };
   await emitNow(sample(1, old));
   await emitNow(sample(1, current, 'input'));
-  expect(active()).toBeNull();
+  expect(active()).toBe(false);
   await emitNow(sample(1));
-  expect(active()).toBeTruthy();
+  expect(active()).toBe(true);
   await emitNow(sample(0));
-  expect(active()).toBeNull();
+  expect(active()).toBe(false);
   await act(() => {
     jest.advanceTimersByTime(100);
   });
   await emitNow(sample(1));
-  expect(active()).toBeTruthy();
+  expect(active()).toBe(true);
   await act(() => {
     jest.advanceTimersByTime(241);
   });
-  expect(active()).toBeNull();
+  expect(active()).toBe(false);
   const stale = emit;
   await view.rerender(
     <VoiceActivityIndicator
@@ -94,9 +99,9 @@ test('only current rendered output moves, then stops for silence, expiry, owner 
     />,
   );
   await act(() => stale(sample(1)));
-  expect(active()).toBeNull();
+  expect(active()).toBe(false);
   await emitNow(sample(1, old));
-  expect(active()).toBeTruthy();
+  expect(active()).toBe(true);
   await view.rerender(
     <VoiceActivityIndicator
       visible
@@ -106,9 +111,45 @@ test('only current rendered output moves, then stops for silence, expiry, owner 
     />,
   );
   await emitNow(sample(1, old));
-  expect(active()).toBeNull();
+  expect(active()).toBe(false);
   expect(view.getByText('mic.slash/20', hidden)).toBeTruthy();
   expect(retired).toHaveBeenCalledTimes(2);
+});
+
+test('quiet current microphone samples visibly change bars', async () => {
+  jest.useFakeTimers();
+  jest
+    .spyOn(AccessibilityInfo, 'isReduceMotionEnabled')
+    .mockResolvedValue(false);
+  let emit!: (value: VoiceAudioLevel) => void;
+  const view = await render(
+    <VoiceActivityIndicator
+      visible
+      phase="listening"
+      callId={current}
+      subscribe={listener => {
+        emit = listener;
+        return undefined;
+      }}
+    />,
+  );
+  const idle = bars(view);
+  const center = () => bars(view)[2] ?? 0;
+  expect(idle).toHaveLength(5);
+  await act(() => emit(sample(0.03)));
+  expect(bars(view)).toEqual(idle);
+  await act(() => emit(sample(0.03, current, 'input')));
+  const quiet = center();
+  expect(quiet).toBeGreaterThan((idle[2] ?? 0) + 4);
+  await act(() => {
+    jest.advanceTimersByTime(100);
+    emit(sample(0.08, current, 'input'));
+  });
+  expect(center()).toBeGreaterThan(quiet + 2);
+  await act(() => {
+    jest.advanceTimersByTime(241);
+  });
+  expect(bars(view)).toEqual(idle);
 });
 
 test('reduced motion keeps a static mark and invalid or PCM-bearing input is never retained', async () => {
@@ -124,7 +165,7 @@ test('reduced motion keeps a static mark and invalid or PCM-bearing input is nev
       subscribe={subscribe}
     />,
   );
-  expect(view.getByText('waveform/20', hidden)).toBeTruthy();
+  expect(bars(view)).toHaveLength(5);
   expect(subscribe).not.toHaveBeenCalled();
   for (const value of [NaN, Infinity, -1, 1.1])
     expect(parseVoiceAudioLevel(sample(value))).toBeUndefined();

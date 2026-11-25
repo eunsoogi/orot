@@ -12,6 +12,23 @@ import type { VoicePhase } from './voiceTurn';
 const levelExpiryMs = 240;
 const minimumUpdateMs = 65;
 const audibleFloor = 0.025;
+const waveformWeights = [0.4, 0.7, 1, 0.8, 0.45] as const;
+
+/** Keep quiet PCM levels visible without synthesizing motion from silence. */
+function VoiceWaveform({ amplitude }: { amplitude: number }) {
+  const strength = Math.min(1, Math.sqrt(amplitude) * 2.4);
+  return (
+    <View style={styles.waveform}>
+      {waveformWeights.map(weight => (
+        <View
+          key={weight}
+          testID="voice-activity-waveform-bar"
+          style={[styles.bar, { height: 4 + weight * (8 + strength * 14) }]}
+        />
+      ))}
+    </View>
+  );
+}
 
 function useReducedMotion() {
   const [reduced, setReduced] = useState(true);
@@ -118,17 +135,34 @@ export function VoiceActivityIndicator({
         <ConversationActivityBubble />
       ) : (
         <View testID="voice-activity-symbol">
-          <AppSymbol
-            name={muted ? 'mic.slash' : direction ? 'waveform' : 'ellipsis'}
-            size={amplitude > 0 ? 20 + Math.round(amplitude * 14) : 20}
-            color={appColors.primary}
-          />
+          {direction ? (
+            <VoiceWaveform amplitude={amplitude} />
+          ) : (
+            <AppSymbol
+              name={muted ? 'mic.slash' : 'ellipsis'}
+              size={20}
+              color={appColors.primary}
+            />
+          )}
         </View>
       )}
     </View>
   );
 }
 const styles = StyleSheet.create({
+  waveform: {
+    width: 32,
+    height: 28,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 3,
+  },
+  bar: {
+    width: 3,
+    borderRadius: 2,
+    backgroundColor: appColors.primary,
+  },
   frame: {
     minWidth: 56,
     minHeight: 36,
