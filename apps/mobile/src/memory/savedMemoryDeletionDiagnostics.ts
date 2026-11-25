@@ -4,6 +4,9 @@ type Stage =
   | 'saved_memory_delete_confirmation'
   | 'saved_memory_delete_queue'
   | 'saved_memory_delete_lineage'
+  | 'saved_memory_delete_record'
+  | 'saved_memory_delete_successor'
+  | 'saved_memory_delete_sql'
   | 'saved_memory_delete_vectors'
   | 'saved_memory_delete_commit'
   | 'saved_memory_delete_receipt';

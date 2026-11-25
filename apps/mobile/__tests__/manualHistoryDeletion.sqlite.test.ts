@@ -213,10 +213,10 @@ test('traces protected admission, lineage and vectors separately from durable co
   const { promise: admission, resolve: admit } = makeGate();
   const { promise: commit, resolve: persist } = makeGate();
   const { promise: reachedCommit, resolve: reportCommit } = makeGate();
-  const events: string[][] = [];
+  const events: string[] = [];
   const repository = await openLocalManualHistoryRepository(
     (stage, outcome) => {
-      events.push([stage, outcome]);
+      events.push(`${stage.slice(20)}:${outcome}`);
       if (stage === 'saved_memory_delete_commit' && outcome === 'started')
         reportCommit();
     },
@@ -225,21 +225,19 @@ test('traces protected admission, lineage and vectors separately from durable co
   f.holdCommit(commit);
   const deleting = repository.delete(f.corrected.id);
   try {
-    expect(events).toEqual([['saved_memory_delete_queue', 'started']]);
+    expect(events).toEqual(['queue:started']);
     admit();
     await reachedCommit;
-    expect(events).toEqual([
-      ['saved_memory_delete_queue', 'started'],
-      ['saved_memory_delete_queue', 'completed'],
-      ['saved_memory_delete_lineage', 'started'],
-      ['saved_memory_delete_vectors', 'started'],
-      ['saved_memory_delete_vectors', 'completed'],
-      ['saved_memory_delete_lineage', 'completed'],
-      ['saved_memory_delete_commit', 'started'],
-    ]);
+    expect(events.join(' ')).toBe(
+      'queue:started queue:completed lineage:started ' +
+        'record:started record:completed record:started record:completed ' +
+        'successor:started successor:completed successor:started successor:completed ' +
+        'sql:started sql:completed sql:started sql:completed vectors:started ' +
+        'vectors:completed lineage:completed commit:started',
+    );
     persist();
     await expect(deleting).resolves.toBe(true);
-    expect(events.at(-1)).toEqual(['saved_memory_delete_commit', 'completed']);
+    expect(events.at(-1)).toBe('commit:completed');
     expect(await f.history.list()).toEqual([]);
   } finally {
     admit();
