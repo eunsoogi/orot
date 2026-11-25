@@ -101,7 +101,7 @@ export function useGeneratedReportPull({
   const refreshing = useRef(false);
   useNavigationRouteRefresh(
     active && state.status !== 'unavailable',
-    async () => {
+    async acceptGesture => {
       let owner = request.current;
       if (
         !owner ||
@@ -135,13 +135,15 @@ export function useGeneratedReportPull({
           signal: gesture.signal,
           isCurrent,
           invalidate,
-          read: verify =>
-            read({
+          read: verify => {
+            acceptGesture();
+            return read({
               prior,
               keepVisible: state.status === 'ready',
               verify,
               claim,
-            }),
+            });
+          },
         });
       } finally {
         owner?.signal.removeEventListener('abort', stop);

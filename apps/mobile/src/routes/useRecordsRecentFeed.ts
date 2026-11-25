@@ -119,11 +119,12 @@ export function useRecordsRecentFeed(props: RecordsRecentSourcesProps) {
     ...(onOpenReport ? [reports] : []),
     ...(pagedAudio || pagedDocuments ? [media] : []),
   ];
-  async function refresh() {
+  async function refresh(acceptGesture?: () => void) {
     if (refreshInFlight.current || !reports.isRouteCurrent()) return;
     refreshInFlight.current = true;
     setRefreshing(true);
     retryRefresh.current = false;
+    acceptGesture?.();
     try {
       await refreshRecentPages(
         streams.map(stream => stream.prepareRefresh),

@@ -1,7 +1,14 @@
-import { act, render, screen } from '@testing-library/react-native';
-import { AccessibilityInfo, RefreshControl, Text } from 'react-native';
+import { act, fireEvent, render, screen } from '@testing-library/react-native';
+import {
+  AccessibilityInfo,
+  AppState,
+  NativeModules,
+  Platform,
+  RefreshControl,
+  Text,
+} from 'react-native';
 import type { StyleProp, ViewStyle } from 'react-native';
-import type { ReactNode } from 'react';
+import { useEffect, type ReactNode } from 'react';
 import { appRouteIsScrollable } from '../appContentLayoutPolicy';
 import { useNavigationRouteRefresh } from '../navigationRouteRefresh';
 import { createNavigationController } from '../navigationController';
@@ -90,4 +97,81 @@ describe('shared route refresh control', () => {
       expect(screen.getByText('Synthetic selected detail')).toBeVisible();
     },
   );
+  it('plays one haptic for an accepted pull only', async () => {
+    const old = NativeModules.RouteRefreshFeedbackModule;
+    const os = Platform.OS;
+    const appState = AppState.currentState;
+    const impact = jest.fn();
+    const controller = createNavigationController<
+      'home' | 'medical-document-detail'
+    >('home');
+    let allow = false;
+    let complete!: () => void;
+    const held = new Promise<void>(resolve => {
+      complete = resolve;
+    });
+    const load = jest.fn();
+    const retryRead = jest.fn();
+    const gestureRead = jest.fn();
+    const retry = () => {
+      retryRead();
+    };
+    function Detail() {
+      useEffect(() => {
+        load();
+      }, []);
+      useNavigationRouteRefresh(true, async accept => {
+        if (!allow) return;
+        accept();
+        accept();
+        gestureRead();
+        await held;
+      });
+      return <Text onPress={retry}>Synthetic Retry</Text>;
+    }
+    try {
+      Platform.OS = 'ios';
+      AppState.currentState = 'active';
+      NativeModules.RouteRefreshFeedbackModule = { didAcceptPull: impact };
+      controller.push('medical-document-detail');
+      await render(
+        <NavigationRouteAdapter
+          controller={controller}
+          scrollable={route => appRouteIsScrollable(route, 'conversation')}
+        >
+          {({ route }) =>
+            route.name === 'home' ? <Text>Home</Text> : <Detail />
+          }
+        </NavigationRouteAdapter>,
+      );
+      expect(impact).not.toHaveBeenCalled();
+      expect(load).toHaveBeenCalled();
+      await fireEvent.press(screen.getByText('Synthetic Retry'));
+      expect(retryRead).toHaveBeenCalledTimes(1);
+      expect(impact).not.toHaveBeenCalled();
+      const scroll = screen.getByTestId('navigation-route-scroll');
+      const { onRefresh: pull } = scroll.props.refreshControl.props;
+      await act(async () => {
+        await pull();
+      });
+      expect(impact).not.toHaveBeenCalled();
+      allow = true;
+      let first: Promise<void> | undefined;
+      await act(async () => {
+        first = pull();
+        await pull();
+      });
+      expect(impact).toHaveBeenCalledTimes(1);
+      expect(gestureRead).toHaveBeenCalledTimes(1);
+      await act(async () => {
+        complete();
+        await first;
+      });
+    } finally {
+      complete();
+      NativeModules.RouteRefreshFeedbackModule = old;
+      Platform.OS = os;
+      AppState.currentState = appState;
+    }
+  });
 });

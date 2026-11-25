@@ -73,7 +73,7 @@ export function RecentRecordingMetadataRefresh({
       clear();
     };
   }, [active, id, owner]);
-  useNavigationRouteRefresh(active && enabled, async () => {
+  useNavigationRouteRefresh(active && enabled, async acceptGesture => {
     const lease = current.current;
     const owns = () =>
       Boolean(
@@ -108,6 +108,7 @@ export function RecentRecordingMetadataRefresh({
       if ((await native.protectedDataAvailable()) !== true)
         return { status: 'protected' };
       if (!still()) return { status: 'unavailable' };
+      acceptGesture();
       const source = await readSelectedRecentRecording(id);
       if (!still()) return { status: 'unavailable' };
       if ((await native.protectedDataAvailable()) !== true)
