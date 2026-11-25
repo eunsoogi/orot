@@ -5,7 +5,7 @@ import {
 } from './conversationA2UI';
 
 /** This fixed draft stamp gives a model no ingress route to a real session. */
-const draftId = 'orot:response:draft';
+export const draftA2UISurfaceId = 'orot:response:draft';
 
 export const conversationA2UIPresentationSchema = {
   type: 'string',
@@ -25,18 +25,24 @@ export function admitConversationA2UIPresentation(
     return undefined;
   const paragraphs = conversationA2UIProse(answer);
   if (!paragraphs) return undefined;
-  const state = applyConversationA2UIFrame(null, raw, draftId);
+  const state = applyConversationA2UIFrame(null, raw, draftA2UISurfaceId);
   if (state?.status !== 'ready' || !state.root) return undefined;
-  const expected = paragraphs;
+  return matchesConversationA2UIProse(state.root, paragraphs)
+    ? state.root
+    : undefined;
+}
+
+export function matchesConversationA2UIProse(
+  root: ConversationA2UINode,
+  expected: readonly string[],
+): boolean {
   let position = 0;
   function matches(node: ConversationA2UINode): boolean {
     if (node.component === 'Text')
       return node.variant === 'body' && node.text === expected[position++];
     return node.children.every(matches);
   }
-  return matches(state.root) && position === paragraphs.length
-    ? state.root
-    : undefined;
+  return matches(root) && position === expected.length;
 }
 
 /** Only whole unchanged plain paragraphs can own a read-only surface. */
@@ -59,4 +65,11 @@ export function conversationA2UIProse(answer: string) {
   )
     return undefined;
   return paragraphs;
+}
+
+/** A v21 body permits item lines without interpreting them as a layout request. */
+export function conversationA2UIFrameProse(answer: string) {
+  if (!answer || answer.length > 8_192) return undefined;
+  const parts = answer.split(/\n\n?/u);
+  return parts.every(part => conversationA2UIProse(part)) ? parts : undefined;
 }

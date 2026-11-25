@@ -28,6 +28,7 @@ import {
   admitConversationA2UIPresentation,
 } from './conversationA2UIPresentation';
 import type { ConversationA2UINode } from './conversationA2UI';
+import { withConversationA2UIFrameSequence } from './conversationA2UIFrameSequence';
 import { withProactiveMemory } from './proactiveConversationMemory';
 export interface RagConversationMessage {
   readonly role: 'user' | 'assistant';
@@ -190,7 +191,7 @@ export const conversationTaskV19 = {
 };
 
 /** The optional layout cannot change evidence decisions or legacy checkpoints. */
-export const ragConversationTask: TaskResponderContract<GroundedRagAnswer> = {
+export const conversationTaskV20: TaskResponderContract<GroundedRagAnswer> = {
   ...conversationTaskV19,
   taskVersion: '20',
   createResultSchema(input) {
@@ -233,3 +234,8 @@ function allowsOrdinaryA2UI({ context }: TaskResponderInput) {
     (!context.intent || context.intent === 'conversation')
   );
 }
+
+export const ragConversationTask = withConversationA2UIFrameSequence(
+  conversationTaskV20,
+  allowsOrdinaryA2UI,
+);

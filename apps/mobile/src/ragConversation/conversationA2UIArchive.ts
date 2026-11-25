@@ -1,5 +1,8 @@
 import type { ConversationA2UINode } from './conversationA2UI';
-import { conversationA2UIProse } from './conversationA2UIPresentation';
+import {
+  conversationA2UIFrameProse,
+  conversationA2UIProse,
+} from './conversationA2UIPresentation';
 
 type Container = Exclude<
   ConversationA2UINode,
@@ -8,7 +11,7 @@ type Container = Exclude<
 type Shape = 0 | readonly [Container, ...Shape[]];
 
 /** Contains only app-approved arrangement, not wire frames, IDs or independent prose. */
-export type ArchivedA2UILayout = Readonly<{ version: 1; tree: Shape }>;
+export type ArchivedA2UILayout = Readonly<{ version: 1 | 2; tree: Shape }>;
 
 const containers = new Set<Container>(['Card', 'Column', 'List', 'Row']);
 const container = (value: unknown): value is Container =>
@@ -24,8 +27,10 @@ export function storeConversationA2UILayout(
   root: ConversationA2UINode,
   answer: string,
 ): ArchivedA2UILayout | undefined {
-  const paragraphs = conversationA2UIProse(answer);
-  if (!paragraphs || answer.length > 8_192) return undefined;
+  if (answer.length > 8_192) return undefined;
+  const legacy = conversationA2UIProse(answer);
+  const paragraphs = legacy ?? conversationA2UIFrameProse(answer);
+  if (!paragraphs) return undefined;
   let visited = 0;
   let position = 0;
   function visit(value: unknown, depth: number): Shape | undefined {
@@ -52,7 +57,7 @@ export function storeConversationA2UILayout(
   }
   const tree = visit(root, 1);
   return tree !== undefined && position === paragraphs.length
-    ? { version: 1, tree }
+    ? { version: legacy ? 1 : 2, tree }
     : undefined;
 }
 
@@ -61,15 +66,18 @@ export function restoreConversationA2UILayout(
   value: unknown,
   answer: string,
 ): ConversationA2UINode | undefined {
-  const paragraphs = conversationA2UIProse(answer);
   if (
-    !paragraphs ||
     answer.length > 8_192 ||
     !record(value) ||
     !keys(value, ['version', 'tree']) ||
-    value.version !== 1
+    (value.version !== 1 && value.version !== 2)
   )
     return undefined;
+  const paragraphs =
+    value.version === 1
+      ? conversationA2UIProse(answer)
+      : conversationA2UIFrameProse(answer);
+  if (!paragraphs) return undefined;
   let visited = 0;
   let position = 0;
   function visit(
