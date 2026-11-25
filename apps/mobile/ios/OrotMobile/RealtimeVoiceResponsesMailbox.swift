@@ -68,7 +68,9 @@ final class LiveResponsesMailbox {
                   if let ticket, self?.approved?.2 === ticket {
                       self?.approved = nil
                   }
-                  if success { LiveManagedToolLatency.finish(.settleToSocketSubmission, since: received) }
+                  if success {
+                      LiveManagedToolLatency.finish(.settleToSocketSubmission, since: received)
+                  }
                   completion(success)
               })
         else {
