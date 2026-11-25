@@ -235,7 +235,14 @@ function allowsOrdinaryA2UI({ context }: TaskResponderInput) {
   );
 }
 
+export const conversationTaskV21 = withConversationA2UIFrameSequence(
+  conversationTaskV20,
+  allowsOrdinaryA2UI,
+);
+
+/** Replay of the previous version retains its original closed catalog. */
 export const ragConversationTask = withConversationA2UIFrameSequence(
   conversationTaskV20,
   allowsOrdinaryA2UI,
+  '22',
 );
