@@ -2,16 +2,13 @@ import { useMemo, useRef, useState } from 'react';
 import { loadRecentMaterial } from '../generatedReports/recentMaterialReader';
 import { readProtectedRecentMaterialPage } from '../generatedReports/certifiedRecentMaterialPage';
 import { subscribeAgentMemoryVisibility } from '../storage/agentMemoryVisibilityEvents';
-import { t } from '../i18n';
 import { useNavigationRouteRefresh } from '../navigation/navigationRouteRefresh';
 import { subscribeRecentSourceSaved } from '../storage/recentSourceEvents';
 import type { RecordsRecentSourcesProps } from './RecordsRecentSources';
 import {
   buildRecentRecordEntries,
-  certifiedRecentPrefix,
   groupRecentRecords,
   recentPageSize,
-  recentStreamFrontier,
   type RecentRecordEntry,
 } from './RecordsRecentTimeline';
 import {
@@ -21,19 +18,10 @@ import {
 import { useRecentPageDemand } from './useRecentPageDemand';
 import { useRecentSavedMaterial } from './useRecentSavedMaterial';
 import { refreshRecentPages } from './recentPageRefresh';
-import type { RecentPageState } from './requestRecentSavedMaterialPage';
-
-function recentStreamHasError(state: RecentPageState) {
-  return state === 'failed' || state === 'refused';
-}
-
-function missingFailedFrontier(stream: {
-  readonly state: RecentPageState;
-  readonly more: boolean;
-  readonly rows: readonly unknown[];
-}) {
-  return stream.state === 'failed' && stream.more && stream.rows.length === 0;
-}
+import {
+  describeRecentFeed,
+  recentStreamHasError,
+} from './recentFeedPresentation';
 
 /** Independent cursor streams share one visible depth without blocking healthy sources. */
 export function useRecordsRecentFeed(props: RecordsRecentSourcesProps) {
@@ -153,18 +141,15 @@ export function useRecordsRecentFeed(props: RecordsRecentSourcesProps) {
     }
   }
   useNavigationRouteRefresh(showAll && active && streams.length > 0, refresh);
-  // A live, unresolved cursor can hide newer rows. A genuine error with
-  // refreshed native admission may instead show verified rows from the other
-  // source with Retry, but that partial list is not a pagination boundary.
-  const partial = streams.some(missingFailedFrontier);
-  const certified = certifiedRecentPrefix(records, [
-    ...(onOpenReport && !missingFailedFrontier(reports)
-      ? [recentStreamFrontier(reports, 'material')]
-      : []),
-    ...((pagedAudio || pagedDocuments) && !missingFailedFrontier(media)
-      ? [recentStreamFrontier(media, 'source')]
-      : []),
-  ]);
+  const legacyRecordingState = pagedAudio ? 'ready' : recordingState;
+  const legacyDocumentState = pagedDocuments ? 'ready' : documentsState;
+  const { certified, partial, loadErrors } = describeRecentFeed(records, {
+    reports: onOpenReport ? reports : undefined,
+    media: pagedAudio || pagedDocuments ? media : undefined,
+    legacyRecordingFailed: legacyRecordingState === 'failed',
+    legacyDocumentFailed: legacyDocumentState === 'failed',
+    documentsError,
+  });
   const groups = groupRecentRecords(certified, new Date(), showAll ? limit : 3);
   const hasKnownMore = certified.length > limit;
   const canAdvance =
@@ -173,8 +158,6 @@ export function useRecordsRecentFeed(props: RecordsRecentSourcesProps) {
     (hasKnownMore ||
       (Boolean(onOpenReport) && reportDemand.canAdvance) ||
       ((pagedAudio || pagedDocuments) && mediaDemand.canAdvance));
-  const legacyRecordingState = pagedAudio ? 'ready' : recordingState;
-  const legacyDocumentState = pagedDocuments ? 'ready' : documentsState;
 
   function showMore() {
     if (
@@ -254,17 +237,6 @@ export function useRecordsRecentFeed(props: RecordsRecentSourcesProps) {
           stream.state === 'loading' || (active && stream.state === 'idle'),
       ),
     canAdvance,
-    loadErrors: [
-      recentStreamHasError(reports.state)
-        ? t('records.recent.savedMaterialLoadError')
-        : null,
-      recentStreamHasError(media.state) ? t('records.recent.loadError') : null,
-      legacyRecordingState === 'failed'
-        ? t('recording.library.loadError')
-        : null,
-      legacyDocumentState === 'failed'
-        ? (documentsError ?? t('medicalDocument.source.loadError'))
-        : null,
-    ].filter((message): message is string => message !== null),
+    loadErrors,
   };
 }

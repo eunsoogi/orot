@@ -48,12 +48,8 @@ function isWitnessedPage<Row>(
 }
 
 type Ref<T> = { current: T };
-export type RecentPageState =
-  | 'idle'
-  | 'loading'
-  | 'ready'
-  | 'failed'
-  | 'refused';
+type RecentPageError = 'failed' | 'refused';
+export type RecentPageState = 'idle' | 'loading' | 'ready' | RecentPageError;
 export type LoadRecentPage<Row> = ((
   before?: RecentPageRow,
   options?: {
