@@ -11,9 +11,9 @@ import {
 } from '../src/sourceDeletionReferences';
 import type { SqlDatabase } from '../src/sql';
 import { openSqliteTestDatabase } from './sqliteTestDatabase';
-const indexed = { useIndexedHealthCandidates: true } as const;
+const indexedSnapshotOptions = { useIndexedHealthCandidates: true } as const;
 const snapshot = ([db, id, observe]: Parameters<typeof readOwnedSnapshot>) =>
-  readOwnedSnapshot(db, id, observe, indexed);
+  readOwnedSnapshot(db, id, observe, indexedSnapshotOptions);
 const root = 'root-recording';
 const from = '2026-11-15T00:00:00.000Z';
 async function fixture(rowless?: string) {
