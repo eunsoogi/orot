@@ -7,10 +7,12 @@
         static var requested: Bool {
             UserDefaults.standard.object(forKey: "OROT_SETTINGS_CONSENT_CANONICAL_OPEN") != nil
         }
+
         static var allowed: Bool {
             SettingsConsentRealtimeFixture.admitted &&
                 UserDefaults.standard.string(forKey: "OROT_SETTINGS_CONSENT_CANONICAL_OPEN") == "synthetic"
         }
+
         static var session: Session?
 
         static func read(_ service: String, _ account: String) -> [String: Any]? {
@@ -20,7 +22,10 @@
             return RealtimeVoiceCanonicalHealthAdmission.read(namespace + "." + alias, "synthetic-settings-consent")
         }
 
-        static func makeCall(emit: @escaping (String, [String: Any]) -> Void) -> RealtimeVoiceCall {
+        static func fixtureCall(emit: @escaping (String, [String: Any]) -> Void) -> RealtimeVoiceCall? {
+            if !requested {
+                return SettingsConsentRealtimeFixture.requested ? SettingsConsentRealtimeFixture.makeCall(emit: emit) : nil
+            }
             let endpoint = RealtimeVoiceSocketEndpoint(networklessTask: {
                 session?.transport ?? ComposedCanonicalFixtureTransport()
             })
@@ -151,8 +156,9 @@
                         complete(challenges == 1 && frames.isEmpty)
                     } else {
                         let item = frames.first?["item"] as? [String: Any]
-                        complete((accepted as? Bool) == true && challenges == 1 && frames.count == 2 &&
-                                 item?["output"] as? String == exact && frames.last?["type"] as? String == "response.create")
+                        let matchesOutput = item?["output"] as? String == exact
+                        let continues = frames.last?["type"] as? String == "response.create"
+                        complete((accepted as? Bool) == true && challenges == 1 && frames.count == 2 && matchesOutput && continues)
                     }
                 }, rejecter: { [weak self] _, _, _ in self?.complete(false) })
             }

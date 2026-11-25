@@ -9,15 +9,13 @@ final class VoiceRealtimeModule: RCTEventEmitter {
             self?.sendEvent(withName: event, body: body)
         }
         #if OROT_TESTS && targetEnvironment(simulator)
-            if ComposedCanonicalOpenFixture.requested {
-                return ComposedCanonicalOpenFixture.makeCall(emit: emit)
-            }
-            if SettingsConsentRealtimeFixture.requested {
-                return SettingsConsentRealtimeFixture.makeCall(emit: emit)
+            if let fixture = ComposedCanonicalOpenFixture.fixtureCall(emit: emit) {
+                return fixture
             }
         #endif
         return RealtimeVoiceCall(systemCall: VoiceSystemCallLifecycle.shared, emit: emit)
     }()
+
     #if OROT_TESTS && targetEnvironment(simulator)
         @objc(settingsConsentSnapshot:resolver:rejecter:)
         func settingsConsentSnapshot(_ lateEvent: Bool, resolver resolve: @escaping RCTPromiseResolveBlock,
@@ -33,9 +31,11 @@ final class VoiceRealtimeModule: RCTEventEmitter {
     override static func requiresMainQueueSetup() -> Bool {
         true
     }
+
     override func constantsToExport() -> [AnyHashable: Any]! {
         ["supportsVoiceAudioLevels": true, "supportsCanonicalHealthContextV2": RealtimeVoiceCanonicalHealthAdmission.enabledForLiveBridge]
     }
+
     override func supportedEvents() -> [String]! {
         ["VoiceRealtimeState", "VoiceRealtimeTranscript", "VoiceRealtimeInterrupted", "VoiceRealtimeSystemCall", "VoiceRealtimePaused", "VoiceRealtimeAudioLevel", "VoiceRealtimeToolCall", "VoiceRealtimeToolCancelled", "VoiceRealtimeManagedToolCall", "VoiceRealtimeManagedToolCancelled"]
     }
