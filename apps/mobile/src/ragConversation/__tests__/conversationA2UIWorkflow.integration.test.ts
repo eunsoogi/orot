@@ -95,7 +95,7 @@ test.each([
   },
 );
 
-test('scopes the new contract to ordinary responses and preserves the v19 schema', () => {
+test('scopes the layout choice to ordinary responses and preserves v19 and v20', () => {
   const input = {
     request: '고마워요',
     context: [] as [],
@@ -108,15 +108,24 @@ test('scopes the new contract to ordinary responses and preserves the v19 schema
   expect(v19?.createResultSchema?.(input).properties).not.toHaveProperty(
     'a2ui',
   );
-  expect(
-    ragConversationTask.createResultSchema?.(input).properties,
-  ).toHaveProperty('a2ui');
+  const v20 = restoreConversationTask({
+    taskType: ragConversationTask.taskType,
+    taskVersion: '20',
+  });
+  expect(v20?.createResultSchema?.(input).properties).toHaveProperty('a2ui');
+  expect(v20?.createResultSchema?.(input).properties).not.toHaveProperty(
+    'answerLayout',
+  );
+  const ordinary = ragConversationTask.createResultSchema?.(input);
+  expect(ordinary?.properties).toHaveProperty('answerLayout');
+  expect(ordinary?.properties).not.toHaveProperty('a2ui');
+  expect(ordinary?.required).toContain('answerLayout');
   expect(
     ragConversationTask.createResultSchema?.({
       ...input,
       context: { intent: 'possibilities' },
     }).properties,
-  ).not.toHaveProperty('a2ui');
+  ).not.toHaveProperty('answerLayout');
 });
 
 test('an A2UI proposal cannot turn an unsupported clinical claim into an answer', async () => {

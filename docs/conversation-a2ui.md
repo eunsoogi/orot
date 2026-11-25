@@ -2,12 +2,16 @@
 
 Orot supports a read-only subset of the published [A2UI 1.0 agent-to-renderer
 schema](https://a2ui.org/specification/v1.0/schemas/) in completed live ordinary
-Conversation replies. A surface is optional. The original accepted answer still
+Conversation replies. A surface is optional; the model explicitly chooses the presentation. The original accepted answer still
 owns Copy and the plain-text or Markdown fallback. Product reports, citations,
 grounding, permissions and navigation keep their existing pathways.
 
-- The model may provide one bounded `createSurface` message as the optional
-  `a2ui` result string. The fixed ID `orot:response:draft` is not a session or
+- New eligible turns require the bounded `answerLayout` choice (`plain` or
+  `list`) in the ordinary model response. After normal answer validation, Orot
+  can render a read-only list card using only the exact accepted lines or
+  paragraphs in order. It does not infer layout from the user's wording.
+- The previous task contract may provide one bounded `createSurface` message
+  as the optional `a2ui` result string. The fixed ID `orot:response:draft` is not a session or
   message ID. The app delivers only the validated view to the live final bubble
   already owned by the request, not to another bubble or route.
 - The allowlisted catalog identifier is

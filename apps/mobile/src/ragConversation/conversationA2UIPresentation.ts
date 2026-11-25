@@ -1,6 +1,7 @@
 import {
   applyConversationA2UIFrame,
   conversationA2UIFrameLimit,
+  conversationA2UICatalog,
   type ConversationA2UINode,
 } from './conversationA2UI';
 
@@ -25,6 +26,10 @@ export function admitConversationA2UIPresentation(
     return undefined;
   const paragraphs = conversationA2UIProse(answer);
   if (!paragraphs) return undefined;
+  return admitExactParagraphs(raw, paragraphs);
+}
+
+function admitExactParagraphs(raw: string, paragraphs: readonly string[]) {
   const state = applyConversationA2UIFrame(null, raw, draftId);
   if (state?.status !== 'ready' || !state.root) return undefined;
   const expected = paragraphs;
@@ -59,4 +64,52 @@ export function conversationA2UIProse(answer: string) {
   )
     return undefined;
   return paragraphs;
+}
+
+/** A small, explicit provider choice. List content comes only from the accepted answer. */
+export const answerLayoutSchema = {
+  type: 'string',
+  enum: ['plain', 'list'],
+  description:
+    'For completed ordinary replies, choose list when multiple distinct items are clearer as a list; otherwise choose plain. ' +
+    'For list, write one item per line or paragraph, without markup, manual bullets, numbering, a list heading, or duplicated prose. ' +
+    'Keep needed context and qualifications; use plain if items cannot stand alone.',
+};
+
+export function admitModelChosenConversationList(
+  layout: unknown,
+  answer: string,
+): ConversationA2UINode | undefined {
+  if (layout !== 'list' || answer.length > 8_192) return undefined;
+  const paragraphs = answer.split(/\n\n?/u);
+  if (
+    paragraphs.length < 2 ||
+    paragraphs.length > 12 ||
+    paragraphs.some(paragraph => !conversationA2UIProse(paragraph))
+  )
+    return undefined;
+  const text = paragraphs.map((paragraph, index) => ({
+    id: `item${index}`,
+    component: 'Text',
+    text: paragraph,
+  }));
+  return admitExactParagraphs(
+    JSON.stringify({
+      version: '1.0',
+      createSurface: {
+        surfaceId: draftId,
+        catalogId: conversationA2UICatalog,
+        components: [
+          { id: 'root', component: 'Card', child: 'items' },
+          {
+            id: 'items',
+            component: 'List',
+            children: text.map(item => item.id),
+          },
+          ...text,
+        ],
+      },
+    }),
+    paragraphs,
+  );
 }

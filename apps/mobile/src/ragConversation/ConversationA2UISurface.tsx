@@ -43,7 +43,10 @@ function SurfaceNode({
   return (
     // A List flows inside the owning conversation scroller; no nested viewport
     // can trap scrolling or hide its child text from assistive technology.
-    <View style={node.component === 'Card' ? styles.card : styles.stack}>
+    <View
+      testID={node.component === 'List' ? 'conversation-a2ui-list' : undefined}
+      style={node.component === 'Card' ? styles.card : styles.stack}
+    >
       {node.children.map(child => (
         <SurfaceNode key={child.id} node={child} fontScale={fontScale} />
       ))}

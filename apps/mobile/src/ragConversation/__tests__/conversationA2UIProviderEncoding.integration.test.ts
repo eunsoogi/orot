@@ -13,12 +13,18 @@ import { conversationA2UICatalog } from '../conversationA2UI';
 const evidence = { items: [], coverage: [], conflicts: [] };
 const plainMarkdown = '**천만에요.**';
 const plainAnswer = '천만에요.';
-const envelope = (answer: string, a2ui?: string) => ({
+const fruitAnswer = '사과\n배\n포도';
+const envelope = (
+  answer: string,
+  a2ui?: string,
+  answerLayout?: string,
+) => ({
   type: 'result',
   value: {
     answerKind: 'conversation',
     answer,
     ...(a2ui !== undefined ? { a2ui } : {}),
+    ...(answerLayout !== undefined ? { answerLayout } : {}),
   },
   citations: [],
 });
@@ -31,11 +37,14 @@ const exactSurface = JSON.stringify({
   },
 });
 
-function options(provider: ReturnType<typeof createChatGPTPlanProvider>) {
+function options(
+  provider: ReturnType<typeof createChatGPTPlanProvider>,
+  question = '고마워요',
+) {
   const { options: sample } = fixture();
   return {
     ...sample,
-    question: '고마워요',
+    question,
     loadCurrentEvidence: async () => ({ batch: evidence, chunks: [] }),
     workflow: {
       ...sample.workflow,
@@ -49,12 +58,12 @@ test.each([
   ['native model', 'on-device'],
   ['private cloud model', 'private-cloud-compute'],
 ] as const)(
-  '%s compiles v20 to a genuinely optional native string',
+  '%s compiles the required layout enum and returns a verified list',
   async (_name, route) => {
     const captured: ReturnType<typeof serializeAppleRequest>[] = [];
     const response = {
       text: '',
-      structuredOutput: envelope(plainMarkdown),
+      structuredOutput: envelope(fruitAnswer, undefined, 'list'),
       toolCalls: [],
       finishReason: 'complete' as const,
     };
@@ -75,11 +84,17 @@ test.each([
       },
       route,
     );
-    const outcome = await runRagConversationTurn(options(provider));
-    expect(outcome).toEqual({
+    const outcome = await runRagConversationTurn(
+      options(provider, '과일 세 가지를 예로 들어 주세요.'),
+    );
+    expect(outcome).toMatchObject({
       status: 'answer',
-      answer: plainMarkdown,
+      answer: fruitAnswer,
       citations: [],
+      a2uiPresentation: {
+        component: 'Card',
+        children: [{ component: 'List' }],
+      },
     });
     expect(captured).toHaveLength(1);
     expect(captured[0]?.nativeResponseSchema).toMatchObject({
@@ -90,10 +105,10 @@ test.each([
           schema: expect.objectContaining({
             properties: expect.arrayContaining([
               expect.objectContaining({
-                name: 'a2ui',
-                optional: true,
-                schema: { kind: 'string' },
-                description: expect.stringContaining('orot:response:draft'),
+                name: 'answerLayout',
+                optional: false,
+                schema: { kind: 'enum', values: ['plain', 'list'] },
+                description: expect.stringContaining('distinct items'),
               }),
             ]),
           }),
@@ -105,6 +120,7 @@ test.each([
 
 test.each([
   ['keeps legacy Markdown fallback', envelope(plainMarkdown, '{'), undefined],
+  ['admits the typed list choice', envelope(fruitAnswer, undefined, 'list'), 'Card'],
   ['admits verified layout', envelope(plainAnswer, exactSurface), 'Text'],
 ])(
   'ChatGPT text encoder %s without a second request',
@@ -137,7 +153,7 @@ test.each([
     expect(packets).toHaveLength(1);
     expect(packets[0]).not.toHaveProperty('responseFormat');
     expect(JSON.stringify(packets[0]?.messages)).toContain(
-      'orot:response:draft',
+      'answerLayout',
     );
     expect(outcome).toMatchObject({
       status: 'answer',

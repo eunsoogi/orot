@@ -2,6 +2,7 @@ import { withLegacyConversationSchema } from './conversationLegacySchema';
 import {
   ragConversationTask as currentTask,
   conversationTaskV19,
+  conversationTaskV20,
   proactiveConversationTaskV16,
   recordFirstConversationTaskV17,
   modelRoutedConversationTaskV18,
@@ -28,6 +29,8 @@ export function restoreConversationTask(
 ): typeof ragConversationTask | undefined {
   if (identity.taskType !== ragConversationTask.taskType) return undefined;
   if (identity.taskVersion === currentTask.taskVersion) return currentTask;
+  if (identity.taskVersion === conversationTaskV20.taskVersion)
+    return conversationTaskV20;
   if (identity.taskVersion === conversationTaskV19.taskVersion)
     return conversationTaskV19;
   if (identity.taskVersion === modelRoutedConversationTaskV18.taskVersion)
