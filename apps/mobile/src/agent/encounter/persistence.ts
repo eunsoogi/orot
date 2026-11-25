@@ -12,7 +12,8 @@ import {
 } from '@orot/agent-runtime';
 import type { EncounterApproval, EncounterPending } from '@orot/agent-runtime';
 import type { RecordRepository } from '@orot/storage';
-import type { readLongTranscriptReview } from './longTranscriptReviewRead';
+import { readLongTranscriptReview } from './longTranscriptReviewRead';
+import { validateLongEncounterCandidates } from './validateLongEncounterCandidates';
 import { readEncounterTranscript } from './transcript';
 import { encounterConflicts } from './conflicts';
 import { requireCurrentEncounterReviewSession } from './reviewSession';
@@ -51,8 +52,12 @@ export async function persistEncounterApproval(
         encounterCanonical(pending.segments)
     )
       throw new Error('Transcript changed before approval could commit.');
-    validateEncounterCandidates(pending.candidates, transcript);
-    validateEncounterCandidates(approval.candidates, transcript);
+    const validateCandidates =
+      readLong === readLongTranscriptReview
+        ? validateLongEncounterCandidates
+        : validateEncounterCandidates;
+    validateCandidates(pending.candidates, transcript);
+    validateCandidates(approval.candidates, transcript);
     const receiptKey =
       'encounter-approval:' + encodeURIComponent(pending.threadId);
     const receipt = await sql.execute(

@@ -19,6 +19,10 @@ export const encounterReviewCopyKo = {
   'encounterReview.saving': '검토한 내용을 저장하고 있어요.',
   'encounterReview.pending':
     '근거와 충돌을 확인하고 저장할 후보를 선택해 주세요.',
+  'encounterReview.candidatePage':
+    '후보 {first}–{last} / {total} · {selected}개 선택',
+  'encounterReview.previousCandidates': '이전 후보',
+  'encounterReview.nextCandidates': '다음 후보',
   'encounterReview.empty': '찾은 후보가 없어요. 건강 기록은 저장되지 않았어요.',
   'encounterReview.saved': '검토한 기록을 저장했어요.',
   'encounterReview.denied': '후보를 거절했어요. 건강 기록은 저장되지 않았어요.',
