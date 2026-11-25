@@ -6,6 +6,7 @@ import {
   type ConversationA2UIState,
 } from './conversationA2UI';
 import { draftA2UISurfaceId } from './conversationA2UIPresentation';
+import { lowerConversationRepeatedChildren } from './conversationA2UIRepeatedChildren';
 import { completeConversationSkeletonFrames } from './conversationA2UIStreamFrames';
 
 function container(node: ConversationA2UINode): ConversationA2UINode {
@@ -17,9 +18,21 @@ function container(node: ConversationA2UINode): ConversationA2UINode {
 /** Only geometry escapes; frame state, ids, prose and bindings do not. */
 export function projectConversationA2UISkeleton(
   raw: string,
+  allowRepeatedChildren = false,
 ): ConversationLayoutSkeleton | undefined {
-  const frames = completeConversationSkeletonFrames(raw);
-  if (!frames?.length) return undefined;
+  const streamed = completeConversationSkeletonFrames(raw);
+  if (
+    !streamed?.length ||
+    streamed.some(frame => frame.length > conversationA2UIFrameLimit) ||
+    streamed.reduce((used, frame) => used + frame.length, 0) >
+      2 * conversationA2UIFrameLimit
+  )
+    return undefined;
+  // Materialization here is scratch-only: the returned hint contains only
+  // neutral geometry. The terminal validator owns all visible answer text.
+  const frames = allowRepeatedChildren
+    ? (lowerConversationRepeatedChildren(streamed) ?? streamed)
+    : streamed;
   let surface: ConversationA2UIState | null = null;
   let used = 0;
   for (const frame of frames) {

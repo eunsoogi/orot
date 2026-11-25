@@ -1,16 +1,26 @@
-import type { TaskResponderContract } from '@orot/agent-runtime';
-import { projectFinalRepeatedChildren } from './conversationA2UIRepeatedChildren';
+import type {
+  TaskResponderContract,
+  TaskResponderInput,
+} from '@orot/agent-runtime';
+import { lowerConversationRepeatedChildren } from './conversationA2UIRepeatedChildren';
+import { projectConversationA2UISkeleton } from './conversationA2UISkeleton';
 import type { GroundedRagAnswer } from './task';
 import { isObject } from './taskHistory';
 
 /** v37 adds one closed terminal template form and retains the old streamed
- * skeleton and exact answer/evidence validator. */
+ * geometry-only stream boundary and exact answer/evidence validator. */
 export function withFinalConversationRepeatedChildren(
   previous: TaskResponderContract<GroundedRagAnswer>,
+  eligible: (input: TaskResponderInput) => boolean,
 ): TaskResponderContract<GroundedRagAnswer> {
   return {
     ...previous,
     taskVersion: '37',
+    projectStreamedLayout(raw, input) {
+      return eligible(input)
+        ? projectConversationA2UISkeleton(raw, true)
+        : undefined;
+    },
     createResultSchema(input) {
       const schema =
         previous.createResultSchema?.(input) ?? previous.resultSchema;
@@ -33,7 +43,7 @@ export function withFinalConversationRepeatedChildren(
     },
     validateResult(value, input) {
       if (!isObject(value)) return previous.validateResult(value, input);
-      const projected = projectFinalRepeatedChildren(value.a2uiFrames);
+      const projected = lowerConversationRepeatedChildren(value.a2uiFrames);
       return previous.validateResult(
         projected ? { ...value, a2uiFrames: projected } : value,
         input,

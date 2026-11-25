@@ -247,4 +247,5 @@ export const {
   weightedTask,
   horizontalListTask,
   alignedVerticalListTask,
+  allowsOrdinaryA2UI,
 );

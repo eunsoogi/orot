@@ -47,8 +47,8 @@ grounding, permissions and navigation keep their existing pathways.
   the display-only archive restores each Text leaf from the same durable
   accepted answer; unsupported or corrupt layout falls back to ordinary text.
   The archive preserves the old paragraph boundary and can also retain an
-  accepted line-based arrangement. Catalog arrangements containing tabs or static leaves use a distinct version; tab titles come from the same stored answer and open at the first panel. Provisional frames do not paint during
-  model generation. No new endpoint, request, or transfer is introduced.
+  accepted line-based arrangement. Catalog arrangements containing tabs or static leaves use a distinct version; tab titles come from the same stored answer and open at the first panel. Provisional frames do not paint model content during
+  generation. No new endpoint, request, or transfer is introduced.
 
 ### Bounded proportional row children
 
@@ -108,5 +108,13 @@ The terminal parser materializes up to 12 items and 64 total graph nodes under
 derived stable IDs, removes the original data model, and runs the same exact
 accepted-prose validation as a static layout. Only that ordered tree can be
 rendered or archived. A foreign frame, mismatched answer, or unsupported
-template falls back to original prose. This increment does not enable
-streamed template publication, arbitrary data-bound widgets, or sendDataModel.
+template falls back to original prose.
+
+For the owning ChatGPT Plan live reply, complete repeated-child frames can
+update a neutral placeholder before the final answer. An accepted scratch
+graph contributes only its bounded row or stack geometry, never model prose,
+IDs, bindings, or interactive controls. Losing ownership removes the hint.
+The existing final answer and evidence checks still own publication. Other
+providers do not acquire a new stream path, and arbitrary data-bound widgets
+and sendDataModel remain unsupported.
+
