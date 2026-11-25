@@ -5,7 +5,7 @@ import XCTest
 
 /// A synthetic queued permission response must not make an obsolete OS notification authoritative.
 extension RealtimeVoiceLifecycleTests {
-    func testStaleActiveNotificationCannotOpenOrRetirePendingLiveCall() async throws {
+    func testStaleActiveNotificationCannotOpenOrRetirePendingLiveCall() async {
         let audio = Audio(), socket = Socket()
         var foreground = false
         let ownership = AudioSessionOwnership(configure: { _, _, _ in }, setActive: { _ in })
