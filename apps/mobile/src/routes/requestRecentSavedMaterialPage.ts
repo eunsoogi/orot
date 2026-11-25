@@ -143,8 +143,7 @@ export async function requestRecentSavedMaterialPage<Row extends RecentPageRow>(
     const response = await read().catch(async error => {
       // Do not retain the expired snapshot or retry schema/permission errors.
       // The current protection and route must admit a fresh first page.
-      if (before || !(error instanceof BoundReadRevisionChanged))
-        throw error;
+      if (before || !(error instanceof BoundReadRevisionChanged)) throw error;
       if (!(await verify()) || !current()) throw error;
       return read();
     });

@@ -31,7 +31,6 @@ jest.mock('../recentSourceReader', () => ({
   readSelectedRecentRecording: jest.fn(),
 }));
 
-
 test.each(['settings Back', 'ordinary foreground'] as const)(
   'reopens a fresh protected snapshot on a revision change after %s',
   async journey => {
