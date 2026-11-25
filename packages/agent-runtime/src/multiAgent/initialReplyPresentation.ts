@@ -14,11 +14,9 @@ export function readInitialReplyPresentation(
       typeof value.text !== 'string'
     )
       return undefined;
-    const onlyLayout = Object.keys(value).every(key => key === 'text' || key === 'layout');
-    return {
-      text: value.text,
-      ...(onlyLayout && 'layout' in value && value.layout === 'card' ? { layout: 'card' } : {}),
-    };
+    const onlyLayout = Object.keys(value).every((key) => key === 'text' || key === 'layout');
+    const isCard = onlyLayout && 'layout' in value && value.layout === 'card';
+    return isCard ? { text: value.text, layout: 'card' } : { text: value.text };
   } catch {
     return undefined;
   }

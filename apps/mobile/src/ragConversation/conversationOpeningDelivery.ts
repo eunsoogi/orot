@@ -3,6 +3,8 @@ import type { ReviewedOpening } from '../storage/conversationReviewedOpeningStor
 import type { ConversationSession } from './conversationSessionTypes';
 import type { createConversationTurnRetention } from './conversationTurnRetention';
 
+type LiveReviewedOpening = ReviewedOpening & { readonly presentation?: 'card' };
+
 /** Review success is authoritative for provider receipts, not for a successful local write. */
 export function conversationOpeningDelivery(input: {
   pending: () => ConversationSession['pendingMessage'];
@@ -46,9 +48,7 @@ export function conversationOpeningDelivery(input: {
   return {
     /** New reviewed producer capability. Raw/preview stream tokens never get a durable write. */
     async onReviewedOpening(
-      { callId, text, presentation }: ReviewedOpening & {
-        readonly presentation?: 'card';
-      },
+      { callId, text, presentation }: LiveReviewedOpening,
       signal: AbortSignal,
     ) {
       const value = { callId, text };
