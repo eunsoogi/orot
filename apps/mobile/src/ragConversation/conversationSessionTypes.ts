@@ -192,6 +192,7 @@ export interface ConversationSession {
   readonly title: string;
   readonly createdAt: string;
   readonly draft: string;
+  readonly draftEditRevision?: number;
   readonly messages: readonly DisplayMessage[];
   readonly pendingMessage: {
     readonly sourceOwner?: import('../aiFeatures/integration/coldConversationSourceResolvers').ColdConversationSourceOwner;

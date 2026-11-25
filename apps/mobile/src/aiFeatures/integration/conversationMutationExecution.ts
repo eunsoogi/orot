@@ -1,3 +1,4 @@
+import { conversationHealthSummaryBookmarkAction } from './conversationHealthSummaryBookmarkAction';
 import { APPLE_PROVIDER_ID } from '@orot/provider-apple';
 import { conversationAnswerMemoryAction } from './conversationAnswerMemoryAction';
 import { conversationHistoryAction } from './conversationHistoryAction';
@@ -33,9 +34,12 @@ export function conversationMutationExecution(input: {
     history,
   } = input;
   const admittedQuestions = history.priorTurns.map(turn => turn.question);
+  const localModel =
+    selected.provider.id === APPLE_PROVIDER_ID && !selected.remoteProcessing;
+  const summaryBookmark =
+    localModel && conversationHealthSummaryBookmarkAction(observer);
   const answerMemory =
-    selected.provider.id === APPLE_PROVIDER_ID &&
-    !selected.remoteProcessing &&
+    localModel &&
     conversationAnswerMemoryAction({
       data,
       observer,
@@ -60,6 +64,7 @@ export function conversationMutationExecution(input: {
         admittedQuestions,
       }),
       ...(answerMemory ? answerMemory.actions : []),
+      ...(summaryBookmark ? summaryBookmark.actions : []),
     ],
   };
   // Photo turns cannot silently use OCR as a user-authored history statement.
@@ -72,6 +77,9 @@ export function conversationMutationExecution(input: {
           sessionVersion: observer!.retentionSession!.version,
         })
       : execution,
-    memorySaved: () => Boolean(answerMemory && answerMemory.committed()),
+    memorySaved: () =>
+      summaryBookmark && summaryBookmark.committed()
+        ? ('health-summary' as const)
+        : Boolean(answerMemory && answerMemory.committed()),
   };
 }
