@@ -3,74 +3,163 @@ import Foundation
 import XCTest
 
 extension RealtimeVoiceLifecycleTests {
-    func assertConnectingCueFencesCaptureAndDoesNotRepeatOnResume() async throws {
-        let cue = HeldConnectingCue(), socket = Socket(), audio = Audio()
-        let call = connectingFixture(audio, socket, cue)
+    func assertReadyCueWaitsForCaptureAndDoesNotRepeatOnResume() async throws {
+        let audio = HeldReadyCueAudio(), socket = Socket()
+        let system = HeldReadyCueSystemCall()
+        let call = readyCueFixture(audio, socket, system: system)
         await opening(call, socket: socket)
-        XCTAssertEqual(cue.callbacks.count, 1)
-        XCTAssertTrue(socket.sent.isEmpty)
+        XCTAssertEqual(socket.sent.compactMap { $0["type"] as? String }, ["session.start"])
+        XCTAssertTrue(audio.cueCompletions.isEmpty)
+        socket.received?(started())
         socket.received?(started())
         XCTAssertEqual(audio.starts, 0)
-        let finish = try XCTUnwrap(cue.callbacks.first)
-        finish(true); finish(true)
-        XCTAssertEqual(socket.sent.count, 1)
-        socket.received?(started())
+        XCTAssertTrue(audio.cueCompletions.isEmpty)
+        try system.prepare?()
+        XCTAssertEqual(audio.starts, 0)
+        system.activate?()
+        system.activate?()
         XCTAssertEqual(audio.starts, 1)
+        XCTAssertEqual(audio.cueCompletions.count, 1)
+        XCTAssertFalse(call.ready)
+
+        audio.input?(Data([0, 0]))
+        await drainCueCallbacks()
+        XCTAssertEqual(socket.sent.compactMap { $0["type"] as? String }, ["session.start"])
+        let finish = try XCTUnwrap(audio.cueCompletions.first)
+        finish(); finish()
+        XCTAssertTrue(call.ready)
+        audio.input?(Data([0, 0]))
+        await drainCueCallbacks()
+        XCTAssertEqual(socket.sent.last?["type"] as? String, "session.input_audio.append")
+
         try call.pause("call")
-        let resumed = expectation(description: "synthetic resume request")
+        let requested = expectation(description: "unmute sent on same synthetic session")
         socket.sentEvent = { event in
             if event["type"] as? String == "session.input_audio.unmute" {
-                resumed.fulfill()
+                requested.fulfill()
             }
         }
         call.resume("call") { _ in }
-        await fulfillment(of: [resumed], timeout: 1)
-        XCTAssertEqual(cue.callbacks.count, 1)
+        await fulfillment(of: [requested], timeout: 1)
+        let resumeID = try XCTUnwrap(socket.sent.last?["event_id"] as? String)
+        socket.received?(["type": "session.input_audio.unmuted", "client_event_id": resumeID])
+        try system.prepare?()
+        system.activate?()
+        XCTAssertEqual(audio.starts, 2)
+        XCTAssertEqual(audio.cueCompletions.count, 1)
+        XCTAssertTrue(call.ready)
         try call.stop("call")
     }
 
-    func assertConnectingCueWaitsForAdmissionAndLateStopCannotSendOnNextAttempt() async throws {
-        let cue = HeldConnectingCue(), socket = Socket(), audio = Audio()
+    func assertReadyCueDeniesFailedAndRetiredAttempts() async throws {
+        let audio = HeldReadyCueAudio(), socket = Socket()
+        audio.startFails = true
         var allowed = false
-        let call = connectingFixture(audio, socket, cue, allowed: { allowed })
-        let denied = expectation(description: "permission denied")
+        let call = readyCueFixture(audio, socket, allowed: { allowed })
+        let denied = expectation(description: "permission denied before transport")
         call.open("call", model: "gpt-live-1.1", key: "synthetic", language: "auto") { _ in denied.fulfill() }
         await fulfillment(of: [denied], timeout: 1)
-        XCTAssertTrue(cue.callbacks.isEmpty)
         XCTAssertEqual(socket.opens, 0)
+        XCTAssertTrue(audio.cueCompletions.isEmpty)
         allowed = true
+
         await opening(call, socket: socket)
-        let stale = try XCTUnwrap(cue.callbacks.first)
+        socket.received?(started())
+        XCTAssertTrue(audio.cueCompletions.isEmpty)
+        XCTAssertFalse(call.ready)
+        XCTAssertNil(call.id)
+
+        audio.startFails = false
+        await opening(call, socket: socket)
+        socket.received?(started())
+        let stale = try XCTUnwrap(audio.cueCompletions.first)
         try call.stop("call")
-        XCTAssertGreaterThan(cue.cancellations, 0)
-        await opening(call, socket: socket, id: "next")
-        XCTAssertEqual(cue.callbacks.count, 2)
-        stale(true)
-        XCTAssertTrue(socket.sent.isEmpty)
-        let current = try XCTUnwrap(cue.callbacks.last)
-        current(true)
-        XCTAssertEqual(socket.sent.count, 1)
-        try call.stop("next")
+        await opening(call, socket: socket)
+        socket.received?(started())
+        XCTAssertEqual(audio.cueCompletions.count, 2)
+        stale()
+        XCTAssertFalse(call.ready)
+        try XCTUnwrap(audio.cueCompletions.last)()
+        XCTAssertTrue(call.ready)
+        try call.stop("call")
+
+        await opening(call, socket: socket)
+        socket.received?(started())
+        let stalled = try XCTUnwrap(audio.cueCompletions.last)
+        try XCTUnwrap(call.timer).fire()
+        stalled()
+        XCTAssertFalse(call.ready)
+        XCTAssertNil(call.id)
+        XCTAssertEqual(socket.sent.last?["type"] as? String, "session.start")
+
+        let fence = RealtimeVoiceCueCaptureFence()
+        XCTAssertFalse(fence.permits(hostTime: 100))
+        fence.open(after: 150)
+        XCTAssertFalse(fence.permits(hostTime: nil))
+        XCTAssertFalse(fence.permits(hostTime: 100))
+        XCTAssertFalse(fence.permits(hostTime: 150))
+        XCTAssertTrue(fence.permits(hostTime: 151))
     }
 
-    private func connectingFixture(_ audio: Audio, _ socket: Socket, _ cue: HeldConnectingCue,
-                                   allowed: @escaping () -> Bool = { true }) -> RealtimeVoiceCall
+    private func drainCueCallbacks() async {
+        let drained = expectation(description: "synthetic input callback dispatched")
+        DispatchQueue.main.async { drained.fulfill() }
+        await fulfillment(of: [drained], timeout: 1)
+    }
+
+    private func readyCueFixture(_ audio: HeldReadyCueAudio, _ socket: Socket,
+                                 system: VoiceSystemCallPort? = nil, allowed: @escaping () -> Bool = { true }) -> RealtimeVoiceCall
     {
         RealtimeVoiceCall(audio: audio, socket: socket,
                           ownership: AudioSessionOwnership(configure: { _, _, _ in }, setActive: { _ in }),
-                          connectingCue: cue, permission: { $0(allowed()) }, foreground: { true }, emit: { _, _ in })
+                          systemCall: system, permission: { $0(allowed()) }, foreground: { true }, emit: { _, _ in })
     }
 }
 
-private final class HeldConnectingCue: RealtimeConnectingCuePort {
-    var callbacks: [(Bool) -> Void] = []
-    var cancellations = 0
+private final class HeldReadyCueAudio: RealtimeVoiceReadyCueAudioPort {
+    enum Failure: Error { case synthetic }
+    var startFails = false
+    var starts = 0
+    var isDrained = true
+    var drained: (() -> Void)?
+    var input: ((Data) -> Void)?
+    var cueCompletions: [() -> Void] = []
 
-    func play(ownership _: AudioSessionOwnership, token _: AudioSessionOwnership.Token, finished: @escaping (Bool) -> Void) {
-        callbacks.append(finished)
+    func start(input: @escaping (Data) -> Void, failure _: @escaping () -> Void) throws {
+        guard !startFails else { throw Failure.synthetic }
+        starts += 1
+        self.input = input
     }
 
-    func cancel() {
-        cancellations += 1
+    func start(input: @escaping (Data) -> Void, failure: @escaping () -> Void,
+               playReadyCue: Bool, ready: @escaping () -> Void) throws
+    {
+        try start(input: input, failure: failure)
+        if playReadyCue {
+            cueCompletions.append(ready)
+        } else {
+            ready()
+        }
+    }
+
+    func append(_: Data) throws {}
+    func cancel() -> Int { 0 }
+    func stop() { input = nil }
+}
+
+private final class HeldReadyCueSystemCall: VoiceSystemCallPort {
+    var prepare: (() throws -> Void)?
+    var activate: (() -> Void)?
+
+    func start(owner _: UUID, prepare: @escaping () throws -> Void, activated: @escaping () -> Void,
+               ended _: @escaping () -> Void, muted _: @escaping () -> Void) throws
+    {
+        self.prepare = prepare
+        activate = activated
+    }
+
+    func end(owner _: UUID) {
+        prepare = nil
+        activate = nil
     }
 }

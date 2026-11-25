@@ -78,9 +78,10 @@ extension RealtimeVoiceCall {
     /// Cancel local playback only. Live does not expose the legacy response/truncate commands.
     func interrupt() {
         guard id != nil else { return }
+        if audioStarting { fail(); return }
         retireManagedResponses()
         _ = audio.cancel()
-        if !paused {
+        if ready, !paused {
             state("listening")
         }
     }
