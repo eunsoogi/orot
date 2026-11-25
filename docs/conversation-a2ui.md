@@ -72,3 +72,14 @@ Fresh Conversation task v31 adds literal cross-axis alignment on vertical Lists:
 `start`, `center`, `end`, or `stretch`. Horizontal lists retain their existing
 behavior. The app still owns accessibility, responsive layout, all reading order,
 and the exact accepted answer. Archive version 7 retains layout tokens only.
+
+
+Fresh ordinary Conversation task v32 also accepts one read-only Basic Catalog
+`Modal` in a single static final `createSurface`. Its literal `trigger` and
+`content` are distinct existing component IDs; the trigger is a body Text
+paragraph and both branches retain the original answer order. A tap opens an
+app-owned sheet only for the active completed message and currently available
+native protected data. Dismissal, losing the message or screen, and native
+protection loss close it. No protocol action or provider call is emitted. Older
+task contracts still reject Modal, and the owned archive stores the same
+verified prose as inline layout and cannot reopen a sheet.

@@ -1,5 +1,11 @@
+import { ConversationA2UITabs } from './ConversationA2UITabs';
+import {
+  ConversationA2UIModal,
+  ConversationA2UIModalRoot,
+} from './ConversationA2UIModal';
+import { conversationA2UIModalFor } from './conversationA2UIModalWire';
 import { useCallback, useContext, useState } from 'react';
-import { Pressable, useWindowDimensions, View } from 'react-native';
+import { useWindowDimensions, View } from 'react-native';
 import { ConversationA2UIHorizontalList } from './ConversationA2UIHorizontalList';
 import { AppText } from '../layout/AppText';
 import { AppSymbol } from '../layout/AppSymbol';
@@ -41,7 +47,9 @@ export function ConversationA2UISurface({
   );
   return (
     <View testID={testID} style={styles.surface}>
-      <SurfaceNode key={root.id} node={root} fontScale={fontScale} />
+      <ConversationA2UIModalRoot.Provider value={root}>
+        <SurfaceNode key={root.id} node={root} fontScale={fontScale} />
+      </ConversationA2UIModalRoot.Provider>
       {draft && owner && surface ? (
         <ConversationA2UILocalDraftControls
           approved={draft}
@@ -63,6 +71,14 @@ function SurfaceNode({
   readonly node: ConversationA2UINode;
   readonly fontScale: number;
 }) {
+  const modal = conversationA2UIModalFor(node);
+  if (modal)
+    return (
+      <ConversationA2UIModal
+        trigger={<SurfaceNode node={modal.children[0]} fontScale={fontScale} />}
+        panel={<SurfaceNode node={modal.children[1]} fontScale={fontScale} />}
+      />
+    );
   if (node.component === 'Divider') {
     return (
       <View
@@ -86,7 +102,12 @@ function SurfaceNode({
     );
   }
   if (node.component === 'Tabs') {
-    return <SurfaceTabs tabs={node.tabs} fontScale={fontScale} />;
+    return (
+      <ConversationA2UITabs
+        tabs={node.tabs}
+        child={child => <SurfaceNode node={child} fontScale={fontScale} />}
+      />
+    );
   }
   if (node.component === 'Text') {
     return (
@@ -207,43 +228,6 @@ function SurfaceRow({
           </View>
         ),
       )}
-    </View>
-  );
-}
-
-function SurfaceTabs({
-  tabs,
-  fontScale,
-}: {
-  readonly tabs: Extract<ConversationA2UINode, { component: 'Tabs' }>['tabs'];
-  readonly fontScale: number;
-}) {
-  const [selection, setSelection] = useState<string | undefined>(undefined);
-  const selected = tabs.find(tab => tab.child.id === selection) ?? tabs[0];
-  if (!selected) return null;
-  // Selection changes only local presentation. No callback leaves this surface.
-  return (
-    <View style={styles.stack}>
-      <View accessibilityRole="tablist" style={styles.tabList}>
-        {tabs.map(tab => (
-          <Pressable
-            key={tab.child.id}
-            accessibilityRole="tab"
-            accessibilityState={{ selected: tab === selected }}
-            onPress={() => setSelection(tab.child.id)}
-            style={
-              tab === selected ? [styles.tab, styles.selectedTab] : styles.tab
-            }
-          >
-            <AppText allowFontScaling>{tab.title}</AppText>
-          </Pressable>
-        ))}
-      </View>
-      <SurfaceNode
-        key={selected.child.id}
-        node={selected.child}
-        fontScale={fontScale}
-      />
     </View>
   );
 }
