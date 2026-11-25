@@ -125,6 +125,9 @@ test('owner switch aborts the old read and rejects its delayed result', async ()
       onBack={jest.fn()}
     />,
   );
+  await fireEvent(screen.getByTestId('ai-feature-source-heading'), 'layout', {
+    nativeEvent: { layout: { x: 0, y: 0, width: 280, height: 18 } },
+  });
   const old = oldSignal;
   const oldFinish = finish;
   readCold.mockResolvedValueOnce({ status: 'changed' });

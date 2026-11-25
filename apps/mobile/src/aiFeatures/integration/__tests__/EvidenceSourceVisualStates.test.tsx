@@ -156,6 +156,9 @@ describe('source detail visual-state content', () => {
       />,
     );
     expect(screen.getByTestId('ai-feature-source-loading')).toBeTruthy();
+    await fireEvent(screen.getByTestId('ai-feature-source-heading'), 'layout', {
+      nativeEvent: { layout: { x: 0, y: 0, width: 280, height: 18 } },
+    });
     await act(async () => resolve({ status: 'unavailable' }));
     expect(screen.getByTestId('ai-feature-source-unavailable')).toBeTruthy();
     await fireEvent.press(screen.getByTestId('ai-feature-source-retry'));

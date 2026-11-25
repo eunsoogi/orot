@@ -77,11 +77,19 @@ test('bounded fallback starts once if the header receipt is missing, but never a
   await act(() => jest.advanceTimersByTime(160));
   expect(readSource).not.toHaveBeenCalled();
 
-  await mount();
+  const view = await mount();
   expect(screen.getByTestId(loading)).toBeVisible();
   await act(() => jest.advanceTimersByTime(159));
   expect(readSource).not.toHaveBeenCalled();
   await act(() => jest.advanceTimersByTime(1));
   expect(readSource).toHaveBeenCalledTimes(1);
   expect(screen.getByTestId('ai-feature-source-missing')).toBeVisible();
+  await view.rerender(
+    <EvidenceSourceDetailScreen
+      reference={{ ...reference, sourceId: 'replacement' }}
+      readSource={readSource}
+      onBack={jest.fn()}
+    />,
+  );
+  expect(readSource).toHaveBeenCalledTimes(2);
 });

@@ -34,7 +34,7 @@ export function useEvidenceSourceDetailRead({
   attempt,
 }: Request) {
   const timing = useRef<ReturnType<typeof beginSourceOpenTiming>>(undefined);
-  const seenHeader = useRef(false);
+  const firstPresentationAdmitted = useRef(false);
   const reveal = useRef<() => void>(() => {});
   const reader = sourceOwner ? readColdSource : readSource;
   const [result, setResult] = useState<{
@@ -54,13 +54,16 @@ export function useEvidenceSourceDetailRead({
     );
     timing.current = observation;
     setResult(undefined);
-    const readable = seenHeader.current
+    const readable = firstPresentationAdmitted.current
       ? undefined
       : waitForSourcePresentation(controller.signal, localHeaderFallbackMs);
     if (readable) reveal.current = readable.shown;
     const load = async () => {
       try {
         if ((readable && !(await readable.ready)) || !active()) return;
+        // The fallback also admits this mounted scaffold; retries and source
+        // switches do not wait for a layout event that may never repeat.
+        firstPresentationAdmitted.current = true;
         const state = sourceOwner
           ? await (readColdSource?.(
               sourceOwner,
@@ -102,7 +105,7 @@ export function useEvidenceSourceDetailRead({
         ? result.state
         : pending,
     onHeaderLayout() {
-      seenHeader.current = true;
+      firstPresentationAdmitted.current = true;
       timing.current?.mark('source_open_detail_header');
       reveal.current();
     },
