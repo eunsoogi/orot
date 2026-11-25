@@ -2,10 +2,12 @@ import { isFinalConversationCaption } from './conversationA2UICaptionTask';
 import { ConversationA2UITabs } from './ConversationA2UITabs';
 import {
   ConversationA2UIModal,
+  ConversationA2UIModalAdmission,
   ConversationA2UIModalRoot,
 } from './ConversationA2UIModal';
+import { createConversationA2UIModalArbiter } from './conversationA2UIModalArbiter';
 import { conversationA2UIModalFor } from './conversationA2UIModalWire';
-import { useCallback, useContext, useState } from 'react';
+import { useCallback, useContext, useMemo, useState } from 'react';
 import { useWindowDimensions, View } from 'react-native';
 import { ConversationA2UIHorizontalList } from './ConversationA2UIHorizontalList';
 import { AppText } from '../layout/AppText';
@@ -39,6 +41,7 @@ export function ConversationA2UISurface({
   readonly testID?: string;
 }) {
   const { fontScale } = useWindowDimensions();
+  const modalAdmission = useMemo(createConversationA2UIModalArbiter, [root]);
   const owner = useContext(ConversationA2UILocalDraftOwner);
   const draft = conversationA2UILocalDraftFor(root);
   const surface = useOwnedConversationA2UIStamp(owner, root, !!draft);
@@ -49,7 +52,9 @@ export function ConversationA2UISurface({
   return (
     <View testID={testID} style={styles.surface}>
       <ConversationA2UIModalRoot.Provider value={root}>
-        <SurfaceNode key={root.id} node={root} fontScale={fontScale} />
+        <ConversationA2UIModalAdmission.Provider value={modalAdmission}>
+          <SurfaceNode key={root.id} node={root} fontScale={fontScale} />
+        </ConversationA2UIModalAdmission.Provider>
       </ConversationA2UIModalRoot.Provider>
       {draft && owner && surface ? (
         <ConversationA2UILocalDraftControls

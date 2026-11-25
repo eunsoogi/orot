@@ -1,3 +1,4 @@
+import { withConversationA2UIModalPair } from './conversationA2UIModalPairTask';
 import {
   withComposedConversationSections,
   withFinalConversationRepeatedChildren,
@@ -45,6 +46,8 @@ export function versionedConversationMemoryTasks(
     conversationTaskV36,
     allowsOrdinaryA2UI,
   );
+  const conversationTaskV38 =
+    withComposedConversationSections(conversationTaskV37);
   return {
     conversationTaskV25,
     conversationTaskV26,
@@ -66,7 +69,8 @@ export function versionedConversationMemoryTasks(
       v35: conversationTaskV35,
       v36: conversationTaskV36,
       v37: conversationTaskV37,
+      v38: conversationTaskV38,
     },
-    ragConversationTask: withComposedConversationSections(conversationTaskV37),
+    ragConversationTask: withConversationA2UIModalPair(conversationTaskV38),
   };
 }
