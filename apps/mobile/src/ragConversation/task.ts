@@ -180,7 +180,6 @@ export const modelRoutedConversationTaskV18 = {
   taskVersion: '18',
   systemPrompt: `${recordFirstResponsePrompt} ${modelRoutedConversationTask.systemPrompt}`,
 };
-
 // Preserve the shipped v18 template contract for exact checkpoints. Only fresh
 // v19 turns can propose the separately enrolled authored-routine statement.
 export const conversationTaskV19 = {
@@ -241,6 +240,7 @@ export const {
   conversationTaskV29,
   conversationTaskV30,
   conversationTaskV31,
+  conversationTaskV32,
   ragConversationTask,
 } = versionedConversationMemoryTasks(
   conversationTaskV24,

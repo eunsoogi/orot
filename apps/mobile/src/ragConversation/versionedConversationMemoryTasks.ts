@@ -1,3 +1,4 @@
+import { withFinalConversationCaption } from './conversationA2UICaptionTask';
 import { withConversationA2UIModal } from './conversationA2UIModalTask';
 import type { TaskResponderContract } from '@orot/agent-runtime';
 import { withReplyPreferenceSpan } from './authoredReplyPreferenceSpan';
@@ -22,6 +23,7 @@ export function versionedConversationMemoryTasks(
     withReplyPreferenceSpan(alignedVerticalListTask, true),
     '31',
   );
+  const conversationTaskV32 = withConversationA2UIModal(conversationTaskV31);
   return {
     conversationTaskV25,
     conversationTaskV26,
@@ -36,6 +38,7 @@ export function versionedConversationMemoryTasks(
       '30',
     ),
     conversationTaskV31,
-    ragConversationTask: withConversationA2UIModal(conversationTaskV31),
+    conversationTaskV32,
+    ragConversationTask: withFinalConversationCaption(conversationTaskV32),
   };
 }
