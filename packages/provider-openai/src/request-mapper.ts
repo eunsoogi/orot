@@ -12,19 +12,24 @@ import type {
   ChatGPTPlanToolDefinition,
 } from './native-contract';
 
+import type { CompletedContinuation, CompletedContinuationCache } from './completed-continuation';
+
 const RESPONSE_ITEM_TYPES = new Set(['function_call', 'message', 'reasoning']);
+
+type PreparedRequest =
+  | {
+      readonly ok: true;
+      readonly value: ChatGPTPlanRequest;
+      readonly consumedContinuations: ReadonlyMap<string, CompletedContinuation>;
+      readonly withoutOpaque?: PreparedRequest;
+    }
+  | { readonly ok: false; readonly error: ProviderError };
 
 export function prepareRequest(
   model: string,
   request: LanguageModelRequest,
-  continuationsByCallID?: ReadonlyMap<string, readonly string[]>,
-):
-  | {
-      readonly ok: true;
-      readonly value: ChatGPTPlanRequest;
-      readonly consumedCallIDs: readonly string[];
-    }
-  | { readonly ok: false; readonly error: ProviderError } {
+  continuationsByCallID?: CompletedContinuationCache,
+): PreparedRequest {
   if (request.responseFormat) return unsupportedCapability('structured output');
   if (request.maxOutputTokens !== undefined) return unsupportedCapability('max output tokens');
   if (request.temperature !== undefined) return unsupportedCapability('temperature');
@@ -35,7 +40,7 @@ export function prepareRequest(
     return invalidRequest('Required tool selection needs tools.');
 
   const messages: ChatGPTPlanInputMessage[] = [];
-  const consumedCallIDs: string[] = [];
+  const consumedContinuations = new Map<string, CompletedContinuation>();
   for (const message of request.messages) {
     if (message.role === 'tool') {
       if (!message.toolCallId.trim())
@@ -47,7 +52,9 @@ export function prepareRequest(
     }
 
     if (message.role === 'assistant' && message.toolCalls?.length) {
-      const continuation = continuationFor(message.toolCalls, continuationsByCallID);
+      const content = textContent(message.content);
+      if (!content.ok) return { ok: false, error: content.error };
+      const continuation = continuationFor(content.value, message.toolCalls, continuationsByCallID);
       if (continuation) {
         // Replaying raw Responses items preserves provider context that normalized tool calls omit.
         for (const json of continuation.items) {
@@ -55,11 +62,11 @@ export function prepareRequest(
             return invalidRequest('A cached Responses item was invalid.');
           messages.push({ type: 'continuation_item', json });
         }
-        consumedCallIDs.push(...continuation.callIDs);
+        for (const call of message.toolCalls) consumedContinuations.set(call.id, continuation);
         continue;
       }
 
-      if (message.content) messages.push({ role: 'assistant', content: message.content });
+      if (content.value) messages.push({ role: 'assistant', content: content.value });
       for (const toolCall of message.toolCalls) {
         if (!toolCall.id.trim() || !toolCall.name.trim() || !isJsonObject(toolCall.arguments)) {
           return invalidRequest('A local function call was malformed.');
@@ -88,7 +95,12 @@ export function prepareRequest(
     ...(tools.value.length ? { tools: tools.value } : {}),
     ...(request.toolChoice ? { toolChoice: request.toolChoice } : {}),
   };
-  return { ok: true, value, consumedCallIDs };
+  return {
+    ok: true,
+    value,
+    consumedContinuations,
+    ...(consumedContinuations.size ? { withoutOpaque: prepareRequest(model, request) } : {}),
+  };
 }
 
 function mapTools(
@@ -120,20 +132,27 @@ function mapTools(
 }
 
 function continuationFor(
+  text: string,
   toolCalls: readonly ToolCall[],
-  continuationsByCallID: ReadonlyMap<string, readonly string[]> | undefined,
-): { readonly items: readonly string[]; readonly callIDs: readonly string[] } | undefined {
-  if (!continuationsByCallID || toolCalls.length === 0) return undefined;
-  const callIDs = toolCalls.map((toolCall) => toolCall.id);
-  const continuations = callIDs.map((callID) => continuationsByCallID.get(callID));
-  const first = continuations[0];
-  if (!first || continuations.some((items) => !items || !sameStrings(first, items)))
+  continuationsByCallID: CompletedContinuationCache | undefined,
+): CompletedContinuation | undefined {
+  if (!continuationsByCallID || !toolCalls.length) return undefined;
+  const record = continuationsByCallID.get(toolCalls[0]!.id);
+  // Identifiers do not authorize reuse of a different assistant message or tool call.
+  if (
+    !record ||
+    record.text !== text ||
+    record.toolCalls.length !== toolCalls.length ||
+    !toolCalls.every(
+      (call, index) =>
+        continuationsByCallID.get(call.id) === record &&
+        call.id === record.toolCalls[index]!.id &&
+        call.name === record.toolCalls[index]!.name &&
+        stringifyJson(call.arguments) === record.toolCalls[index]!.arguments,
+    )
+  )
     return undefined;
-  return { items: first, callIDs };
-}
-
-function sameStrings(left: readonly string[], right: readonly string[]): boolean {
-  return left.length === right.length && left.every((item, index) => item === right[index]);
+  return record;
 }
 
 function isSupportedResponseItem(json: string): boolean {

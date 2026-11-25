@@ -15,12 +15,13 @@ import { toProviderError } from './errors';
 import type { ChatGPTPlanProviderOptions } from './provider';
 import type { ChatGPTPlanNativeEvent } from './native-contract';
 import { prepareRequest } from './request-mapper';
+import type { CompletedContinuationCache } from './completed-continuation';
 import { nativeResponse } from './usage';
 export function createChatGPTPlanStream(
   options: ChatGPTPlanProviderOptions,
   nextRequestID: () => string,
   request: LanguageModelRequest,
-  continuationsByCallID: Map<string, readonly string[]>,
+  continuationsByCallID: CompletedContinuationCache,
   steering?: LanguageModelExecutionOptions['midTurnSteering'],
   onResponseStarted?: () => void,
 ): AsyncIterable<ProviderResult<LanguageModelStreamEvent>> {
@@ -40,7 +41,7 @@ export function createChatGPTPlanStream(
 
 class ChatGPTPlanStreamIterator implements AsyncIterator<ProviderResult<LanguageModelStreamEvent>> {
   private readonly steering: MidTurnSteering;
-  private readonly prepared: ReturnType<typeof prepareRequest>;
+  private prepared: ReturnType<typeof prepareRequest>;
   private readonly queue = new EventQueue<ChatGPTPlanNativeEvent>();
   private unsubscribe = () => {};
   private startTask: Promise<void> | undefined;
@@ -59,7 +60,7 @@ class ChatGPTPlanStreamIterator implements AsyncIterator<ProviderResult<Language
     private readonly options: ChatGPTPlanProviderOptions,
     private readonly requestID: string,
     request: LanguageModelRequest,
-    private readonly continuationsByCallID: Map<string, readonly string[]>,
+    private readonly continuationsByCallID: CompletedContinuationCache,
     steering?: LanguageModelExecutionOptions['midTurnSteering'],
     private readonly onResponseStarted?: () => void,
   ) {
@@ -76,7 +77,9 @@ class ChatGPTPlanStreamIterator implements AsyncIterator<ProviderResult<Language
 
   async next(): Promise<IteratorResult<ProviderResult<LanguageModelStreamEvent>>> {
     if (this.closed) return { done: true, value: undefined };
-    if (!this.prepared.ok) return this.emit(providerFailure(this.prepared.error));
+    if (!this.startTask) this.prepared = this.continuationsByCallID.choose(this.prepared);
+    const prepared = this.prepared;
+    if (!prepared.ok) return this.emit(providerFailure(prepared.error));
     if (this.pendingToolCalls.length) {
       const toolCall = this.pendingToolCalls.shift()!;
       return { done: false, value: providerSuccess({ type: 'tool_call', toolCall }) };
@@ -88,7 +91,7 @@ class ChatGPTPlanStreamIterator implements AsyncIterator<ProviderResult<Language
     }
     try {
       const started = await Promise.race([
-        this.start().then(() => true),
+        this.start(prepared.value).then(() => true),
         this.cancelled.then(() => false),
       ]);
       if (!started || this.closed) return { done: true, value: undefined };
@@ -150,15 +153,7 @@ class ChatGPTPlanStreamIterator implements AsyncIterator<ProviderResult<Language
       if (!toolCalls || !this.streamedCallsMatch(toolCalls))
         return this.finish(malformedResponse(), true);
       const response = nativeResponse(event, toolCalls);
-      const continuationItems = event.continuationItems;
-      if (toolCalls.length && continuationItems?.length) {
-        for (const toolCall of toolCalls)
-          this.continuationsByCallID.set(toolCall.id, continuationItems);
-      } else if (toolCalls.length === 0) {
-        // Failed or interrupted follow-ups skip this branch, leaving context available for retries.
-        for (const callID of this.prepared.consumedCallIDs)
-          this.continuationsByCallID.delete(callID);
-      }
+      this.continuationsByCallID.settle(prepared.consumedContinuations, toolCalls, event);
       const missingCalls = toolCalls.filter((toolCall) => !this.streamedToolCalls.has(toolCall.id));
       if (missingCalls.length) {
         this.pendingToolCalls = missingCalls;
@@ -182,19 +177,20 @@ class ChatGPTPlanStreamIterator implements AsyncIterator<ProviderResult<Language
     this.close();
     throw error;
   }
-  private start(): Promise<void> {
+  private start(
+    request: Extract<ReturnType<typeof prepareRequest>, { ok: true }>['value'],
+  ): Promise<void> {
     if (!this.startTask) {
       this.steering.assertSupported();
       this.unsubscribe = this.options.bridge.subscribe((event) => {
         if (event.requestId === this.requestID) this.queue.push(event);
       });
-      if (!this.prepared.ok) throw new Error('Invalid provider request state.');
       const start = this.steering.enabled
         ? this.options.bridge.startSteerableResponse!
         : this.options.bridge.startResponse;
       this.startTask = start
         .call(this.options.bridge, this.requestID, this.options.issuedClientID, {
-          ...this.prepared.value,
+          ...request,
           transportScope: this.options.transportScope,
         })
         .then(() => {

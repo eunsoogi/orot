@@ -8,6 +8,7 @@ import {
 import type { ChatGPTPlanModelDescriptor, ChatGPTPlanNativeBridge } from './native-contract';
 import { toProviderError } from './errors';
 import { createChatGPTPlanStream } from './stream';
+import { CompletedContinuationCache } from './completed-continuation';
 import { cancellableStream } from './cancellable-stream';
 import { searchPublicWeb } from './public-web-search';
 import { registerChatGPTPlanDirectPhoto } from './direct-photo';
@@ -61,7 +62,7 @@ export function createChatGPTPlanProvider(
   // A new provider lifetime cannot inherit another workflow's remote transport.
   options = { ...options, transportScope: createRequestID() };
   const nextRequestID = options.requestIDFactory ?? createRequestID;
-  const continuationsByCallID = new Map<string, readonly string[]>();
+  const continuationsByCallID = new CompletedContinuationCache();
   const provider: LanguageModelProvider = {
     kind: 'language-model',
     id: `chatgpt-plan:${options.issuedClientID}:${options.model.slug}`,
