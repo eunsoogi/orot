@@ -51,7 +51,7 @@ function routeProps(
   };
 }
 
-test('retains loaded documents and their destination when recordings fail', async () => {
+test('retains loaded documents and their destination without a partial failure notice', async () => {
   const document = medicalDocument('document-ready-1');
   const service = documentImportService([document]);
   const retryRecordings = jest.fn();
@@ -70,10 +70,25 @@ test('retains loaded documents and their destination when recordings fail', asyn
   expect(screen.getByText('Clinic summary.pdf')).toBeTruthy();
   expect(screen.getByTestId('records-recent-view-all')).toBeTruthy();
   expect(screen.queryByTestId('records-recent-sources-error')).toBeNull();
-  expect(screen.getByText('일부 기록을 불러오지 못했어요.')).toBeTruthy();
-  await fireEvent.press(screen.getByTestId('records-recent-partial-retry'));
-  expect(retryRecordings).toHaveBeenCalledTimes(1);
+  expect(screen.queryByText('일부 기록을 불러오지 못했어요.')).toBeNull();
+  expect(screen.queryByTestId('records-recent-partial-retry')).toBeNull();
+  expect(retryRecordings).not.toHaveBeenCalled();
   expect(service.listDocuments).toHaveBeenCalledTimes(1);
+});
+
+test('allows Retry when recordings fail and no records are visible', async () => {
+  const retryRecordings = jest.fn();
+  await render(
+    <RecordsRoute
+      {...routeProps({
+        recordingState: 'failed',
+        onRetryRecordings: retryRecordings,
+      })}
+    />,
+  );
+  expect(await screen.findByTestId('records-recent-sources-error')).toBeTruthy();
+  await fireEvent.press(screen.getByTestId('records-recent-sources-retry'));
+  expect(retryRecordings).toHaveBeenCalledTimes(1);
 });
 
 test('retains loaded documents while recordings load', async () => {
