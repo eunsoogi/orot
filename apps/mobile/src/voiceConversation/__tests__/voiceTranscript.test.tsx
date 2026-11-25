@@ -1,10 +1,4 @@
-import {
-  act,
-  render,
-  renderHook,
-  screen,
-  waitFor,
-} from '@testing-library/react-native';
+import { act, render, renderHook, screen } from '@testing-library/react-native';
 import * as Native from 'react-native';
 import { VoiceTranscriptViewport } from '../VoiceTranscriptViewport';
 import { useVoiceTranscript } from '../useVoiceTranscript';
@@ -158,6 +152,8 @@ test('only new graphemes fade in; previous speech and the visible accessibility 
 });
 
 test('Reduce Motion renders all speech immediately and enabling motion later never replays it', async () => {
+  // Inspect the transient fade before advancing its animation clock.
+  jest.useFakeTimers();
   jest
     .spyOn(Native.AccessibilityInfo, 'isReduceMotionEnabled')
     .mockResolvedValue(true);
@@ -179,10 +175,8 @@ test('Reduce Motion renders all speech immediately and enabling motion later nev
   await act(() => change(false));
   expect(screen.queryAllByTestId('voice-transcript-fading-text')).toEqual([]);
   await view.rerender(caption('이미 새 내용!'));
-  await waitFor(() =>
-    expect(
-      screen.getByTestId('voice-transcript-fading-text'),
-    ).toHaveTextContent('!'),
+  expect(screen.getByTestId('voice-transcript-fading-text')).toHaveTextContent(
+    '!',
   );
   await act(() => change(true));
   expect(screen.queryAllByTestId('voice-transcript-fading-text')).toEqual([]);
