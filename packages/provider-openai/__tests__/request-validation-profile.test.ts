@@ -1,5 +1,14 @@
 import { describe, expect, it } from '@jest/globals';
+import { CompletedContinuationCache } from '../src/completed-continuation';
 import { prepareRequest } from '../src/request-mapper';
+
+const call = { id: 'synthetic-call', name: 'synthetic_tool', arguments: {} };
+
+function matchedCache(item: unknown) {
+  const cache = new CompletedContinuationCache();
+  cache.settle(new Map(), [call], { text: '', continuationItems: [JSON.stringify(item)] });
+  return cache;
+}
 
 // Synthetic bridge mapping only; never invoke a provider or native transport.
 describe('native request validation boundary', () => {
@@ -10,7 +19,7 @@ describe('native request validation boundary', () => {
         {
           role: 'assistant',
           content: '',
-          toolCalls: [{ id: 'synthetic-call', name: 'synthetic_tool', arguments: {} }],
+          toolCalls: [call],
         },
         { role: 'tool', toolCallId: 'synthetic-call', result: { text: 'x'.repeat(1_048_577) } },
       ],
@@ -28,11 +37,11 @@ describe('native request validation boundary', () => {
           {
             role: 'assistant',
             content: '',
-            toolCalls: [{ id: 'synthetic-call', name: 'synthetic_tool', arguments: {} }],
+            toolCalls: [call],
           },
         ],
       },
-      new Map([['synthetic-call', [JSON.stringify({ type: 'function_call' })]]]),
+      matchedCache({ type: 'function_call' }),
     );
     expect(mapped.ok).toBe(false);
   });
@@ -41,26 +50,18 @@ describe('native request validation boundary', () => {
 it.each(['[]', 'null', '4', '"text"', '{'])(
   'rejects native-invalid continuation arguments %s',
   (argumentsJSON) => {
-    const call = { id: 'synthetic-call', name: 'synthetic_tool', arguments: {} };
     const mapped = prepareRequest(
       'synthetic-model',
       {
         messages: [{ role: 'assistant', content: '', toolCalls: [call] }],
       },
-      new Map([
-        [
-          call.id,
-          [
-            JSON.stringify({
-              type: 'function_call',
-              id: 'synthetic-item',
-              call_id: call.id,
-              name: call.name,
-              arguments: argumentsJSON,
-            }),
-          ],
-        ],
-      ]),
+      matchedCache({
+        type: 'function_call',
+        id: 'synthetic-item',
+        call_id: call.id,
+        name: call.name,
+        arguments: argumentsJSON,
+      }),
     );
     expect(mapped.ok).toBe(false);
   },

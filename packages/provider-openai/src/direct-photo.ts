@@ -1,4 +1,5 @@
 import type { LanguageModelProvider } from '@orot/model-runtime';
+import { CompletedContinuationCache } from './completed-continuation';
 import { cancellableStream } from './cancellable-stream';
 import type { ChatGPTPlanProviderOptions } from './provider';
 import { createChatGPTPlanStream } from './stream';
@@ -74,7 +75,7 @@ export function registerChatGPTPlanDirectPhoto(
         { ...options, bridge: transport },
         nextRequestID,
         { messages: [{ role: 'user', content: '' }] },
-        new Map(),
+        new CompletedContinuationCache(),
       ),
       signal,
     );
