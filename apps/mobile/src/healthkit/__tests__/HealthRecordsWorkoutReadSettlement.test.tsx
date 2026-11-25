@@ -154,6 +154,25 @@ test.each(['restored', 'unchanged', 'revoked'] as const)(
     AppState.currentState = 'active';
     const lane = await setup();
     const probe = lane.holdFirstProtectionProbe();
+    lane.queryWorkoutPeriodHeartRate.mockImplementationOnce(async request => {
+      const result = resultFor(request);
+      const timeZone = Intl.DateTimeFormat().resolvedOptions().timeZone;
+      const parts = new Intl.DateTimeFormat('en-US', {
+        timeZone,
+        year: 'numeric',
+        month: '2-digit',
+        day: '2-digit',
+      }).formatToParts(new Date(result.firstSampleAtMs));
+      const date = ['year', 'month', 'day']
+        .map(type => parts.find(part => part.type === type)?.value)
+        .join('-');
+      const { sampleCount, minimum, mean, maximum } = result;
+      return {
+        ...result,
+        timeZone,
+        days: [{ date, sampleCount, minimum, mean, maximum }],
+      };
+    });
     try {
       const view = await openWorkoutFilter();
       await probe.entered;
@@ -168,7 +187,9 @@ test.each(['restored', 'unchanged', 'revoked'] as const)(
           expect(lane.queryWorkoutPeriodHeartRate).toHaveBeenCalledTimes(1),
         );
         await waitFor(() =>
-          expect(state()).not.toHaveTextContent(/불러오는 중|확인할 수 없어요/),
+          expect(
+            screen.getByLabelText(/최근 한 달 심박수, 120 BPM/),
+          ).toBeTruthy(),
         );
         expect(probe.probes()).toBeGreaterThan(1);
       } else {
