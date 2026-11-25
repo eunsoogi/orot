@@ -43,9 +43,17 @@ export function withAuthoredMemorySpan(
     validateResult(value, input) {
       if (!isObject(value)) return preferenceTask.validateResult(value, input);
       // Do not admit old or alternate model-supplied field names in a fresh v26 result.
-      const { authoredMemorySpan, ...answer } = value;
-      delete answer.replyPreferenceSpan;
-      delete answer.authoredRoutineSpan;
+      const { authoredMemorySpan } = value;
+      const answer = Object.fromEntries(
+        Object.entries(value).filter(
+          ([name]) =>
+            ![
+              'authoredMemorySpan',
+              'replyPreferenceSpan',
+              'authoredRoutineSpan',
+            ].includes(name),
+        ),
+      );
       const validated = preferenceTask.validateResult(answer, input);
       const schema = schemaFor(input);
       if (

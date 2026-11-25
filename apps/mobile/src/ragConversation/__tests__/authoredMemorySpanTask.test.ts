@@ -30,10 +30,10 @@ test('current model can select one authored routine; historic v25 schema remains
   });
 });
 
-test.each([
+const cases: { payload: Record<string, string>; request: string }[] = [
   {
     payload: { authoredMemorySpan: 'I practice the piano every Monday.' },
-    request: candidateRequest,
+    request,
   },
   {
     payload: { authoredMemorySpan: routine },
@@ -45,7 +45,9 @@ test.each([
   },
   { payload: { authoredRoutineSpan: routine }, request },
   { payload: {}, request },
-])(
+];
+
+test.each(cases)(
   'unproven or omitted proposals cannot admit an automatic routine',
   ({ payload, request: candidateRequest }) => {
     expect(
