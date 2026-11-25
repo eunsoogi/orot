@@ -7,6 +7,8 @@ import { appColors } from '../layout/appColors';
 import type { ConversationA2UIAlignment } from './conversationA2UIAlignment';
 import {
   a2uiNaturalRowChildren,
+  a2uiWeightedRow,
+  a2uiChildRowWeight,
   a2uiNativeAlignment,
   a2uiStretchedColumnChild,
 } from './conversationA2UINativeAlignment';
@@ -144,10 +146,11 @@ function SurfaceRow({
   const contentCount = nodes.filter(
     node => node.component !== 'Divider',
   ).length;
+  const weightedMinWidth = a2uiWeightedRow(nodes);
   const columns =
     contentCount >= 2 &&
     fontScale < 1.4 &&
-    width >= contentCount * 120 &&
+    width >= (weightedMinWidth ?? contentCount * 120) &&
     nodes.every(
       node => node.component !== 'Divider' || node.axis === 'vertical',
     );
@@ -174,9 +177,18 @@ function SurfaceRow({
             key={node.id}
             style={
               columns
-                ? a2uiNaturalRowChildren(alignment)
-                  ? styles.naturalColumn
-                  : styles.column
+                ? weightedMinWidth !== undefined
+                  ? [
+                      styles.surface,
+                      {
+                        flexBasis: 0,
+                        flexShrink: 1,
+                        flexGrow: a2uiChildRowWeight(node),
+                      },
+                    ]
+                  : a2uiNaturalRowChildren(alignment)
+                    ? styles.naturalColumn
+                    : styles.column
                 : styles.surface
             }
           >

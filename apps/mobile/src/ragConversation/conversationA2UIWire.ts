@@ -73,6 +73,7 @@ export function parseConversationA2UIFrame(
   expectedSurfaceId: string,
   allowStaticCatalog = false,
   allowAlignment = false,
+  allowRowWeight = false,
 ): Frame | 'foreign' | 'invalid' {
   if (typeof raw !== 'string' || raw.length > conversationA2UIFrameLimit)
     return 'invalid';
@@ -116,6 +117,7 @@ export function parseConversationA2UIFrame(
                   body.components,
                   allowStaticCatalog,
                   allowAlignment,
+                  allowRowWeight,
                 ),
           data:
             body.dataModel === undefined
@@ -130,6 +132,7 @@ export function parseConversationA2UIFrame(
             body.components,
             allowStaticCatalog,
             allowAlignment,
+            allowRowWeight,
           ),
         };
       case 'updateDataModel': {

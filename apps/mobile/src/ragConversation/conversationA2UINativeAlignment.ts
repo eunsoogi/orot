@@ -1,3 +1,4 @@
+import type { ConversationA2UINode } from './conversationA2UI';
 import type { ViewStyle } from 'react-native';
 import type { ConversationA2UIAlignment } from './conversationA2UIAlignment';
 
@@ -43,3 +44,26 @@ export const a2uiStretchedColumnChild: ViewStyle = {
   minWidth: 0,
   maxWidth: '100%',
 };
+
+/** Preserve proportional width only where the lightest child can still wrap
+ * in a comfortably readable column; otherwise retain original stacked order. */
+export function a2uiWeightedRow(nodes: readonly ConversationA2UINode[]) {
+  if (
+    !nodes.some(node => node.component === 'Text' && node.weight !== undefined)
+  )
+    return;
+  const weights = nodes
+    .filter(node => node.component !== 'Divider')
+    .map(a2uiChildRowWeight);
+  const total = weights.reduce((sum, weight) => sum + weight, 0);
+  return (
+    (120 * total) / Math.min(...weights) +
+    (nodes.length - 1) * 12 +
+    nodes.length -
+    weights.length
+  );
+}
+
+export function a2uiChildRowWeight(node: ConversationA2UINode): number {
+  return node.component === 'Text' ? (node.weight ?? 1) : 1;
+}

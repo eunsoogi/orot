@@ -60,12 +60,20 @@ const alignedCatalogFrameSchema = {
     ' For ordinary static layouts, Row and Column also accept literal align and justify tokens from the basic catalog. Do not use alignment on a scratch area surface.',
 };
 
+const weightedCatalogFrameSchema = {
+  ...alignedCatalogFrameSchema,
+  description:
+    alignedCatalogFrameSchema.description +
+    ' For an ordinary layout, body Text that is a direct child of Row may use a literal numeric weight from 1 through 3 to allocate relative horizontal room. Never set weight on root, on other components, or in a scratch area.',
+};
+
 /** Reduce one completed provider reply in isolation. No provisional tree escapes. */
 export function acceptConversationA2UIFrameSequence(
   raw: unknown,
   answer: string,
   allowStaticCatalog = false,
   allowAlignment = false,
+  allowRowWeight = false,
 ): ConversationA2UINode | undefined {
   if (!Array.isArray(raw) || !raw.length || raw.length > maxFinalFrames)
     return undefined;
@@ -84,6 +92,7 @@ export function acceptConversationA2UIFrameSequence(
       draftA2UISurfaceId,
       allowStaticCatalog,
       allowAlignment,
+      allowRowWeight,
     );
     // An ignored foreign frame makes the whole submitted sequence unsuitable.
     if (!next || next === staged || next.status === 'invalid') return undefined;
@@ -99,7 +108,7 @@ export function acceptConversationA2UIFrameSequence(
 export function withConversationA2UIFrameSequence(
   previous: TaskResponderContract<GroundedRagAnswer>,
   eligible: (input: TaskResponderInput) => boolean,
-  taskVersion: '21' | '22' | '23' | '24' = '21',
+  taskVersion: '21' | '22' | '23' | '24' | '29' = '21',
 ): TaskResponderContract<GroundedRagAnswer> {
   return {
     ...previous,
@@ -117,13 +126,15 @@ export function withConversationA2UIFrameSequence(
         properties: {
           ...properties,
           a2uiFrames:
-            taskVersion === '24'
-              ? alignedCatalogFrameSchema
-              : taskVersion === '23'
-                ? localDraftFrameSchema
-                : taskVersion === '22'
-                  ? staticCatalogFrameSchema
-                  : frameSequenceSchema,
+            taskVersion === '29'
+              ? weightedCatalogFrameSchema
+              : taskVersion === '24'
+                ? alignedCatalogFrameSchema
+                : taskVersion === '23'
+                  ? localDraftFrameSchema
+                  : taskVersion === '22'
+                    ? staticCatalogFrameSchema
+                    : frameSequenceSchema,
         },
         required: [
           ...(Array.isArray(schema.required) ? schema.required : []),
@@ -150,9 +161,13 @@ export function withConversationA2UIFrameSequence(
         a2uiFrames,
         answer,
         taskVersion !== '21',
-        taskVersion === '24',
+        taskVersion === '24' || taskVersion === '29',
+        taskVersion === '29',
       );
-      if (!root && (taskVersion === '23' || taskVersion === '24')) {
+      if (
+        !root &&
+        (taskVersion === '23' || taskVersion === '24' || taskVersion === '29')
+      ) {
         const validateDraftBase = (frames: unknown, body: string) =>
           acceptConversationA2UIFrameSequence(frames, body, true);
         root = admitConversationA2UILocalDraftFrames(
@@ -177,12 +192,13 @@ export function versionedConversationA2UITasks(
   previous: TaskResponderContract<GroundedRagAnswer>,
   eligible: (input: TaskResponderInput) => boolean,
 ) {
-  const version = (id: '21' | '22' | '23' | '24') =>
+  const version = (id: '21' | '22' | '23' | '24' | '29') =>
     withConversationA2UIFrameSequence(previous, eligible, id);
   return {
     conversationTaskV21: version('21'),
     conversationTaskV22: version('22'),
     conversationTaskV23: version('23'),
     ragConversationTask: version('24'),
+    weightedTask: version('29'),
   };
 }
