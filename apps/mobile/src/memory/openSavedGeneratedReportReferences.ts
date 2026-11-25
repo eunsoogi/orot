@@ -1,12 +1,32 @@
 export async function openSavedGeneratedReportReferences() {
   const [
-    { openLocalAgentMemoryDatabase },
+    { openLocalAgentMemoryDatabase, isCurrentLocalAgentMemoryDatabase },
     { createConversationArtifactStorage },
   ] = await Promise.all([
     import('../storage/secureDatabase'),
     import('../storage/conversationArtifactStorage'),
   ]);
-  return createConversationArtifactStorage(
-    await openLocalAgentMemoryDatabase(),
-  );
+  const database = await openLocalAgentMemoryDatabase();
+  const storage = createConversationArtifactStorage(database);
+  // Cold previews cannot be carried to a replacement encrypted database,
+  // even if it reports an identical session/turn ID after a restore.
+  const owned = (current: () => boolean) => () =>
+    isCurrentLocalAgentMemoryDatabase(database) && current();
+  return {
+    ...storage,
+    readArchivedVisitBookmarkPreview: (
+      input: Parameters<typeof storage.readArchivedVisitBookmarkPreview>[0],
+    ) =>
+      storage.readArchivedVisitBookmarkPreview({
+        ...input,
+        current: owned(input.current),
+      }),
+    bookmarkArchivedVisitQuestions: (
+      input: Parameters<typeof storage.bookmarkArchivedVisitQuestions>[0],
+    ) =>
+      storage.bookmarkArchivedVisitQuestions({
+        ...input,
+        current: owned(input.current),
+      }),
+  };
 }

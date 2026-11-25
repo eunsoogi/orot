@@ -1,3 +1,4 @@
+import { bindArchivedVisitBookmark } from '../../storage/archivedVisitBookmarkIdentity';
 import type { ReadSavedHistoryDisplay } from '../../ragConversation/conversationSavedHistoryDisplay';
 import type { createConversationSessionStorage } from './conversationSessionStorage';
 import { fingerprint } from './evidenceUtils';
@@ -98,6 +99,14 @@ export function conversationSavedHistoryDisplayOption(
                 ? { healthSummary: row.healthSummary }
                 : {}),
               ...(row.dailyReport ? { dailyReport: row.dailyReport } : {}),
+              ...(row.archivedVisitBookmark
+                ? {
+                    archivedVisitBookmark: bindArchivedVisitBookmark(
+                      row.archivedVisitBookmark,
+                      version,
+                    ),
+                  }
+                : {}),
               ...(row.savedCitations?.length ||
               row.healthSummary?.archivedSectionCitations?.some(
                 section => section.length,

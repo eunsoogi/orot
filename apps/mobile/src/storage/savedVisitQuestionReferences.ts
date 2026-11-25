@@ -1,3 +1,4 @@
+import { createArchivedVisitBookmarkAccess } from './archivedVisitBookmarkAccess';
 import type { SqlDatabase, SqlExecutor } from '@orot/storage';
 import { fingerprint } from '../aiFeatures/integration/evidenceUtils';
 import { RetainedSourceInvalidError } from '../aiFeatures/integration/retainedSourceError';
@@ -103,46 +104,83 @@ export function createSavedVisitQuestionReferences(
         }
       : null;
   };
-  return {
-    async bookmarkVisitQuestions(input: {
+  async function bookmarkVisitQuestions(
+    input: {
       artifactId: string;
       displayed: string;
       lease: { id: string; version: number };
       current: Current;
-    }) {
-      if (!input.current()) return false;
-      await ensure();
-      let saved = false;
-      await database.transaction(async tx => {
-        if (!input.current()) return;
-        const row = (
-          await tx.execute(
-            `SELECT a.result_json, a.session_id, a.created_at FROM conversation_artifacts a ${original} AND a.id = ? AND s.id = ? AND s.version = ?`,
-            [input.artifactId, input.lease.id, input.lease.version],
-          )
-        ).rows[0];
-        const result = await resolve(tx, row, input.artifactId, input.current);
-        if (!result || result.target !== input.displayed || !input.current())
-          return;
-        await setupSavedVisitQuestionReferences(tx);
-        await tx.execute(
-          'INSERT INTO saved_visit_question_refs VALUES (?, ?, ?) ON CONFLICT(artifact_id) DO NOTHING',
-          [input.artifactId, result.revision, new Date().toISOString()],
-        );
-        const pin = (
-          await tx.execute(`SELECT b.revision ${catalog} AND a.id = ?`, [
-            input.artifactId,
-          ])
-        ).rows[0];
-        if (pin?.revision !== result.revision || !input.current())
-          throw new RetainedSourceInvalidError(
-            'The displayed visit report moved before saving.',
-          );
-        tx.commit();
-        saved = true;
-      });
-      return saved;
     },
+    archived?: {
+      readonly serialized: string;
+      readonly confirmProtected: () => Promise<boolean>;
+    },
+  ) {
+    if (!input.current()) return false;
+    await ensure();
+    let saved = false;
+    await database.transaction(async tx => {
+      if (!input.current()) return;
+      const row = (
+        await tx.execute(
+          `SELECT a.result_json, a.session_id, a.created_at FROM conversation_artifacts a ${original} AND a.id = ? AND s.id = ? AND s.version = ?${archived ? ' AND r.created_at = a.created_at' : ''}`,
+          [input.artifactId, input.lease.id, input.lease.version],
+        )
+      ).rows[0];
+      // A cold confirmation consumes exactly the archive bytes that were shown, not an editable question state.
+      if (archived && row?.result_json !== archived.serialized) return;
+      const result = await resolve(tx, row, input.artifactId, input.current);
+      if (!result || result.target !== input.displayed || !input.current())
+        return;
+      await setupSavedVisitQuestionReferences(tx);
+      await tx.execute(
+        'INSERT INTO saved_visit_question_refs VALUES (?, ?, ?) ON CONFLICT(artifact_id) DO NOTHING',
+        [input.artifactId, result.revision, new Date().toISOString()],
+      );
+      if (
+        archived &&
+        (!(await archived.confirmProtected()) || !input.current())
+      )
+        throw new RetainedSourceInvalidError(
+          'The visit preview lost native protection.',
+        );
+      const pin = (
+        await tx.execute(
+          archived
+            ? `SELECT b.revision, a.result_json, a.session_id, a.created_at ${catalog}
+               AND a.id = ? AND s.id = ? AND s.version = ? AND r.created_at = a.created_at`
+            : `SELECT b.revision ${catalog} AND a.id = ?`,
+          archived
+            ? [input.artifactId, input.lease.id, input.lease.version]
+            : [input.artifactId],
+        )
+      ).rows[0];
+      // Protection may await after staging. Recheck the exact pinned bytes
+      // and their sources again before committing; a replacement cannot win.
+      const unchanged =
+        !archived ||
+        (pin?.result_json === archived.serialized &&
+          (await resolve(tx, pin, input.artifactId, input.current))
+            ?.revision === result.revision);
+      if (pin?.revision !== result.revision || !unchanged || !input.current())
+        throw new RetainedSourceInvalidError(
+          'The displayed visit report moved before saving.',
+        );
+      tx.commit();
+      saved = true;
+    });
+    return saved;
+  }
+  return {
+    bookmarkVisitQuestions: (
+      input: Parameters<typeof bookmarkVisitQuestions>[0],
+    ) => bookmarkVisitQuestions(input),
+    ...createArchivedVisitBookmarkAccess(
+      database,
+      original,
+      resolve,
+      bookmarkVisitQuestions,
+    ),
     async listSavedVisitQuestionReferences() {
       if (!(await exists())) return [];
       const visible: {

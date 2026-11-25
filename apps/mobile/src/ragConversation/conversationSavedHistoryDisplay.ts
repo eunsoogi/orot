@@ -27,6 +27,7 @@ export type SavedHistoryDisplayRow = {
       readonly partial?: true;
       readonly healthSummary?: NonNullable<DisplayMessage['healthSummary']>;
       readonly dailyReport?: NonNullable<DisplayMessage['dailyReport']>;
+      readonly archivedVisitBookmark?: DisplayMessage['archivedVisitBookmark'];
       readonly savedCitations?: readonly SavedArchivedCitation[];
       readonly steeringInstructions?: DisplayMessage['steeringInstructions'];
     })
@@ -158,6 +159,12 @@ export function savedHistoryTranscript(
           : {}),
         ...(row.kind === 'answer' && row.dailyReport
           ? { dailyReport: row.dailyReport }
+          : {}),
+        ...(row.kind === 'answer' &&
+        !incomplete &&
+        !directPhoto &&
+        row.archivedVisitBookmark
+          ? { archivedVisitBookmark: row.archivedVisitBookmark }
           : {}),
         ...(row.kind === 'answer' && row.steeringInstructions
           ? { steeringInstructions: row.steeringInstructions }

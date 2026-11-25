@@ -1,3 +1,4 @@
+import { ArchivedVisitQuestionBookmark } from './ArchivedVisitQuestionBookmark';
 import { openSavedGeneratedReportReferences } from '../memory/openSavedGeneratedReportReferences';
 import { createContext, useContext, useEffect, useRef, useState } from 'react';
 import {
@@ -32,6 +33,28 @@ export function GeneratedReportBookmark({
   const summary = message.healthSummary?.analysis.savedSummary;
   const daily = message.dailyReport;
   const visit = message.visitQuestions;
+  const marker = message.archivedVisitBookmark;
+  if (
+    owner &&
+    marker &&
+    message.savedHistoryDisplayOnly &&
+    message.voiceTimelineOrder &&
+    message.role === 'assistant' &&
+    !message.incomplete &&
+    !message.streaming &&
+    !daily &&
+    !message.healthSummary &&
+    !visit
+  )
+    return (
+      <ArchivedVisitQuestionBookmark
+        key={`${owner.sessionId}:${marker.key}`}
+        marker={marker}
+        turn={message.voiceTimelineOrder}
+        localId={owner.sessionId}
+        visible={owner.isCurrent}
+      />
+    );
   // The saved/reviewed rows can change. Only the original visible generated subset is targetable.
   const visitTarget =
     !daily &&

@@ -1,3 +1,7 @@
+import {
+  archivedVisitRevision,
+  type ArchivedVisitBookmarkIdentity,
+} from './archivedVisitBookmarkIdentity';
 import { recoverArchiveLayout } from './conversationArchiveA2UI';
 import { t } from '../i18n';
 import type { StoredSteeringInstruction } from './conversationSteeringStorage';
@@ -34,6 +38,7 @@ export type ConversationHistoryPresentation = {
       readonly archivedA2UIPresentation?: import('../ragConversation/conversationA2UI').ConversationA2UINode;
       readonly healthSummary?: HealthSummaryResult;
       readonly dailyReport?: NonNullable<ConversationArtifact['dailyReport']>;
+      readonly archivedVisitBookmark?: ArchivedVisitBookmarkIdentity;
       readonly savedCitations?: readonly SavedArchivedCitation[];
       readonly steeringInstructions?: readonly StoredSteeringInstruction[];
     })
@@ -158,9 +163,36 @@ export function decodeOwnedArchiveRow(
     row.request_id === row.id && row.completion_id === row.id
       ? recoverArchiveLayout(value)
       : undefined;
+  // This is affordance identity only. The selected read still owns every
+  // Visit validation and does not borrow the archive page as authority.
+  const visitRevision =
+    value.status === 'complete' &&
+    row.request_id === row.id &&
+    row.completion_id === row.id &&
+    row.interruption_reason == null &&
+    typeof value.visitQuestions === 'object' &&
+    value.visitQuestions !== null &&
+    !Array.isArray(value.visitQuestions) &&
+    !value.entryIntent &&
+    !value.healthSummary &&
+    !value.dailyReport &&
+    !value.treatmentContext &&
+    !value.submittedInput
+      ? archivedVisitRevision(row.result_json)
+      : undefined;
   return {
     value,
     presentation: {
+      ...(visitRevision
+        ? {
+            archivedVisitBookmark: {
+              id: row.id,
+              sessionId,
+              createdAt: row.created_at,
+              revision: visitRevision,
+            },
+          }
+        : {}),
       ...(archivedA2UIPresentation ? { archivedA2UIPresentation } : {}),
       id: row.id,
       sessionId,
