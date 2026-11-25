@@ -1,11 +1,11 @@
-import { createHealthContextTool } from '../../aiFeatures/integration/healthContextTool';
+import * as healthContextTool from '../../aiFeatures/integration/healthContextTool';
 import { LocalEvidenceReferenceRegistry } from '../../aiFeatures/integration/evidenceRegistry';
 import { canonicalHealthBinding } from '../../voiceSettings/liveCanonicalHealthBinding';
 import { canonicalLiveHealthRegistration } from '../canonicalLiveHealthRegistration';
 
 test('current owned v2 registration uses exact canonical descriptor; no local or provider read', () => {
   const read = jest.fn();
-  const canonical = createHealthContextTool(
+  const canonical = healthContextTool.createHealthContextTool(
     read,
     new LocalEvidenceReferenceRegistry(),
     'rag',
@@ -26,7 +26,16 @@ test('current owned v2 registration uses exact canonical descriptor; no local or
     current: () => current,
     subscribe: () => () => {},
   };
-  const config = canonicalLiveHealthRegistration(receipt);
+  const create = jest.spyOn(healthContextTool, 'createHealthContextTool');
+  const config = (() => {
+    try {
+      const declaration = canonicalLiveHealthRegistration(receipt);
+      expect(create).not.toHaveBeenCalled();
+      return declaration;
+    } finally {
+      create.mockRestore();
+    }
+  })();
   expect(config?.canonicalHealthGrant).toEqual(binding);
   expect(config?.canonicalHealthDeclaration).toEqual({
     name: canonical.id,
