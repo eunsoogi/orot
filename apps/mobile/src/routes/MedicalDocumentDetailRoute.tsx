@@ -59,7 +59,7 @@ export function MedicalDocumentDetailRoute({
     read?.cancel();
   }, []);
   const reload = useCallback(
-    async (manual = false) => {
+    async (manual = false, acceptGesture?: () => void) => {
       const owner = current.current;
       const ownsRoute = () =>
         current.current.active &&
@@ -98,6 +98,7 @@ export function MedicalDocumentDetailRoute({
           )
             throw new Error('Saved data protection unavailable');
           if (!canPublish()) return null;
+          acceptGesture?.();
           const result = sourceId ? await service.getDocument(sourceId) : null;
           // This protected handle can remain warm across a phone lock.
           if (native && !(await native.protectedDataAvailable()))
@@ -126,7 +127,7 @@ export function MedicalDocumentDetailRoute({
   );
   useNavigationRouteRefresh(
     active && Boolean(sourceId) && !deleting && !deleted,
-    () => reload(true),
+    acceptGesture => reload(true, acceptGesture),
   );
   useEffect(() => {
     reload().catch(() => undefined);
