@@ -2,9 +2,11 @@ import type { HealthContextToolDefinition } from '../aiFeatures/integration/heal
 import type { AiFeatureLocalData } from '../aiFeatures/integration/localData';
 import { LocalEvidenceReferenceRegistry } from '../aiFeatures/integration/evidenceRegistry';
 import { bindHealthContextTool } from '../aiFeatures/integration/bindHealthContextTool';
+import { parseHealthContextToolInput } from '../aiFeatures/integration/healthContextTool';
 import { jsonByteLength } from '../aiFeatures/integration/evidenceUtils';
 import type { LiveManagedHealthCall } from './liveResponsesHealthToolExecutor';
 import { stageLiveResponsesResult } from './stageLiveResponsesResult';
+import { t } from '../i18n';
 
 const name = 'local-health-context';
 const maxBytes = 8192;
@@ -49,7 +51,7 @@ export function createCanonicalLiveHealthRead(input: {
   readonly protectedAvailable: () => Promise<boolean | null>;
   readonly approveLocal: (
     call: LiveManagedHealthCall,
-    exactArguments: string,
+    exactScope: string,
     signal: AbortSignal,
   ) => Promise<boolean>;
   readonly approveTransfer: (
@@ -102,22 +104,22 @@ export function createCanonicalLiveHealthRead(input: {
       } catch {
         return;
       }
-      // Local consent describes the exact wire request. The canonical parser
-      // (not a voice-specific synonym) validates it before any search.
-      if (!(await input.approveLocal(call, call.args, signal)) || !current())
+      // Reject invalid scope before either displaying a read approval or opening protected storage.
+      const parsed = parseHealthContextToolInput(decoded, true);
+      if (!parsed) return;
+      // Disclose the scope actually used. Omission means the entire recorded period.
+      const details = JSON.stringify(parsed, null, 2);
+      const preview =
+        parsed.days === undefined && parsed.window === undefined
+          ? t('realtimeToolConsent.liveReadAllHistory') + '\n' + details
+          : details;
+      if (!(await input.approveLocal(call, preview, signal)) || !current())
         return;
       const data = await input.openData();
       if (!current()) return;
       const registry = new LocalEvidenceReferenceRegistry();
       const tool = bindHealthContextTool(data, registry, 'rag');
-      const parsed = tool?.parseInput(decoded);
-      if (
-        !tool ||
-        !canonicalLiveHealthDeclaration(tool) ||
-        !parsed ||
-        !current()
-      )
-        return;
+      if (!tool || !canonicalLiveHealthDeclaration(tool) || !current()) return;
       // A native lock can precede its JS event, even when the DB is still open.
       if ((await input.protectedAvailable()) !== true || !current()) return;
       const batch = await tool.search({

@@ -18,6 +18,13 @@ const canonicalCall = {
   }),
 } as const;
 
+const scopeDescription = (days: number) =>
+  JSON.stringify(
+    { days, topics: ['measurements'], detail: 'summary' },
+    null,
+    2,
+  );
+
 test.each([
   'allow',
   'deny-local',
@@ -68,7 +75,7 @@ test.each([
       if (mode === 'allow') {
         expect(approveLocal).toHaveBeenCalledWith(
           canonicalCall,
-          canonicalCall.args,
+          scopeDescription(7),
           f.controller.signal,
         );
         const exact = f.settle.mock.calls[0]?.[2];
@@ -126,7 +133,7 @@ test('optional serial execution requires fresh approvals and never replays a den
   const approveLocal = jest.fn(
     async (call: { challengeId: string }, args: string, signal: AbortSignal) =>
       call.challengeId === second.challengeId &&
-      args === second.args &&
+      args === scopeDescription(8) &&
       signal === f.controller.signal,
   );
   const approveTransfer = jest.fn(async () => () => true);
@@ -162,8 +169,8 @@ test('optional serial execution requires fresh approvals and never replays a den
     f.setActive(replay);
     await execute(replay, f.controller.signal);
     expect(approveLocal.mock.calls).toEqual([
-      [first, first.args, f.controller.signal],
-      [second, second.args, f.controller.signal],
+      [first, scopeDescription(7), f.controller.signal],
+      [second, scopeDescription(8), f.controller.signal],
     ]);
     expect(resolve).toHaveBeenCalledTimes(2);
     expect(openData).toHaveBeenCalledTimes(1);
@@ -179,3 +186,61 @@ test('optional serial execution requires fresh approvals and never replays a den
     f.close();
   }
 });
+
+test.each([
+  ['out-of-range', { days: 0, topics: ['measurements'] }],
+  ['unknown-field', { topics: ['measurements'], unsupported: true }],
+  ['all-history', {}],
+] as const)(
+  'requires honest local approval before any read: %s',
+  async (mode, input) => {
+    const args = JSON.stringify(input);
+    const f = await fixture();
+    const call = { ...canonicalCall, args };
+    f.setActive(call);
+    const approveLocal = jest.fn(
+      async (owned: { callId: string }, preview: string) => {
+        expect(owned.callId).toBe(call.callId);
+        expect(preview).not.toBe('');
+        return false;
+      },
+    );
+    const approveTransfer = jest.fn(async () => () => true);
+    const openData = jest.fn(f.input.openData);
+    const execute = createCanonicalLiveHealthRead({
+      resolve: async () => ({
+        capability: 'local-health-context',
+        current: () => true,
+      }),
+      owns: f.input.isChallengeCurrent,
+      protectedCurrent: f.input.protectedDataCurrent,
+      protectedAvailable: async () => true,
+      approveLocal,
+      approveTransfer,
+      openData,
+      holdDelivery: (_call, beforeDispatch) => beforeDispatch(() => {}),
+      settle: f.settle,
+    });
+    try {
+      await execute(call, f.controller.signal);
+      if (mode === 'all-history') {
+        expect(approveLocal).toHaveBeenCalledTimes(1);
+        const preview = approveLocal.mock.calls[0]![1];
+        expect(preview).toContain('전체 기록 기간');
+        expect(preview).toContain('"measurements"');
+        expect(preview).toContain('"medications"');
+        expect(preview).toContain('"detail": "summary"');
+      } else expect(approveLocal).not.toHaveBeenCalled();
+      expect(openData).not.toHaveBeenCalled();
+      expect(f.read).not.toHaveBeenCalled();
+      expect(approveTransfer).not.toHaveBeenCalled();
+      expect(f.settle).toHaveBeenCalledWith(
+        call.callId,
+        call.challengeId,
+        null,
+      );
+    } finally {
+      f.close();
+    }
+  },
+);

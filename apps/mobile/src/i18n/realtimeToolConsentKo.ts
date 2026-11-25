@@ -28,8 +28,10 @@ export const realtimeToolConsentKo = {
   'realtimeToolConsent.liveSessionAllow': '이번 통화에 사용',
   'realtimeToolConsent.liveSessionAudioOnly': '음성만 사용',
   'realtimeToolConsent.liveReadTitle': '이 건강 기록을 조회할까요?',
-  'realtimeToolConsent.liveResultTitle': '이 집계 결과를 AI에 보낼까요?',
+  'realtimeToolConsent.liveResultTitle': '이 조회 결과를 AI에 보낼까요?',
   'realtimeToolConsent.liveReadLabel': '조회할 항목과 기간',
+  'realtimeToolConsent.liveReadAllHistory':
+    '기간을 따로 지정하지 않아, 선택한 항목의 전체 기록 기간을 조회해요.',
   'realtimeToolConsent.liveResultLabel': '전송할 내용',
   'realtimeToolConsent.liveReadBoundary':
     '지금은 기기에서 조회만 해요. 전송 전에는 결과를 보여드리고 다시 확인해요.',

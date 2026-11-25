@@ -127,12 +127,14 @@ final class CanonicalLiveCallPresenter {
 
 extension VoiceRealtimeModule {
     static func canonicalReviewEnabled(_ identifier: String) -> Bool {
+        // The offline fixture can narrow ownership, not force-enable the product capability.
+        guard RealtimeVoiceCanonicalHealthAdmission.enabledForLiveBridge else { return false }
         #if OROT_TESTS && targetEnvironment(simulator)
             if ComposedCanonicalOpenFixture.requested {
                 return ComposedCanonicalOpenFixture.allowed && ComposedCanonicalOpenFixture.session?.id == identifier
             }
         #endif
-        return RealtimeVoiceCanonicalHealthAdmission.enabledForLiveBridge
+        return true
     }
 
     static func canonicalAuthority(_ service: String, _ account: String) -> [String: Any]? {
