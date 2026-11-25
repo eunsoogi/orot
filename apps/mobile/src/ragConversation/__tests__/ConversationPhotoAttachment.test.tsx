@@ -37,7 +37,7 @@ test('photo selection and removal are explicit actions, independent of send', as
   expect(onSelect).toHaveBeenCalledTimes(1);
 });
 
-test('preparation and errors are announced without triggering another selection', async () => {
+test('preparation is quiet while selection stays locked and errors still appear', async () => {
   const onSelect = jest.fn();
   const view = await render(
     <ConversationPhotoAttachment
@@ -46,7 +46,7 @@ test('preparation and errors are announced without triggering another selection'
       onRemove={jest.fn()}
     />,
   );
-  expect(screen.getByText('사진을 준비하고 있어요.')).toBeTruthy();
+  expect(screen.queryByText('사진을 준비하고 있어요.')).toBeNull();
   expect(screen.getByRole('button', { name: '사진 첨부' })).toBeDisabled();
   await view.rerender(
     <ConversationPhotoAttachment
