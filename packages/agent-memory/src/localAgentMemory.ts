@@ -8,7 +8,7 @@ import { forgetAllPersistedRecords } from './allMemoryDeletion';
 import { isAgentMemoryKind, isProvenance, metadataFrom, provenanceFrom } from './validation';
 import {
   observeRemoval,
-  scanRemoval,
+  runSourceRemovalBatch,
   timeRemoval,
   type RemovalObserver,
 } from './sourceRemovalObservation';
@@ -156,40 +156,15 @@ export class LocalAgentMemory implements AgentMemoryService {
     observeRemoval(observe, 'queue', 'begin');
     return this.enqueue(async () => {
       observeRemoval(observe, 'queue', 'success');
-      const normalizedId = sourceId.trim();
-      if (!normalizedId) throw new Error('A source identifier is required.');
-      const references = new Set([
-        normalizedId,
-        ...dependentReferenceIds.map((referenceId) => referenceId.trim()).filter(Boolean),
-      ]);
-
-      const ids = await scanRemoval(this.storage, references, observe);
-      const deletionFences = new Set([...references, ...ids]);
-      const memoriesDeleted = await this.runBatch(
-        async () => {
-          const engine = await timeRemoval(observe, 'engine', () => this.getEngine());
-          const forgotten = await timeRemoval(observe, 'forget', async () => {
-            let count = 0;
-            for (const id of ids) if (await engine.forget(id)) count += 1;
-            return count;
-          });
-          await timeRemoval(observe, 'fences', async () => {
-            // Checkpoints may cite the memory row itself, its source, or a cascaded transcript identity.
-            for (const referenceId of deletionFences) {
-              const kinds = typedReferences
-                ?.filter((reference) => reference.id === referenceId)
-                .map((reference) => reference.kind);
-              await this.storage.markSourceRemoved(
-                referenceId,
-                kinds?.length && !ids.includes(referenceId) ? kinds : undefined,
-              );
-            }
-          });
-          return forgotten;
-        },
-        undefined,
+      const { deletionFences, memoriesDeleted } = await runSourceRemovalBatch({
+        sourceId,
+        dependentReferenceIds,
+        typedReferences,
         observe,
-      );
+        storage: this.storage,
+        getEngine: () => this.getEngine(),
+        runBatch: (operation) => this.runBatch(operation, undefined, observe),
+      });
       for (const referenceId of deletionFences) this.removedSourceIds.add(referenceId);
       const sourceDeleted = await deleteSourceRecord();
       return { sourceDeleted, memoriesDeleted };

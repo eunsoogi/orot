@@ -126,4 +126,3 @@ final class ProcessDiagnosticWitness: @unchecked Sendable {
         return ["launch": launch, "bridge": bridge, "receipts": receipts]
     }
 }
-

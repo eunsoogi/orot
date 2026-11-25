@@ -70,4 +70,3 @@ final class ProcessDiagnosticWitnessTests: XCTestCase {
         XCTAssertEqual(witness.snapshot()["receipts"] as? [String], [])
     }
 }
-
