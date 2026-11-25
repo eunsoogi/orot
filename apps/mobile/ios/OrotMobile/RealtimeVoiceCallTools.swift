@@ -93,7 +93,6 @@ final class LiveResponsesToolBridge {
         guard !retired, current(), admission.backendAllowed() else { retire(); return }
         guard self.owner == nil || self.owner == owner else { retire(); return }
         self.owner = owner
-        // Speech before a delegation cannot supersede it; do not retain its event IDs.
         if delegation == nil, envelope["type"] as? String == "session.input_transcript.delta" {
             return
         }
@@ -157,7 +156,6 @@ final class LiveResponsesToolBridge {
         }
         guard created else { return }
         if type == "response.output_item.done", let item = event["item"] as? [String: Any] {
-            // The admitted session registers exactly one function, no hosted/custom tools.
             if item["type"] as? String == "message" || item["type"] as? String == "reasoning" {
                 return
             }
@@ -176,14 +174,17 @@ final class LiveResponsesToolBridge {
             pending.append(request)
             return
         }
-        if type == "response.failed" || type == "response.incomplete" {
+        guard let response = event["response"] as? [String: Any], response["id"] as? String == delegation.response
+        else { return }
+        switch (type, response["status"] as? String) {
+        case ("response.failed", "failed"), ("response.incomplete", "incomplete"):
             retire()
             return
+        case ("response.completed", "completed") where !pending.isEmpty:
+            break
+        default:
+            return
         }
-        guard type == "response.completed", let response = event["response"] as? [String: Any],
-              response["id"] as? String == delegation.response, response["status"] as? String == "completed",
-              !pending.isEmpty else { return }
-        // Burn the batch before any policy callback. Unknown or denied calls never resume it.
         spent = true
         guard pending.allSatisfy(admission.mayRun), current(), admission.backendAllowed() else { retire(); return }
         cancel = admission.approve(pending) { [weak self] granted in
@@ -237,7 +238,6 @@ final class LiveResponsesToolBridge {
         cancel = admission.execute(request) { [weak self] result in
             DispatchQueue.main.async { [weak self] in
                 guard let self, !retired else { return }
-                // A producer that calls back twice must not emit or continue another batch.
                 let currentIndex = results.count
                 guard progress == currentIndex else { return }
                 progress += 1

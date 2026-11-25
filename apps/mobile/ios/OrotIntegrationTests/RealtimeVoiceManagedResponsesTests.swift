@@ -162,13 +162,13 @@ extension RealtimeVoiceLifecycleTests {
         }
     }
 
-    private func managedFixtureCall(_ socket: ManagedResponseFixtureSocket) -> RealtimeVoiceCall {
+    func managedFixtureCall(_ socket: ManagedResponseFixtureSocket) -> RealtimeVoiceCall {
         RealtimeVoiceCall(audio: Audio(), socket: socket,
                           ownership: AudioSessionOwnership(configure: { _, _, _ in }, setActive: { _ in }),
                           permission: { $0(true) }, foreground: { true }, emit: { _, _ in })
     }
 
-    private func managedAdmission(
+    func managedAdmission(
         backendModel: String = "gpt-6-luna",
         _ execute: @escaping (LiveResponsesAdmission.Request, @escaping (String?) -> Void) -> (() -> Void),
     ) -> LiveResponsesAdmission {
@@ -178,7 +178,7 @@ extension RealtimeVoiceLifecycleTests {
                                execute: execute, mayDisclose: { _, value in value.contains("synthetic") })
     }
 
-    private func managedEvents() -> [[String: Any]] {
+    func managedEvents() -> [[String: Any]] {
         func wrap(_ id: String, _ event: [String: Any]) -> [String: Any] {
             ["type": "response.event", "event_id": id, "delegation_id": "delegation-a", "event": event]
         }
@@ -195,7 +195,7 @@ extension RealtimeVoiceLifecycleTests {
     }
 }
 
-private final class ManagedResponseFixtureSocket: RealtimeSocketPort {
+final class ManagedResponseFixtureSocket: RealtimeSocketPort {
     var received: (([String: Any]) -> Void)?
     var failed: (() -> Void)?
     var configured: (() -> Void)?
