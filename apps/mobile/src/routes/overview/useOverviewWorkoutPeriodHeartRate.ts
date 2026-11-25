@@ -1,5 +1,5 @@
 import { useLayoutEffect, useState } from 'react';
-import { createRecordRepository, type SqlDatabase } from '@orot/storage';
+import { createRecordRepository } from '@orot/storage';
 import { conversationExecutionNative } from '../../ragConversation/conversationExecutionNative';
 import { subscribeWorkoutImportCommitted } from '../../healthkit/workoutImportEvents';
 import { readOwnedWorkoutPeriod } from '../../healthkit/ownedWorkoutPeriodRead';
@@ -7,6 +7,8 @@ import type { WorkoutPeriodResult } from '../../healthkit/workoutPeriodNativeRea
 import {
   canReacquireOverviewWorkoutSnapshot,
   overviewWorkoutReadWindow,
+  overviewWorkoutCohortFence,
+  type OverviewWorkoutRecovery,
 } from './overviewWorkoutSnapshotRecovery';
 import {
   subscribeLocalDataClear,
@@ -89,30 +91,27 @@ export function useOverviewWorkoutPeriodHeartRate(active: boolean): State {
       }
       return false;
     }
-    async function start(canRecover = true, previousDatabase?: SqlDatabase) {
+    async function start(
+      canRecover = true,
+      previous?: OverviewWorkoutRecovery,
+    ) {
       if (!mounted || task || phase() !== 'active') return;
-      const now = new Date();
-      const { period, midnight, currentWindow } =
-        overviewWorkoutReadWindow(now);
+      const window = overviewWorkoutReadWindow(previous?.period);
+      const { period, currentWindow } = window;
+      const cohortFence = overviewWorkoutCohortFence(previous?.cohort);
       const target: ReadOwner = { abort: new AbortController() };
       task = target;
       clearTimeout(boundary);
-      boundary = setTimeout(
-        () => {
-          retire();
-          start();
-        },
-        Math.max(1, midnight - now.getTime()),
-      );
+      boundary = setTimeout(() => {
+        retire();
+        start();
+      }, window.delay);
       setState(loading);
       try {
         if (!(await confirm(target))) return;
         const storage = require('../../storage/secureDatabase');
         const database = await storage.openLocalAgentMemoryDatabase();
-        if (
-          !current(target) ||
-          (previousDatabase && database !== previousDatabase)
-        )
+        if (!current(target) || (previous && database !== previous.database))
           return;
         target.epoch = acquireIndependentReadEpoch(database);
         const awaitWriter = () =>
@@ -145,11 +144,12 @@ export function useOverviewWorkoutPeriodHeartRate(active: boolean): State {
           signal: target.abort.signal,
           current: admitted,
           confirm: () => confirm(target),
+          admitNativeCohort: cohortFence.admit,
         });
         if (!admitted()) {
-          // A writer can invalidate a read during the native await. Reacquire
-          // once only after the same guarded connection settles and is re-proved.
+          const cohort = cohortFence.dispatched();
           if (
+            cohort &&
             canRecover &&
             (await canReacquireOverviewWorkoutSnapshot(
               target.epoch?.current(),
@@ -159,7 +159,7 @@ export function useOverviewWorkoutPeriodHeartRate(active: boolean): State {
             ))
           ) {
             dropTask(false);
-            start(false, database);
+            start(false, { database, period, cohort });
           }
           return;
         }
