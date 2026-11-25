@@ -25,7 +25,8 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
         self.launchOptions = launchOptions
 
         // Confirm that launch opt-in reached this process before the JS bridge starts.
-        if ProcessInfo.processInfo.arguments.contains("-OROT_PROVIDER_DIAGNOSTICS") {
+        if let witness = ProcessDiagnosticWitness.current {
+            witness.markLaunch()
             let diagnostics = Logger(subsystem: "com.orot.mobile", category: "provider-diagnostics")
             diagnostics.notice(
                 "OROT_PROVIDER_DIAGNOSTIC layer=native feature=pipeline stage=launch_opt_in outcome=completed",

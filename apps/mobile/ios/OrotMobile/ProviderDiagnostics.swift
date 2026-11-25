@@ -1,12 +1,10 @@
 import Foundation
-
 /// Closed diagnostic tokens preserve failure boundaries without logging health or task content.
 @objc(OrotProviderDiagnostics)
 final class OrotProviderDiagnostics: NSObject {
     @objc static func requiresMainQueueSetup() -> Bool {
         false
     }
-
     /// Keep the detailed spans separate from the flag used for matched restore timings.
     @objc func constantsToExport() -> [AnyHashable: Any] {
         let arguments = ProcessInfo.processInfo.arguments
@@ -19,7 +17,9 @@ final class OrotProviderDiagnostics: NSObject {
     }
 
     @objc func report(_ feature: String, stage: String, outcome: String) {
-        guard ProcessInfo.processInfo.arguments.contains("-OROT_PROVIDER_DIAGNOSTICS"), !WorkoutPeriodDiagnostics.handleJS(feature, stage: stage, outcome: outcome) else { return }
+        guard let witness = ProcessDiagnosticWitness.current else { return }
+        witness.acceptJS(feature: feature, stage: stage, outcome: outcome)
+        guard feature != "pipeline", !WorkoutPeriodDiagnostics.handleJS(feature, stage: stage, outcome: outcome) else { return }
         if feature == "live_health" {
             // Never accept text, request identifiers, source identities, or provider/audio payloads.
             let stages = ["grant_lookup", "owner_reproof", "local_confirmation", "data_open", "evidence_lookup",

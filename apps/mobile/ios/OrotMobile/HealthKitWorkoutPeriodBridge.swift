@@ -176,15 +176,13 @@ private enum WorkoutPeriodBridgeOperations {
 
 /// The opt-in trace accepts only fixed code-owned marks and a monotonic duration.
 enum WorkoutPeriodDiagnostics {
-    enum Mark: String {
-        case bridgeReceived, requestRejected, bridgeBusy, started, unavailable, empty, available, cancelled, timeout
-        case nativeGateRejected, workoutObjectsRead, associatedParentsRead, quantitiesRead
-    }
+    typealias Mark = ProcessDiagnosticWitness.WorkoutNative
 
     private static let enabled = ProcessInfo.processInfo.arguments.contains("-OROT_PROVIDER_DIAGNOSTICS")
 
     static func report(_ mark: Mark, since start: DispatchTime? = nil) {
-        guard enabled else { return }
+        guard let witness = ProcessDiagnosticWitness.current else { return }
+        witness.recordWorkout(mark)
         let elapsed = start.map { (DispatchTime.now().uptimeNanoseconds - $0.uptimeNanoseconds) / 1_000_000 } ?? 0
         NSLog("OROT_PROVIDER_DIAGNOSTIC layer=app feature=workout_period stage=%@ elapsed_ms=%ld",
               mark.rawValue, Int(min(elapsed, 300_000)))
