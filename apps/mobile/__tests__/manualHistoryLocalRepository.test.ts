@@ -67,7 +67,16 @@ describe('openLocalManualHistoryRepository', () => {
       create: jest.fn().mockResolvedValue(originalEntry),
       correct: jest.fn().mockResolvedValue(correctedEntry),
       history: jest.fn().mockResolvedValue([originalEntry, correctedEntry]),
-      delete: jest.fn().mockResolvedValue(true),
+      delete: jest.fn(
+        async (
+          _id: string,
+          _transaction: typeof transaction,
+          after: (ids: readonly string[]) => Promise<void>,
+        ) => {
+          await after([originalEntry.id, correctedEntry.id]);
+          return true;
+        },
+      ),
     };
     const deleteChunks = jest.fn().mockResolvedValue(undefined);
     mockedOpenLocalStorage.mockResolvedValue({
@@ -136,13 +145,11 @@ describe('openLocalManualHistoryRepository', () => {
     expect(manualHistory.history).toHaveBeenCalledWith(correctedEntry.id);
 
     await expect(repository.delete(correctedEntry.id)).resolves.toBe(true);
-    expect(manualHistory.history).toHaveBeenCalledWith(
-      correctedEntry.id,
-      transaction,
-    );
+    expect(manualHistory.history).toHaveBeenCalledTimes(1);
     expect(manualHistory.delete).toHaveBeenCalledWith(
       correctedEntry.id,
       transaction,
+      expect.any(Function),
     );
     expect(deleteChunks).toHaveBeenCalledWith(
       [],
@@ -164,10 +171,8 @@ describe('openLocalManualHistoryRepository', () => {
       list: jest.fn(),
       create: jest.fn(),
       correct: jest.fn(),
-      history: jest
-        .fn()
-        .mockRejectedValue(new Error('Manual history entry not found.')),
-      delete: jest.fn(),
+      history: jest.fn(),
+      delete: jest.fn().mockResolvedValue(false),
     };
     const deleteChunks = jest.fn();
     mockedOpenLocalStorage.mockResolvedValue({
@@ -186,11 +191,12 @@ describe('openLocalManualHistoryRepository', () => {
     const repository = await openLocalManualHistoryRepository();
 
     await expect(repository.delete('missing-entry')).resolves.toBe(false);
-    expect(manualHistory.history).toHaveBeenCalledWith(
+    expect(manualHistory.history).not.toHaveBeenCalled();
+    expect(manualHistory.delete).toHaveBeenCalledWith(
       'missing-entry',
       transaction,
+      expect.any(Function),
     );
-    expect(manualHistory.delete).not.toHaveBeenCalled();
     expect(deleteChunks).not.toHaveBeenCalled();
   });
 });

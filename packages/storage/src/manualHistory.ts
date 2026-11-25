@@ -25,13 +25,15 @@ export type NewManualHistoryEntry = Omit<
   'id' | 'recordedAt' | 'ingestedAt' | 'supersedesId' | 'correctionNote'
 >;
 
+type OnDelete = (ids: readonly string[]) => Promise<void>;
+
 export interface ManualHistoryRepository {
   list(query?: ManualHistoryQuery): Promise<ManualHistoryEntry[]>;
   get(id: string): Promise<ManualHistoryEntry | null>;
   create(input: NewManualHistoryEntry): Promise<ManualHistoryEntry>;
   correct(id: string, input: ManualHistoryCorrectionInput): Promise<ManualHistoryEntry>;
   history(id: string, transaction?: SqlExecutor): Promise<ManualHistoryEntry[]>;
-  delete(id: string, transaction?: SqlExecutor): Promise<boolean>;
+  delete(id: string, transaction?: SqlExecutor, after?: OnDelete): Promise<boolean>;
   listEvidence(
     query?: Omit<ManualHistoryQuery, 'includeSuperseded'>,
   ): Promise<ManualHistoryEvidence[]>;
@@ -207,7 +209,7 @@ export function createManualHistoryRepository(
       if (entries.length === 0) throw new Error('Manual history entry not found.');
       return entries;
     },
-    async delete(id, transaction) {
+    async delete(id, transaction, after) {
       const remove = async (executor: SqlExecutor): Promise<boolean> => {
         const entries = await readHistory(executor, id);
         if (entries.length === 0) return false;
@@ -215,6 +217,7 @@ export function createManualHistoryRepository(
         for (const entry of entries) {
           await executor.execute('DELETE FROM manual_history_entries WHERE id = ?', [entry.id]);
         }
+        await after?.(entries.map((entry) => entry.id));
         return true;
       };
       if (transaction) return remove(transaction);
