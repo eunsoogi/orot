@@ -25,6 +25,7 @@ export function hasTypedHeartRateSource(
 type SourceGuard = {
   acquire(): { current(): boolean; dispose(): void } | undefined;
   reprove(signal: AbortSignal): Promise<boolean>;
+  confirmDispatch?(): Promise<boolean>;
 };
 
 type DispatchGrant = {

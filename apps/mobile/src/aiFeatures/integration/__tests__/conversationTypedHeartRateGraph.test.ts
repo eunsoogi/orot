@@ -63,6 +63,7 @@ test.each([
   'denied',
   'recipient-replaced',
   'source-deleted-during-final-check',
+  'locked-during-final-recipient-check',
 ] as const)('text graph %s gates exact typed outgoing evidence', async mode => {
   const { f, data } = await actualSendRetentionFixture('one');
   const guardedDatabase = guardedNativeDatabase(f.database);
@@ -73,6 +74,7 @@ test.each([
   });
   let enteredProtectedFinalWindow = false;
   let lateDeletion = false;
+  let lockedDuringFinalCheck = false;
   mockProtectedData.mockReset().mockImplementation(async () => {
     if (
       mode === 'source-deleted-during-final-check' &&
@@ -96,7 +98,18 @@ test.each([
   try {
     await f.repository.put('health_observation', metric);
     const fake = publicEvidenceFixture();
-    mockLoadChoice.mockReset().mockResolvedValue(fake.selected.selection);
+    mockLoadChoice.mockReset().mockImplementation(async () => {
+      if (
+        mode === 'locked-during-final-recipient-check' &&
+        enteredProtectedFinalWindow
+      ) {
+        // Native event delivery can lag the positive probe while the owner recheck is pending.
+        await Promise.resolve();
+        lockedDuringFinalCheck = true;
+        mockProtectedData.mockResolvedValue(false);
+      }
+      return fake.selected.selection;
+    });
     const confirm = jest.fn(async () => mode !== 'denied');
     const generate = jest.fn(async (request: LanguageModelRequest) => {
       if (generate.mock.calls.length === 1) {
@@ -173,6 +186,9 @@ test.each([
     );
     expect(changedAtHandoff).toBe(mode === 'recipient-replaced');
     expect(lateDeletion).toBe(mode === 'source-deleted-during-final-check');
+    expect(lockedDuringFinalCheck).toBe(
+      mode === 'locked-during-final-recipient-check',
+    );
     expect(generate).toHaveBeenCalled();
     expect(confirm).toHaveBeenCalledTimes(1);
     const calls = generate.mock.calls.map(([call]) => JSON.stringify(call));

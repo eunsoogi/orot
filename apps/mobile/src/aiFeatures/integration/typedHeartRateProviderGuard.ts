@@ -31,6 +31,11 @@ export function guardTypedHeartRateProvider(
     try {
       if (!(await grant.source.reprove(signal)) || !(await grant.recheck()))
         return;
+      if (
+        grant.source.confirmDispatch &&
+        !(await grant.source.confirmDispatch())
+      )
+        return;
       if (signal.aborted || !grant.current() || !witness.current()) return;
       // No await between the synchronous source/turn guards and invocation.
       return { started: start() };
