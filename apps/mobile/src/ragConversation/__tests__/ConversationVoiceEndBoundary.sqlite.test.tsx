@@ -20,6 +20,10 @@ import { createConversationSessions } from '../conversationSessions';
 import type { ConversationSessions } from '../conversationSessions';
 import { at } from '../testSupport/savedHistoryDisplayFixture';
 
+jest.mock('../../assistantAppearance/AssistantAppearanceProvider', () => ({
+  useAssistantAppearance: () => ({ value: { name: '테스트 비서' } }),
+}));
+
 const durableId = 'synthetic-voice-history';
 const callId = 'synthetic-completed-call';
 
@@ -200,8 +204,13 @@ test('the actual restored duration marker reads only its exact local captions af
           {
             order: 1,
             role: 'assistant',
-            text: 'Synthetic exact prior Live caption',
+            text: '안녕',
           },
+          { order: 2, role: 'assistant', text: '하세요' },
+          { order: 3, role: 'user', text: '오늘' },
+          { order: 4, role: 'user', text: ' 날씨' },
+          { order: 5, role: 'assistant', text: '날씨는' },
+          { order: 7, role: 'assistant', text: '확인할게요' },
         ],
       },
       () => true,
@@ -223,21 +232,29 @@ test('the actual restored duration marker reads only its exact local captions af
     expect(cold.getAllByTestId('conversation-voice-end-marker')).toHaveLength(
       2,
     );
-    expect(cold.queryByText(/Synthetic exact prior Live caption/)).toBeNull();
+    expect(cold.queryByText(/안녕하세요/)).toBeNull();
     expect(
       cold.getAllByRole('button', { name: '저장된 자막 보기' }),
     ).toHaveLength(1);
     await fireEvent.press(
       cold.getByRole('button', { name: '저장된 자막 보기' }),
     );
-    await waitFor(() =>
-      expect(cold.getByText(/Synthetic exact prior Live caption/)).toBeTruthy(),
+    await waitFor(() => expect(cold.getByText(/안녕하세요/)).toBeTruthy());
+    assertOrder(
+      JSON.stringify(cold.toJSON()),
+      '안녕하세요',
+      '오늘 날씨',
+      '날씨는',
+      '확인할게요',
     );
+    expect(cold.getByText(/테스트 비서: 안녕하세요/)).toBeTruthy();
+    expect(cold.getByText(/오늘 날씨/)).toBeTruthy();
+    expect(cold.queryByText(/날씨는확인할게요/)).toBeNull();
     expect(
       cold.getByText('통화 중 확인된 일부 자막입니다. 전체 전사는 아닙니다.'),
     ).toBeTruthy();
     await fireEvent.press(cold.getByRole('button', { name: '자막 닫기' }));
-    expect(cold.queryByText(/Synthetic exact prior Live caption/)).toBeNull();
+    expect(cold.queryByText(/안녕하세요/)).toBeNull();
     expect(reopened.needsNoStrictRestore).not.toHaveBeenCalled();
   } finally {
     AppState.currentState = previousAppState;

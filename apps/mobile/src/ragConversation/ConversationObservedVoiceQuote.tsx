@@ -1,5 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { AppState, Pressable, StyleSheet, View } from 'react-native';
+import { useAssistantAppearance } from '../assistantAppearance/AssistantAppearanceProvider';
+import { defaultAssistantName } from '../assistantAppearance/appearance';
 import { AppText } from '../layout/AppText';
 import { appColors } from '../layout/appColors';
 import { t } from '../i18n';
@@ -18,12 +20,38 @@ export type ReadObservedVoiceQuote = (
   signal: AbortSignal,
 ) => Promise<Quote | undefined>;
 
+function observedTurns(lines: Quote['lines']) {
+  const turns: Array<Quote['lines'][number]> = [];
+  let previousOrder: number | undefined;
+  for (const line of lines) {
+    const previous = turns.at(-1);
+    // The stored Live wire entries are additive deltas. Preserve literal spacing,
+    // and never merge across an observed speaker change or a gap in the sequence.
+    if (
+      previous?.role === line.role &&
+      previousOrder !== undefined &&
+      line.order === previousOrder + 1
+    ) {
+      turns[turns.length - 1] = {
+        ...previous,
+        text: previous.text + line.text,
+      };
+    } else {
+      turns.push(line);
+    }
+    previousOrder = line.order;
+  }
+  return turns;
+}
+
 /** Explicit tap reveals only this locally owned quote. It never changes the composer or provider input. */
 export function ConversationObservedVoiceQuote({
   read,
 }: {
   readonly read: ReadObservedVoiceQuote;
 }) {
+  const appearance = useAssistantAppearance();
+  const assistantName = appearance?.value?.name ?? defaultAssistantName;
   const active = useRef<AbortController | null>(null);
   const [state, setState] = useState<Quote | 'loading' | 'unavailable' | null>(
     null,
@@ -92,13 +120,11 @@ export function ConversationObservedVoiceQuote({
           <AppText style={styles.notice}>
             {t('ragConversation.voice.observedCaptionsNotice')}
           </AppText>
-          {state.lines.map(line => (
+          {observedTurns(state.lines).map(line => (
             <AppText key={line.order}>
-              {t(
-                line.role === 'user'
-                  ? 'ragConversation.voice.observedUser'
-                  : 'ragConversation.voice.observedAssistant',
-              )}
+              {line.role === 'user'
+                ? t('ragConversation.voice.observedUser')
+                : assistantName}
               : {line.text}
             </AppText>
           ))}
