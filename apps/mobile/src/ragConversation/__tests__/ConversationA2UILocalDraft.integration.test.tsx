@@ -1,6 +1,7 @@
 import { act, fireEvent, render, screen } from '@testing-library/react-native';
 import { AppState } from 'react-native';
 import { ConversationTranscriptMessages } from '../ConversationTranscriptMessages';
+import { conversationA2UILocalDraftFor } from '../conversationA2UILocalDraftFrames';
 import { conversationA2UICatalog } from '../conversationA2UI';
 import {
   localA2UIDraftFieldLabel as fieldLabel,
@@ -116,6 +117,14 @@ test('a completed reply owns its local draft', async () => {
         }),
       );
       await sending;
+    });
+    const settled = store.getSnapshot().sessions[0]!;
+    const settledRoot = settled.messages.at(-1)?.a2uiPresentation;
+    expect(settled.busy).toBe(false);
+    expect(settledRoot).toBeDefined();
+    expect(conversationA2UILocalDraftFor(settledRoot!)).toEqual({
+      fieldId: 'field',
+      resetId: 'reset',
     });
     expect(await screen.findByLabelText(fieldLabel)).toBeTruthy();
     expect(screen.getByText(answer)).toBeTruthy();

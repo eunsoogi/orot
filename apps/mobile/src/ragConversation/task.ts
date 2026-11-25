@@ -29,6 +29,7 @@ import {
   admitConversationA2UIPresentation,
 } from './conversationA2UIPresentation';
 import type { ConversationA2UINode } from './conversationA2UI';
+import type { ConversationA2UILocalDraft } from './conversationA2UILocalDraft';
 import { withConversationA2UIFrameSequence } from './conversationA2UIFrameSequence';
 import { withProactiveMemory } from './proactiveConversationMemory';
 export interface RagConversationMessage {
@@ -39,6 +40,7 @@ export interface GroundedRagAnswer {
   readonly answer: string;
   readonly proactiveMemory?: true;
   readonly a2uiPresentation?: ConversationA2UINode;
+  readonly a2uiLocalDraft?: ConversationA2UILocalDraft;
   /** Omitted legacy values remain grounded; only explicit social/clarifying replies need no sources. */
   readonly answerKind?: 'grounded' | 'conversation' | 'prior_output';
   readonly literatureReferences?: readonly LiteratureIdentity[];

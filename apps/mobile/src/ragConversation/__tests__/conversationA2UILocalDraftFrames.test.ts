@@ -8,6 +8,7 @@ import {
 } from '../conversationA2UILocalDraft';
 import {
   admitConversationA2UILocalDraftFrames,
+  bindLiveConversationA2UILocalDraft,
   conversationA2UILocalDraftFor,
 } from '../conversationA2UILocalDraftFrames';
 
@@ -85,4 +86,17 @@ test('rejects invalid input and terminal frames', () => {
   check([create, data, allowed, frame('deleteSurface', {})]);
   check([create, allowed, data]);
   check([create, data, allowed], '다른 응답');
+});
+
+test('only a closed live plan can bind after render-tree serialization', () => {
+  const original = admit([create, data, allowed])!;
+  const cloned = JSON.parse(JSON.stringify(original)) as typeof original;
+  expect(conversationA2UILocalDraftFor(cloned)).toBeUndefined();
+  const plan = conversationA2UILocalDraftFor(original);
+  bindLiveConversationA2UILocalDraft(cloned, { ...plan, value: 'private' });
+  expect(conversationA2UILocalDraftFor(cloned)).toBeUndefined();
+  bindLiveConversationA2UILocalDraft(cloned, plan);
+  expect(conversationA2UILocalDraftFor(cloned)).toEqual(plan);
+  bindLiveConversationA2UILocalDraft(cloned, undefined);
+  expect(conversationA2UILocalDraftFor(cloned)).toBeUndefined();
 });

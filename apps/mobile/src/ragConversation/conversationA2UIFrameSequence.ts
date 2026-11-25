@@ -13,7 +13,10 @@ import {
   draftA2UISurfaceId,
   matchesConversationA2UIProse,
 } from './conversationA2UIPresentation';
-import { admitConversationA2UILocalDraftFrames } from './conversationA2UILocalDraftFrames';
+import {
+  admitConversationA2UILocalDraftFrames,
+  conversationA2UILocalDraftFor,
+} from './conversationA2UILocalDraftFrames';
 import { isObject } from './taskHistory';
 import type { GroundedRagAnswer } from './task';
 
@@ -144,7 +147,12 @@ export function withConversationA2UIFrameSequence(
         );
       }
       if (!root) return validated;
-      const presented = { ...validated.value, a2uiPresentation: root };
+      const draft = conversationA2UILocalDraftFor(root);
+      const presented = {
+        ...validated.value,
+        a2uiPresentation: root,
+        ...(draft ? { a2uiLocalDraft: draft } : {}),
+      };
       return { ...validated, value: presented };
     },
   };

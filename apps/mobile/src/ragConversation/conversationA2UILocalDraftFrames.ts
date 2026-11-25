@@ -81,9 +81,36 @@ function localDraftPair(
 }
 
 /** Positive approval exists only against the exact coherent object returned
- * by the owning validator. No transfer to another message or archive. */
+ * by the owning validator or the exact current final publication. */
 export function conversationA2UILocalDraftFor(root: ConversationA2UINode) {
   return approvals.get(root);
+}
+
+/**
+ * A graph result may rematerialize its validated render tree. The final live
+ * publisher can rebind only the closed plan, never a model field value or an
+ * archive. The projection itself contains just two mechanically allowed IDs.
+ */
+export function bindLiveConversationA2UILocalDraft(
+  root: ConversationA2UINode,
+  candidate: unknown,
+) {
+  approvals.delete(root);
+  const plan = record(candidate);
+  if (
+    root.component === 'Column' &&
+    plan &&
+    has(plan, ['fieldId', 'resetId']) &&
+    isId(plan.fieldId) &&
+    isId(plan.resetId) &&
+    plan.fieldId !== plan.resetId
+  ) {
+    approvals.set(
+      root,
+      Object.freeze({ fieldId: plan.fieldId, resetId: plan.resetId }),
+    );
+  }
+  return root;
 }
 
 /** Admit optional controls as a narrow final suffix of an otherwise coherent
