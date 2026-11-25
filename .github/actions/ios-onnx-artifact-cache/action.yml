@@ -16,13 +16,19 @@ runs:
     - name: Resolve original binary artifacts on cache miss
       if: steps.onnx_archive_restore.outputs.cache-hit != 'true'
       shell: bash
-      # Use the upstream SwiftPM URLs and checksums with normal TLS. A real
-      # upstream outage on a cold runner must still fail; never repack an archive.
+      # Keep original URLs and checksums. Only pinned upstream TLS failures may
+      # fetch the exact bytes from alternate HTTPS transport; all gates still run.
       run: |
         set -euo pipefail
         scratch="$(mktemp -d "$RUNNER_TEMP/orot-onnx-resolve.XXXXXX")"
-        scripts/ci/run-command.sh ios-onnx-resolve artifacts/ios-focus/onnx-resolver.log -- node scripts/ci/fail-on-warning.mjs -- xcrun swift package \
-          --package-path vendor/onnxruntime-swift-package-manager --scratch-path "$scratch" resolve
+        original="artifacts/ios-focus/onnx-resolver.log"
+        if scripts/ci/run-command.sh ios-onnx-resolve "$original" -- node scripts/ci/fail-on-warning.mjs -- xcrun swift package \
+          --package-path vendor/onnxruntime-swift-package-manager --scratch-path "$scratch/original" resolve; then
+          exit 0
+        fi
+        node scripts/ci/seed-onnx-verified-mirror.mjs "$original"
+        scripts/ci/run-command.sh ios-onnx-resolve-verified-retry artifacts/ios-focus/onnx-resolver-verified-retry.log -- node scripts/ci/fail-on-warning.mjs -- xcrun swift package \
+          --package-path vendor/onnxruntime-swift-package-manager --scratch-path "$scratch/verified" resolve
     - name: Verify both original archives before build or cache save
       shell: bash
       run: node scripts/ci/verify-onnx-artifact-cache.mjs verify
