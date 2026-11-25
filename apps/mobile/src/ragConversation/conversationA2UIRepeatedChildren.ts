@@ -141,9 +141,9 @@ function referencesTemplate(node: Node, ownedIds: ReadonlySet<string>) {
   );
 }
 
-/** Lower data-bound children only at the terminal boundary. A frame replay
- * cannot create a live template or persist the untrusted data model. */
-export function projectFinalRepeatedChildren(
+/** Produce a scratch static graph. Only final accepted-answer admission can
+ * publish text; provisional callers must discard everything except geometry. */
+export function lowerConversationRepeatedChildren(
   raw: unknown,
 ): readonly string[] | undefined {
   if (!Array.isArray(raw) || !raw.length || raw.length > 2) return;

@@ -4,7 +4,10 @@ import { withFinalConversationCheckbox } from './conversationA2UICheckboxTask';
 import { withFinalConversationCardWeight } from './conversationA2UICardWeightTask';
 import { withFinalConversationCaption } from './conversationA2UICaptionTask';
 import { withConversationA2UIModal } from './conversationA2UIModalTask';
-import type { TaskResponderContract } from '@orot/agent-runtime';
+import type {
+  TaskResponderContract,
+  TaskResponderInput,
+} from '@orot/agent-runtime';
 import { withReplyPreferenceSpan } from './authoredReplyPreferenceSpan';
 import { withAuthoredMemorySpan } from './authoredMemorySpanTask';
 import type { GroundedRagAnswer } from './task';
@@ -15,6 +18,7 @@ export function versionedConversationMemoryTasks(
   weightedTask: TaskResponderContract<GroundedRagAnswer>,
   horizontalListTask: TaskResponderContract<GroundedRagAnswer>,
   alignedVerticalListTask: TaskResponderContract<GroundedRagAnswer>,
+  allowsOrdinaryA2UI: (input: TaskResponderInput) => boolean,
 ) {
   const conversationTaskV25 = withReplyPreferenceSpan(conversationTaskV24);
   const conversationTaskV26 = withAuthoredMemorySpan(conversationTaskV25);
@@ -55,7 +59,9 @@ export function versionedConversationMemoryTasks(
       v35: conversationTaskV35,
       v36: conversationTaskV36,
     },
-    ragConversationTask:
-      withFinalConversationRepeatedChildren(conversationTaskV36),
+    ragConversationTask: withFinalConversationRepeatedChildren(
+      conversationTaskV36,
+      allowsOrdinaryA2UI,
+    ),
   };
 }

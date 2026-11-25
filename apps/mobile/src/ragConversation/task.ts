@@ -56,8 +56,7 @@ export const legacyTask: TaskResponderContract<GroundedRagAnswer> = {
   taskType: 'grounded_rag_conversation',
   // The live send boundary owns the reviewed opening; never spend another preview call during tools.
   taskVersion: '14',
-  // Full current evidence is already in createMessages. Preserve tool identity and
-  // coverage without sending the same body a second time in native tool history.
+  // Preserve tool identity and coverage without duplicating createMessages evidence.
   nativeToolResultMode: 'evidence_references',
   allowBoundedExternalEvidence: true,
   acceptsIncompleteEvidence: acceptsLocalPublicSearchFallback,
@@ -247,4 +246,5 @@ export const {
   weightedTask,
   horizontalListTask,
   alignedVerticalListTask,
+  allowsOrdinaryA2UI,
 );
