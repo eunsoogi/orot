@@ -242,7 +242,8 @@ export function useConversationDirectPhoto(
       send().catch(() => {});
     },
     remove() {
-      clear();
+      active.current?.abort();
+      active.current = null;
       setState({});
     },
   };

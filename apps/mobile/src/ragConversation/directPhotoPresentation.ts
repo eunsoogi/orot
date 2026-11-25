@@ -12,7 +12,7 @@ export type DirectPhotoPresentation = Readonly<{
 }>;
 
 export type PublishDirectPhoto = (
-  value: DirectPhotoPresentation | null,
+  value: DirectPhotoPresentation | { readonly retireRequestId: string } | null,
 ) => void;
 
 let nextDisplayId = Number.MAX_SAFE_INTEGER;
@@ -36,7 +36,7 @@ function createDirectPhotoPresentation(
   };
 }
 
-export function presentDirectPhoto(
+function presentDirectPhoto(
   messages: readonly DisplayMessage[],
   photo: DirectPhotoPresentation | null | undefined,
   sessionId: number | undefined,
@@ -87,7 +87,7 @@ export function beginDirectPhotoPresentation(
     image,
   );
   let saved = false;
-  const retire = () => publish(null);
+  const retire = () => publish({ retireRequestId: requestId });
   signal.addEventListener('abort', retire, { once: true });
   publish(photo);
   return {
@@ -101,4 +101,39 @@ export function beginDirectPhotoPresentation(
       if (current && !saved) retire();
     },
   };
+}
+
+/** Limit full-size mounted pixels, not the number of archived photo markers. */
+export const maxMountedDirectPhotoPreviewUnits = 32 * 1024 * 1024;
+
+export function updateDirectPhotoPresentations(
+  prior: readonly DirectPhotoPresentation[],
+  event: Parameters<PublishDirectPhoto>[0],
+): readonly DirectPhotoPresentation[] {
+  if (!event) return [];
+  if ('retireRequestId' in event)
+    return prior.filter(item => item.requestId !== event.retireRequestId);
+  const next = [
+    ...prior.filter(item => item.requestId !== event.requestId),
+    event,
+  ];
+  let units = next.reduce((sum, item) => sum + item.preview.length, 0);
+  while (next.length > 1 && units > maxMountedDirectPhotoPreviewUnits)
+    units -= next.shift()!.preview.length;
+  return next;
+}
+
+export function presentDirectPhotos(
+  messages: readonly DisplayMessage[],
+  photos: readonly DirectPhotoPresentation[],
+  sessionId: number | undefined,
+  pendingOnly = false,
+): readonly DisplayMessage[] {
+  return photos.reduce(
+    (prior, photo) =>
+      pendingOnly && !photo.pending
+        ? prior
+        : presentDirectPhoto(prior, photo, sessionId),
+    messages,
+  );
 }

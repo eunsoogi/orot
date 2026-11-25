@@ -1,16 +1,20 @@
 import {
   createContext,
   type ReactNode,
+  useCallback,
   useContext,
   useEffect,
+  useRef,
   useState,
 } from 'react';
-import type {
-  DirectPhotoPresentation,
-  PublishDirectPhoto,
+import {
+  updateDirectPhotoPresentations,
+  type DirectPhotoPresentation,
+  type PublishDirectPhoto,
 } from './directPhotoPresentation';
 
-const Value = createContext<DirectPhotoPresentation | null>(null);
+const empty: readonly DirectPhotoPresentation[] = [];
+const Value = createContext(empty);
 const Publish = createContext<PublishDirectPhoto | undefined>(undefined);
 
 /** The active Conversation workspace alone owns the mounted image preview. */
@@ -23,16 +27,34 @@ export function DirectPhotoPresentationScope({
   readonly available: boolean;
   readonly children: ReactNode;
 }) {
-  const [value, publish] = useState<DirectPhotoPresentation | null>(null);
+  const [value, setValue] = useState(empty);
+  const owner = useRef({ available, sessionId });
+  owner.current = { available, sessionId };
+  const publish = useCallback<PublishDirectPhoto>(event => {
+    const current = owner.current;
+    if (
+      event &&
+      'sessionId' in event &&
+      (!current.available || current.sessionId !== event.sessionId)
+    )
+      return;
+    setValue(prior => updateDirectPhotoPresentations(prior, event));
+  }, []);
   useEffect(() => {
-    publish(prior =>
-      available && prior?.sessionId === sessionId ? prior : null,
+    setValue(prior =>
+      available && prior.every(row => row.sessionId === sessionId)
+        ? prior
+        : empty,
     );
   }, [available, sessionId]);
   return (
     <Publish.Provider value={publish}>
       <Value.Provider
-        value={available && value?.sessionId === sessionId ? value : null}
+        value={
+          available && value.every(row => row.sessionId === sessionId)
+            ? value
+            : empty
+        }
       >
         {children}
       </Value.Provider>

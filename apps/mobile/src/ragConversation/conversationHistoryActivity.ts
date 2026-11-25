@@ -7,7 +7,7 @@ import {
 import type { DisplayMessage } from './ConversationMessage';
 import type { ConversationActivitySnapshot } from './conversationActivity';
 import type { ConversationSession } from './conversationSessionTypes';
-import { presentDirectPhoto } from './directPhotoPresentation';
+import { presentDirectPhotos } from './directPhotoPresentation';
 import { useDirectPhotoPresentation } from './DirectPhotoPresentationScope';
 import { parseConversationMessageDelivery } from './conversationMessageDelivery';
 
@@ -98,7 +98,7 @@ export function useConversationHistoryPresentation(input: {
   const directPhoto = useDirectPhotoPresentation();
   const transcript = useMemo(
     () =>
-      presentDirectPhoto(
+      presentDirectPhotos(
         savedHistoryTranscript(saved ?? [], messages),
         directPhoto,
         input.sessionId,
@@ -106,10 +106,7 @@ export function useConversationHistoryPresentation(input: {
     [saved, messages, directPhoto, input.sessionId],
   );
   const followMessages = useMemo(
-    () =>
-      directPhoto?.pending && directPhoto.sessionId === input.sessionId
-        ? presentDirectPhoto(messages, directPhoto, input.sessionId)
-        : messages,
+    () => presentDirectPhotos(messages, directPhoto, input.sessionId, true),
     [directPhoto, input.sessionId, messages],
   );
   useConversationHistoryUserTurnFollow(
