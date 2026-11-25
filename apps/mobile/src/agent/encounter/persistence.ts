@@ -12,6 +12,7 @@ import {
 } from '@orot/agent-runtime';
 import type { EncounterApproval, EncounterPending } from '@orot/agent-runtime';
 import type { RecordRepository } from '@orot/storage';
+import type { readLongTranscriptReview } from './longTranscriptReviewRead';
 import { readEncounterTranscript } from './transcript';
 import { encounterConflicts } from './conflicts';
 import { requireCurrentEncounterReviewSession } from './reviewSession';
@@ -23,6 +24,7 @@ export async function persistEncounterApproval(
   approval: EncounterApproval,
   signal: AbortSignal,
   requireCurrentSession = false,
+  readLong?: typeof readLongTranscriptReview,
 ): Promise<string[]> {
   validateEncounterApproval(pending, approval);
   if (approval.decision !== 'approve')
@@ -38,14 +40,15 @@ export async function persistEncounterApproval(
         pending.sourceId,
         pending.threadId,
       );
-    const transcript = await readEncounterTranscript(
-      writer,
-      sql,
-      pending.sourceId,
-    );
+    const transcript = readLong
+      ? await readLong(writer, sql, pending, () =>
+          requireEncounterActive(signal),
+        )
+      : await readEncounterTranscript(writer, sql, pending.sourceId);
     if (
+      !readLong &&
       encounterCanonical(encounterReferences(transcript)) !==
-      encounterCanonical(pending.segments)
+        encounterCanonical(pending.segments)
     )
       throw new Error('Transcript changed before approval could commit.');
     validateEncounterCandidates(pending.candidates, transcript);
@@ -189,6 +192,10 @@ export async function persistEncounterApproval(
       );
       recordIds.push(id);
     }
+    if (readLong)
+      await readLong(writer, sql, pending, () =>
+        requireEncounterActive(signal),
+      );
     await writer.putSyncCheckpoint({
       key: receiptKey,
       value: JSON.stringify({

@@ -28,6 +28,8 @@ export const encounterReviewCopyKo = {
     '이 검토를 사용할 수 없어요. 전사와 녹음 상태를 확인한 뒤 새 검토를 시작해 주세요.',
   'encounterReview.selection-required':
     '설정에서 사용할 AI를 먼저 선택해 주세요.',
+  'encounterReview.review-capacity':
+    '검토할 후보가 32개를 넘어 일부만 표시하지 않았어요. 녹음을 나누어 각각 검토해 주세요.',
   'encounterReview.transcript-too-long':
     '전사 구간이 8개를 넘어 후보를 찾지 못했어요. 전사에서 약물 언급과 계획을 직접 확인해 주세요.',
   'encounterReview.no-transcript': '후보를 찾으려면 이 녹음에 전사가 필요해요.',
