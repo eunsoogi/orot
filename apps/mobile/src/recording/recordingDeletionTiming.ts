@@ -103,6 +103,6 @@ export function withRecordingDeletionTiming<T>(
   );
 }
 
-/** Only an explicit Simulator measurement harness supplies the opt-in observer. */
+/** An explicit Simulator measurement harness can override the real process diagnostic feed. */
 export const RecordingDeletionTimingContext =
   createContext<RecordingDeletionTimingProbe | null>(null);
