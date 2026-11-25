@@ -76,7 +76,7 @@ test('keeps documents openable when recordings fail', async () => {
   expect(service.listDocuments).toHaveBeenCalledTimes(1);
 });
 
-test('allows Retry when recordings fail and no records are visible', async () => {
+test('offers Retry when the feed is empty and fails', async () => {
   const retryRecordings = jest.fn();
   await render(
     <RecordsRoute
@@ -86,7 +86,9 @@ test('allows Retry when recordings fail and no records are visible', async () =>
       })}
     />,
   );
-  expect(await screen.findByTestId('records-recent-sources-error')).toBeTruthy();
+  expect(
+    await screen.findByTestId('records-recent-sources-error'),
+  ).toBeTruthy();
   await fireEvent.press(screen.getByTestId('records-recent-sources-retry'));
   expect(retryRecordings).toHaveBeenCalledTimes(1);
 });
