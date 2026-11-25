@@ -77,14 +77,15 @@ test('preserves exact v27 while fresh authored possibilities follow-ups expose t
   expect(
     ragConversationTask.createResultSchema?.(followUp).properties,
   ).toHaveProperty('authoredMemorySpan');
-  for (const fence of [
+  const fences: ReadonlyArray<Record<string, boolean | string>> = [
     { authoredCurrentRequest: false },
     { explicitPossibilityChoice: true },
     { typedPossibilityReport: true },
     { photoAttachment: true },
     { targetEvidenceId: 'synthetic-visit' },
     { intent: 'health-summary' },
-  ]) {
+  ];
+  for (const fence of fences) {
     expect(
       ragConversationTask.createResultSchema?.({
         ...followUp,
