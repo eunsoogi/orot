@@ -38,6 +38,7 @@
 		5C4F70F3EE4C4DBD93D0DCE0 /* RealtimeVoiceResultDispatchAuthority.swift in Sources */ = {isa = PBXBuildFile; fileRef = B42B5940143246ACB22BCEC3 /* RealtimeVoiceResultDispatchAuthority.swift */; };
 		E73A4A9DC65F411B8186B011 /* RealtimeVoiceCanonicalHealthMailbox.swift in Sources */ = {isa = PBXBuildFile; fileRef = E73A4A9DC65F411B8186A011 /* RealtimeVoiceCanonicalHealthMailbox.swift */; };
 		E73A4A9DC65F411B8186B010 /* RealtimeVoiceCanonicalHealthAdmission.swift in Sources */ = {isa = PBXBuildFile; fileRef = E73A4A9DC65F411B8186A010 /* RealtimeVoiceCanonicalHealthAdmission.swift */; };
+		E73A4A9DC65F411B8186B052 /* CanonicalLiveCallPresenter.swift in Sources */ = {isa = PBXBuildFile; fileRef = E73A4A9DC65F411B8186A052 /* CanonicalLiveCallPresenter.swift */; };
 		F40DFDA44E25442F829B17D7 /* RealtimeVoiceResponsesMailbox.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9F244E5C3A124BFC92A5929D /* RealtimeVoiceResponsesMailbox.swift */; };
 		A32CEFB009D745E0AD3A3D1A /* RealtimeVoiceSocketFrame.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1A4DE0BF65DE4917856558B9 /* RealtimeVoiceSocketFrame.swift */; };
 		CB1180000000000000000001 /* RealtimeVoiceToolLease.swift in Sources */ = {isa = PBXBuildFile; fileRef = CB1180000000000000000002 /* RealtimeVoiceToolLease.swift */; };
@@ -478,6 +479,7 @@
 		B42B5940143246ACB22BCEC3 /* RealtimeVoiceResultDispatchAuthority.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OrotMobile/RealtimeVoiceResultDispatchAuthority.swift; sourceTree = "<group>"; };
 		E73A4A9DC65F411B8186A011 /* RealtimeVoiceCanonicalHealthMailbox.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OrotMobile/RealtimeVoiceCanonicalHealthMailbox.swift; sourceTree = "<group>"; };
 		E73A4A9DC65F411B8186A010 /* RealtimeVoiceCanonicalHealthAdmission.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OrotMobile/RealtimeVoiceCanonicalHealthAdmission.swift; sourceTree = "<group>"; };
+		E73A4A9DC65F411B8186A052 /* CanonicalLiveCallPresenter.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OrotMobile/CanonicalLiveCallPresenter.swift; sourceTree = "<group>"; };
 		9F244E5C3A124BFC92A5929D /* RealtimeVoiceResponsesMailbox.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OrotMobile/RealtimeVoiceResponsesMailbox.swift; sourceTree = "<group>"; };
 		1A4DE0BF65DE4917856558B9 /* RealtimeVoiceSocketFrame.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OrotMobile/RealtimeVoiceSocketFrame.swift; sourceTree = "<group>"; };
 		CB1180000000000000000002 /* RealtimeVoiceToolLease.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OrotMobile/RealtimeVoiceToolLease.swift; sourceTree = "<group>"; };
@@ -931,6 +933,7 @@
 				B42B5940143246ACB22BCEC3 /* RealtimeVoiceResultDispatchAuthority.swift */,
 				E73A4A9DC65F411B8186A011 /* RealtimeVoiceCanonicalHealthMailbox.swift */,
 				E73A4A9DC65F411B8186A010 /* RealtimeVoiceCanonicalHealthAdmission.swift */,
+				E73A4A9DC65F411B8186A052 /* CanonicalLiveCallPresenter.swift */,
 				9F244E5C3A124BFC92A5929D /* RealtimeVoiceResponsesMailbox.swift */,
 				1A4DE0BF65DE4917856558B9 /* RealtimeVoiceSocketFrame.swift */,
 				CB1180000000000000000002 /* RealtimeVoiceToolLease.swift */,
@@ -1705,6 +1708,7 @@
 				5C4F70F3EE4C4DBD93D0DCE0 /* RealtimeVoiceResultDispatchAuthority.swift in Sources */,
 				E73A4A9DC65F411B8186B011 /* RealtimeVoiceCanonicalHealthMailbox.swift in Sources */,
 				E73A4A9DC65F411B8186B010 /* RealtimeVoiceCanonicalHealthAdmission.swift in Sources */,
+				E73A4A9DC65F411B8186B052 /* CanonicalLiveCallPresenter.swift in Sources */,
 				F40DFDA44E25442F829B17D7 /* RealtimeVoiceResponsesMailbox.swift in Sources */,
 				A32CEFB009D745E0AD3A3D1A /* RealtimeVoiceSocketFrame.swift in Sources */,
 				CB1180000000000000000001 /* RealtimeVoiceToolLease.swift in Sources */,

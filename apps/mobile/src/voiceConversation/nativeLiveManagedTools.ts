@@ -1,5 +1,6 @@
 import { NativeEventEmitter, NativeModules, Platform } from 'react-native';
 import type { LiveManagedHealthCall } from './liveResponsesHealthToolExecutor';
+import type { CanonicalLiveHealthSelection } from './bindCanonicalLiveHealthRun';
 import type { LiveResponsesGrantIdentity } from './nativeRealtimeVoice';
 
 /** Carry only typed, current-call managed challenges across the Live event bridge. */
@@ -16,6 +17,39 @@ export function nativeLiveManagedTools() {
   const events = new NativeEventEmitter(module);
   return {
     canonicalAvailable: module.supportsCanonicalHealthContextV2 === true,
+    ...(typeof module.reviewCanonicalLiveCall === 'function' &&
+    typeof module.retireCanonicalLiveReview === 'function'
+      ? {
+          async reviewCanonicalCall(
+            id: string,
+            companion: CanonicalLiveHealthSelection['binding'],
+            grant: LiveResponsesGrantIdentity,
+            signal: AbortSignal,
+          ) {
+            if (signal.aborted) return null;
+            const cancel = () => {
+              void Promise.resolve(module.retireCanonicalLiveReview(id)).catch(
+                () => undefined,
+              );
+            };
+            signal.addEventListener('abort', cancel, { once: true });
+            let approved = false;
+            try {
+              const decision: unknown = await module.reviewCanonicalLiveCall(
+                id,
+                companion,
+                grant,
+              );
+              approved = !signal.aborted && decision === true;
+              return !signal.aborted && typeof decision === 'boolean'
+                ? decision
+                : null;
+            } finally {
+              if (!approved) signal.removeEventListener('abort', cancel);
+            }
+          },
+        }
+      : {}),
     holdDelivery(
       call: LiveManagedHealthCall,
       beforeDispatch: (retire: () => void) => (() => void) | undefined,

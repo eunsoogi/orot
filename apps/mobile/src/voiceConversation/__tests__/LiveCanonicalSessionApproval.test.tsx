@@ -15,6 +15,8 @@ const mockGrant = jest.fn();
 const mockRegister = jest.fn();
 const mockProtected = jest.fn();
 const mockResolveRun = jest.fn();
+const mockNativeReview = jest.fn();
+let mockHasNativeReview = false;
 jest.mock('../../voiceSettings/liveVoicePreferencesKeychain', () => ({
   loadLiveCallSettings: async () => ({ credentialEpoch: 'account' }),
 }));
@@ -34,6 +36,7 @@ jest.mock('../../ragConversation/conversationExecutionNative', () => ({
 jest.mock('../nativeRealtimeVoice', () => ({
   nativeLiveManagedTools: () => ({
     canonicalAvailable: true,
+    ...(mockHasNativeReview ? { reviewCanonicalCall: mockNativeReview } : {}),
     subscribe: () => () => {},
     revoke: async () => {},
   }),
@@ -89,6 +92,7 @@ test.each(['approved', 'denied', 'locked'] as const)(
     const prior = AppState.currentState;
     AppState.currentState = 'active';
     jest.clearAllMocks();
+    mockHasNativeReview = false;
     mockGrant.mockResolvedValue({
       kind: 'active',
       nativeGrant,
@@ -147,6 +151,54 @@ test.each(['approved', 'denied', 'locked'] as const)(
       }
     } finally {
       await view.unmount();
+      AppState.currentState = prior;
+    }
+  },
+);
+
+test.each([true, false, null] as const)(
+  'a native presenter is the sole visible session decision: %s',
+  async choice => {
+    const prior = AppState.currentState;
+    AppState.currentState = 'active';
+    mockHasNativeReview = true;
+    jest.clearAllMocks();
+    mockGrant.mockResolvedValue({
+      kind: 'active',
+      nativeGrant,
+      credentialEpoch: 'account',
+      current: () => true,
+      subscribe: () => () => {},
+    });
+    mockStartup.mockResolvedValue({ kind: 'active', companion });
+    mockProtected.mockResolvedValue(true);
+    mockNativeReview.mockResolvedValue(choice);
+    const view = await render(<Entry />);
+    try {
+      await fireEvent.press(screen.getByText('Start Live call'));
+      const [run, credentials] = mockResolveRun.mock.calls[0] as [
+        ReturnType<typeof liveResponsesConversationRun>,
+        Promise<unknown>,
+      ];
+      expect(
+        await credentials.then(
+          () => true,
+          () => false,
+        ),
+      ).toBe(choice !== null);
+      expect(mockNativeReview).toHaveBeenCalledWith(
+        'owned-live-call',
+        companion.binding,
+        nativeGrant,
+        expect.objectContaining({ aborted: false }),
+      );
+      expect(screen.queryByTestId('live-tool-confirmation-inline')).toBeNull();
+      expect(run.nativeGrant('owned-live-call')).toBe(
+        choice === true ? nativeGrant : null,
+      );
+    } finally {
+      await view.unmount();
+      mockHasNativeReview = false;
       AppState.currentState = prior;
     }
   },
