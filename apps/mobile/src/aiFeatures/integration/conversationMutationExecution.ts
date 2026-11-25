@@ -1,3 +1,5 @@
+import { settleConversationMemoryReceipt } from './conversationMemoryReceipts';
+import { conversationAuthoredMemoryAction } from './conversationAuthoredMemoryAction';
 import { conversationHealthSummaryBookmarkAction } from './conversationHealthSummaryBookmarkAction';
 import { APPLE_PROVIDER_ID } from '@orot/provider-apple';
 import { conversationAnswerMemoryAction } from './conversationAnswerMemoryAction';
@@ -36,6 +38,9 @@ export function conversationMutationExecution(input: {
   const admittedQuestions = history.priorTurns.map(turn => turn.question);
   const localModel =
     selected.provider.id === APPLE_PROVIDER_ID && !selected.remoteProcessing;
+  const authoredMemory =
+    localModel &&
+    conversationAuthoredMemoryAction({ data, observer, question });
   const reportBookmark =
     localModel && conversationHealthSummaryBookmarkAction(observer);
   const answerMemory =
@@ -63,6 +68,7 @@ export function conversationMutationExecution(input: {
         question,
         admittedQuestions,
       }),
+      ...(authoredMemory ? authoredMemory.actions : []),
       ...(answerMemory ? answerMemory.actions : []),
       ...(reportBookmark ? reportBookmark.actions : []),
     ],
@@ -78,10 +84,10 @@ export function conversationMutationExecution(input: {
         })
       : execution,
     memorySaved: () =>
-      reportBookmark && reportBookmark.committed()
-        ? ('generated-report' as const)
-        : answerMemory
-          ? answerMemory.receipt()
-          : 'not_attempted',
+      settleConversationMemoryReceipt({
+        authored: authoredMemory ? authoredMemory.receipt() : undefined,
+        priorAnswer: answerMemory ? answerMemory.receipt() : undefined,
+        reportCommitted: Boolean(reportBookmark && reportBookmark.committed()),
+      }),
   };
 }
