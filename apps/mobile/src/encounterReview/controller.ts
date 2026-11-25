@@ -38,6 +38,13 @@ export interface ReviewState {
   selected: string[];
 }
 
+/** A completed empty checkpoint is history, not an actionable review draft. */
+export function hasPendingEncounterCandidates(state: ReviewState) {
+  return (
+    state.status === 'pending' && (state.pending?.candidates.length ?? 0) > 0
+  );
+}
+
 /** One controller owns a source for its mounted lifetime; geometry never controls its identity. */
 export class EncounterReviewController {
   state: ReviewState = { status: 'loading', candidates: [], selected: [] };
@@ -57,7 +64,7 @@ export class EncounterReviewController {
     return Boolean(this.operation);
   }
   get dirty() {
-    return this.state.status === 'pending';
+    return hasPendingEncounterCandidates(this.state);
   }
   private async run(
     status: 'loading' | 'running' | 'saving',
@@ -128,7 +135,7 @@ export class EncounterReviewController {
     });
   }
   decide(decision: 'approve' | 'deny') {
-    if (this.busy || this.state.status !== 'pending' || !this.state.pending)
+    if (this.busy || !this.dirty || !this.state.pending)
       return Promise.resolve();
     const approval: EncounterApproval = {
       pending: this.state.pending,

@@ -200,7 +200,23 @@ test('empty extraction stays unsaved and progress survives rerender until explic
       reviewCopy.empty,
     ),
   );
-  expect(screen.getByTestId('encounter-save')).toBeDisabled();
+  expect(screen.queryByTestId('encounter-save')).toBeNull();
+  expect(screen.queryByTestId('encounter-deny')).toBeNull();
+  expect(screen.getByTestId('encounter-start')).not.toBeDisabled();
+  expect(useNavigationLeaveStateRegistration).toHaveBeenLastCalledWith(
+    expect.objectContaining({ hasUnsavedChanges: false, canLeave: true }),
+  );
+  await view.unmount();
+  jest.mocked(encounterReviewService.restore).mockResolvedValue({
+    status: 'pending',
+    pending: { ...pending, candidates: [] },
+  });
+  jest.mocked(encounterReviewService.start).mockClear();
+  await render(<RecordingReviewRoute />);
+  await screen.findByText(reviewCopy.empty);
+  expect(screen.queryByTestId('encounter-save')).toBeNull();
+  expect(encounterReviewService.start).not.toHaveBeenCalled();
+  expect(encounterReviewService.decide).not.toHaveBeenCalled();
 });
 
 test('production navigation lets recording review measure its own usable content lane', async () => {

@@ -86,3 +86,18 @@ test('failed save cannot appear successful or keep actionable stale candidates',
   expect(controller.state.status).toBe('unavailable');
   expect(controller.state.pending).toBeUndefined();
 });
+
+test('an empty restored review preserves its checkpoint but cannot submit a decision', async () => {
+  const { controller, service } = setup();
+  const empty = { ...pending, candidates: [] };
+  jest
+    .mocked(service.restore)
+    .mockResolvedValue({ status: 'pending', pending: empty });
+  await controller.restore();
+  expect(controller.state.pending).toEqual(empty);
+  expect(controller.dirty).toBe(false);
+  await controller.decide('approve');
+  await controller.decide('deny');
+  expect(service.decide).not.toHaveBeenCalled();
+  expect(service.start).not.toHaveBeenCalled();
+});
