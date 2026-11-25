@@ -145,9 +145,7 @@ test('an indexed failure offers scoped recovery after the verified report', asyn
     await seedFile(f);
     await f.database.execute('DROP INDEX source_records_recent_page_idx');
     mounted = await mountRecords();
-    expect(
-      await screen.findByTestId('records-recent-partial'),
-    ).toBeTruthy();
+    expect(await screen.findByTestId('records-recent-partial')).toBeTruthy();
     expect(screen.getByTestId('records-recent-source-visit:30')).toBeTruthy();
     expect(
       screen
