@@ -22,10 +22,10 @@ test('trace reports fixed stages without data or errors and preserves rejected w
   const sink = jest.fn();
   NativeModules.OrotProviderDiagnostics = { enabled: true, report: sink };
   const trace = workoutReadDiagnostics('overview');
-  const original = new Error('synthetic message must not be logged');
+  const failure = new Error('synthetic message must not be logged');
   await expect(
-    trace.observe('database', () => Promise.reject(original)),
-  ).rejects.toBe(original);
+    trace.observe('database', () => Promise.reject(failure)),
+  ).rejects.toBe(failure);
   const payload = { syntheticID: 'must stay local' };
   await expect(
     trace.observe(
