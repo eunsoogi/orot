@@ -35,7 +35,7 @@ test('transcript keeps twenty bounded items, updates identity and clears without
 
 test('viewport scales three lines and its opaque fade does not receive touches or accessibility focus', async () => {
   jest
-    .spyOn(Native, 'useWindowDimensions')
+    .spyOn(require('react-native'), 'useWindowDimensions')
     .mockReturnValue({ width: 320, height: 500, scale: 2, fontScale: 2 });
   jest
     .spyOn(Native.AccessibilityInfo, 'isReduceTransparencyEnabled')
@@ -63,4 +63,35 @@ test('viewport scales three lines and its opaque fade does not receive touches o
   expect(
     screen.getByTestId('voice-transcript-scroll').props.nestedScrollEnabled,
   ).toBe(true);
+});
+
+test('wide viewport fits four lines and protects both edge gutters', async () => {
+  jest
+    .spyOn(require('react-native'), 'useWindowDimensions')
+    .mockReturnValue({ width: 760, height: 810, scale: 2, fontScale: 1 });
+  await render(
+    <VoiceTranscriptViewport
+      lines={[
+        { id: 'spoken-input', role: 'user', text: '합성 질문' },
+        { id: 'spoken-output', role: 'assistant', text: '합성 응답' },
+      ]}
+    />,
+  );
+  expect(screen.getByText('나: 합성 질문')).toBeTruthy();
+  expect(screen.getByText('AI: 합성 응답')).toBeTruthy();
+  expect(
+    Native.StyleSheet.flatten(
+      screen.getByTestId('voice-transcript-viewport').props.style,
+    ).height,
+  ).toBe(128);
+  expect(
+    Native.StyleSheet.flatten(
+      screen.getByTestId('voice-transcript-scroll').props.contentContainerStyle,
+    ).paddingVertical,
+  ).toBe(16);
+  for (const id of ['voice-transcript-fade', 'voice-transcript-fade-bottom']) {
+    const fade = screen.getByTestId(id, { includeHiddenElements: true });
+    expect(fade.props.pointerEvents).toBe('none');
+    expect(fade.props.accessibilityElementsHidden).toBe(true);
+  }
 });

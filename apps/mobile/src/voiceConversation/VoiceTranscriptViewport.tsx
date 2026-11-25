@@ -15,7 +15,7 @@ export interface VoiceTranscriptLine {
   readonly text: string;
 }
 
-/** Three scaled lines remain visible; scrolling back suspends following new speech. No transcript is persisted here. */
+/** Three to four scaled lines remain visible; scrolling back suspends following new speech. No transcript is persisted here. */
 export function VoiceTranscriptViewport({
   lines,
 }: {
@@ -29,7 +29,8 @@ export function VoiceTranscriptViewport({
     height: number;
     content: number;
   } | null>(null);
-  const { fontScale } = useWindowDimensions();
+  const { fontScale, width } = useWindowDimensions();
+  const visibleLines = width >= 600 ? 4 : 3;
   if (!lines.length) {
     following.current = true;
     dragging.current = false;
@@ -42,7 +43,10 @@ export function VoiceTranscriptViewport({
   return (
     <View
       testID="voice-transcript-viewport"
-      style={[styles.viewport, { height: 72 * Math.min(fontScale, 2) + 32 }]}
+      style={[
+        styles.viewport,
+        { height: 24 * visibleLines * Math.min(fontScale, 2) + 32 },
+      ]}
     >
       <ScrollView
         ref={scroll}
@@ -96,14 +100,22 @@ export function VoiceTranscriptViewport({
       >
         {lines.map(line => (
           <AppText key={line.id} maxFontSizeMultiplier={2} style={styles.line}>
-            {line.role === 'user' ? t('realtimeDisplay.user') : 'AI'}:{' '}
+            <AppText maxFontSizeMultiplier={2} style={styles.speaker}>
+              {line.role === 'user' ? t('realtimeDisplay.user') : 'AI'}:
+            </AppText>{' '}
             {line.text}
           </AppText>
         ))}
       </ScrollView>
       {/* The opaque accessibility fallback occupies the same content gutter, not a control. */}
-      <View pointerEvents="none" style={styles.fade}>
+      <View pointerEvents="none" style={[styles.fade, styles.fadeTop]}>
         <ConversationEdgeGradient edge="top" testID="voice-transcript-fade" />
+      </View>
+      <View pointerEvents="none" style={[styles.fade, styles.fadeBottom]}>
+        <ConversationEdgeGradient
+          edge="bottom"
+          testID="voice-transcript-fade-bottom"
+        />
       </View>
     </View>
   );
@@ -117,5 +129,8 @@ const styles = StyleSheet.create({
   },
   content: { paddingVertical: 16 },
   line: { fontSize: 18, lineHeight: 24, textAlign: 'center' },
-  fade: { position: 'absolute', top: 0, left: 0, right: 0, height: 16 },
+  speaker: { fontWeight: '700' },
+  fade: { position: 'absolute', left: 0, right: 0, height: 16 },
+  fadeTop: { top: 0 },
+  fadeBottom: { bottom: 0 },
 });

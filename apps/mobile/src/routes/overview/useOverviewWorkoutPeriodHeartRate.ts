@@ -22,6 +22,7 @@ type ReadOwner = {
   epoch?: Epoch;
   foreground?: (isActive: boolean) => void;
   settled?: boolean;
+  interrupted?: boolean;
   reconfirming?: boolean;
   usable?: () => boolean;
 };
@@ -57,13 +58,13 @@ export function useOverviewWorkoutPeriodHeartRate(active: boolean): State {
     let task: ReadOwner | undefined;
     let boundary: ReturnType<typeof setTimeout> | undefined;
     let inactiveSince: number | undefined;
-    function dropTask() {
+    function dropTask(showUnavailable = true) {
       const retired = task;
       task = undefined;
       retired?.foreground?.(false);
       retired?.abort.abort();
       retired?.epoch?.dispose();
-      if (mounted) setState(unavailable);
+      if (mounted && showUnavailable) setState(unavailable);
     }
     function retire() {
       clearTimeout(boundary);
@@ -89,7 +90,7 @@ export function useOverviewWorkoutPeriodHeartRate(active: boolean): State {
       }
       return false;
     }
-    async function start() {
+    async function start(canRecover = true) {
       if (!mounted || task || phase() !== 'active') return;
       const now = new Date();
       const midnight = new Date(
@@ -140,7 +141,15 @@ export function useOverviewWorkoutPeriodHeartRate(active: boolean): State {
           return;
         target.settled =
           result.status === 'available' || result.status === 'emptyVisible';
-        if (target.settled) setState(result);
+        if (target.settled) {
+          setState(result);
+        } else if (canRecover && target.interrupted) {
+          // A brief interruption can cause the original native result to fail
+          // after the resume event has already coalesced with this task.
+          // Retry once with a fresh ownership/protection check before reading.
+          dropTask(false);
+          start(false);
+        }
       } catch {
         // An incomplete or rejected protected read never publishes an average.
       } finally {
@@ -185,8 +194,10 @@ export function useOverviewWorkoutPeriodHeartRate(active: boolean): State {
       else if (event.kind === 'protectedData' || event.kind === 'foreground')
         foreground();
       else if (event.kind === 'phase') {
-        if (phase() === 'inactive') inactiveSince ??= Date.now();
-        else if (phase() === 'active') foreground();
+        if (phase() === 'inactive') {
+          inactiveSince ??= Date.now();
+          if (task && !task.settled) task.interrupted = true;
+        } else if (phase() === 'active') foreground();
         else retire();
       }
     });

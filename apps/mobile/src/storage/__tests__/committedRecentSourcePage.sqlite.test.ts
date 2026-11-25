@@ -204,7 +204,7 @@ test.each(['current', 'revoked', 'deadline'] as const)(
       })
       .mockImplementationOnce(async () => {
         // A slow owner read does not extend the original startup window.
-        if (owner === 'deadline') elapsed = 1_001;
+        if (owner === 'deadline') elapsed = 2_501;
         return owner !== 'revoked';
       });
     try {

@@ -15,6 +15,7 @@
 		CE2068000000000000000001 /* RealtimeVoiceConnectingCueTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = CE2068000000000000000002 /* RealtimeVoiceConnectingCueTests.swift */; };
 		CB1180000000000000000005 /* RealtimeVoiceToolLifecycleTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = CB1180000000000000000006 /* RealtimeVoiceToolLifecycleTests.swift */; };
 		CB1180000000000000000015 /* RealtimeVoiceManagedResponsesTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = CB1180000000000000000016 /* RealtimeVoiceManagedResponsesTests.swift */; };
+		5D210D3EEDB34790A76419EC /* RealtimeVoiceManagedTerminalResponseTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = DAF382CF5D9140CE808E4C54 /* RealtimeVoiceManagedTerminalResponseTests.swift */; };
 		CE40B88A1C1A471D963A8A37 /* RealtimeVoiceResultDispatchTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = B7086AE11C5646CEB98BCAD8 /* RealtimeVoiceResultDispatchTests.swift */; };
 		E73A4A9DC65F411B8186B013 /* RealtimeVoiceCanonicalHealthMailboxAssertions.swift in Sources */ = {isa = PBXBuildFile; fileRef = E73A4A9DC65F411B8186A013 /* RealtimeVoiceCanonicalHealthMailboxAssertions.swift */; };
 		E73A4A9DC65F411B8186B012 /* RealtimeVoiceCanonicalHealthAdmissionAssertions.swift in Sources */ = {isa = PBXBuildFile; fileRef = E73A4A9DC65F411B8186A012 /* RealtimeVoiceCanonicalHealthAdmissionAssertions.swift */; };
@@ -452,6 +453,7 @@
 		CE2068000000000000000002 /* RealtimeVoiceConnectingCueTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RealtimeVoiceConnectingCueTests.swift; sourceTree = "<group>"; };
 		CB1180000000000000000006 /* RealtimeVoiceToolLifecycleTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RealtimeVoiceToolLifecycleTests.swift; sourceTree = "<group>"; };
 		CB1180000000000000000016 /* RealtimeVoiceManagedResponsesTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RealtimeVoiceManagedResponsesTests.swift; sourceTree = "<group>"; };
+		DAF382CF5D9140CE808E4C54 /* RealtimeVoiceManagedTerminalResponseTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RealtimeVoiceManagedTerminalResponseTests.swift; sourceTree = "<group>"; };
 		B7086AE11C5646CEB98BCAD8 /* RealtimeVoiceResultDispatchTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RealtimeVoiceResultDispatchTests.swift; sourceTree = "<group>"; };
 		E73A4A9DC65F411B8186A013 /* RealtimeVoiceCanonicalHealthMailboxAssertions.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RealtimeVoiceCanonicalHealthMailboxAssertions.swift; sourceTree = "<group>"; };
 		E73A4A9DC65F411B8186A012 /* RealtimeVoiceCanonicalHealthAdmissionAssertions.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RealtimeVoiceCanonicalHealthAdmissionAssertions.swift; sourceTree = "<group>"; };
@@ -1163,6 +1165,7 @@
 				CE2068000000000000000002 /* RealtimeVoiceConnectingCueTests.swift */,
 				CB1180000000000000000006 /* RealtimeVoiceToolLifecycleTests.swift */,
 				CB1180000000000000000016 /* RealtimeVoiceManagedResponsesTests.swift */,
+				DAF382CF5D9140CE808E4C54 /* RealtimeVoiceManagedTerminalResponseTests.swift */,
 				B7086AE11C5646CEB98BCAD8 /* RealtimeVoiceResultDispatchTests.swift */,
 				E73A4A9DC65F411B8186A013 /* RealtimeVoiceCanonicalHealthMailboxAssertions.swift */,
 				E73A4A9DC65F411B8186A012 /* RealtimeVoiceCanonicalHealthAdmissionAssertions.swift */,
@@ -2030,6 +2033,7 @@
 				CE2068000000000000000001 /* RealtimeVoiceConnectingCueTests.swift in Sources */,
 				CB1180000000000000000005 /* RealtimeVoiceToolLifecycleTests.swift in Sources */,
 				CB1180000000000000000015 /* RealtimeVoiceManagedResponsesTests.swift in Sources */,
+				5D210D3EEDB34790A76419EC /* RealtimeVoiceManagedTerminalResponseTests.swift in Sources */,
 				CE40B88A1C1A471D963A8A37 /* RealtimeVoiceResultDispatchTests.swift in Sources */,
 				E73A4A9DC65F411B8186B013 /* RealtimeVoiceCanonicalHealthMailboxAssertions.swift in Sources */,
 				E73A4A9DC65F411B8186B012 /* RealtimeVoiceCanonicalHealthAdmissionAssertions.swift in Sources */,

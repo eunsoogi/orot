@@ -114,6 +114,12 @@ test('first Records entry after v17 upgrade waits for both first pages without a
     expect(screen.queryByTestId('records-recent-sources-error')).toBeNull();
     expect(screen.queryByTestId('records-recent-sources-retry')).toBeNull();
     expect(screen.getByTestId('records-recent-sources-loading')).toBeTruthy();
+    // Keep the same startup writer held beyond the old one-second failure edge.
+    await act(async () => {
+      await new Promise<void>(resolve => setTimeout(resolve, 1_150));
+    });
+    expect(screen.queryByTestId('records-recent-sources-retry')).toBeNull();
+    expect(screen.getByTestId('records-recent-sources-loading')).toBeTruthy();
     await act(async () => {
       startup.resolve();
       await operation;
