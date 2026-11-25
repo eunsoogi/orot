@@ -11,6 +11,17 @@ import { createConversationSessions } from '../conversationSessions';
 import { runRagConversationTurn } from '../service';
 import { fixture } from '../testSupport/conversationEnvelopeFixtures';
 
+let mockFontScale = 1;
+jest.mock('react-native/Libraries/Utilities/useWindowDimensions', () => ({
+  __esModule: true,
+  default: () => ({
+    width: 390,
+    height: 844,
+    scale: 3,
+    fontScale: mockFontScale,
+  }),
+}));
+
 const answer = '사과\n배';
 const previewOnly = '내부 검증 전 문자열';
 const requestId = 'synthetic-native-stream';
@@ -75,9 +86,20 @@ function chatGPTFixture() {
   };
 }
 
-test.each(['complete', 'Stop', 'leave and return'] as const)(
-  'owning streamed Conversation renders neutral layout before %s',
-  async ending => {
+const linearSkeleton = 'conversation-a2ui-skeleton';
+const rowSkeleton = 'conversation-a2ui-skeleton-row';
+const bySkeleton = (testId: string) =>
+  screen.queryByTestId(testId, { includeHiddenElements: true });
+
+test.each([
+  ['complete', 1, rowSkeleton],
+  ['Stop', 1, rowSkeleton],
+  ['leave and return', 1, null],
+  ['complete', 1.6, linearSkeleton],
+] as const)(
+  'owning streamed Conversation renders neutral layout before %s at scale %d',
+  async (ending, fontScale, expectedLayout) => {
+    mockFontScale = fontScale;
     const native = chatGPTFixture();
     const sessions = createConversationSessions();
     const options = fixture().options;
@@ -182,11 +204,24 @@ test.each(['complete', 'Stop', 'leave and return'] as const)(
       native.emit({ requestId, type: 'text_delta', text: secondPart });
       await waitFor(() => expect(layoutEvents).toHaveLength(2));
       await view.rerender(transcript());
-      const liveRow = screen.queryByTestId('conversation-a2ui-skeleton-row', {
-        includeHiddenElements: true,
-      });
-      if (ending === 'leave and return') expect(liveRow).toBeNull();
-      else expect(liveRow).toBeTruthy();
+      if (expectedLayout) {
+        const owned = sessions
+          .getSnapshot()
+          .sessions.find(item => item.id === 1);
+        expect(owned?.pendingMessage?.layoutSkeleton?.layout).toEqual({
+          kind: 'row',
+          slots: 2,
+        });
+        expect(bySkeleton(expectedLayout)).toBeTruthy();
+        expect(
+          bySkeleton(
+            expectedLayout === rowSkeleton ? linearSkeleton : rowSkeleton,
+          ),
+        ).toBeNull();
+      } else {
+        expect(bySkeleton(rowSkeleton)).toBeNull();
+        expect(bySkeleton(linearSkeleton)).toBeNull();
+      }
       expect(layoutEvents).toEqual([
         { kind: 'stack', slots: 2 },
         { kind: 'row', slots: 2 },
@@ -195,11 +230,8 @@ test.each(['complete', 'Stop', 'leave and return'] as const)(
       native.emit({ requestId, type: 'completed', text: envelope });
       await run;
       await view.rerender(transcript());
-      expect(
-        screen.queryByTestId('conversation-a2ui-skeleton-row', {
-          includeHiddenElements: true,
-        }),
-      ).toBeNull();
+      expect(bySkeleton(rowSkeleton)).toBeNull();
+      expect(bySkeleton(linearSkeleton)).toBeNull();
       if (ending !== 'Stop') {
         expect(screen.getByText('사과')).toBeTruthy();
         expect(screen.getByText('배')).toBeTruthy();
