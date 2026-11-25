@@ -78,6 +78,7 @@ export function liveConversationObservers(
   const ownsReportSelection = () =>
     reportSelection !== undefined &&
     owner.activeSelection?.(id) === reportSelection;
+  activity.setLayoutCurrent(ownsReportSelection);
   const execution = owner.lifetime.executionObserver(controller);
   const saveLocalClarification = retained?.completeLocalClarification;
   const recordingScope = owner.conversationScope(id);

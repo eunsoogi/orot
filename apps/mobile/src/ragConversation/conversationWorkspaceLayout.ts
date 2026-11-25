@@ -77,6 +77,7 @@ export function transcriptMessageVisible(
 ) {
   return (
     !message.streaming ||
+    Boolean(message.layoutSkeleton) ||
     Boolean(message.initialResponse?.text.trim()) ||
     (!separated && Boolean(message.content.trim()))
   );

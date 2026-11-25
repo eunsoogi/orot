@@ -25,10 +25,28 @@ export function createTaskTextObserver<TResult>(
   | ((event: Extract<LanguageModelStreamEvent, { type: 'text_delta' | 'text_snapshot' }>) => void)
   | undefined {
   if (!context.onTaskStreamEvent || !context.options.task.projectStreamedText) return undefined;
+  const projectLayout =
+    !prefix && context.options.provider.id.startsWith('chatgpt-plan:')
+      ? context.options.task.projectStreamedLayout
+      : undefined;
   let rawOutput = '';
   let displayed = prefix;
+  let priorLayout: ReturnType<NonNullable<typeof projectLayout>>;
   return (event) => {
     rawOutput = event.type === 'text_delta' ? rawOutput + event.text : event.text;
+    if (context.signal.aborted) return;
+    if (projectLayout) {
+      try {
+        const layout = projectLayout(rawOutput, input);
+        if (layout?.kind !== priorLayout?.kind || layout?.slots !== priorLayout?.slots) {
+          priorLayout = layout;
+          reportTaskStreamEvent(context, { type: 'layout_skeleton', layout });
+        }
+      } catch {
+        if (priorLayout) reportTaskStreamEvent(context, { type: 'layout_skeleton' });
+        priorLayout = undefined;
+      }
+    }
     const projected = projectedTaskText(context, input, rawOutput);
     const next = prefix + (projected ? (prefix ? '\n\n' : '') + projected : '');
     const update = projectDisplayTextUpdate(displayed, next);

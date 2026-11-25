@@ -197,6 +197,10 @@ export interface ConversationSession {
     readonly sourceOwner?: import('../aiFeatures/integration/coldConversationSourceResolvers').ColdConversationSourceOwner;
     initialResponse?: DisplayMessage['initialResponse'];
     readonly previousOutputs?: readonly string[];
+    readonly layoutSkeleton?: {
+      readonly current: () => boolean;
+      readonly layout: NonNullable<DisplayMessage['layoutSkeleton']>;
+    };
     id: number;
     content: string;
     activity: string;

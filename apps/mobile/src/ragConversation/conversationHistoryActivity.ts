@@ -42,10 +42,15 @@ export function conversationHistoryActivity(
     pending?.initialResponse?.source === 'receipt' && !read
       ? undefined
       : pending?.initialResponse;
+  const layoutSkeleton =
+    read && activity && !pending?.withholdHealthBody && pending?.layoutSkeleton?.current()
+      ? pending.layoutSkeleton.layout
+      : undefined;
   const hasPendingContent = Boolean(
     pending?.previousOutputs?.length ||
     initialResponse ||
     pending?.content.trim() ||
+    layoutSkeleton ||
     (read && showToolActivity && pending?.toolEvents?.length),
   );
   // Cold Continue replaces its interrupted bubble visually, not in retained data.
@@ -60,6 +65,7 @@ export function conversationHistoryActivity(
           {
             ...pending,
             initialResponse,
+            layoutSkeleton,
             activity: read && showToolActivity ? pending.activity : undefined,
             role: 'assistant' as const,
             streaming: true,
