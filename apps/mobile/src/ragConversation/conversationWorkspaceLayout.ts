@@ -4,6 +4,7 @@ import {
   type NavigationGeometrySnapshot,
 } from '../navigation/navigationGeometry';
 import type { DisplayMessage } from './ConversationMessage';
+import { assistantProfileMaximumWidth } from '../assistantAppearance/assistantProfileGeometry';
 
 const TOP_PROFILE_VISUAL_LIFT = 12;
 const TOP_PROFILE_INDICATOR_GAP = 4;
@@ -39,13 +40,17 @@ export function conversationProfileVisualLift(
   if (lift <= 0) return 0;
 
   const exposedTop = safeTop - lift;
+  // This centered artwork is narrower than the entire workspace pane. A
+  // disjoint edge reservation cannot cover it or move its original hit target.
+  const width = Math.min(lane.width, assistantProfileMaximumWidth);
+  const left = lane.x + (lane.width - width) / 2;
   return frame.reservedRegions.some(
-    ({ isActive, frame: region }) =>
+    ({ isActive, frame: region, margins }) =>
       isActive &&
-      region.x < lane.x + lane.width &&
-      region.x + region.width > lane.x &&
-      region.y < lane.y &&
-      region.y + region.height > exposedTop,
+      region.x - margins.left < left + width &&
+      region.x + region.width + margins.right > left &&
+      region.y - margins.top < lane.y &&
+      region.y + region.height + margins.bottom > exposedTop,
   )
     ? 0
     : lift;
