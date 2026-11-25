@@ -59,3 +59,11 @@ layouts retain source order in a stack. Other components, scratch surfaces and
 historical tasks do not accept this property. Completed eligible replies archive
 only the validated layout ratio and reconstruct prose from the existing answer.
 No new control, URL, function, tool or external action is admitted.
+
+
+Fresh Conversation task v30 also admits a literal Basic Catalog `List.direction`.
+`vertical` or omission keeps the existing in-message flow. `horizontal` uses a
+local horizontal viewport for bounded items; narrow bubbles, nested narrow
+cards and larger accessibility fonts preserve a vertical reading order instead.
+Archive v6 records only the horizontal arrangement; v1–v5 behavior and exact
+prose fallback remain unchanged. This does not add any action, link or media.

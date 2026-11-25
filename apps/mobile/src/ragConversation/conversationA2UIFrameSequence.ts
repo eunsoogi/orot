@@ -22,6 +22,7 @@ import type { GroundedRagAnswer } from './task';
 import { projectConversationA2UISkeleton } from './conversationA2UISkeleton';
 
 const maxFinalFrames = 12;
+type LayoutVersion = '21' | '22' | '23' | '24' | '29' | '30';
 
 const frameSequenceSchema = {
   type: 'array',
@@ -67,6 +68,13 @@ const weightedCatalogFrameSchema = {
     ' For an ordinary layout, body Text that is a direct child of Row may use a literal numeric weight from 1 through 3 to allocate relative horizontal room. Never set weight on root, on other components, or in a scratch area.',
 };
 
+const horizontalListFrameSchema = {
+  ...weightedCatalogFrameSchema,
+  description:
+    weightedCatalogFrameSchema.description +
+    ' List direction may be literal horizontal or vertical (default). Use horizontal for short related items, never in a scratch area.',
+};
+
 /** Reduce one completed provider reply in isolation. No provisional tree escapes. */
 export function acceptConversationA2UIFrameSequence(
   raw: unknown,
@@ -74,6 +82,7 @@ export function acceptConversationA2UIFrameSequence(
   allowStaticCatalog = false,
   allowAlignment = false,
   allowRowWeight = false,
+  allowListDirection = false,
 ): ConversationA2UINode | undefined {
   if (!Array.isArray(raw) || !raw.length || raw.length > maxFinalFrames)
     return undefined;
@@ -93,6 +102,7 @@ export function acceptConversationA2UIFrameSequence(
       allowStaticCatalog,
       allowAlignment,
       allowRowWeight,
+      allowListDirection,
     );
     // An ignored foreign frame makes the whole submitted sequence unsuitable.
     if (!next || next === staged || next.status === 'invalid') return undefined;
@@ -108,7 +118,7 @@ export function acceptConversationA2UIFrameSequence(
 export function withConversationA2UIFrameSequence(
   previous: TaskResponderContract<GroundedRagAnswer>,
   eligible: (input: TaskResponderInput) => boolean,
-  taskVersion: '21' | '22' | '23' | '24' | '29' = '21',
+  taskVersion: LayoutVersion = '21',
 ): TaskResponderContract<GroundedRagAnswer> {
   return {
     ...previous,
@@ -126,15 +136,17 @@ export function withConversationA2UIFrameSequence(
         properties: {
           ...properties,
           a2uiFrames:
-            taskVersion === '29'
-              ? weightedCatalogFrameSchema
-              : taskVersion === '24'
-                ? alignedCatalogFrameSchema
-                : taskVersion === '23'
-                  ? localDraftFrameSchema
-                  : taskVersion === '22'
-                    ? staticCatalogFrameSchema
-                    : frameSequenceSchema,
+            taskVersion === '30'
+              ? horizontalListFrameSchema
+              : taskVersion === '29'
+                ? weightedCatalogFrameSchema
+                : taskVersion === '24'
+                  ? alignedCatalogFrameSchema
+                  : taskVersion === '23'
+                    ? localDraftFrameSchema
+                    : taskVersion === '22'
+                      ? staticCatalogFrameSchema
+                      : frameSequenceSchema,
         },
         required: [
           ...(Array.isArray(schema.required) ? schema.required : []),
@@ -161,12 +173,16 @@ export function withConversationA2UIFrameSequence(
         a2uiFrames,
         answer,
         taskVersion !== '21',
-        taskVersion === '24' || taskVersion === '29',
-        taskVersion === '29',
+        taskVersion === '24' || taskVersion === '29' || taskVersion === '30',
+        taskVersion === '29' || taskVersion === '30',
+        taskVersion === '30',
       );
       if (
         !root &&
-        (taskVersion === '23' || taskVersion === '24' || taskVersion === '29')
+        (taskVersion === '23' ||
+          taskVersion === '24' ||
+          taskVersion === '29' ||
+          taskVersion === '30')
       ) {
         const validateDraftBase = (frames: unknown, body: string) =>
           acceptConversationA2UIFrameSequence(frames, body, true);
@@ -192,7 +208,7 @@ export function versionedConversationA2UITasks(
   previous: TaskResponderContract<GroundedRagAnswer>,
   eligible: (input: TaskResponderInput) => boolean,
 ) {
-  const version = (id: '21' | '22' | '23' | '24' | '29') =>
+  const version = (id: LayoutVersion) =>
     withConversationA2UIFrameSequence(previous, eligible, id);
   return {
     conversationTaskV21: version('21'),
@@ -200,5 +216,6 @@ export function versionedConversationA2UITasks(
     conversationTaskV23: version('23'),
     ragConversationTask: version('24'),
     weightedTask: version('29'),
+    horizontalListTask: version('30'),
   };
 }

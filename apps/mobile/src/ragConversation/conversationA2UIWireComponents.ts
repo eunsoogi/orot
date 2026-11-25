@@ -40,6 +40,7 @@ export type WireNode =
       readonly component: 'Card' | RowKind;
       readonly children: readonly string[];
       readonly alignment?: ConversationA2UIAlignment;
+      readonly direction?: 'horizontal';
     };
 
 export function parseComponents(
@@ -47,6 +48,7 @@ export function parseComponents(
   allowStaticCatalog: boolean,
   allowAlignment: boolean,
   allowRowWeight = false,
+  allowListDirection = false,
 ): WireNode[] {
   if (!Array.isArray(value) || value.length === 0 || value.length > maxNodes)
     fail();
@@ -131,12 +133,21 @@ export function parseComponents(
     if (component !== 'Column' && component !== 'Row' && component !== 'List')
       fail();
     const supportsAlignment = allowAlignment && component !== 'List';
-    keys(
-      node,
-      supportsAlignment
-        ? ['id', 'component', 'children', 'align', 'justify']
-        : ['id', 'component', 'children'],
-    );
+    const supportsDirection = allowListDirection && component === 'List';
+    keys(node, [
+      'id',
+      'component',
+      'children',
+      ...(supportsAlignment ? ['align', 'justify'] : []),
+      ...(supportsDirection ? ['direction'] : []),
+    ]);
+    const direction = node.direction;
+    if (
+      direction !== undefined &&
+      direction !== 'vertical' &&
+      direction !== 'horizontal'
+    )
+      fail();
     const alignment = supportsAlignment
       ? conversationA2UIAlignment(node.align, node.justify)
       : undefined;
@@ -146,8 +157,12 @@ export function parseComponents(
       node.children.length > 16
     )
       fail();
-    return alignment
-      ? { id: nodeId, component, children: node.children.map(id), alignment }
-      : { id: nodeId, component, children: node.children.map(id) };
+    return {
+      id: nodeId,
+      component,
+      children: node.children.map(id),
+      ...(alignment ? { alignment } : {}),
+      ...(direction === 'horizontal' ? { direction } : {}),
+    };
   });
 }

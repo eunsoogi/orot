@@ -1,5 +1,6 @@
 import { useCallback, useContext, useState } from 'react';
 import { Pressable, useWindowDimensions, View } from 'react-native';
+import { ConversationA2UIHorizontalList } from './ConversationA2UIHorizontalList';
 import { AppText } from '../layout/AppText';
 import { AppSymbol } from '../layout/AppSymbol';
 import { a2uiSurfaceStyles as styles } from './conversationA2UISurfaceStyles';
@@ -97,6 +98,16 @@ function SurfaceNode({
       </AppText>
     );
   }
+  if (node.component === 'List' && node.direction === 'horizontal')
+    return (
+      <ConversationA2UIHorizontalList
+        fontScale={fontScale}
+        children={node.children.map(child => ({
+          id: child.id,
+          content: <SurfaceNode node={child} fontScale={fontScale} />,
+        }))}
+      />
+    );
   if (node.component === 'Row')
     return (
       <SurfaceRow
@@ -106,8 +117,6 @@ function SurfaceNode({
       />
     );
   return (
-    // A List flows inside the owning conversation scroller; no nested viewport
-    // can trap scrolling or hide its child text from assistive technology.
     <View
       testID={
         node.component === 'Column' ? 'conversation-a2ui-column' : undefined
