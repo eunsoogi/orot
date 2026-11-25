@@ -10,6 +10,7 @@ import {
 } from '../readers';
 import { conversationExecutionNative } from '../../ragConversation/conversationExecutionNative';
 import { generatedReportCopy as copy } from '../text';
+import { listRecentMaterial } from '../catalog';
 
 jest.mock('../readers', () => ({
   ...jest.requireActual('../readers'),
@@ -82,7 +83,16 @@ test('a real same-record amount correction keeps only the original saved content
     const bytes = await f.body();
     await f.revise(83);
     expect(await f.body()).toBe(bytes);
-    const detail = await f.read();
+    const row = (await listRecentMaterial(f.database)).find(
+      item => item.origin === 'summary' && item.key === f.row.key,
+    );
+    expect(row).toEqual({ ...f.row, unavailable: false });
+    if (!row || row.origin !== 'summary') throw new Error('Missing summary.');
+    const detail = await f.reader.read(
+      row,
+      new AbortController().signal,
+      jest.fn(),
+    );
     expect(detail?.paragraphs).toContain(original);
     expect(detail?.warning).toBe(copy.historicalHealthSummary);
     expect(detail?.conversationSources).toBeUndefined();
@@ -96,6 +106,11 @@ test('a real same-record amount correction keeps only the original saved content
     expect(ui.queryByRole('link')).toBeNull();
     await ui.unmount();
     await f.quarantine();
+    expect(
+      (await listRecentMaterial(f.database)).some(
+        item => item.key === f.row.key,
+      ),
+    ).toBe(false);
     expect(await f.read()).toBeNull();
   } finally {
     f.close();
@@ -169,6 +184,11 @@ test.each([
           [f.inside.id],
         );
     }
+    expect(
+      (await listRecentMaterial(f.database)).some(
+        item => item.key === f.row.key,
+      ),
+    ).toBe(false);
     expect(await f.read()).toBeNull();
     expect(f.unexpectedSourceRead).not.toHaveBeenCalled();
   } finally {
