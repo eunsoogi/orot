@@ -53,7 +53,12 @@ final class ProcessDiagnosticWitness: @unchecked Sendable {
         launch = true
     }
 
-    func acceptJS(feature: String, stage: String, outcome: String) {
+    func acceptAndContinueJS(feature: String, stage: String, outcome: String) -> Bool {
+        acceptJS(feature: feature, stage: stage, outcome: outcome)
+        return feature != "pipeline"
+    }
+
+    private func acceptJS(feature: String, stage: String, outcome: String) {
         if feature == "pipeline", stage == "rn_bridge_attached", outcome == "completed" {
             lock.lock()
             defer { lock.unlock() }
@@ -80,7 +85,9 @@ final class ProcessDiagnosticWitness: @unchecked Sendable {
     private func append(_ receipt: String) {
         lock.lock()
         defer { lock.unlock() }
-        if receipts.count == 32 { receipts.removeFirst() }
+        if receipts.count == 32 {
+            receipts.removeFirst()
+        }
         receipts.append(receipt)
     }
 

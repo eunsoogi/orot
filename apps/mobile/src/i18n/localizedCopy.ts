@@ -49,4 +49,11 @@ export const localizedCopyKo = {
   ...modelSettingsKo,
   ...nextVisitCopyKo,
   ...encounterReviewCopyKo,
+  'settings.processWitness.read': '이 실행의 진단 상태 확인',
+  'settings.processWitness.reading': '진단 상태 확인 중',
+  'settings.processWitness.unavailable': '진단 상태를 확인할 수 없어요.',
+  'settings.processWitness.launchConfirmed': '앱 시작 확인',
+  'settings.processWitness.launchMissing': '앱 시작 확인 안 됨',
+  'settings.processWitness.bridgeConfirmed': 'JS 연결 확인',
+  'settings.processWitness.bridgeMissing': 'JS 연결 확인 안 됨',
 } as const;
