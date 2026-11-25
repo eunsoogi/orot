@@ -168,19 +168,22 @@ test.each(['active', 'background and resume', 'native denial'] as const)(
       let page = read(retired.signal);
       let old: Promise<unknown> | undefined;
       if (journey === 'background and resume') {
-        old = expect(page).rejects.toThrow();
+        old = Promise.allSettled([page]);
         retired.abort();
         page = read(new AbortController().signal);
       }
       const refusal =
-        journey === 'native denial'
-          ? expect(page).rejects.toThrow()
-          : undefined;
+        journey === 'native denial' ? Promise.allSettled([page]) : undefined;
       secondWrite();
       await writer;
-      await old;
+      if (old)
+        expect(await old).toEqual([
+          { status: 'rejected', reason: expect.any(Error) },
+        ]);
       if (journey === 'native denial') {
-        await refusal;
+        expect(await refusal).toEqual([
+          { status: 'rejected', reason: expect.any(Error) },
+        ]);
       } else {
         const result = await page;
         try {
