@@ -75,6 +75,7 @@ export function createLiveResponsesHealthToolExecutor(input: {
   ) => Promise<unknown>;
 }) {
   const seen = new Set<string>();
+  let seenOwner: string | undefined;
   return async function execute(
     incoming: LiveManagedHealthCall,
     signal: AbortSignal,
@@ -98,10 +99,17 @@ export function createLiveResponsesHealthToolExecutor(input: {
       !signal.aborted && input.isChallengeCurrent(call) === true;
     let started = false;
     try {
-      if (!challengeCurrent() || seen.has(call.challengeId) || seen.size >= 128)
-        return;
-      seen.add(call.challengeId);
+      if (!challengeCurrent()) return;
+      // Only a current, non-reusable native call ID can replace replay memory.
+      if (seenOwner !== call.callId) {
+        seenOwner = call.callId;
+        seen.clear();
+      }
+      if (seen.has(call.challengeId)) return;
       started = true;
+      // Native settlement verifies the exact still-pending challenge before refusing it.
+      if (seen.size >= 128) return;
+      seen.add(call.challengeId);
       const scope =
         call.name === 'orot_health_context'
           ? parseLiveHealthRequestScope(call.args)
