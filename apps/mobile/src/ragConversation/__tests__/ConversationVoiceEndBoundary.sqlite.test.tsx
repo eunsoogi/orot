@@ -1,3 +1,7 @@
+import {
+  assertObservedVoiceFixture,
+  observedVoiceFixtureLines,
+} from '../testSupport/observedVoiceCaptionFixture';
 import { assertOrder } from '../testSupport/assertSyntheticTranscriptOrder';
 import { useSyncExternalStore } from 'react';
 import { act, fireEvent, render, waitFor } from '@testing-library/react-native';
@@ -200,18 +204,7 @@ test('the actual restored duration marker reads only its exact local captions af
       {
         callId: live,
         status: 'observed_incomplete',
-        lines: [
-          {
-            order: 1,
-            role: 'assistant',
-            text: '안녕',
-          },
-          { order: 2, role: 'assistant', text: '하세요' },
-          { order: 3, role: 'user', text: '오늘' },
-          { order: 4, role: 'user', text: ' 날씨' },
-          { order: 5, role: 'assistant', text: '날씨는' },
-          { order: 7, role: 'assistant', text: '확인할게요' },
-        ],
+        lines: observedVoiceFixtureLines,
       },
       () => true,
     );
@@ -240,16 +233,7 @@ test('the actual restored duration marker reads only its exact local captions af
       cold.getByRole('button', { name: '저장된 자막 보기' }),
     );
     await waitFor(() => expect(cold.getByText(/안녕하세요/)).toBeTruthy());
-    assertOrder(
-      JSON.stringify(cold.toJSON()),
-      '안녕하세요',
-      '오늘 날씨',
-      '날씨는',
-      '확인할게요',
-    );
-    expect(cold.getByText(/테스트 비서: 안녕하세요/)).toBeTruthy();
-    expect(cold.getByText(/오늘 날씨/)).toBeTruthy();
-    expect(cold.queryByText(/날씨는확인할게요/)).toBeNull();
+    assertObservedVoiceFixture(cold);
     expect(
       cold.getByText('통화 중 확인된 일부 자막입니다. 전체 전사는 아닙니다.'),
     ).toBeTruthy();
