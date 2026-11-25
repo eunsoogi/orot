@@ -1,3 +1,5 @@
+import { healthMetricNamesKo } from './healthMetricNamesKo';
+
 /** Metric titles omit source attribution, which is presented separately from provenance. */
 export const derivedHeartRateNamesKo = {
   resting: '안정 시 심박수',
@@ -6,7 +8,7 @@ export const derivedHeartRateNamesKo = {
 
 // Empty HealthKit results cannot establish denial because read authorization is unobservable.
 export const commonObservationsKo = {
-  'healthkit.commonObservations.workouts': '운동 기록',
+  'healthkit.commonObservations.workouts': healthMetricNamesKo.workouts,
   'healthkit.commonObservations.open': '건강 기록 가져오기',
   'healthkit.commonObservations.title': '건강 기록 가져오기',
   'healthkit.commonObservations.description':

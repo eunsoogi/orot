@@ -1,3 +1,5 @@
+import { healthMetricNamesKo } from './healthMetricNamesKo';
+
 export const healthRecordsKo = {
   'healthRecords.workout.walking': '걷기',
   'healthRecords.workout.running': '달리기',
@@ -31,7 +33,7 @@ export const healthRecordsKo = {
   'healthRecords.workoutHeartRate.reading': '이 운동의 심박수를 불러오는 중…',
   'healthRecords.workoutHeartRate.failed':
     '이 운동의 심박수를 불러오지 못했어요. 다시 시도해 주세요.',
-  'healthRecords.category.workouts': '운동 기록',
+  'healthRecords.category.workouts': healthMetricNamesKo.workouts,
   'records.openHealthLibrary': '가져온 건강 기록 보기',
   'healthRecords.title': '건강 기록',
   'healthRecords.description': '이 기기에 저장된 건강 기록을 확인해요.',
@@ -48,7 +50,7 @@ export const healthRecordsKo = {
   'healthRecords.category.heart_rate': '심박수',
   'healthRecords.category.steps': '걸음 수',
   'healthRecords.category.body_mass': '체중',
-  'healthRecords.category.sleep': '수면',
+  'healthRecords.category.sleep': healthMetricNamesKo.sleep,
   'healthRecords.category.other': '기타',
   'healthRecords.category.medications': '약 및 복용',
   'healthRecords.category.all': '전체',

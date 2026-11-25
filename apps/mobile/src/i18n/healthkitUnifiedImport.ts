@@ -1,8 +1,10 @@
+import { healthMetricNamesKo } from './healthMetricNamesKo';
+
 import { derivedHeartRateNamesKo } from './healthkitCommonObservations';
 
 // Keeps authorization uncertainty and provider-specific outcomes explicit in the combined screen.
 export const healthkitUnifiedImportKo = {
-  'healthkit.unifiedImport.feature.workouts': '운동 기록',
+  'healthkit.unifiedImport.feature.workouts': healthMetricNamesKo.workouts,
   'healthkit.unifiedImport.open': '건강 기록 및 캘린더 가져오기',
   'healthkit.unifiedImport.title': '건강 기록 가져오기',
   'healthkit.unifiedImport.reviewTitle': '가져온 일정 확인',
@@ -22,7 +24,7 @@ export const healthkitUnifiedImportKo = {
   'healthkit.unifiedImport.cancel': '가져오기 취소',
   'healthkit.unifiedImport.feature.medications': '약 및 복용 기록',
   'healthkit.unifiedImport.feature.bloodPressure': '혈압',
-  'healthkit.unifiedImport.feature.sleep': '수면',
+  'healthkit.unifiedImport.feature.sleep': healthMetricNamesKo.sleep,
   'healthkit.unifiedImport.feature.heartRate': '심박수',
   'healthkit.unifiedImport.feature.restingHeartRate':
     derivedHeartRateNamesKo.resting,

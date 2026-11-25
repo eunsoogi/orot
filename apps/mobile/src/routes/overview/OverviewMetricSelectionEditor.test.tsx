@@ -1,4 +1,9 @@
-import { fireEvent, render, screen } from '@testing-library/react-native';
+import {
+  fireEvent,
+  render,
+  screen,
+  within,
+} from '@testing-library/react-native';
 import { StyleSheet } from 'react-native';
 import { appColors } from '../../layout/appColors';
 import { OverviewMetricSelectionEditor } from './OverviewMetricSelectionEditor';
@@ -29,9 +34,12 @@ test('presents choices as full-row checkboxes with selected and unselected statu
     paddingHorizontal: 16,
     paddingVertical: 12,
   });
-  const selected = screen.getByRole('checkbox', { name: /기록된 수면/ });
+  const selected = screen.getByRole('checkbox', { name: '수면' });
   const unselected = screen.getByRole('checkbox', { name: /체중/ });
   expect(selected.props.accessibilityState.checked).toBe(true);
+  expect(within(selected).getByText('수면')).toBeVisible();
+  const workout = screen.getByRole('checkbox', { name: '운동' });
+  expect(within(workout).getByText('운동')).toBeVisible();
   expect(unselected.props.accessibilityState.checked).toBe(false);
   expect(screen.getAllByRole('checkbox', { name: /심박수/u })).toHaveLength(1);
   const heart = screen.getByRole('checkbox', { name: '심박수' });

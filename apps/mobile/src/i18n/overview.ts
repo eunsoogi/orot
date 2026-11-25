@@ -1,3 +1,5 @@
+import { healthMetricNamesKo } from './healthMetricNamesKo';
+
 export const overviewKo = {
   'overview.sleepTimeAsleep': '수면 시간',
   'overview.sleepStagesUnavailable': '기록된 수면 단계가 없어요.',
@@ -37,7 +39,7 @@ export const overviewKo = {
   'overview.metricEmpty': '기록이 없어요.',
   'overview.metricWindowEmpty': '최근 14일과 오늘에 기록이 없어요.',
   'overview.metricTruncated': '기록이 많아 이 지표를 모두 확인하지 못했어요.',
-  'overview.metricSleep': '기록된 수면',
+  'overview.metricSleep': healthMetricNamesKo.sleep,
   'overview.metricHeartRate': '평균 심박수',
   'overview.heartPanel': '심박수',
   'overview.heartPanelRange': '범위 {minimum}–{maximum}',
