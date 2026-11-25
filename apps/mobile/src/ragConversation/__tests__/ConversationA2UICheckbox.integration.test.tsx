@@ -183,7 +183,9 @@ test('retiring an owned checkbox rejects a captured change after replacement', (
     {
       id: 'root',
       component: 'Column',
-      children: [{ id: 'body', component: 'Text', text: answer }],
+      children: [
+        { id: 'body', component: 'Text', variant: 'body', text: answer },
+      ],
     },
     { fieldId: 'field', kind: 'checkbox' },
   );
