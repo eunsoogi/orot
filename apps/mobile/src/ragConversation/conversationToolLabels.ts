@@ -4,6 +4,7 @@ import { t } from '../i18n';
 export const conversationToolLabelKeys = {
   'local-health-context': 'health',
   'save-past-health-history': 'saveHistory',
+  'remember-conversation-answer': 'saveHistory',
   'local-personal-records': 'records',
   'local-reviewed-memory': 'memory',
   'local-saved-recording-transcript': 'recordingTranscript',

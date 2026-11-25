@@ -88,20 +88,15 @@ test('model selection of an admitted prior user message saves only after local c
   );
 });
 
-test('clear current save intent does not ask for a redundant confirmation', async () => {
+test('does not infer or strip the source of an explicit command', async () => {
   const question = '과거 건강 기록으로 저장해: 작년에 수술했어요.';
   const { action, confirmHistorySave, saveConversationHistory } =
     fixture(question);
   const input = { userMessage: question };
-  expect(await action.authorize(input, signal)).toBe(true);
-  await action.execute(request(input));
+  expect(action.parseInput(input)).toBeUndefined();
+  expect(await action.authorize(input, signal)).toBe(false);
   expect(confirmHistorySave).not.toHaveBeenCalled();
-  expect(saveConversationHistory).toHaveBeenCalledWith(
-    expect.objectContaining({
-      approvedSource: { requestId: 'request', text: '작년에 수술했어요.' },
-    }),
-    signal,
-  );
+  expect(saveConversationHistory).not.toHaveBeenCalled();
 });
 
 test('rejects invented text, partial quotes, assistant answers, denial and cancelled grants', async () => {
@@ -126,8 +121,8 @@ test('rejects invented text, partial quotes, assistant answers, denial and cance
   expect(saveConversationHistory).not.toHaveBeenCalled();
 });
 
-test('current clear request wins over identical prior messages', async () => {
-  const question = '작년에 수술했어요. 기억해 줘';
+test('current full source wins over identical prior messages after confirmation', async () => {
+  const question = '작년에 수술했어요.';
   const { action, confirmHistorySave, saveConversationHistory } = fixture(
     question,
     [question, question],
@@ -136,7 +131,7 @@ test('current clear request wins over identical prior messages', async () => {
   expect(action.parseInput(input)).toEqual(input);
   expect(await action.authorize(input, signal)).toBe(true);
   await action.execute(request(input));
-  expect(confirmHistorySave).not.toHaveBeenCalled();
+  expect(confirmHistorySave).toHaveBeenCalledWith(question, signal);
   expect(saveConversationHistory).toHaveBeenCalledWith(
     expect.objectContaining({
       approvedSource: { requestId: 'request', text: '작년에 수술했어요.' },

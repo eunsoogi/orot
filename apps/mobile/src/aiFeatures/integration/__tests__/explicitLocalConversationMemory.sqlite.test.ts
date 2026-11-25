@@ -171,7 +171,7 @@ it('a stale durable request cannot write or send a success receipt', async () =>
   }
 });
 
-it('an authored save in a typed summary bypasses both generated workflows and provider selection', async () => {
+it('a previously local-only typed summary never sends or falsely claims a save', async () => {
   const f = await setup();
   const downstream = jest.fn();
   const select = jest.fn();
@@ -193,11 +193,12 @@ it('an authored save in a typed summary bypasses both generated workflows and pr
     });
     expect(local).toMatchObject({
       status: 'answer',
-      answer: '이 기기의 기억에 저장했어요.',
+      answer: expect.stringContaining('저장하지 않았어요'),
     });
     expect(downstream).not.toHaveBeenCalled();
     expect(select).not.toHaveBeenCalled();
     expect(authorize).not.toHaveBeenCalled();
+    expect(await createManualHistoryRepository(f.database).list()).toEqual([]);
   } finally {
     f.close();
   }

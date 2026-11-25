@@ -64,6 +64,8 @@ export type RagConversationObserver = Pick<
   ) => Promise<boolean>;
   /** Opt-in is from the composer dispatch, never inferred from typed route or model output. */
   readonly inputOrigin?: 'composer' | 'shortcut';
+  /** A previously local-only input cannot acquire external search by fallback. */
+  readonly protectedLocalInput?: true;
   /** Exact live composer capability to ask the selected model for a presentation hint. */
   readonly modelTemplateAdmission?: {
     readonly current: () => boolean;
