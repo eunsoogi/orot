@@ -93,18 +93,15 @@ export function ConversationPhotoAttachment({
           </View>
         </View>
       ) : null}
-      {status === 'preparing' ||
-      status === 'transferring' ||
-      status === 'error' ? (
+      {/* Preparation still locks the controls; image transfer disclosure stays in settings consent. */}
+      {status === 'transferring' || status === 'error' ? (
         <Text accessibilityLiveRegion="polite" style={styles.status}>
           {t(
-            status === 'preparing'
-              ? 'ragConversation.photo.preparing'
-              : status === 'transferring'
-                ? 'ragConversation.photo.transferring'
-                : errorReason
-                  ? errorKeys[errorReason]
-                  : 'ragConversation.photo.error',
+            status === 'transferring'
+              ? 'ragConversation.photo.transferring'
+              : errorReason
+                ? errorKeys[errorReason]
+                : 'ragConversation.photo.error',
           )}
         </Text>
       ) : null}
@@ -113,13 +110,9 @@ export function ConversationPhotoAttachment({
           {t('ragConversation.photo.unavailable')}
         </Text>
       ) : null}
-      {status === 'ready' && deliveryReady && deliveryMode ? (
+      {status === 'ready' && deliveryReady && deliveryMode === 'ocr' ? (
         <Text style={styles.status}>
-          {t(
-            deliveryMode === 'image'
-              ? 'ragConversation.photo.imageDisclosure'
-              : 'ragConversation.photo.ocrDisclosure',
-          )}
+          {t('ragConversation.photo.ocrDisclosure')}
         </Text>
       ) : null}
       {cleanupPending && onRetryCleanup ? (
