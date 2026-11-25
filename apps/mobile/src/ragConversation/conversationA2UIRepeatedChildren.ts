@@ -1,9 +1,6 @@
 import { conversationA2UICatalog } from './conversationA2UI';
 import { envelope, readReplacements } from './conversationA2UIRepeatedWire';
-import {
-  conversationA2UIProse,
-  draftA2UISurfaceId,
-} from './conversationA2UIPresentation';
+import { conversationA2UIProse } from './conversationA2UIPresentation';
 import {
   displayText,
   fail,
