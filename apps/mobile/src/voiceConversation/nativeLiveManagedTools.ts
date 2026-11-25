@@ -33,12 +33,20 @@ export function nativeLiveManagedTools() {
       if (!unregister) return;
       let claimed = false;
       try {
+        if (signal.aborted) return;
         claimed =
           module.claimLiveResponsesResult(call.callId, call.challengeId) ===
           true;
         if (!claimed) return;
       } finally {
         if (!claimed) unregister();
+      }
+      // Native claim is synchronous, but cancellation may occur during the
+      // claim, before this listener exists. Never hand an aborted lease back.
+      if (signal.aborted) {
+        retire();
+        unregister();
+        return;
       }
       signal.addEventListener('abort', retire, { once: true });
       return () => {
