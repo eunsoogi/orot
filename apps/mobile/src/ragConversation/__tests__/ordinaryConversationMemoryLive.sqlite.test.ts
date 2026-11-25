@@ -13,36 +13,17 @@ import { createConversationSessions } from '../conversationSessions';
 import { entryIntentSender } from '../entryIntentSender';
 import { setConversationEntryForSession } from '../useConversationEntryIntent';
 import type { ConversationScreenProps } from '../ConversationScreenProps';
-import { syntheticAuthoredMemorySelection } from '../testSupport/syntheticAuthoredMemorySelection';
+import {
+  syntheticAuthoredMemoryCases,
+  syntheticAuthoredMemoryContext,
+  syntheticAuthoredMemorySelection,
+} from '../testSupport/syntheticAuthoredMemorySelection';
 
 const preference = 'For future replies, I prefer concise answers.';
 const routine = 'I practice the guitar every Monday.';
 const answer = 'Synthetic validated answer remains visible.';
 const live = () => true;
-test.each([
-  'enabled',
-  'typed authored follow-up',
-  'typed shortcut with identical phrase',
-  'disabled',
-  'deleted while optional save waits',
-  'routine when both are enabled',
-  'typed routine when both are enabled',
-  'typed routine shortcut with identical phrase',
-  'routine with only preferences enabled',
-  'routine with wrong-scope receipt',
-  'mixed authored span',
-  'mixed authored span omitted',
-  'mixed authored span fabricated',
-  'mixed authored span disabled',
-  'mixed routine',
-  'mixed routine with only preferences enabled',
-  'mixed routine omitted',
-  'mixed routine fabricated',
-  'mixed typed authored follow-up',
-  'mixed typed routine follow-up',
-  'mixed typed shortcut with identical phrase',
-  'mixed typed report',
-] as const)(
+test.each(syntheticAuthoredMemoryCases)(
   'a real live retained session saves only an eligible local note: %s',
   async mode => {
     const isRoutine = mode.includes('routine');
@@ -183,19 +164,7 @@ test.each([
                 ? 'I practice the piano every Monday.'
                 : 'For future replies, I prefer detailed answers.',
               mode,
-              ...(typed
-                ? {
-                    context: {
-                      intent: entryContext!.intent,
-                      ...(shortcut
-                        ? { explicitPossibilityChoice: true }
-                        : { authoredCurrentRequest: true }),
-                      ...(entryContext?.typedPossibilityReport
-                        ? { typedPossibilityReport: true }
-                        : {}),
-                    },
-                  }
-                : {}),
+              context: syntheticAuthoredMemoryContext(entryContext, shortcut),
             })
           : undefined;
         const response = await bridge.finish({
