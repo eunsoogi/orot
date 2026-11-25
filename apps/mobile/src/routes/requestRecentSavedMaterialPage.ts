@@ -23,7 +23,8 @@ export type RecentPageRow = {
 export type RecentPageWitness = {
   // The source's unchanging revision and protected-owner lease, not just the route.
   readonly isCurrent: () => boolean;
-  readonly verify: () => Promise<boolean>;
+  readonly requireCurrent?: () => void;
+  readonly verify: (rethrowRevision?: true) => Promise<boolean>;
   readonly dispose?: () => void;
 };
 
@@ -140,22 +141,17 @@ export async function requestRecentSavedMaterialPage<Row extends RecentPageRow>(
         canRetry: verify,
         isCurrent: current,
       });
-    const response = await read().catch(async error => {
-      // Do not retain the expired snapshot or retry schema/permission errors.
-      // The current protection and route must admit a fresh first page.
-      if (before || !(error instanceof BoundReadRevisionChanged)) throw error;
-      if (!(await verify()) || !current()) throw error;
-      return read();
-    });
-    let rows: readonly Row[];
-    let hasMore: boolean;
-    const verifyPage = async () => {
+    const checkPage = async (restart?: true) => {
       if (!(await verify())) return false;
       if (!witness) return current();
       let valid = false;
       try {
-        valid = witness.isCurrent() && (await witness.verify());
-      } catch {
+        valid = restart
+          ? await witness.verify(true)
+          : witness.isCurrent() && (await witness.verify());
+        if (restart && current()) witness.requireCurrent?.();
+      } catch (error) {
+        if (restart && error instanceof BoundReadRevisionChanged) throw error;
         // Failed database reproof is not authority to keep a protected page.
       }
       if (!current()) return false;
@@ -166,29 +162,51 @@ export async function requestRecentSavedMaterialPage<Row extends RecentPageRow>(
       return true;
     };
     const pageIsCurrent = () => current() && (witness?.isCurrent() ?? true);
-    if (isWitnessedPage(response)) {
-      witness = response.witness;
-      let step = response;
-      while (step.kind === 'pending') {
-        // Keep the previous public page and native owner while a raw cursor
-        // advances. Yield between bursts without staging a short page.
-        await new Promise<void>(resolve => setTimeout(resolve, 0));
-        if (!(await verifyPage()) || !pageIsCurrent()) return false;
-        const next = await step.advance();
-        if (!current()) return false;
-        if (next.witness !== witness) {
-          refuse();
-          return false;
+    const candidate = async () => {
+      const response = await read();
+      const restart = !before && !epoch ? true : undefined;
+      let rows: readonly Row[];
+      let more: boolean;
+      if (isWitnessedPage(response)) {
+        witness = response.witness;
+        let step = response;
+        while (step.kind === 'pending') {
+          // Advance only the still-private cursor. Visible rows are not staged.
+          await new Promise<void>(resolve => setTimeout(resolve, 0));
+          if (!(await checkPage(restart)) || !pageIsCurrent()) return null;
+          const next = await step.advance();
+          if (!current()) return null;
+          if (next.witness !== witness) {
+            refuse();
+            return null;
+          }
+          step = next;
         }
-        step = next;
+        rows = step.rows;
+        more = step.more;
+      } else {
+        rows = response;
+        more = response.length === recentPageSize;
       }
-      rows = step.rows;
-      hasMore = step.more;
-    } else {
-      rows = response;
-      hasMore = response.length === recentPageSize;
+      return (await checkPage(restart)) && pageIsCurrent()
+        ? { rows, more }
+        : null;
+    };
+    const result = await candidate().catch(async error => {
+      // The budget includes both initial read and prepublication reproof.
+      // Never reuse the old cursor or retry a true SQL/protection failure.
+      if (before || !(error instanceof BoundReadRevisionChanged)) throw error;
+      witness?.dispose?.();
+      witness = undefined;
+      if (!(await verify()) || !current()) throw error;
+      return candidate();
+    });
+    if (!result || !current()) return false;
+    if (!pageIsCurrent()) {
+      refuse();
+      return false;
     }
-    if (!(await verifyPage()) || !pageIsCurrent()) return false;
+    const { rows, more: hasMore } = result;
     const publish = () => {
       // A selection queued on a replaced prefix cannot open after publication.
       if (epoch) generation.current += 1;
@@ -206,18 +224,19 @@ export async function requestRecentSavedMaterialPage<Row extends RecentPageRow>(
       // Hold the exact cursor operation until every required stream can publish together.
       epoch.stage({
         isCurrent: pageIsCurrent,
-        verify: verifyPage,
+        verify: checkPage,
         publish,
         release,
       });
       retained = true;
     } else publish();
     return true;
-  } catch {
+  } catch (error) {
     // Only a failure under current native admission can leave another
     // independently verified stream visible. Lock or bridge denial fails closed.
     if ((await verify()) && current()) {
-      setState('failed');
+      if (witness && error instanceof BoundReadRevisionChanged) refuse();
+      else setState('failed');
       epoch?.fail();
     }
     return false;

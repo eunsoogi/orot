@@ -58,6 +58,7 @@ export function createBoundReadResultWitness(
   };
   return {
     current,
+    requireCurrent,
     sample,
     wrap(tx: SqlExecutor): SqlExecutor {
       return {
