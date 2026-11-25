@@ -180,7 +180,11 @@ export async function callModelWithEvidenceFreshness<TResult>(
     return 'ready';
   };
   const outcome = await journaledModelCall(
-    context, initialRequest, consent, onTextEvent, prepare,
+    context,
+    initialRequest,
+    consent,
+    onTextEvent,
+    prepare,
     () => ensureCurrent('underlying_call_unconfirmed'),
   );
   if (staleAfterConsent || context.outcome || !outcome) return;
