@@ -1,5 +1,4 @@
-import { createHealthContextTool } from '../aiFeatures/integration/healthContextTool';
-import { LocalEvidenceReferenceRegistry } from '../aiFeatures/integration/evidenceRegistry';
+import { healthContextToolDefinition } from '../aiFeatures/integration/healthContextToolDefinition';
 import type { loadCanonicalLiveHealthSettings } from '../voiceSettings/liveCanonicalHealthSettings';
 import { canonicalLiveHealthDeclaration } from './canonicalLiveHealthRead';
 
@@ -11,14 +10,9 @@ export function canonicalLiveHealthRegistration(
   >,
 ) {
   if (!selection.current()) return;
-  const tool = createHealthContextTool(
-    async () => {
-      throw new Error('Live descriptor cannot read health data');
-    },
-    new LocalEvidenceReferenceRegistry(),
-    'rag',
+  const declaration = canonicalLiveHealthDeclaration(
+    healthContextToolDefinition('rag'),
   );
-  const declaration = canonicalLiveHealthDeclaration(tool);
   if (!declaration || !selection.current()) return;
   return Object.freeze({
     canonicalHealthGrant: Object.freeze({ ...selection.binding }),

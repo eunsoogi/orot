@@ -1,4 +1,4 @@
-import type { EvidenceSearchTool } from '@orot/agent-runtime';
+import type { HealthContextToolDefinition } from '../aiFeatures/integration/healthContextToolDefinition';
 import type { AiFeatureLocalData } from '../aiFeatures/integration/localData';
 import { LocalEvidenceReferenceRegistry } from '../aiFeatures/integration/evidenceRegistry';
 import { bindHealthContextTool } from '../aiFeatures/integration/bindHealthContextTool';
@@ -19,7 +19,9 @@ type ProtectedRead = NonNullable<
   ReturnType<NonNullable<AiFeatureLocalData['borrowLiveHealthProof']>>
 >;
 
-export function canonicalLiveHealthDeclaration(tool: EvidenceSearchTool) {
+export function canonicalLiveHealthDeclaration(
+  tool: HealthContextToolDefinition,
+) {
   if (
     tool.id !== name ||
     tool.sourceKind !== 'personal_record' ||
