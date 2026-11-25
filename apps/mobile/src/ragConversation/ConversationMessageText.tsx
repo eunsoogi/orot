@@ -1,7 +1,10 @@
 import { SavedPossibilityNarrative } from './SavedPossibilityNarrative';
 import { savedPossibilityNarrativeParts } from './savedPossibilityNarrativeParts';
 import { ConversationReportText } from './ConversationReportText';
-import { parseConversationReport } from './conversationReportTemplate';
+import {
+  hasConversationReportTitle,
+  parseConversationReport,
+} from './conversationReportTemplate';
 import { ConversationA2UISurface } from './ConversationA2UISurface';
 import type { ConversationA2UINode } from './conversationA2UI';
 import { memo } from 'react';
@@ -66,7 +69,9 @@ export const ConversationMessageText = memo(
     // During a draft the existing text host keeps appending; only a complete
     // ordinary answer (live or restored) can replace raw syntax with formatting.
     const markdown =
-      !user && allowReport ? parseAssistantMarkdown(content) : undefined;
+      !user && allowReport && !hasConversationReportTitle(content)
+        ? parseAssistantMarkdown(content)
+        : undefined;
     if (markdown)
       return (
         <AssistantMarkdown

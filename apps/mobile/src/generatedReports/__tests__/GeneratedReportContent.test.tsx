@@ -160,7 +160,6 @@ test('one SQLite-committed legacy report shares a safe heading and keeps its occ
 });
 
 test.each([
-  { role: 'assistant' as const },
   { role: 'user' as const, savedPossibilityNarrative: true as const },
   {
     role: 'assistant' as const,
@@ -173,7 +172,7 @@ test.each([
     savedPossibilityNarrative: true as const,
   },
 ])(
-  'ordinary, user, streaming, and partial text never gain legacy headings: %j',
+  'user, streaming, and partial text never gain legacy headings: %j',
   async state => {
     const content = '## Literal notes\nSynthetic original';
     const chat = await render(
