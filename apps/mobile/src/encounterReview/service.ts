@@ -9,7 +9,6 @@ import type {
 import {
   SqliteCheckpointSaver,
   validateEncounterApproval,
-  isExecutionConsentCurrent,
 } from '@orot/agent-runtime';
 import { persistEncounterApproval } from '../agent/encounter/persistence';
 import {
@@ -30,6 +29,7 @@ import {
 } from '../agent/encounter/transcript';
 import type { EncounterReviewService, ReviewResult } from './controller';
 import type { ReviewDiagnostics, ReviewDiagnosticAttempt } from './diagnostics';
+import { createEncounterStartAdmission } from './startAdmission';
 
 async function sessions(sourceId: string) {
   const database = await openLocalAgentMemoryDatabase();
@@ -188,10 +188,21 @@ export function createEncounterReviewService(
         };
       }
       if (signal.aborted) return { status: 'cancelled' };
+      const admission = createEncounterStartAdmission(
+        selected,
+        consent,
+        resolveSelected === resolveSelectedAiProvider,
+      );
+      const unavailableSelection = () => {
+        diagnostics?.unavailable('provider_selection');
+        return { status: 'unavailable' as const };
+      };
+      if (!admission.selectionCurrent()) return unavailableSelection();
       diagnostics?.stage('session_begin');
       const { discovery } = await sessions(sourceId);
       // A stop while storage opens must not replace the last discoverable review.
       if (signal.aborted) return { status: 'cancelled' };
+      if (!admission.selectionCurrent()) return unavailableSelection();
       let session: Awaited<ReturnType<typeof discovery.begin>>;
       try {
         session = await discovery.begin(signal);
@@ -202,21 +213,12 @@ export function createEncounterReviewService(
       if (signal.aborted) return { status: 'cancelled' };
       // Keep the source-bound checkpoint thread; only its verified nonce becomes the workflow ID.
       const executionId = discovery.executionId(session);
-      let denied = false;
-      const model = composeEncounterModel(sourceId, executionId, selected, {
-        isAuthorizationCurrent(request) {
-          const valid = isExecutionConsentCurrent(consent, request);
-          if (!valid) denied = true;
-          return valid;
-        },
-        subscribeAuthorizationInvalidation:
-          consent.subscribeAuthorizationInvalidation?.bind(consent),
-        async authorize(request) {
-          const result = await consent.authorize(request);
-          if (result !== 'authorized') denied = true;
-          return result;
-        },
-      });
+      const model = composeEncounterModel(
+        sourceId,
+        executionId,
+        selected,
+        admission.consent,
+      );
       diagnostics?.stage('graph_setup');
       const result = await runLocalEncounterProcessing({
         sourceId,
@@ -232,7 +234,8 @@ export function createEncounterReviewService(
         diagnostics?.unavailable('session_readback');
         return { status: 'unavailable' };
       }
-      return denied && !signal.aborted ? { status: 'consent-denied' } : result;
+      if (!admission.selectionCurrent()) return unavailableSelection();
+      return admission.denied() ? { status: 'consent-denied' } : result;
     },
   };
 }
