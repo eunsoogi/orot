@@ -40,6 +40,14 @@ export async function removeLocalSourceWithMemory(
   timingProbe?: RecordingDeletionTimingProbe,
 ): Promise<SourceMemoryDeletionResult> {
   beginRecordingDeletionTiming(timingProbe, 'derived-data-cleanup');
+  const observeMemoryStage: NonNullable<
+    Parameters<AgentMemoryService['removeSource']>[4]
+  > = (stage, event) => {
+    const span =
+      stage === 'queue' ? 'memory-queue-wait' : 'memory-provenance-scan';
+    if (event === 'begin') beginRecordingDeletionTiming(timingProbe, span);
+    else endRecordingDeletionTiming(timingProbe, span, event);
+  };
   let derivedCleanupEnded = false;
   const endDerivedCleanup = (outcome: 'success' | 'failure') => {
     if (derivedCleanupEnded) return;
@@ -79,6 +87,7 @@ export async function removeLocalSourceWithMemory(
         },
         deletionReferences,
         typedReferences,
+        ...(timingProbe ? [observeMemoryStage] : []),
       )
       .finally(notifyLocalSourceDeleted);
     endDerivedCleanup('success');

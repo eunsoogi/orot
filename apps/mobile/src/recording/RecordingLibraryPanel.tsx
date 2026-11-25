@@ -56,6 +56,7 @@ export default function RecordingLibraryPanel({
     service,
     automaticTranscription,
     refreshKey,
+    deletionBusy: busy,
     onReconciled: notice.reconciled,
   });
 

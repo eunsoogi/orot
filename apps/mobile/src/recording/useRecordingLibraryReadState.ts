@@ -12,11 +12,13 @@ export function useRecordingLibraryReadState({
   service,
   automaticTranscription,
   refreshKey,
+  deletionBusy,
   onReconciled,
 }: {
   readonly service: RecordingLibraryService;
   readonly automaticTranscription: AutomaticTranscriptionSnapshot | null;
   readonly refreshKey?: string | null;
+  readonly deletionBusy: boolean;
   readonly onReconciled: () => void;
 }) {
   const [recordings, setRecordings] = useState<
@@ -31,7 +33,7 @@ export function useRecordingLibraryReadState({
     () => ({ service, revision: 0, active: false }),
     [service],
   );
-  const deletionTiming = useRecordingDeletionTiming(recordings);
+  const deletionTiming = useRecordingDeletionTiming(recordings, deletionBusy);
 
   useEffect(() => {
     ownership.active = true;

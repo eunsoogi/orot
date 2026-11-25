@@ -123,6 +123,54 @@ describe('agent memory source removal', () => {
     await reopened.close();
   });
 
+  it('observes a held queue and provenance scan without emitting record data', async () => {
+    const storage = new PersistentMemoryStorage();
+    const memory = await createAgentMemory({ embedder, storage });
+    await memory.remember(preference);
+    let enterPrior!: () => void;
+    let releasePrior!: () => void;
+    const priorEntered = new Promise<void>((resolve) => {
+      enterPrior = resolve;
+    });
+    const holdPrior = new Promise<void>((resolve) => {
+      releasePrior = resolve;
+    });
+    const prior = memory.removeSource('synthetic-prior', async () => {
+      enterPrior();
+      await holdPrior;
+      return true;
+    });
+    await priorEntered;
+
+    let now = 0;
+    const observations: [string, string, number][] = [];
+    const read = storage.listRecords.bind(storage);
+    const scan = jest.spyOn(storage, 'listRecords').mockImplementation(async () => {
+      now += 40;
+      return read();
+    });
+    const deletion = memory.removeSource(
+      'synthetic-source-1',
+      async () => true,
+      [],
+      undefined,
+      (stage, event) => observations.push([stage, event, now]),
+    );
+    now = 5_000;
+    expect(observations).toEqual([['queue', 'begin', 0]]);
+    expect(scan).not.toHaveBeenCalled();
+    releasePrior();
+    await prior;
+    await expect(deletion).resolves.toEqual({ sourceDeleted: true, memoriesDeleted: 1 });
+    expect(observations).toEqual([
+      ['queue', 'begin', 0],
+      ['queue', 'success', 5_000],
+      ['provenance', 'begin', 5_000],
+      ['provenance', 'success', 5_040],
+    ]);
+    await memory.close();
+  });
+
   it('keeps memory writable when the source-removal batch fails', async () => {
     const storage = new PersistentMemoryStorage();
     const memory = await createAgentMemory({ embedder, storage });

@@ -61,3 +61,53 @@ test.each([false, true])(
     expect(stage).toHaveBeenCalledTimes(1);
   },
 );
+
+test('attributes held cleanup after commit without moving the success boundary', async () => {
+  let release!: () => void;
+  let entered!: () => void;
+  const held = new Promise<void>(resolve => {
+    release = resolve;
+  });
+  const started = new Promise<void>(resolve => {
+    entered = resolve;
+  });
+  let now = 0;
+  const removeSource = jest.fn(async () => ({
+    sourceDeleted: true,
+    memoriesDeleted: 0,
+  }));
+  const service = createRecordingLibraryService({
+    loadRepository: async () =>
+      ({
+        get: async () => ({ sourceKind: 'audio_recording' }),
+      }) as unknown as RecordRepository,
+    assertRecordingStopped: async () => {},
+    openMemory: async () => ({}) as AgentMemoryService,
+    removeSource,
+    audioDeletion: {
+      reconcile: async () => {},
+      stage: async () => {},
+      restore: async () => {},
+      commit: async () => {
+        entered();
+        await held;
+      },
+    },
+  });
+  const probe = new RecordingDeletionTimingProbe(() => now);
+  probe.mark('confirmation-tap');
+  const settled = jest.fn();
+  const deletion = service.deleteRecording('synthetic-recording', probe);
+  try {
+    await started;
+    now = 5_000;
+    expect(removeSource).toHaveBeenCalledTimes(1);
+    void deletion.then(settled);
+    await Promise.resolve();
+    expect(settled).not.toHaveBeenCalled();
+  } finally {
+    release();
+  }
+  await expect(deletion).resolves.toEqual({ audioCleanupPending: false });
+  expect(probe.snapshot().durationsMs.audioCleanup).toBe(5_000);
+});
