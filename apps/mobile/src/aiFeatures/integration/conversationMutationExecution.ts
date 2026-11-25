@@ -80,6 +80,8 @@ export function conversationMutationExecution(input: {
     memorySaved: () =>
       reportBookmark && reportBookmark.committed()
         ? ('generated-report' as const)
-        : Boolean(answerMemory && answerMemory.committed()),
+        : answerMemory
+          ? answerMemory.receipt()
+          : 'not_attempted',
   };
 }

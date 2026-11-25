@@ -18,6 +18,7 @@ export type RagConversationFailureKind =
   | 'stale_evidence'
   | 'visit_no_appointment'
   | 'visit_saved_unavailable'
+  | 'answer_memory_not_saved'
   | 'budget_exceeded'
   | 'unavailable';
 

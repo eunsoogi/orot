@@ -23,7 +23,7 @@ export function conversationAnswerMemoryAction(input: {
   const currentRequestId = observer?.retentionRequestId;
   const target = observer?.retainedHistory?.at(-1);
   const confirm = observer?.confirmHistorySave;
-  let saved = false;
+  let receipt: 'not_attempted' | 'not_saved' | 'saved' = 'not_attempted';
   let prepared:
     | {
         signal: AbortSignal;
@@ -41,7 +41,10 @@ export function conversationAnswerMemoryAction(input: {
     data.openConversationArtifactStorage &&
     input.admittedAnswerIds.has(target.id);
   if (!available || !owner || !currentRequestId || !target || !confirm) {
-    return { actions: [] as LocalActionTool[], committed: () => false };
+    return {
+      actions: [] as LocalActionTool[],
+      receipt: () => 'not_attempted' as const,
+    };
   }
   const actions: LocalActionTool[] = [
     {
@@ -64,7 +67,10 @@ export function conversationAnswerMemoryAction(input: {
       },
       async authorize(value, signal) {
         prepared = undefined;
-        if (!exactTarget(value) || signal.aborted || saved) return false;
+        if (!exactTarget(value) || signal.aborted || receipt === 'saved')
+          return false;
+        // The selected tool, not model prose or a keyword match, owns the receipt.
+        receipt = 'not_saved';
         const current = () =>
           !signal.aborted &&
           observer?.expectedConversationModel?.isCurrent?.() !== false;
@@ -98,11 +104,11 @@ export function conversationAnswerMemoryAction(input: {
           throw new Error('The original answer has not been confirmed.');
         if (!(await approved.save()))
           throw new Error('The original answer is unavailable.');
-        saved = true;
+        receipt = 'saved';
         // Only a checked commit receipt. Do not resend the protected answer as evidence.
         return { items: [], coverage: [], conflicts: [] };
       },
     },
   ];
-  return { actions, committed: () => saved };
+  return { actions, receipt: () => receipt };
 }

@@ -71,13 +71,25 @@ export async function finishConversationWorkflow(
 /** The provider cannot create a success receipt. Render only a proven commit. */
 export function answerMemoryOutcome(
   outcome: RagConversationOutcome,
-  committed: boolean | 'generated-report',
+  receipt: 'not_attempted' | 'not_saved' | 'saved' | 'generated-report',
 ): RagConversationOutcome {
-  return committed
+  if (
+    receipt === 'not_saved' &&
+    outcome.status === 'failure' &&
+    outcome.kind === 'cancelled'
+  )
+    return outcome;
+  if (receipt === 'not_saved')
+    return {
+      status: 'failure',
+      kind: 'answer_memory_not_saved',
+      discardUnverifiedDraft: true,
+    };
+  return receipt !== 'not_attempted'
     ? {
         status: 'answer',
         answer: t(
-          committed === 'generated-report'
+          receipt === 'generated-report'
             ? 'savedMemory.generatedReportSaved'
             : 'historyDisplay.savedConversationMemory',
         ),

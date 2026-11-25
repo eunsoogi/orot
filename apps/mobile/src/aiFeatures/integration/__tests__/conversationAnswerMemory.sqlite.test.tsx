@@ -105,14 +105,14 @@ test('books the exact original locally, without storing command or answer text i
     ).toBeUndefined();
     expect(await f.tool.authorize(toolInput, f.signal)).toBe(true);
     expect(f.confirm).toHaveBeenCalledWith(text, f.signal);
-    expect(f.action.committed()).toBe(false);
+    expect(f.action.receipt()).toBe('not_saved');
     expect(await f.dispatch()).toEqual({
       items: [],
       coverage: [],
       conflicts: [],
     });
     expect(
-      answerMemoryOutcome({ status: 'no_evidence' }, f.action.committed()),
+      answerMemoryOutcome({ status: 'no_evidence' }, f.action.receipt()),
     ).toMatchObject({ status: 'answer', committedAnswerMemory: true });
     const reopened = createConversationArtifactStorage(f.database);
     const pins = await reopened.listSavedConversationAnswers();
@@ -143,10 +143,13 @@ test.each(['original', 'owner'] as const)(
         await f.repository.delete('health_observation', f.inside.id);
       else f.retire();
       await expect(f.dispatch()).rejects.toThrow();
-      expect(f.action.committed()).toBe(false);
-      expect(
-        answerMemoryOutcome({ status: 'unavailable' }, f.action.committed()),
-      ).toEqual({ status: 'unavailable' });
+      expect(f.action.receipt()).toBe('not_saved');
+      const prose = { status: 'answer' as const, answer: text, citations: [] };
+      expect(answerMemoryOutcome(prose, f.action.receipt())).toEqual({
+        status: 'failure',
+        kind: 'answer_memory_not_saved',
+        discardUnverifiedDraft: true,
+      });
       expect(await f.storage.listSavedConversationAnswers()).toEqual([]);
     } finally {
       f.close();

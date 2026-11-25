@@ -14,6 +14,8 @@ export const historyDisplayKo = {
   'historyDisplay.answerMemoryTitle': '대화에서 저장한 AI 답변',
   'historyDisplay.answerMemoryDeviceOnly':
     '기억에 저장하지 않았어요. 이 요청은 기기 내 Apple Intelligence에서만 처리할 수 있어요.',
+  'historyDisplay.answerMemoryNotSaved':
+    '이전 답변을 기억에 저장하지 않았어요. 저장할 답변이 맞는지 확인하고 다시 시도해 주세요.',
   'historyDisplay.savedConversationMemory': '이 기기의 기억에 저장했어요.',
   'historyDisplay.saveTitle': '기억에 저장',
 } as const;

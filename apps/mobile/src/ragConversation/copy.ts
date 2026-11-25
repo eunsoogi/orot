@@ -53,6 +53,7 @@ export function getRagConversationFailureCopy(
     stale_evidence: 'ragConversation.failureStaleEvidence',
     visit_no_appointment: 'ragConversation.failureVisitNoAppointment',
     visit_saved_unavailable: 'ragConversation.failureVisitSavedUnavailable',
+    answer_memory_not_saved: 'historyDisplay.answerMemoryNotSaved',
     budget_exceeded: 'ragConversation.failureBudget',
     unavailable: 'ragConversation.unavailable',
   } as const satisfies Record<RagConversationFailureKind, string>;
