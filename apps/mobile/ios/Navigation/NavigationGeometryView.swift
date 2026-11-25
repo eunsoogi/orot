@@ -13,10 +13,16 @@ final class NavigationGeometryView: UIView {
     private var navigationWidth: Double?
     private var navigationFrame: [String: Double]?
 
+    private var keyboardScreenFrame: CGRect?
+
     /// Observe public hinge identity and the actual mounted controls, without inspecting route contents.
     private func observeWindowGeometry() {
         NotificationCenter.default.addObserver(self, selector: #selector(navigationFrameChanged),
                                                name: Notification.Name("OrotNavigationSurfaceGeometryDidChange"), object: nil)
+        let center = NotificationCenter.default
+        center.addObserver(self, selector: #selector(keyboardFrameChanged), name: UIResponder.keyboardWillChangeFrameNotification, object: nil)
+        center.addObserver(self, selector: #selector(keyboardFrameChanged), name: UIResponder.keyboardDidChangeFrameNotification, object: nil)
+        center.addObserver(self, selector: #selector(keyboardFrameChanged), name: UIResponder.keyboardWillHideNotification, object: nil)
         if #available(iOS 27.1, *) {
             registerForTraitChanges(UITraitCollection.systemTraitsAffectingVerticalBarEdge, action: #selector(setNeedsLayout))
             addInteraction(UIHingeInteraction { [weak self] _, update in
@@ -25,6 +31,31 @@ final class NavigationGeometryView: UIView {
                 publishGeometryIfNeeded()
             })
         }
+    }
+
+    /// Keep screen coordinates until publication so split-window offsets are converted by UIKit.
+    @objc private func keyboardFrameChanged(_ notification: Notification) {
+        guard let window, let screen = window.windowScene?.screen,
+              (notification.object as? UIScreen).map({ $0 === screen }) ?? true,
+              (notification.userInfo?[UIResponder.keyboardIsLocalUserInfoKey] as? Bool) != false else { return }
+        if notification.name == UIResponder.keyboardWillHideNotification {
+            keyboardScreenFrame = nil
+        } else {
+            guard window.isKeyWindow,
+                  let value = notification.userInfo?[UIResponder.keyboardFrameEndUserInfoKey] as? NSValue else { return }
+            keyboardScreenFrame = value.cgRectValue
+        }
+        publishGeometryIfNeeded()
+    }
+
+    private func dockedKeyboardFrame(in window: UIWindow) -> CGRect? {
+        guard let screen = window.windowScene?.screen, let keyboardScreenFrame else { return nil }
+        let frame = window.convert(keyboardScreenFrame, from: screen.coordinateSpace)
+        guard [frame.minX, frame.minY, frame.width, frame.height].allSatisfy(\.isFinite),
+              frame.maxY + 1 >= window.bounds.maxY,
+              frame.minY > window.bounds.minY else { return nil }
+        let overlap = frame.intersection(window.bounds)
+        return overlap.isEmpty ? nil : overlap
     }
 
     @objc private func navigationFrameChanged(_ notification: Notification) {
@@ -58,6 +89,7 @@ final class NavigationGeometryView: UIView {
     override func didMoveToWindow() {
         super.didMoveToWindow()
         lastSnapshotData = nil
+        keyboardScreenFrame = nil
         navigationFrame = nil
         navigationWidth = nil
         navigationSide = nil
@@ -130,6 +162,9 @@ final class NavigationGeometryView: UIView {
             "reservedRegionsSupported": reservedRegionsSupported,
             "reservedRegions": reservedRegionEntries,
         ]
+        if let frame = dockedKeyboardFrame(in: window) {
+            payload["dockedKeyboardFrame"] = rectPayload(frame)
+        }
         if let navigationWidth {
             payload["navigationWidth"] = navigationWidth
         }

@@ -38,6 +38,8 @@ export interface NavigationGeometryPayload {
   readonly navigationFrame?: NavigationGeometryRect;
   /** Visible same-scene system status bar; omitted when UIKit prefers a vertical system bar. */
   readonly systemTopBarFrame?: NavigationGeometryRect;
+  /** Docked software keyboard overlap converted to this UIWindow's coordinates. */
+  readonly dockedKeyboardFrame?: NavigationGeometryRect;
 }
 
 export interface NavigationGeometrySnapshot extends NavigationGeometryPayload {
@@ -172,7 +174,9 @@ export function createNavigationGeometrySnapshot(
       (!Number.isFinite(payload.navigationWidth) ||
         payload.navigationWidth <= 0)) ||
     (payload.navigationFrame !== undefined &&
-      !isFiniteRect(payload.navigationFrame))
+      !isFiniteRect(payload.navigationFrame)) ||
+    (payload.dockedKeyboardFrame !== undefined &&
+      !isFiniteRect(payload.dockedKeyboardFrame))
   ) {
     return null;
   }
