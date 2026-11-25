@@ -187,3 +187,10 @@ public final class AppleFoundationModelsModule: RCTEventEmitter {
         return true
     }
 }
+
+extension OrotProviderDiagnostics {
+    @objc(readProcessWitness:rejecter:)
+    func readProcessWitness(_ resolve: RCTPromiseResolveBlock, rejecter _: RCTPromiseRejectBlock) {
+        resolve(ProcessDiagnosticWitness.current?.snapshot())
+    }
+}

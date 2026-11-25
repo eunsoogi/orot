@@ -15,4 +15,6 @@ RCT_EXTERN_METHOD(cancel : (NSString *)requestId)
 @interface RCT_EXTERN_MODULE (OrotProviderDiagnostics, NSObject)
 RCT_EXTERN_METHOD(report : (NSString *)feature stage : (NSString *)stage outcome : (NSString *)
                       outcome)
+RCT_EXTERN_METHOD(readProcessWitness : (RCTPromiseResolveBlock)
+                      resolve rejecter : (RCTPromiseRejectBlock)reject)
 @end
