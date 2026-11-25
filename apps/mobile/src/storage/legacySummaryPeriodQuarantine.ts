@@ -6,6 +6,7 @@ import {
 } from '../diseaseHypotheses/savedSummaries';
 import { RetainedSourceInvalidError } from '../aiFeatures/integration/retainedSourceError';
 import { assertSummaryPeriodCurrent } from './symptomSummaryPeriods';
+import { commitStandaloneSummaryBody } from './standaloneSummaryBodyReceipts';
 import { decodeSavedSymptomSummary } from './symptomSummaryStorageCodec';
 
 const table = 'summary_period_policy';
@@ -68,12 +69,13 @@ export async function setupLegacySummaryPeriodQuarantine(tx: SqlExecutor) {
 
 export async function markCurrentSummaryPeriodPolicy(
   tx: SqlExecutor,
-  id: string,
+  summary: SavedSymptomSummary,
 ) {
   await tx.execute(
     `INSERT INTO ${table} (summary_id, status) VALUES (?, 'current')`,
-    [id],
+    [summary.id],
   );
+  await commitStandaloneSummaryBody(tx, summary);
 }
 
 export const visibleLegacySummaryPeriod = `NOT EXISTS (SELECT 1 FROM ${table} policy WHERE policy.summary_id = r.id AND policy.status = 'quarantined')`;
