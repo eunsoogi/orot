@@ -26,11 +26,13 @@ export type PublicToolSourceSheetState = {
 export function PublicToolSourceSheet({
   state,
   destination,
+  showSourceSuffix = true,
   close,
   open,
 }: {
   readonly state: PublicToolSourceSheetState | null;
   readonly destination: string;
+  readonly showSourceSuffix?: boolean;
   readonly close: () => void;
   readonly open: (choice: PublicToolSourceChoice) => void;
 }) {
@@ -45,7 +47,10 @@ export function PublicToolSourceSheet({
       {state ? (
         <ScrollView contentContainerStyle={styles.content}>
           <AppText accessibilityRole="header" style={styles.title}>
-            {destination} · {t('ragConversation.tool.sources')}
+            {destination}
+            {showSourceSuffix
+              ? ` · ${t('ragConversation.tool.sources')}`
+              : ''}
           </AppText>
           {state.failed ? (
             <AppText accessibilityRole="alert">
