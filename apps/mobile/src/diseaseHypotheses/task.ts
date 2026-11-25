@@ -1,250 +1,221 @@
-import { localConversationMemoryScope } from '../memory/authoredRoutineMemory';
-import { recordFirstResponsePrompt } from '../agent/execution/recordFirstResponsePrompt';
-import {
-  requestsRoutedPossibilityReport,
-  withStructuredPossibilityReport,
-} from './structuredPossibilityReport';
-import { validateConversationResult } from './conversationResultValidation';
-import { acceptsLocalPublicSearchFallback } from './publicSearchFallback';
 import type { JsonObject, LanguageModelMessage } from '@orot/model-runtime';
+import {
+  providerDiagnostic,
+  reportWorkflowOutcome,
+} from '../providers/diagnostics';
+import { runMultiAgentWorkflow } from '@orot/agent-runtime';
 import type {
-  EvidenceBatch,
+  MultiAgentInvocation,
+  MultiAgentWorkflowOptions,
   TaskResponderContract,
   TaskResponderInput,
 } from '@orot/agent-runtime';
-import type { LocalClaimIdentity } from './localEvidenceClaims';
+import { extractPartialJsonStringAtPath } from '@orot/agent-runtime';
+import { assessHealthEvidenceCoverage } from '../healthEvidence/coverage';
+import type { HealthEvidenceInventory } from '../healthEvidence/coverage';
+import { revalidateWithLocalDeletionGuard } from '../aiFeatures/integration/deletionAwareEvidence';
+import type { LocalEvidenceIdentityResolver } from '../aiFeatures/integration/deletionAwareEvidence';
 import {
-  conversationResultSchema,
-  selectConversationResultSchema,
-} from './literatureSchema';
-import type { LiteratureIdentity } from './literatureCitationBinding';
-import { appointmentState, isObject } from './taskHistory';
-import { isEvidenceIndependentConversation } from './literatureIntent';
-import { conversationTaskInput } from './conversationEntryContext';
-import { conversationRequestHistory } from './conversationRequestHistory';
-import { possibilityPrompt } from './possibilityPrompt';
-import {
-  conversationA2UIPresentationSchema,
-  allowsOrdinaryA2UI,
-  admitConversationA2UIPresentation,
-} from './conversationA2UIPresentation';
-import type { ConversationA2UINode } from './conversationA2UI';
-import type { ConversationA2UILocalDraft } from './conversationA2UILocalDraft';
-import { versionedConversationA2UITasks } from './conversationA2UIFrameSequence';
-import { withProactiveMemory } from './proactiveConversationMemory';
-import { versionedConversationMemoryTasks } from './versionedConversationMemoryTasks';
-export interface RagConversationMessage {
-  readonly role: 'user' | 'assistant';
-  readonly content: string;
-}
-export interface GroundedRagAnswer {
-  readonly answer: string;
-  readonly proactiveMemory?: true;
-  readonly replyPreferenceSpan?: string;
-  readonly authoredRoutineSpan?: string;
-  readonly a2uiPresentation?: ConversationA2UINode;
-  readonly a2uiLocalDraft?: ConversationA2UILocalDraft;
-  /** Omitted legacy values remain grounded; only explicit social/clarifying replies need no sources. */
-  readonly answerKind?: 'grounded' | 'conversation' | 'prior_output';
-  readonly literatureReferences?: readonly LiteratureIdentity[];
-  readonly localReferences?: readonly LocalClaimIdentity[];
-}
+  containsEvidenceReference,
+  canPreviewDiseaseHypothesisSummary,
+  diseaseHypothesisSchema,
+  validateDiseaseHypothesisResult,
+} from './resultValidation';
+import type {
+  DiseaseHypothesisAnalysis,
+  DiseaseHypothesisRunOutcome,
+} from './types';
+import type { ClinicalClaimIssue } from './clinicalClaimGuard';
 
-/** Distinguishes dialogue from claims needing current sources; history is context only.
- * Publish prose only after complete-response validation. Tool progress has its own observer.
- * This v14 base also reconstructs protected legacy checkpoints without new formatting contracts. */
-export const legacyTask: TaskResponderContract<GroundedRagAnswer> = {
-  taskType: 'grounded_rag_conversation',
-  // The live send boundary owns the reviewed opening; never spend another preview call during tools.
-  taskVersion: '14',
-  // Full current evidence is already in createMessages. Preserve tool identity and
-  // coverage without sending the same body a second time in native tool history.
-  nativeToolResultMode: 'evidence_references',
-  allowBoundedExternalEvidence: true,
-  acceptsIncompleteEvidence: acceptsLocalPublicSearchFallback,
-  allowRankedLocalEvidence: true,
-  allowPagedGeneratedArtifacts: true,
-  // Only the observed envelope-shape error permits one budgeted correction; normal citation validation still applies.
-  correctionInstructionForInvalidEnvelope(reason) {
-    if (
-      reason !== 'The task responder returned an invalid envelope: citations.'
-    )
-      return undefined;
-    return 'Return the complete result envelope with citations as an array of exact current evidenceId strings used in the answer. Use each ID at most once and do not invent references. Preserve only facts supported by the supplied evidence; an evidence-independent conversation has an empty citations array.';
-  },
-  isEvidenceIndependentResult: isEvidenceIndependentConversation,
-  systemPrompt:
-    'Choose answerKind=conversation for greetings, acknowledgements, emotional support without factual or clinical claims, and questions that clarify what the user means. Reply naturally without citations or an evidence disclaimer. Do not require a search merely to continue a conversation. ' +
-    'Choose answerKind=grounded for claims about records, health measurements, medications, symptoms or medical knowledge. Retrieve supporting evidence when absent; never label such claims conversation to evade grounding. If a turn mixes social language with a substantive health question, use grounded. ' +
-    'Choose answerKind=prior_output only to show a previously generated result; cite generated artifact IDs. The application will display the retained text itself. ' +
-    'For grounded answers, use only the supplied current evidence. Previous conversation is context, not evidence. If optional public web research failed, answer a supported local-record question using only its supplied local evidence, and state that public research was unavailable. Never invent external findings. ' +
-    'When entryContext identifies a selected visit by evidence ID, use that visit as the requested target and do not replace it with another appointment. ' +
-    'A generated_artifact is a historical AI output, not an independent medical fact or corroboration. When asked about a prior output, identify its origin, generation date, uncertainty and source status. For clinical claims retrieve and cite the underlying current sources separately. A paged result is not an exhaustive search; use its nextCursor for more results. When asked to continue on a later turn, reuse the earlier search query so the local tool continues its saved page. ' +
-    possibilityPrompt +
-    'Cite exact current evidence IDs in the top-level citations field. ' +
-    'Explain any missing requested information directly in the answer. Never bypass evidence or citation requirements. ' +
-    'Local evidence is a ranked search sample, not an exhaustive medication list or medical history. Say what the retrieved records support and never infer absence from omitted results. ' +
-    'For broad health questions or trends prefer local-health-context (30 days, summary detail by default) for full-period medication, measurement, activity, sleep and symptom statistics. Choose 7 or 90 days, or an explicit window for a requested period, and weekly or daily detail when needed; use raw-record search for drilldown. If unavailable use view=health_overview. Missing days are unknown, not zero or missed medication. Never add overlapping sensor step series or infer a complete night from calendar-day sleep durations. The model chooses each tool and query. ' +
-    'Respect sourceSemantics: step_count amounts in count are steps, never occurrences. Sleep stages describe individual intervals, not episode counts or whole-night totals. Convert clock times to displayTimeZone, or label the retained source time zone explicitly. ' +
-    // An empty personal library does not establish that public literature is unavailable.
-    'When the user explicitly asks for literature and current sources do not support the answer, request evidence before declaring it unavailable if literature research is permitted. ' +
-    'If research is denied, exhausted, or returned no supporting results, acknowledge insufficient evidence; do not invent an answer or repeatedly request the same search. ' +
-    'Do not invent records, diagnoses, or sources. External publications and public-web search explanations are general context, not personal findings. ' +
-    'Use public-web-search when general web sources beyond Europe PMC are needed. Its output is a cited model-generated explanation, never original passages or Europe PMC papers. Use only supplied source dates; a retrieval time is not a publication date. ' +
-    'Describe external evidence as a limited search sample, never a complete review; include publication dates and limitations. Request literature evidence when relevant. ' +
-    // Bibliographic identity and historical snapshots do not establish a study's findings or present status.
-    'For each relevant publication, explain the study population, results, applicability to the question and relevant limitations only when its actual abstract supplies them; otherwise say what cannot be determined. Bibliographic metadata supports identification only, not clinical results. Historical publication metadata cannot substitute for a fresh abstract. Cite exact current evidence IDs and distinguish general research from personal records. Never infer that full text was read, that a paper was peer reviewed, or that it was not retracted from silence. ' +
-    // Statistical measures and uncertainty must retain their source meaning, including in translation.
-    'Preserve each reported statistical measure exactly: an odds ratio is an odds ratio, not a risk ratio, hazard ratio, absolute risk or percentage increase in risk. Never exchange or convert these measures without the necessary data. Distinguish association from causation and accurately describe the evidence grade and material uncertainty, including heterogeneity when relevant to the reported result. ' +
-    'For Europe PMC sources provide literature entries with exact evidenceId, sourceRevision, evidenceRevision and verbatim populationSpan, resultSpan and limitationSpan from the abstract. Include the outcome and context in resultSpan. Use an empty limitationSpan when absent. For an explicit OR, RR or HR with 95% CI, copy the exact statisticSpan within resultSpan and its values, using odds_ratio, risk_ratio or hazard_ratio. Otherwise use qualitative and empty statisticSpan, value and confidenceInterval. Cite the same evidence IDs. The application renders these fields; do not rely on free-text answer for publication claims. ' +
-    'When publication evidence is present, report personal records only as localClaims with exact evidenceId, sourceRevision, evidenceRevision and complete unchanged content in span. Cite every displayed record. The application renders source-backed claims and states when a comparison is unverified. ' +
-    'For a simple record question, answer in one short Korean sentence using only relevant facts. Do not repeat unrelated evidence or metadata. Keep IDs only in citations, never in the answer text. ' +
-    'For medications, distinguish a recorded dose or prescription from confirmed current use; do not claim an old dose proves current use. Preserve qualifications and uncertainty. ' +
-    'For a requested period, use an explicit time-zone-aware window with inclusive start and exclusive end, at most 90 local calendar days. For a specific medication and date or time, add doseHistory and select only medications; follow hasMore pages as needed. A scheduled time is not an intake time, and only an explicit taken or administered event establishes recorded intake. ' +
-    'Preserve event status and source-relative time. A scheduled event or intention is not an ongoing or completed event; a completed event is not ongoing. Never turn a future plan into a present-tense fact. ' +
-    'Write the user-facing answer in Korean. Keep publication titles in their original form.',
-  resultSchema: conversationResultSchema as JsonObject,
-  createResultSchema: selectConversationResultSchema,
-  // Keep the guided provider stream observer active without projecting provisional text.
-  projectStreamedText: () => undefined,
-  createMessages(input: TaskResponderInput): readonly LanguageModelMessage[] {
-    return [
-      {
-        role: 'user',
-        content: JSON.stringify({
-          ...conversationTaskInput(
-            input.request,
-            input.context,
-            input.evidence.items,
-          ),
-          answerRequirements:
-            'Answer directly in Korean, briefly for a simple fact and in short paragraphs for multiple requested topics. Use available follow-up tools for missing requested topics before treating a partial search as insufficient. For medication questions, report recorded medications and dose facts without unrelated consultation plans. Describe the state at the record time rather than asserting current status.',
-          temporalRequirements:
-            'scheduled/rescheduled means planned, completed means finished, and cancelled means cancelled. An event title or consultation intention does not establish ongoing or completed care. Resolve relative times against the source record time, not today.',
-          ...conversationRequestHistory(input.context),
-          priorDialogueOmitted:
-            isObject(input.context) &&
-            input.context.priorDialogueOmitted === true,
-          // The runtime restores full references locally; generation needs content and citation IDs only.
-          evidence: input.evidence.items.map(item => ({
-            evidenceId: item.evidenceId,
-            sourceKind: item.sourceKind,
-            ...(item.sourceKind === 'external_medical' ||
-            (item.sourceKind === 'personal_record' &&
-              input.evidence.items.some(
-                source =>
-                  source.sourceKind === 'external_medical' &&
-                  source.sourceId === 'europe-pmc',
-              ))
-              ? {
-                  sourceRevision: item.sourceRevision,
-                  evidenceRevision: item.evidenceRevision,
-                }
-              : {}),
-            effectiveTime: item.effectiveTime,
-            reviewState: item.reviewState,
-            content: item.content,
-            ...(appointmentState(item.content)
-              ? { eventState: appointmentState(item.content) }
-              : {}),
-          })),
-          coverage: input.evidence.coverage,
-          conflicts: input.evidence.conflicts,
-        }),
+export type {
+  DiseaseHypothesis,
+  DiseaseHypothesisAnalysis,
+  DiseaseHypothesisRunOutcome,
+} from './types';
+
+/** Keeps generated hypotheses within the consent, freshness, and citation workflow. */
+export const diseaseHypothesisTask: TaskResponderContract<DiseaseHypothesisAnalysis> =
+  {
+    taskType: 'disease_hypothesis_review',
+    taskVersion: '1',
+    allowRankedLocalEvidence: true,
+    allowBoundedExternalEvidence: true,
+    systemPrompt:
+      'Review possible disease hypotheses from the supplied app evidence. This is not a diagnosis. ' +
+      'Never recommend starting, stopping, or changing medication. Use only supplied evidence, ' +
+      'cite exact references for supporting and contrary evidence, state uncertainty, and list missing data. ' +
+      'Medication and dose records, walking/activity and blood-pressure or other measurements are usable evidence; transcripts and photos are not prerequisites. ' +
+      'Distinguish observed changes from reported symptoms and possible explanations. Do not infer an experienced symptom or causation from a measurement or medication alone. ' +
+      'Prior generated artifacts are historical AI interpretations, not independent clinical evidence. Attribute them to the prior output and do not treat them as verified observations. ' +
+      'After inspecting local records, use the public medical literature tool when an explanation needs medical context. Search generic concepts, never names, identifiers or verbatim private records. Cite the retrieved publications and distinguish population-level findings from this person’s records. ' +
+      'The ranked evidence is not an exhaustive history. Do not treat omitted records as absent findings. Write user-facing text in Korean.',
+    resultSchema: {
+      type: 'object',
+      required: ['hypotheses'],
+      properties: {
+        hypotheses: {
+          type: 'array',
+          minItems: 1,
+          maxItems: 3,
+          items: diseaseHypothesisSchema,
+        },
       },
-    ];
-  },
-  validateResult: validateConversationResult,
-};
-export interface RagConversationCurrentEvidence {
-  readonly batch: EvidenceBatch;
-  readonly chunks: readonly import('@orot/rag').EvidenceChunk[];
-}
-export const structuredConversationTask =
-  withStructuredPossibilityReport(legacyTask);
-export const proactiveConversationTaskV16 = withProactiveMemory(
-  structuredConversationTask,
-);
+      additionalProperties: false,
+    } satisfies JsonObject,
+    projectStreamedText(rawOutput) {
+      const summary = extractPartialJsonStringAtPath(rawOutput, [
+        'value',
+        'hypotheses',
+        0,
+        'summary',
+      ]);
+      return summary && canPreviewDiseaseHypothesisSummary(summary)
+        ? summary
+        : undefined;
+    },
+    createMessages(input: TaskResponderInput): readonly LanguageModelMessage[] {
+      return [
+        {
+          role: 'user',
+          content: JSON.stringify({
+            request: input.request,
+            evidence: input.evidence.items.map(item => ({
+              content: item.content,
+              evidenceId: item.evidenceId,
+              sourceKind: item.sourceKind,
+              effectiveTime: item.effectiveTime,
+              reviewState: item.reviewState,
+            })),
+            coverage: input.evidence.coverage,
+            conflicts: input.evidence.conflicts,
+            outputInstructions:
+              'Return supportingEvidence and contraryEvidence as arrays of exact evidenceId strings. Top-level citations must contain the same cited IDs, without duplicates or extra IDs.',
+          }),
+        },
+      ];
+    },
+    validateResult(value, input) {
+      let claimIssue: ClinicalClaimIssue | undefined;
+      const validation = validateDiseaseHypothesisResult(value, input, {
+        onClinicalClaim: issue => {
+          claimIssue ??= issue;
+          providerDiagnostic(
+            'disease',
+            'validation',
+            `task_claim_field_${issue.field}`,
+          );
+          providerDiagnostic(
+            'disease',
+            'validation',
+            `task_claim_rule_${issue.rule}`,
+          );
+        },
+        // Keep actual-provider rejection diagnosis separate from private model output.
+        onInvalid: code =>
+          providerDiagnostic(
+            'disease',
+            'validation',
+            `task_hypothesis_${code}`,
+          ),
+      });
+      // Correction receives a closed field label, not matched or private prose.
+      return validation.status === 'invalid' && claimIssue
+        ? {
+            status: 'invalid',
+            reason: `A hypothesis contained a definitive clinical claim in ${claimIssue.field}.`,
+          }
+        : validation;
+    },
+    correctionInstructionForInvalidResult(reason) {
+      const field = ['title', 'summary', 'uncertainty', 'missing_data'].find(
+        candidate =>
+          reason ===
+          `A hypothesis contained a definitive clinical claim in ${candidate}.`,
+      );
+      if (
+        !field &&
+        reason !== 'A hypothesis had unsupported or incomplete citations.'
+      )
+        return undefined;
+      // Use the runtime's single correction allowance; the next result is fully
+      // revalidated and still shares the original call, consent and time budget.
+      return (
+        'Return a corrected result in the same schema. Keep valid observations and exact citation IDs unchanged. ' +
+        (field
+          ? `The rejected field is ${field}. Revise that field and inspect the other fields for the same issue. `
+          : '') +
+        'State only tentative possibilities supported by the supplied evidence, never a confirmed diagnosis or a claim that this person definitely has a disease. ' +
+        'The uncertainty field must describe concrete evidence limits such as missing timing, unknown measurement conditions or incomplete history. Avoid generic diagnosis-confirmation statements, even negated ones; describe what the records do not establish instead. ' +
+        'Use uncertainty to describe limitations and missingData for genuinely missing facts. Do not invent symptoms, records or sources. Write user-facing text in Korean.'
+      );
+    },
+  };
 
-// Prompt text is part of protected execution identity, not a migration of prior turns.
-export const recordFirstConversationTaskV17 = {
-  ...proactiveConversationTaskV16,
-  taskVersion: '17',
-  systemPrompt: `${recordFirstResponsePrompt} ${proactiveConversationTaskV16.systemPrompt}`,
-};
-
-const routedStructuredTask = withStructuredPossibilityReport(
-  legacyTask,
-  requestsRoutedPossibilityReport,
-);
-const modelRoutedConversationTask = withProactiveMemory(routedStructuredTask);
-export const modelRoutedConversationTaskV18 = {
-  ...modelRoutedConversationTask,
-  taskVersion: '18',
-  systemPrompt: `${recordFirstResponsePrompt} ${modelRoutedConversationTask.systemPrompt}`,
-};
-
-// Preserve the shipped v18 template contract for exact checkpoints. Only fresh
-// v19 turns can propose the separately enrolled authored-routine statement.
-export const conversationTaskV19 = {
-  ...withProactiveMemory(
-    routedStructuredTask,
-    value => localConversationMemoryScope(value) !== undefined,
-  ),
-  taskVersion: '19',
-  systemPrompt: modelRoutedConversationTaskV18.systemPrompt,
-};
-
-/** The optional layout cannot change evidence decisions or legacy checkpoints. */
-export const conversationTaskV20: TaskResponderContract<GroundedRagAnswer> = {
-  ...conversationTaskV19,
-  taskVersion: '20',
-  createResultSchema(input) {
-    const schema = conversationTaskV19.createResultSchema!(input);
-    if (!allowsOrdinaryA2UI(input)) return schema;
-    const properties = isObject(schema.properties) ? schema.properties : {};
-    return {
-      ...schema,
-      properties: { ...properties, a2ui: conversationA2UIPresentationSchema },
-    };
-  },
-  validateResult(value, input) {
-    if (!isObject(value) || !('a2ui' in value))
-      return conversationTaskV19.validateResult(value, input);
-    const { a2ui, ...answer } = value;
-    const validated = conversationTaskV19.validateResult(answer, input);
-    if (
-      validated.status !== 'valid' ||
-      validated.value.answerKind !== 'conversation' ||
-      !allowsOrdinaryA2UI(input)
+/** Preloaded callers must attest coverage; tool-first callers establish coverage through tool results. */
+export async function runDiseaseHypothesisAnalysis(
+  options: Omit<MultiAgentWorkflowOptions<DiseaseHypothesisAnalysis>, 'task'>,
+  inventory: HealthEvidenceInventory | undefined,
+  invocation?: MultiAgentInvocation,
+  resolveLocalEvidenceIdentity?: LocalEvidenceIdentityResolver,
+  task: TaskResponderContract<DiseaseHypothesisAnalysis> = diseaseHypothesisTask,
+): Promise<DiseaseHypothesisRunOutcome> {
+  const assessment = inventory
+    ? assessHealthEvidenceCoverage(inventory)
+    : undefined;
+  if (assessment && assessment.status !== 'complete') {
+    return { status: 'incomplete_inventory', reason: assessment.status };
+  }
+  providerDiagnostic('disease', 'workflow', 'started');
+  const result = await runMultiAgentWorkflow(
+    {
+      ...options,
+      revalidateEvidence: (references, signal) =>
+        revalidateWithLocalDeletionGuard(
+          references,
+          signal,
+          options.revalidateEvidence,
+          resolveLocalEvidenceIdentity,
+        ),
+      task,
+    },
+    invocation,
+  );
+  reportWorkflowOutcome(
+    'disease',
+    result.status,
+    'providerErrorCode' in result ? result.providerErrorCode : undefined,
+    'reason' in result ? result.reason : undefined,
+  );
+  if (
+    result.status === 'result' &&
+    result.value.hypotheses.some(hypothesis =>
+      [...hypothesis.supportingEvidence, ...hypothesis.contraryEvidence].some(
+        reference => !containsEvidenceReference(result.citations, reference),
+      ),
     )
-      return validated;
-    const root = admitConversationA2UIPresentation(
-      a2ui,
-      validated.value.answer,
-    );
-    return root
-      ? { ...validated, value: { ...validated.value, a2uiPresentation: root } }
-      : validated;
-  },
-};
-export const {
-  conversationTaskV21,
-  conversationTaskV22,
-  conversationTaskV23,
-  ragConversationTask: conversationTaskV24,
-  weightedTask,
-  horizontalListTask,
-} = versionedConversationA2UITasks(conversationTaskV20, allowsOrdinaryA2UI);
-export const {
-  conversationTaskV25,
-  conversationTaskV26,
-  conversationTaskV27,
-  conversationTaskV28,
-  conversationTaskV29,
-  ragConversationTask,
-} = versionedConversationMemoryTasks(
-  conversationTaskV24,
-  weightedTask,
-  horizontalListTask,
-);
+  ) {
+    return {
+      status: 'workflow',
+      result: {
+        status: 'invalid_output',
+        reason:
+          'The validated citation list did not cover each hypothesis reference.',
+        checkpoint: result.checkpoint,
+      },
+    };
+  }
+  // Coverage is runtime-owned metadata; attach the notice only after exact section citations pass.
+  if (
+    result.status === 'result' &&
+    result.partialEvidence &&
+    result.value.presentation === 'symptom_summary'
+  )
+    return {
+      status: 'workflow',
+      result: {
+        ...result,
+        value: { ...result.value, incompleteEvidence: true },
+      },
+    };
+  return { status: 'workflow', result };
+}

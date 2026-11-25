@@ -160,7 +160,6 @@ export interface RagConversationCurrentEvidence {
   readonly batch: EvidenceBatch;
   readonly chunks: readonly import('@orot/rag').EvidenceChunk[];
 }
-
 export const structuredConversationTask =
   withStructuredPossibilityReport(legacyTask);
 export const proactiveConversationTaskV16 = withProactiveMemory(
@@ -229,19 +228,23 @@ export const conversationTaskV20: TaskResponderContract<GroundedRagAnswer> = {
       : validated;
   },
 };
-
 export const {
   conversationTaskV21,
   conversationTaskV22,
   conversationTaskV23,
   ragConversationTask: conversationTaskV24,
   weightedTask,
+  horizontalListTask,
 } = versionedConversationA2UITasks(conversationTaskV20, allowsOrdinaryA2UI);
-
 export const {
   conversationTaskV25,
   conversationTaskV26,
   conversationTaskV27,
   conversationTaskV28,
+  conversationTaskV29,
   ragConversationTask,
-} = versionedConversationMemoryTasks(conversationTaskV24, weightedTask);
+} = versionedConversationMemoryTasks(
+  conversationTaskV24,
+  weightedTask,
+  horizontalListTask,
+);
