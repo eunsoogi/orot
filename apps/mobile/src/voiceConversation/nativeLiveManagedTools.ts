@@ -28,9 +28,9 @@ export function nativeLiveManagedTools() {
           ) {
             if (signal.aborted) return null;
             const cancel = () => {
-              void Promise.resolve(module.retireCanonicalLiveReview(id)).catch(
-                () => undefined,
-              );
+              Promise.resolve()
+                .then(() => module.retireCanonicalLiveReview(id))
+                .catch(() => undefined);
             };
             signal.addEventListener('abort', cancel, { once: true });
             let approved = false;
