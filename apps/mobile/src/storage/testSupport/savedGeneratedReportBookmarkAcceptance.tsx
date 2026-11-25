@@ -5,6 +5,7 @@ import {
   waitFor,
 } from '@testing-library/react-native';
 import { Alert, AppState } from 'react-native';
+import { conversationHealthSummaryBookmarkAction } from '../../aiFeatures/integration/conversationHealthSummaryBookmarkAction';
 import { ConversationScreen } from '../../ragConversation/ConversationScreen';
 import {
   ConversationSessionsProvider,
@@ -21,6 +22,7 @@ import type { createConversationArtifactStorage } from '../conversationArtifactS
 export async function expectReportBookmarkMounted(
   conversations: ReturnType<typeof createConversationArtifactStorage>,
   historical: ConversationArtifact,
+  mode: 'explicit-local' | 'semantic',
 ) {
   jest
     .mocked(openSavedGeneratedReportReferences)
@@ -36,7 +38,42 @@ export async function expectReportBookmarkMounted(
     configurable: true,
     value: 'active',
   });
-  const onSend = jest.fn();
+  const confirm = jest.fn(async () => true);
+  const onSend = jest.fn<
+    ReturnType<React.ComponentProps<typeof ConversationScreen>['onSend']>,
+    Parameters<React.ComponentProps<typeof ConversationScreen>['onSend']>
+  >(async (_question, _history, signal, observer) => {
+    const tool = conversationHealthSummaryBookmarkAction({
+      ...observer,
+      confirmHistorySave: confirm,
+    });
+    const action = tool.actions[0]!;
+    expect(action.id).toBe('remember-daily-report');
+    expect(observer?.reportBookmark?.artifactId).toBe(historical.id);
+    expect(
+      action.parseInput({ target: 'preceding_health_summary' }),
+    ).toBeUndefined();
+    expect(
+      action.parseInput({
+        target: 'preceding_daily_report',
+        artifactId: 'model-selected',
+      }),
+    ).toBeUndefined();
+    const input = action.parseInput({ target: 'preceding_daily_report' })!;
+    expect(await action.authorize(input, signal!)).toBe(true);
+    await action.execute({
+      input,
+      signal: signal!,
+      operationRunId: 'run',
+      operationKey: 'op',
+    });
+    expect(tool.committed()).toBe(true);
+    return {
+      status: 'answer',
+      answer: 'Synthetic committed receipt',
+      citations: [],
+    };
+  });
   let store!: ReturnType<typeof useConversationSessions>;
   function Capture() {
     store = useConversationSessions();
@@ -97,7 +134,9 @@ export async function expectReportBookmarkMounted(
     try {
       await fireEvent.changeText(
         screen.getByTestId('rag-conversation-input'),
-        '이 보고서를 기억해줘.',
+        mode === 'semantic'
+          ? '방금 본 일일 보고서를 나중에 다시 열 수 있게 보관해 줄래?'
+          : '이 보고서를 기억해줘.',
       );
       const { sessions, activeId } = store.getSnapshot();
       const active = sessions.find(row => row.id === activeId);
@@ -121,15 +160,23 @@ export async function expectReportBookmarkMounted(
       );
       await waitFor(() => expect(bookmark).toHaveBeenCalledTimes(1));
       await expect(bookmark.mock.results[0]?.value).resolves.toBe(true);
-      await waitFor(() =>
-        expect(alert).toHaveBeenCalledWith('보고서 링크를 기억에 보관했어요.'),
-      );
+      if (mode === 'semantic')
+        expect(
+          await screen.findByText('Synthetic committed receipt'),
+        ).toBeTruthy();
+      else
+        await waitFor(() =>
+          expect(alert).toHaveBeenCalledWith(
+            '보고서 링크를 기억에 보관했어요.',
+          ),
+        );
       expect(screen.getByTestId('rag-conversation-input').props.value).toBe('');
     } finally {
       alert.mockRestore();
       bookmark.mockRestore();
     }
-    expect(onSend).not.toHaveBeenCalled();
+    expect(onSend).toHaveBeenCalledTimes(mode === 'semantic' ? 1 : 0);
+    expect(confirm).toHaveBeenCalledTimes(mode === 'semantic' ? 1 : 0);
     await view.rerender(
       <SavedMemoryDetail
         memoryId={'generated-report:' + historical.id}

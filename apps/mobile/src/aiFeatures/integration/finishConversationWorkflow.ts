@@ -71,13 +71,13 @@ export async function finishConversationWorkflow(
 /** The provider cannot create a success receipt. Render only a proven commit. */
 export function answerMemoryOutcome(
   outcome: RagConversationOutcome,
-  committed: boolean | 'health-summary',
+  committed: boolean | 'generated-report',
 ): RagConversationOutcome {
   return committed
     ? {
         status: 'answer',
         answer: t(
-          committed === 'health-summary'
+          committed === 'generated-report'
             ? 'savedMemory.generatedReportSaved'
             : 'historyDisplay.savedConversationMemory',
         ),

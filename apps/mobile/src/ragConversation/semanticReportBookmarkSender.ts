@@ -12,11 +12,12 @@ import {
 
 export interface BoundReportBookmark {
   readonly artifactId: string;
+  readonly kind?: 'daily-report';
   readonly lease: Readonly<{ id: string; version: number }>;
   readonly current: () => boolean;
 }
 
-function latestSummaryArtifact(store: ConversationSessions, sessionId: number) {
+function latestReportArtifact(store: ConversationSessions, sessionId: number) {
   const session = store
     .getSnapshot()
     .sessions.find(row => row.id === sessionId);
@@ -31,16 +32,19 @@ function latestSummaryArtifact(store: ConversationSessions, sessionId: number) {
   const row = visibleSavedHistoryDisplay(session)?.at(-1)?.row;
   const candidate = last
     ? last.role === 'assistant' &&
-      !last.dailyReport &&
       !last.streaming &&
       !last.incomplete && {
         id: last.retainedTurnId,
         healthSummary: last.healthSummary,
+        dailyReport: last.dailyReport,
       }
-    : row?.kind === 'answer' && !row.dailyReport && !row.partial && row;
+    : row?.kind === 'answer' && !row.partial && row;
   if (!candidate || !candidate.id) return;
+  if (candidate.dailyReport)
+    return { artifactId: candidate.id, kind: 'daily-report' as const };
   const saved = candidate.healthSummary?.analysis.savedSummary;
-  if (saved?.status === 'saved' && !saved.sourceChanged) return candidate.id;
+  if (saved?.status === 'saved' && !saved.sourceChanged)
+    return { artifactId: candidate.id };
 }
 
 /** Bind a single already-displayed, completed artifact before ordinary dispatch.
@@ -51,9 +55,9 @@ export function semanticReportBookmarkSender(
   current: ReportBookmarkVisibility | undefined,
   send: ConversationScreenProps['onSend'],
 ) {
-  const artifactId = latestSummaryArtifact(store, sessionId);
-  const lease = artifactId && store.savedReportLease(sessionId);
-  if (!artifactId || !lease) return { send, close: () => {} };
+  const report = latestReportArtifact(store, sessionId);
+  const lease = report && store.savedReportLease(sessionId);
+  if (!report || !lease) return { send, close: () => {} };
   const owner = captureReportBookmarkOwner({
     store,
     sessionId,
@@ -61,7 +65,7 @@ export function semanticReportBookmarkSender(
     allowOwnSend: true,
   });
   const target: BoundReportBookmark = {
-    artifactId,
+    ...report,
     lease,
     current: owner.current,
   };

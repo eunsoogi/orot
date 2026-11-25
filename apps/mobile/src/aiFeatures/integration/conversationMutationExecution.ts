@@ -36,7 +36,7 @@ export function conversationMutationExecution(input: {
   const admittedQuestions = history.priorTurns.map(turn => turn.question);
   const localModel =
     selected.provider.id === APPLE_PROVIDER_ID && !selected.remoteProcessing;
-  const summaryBookmark =
+  const reportBookmark =
     localModel && conversationHealthSummaryBookmarkAction(observer);
   const answerMemory =
     localModel &&
@@ -64,7 +64,7 @@ export function conversationMutationExecution(input: {
         admittedQuestions,
       }),
       ...(answerMemory ? answerMemory.actions : []),
-      ...(summaryBookmark ? summaryBookmark.actions : []),
+      ...(reportBookmark ? reportBookmark.actions : []),
     ],
   };
   // Photo turns cannot silently use OCR as a user-authored history statement.
@@ -78,8 +78,8 @@ export function conversationMutationExecution(input: {
         })
       : execution,
     memorySaved: () =>
-      summaryBookmark && summaryBookmark.committed()
-        ? ('health-summary' as const)
+      reportBookmark && reportBookmark.committed()
+        ? ('generated-report' as const)
         : Boolean(answerMemory && answerMemory.committed()),
   };
 }
