@@ -1,8 +1,7 @@
 import { APPLE_PROVIDER_ID } from '@orot/provider-apple';
 import type { ExecutionConsentPort } from '@orot/agent-runtime';
 import type { SelectedAiResolution } from '../aiFeatures/integration/provider';
-import { composeEncounterModel } from '../agent/encounter/modelComposition';
-import { extractEncounterCandidates } from '../agent/encounter/extraction';
+import { encounterPageModel } from './encounterPageModel';
 import { createEncounterStartAdmission } from './startAdmission';
 import { extractLocalTranscriptPages } from './extractLocalTranscriptPages';
 import { openLocalTranscriptPages } from './localTranscriptPages';
@@ -62,37 +61,12 @@ export async function prepareLocalEncounterExtraction(input: {
       signal: read.signal,
       selectionCurrent: current,
       pages,
-      extract: (transcript, index, isCurrent, signal) => {
-        const model = composeEncounterModel(
-          read.sourceId,
-          input.executionId + ':page:' + index,
-          selected,
-          admission.consent,
-        );
-        let started = false;
-        // An uncertain model invocation is not retried. Do not expose a
-        // separate transport or a direct provider completion stream.
-        const provider = {
-          id: model.provider.id,
-          kind: model.provider.kind,
-          displayName: model.provider.displayName,
-          capabilities: { ...model.provider.capabilities, streaming: false },
-          generate: async (
-            ...args: Parameters<typeof model.provider.generate>
-          ) => {
-            if (!(await isCurrent()) || signal.aborted || started)
-              throw new Error('The selected transcript page is unavailable.');
-            started = true;
-            return model.provider.generate(...args);
-          },
-        };
-        return extractEncounterCandidates({
-          transcript,
-          model: { ...model, provider },
-          isCurrent,
-          signal,
-        });
-      },
+      extract: encounterPageModel({
+        sourceId: read.sourceId,
+        executionId: input.executionId,
+        selected,
+        consent: admission.consent,
+      }),
     });
   } catch {
     return aborted();

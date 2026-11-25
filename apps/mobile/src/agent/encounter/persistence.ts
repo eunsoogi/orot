@@ -26,13 +26,20 @@ export async function persistEncounterApproval(
   signal: AbortSignal,
   requireCurrentSession = false,
   readLong?: typeof readLongTranscriptReview,
+  reviewIsCurrent?: () => boolean,
 ): Promise<string[]> {
   validateEncounterApproval(pending, approval);
   if (approval.decision !== 'approve')
     throw new Error('An explicit approval is required.');
   const reviewedAt = TimestampSchema.parse(approval.reviewedAt);
-  return repository.transaction(async (writer, sql) => {
+  // A completed remote page does not grant Save authority after its review owner retires.
+  const checkCurrent = () => {
     requireEncounterActive(signal);
+    if (reviewIsCurrent?.() === false)
+      throw new Error('Encounter review authority changed.');
+  };
+  return repository.transaction(async (writer, sql) => {
+    checkCurrent();
     if (!sql)
       throw new Error('Encounter writes require a canonical SQL transaction.');
     if (requireCurrentSession)
@@ -42,9 +49,7 @@ export async function persistEncounterApproval(
         pending.threadId,
       );
     const transcript = readLong
-      ? await readLong(writer, sql, pending, () =>
-          requireEncounterActive(signal),
-        )
+      ? await readLong(writer, sql, pending, checkCurrent)
       : await readEncounterTranscript(writer, sql, pending.sourceId);
     if (
       !readLong &&
@@ -75,7 +80,7 @@ export async function persistEncounterApproval(
       for (const id of saved.recordIds)
         if (!(await writer.get('health_observation', id)))
           throw new Error('A confirmed encounter record was removed.');
-      requireEncounterActive(signal);
+      checkCurrent();
       return saved.recordIds as string[];
     }
     if (
@@ -197,10 +202,7 @@ export async function persistEncounterApproval(
       );
       recordIds.push(id);
     }
-    if (readLong)
-      await readLong(writer, sql, pending, () =>
-        requireEncounterActive(signal),
-      );
+    if (readLong) await readLong(writer, sql, pending, checkCurrent);
     await writer.putSyncCheckpoint({
       key: receiptKey,
       value: JSON.stringify({
@@ -211,7 +213,7 @@ export async function persistEncounterApproval(
       updatedAt: reviewedAt,
     });
     // Cancellation before commit rolls back evidence, records and the replay receipt as one unit.
-    requireEncounterActive(signal);
+    checkCurrent();
     return recordIds;
   });
 }
