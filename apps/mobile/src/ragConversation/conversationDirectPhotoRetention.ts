@@ -34,6 +34,7 @@ export function createConversationDirectPhotoRetention(
     );
     let consumed = false;
     return {
+      id,
       current,
       async commit(text: string, admitted: () => boolean) {
         const ownsReply = () => current() && admitted();

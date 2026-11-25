@@ -63,7 +63,7 @@ test('an image without text traverses the attached composer and only the dedicat
   });
   expect(f.ordinary).not.toHaveBeenCalled();
   expect(onSendText).not.toHaveBeenCalled();
-  expect(screen.getByText(t('ragConversation.photo.message'))).toBeTruthy();
+  expect(screen.getByTestId('conversation-sent-photo-image')).toBeTruthy();
   expect(f.session().messages).toEqual([]);
   expect(conversationHistoryPayload(f.session().messages, 'next')).toEqual([]);
   expect(await f.storage.listTimeline('selected', 0)).toEqual({
@@ -163,8 +163,10 @@ test('Stop cancels the sole native image request and clears its transient previe
   await attach();
   await send();
   await waitFor(() => expect(f.start).toHaveBeenCalledTimes(1));
+  expect(screen.getByText(/전송 중/)).toBeTruthy();
   await fireEvent.press(screen.getByTestId('rag-conversation-cancel'));
   await waitFor(() => expect(f.cancel).toHaveBeenCalledWith('image-request'));
+  expect(screen.queryByText(/전송 중/)).toBeNull();
   expect(screen.queryByTestId('conversation-photo-preview')).toBeNull();
   expect(f.ordinary).not.toHaveBeenCalled();
 });
@@ -175,6 +177,8 @@ test('a changed composer question invalidates the pending photo approval', async
   await attach();
   await send();
   expect(ports.grant).toHaveBeenCalledTimes(1);
+  expect(screen.getByText(/전송 중/)).toBeTruthy();
+  expect(f.start).not.toHaveBeenCalled();
   const sessionId = f.store.getSnapshot().activeId;
   await act(() => f.store.setDraft(sessionId, 'A newer synthetic question'));
   await act(() => f.release());

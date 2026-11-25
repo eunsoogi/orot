@@ -27,6 +27,8 @@ export interface DisplayMessage extends RagConversationMessage {
   readonly steeringInstructions?: readonly import('../storage/conversationSteeringStorage').StoredSteeringInstruction[];
   readonly submittedInput?: import('./conversationSubmittedInput').ConversationSubmittedInput;
   readonly photoAttached?: boolean;
+  /** Mounted presentation only. Never enter canonical context or saved history. */
+  readonly directPhotoPreviewData?: string;
   readonly id: number;
   readonly dailyReport?: NonNullable<
     import('../aiFeatures/integration/conversationIntent').ConversationEntryContext['dailyReport']
