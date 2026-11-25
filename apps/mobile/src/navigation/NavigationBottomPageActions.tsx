@@ -68,6 +68,7 @@ export function NavigationBottomPageActions({
             symbol={action.systemImageName}
             onPress={() => dispatch(`page:${action.id}`)}
             primary
+            circular
             testID={action.testID}
           />
         ))}
@@ -81,6 +82,7 @@ export function NavigationBottomPageActions({
             symbol="ellipsis"
             onPress={onMore}
             primary
+            circular
             testID="navigation-page-action-overflow"
           />
         ) : null}

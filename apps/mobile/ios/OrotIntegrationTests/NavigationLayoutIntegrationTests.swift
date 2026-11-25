@@ -85,6 +85,7 @@ final class NavigationLayoutIntegrationTests: OrotFailFastTestCase {
 
     @MainActor
     func testPrimaryNavigationActionsKeepTheirMinimumNativeTargetSize() throws {
+        try verifyBottomIconPageActionShape()
         let surface = NavigationGlassSurfaceView(frame: CGRect(x: 0, y: 0, width: 386, height: 48))
         surface.actions = [
             [

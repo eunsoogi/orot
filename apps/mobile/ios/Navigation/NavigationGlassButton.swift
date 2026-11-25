@@ -4,7 +4,9 @@ import UIKit
 enum NavigationGlassButton {
     /// Back uses its own text size; the taller root-tab surface must not inflate the contextual target.
     static func setHeight(_ height: CGFloat, for action: NavigationActionDescriptor, button: UIButton, usesRightRail: Bool) {
-        let target = if usesRightRail {
+        let target = if !usesRightRail, action.isIconOnlyPageAction {
+            NavigationTextMetrics.pageIconDiameter
+        } else if usesRightRail {
             action.rootTab ? CGFloat(52) : CGFloat(48)
         } else if action.id == "back" {
             NavigationTextMetrics.height(for: action, traits: button.traitCollection)
@@ -12,10 +14,14 @@ enum NavigationGlassButton {
             max(action.rootTab ? 52 : 48, height - (action.rootTab ? 8 : 0))
         }
         button.constraints.first { $0.identifier == "navigation-control-height" }?.constant = target
+        NavigationTextMetrics.applyPageIconShape(action, to: button, usesRightRail: usesRightRail)
     }
 
     /// Keeps contextual controls at their shipping sizes except for the compact rail Home target.
     static func fixedWidth(for action: NavigationActionDescriptor, usesRightRail: Bool, traits: UITraitCollection) -> CGFloat? {
+        if !usesRightRail, action.isIconOnlyPageAction {
+            return NavigationTextMetrics.pageIconDiameter
+        }
         // Page actions use icons and the same lane width as navigation on the rail.
         if usesRightRail, action.id.hasPrefix("page:") {
             return NavigationRootGlassBar.exteriorWidth
@@ -44,8 +50,9 @@ enum NavigationGlassButton {
     static func updateMinimumWidth(for action: NavigationActionDescriptor, button: UIButton, usesRightRail: Bool, constraints: inout [String: NSLayoutConstraint]) {
         guard action.id != "home", action.id != "back" else { return }
         let compactPageAction = action.id == "page:overflow" || (usesRightRail && action.id.hasPrefix("page:"))
-        let minimumWidth = usesRightRail && compactPageAction ? 44 : action.layoutWidth ?? NavigationTextMetrics.width(for: action, traits: button.traitCollection)
-        let relation: NSLayoutConstraint.Relation = action.layoutWidth != nil && !usesRightRail ? .equal : .greaterThanOrEqual
+        let circular = !usesRightRail && action.isIconOnlyPageAction
+        let minimumWidth = circular || (usesRightRail && compactPageAction) ? 44 : action.layoutWidth ?? NavigationTextMetrics.width(for: action, traits: button.traitCollection)
+        let relation: NSLayoutConstraint.Relation = !circular && action.layoutWidth != nil && !usesRightRail ? .equal : .greaterThanOrEqual
         if let existing = constraints[action.id], existing.relation != relation {
             existing.isActive = false
             constraints.removeValue(forKey: action.id)

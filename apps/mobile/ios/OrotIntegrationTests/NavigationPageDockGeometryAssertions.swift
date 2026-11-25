@@ -156,3 +156,35 @@ func verifyWarmWindowBackAfterPortalResize(in window: UIWindow, controller: UIVi
     XCTAssertEqual(expanded.size.height, 48, accuracy: 0.5)
     XCTAssertTrue(window.hitTest(CGPoint(x: expanded.midX, y: expanded.midY), with: nil) === button)
 }
+
+@MainActor
+func verifyBottomIconPageActionShape() throws {
+    for width: CGFloat in [320, 680] {
+        let surface = NavigationGlassSurfaceView(frame: CGRect(x: 0, y: 0, width: width, height: 64))
+        surface.isPageDock = true
+        surface.bottomHeight = 64
+        let first: [String: Any] = [
+            "id": "page:edit", "label": "Edit", "testID": "page-edit",
+            "accessibilityLabel": "Edit the current record", "primary": true,
+            "systemImageName": "pencil", "layoutWidth": 88,
+        ]
+        let overflow: [String: Any] = [
+            "id": "page:overflow", "label": "More", "testID": "page-more",
+            "accessibilityLabel": "More actions for the current record", "primary": true,
+            "systemImageName": "ellipsis", "layoutWidth": 120,
+        ]
+        for actions in [[first], [first, overflow]] {
+            surface.actions = actions as NSArray
+            surface.layoutIfNeeded()
+            let group = try XCTUnwrap(surface.subviews.compactMap { $0 as? UIStackView }.first)
+            let buttons = group.arrangedSubviews.compactMap { $0 as? UIButton }
+            XCTAssertEqual(buttons.count, actions.count)
+            for (button, action) in zip(buttons, actions) {
+                XCTAssertEqual(button.bounds.width, 48, accuracy: 0.5)
+                XCTAssertEqual(button.bounds.height, 48, accuracy: 0.5)
+                XCTAssertEqual(button.accessibilityLabel, action["accessibilityLabel"] as? String)
+                XCTAssertEqual(button.configuration?.cornerStyle, .capsule)
+            }
+        }
+    }
+}

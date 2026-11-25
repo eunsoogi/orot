@@ -10,6 +10,7 @@ interface NavigationActionButtonProps {
   readonly symbol?: string;
   readonly onPress: () => void;
   readonly primary?: boolean;
+  readonly circular?: boolean;
   readonly testID?: string;
 }
 
@@ -22,6 +23,7 @@ export function NavigationActionButton({
   symbol = 'ellipsis',
   onPress,
   primary = false,
+  circular = false,
   testID,
 }: NavigationActionButtonProps) {
   return (
@@ -33,6 +35,7 @@ export function NavigationActionButton({
       onPress={onPress}
       style={[
         styles.action,
+        circular && styles.circular,
         isDarkAppearance && !primary && styles.darkAction,
         primary && styles.primaryAction,
         disabled && styles.disabled,
@@ -64,6 +67,13 @@ const styles = StyleSheet.create({
     minHeight: 50,
     minWidth: 72,
     paddingHorizontal: 8,
+  },
+  circular: {
+    borderRadius: 25,
+    width: 50,
+    height: 50,
+    minWidth: 50,
+    paddingHorizontal: 0,
   },
   darkAction: { borderColor: '#ffffff' },
   primaryAction: {
