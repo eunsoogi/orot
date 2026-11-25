@@ -22,7 +22,7 @@ import type { GroundedRagAnswer } from './task';
 import { projectConversationA2UISkeleton } from './conversationA2UISkeleton';
 
 const maxFinalFrames = 12;
-type LayoutVersion = '21' | '22' | '23' | '24' | '29' | '30';
+type LayoutVersion = '21' | '22' | '23' | '24' | '29' | '30' | '31';
 
 const frameSequenceSchema = {
   type: 'array',
@@ -75,6 +75,13 @@ const horizontalListFrameSchema = {
     ' List direction may be literal horizontal or vertical (default). Use horizontal for short related items, never in a scratch area.',
 };
 
+const alignedVerticalListFrameSchema = {
+  ...horizontalListFrameSchema,
+  description:
+    horizontalListFrameSchema.description +
+    ' Vertical Lists may use literal align start, center, end, or stretch. Omit align on horizontal Lists and scratch areas.',
+};
+
 /** Reduce one completed provider reply in isolation. No provisional tree escapes. */
 export function acceptConversationA2UIFrameSequence(
   raw: unknown,
@@ -82,7 +89,7 @@ export function acceptConversationA2UIFrameSequence(
   allowStaticCatalog = false,
   allowAlignment = false,
   allowRowWeight = false,
-  allowListDirection = false,
+  allowListDirection: boolean | 'vertical_align' = false,
 ): ConversationA2UINode | undefined {
   if (!Array.isArray(raw) || !raw.length || raw.length > maxFinalFrames)
     return undefined;
@@ -136,17 +143,19 @@ export function withConversationA2UIFrameSequence(
         properties: {
           ...properties,
           a2uiFrames:
-            taskVersion === '30'
-              ? horizontalListFrameSchema
-              : taskVersion === '29'
-                ? weightedCatalogFrameSchema
-                : taskVersion === '24'
-                  ? alignedCatalogFrameSchema
-                  : taskVersion === '23'
-                    ? localDraftFrameSchema
-                    : taskVersion === '22'
-                      ? staticCatalogFrameSchema
-                      : frameSequenceSchema,
+            taskVersion === '31'
+              ? alignedVerticalListFrameSchema
+              : taskVersion === '30'
+                ? horizontalListFrameSchema
+                : taskVersion === '29'
+                  ? weightedCatalogFrameSchema
+                  : taskVersion === '24'
+                    ? alignedCatalogFrameSchema
+                    : taskVersion === '23'
+                      ? localDraftFrameSchema
+                      : taskVersion === '22'
+                        ? staticCatalogFrameSchema
+                        : frameSequenceSchema,
         },
         required: [
           ...(Array.isArray(schema.required) ? schema.required : []),
@@ -173,16 +182,17 @@ export function withConversationA2UIFrameSequence(
         a2uiFrames,
         answer,
         taskVersion !== '21',
-        taskVersion === '24' || taskVersion === '29' || taskVersion === '30',
-        taskVersion === '29' || taskVersion === '30',
-        taskVersion === '30',
+        ['24', '29', '30', '31'].includes(taskVersion),
+        ['29', '30', '31'].includes(taskVersion),
+        taskVersion === '31' ? 'vertical_align' : taskVersion === '30',
       );
       if (
         !root &&
         (taskVersion === '23' ||
           taskVersion === '24' ||
           taskVersion === '29' ||
-          taskVersion === '30')
+          taskVersion === '30' ||
+          taskVersion === '31')
       ) {
         const validateDraftBase = (frames: unknown, body: string) =>
           acceptConversationA2UIFrameSequence(frames, body, true);
@@ -217,5 +227,6 @@ export function versionedConversationA2UITasks(
     ragConversationTask: version('24'),
     weightedTask: version('29'),
     horizontalListTask: version('30'),
+    alignedVerticalListTask: version('31'),
   };
 }

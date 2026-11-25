@@ -6,7 +6,8 @@ import {
   isAxis,
   isIcon,
   keys,
-  readAlignment,
+  readArchivedA2UIAlignment,
+  readAlignedA2UIArchiveShape,
   record,
   type ArchivedA2UILayout,
   type Shape,
@@ -115,16 +116,12 @@ export function storeConversationA2UILayout(
     );
     if (!children.every((child): child is Shape => child !== undefined)) return;
     if (hasAlignment) {
-      if (value.component !== 'Column' && value.component !== 'Row') return;
-      const input = value.alignment;
-      if (
-        !record(input) ||
-        Object.keys(input).some(key => key !== 'align' && key !== 'justify')
-      )
+      const list = value.component === 'List' && !horizontal;
+      if (!list && value.component !== 'Column' && value.component !== 'Row')
         return;
-      const layout = readAlignment(input.align, input.justify);
+      const layout = readArchivedA2UIAlignment(value.alignment, list);
       if (!layout) return;
-      raise(4);
+      raise(list ? 7 : 4);
       return [
         'Aligned',
         value.component,
@@ -189,20 +186,15 @@ export function restoreConversationA2UILayout(
         : undefined;
     }
     if (version >= 4 && shape[0] === 'Aligned') {
-      if (
-        (shape[1] !== 'Row' && shape[1] !== 'Column') ||
-        shape.length < 5 ||
-        shape.length > 20
-      )
-        return;
-      const alignment = readAlignment(
-        shape[2] === null ? undefined : shape[2],
-        shape[3] === null ? undefined : shape[3],
+      const named = readAlignedA2UIArchiveShape(shape, version);
+      if (!named) return;
+      const children = readChildren(
+        shape.slice(4),
+        depth,
+        named.kind === 'Row',
       );
-      if (!alignment) return;
-      const children = readChildren(shape.slice(4), depth, shape[1] === 'Row');
       return children
-        ? { id, component: shape[1], children, alignment }
+        ? { id, component: named.kind, children, alignment: named.alignment }
         : undefined;
     }
     if (version >= 3) {
@@ -227,7 +219,7 @@ export function restoreConversationA2UILayout(
         return { id, component: 'Tabs', tabs };
       }
     }
-    const horizontal = version === 6 && shape[0] === 'HorizontalList';
+    const horizontal = version >= 6 && shape[0] === 'HorizontalList';
     const component = horizontal ? 'List' : shape[0];
     if (
       !container(component) ||

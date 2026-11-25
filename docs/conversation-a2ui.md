@@ -67,3 +67,8 @@ local horizontal viewport for bounded items; narrow bubbles, nested narrow
 cards and larger accessibility fonts preserve a vertical reading order instead.
 Archive v6 records only the horizontal arrangement; v1–v5 behavior and exact
 prose fallback remain unchanged. This does not add any action, link or media.
+
+Fresh Conversation task v31 adds literal cross-axis alignment on vertical Lists:
+`start`, `center`, `end`, or `stretch`. Horizontal lists retain their existing
+behavior. The app still owns accessibility, responsive layout, all reading order,
+and the exact accepted answer. Archive version 7 retains layout tokens only.

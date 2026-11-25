@@ -14,7 +14,7 @@ export type Shape =
   | readonly ['WeightedText', number]
   | readonly [
       'Aligned',
-      'Row' | 'Column',
+      'Row' | 'Column' | 'List',
       NonNullable<ConversationA2UIAlignment['align']> | null,
       NonNullable<ConversationA2UIAlignment['justify']> | null,
       ...Shape[],
@@ -26,11 +26,11 @@ export const isAxis = (value: unknown): value is Axis =>
 
 /** Contains only app-approved arrangement, not wire frames, IDs or independent prose. */
 export type ArchivedA2UILayout = Readonly<{
-  version: 1 | 2 | 3 | 4 | 5 | 6;
+  version: 1 | 2 | 3 | 4 | 5 | 6 | 7;
   tree: Shape;
 }>;
 
-const archiveVersions: readonly unknown[] = [1, 2, 3, 4, 5, 6];
+const archiveVersions: readonly unknown[] = [1, 2, 3, 4, 5, 6, 7];
 export const archiveVersion = (
   value: unknown,
 ): value is ArchivedA2UILayout['version'] => archiveVersions.includes(value);
@@ -53,4 +53,33 @@ export function readAlignment(align: unknown, justify: unknown) {
   } catch {
     return undefined;
   }
+}
+
+export function readArchivedA2UIAlignment(value: unknown, list = false) {
+  if (
+    !record(value) ||
+    Object.keys(value).some(
+      key => key !== 'align' && (list || key !== 'justify'),
+    )
+  )
+    return;
+  if (list && !Object.hasOwn(value, 'align')) return;
+  return readAlignment(value.align, value.justify);
+}
+
+/** Archived List alignment is vertical only. It never accepts main-axis justification. */
+export function readAlignedA2UIArchiveShape(shape: unknown[], version: number) {
+  const kind = shape[1];
+  if (
+    (kind !== 'Row' && kind !== 'Column' && kind !== 'List') ||
+    shape.length < 5 ||
+    shape.length > 20 ||
+    (kind === 'List' && (version < 7 || shape[2] === null || shape[3] !== null))
+  )
+    return;
+  const alignment = readAlignment(
+    shape[2] === null ? undefined : shape[2],
+    shape[3] === null ? undefined : shape[3],
+  );
+  return alignment ? { kind, alignment } : undefined;
 }
