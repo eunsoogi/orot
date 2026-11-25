@@ -45,7 +45,12 @@ export function captureReportBookmarkOwner(input: {
       now.version === captured.version &&
       !session.quarantined &&
       !session.restoring &&
-      !session.modelSelectionPending &&
+      // Own preflight may suspend selection while preserving this exact admitted
+      // display lease. A withheld display still retires it permanently.
+      (!session.modelSelectionPending ||
+        (input.allowOwnSend &&
+          session.preparingSend &&
+          session.modelSelectionKeepsDisplay)) &&
       !session.modelSelectionFailed &&
       !session.leaseRefreshRequired &&
       (input.allowDraftChanges ||
