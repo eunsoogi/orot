@@ -177,6 +177,10 @@ final class LiveResponsesToolBridge {
             return
         }
         if type == "response.failed" || type == "response.incomplete" {
+            let status = type == "response.failed" ? "failed" : "incomplete"
+            guard let response = event["response"] as? [String: Any],
+                  response["id"] as? String == delegation.response,
+                  response["status"] as? String == status else { return }
             retire()
             return
         }
