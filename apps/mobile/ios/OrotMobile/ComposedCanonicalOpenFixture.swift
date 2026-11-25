@@ -39,7 +39,9 @@
         static func run(_ module: VoiceRealtimeModule, identifier: String, scenario: String,
                         finish: @escaping ([String: Any]) -> Void)
         {
-            guard allowed, session == nil, module.active == nil,
+            // Use the product capability the React Native bridge actually exports.
+            guard module.constantsToExport()?["supportsCanonicalHealthContextV2"] as? Bool == true,
+                  allowed, session == nil, module.active == nil,
                   let namespace = SettingsConsentRealtimeFixture.canonicalNamespace(identifier),
                   let value = RealtimeVoiceCanonicalHealthAdmission.read(
                       namespace + ".canonical-synthetic-health-binding", "synthetic-settings-consent",

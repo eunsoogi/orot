@@ -16,7 +16,8 @@ import { refreshHealthContextRead } from './refreshHealthContextRead';
 import { jsonByteLength } from './evidenceUtils';
 import { healthContextToolDefinition } from './healthContextToolDefinition';
 
-function parseInput(
+/** A request can prove its exact canonical scope before asking for local access. */
+export function parseHealthContextToolInput(
   value: unknown,
   allowDoseHistory: boolean,
 ): JsonObject | undefined {
@@ -32,7 +33,8 @@ function parseInput(
         !Number.isSafeInteger(v.days) ||
         v.days < 1)) ||
     (v.detail !== undefined &&
-      !['summary', 'weekly', 'daily'].includes(String(v.detail))) ||
+      (typeof v.detail !== 'string' ||
+        !['summary', 'weekly', 'daily'].includes(v.detail))) ||
     (v.topics !== undefined &&
       (!Array.isArray(v.topics) ||
         !v.topics.length ||
@@ -69,7 +71,7 @@ function parseInput(
       (scope?.window.doseHistory
         ? ['medications']
         : [...HEALTH_CONTEXT_TOPICS]),
-    detail: (v.detail as string) ?? 'summary',
+    detail: v.detail ?? 'summary',
     ...(v.window ? { window: v.window as JsonObject } : {}),
   };
 }
@@ -84,9 +86,12 @@ export function createHealthContextTool(
 ): EvidenceSearchTool {
   return {
     ...healthContextToolDefinition(feature),
-    parseInput: value => parseInput(value, feature === 'rag'),
+    parseInput: value => parseHealthContextToolInput(value, feature === 'rag'),
     async search(request) {
-      const input = parseInput(request.input, feature === 'rag');
+      const input = parseHealthContextToolInput(
+        request.input,
+        feature === 'rag',
+      );
       if (!input || request.signal.aborted)
         throw new Error('Invalid or cancelled health context request.');
       providerDiagnostic(feature, 'data', 'context_started');

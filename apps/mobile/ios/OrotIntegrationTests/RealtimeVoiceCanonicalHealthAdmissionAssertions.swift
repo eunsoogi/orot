@@ -5,13 +5,13 @@ import XCTest
 extension RealtimeVoiceLifecycleTests {
     func assertCanonicalGrantRequiresItsOwnCurrentDeviceBindingAndLegacyOwner() throws {
         typealias Admission = RealtimeVoiceCanonicalHealthAdmission
-        XCTAssertFalse(Admission.enabledForLiveBridge)
+        XCTAssertTrue(Admission.enabledForLiveBridge)
         XCTAssertTrue(Admission.permitsStartupOptions(["responsesGrant": ["fixture": true]]))
         for raw in [["canonicalHealthGrant": NSNull()], ["canonicalHealthDeclaration": NSNull()],
                     ["canonicalHealthGrant": NSNull(), "canonicalHealthDeclaration": NSNull()]]
         {
-            XCTAssertFalse(Admission.permitsStartupOptions(raw as NSDictionary))
-            XCTAssertTrue(Admission.permitsStartupOptions(raw as NSDictionary, enabled: true))
+            XCTAssertFalse(Admission.permitsStartupOptions(raw as NSDictionary, enabled: false))
+            XCTAssertTrue(Admission.permitsStartupOptions(raw as NSDictionary))
         }
         let legacy = String(repeating: "a", count: 64)
         let new = String(repeating: "b", count: 64)
