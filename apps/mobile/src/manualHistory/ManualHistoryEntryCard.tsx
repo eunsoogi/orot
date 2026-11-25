@@ -5,26 +5,16 @@ import { AppSymbol } from '../layout/AppSymbol';
 import { appColors } from '../layout/appColors';
 import { t } from '../i18n';
 import type { ManualHistoryScreenRecord } from './types';
+import {
+  manualHistoryReviewLabel,
+  manualHistoryEffectiveDateLabel,
+} from './manualHistoryLabels';
 
 function kindLabel(kind: ManualHistoryScreenRecord['kind']): string {
   return t(
     ('manualHistory.kind.' +
       kind) as `manualHistory.kind.${ManualHistoryScreenRecord['kind']}`,
   );
-}
-
-function entryStatus(entry: ManualHistoryScreenRecord): string {
-  const reviewKey = ('manualHistory.review.' + entry.reviewState.status) as
-    | 'manualHistory.review.unreviewed'
-    | 'manualHistory.review.needs_review'
-    | 'manualHistory.review.reviewed';
-  return t('manualHistory.status', { review: t(reviewKey) });
-}
-
-function dateLabel(entry: ManualHistoryScreenRecord): string {
-  return entry.effectiveDate.status === 'known'
-    ? t('manualHistory.date.known', { date: entry.effectiveDate.date })
-    : t('manualHistory.date.unknown');
 }
 
 /** Shows date and provenance beside each item so unknown dates remain explicit in the list. */
@@ -46,7 +36,7 @@ export function ManualHistoryEntryCard({
       {/* Metadata stays outside the grouped button so VoiceOver retains each date, kind and source. */}
       <View style={styles.metadata}>
         <Text style={styles.date} testID={'manual-history-date-' + entry.id}>
-          {dateLabel(entry)}
+          {manualHistoryEffectiveDateLabel(entry.effectiveDate)}
         </Text>
         <Text style={[styles.badge, kindColors[entry.kind]]}>
           {kindLabel(entry.kind)}
@@ -68,7 +58,7 @@ export function ManualHistoryEntryCard({
           size={18}
         />
       </Pressable>
-      <Text style={styles.source}>{entryStatus(entry)}</Text>
+      <Text style={styles.source}>{manualHistoryReviewLabel(entry)}</Text>
       {children}
     </View>
   );

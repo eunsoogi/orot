@@ -3,6 +3,10 @@ import { View } from 'react-native';
 import { AppButton as Button } from '../layout/AppButton';
 import { AppText as Text } from '../layout/AppText';
 import { t } from '../i18n';
+import {
+  manualHistoryEffectiveDateLabel,
+  manualHistoryReviewLabel,
+} from './manualHistoryLabels';
 import type { ManualHistoryScreenRecord } from './types';
 import { manualHistoryEntryDetailsStyles as styles } from './manualHistoryEntryDetailsStyles';
 
@@ -15,23 +19,6 @@ interface ManualHistoryEntryDetailsProps {
   deleting: boolean;
   readingLayout?: boolean;
   provenanceNote?: string;
-}
-
-function effectiveDateLabel(
-  value: ManualHistoryScreenRecord['effectiveDate'],
-): string {
-  return value.status === 'known'
-    ? t('manualHistory.date.known', { date: value.date })
-    : t('manualHistory.date.unknown');
-}
-
-function reviewLabel(entry: ManualHistoryScreenRecord): string {
-  return t(
-    ('manualHistory.review.' + entry.reviewState.status) as
-      | 'manualHistory.review.unreviewed'
-      | 'manualHistory.review.needs_review'
-      | 'manualHistory.review.reviewed',
-  );
 }
 
 function recordedAtLabel(recordedAt: string): string {
@@ -75,7 +62,7 @@ export default function ManualHistoryEntryDetails({
           style={readingLayout && styles.readingMetadata}
           testID="manual-history-date-detail"
         >
-          {effectiveDateLabel(entry.effectiveDate)}
+          {manualHistoryEffectiveDateLabel(entry.effectiveDate)}
         </Text>
         {!readingLayout ? <Text>{entry.details}</Text> : null}
         {history.length <= 1 ? (
@@ -83,7 +70,7 @@ export default function ManualHistoryEntryDetails({
             style={readingLayout && styles.readingMetadata}
             testID="manual-history-current-status"
           >
-            {t('manualHistory.status', { review: reviewLabel(entry) })}
+            {manualHistoryReviewLabel(entry)}
           </Text>
         ) : null}
       </View>
@@ -113,7 +100,7 @@ export default function ManualHistoryEntryDetails({
                 )}
               </Text>
               <Text testID={'manual-history-status-version-' + version.id}>
-                {t('manualHistory.status', { review: reviewLabel(version) })}
+                {manualHistoryReviewLabel(version)}
               </Text>
               <Text testID="manual-history-recorded-at">
                 {recordedAtLabel(version.recordedAt)}
@@ -125,7 +112,7 @@ export default function ManualHistoryEntryDetails({
                 {version.title}
               </Text>
               <Text testID={'manual-history-date-version-' + version.id}>
-                {effectiveDateLabel(version.effectiveDate)}
+                {manualHistoryEffectiveDateLabel(version.effectiveDate)}
               </Text>
               <Text>{version.details}</Text>
               {version.correctionNote ? (

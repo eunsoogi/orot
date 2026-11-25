@@ -6,6 +6,11 @@ import { AppButton } from '../layout/AppButton';
 import { AppText as Text } from '../layout/AppText';
 import { formatDateTime, t } from '../i18n';
 import { useSavedMemories, type SavedMemory } from './useSavedMemories';
+import { isHistoryMemory } from './unifiedSavedMemories';
+import {
+  manualHistoryEffectiveDateLabel,
+  manualHistoryReviewLabel,
+} from '../manualHistory/manualHistoryLabels';
 import {
   MaterialLibraryRow,
   MaterialLibraryRows,
@@ -86,9 +91,17 @@ export function SavedMemoryBrowser({
                   // Native wrapping, not a character slice, owns the two-line preview.
                   title={row.text.replace(/\s+/g, ' ').trim()}
                   titleNumberOfLines={2}
-                  summary={t('savedMemory.savedAt', {
-                    date: formatDateTime(new Date(row.createdAt)),
-                  })}
+                  summary={
+                    isHistoryMemory(row)
+                      ? manualHistoryEffectiveDateLabel(
+                          row.record.effectiveDate,
+                        ) +
+                        ' · ' +
+                        manualHistoryReviewLabel(row.record)
+                      : t('savedMemory.savedAt', {
+                          date: formatDateTime(new Date(row.createdAt)),
+                        })
+                  }
                   accessibilityHint={t('savedMemory.openDetail')}
                   onPress={
                     onOpenMemory &&
