@@ -86,6 +86,8 @@ export function conversationExternalEvidence(input: {
     validateResearchInputs: researchInputs.revalidate,
     onResearchRetained: researchInputs.recordResearch,
   });
+  if (observer?.protectedLocalInput)
+    return { ...external, tools: [], publicWebTool: undefined };
   return {
     ...external,
     ...(observer?.confirmTypedHeartRate && !input.restored

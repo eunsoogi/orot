@@ -70,6 +70,10 @@ test('saving a selected question updates only its owning conversation message', 
   }
   // A real screen subscribes to the store; the save callback itself writes to the owner.
   const rendered = await render(<View />);
+  expect(screen.getByText('Synthetic outpatient visit')).toBeVisible();
+  expect(screen.getByTestId('next-visit-appointment-time')).toHaveTextContent(
+    /2026년 11월 1일.*09:00/,
+  );
   // Only saving is a filled primary action; regeneration stays a separate quiet action.
   expect(
     StyleSheet.flatten(
@@ -84,6 +88,7 @@ test('saving a selected question updates only its owning conversation message', 
   await rendered.rerender(<View />);
   await fireEvent.press(screen.getByTestId('inline-visit-save'));
   await waitFor(() => expect(save).toHaveBeenCalledTimes(1));
+  expect(save).toHaveBeenCalledWith(expect.objectContaining({ appointment }));
   await waitFor(() =>
     expect(
       store.getSnapshot().sessions[0]!.messages[1]!.visitQuestions?.review

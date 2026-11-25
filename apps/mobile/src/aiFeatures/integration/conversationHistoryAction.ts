@@ -5,9 +5,7 @@ import type { AiFeatureLocalData } from './localData';
 import type { LocalEvidenceReferenceRegistry } from './evidenceRegistry';
 import type { RagConversationObserver } from '../../ragConversation/service';
 import {
-  legacyConversationHistoryIntent,
   hasConversationMemoryCommand,
-  isReferentialHistoryCommand,
   isEligibleConversationMemorySource,
 } from '../../manualHistory/conversationHistoryIntent';
 import { buildManualHistoryEvidence } from './manualHistoryEvidence';
@@ -53,13 +51,10 @@ export function conversationHistoryAction(input: {
       !selected ||
       Object.values(conversationIntentRequests).includes(selected.question) ||
       selected.question === '오늘의 보고서' ||
-      isReferentialHistoryCommand(selected.question)
+      hasConversationMemoryCommand(selected.question)
     )
       return undefined;
-    const legacy = legacyConversationHistoryIntent(selected.question);
-    if (!legacy && hasConversationMemoryCommand(selected.question))
-      return undefined;
-    const text = legacy ?? selected.question;
+    const text = selected.question;
     if (!isEligibleConversationMemorySource(text)) return undefined;
     return { requestId: selected.id, text };
   };
@@ -116,13 +111,7 @@ export function conversationHistoryAction(input: {
         approved = undefined;
         const selected = selection(value);
         if (!selected || signal.aborted) return false;
-        const explicit =
-          selected.requestId === requestId &&
-          legacyConversationHistoryIntent(question) === selected.text;
-        if (
-          !explicit &&
-          !(await observer.confirmHistorySave?.(selected.text, signal))
-        )
+        if (!(await observer.confirmHistorySave?.(selected.text, signal)))
           return false;
         if (signal.aborted) return false;
         approved = selected;

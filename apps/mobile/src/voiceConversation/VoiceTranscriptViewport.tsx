@@ -1,13 +1,22 @@
-import { useRef, type ComponentRef } from 'react';
+import { memo, useRef, type ComponentRef } from 'react';
 import {
   ScrollView,
   StyleSheet,
   View,
   useWindowDimensions,
+  useColorScheme,
 } from 'react-native';
+import { useAssistantAppearance } from '../assistantAppearance/AssistantAppearanceProvider';
+import { defaultAssistantName } from '../assistantAppearance/appearance';
 import { AppText } from '../layout/AppText';
+import { appColorPalettes } from '../layout/appColors';
 import { ConversationEdgeGradient } from '../layout/ConversationEdgeGradient';
 import { t } from '../i18n';
+import {
+  captionKey,
+  useVoiceCaptionFade,
+  type CaptionRun,
+} from './voiceCaptionFade';
 
 export interface VoiceTranscriptLine {
   readonly id: string;
@@ -15,7 +24,7 @@ export interface VoiceTranscriptLine {
   readonly text: string;
 }
 
-/** Three to four scaled lines remain visible; scrolling back suspends following new speech. No transcript is persisted here. */
+/** Five scaled lines remain visible; scrolling back suspends following new speech. No transcript is persisted here. */
 export function VoiceTranscriptViewport({
   lines,
 }: {
@@ -29,8 +38,13 @@ export function VoiceTranscriptViewport({
     height: number;
     content: number;
   } | null>(null);
-  const { fontScale, width } = useWindowDimensions();
-  const visibleLines = width >= 600 ? 4 : 3;
+  const { fontScale } = useWindowDimensions();
+  const appearance = useAssistantAppearance();
+  const name = appearance?.value.name ?? defaultAssistantName;
+  const textColor =
+    appColorPalettes[useColorScheme() === 'dark' ? 'dark' : 'light'].text;
+  const captionRuns = useVoiceCaptionFade(lines);
+  const lineHeight = 24 * Math.min(fontScale, 2);
   if (!lines.length) {
     following.current = true;
     dragging.current = false;
@@ -43,10 +57,7 @@ export function VoiceTranscriptViewport({
   return (
     <View
       testID="voice-transcript-viewport"
-      style={[
-        styles.viewport,
-        { height: 24 * visibleLines * Math.min(fontScale, 2) + 32 },
-      ]}
+      style={[styles.viewport, { height: 5 * lineHeight + 32 }]}
     >
       <ScrollView
         ref={scroll}
@@ -98,14 +109,22 @@ export function VoiceTranscriptViewport({
         onLayout={follow}
         onContentSizeChange={follow}
       >
-        {lines.map(line => (
-          <AppText key={line.id} maxFontSizeMultiplier={2} style={styles.line}>
-            <AppText maxFontSizeMultiplier={2} style={styles.speaker}>
-              {line.role === 'user' ? t('realtimeDisplay.user') : 'AI'}:
-            </AppText>{' '}
-            {line.text}
-          </AppText>
-        ))}
+        {lines.map((line, index) => {
+          const speaker =
+            line.role === 'user' ? t('realtimeDisplay.user') : name;
+          const speakerChanged =
+            index > 0 && lines[index - 1]?.role !== line.role;
+          return (
+            <VoiceCaptionLine
+              key={captionKey(line)}
+              speaker={speaker}
+              text={line.text}
+              runs={captionRuns(line)}
+              textColor={textColor}
+              gap={speakerChanged ? lineHeight : undefined}
+            />
+          );
+        })}
       </ScrollView>
       {/* The opaque accessibility fallback occupies the same content gutter, not a control. */}
       <View pointerEvents="none" style={[styles.fade, styles.fadeTop]}>
@@ -120,6 +139,52 @@ export function VoiceTranscriptViewport({
     </View>
   );
 }
+// Animate inline foreground runs, not opacity on the entire wrapping paragraph.
+const VoiceCaptionLine = memo(function VoiceCaptionLineInner({
+  speaker,
+  text,
+  runs,
+  textColor,
+  gap,
+}: {
+  speaker: string;
+  text: string;
+  runs?: readonly CaptionRun[];
+  textColor: string;
+  gap?: number;
+}) {
+  return (
+    <AppText
+      accessible
+      accessibilityLabel={speaker + ': ' + text}
+      maxFontSizeMultiplier={2}
+      style={[styles.line, gap !== undefined && { marginTop: gap }]}
+      testID="voice-transcript-line"
+    >
+      <AppText maxFontSizeMultiplier={2} style={styles.speaker}>
+        {speaker}:
+      </AppText>{' '}
+      {runs
+        ? runs.map(({ text: runText, alpha }, run) =>
+            alpha === 255 ? (
+              runText
+            ) : (
+              <AppText
+                key={run}
+                style={{
+                  color: textColor + alpha.toString(16).padStart(2, '0'),
+                }}
+                testID="voice-transcript-fading-text"
+              >
+                {runText}
+              </AppText>
+            ),
+          )
+        : text}
+    </AppText>
+  );
+});
+
 const styles = StyleSheet.create({
   viewport: {
     width: '100%',

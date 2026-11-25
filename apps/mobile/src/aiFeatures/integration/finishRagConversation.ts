@@ -19,6 +19,7 @@ export async function finishRagConversation(input: {
 }): Promise<RagConversationOutcome> {
   const annotated =
     input.outcome.status === 'answer' &&
+    !input.outcome.committedAnswerMemory &&
     !input.skipPublicSearchNotice &&
     input.publicSearch.status !== 'success'
       ? {

@@ -1,3 +1,4 @@
+import type { SourceOpenTiming } from '../providers/sourceOpenDiagnostic';
 import {
   beginToolEventWriteStage,
   observeToolEventTransaction,
@@ -208,12 +209,12 @@ export function createConversationToolEventStorage(
     },
     recoverInterruptedToolEvents: toolEventRecovery(database, ensure),
     readToolTurnsSnapshot: readSnapshot,
-    /** A user opening one public source does not authorize unrelated call reads. */
     async readToolCall(
       sessionId: string,
       runId: string,
       callId: string,
       messageId?: string,
+      timing?: SourceOpenTiming,
     ) {
       return (
         await readSnapshot(
@@ -222,6 +223,7 @@ export function createConversationToolEventStorage(
           messageId ? [messageId] : undefined,
           true,
           { runId, callId },
+          timing,
         )
       ).items[0];
     },
@@ -229,10 +231,18 @@ export function createConversationToolEventStorage(
       sessionId: string,
       expectedVersion?: number,
       selectedIds?: readonly string[],
+      timing?: SourceOpenTiming,
     ) {
-      // Preserve the original typed error (including reason) for live bindings and cold resume.
-      return (await readSnapshot(sessionId, expectedVersion, selectedIds, true))
-        .items;
+      return (
+        await readSnapshot(
+          sessionId,
+          expectedVersion,
+          selectedIds,
+          true,
+          undefined,
+          timing,
+        )
+      ).items;
     },
   };
   strictReaders.add(storage.readToolTurns);

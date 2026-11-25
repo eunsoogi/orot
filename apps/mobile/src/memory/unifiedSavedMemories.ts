@@ -21,8 +21,23 @@ export interface GeneratedReportSavedMemory {
   readonly text: string;
   readonly createdAt: number;
 }
+export interface ConversationAnswerSavedMemory {
+  readonly sourceKind: 'saved_conversation_answer';
+  readonly id: string;
+  readonly artifactId: string;
+  readonly text: string;
+  readonly createdAt: number;
+}
 export type SavedMemory =
-  AgentSavedMemory | HistorySavedMemory | GeneratedReportSavedMemory;
+  | AgentSavedMemory
+  | HistorySavedMemory
+  | GeneratedReportSavedMemory
+  | ConversationAnswerSavedMemory;
+export function isConversationAnswerMemory(
+  row: SavedMemory,
+): row is ConversationAnswerSavedMemory {
+  return 'sourceKind' in row && row.sourceKind === 'saved_conversation_answer';
+}
 export function isGeneratedReportMemory(
   row: SavedMemory,
 ): row is GeneratedReportSavedMemory {
@@ -71,12 +86,13 @@ export async function loadUnifiedLocalMemories(): Promise<SavedMemory[]> {
     import('../manualHistory/localRepository'),
     import('./openSavedGeneratedReportReferences'),
   ]);
-  const [memories, repository, generated] = await Promise.all([
+  const [memories, repository, { generated, answers }] = await Promise.all([
     loadSavedLocalMemories(),
     openLocalManualHistoryRepository(),
-    openSavedGeneratedReportReferences().then(storage =>
-      storage.listSavedGeneratedReportReferences(),
-    ),
+    openSavedGeneratedReportReferences().then(async storage => ({
+      generated: await storage.listSavedGeneratedReportReferences(),
+      answers: await storage.listSavedConversationAnswers(),
+    })),
   ]);
   const reportReferences: GeneratedReportSavedMemory[] = generated.map(row => ({
     sourceKind: 'saved_generated_report',
@@ -98,5 +114,12 @@ export async function loadUnifiedLocalMemories(): Promise<SavedMemory[]> {
   return [
     ...unifySavedMemories(memories, await repository.list()),
     ...reportReferences,
+    ...answers.map(row => ({
+      sourceKind: 'saved_conversation_answer' as const,
+      id: 'conversation-answer:' + row.artifactId,
+      artifactId: row.artifactId,
+      text: t('historyDisplay.answerMemoryTitle'),
+      createdAt: Date.parse(row.savedAt),
+    })),
   ].sort((a, b) => b.createdAt - a.createdAt || a.id.localeCompare(b.id));
 }

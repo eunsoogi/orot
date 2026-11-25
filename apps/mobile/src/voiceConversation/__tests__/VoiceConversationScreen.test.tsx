@@ -116,7 +116,7 @@ test.each(['processing', 'speaking'] as const)(
     );
     expect(screen.queryByTestId('voice-call-interrupt')).toBeNull();
     expect(screen.getByTestId('voice-transcript-scroll')).toBeTruthy();
-    expect(screen.getByText('AI: 합성 대화')).toBeTruthy();
+    expect(screen.getByText('비서: 합성 대화')).toBeTruthy();
     expect(actions.onInterrupt).not.toHaveBeenCalled();
     await fireEvent.press(screen.getByTestId('voice-call-end'));
     expect(actions.onEnd).toHaveBeenCalledTimes(1);

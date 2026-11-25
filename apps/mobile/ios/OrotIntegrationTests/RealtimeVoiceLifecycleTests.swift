@@ -30,7 +30,7 @@ final class RealtimeVoiceLifecycleTests: OrotFailFastTestCase {
     }
 
     func testSessionConfigurationGatesAudioAndStopClosesEverything() async throws {
-        try await assertConnectingCueFencesCaptureAndDoesNotRepeatOnResume()
+        try await assertReadyCueWaitsForCaptureAndDoesNotRepeatOnResume()
         try RealtimeVoiceNativeRegistryAssertions.assertAudioOnlySessionAdvertisesNoToolsOrRecordAccess()
         try RealtimeVoiceNativeRegistryAssertions.assertExactOwnedRegistryMatchesWireAndRejectsUnknownOrRevokedAdmission()
         let audio = Audio(), socket = Socket()
@@ -107,7 +107,7 @@ final class RealtimeVoiceLifecycleTests: OrotFailFastTestCase {
     }
 
     func testOldCaptureFailureCannotStopNewCall() async throws {
-        try await assertConnectingCueWaitsForAdmissionAndLateStopCannotSendOnNextAttempt()
+        try await assertReadyCueDeniesFailedAndRetiredAttempts()
         let audio = Audio(), socket = Socket()
         var levels: [Double] = []
         let call = fixture(audio, socket) { event, body in levels += event == "VoiceRealtimeAudioLevel" ? [body["level"] as? Double].compactMap(\.self) : [] }

@@ -62,10 +62,14 @@ final class LiveResponsesMailbox {
         guard let output else {
             pending.ticket.retire(); pending.finish(nil); completion(true); return
         }
+        let received = LiveManagedToolLatency.start()
         guard LiveResponsesAdmission.validAggregate(output, days: pending.request.days),
               pending.ticket.bind({ [weak self, weak ticket = pending.ticket] success in
                   if let ticket, self?.approved?.2 === ticket {
                       self?.approved = nil
+                  }
+                  if success {
+                      LiveManagedToolLatency.finish(.settleToSocketSubmission, since: received)
                   }
                   completion(success)
               })
@@ -90,5 +94,26 @@ final class LiveResponsesMailbox {
         pending.ticket.retire()
         self.pending = nil
         emit("VoiceRealtimeManagedToolCancelled", ["callId": identifier, "challengeId": id])
+    }
+}
+
+/// Exact native boundaries only. No record, request, socket, or account identifiers enter the log.
+enum LiveManagedToolLatency: String {
+    case delegationToToolTerminal = "delegation_to_tool_terminal"
+    case settleToSocketSubmission = "settle_to_socket_submission"
+
+    private static let enabled = ProcessInfo.processInfo.arguments.contains("-OROT_PROVIDER_DIAGNOSTICS")
+
+    static func start() -> DispatchTime? {
+        enabled ? .now() : nil
+    }
+
+    static func finish(_ stage: Self, since start: DispatchTime?) {
+        guard let start else { return }
+        let now = DispatchTime.now().uptimeNanoseconds
+        guard now >= start.uptimeNanoseconds else { return }
+        let elapsed = (now - start.uptimeNanoseconds) / 1_000_000
+        guard elapsed <= 300_000 else { return }
+        NSLog("OROT_PROVIDER_DIAGNOSTIC layer=app feature=live_health stage=%@ elapsed_ms=%d", stage.rawValue, Int(elapsed))
     }
 }

@@ -21,7 +21,7 @@ protocol RealtimeVoiceDisplayMeterPort: AnyObject {
     var displayLevel: ((RealtimeVoiceLevelDirection, Double) -> Void)? { get set }
 }
 
-final class RealtimeVoiceAudio: RealtimeAudioPort, RealtimeVoiceDisplayMeterPort {
+final class RealtimeVoiceAudio: RealtimeVoiceReadyCueAudioPort, RealtimeVoiceDisplayMeterPort {
     enum Failure: Error { case format, overflow }
     private let engine = AVAudioEngine()
     private let player = AVAudioPlayerNode()
@@ -44,6 +44,14 @@ final class RealtimeVoiceAudio: RealtimeAudioPort, RealtimeVoiceDisplayMeterPort
     var drained: (() -> Void)?
 
     func start(input: @escaping (Data) -> Void, failure: @escaping () -> Void) throws {
+        try start(input: input, failure: failure, playReadyCue: false, ready: {})
+    }
+
+    func start(input: @escaping (Data) -> Void, failure: @escaping () -> Void,
+               playReadyCue: Bool, ready: @escaping () -> Void) throws
+    {
+        let cue = playReadyCue ? RealtimeVoiceConnectingCue.buffer(format: output) : nil
+        let captureFence = cue.map { _ in RealtimeVoiceCueCaptureFence() }
         let node = engine.inputNode
         try node.setVoiceProcessingEnabled(true)
         let format = node.outputFormat(forBus: 0)
@@ -62,7 +70,8 @@ final class RealtimeVoiceAudio: RealtimeAudioPort, RealtimeVoiceDisplayMeterPort
             }
             outputMeterInstalled = true
         }
-        node.installTap(onBus: 0, bufferSize: 1024, format: format) { [pcm, levelMeter] buffer, _ in
+        node.installTap(onBus: 0, bufferSize: 1024, format: format) { [pcm, levelMeter] buffer, time in
+            guard captureFence?.permits(hostTime: time.isHostTimeValid ? time.hostTime : nil) ?? true else { return }
             // Conversion and delivery are synchronous: no borrowed tap buffer survives this callback.
             let capacity = AVAudioFrameCount(ceil(Double(buffer.frameLength) * 24000 / format.sampleRate) + 32)
             guard let converted = AVAudioPCMBuffer(pcmFormat: pcm, frameCapacity: capacity) else { failure(); return }
@@ -85,6 +94,17 @@ final class RealtimeVoiceAudio: RealtimeAudioPort, RealtimeVoiceDisplayMeterPort
         installed = true
         engine.prepare()
         try engine.start()
+        guard let cue, let captureFence else { ready(); return }
+        // The existing startup timeout remains armed until actual playback completes.
+        let current = epoch
+        player.scheduleBuffer(cue, completionCallbackType: .dataPlayedBack) { [weak self] completion in
+            DispatchQueue.main.async {
+                guard let self, completion == .dataPlayedBack, epoch == current, attached, engine.isRunning else { return }
+                captureFence.open(after: mach_absolute_time())
+                ready()
+            }
+        }
+        player.play()
     }
 
     func append(_ data: Data) throws {
@@ -224,27 +244,5 @@ final class RealtimeVoiceDisplayMeter: @unchecked Sendable {
             energy += amplitude * amplitude
         }
         return min(1, sqrt(energy / Double(reads)))
-    }
-}
-
-/// Bounds copied microphone bytes waiting for the main queue; no unbounded tap callback backlog.
-final class RealtimeInputBudget {
-    private let lock = NSLock()
-    enum Result { case accepted, closed, overflow }
-    private var bytes = 0
-    private var closed = false
-    func reset() {
-        lock.lock(); closed = false; lock.unlock()
-    }
-
-    func reserve(_ count: Int) -> Result {
-        lock.lock(); defer { lock.unlock() }
-        guard !closed else { return .closed }
-        guard bytes + count <= 96000 else { closed = true; return .overflow }
-        bytes += count; return .accepted
-    }
-
-    func release(_ count: Int) {
-        lock.lock(); bytes -= count; lock.unlock()
     }
 }

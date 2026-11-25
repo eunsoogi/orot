@@ -4,6 +4,7 @@ import { AppText as Text } from '../layout/AppText';
 import { t } from '../i18n';
 import { formatRecordedAt } from './formatRecordedAt';
 import { recordingLibraryStyles as styles } from './RecordingLibraryPanel.styles';
+import { useRouteRecordingPlayback } from './useRouteRecordingPlayback';
 import RecordingPlaybackControls from './RecordingPlaybackControls';
 import type { RecordingLibrarySummary } from './recordingLibraryService';
 import type { RecordingPlaybackService } from './recordingTypes';
@@ -29,6 +30,7 @@ export default function RecordingLibraryDetail({
   onDelete,
 }: RecordingLibraryDetailProps) {
   const { source } = summary;
+  const playback = useRouteRecordingPlayback(playbackService, source.id, true);
   return (
     <View style={styles.detail} testID="recording-detail">
       <Text accessibilityRole="header" style={styles.title}>
@@ -41,7 +43,7 @@ export default function RecordingLibraryDetail({
       <RecordingPlaybackControls
         key={source.id}
         durationMs={summary.durationMs}
-        playbackService={playbackService}
+        playbackService={playback}
         recordingId={source.id}
         autoPlay={autoPlay}
         onAutoPlayConsumed={onAutoPlayConsumed}

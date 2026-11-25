@@ -100,7 +100,7 @@ test('explicit composer start reaches the real Live modal without the discarded 
       });
     });
     expect(screen.getByText('나: 합성 질문')).toBeTruthy();
-    expect(screen.getByText('AI: 합성 응답')).toBeTruthy();
+    expect(screen.getByText('비서: 합성 응답')).toBeTruthy();
     expect(screen.queryByText(/다른 통화/)).toBeNull();
     expect(screen.queryByTestId('voice-call-finish')).toBeNull();
     expect(screen.queryByText(/완료를 눌러/)).toBeNull();

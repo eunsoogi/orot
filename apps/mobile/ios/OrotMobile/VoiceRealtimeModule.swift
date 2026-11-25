@@ -13,7 +13,7 @@ final class VoiceRealtimeModule: RCTEventEmitter {
                 return SettingsConsentRealtimeFixture.makeCall(emit: emit)
             }
         #endif
-        return RealtimeVoiceCall(systemCall: VoiceSystemCallLifecycle.shared, connectingCue: RealtimeConnectingCue(), emit: emit)
+        return RealtimeVoiceCall(systemCall: VoiceSystemCallLifecycle.shared, emit: emit)
     }()
 
     #if OROT_TESTS && targetEnvironment(simulator)

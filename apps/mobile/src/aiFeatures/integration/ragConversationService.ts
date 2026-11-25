@@ -4,7 +4,7 @@ import { conversationPublicSearchPlan as planSearch } from './conversationPublic
 import { prepareLiveRagContinuation as continuationFor } from './liveRagConversationCapture';
 import { conversationMutationExecution } from './conversationMutationExecution';
 import type { RagConversationServiceDependencies } from './ragConversationServiceDependencies';
-import { finishConversationWorkflow } from './finishConversationWorkflow';
+import * as finish from './finishConversationWorkflow';
 import type { RagConversationMessage } from '../../ragConversation/task';
 import { executionOptions } from './featureServiceExecution';
 import * as background from './conversationBackgroundProvider';
@@ -177,7 +177,7 @@ export function createRagConversationService(
         ...toolExecution,
         external,
       });
-      const execution = conversationMutationExecution({
+      const { execution, memorySaved } = conversationMutationExecution({
         baseExecution,
         photo,
         photoEvidence,
@@ -224,8 +224,8 @@ export function createRagConversationService(
           run.modelCheckpointScope(signal, consentPort, entryContext, photo),
         ),
       );
-      return await finishConversationWorkflow({
-        outcome,
+      return await finish.finishConversationWorkflow({
+        outcome: finish.answerMemoryOutcome(outcome, memorySaved()),
         priorDialogueOmitted: history.omitted,
         observer,
         generated,

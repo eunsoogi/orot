@@ -8,7 +8,11 @@ import {
   subscribeLocalDataClear,
   subscribeLocalSourceDeletion,
 } from '../storage/localDataClearEvents';
-import { acquireIndependentReadEpoch } from '../storage/protectedReadEpoch';
+import {
+  acquireIndependentReadEpoch,
+  awaitIndependentReadSettlement,
+} from '../storage/protectedReadEpoch';
+import { subscribeWorkoutImportCommitted } from './workoutImportEvents';
 import { loadWorkoutPeriodCohort } from './workoutPeriodCohort';
 import {
   readWorkoutPeriodHeartRate,
@@ -16,6 +20,7 @@ import {
 } from './workoutPeriodNativeRead';
 
 type State = WorkoutPeriodResult | { status: 'idle' | 'reading' };
+const startupWriterBudgetMs = 2_500;
 
 declare const require: (
   path: '../storage/secureDatabase',
@@ -91,6 +96,23 @@ export function useRecordsWorkoutMonthHeartRate({
         const database = await storage.openLocalAgentMemoryDatabase();
         if (!current()) return;
         epoch = acquireIndependentReadEpoch(database);
+        // A known local writer blocks admission, not the underlying HealthKit data.
+        // Never adopt a new owner or keep an invalidated snapshot after waiting.
+        if (!epoch) {
+          if (
+            !(await awaitIndependentReadSettlement(
+              database,
+              startupWriterBudgetMs,
+              abort.signal,
+            )) ||
+            !current() ||
+            !(await protection.confirm()) ||
+            !current() ||
+            !storage.isCurrentLocalAgentMemoryDatabase(database)
+          )
+            return;
+          epoch = acquireIndependentReadEpoch(database);
+        }
         const sourceCurrent = () =>
           owns() &&
           !abort.signal.aborted &&
@@ -165,6 +187,11 @@ export function useRecordsWorkoutMonthHeartRate({
     });
     const clear = subscribeLocalDataClear(retire);
     const remove = subscribeLocalSourceDeletion(retire);
+    const importCommitted = subscribeWorkoutImportCommitted(() => {
+      // New/deleted workout identities make both cached and in-flight witnesses stale.
+      retire();
+      read();
+    });
     read();
     return () => {
       mounted = false;
@@ -174,6 +201,7 @@ export function useRecordsWorkoutMonthHeartRate({
       blur?.();
       clear();
       remove();
+      importCommitted();
     };
   }, [fromInclusive, toInclusive, navigation]);
   return state;
