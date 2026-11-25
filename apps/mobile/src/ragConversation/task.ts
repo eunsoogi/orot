@@ -241,8 +241,14 @@ export const conversationTaskV21 = withConversationA2UIFrameSequence(
 );
 
 /** Replay of the previous version retains its original closed catalog. */
-export const ragConversationTask = withConversationA2UIFrameSequence(
+export const conversationTaskV22 = withConversationA2UIFrameSequence(
   conversationTaskV20,
   allowsOrdinaryA2UI,
   '22',
+);
+
+export const ragConversationTask = withConversationA2UIFrameSequence(
+  conversationTaskV20,
+  allowsOrdinaryA2UI,
+  '23',
 );

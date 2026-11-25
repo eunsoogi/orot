@@ -9,6 +9,7 @@ import { useConversationSessions } from './ConversationSessionsContext';
 import { ConversationSteeringComposer } from './ConversationSteeringComposer';
 import { composerSendWithReportBookmark } from './explicitDailyReportBookmark';
 import { ConversationWorkspace } from './ConversationWorkspace';
+import { useConversationA2UILocalDraftOwner } from './conversationA2UILocalDraftOwner';
 import { styles } from './ConversationScreen.styles';
 import { KeyboardAvoidingView, Platform, View } from 'react-native';
 import { ConversationHistory } from './ConversationHistory';
@@ -72,6 +73,11 @@ export function ConversationScreen({
     canPaint,
   );
   const { id, messages, pendingMessage, busy, error } = session;
+  const localDraftOwner = useConversationA2UILocalDraftOwner(
+    store,
+    id,
+    ownsConversationPresentation,
+  );
   const preflightError =
     session.errorSurface === 'composerPreflight' ? error : '';
   // Confirmed retries retain feature scope instead of becoming ordinary chat.
@@ -132,6 +138,7 @@ export function ConversationScreen({
         onLayout={event => setContentHeight(event.nativeEvent.layout.height)}
       >
         <ConversationWorkspace
+          localDraftOwner={localDraftOwner}
           session={session}
           sourceActions={sourceActions}
           isEntryCurrent={isEntryCurrent}

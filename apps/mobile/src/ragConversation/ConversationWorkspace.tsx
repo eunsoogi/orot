@@ -1,7 +1,8 @@
+import { ConversationA2UILocalDraftOwner } from './conversationA2UILocalDraftOwner';
 import { GeneratedReportBookmarkContext } from './GeneratedReportBookmark';
 import { FloatingComposerSurface } from './FloatingComposerSurface';
 import { NavigationOcclusionContext } from '../navigation/useNavigationContentInset';
-import { type ReactNode } from 'react';
+import { type ContextType, type ReactNode } from 'react';
 import { ScrollView, StyleSheet, View } from 'react-native';
 import { FloatingAssistantSurface } from '../assistantAppearance/FloatingAssistantSurface';
 import {
@@ -27,6 +28,7 @@ type SourceActions = Pick<
 >;
 type Props = {
   sourceActions: SourceActions;
+  localDraftOwner?: ContextType<typeof ConversationA2UILocalDraftOwner>;
   isEntryCurrent?: () => boolean;
   session: ConversationSession;
   children: ReactNode;
@@ -108,7 +110,11 @@ export function ConversationWorkspace(props: Props) {
                           isCurrent: props.isEntryCurrent,
                         }}
                       >
-                        {props.children}
+                        <ConversationA2UILocalDraftOwner.Provider
+                          value={props.localDraftOwner}
+                        >
+                          {props.children}
+                        </ConversationA2UILocalDraftOwner.Provider>
                       </GeneratedReportBookmarkContext.Provider>
                     </FloatingComposerSurface>
                   </DirectPhotoPresentationScope>
