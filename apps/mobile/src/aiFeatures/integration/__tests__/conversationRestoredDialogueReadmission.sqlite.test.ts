@@ -144,7 +144,11 @@ test.each([
         });
         expect(runner.mock.calls[0]?.[0].previousMessages).toEqual([
           { role: 'user', content: 'Synthetic safe question' },
-          { role: 'assistant', content: '' },
+          {
+            role: 'assistant',
+            content:
+              '이전 AI 답변은 현재 출처를 다시 확인하기 전에는 사용할 수 없어요.',
+          },
         ]);
         expect(await f.storage.read('older')).toBeNull();
         expect((await f.storage.read('newer'))?.answer).toBe(
