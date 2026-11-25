@@ -1,6 +1,11 @@
 import { transcriptSegment } from './localQueryTestSupport';
 import { openEncryptedStorage } from '../src/open';
 import {
+  periodRecordKinds,
+  periodRemovalIndexDefinitions,
+  readTrustedOrderedPeriodIndexes,
+} from '../src/periodProvenanceIndexes';
+import {
   listTypedSourceDeletionReferences,
   sourceDeletionDependencyPredicate,
 } from '../src/sourceDeletionReferences';
@@ -116,6 +121,12 @@ test('exact membership agrees with the original family projection across multipl
       .map((reference) => reference.id)
       .sort();
     expect(snapshot).toEqual(legacy.rows.map((row) => row.id));
+    const stock = await repository.listTypedSourceDeletionReferences(source.id);
+    for (const table of Object.keys(periodRecordKinds))
+      for (const index of periodRemovalIndexDefinitions(table)) await database.execute(index.sql);
+    // The actual migrated owning tables—not just an isolated SQL fixture—are eligible.
+    expect((await readTrustedOrderedPeriodIndexes(database)).size).toBe(5);
+    expect(await repository.listTypedSourceDeletionReferences(source.id)).toEqual(stock);
     expect(await repository.listSourceDeletionReferences(source.id)).toEqual([...ids].sort());
     const check = repository.hasSourceDeletionReferences;
     if (!check) throw new Error('Missing exact membership port');
