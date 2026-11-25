@@ -155,6 +155,19 @@ test('artifact retirement seeks both message owner fields and leaves unrelated t
           [session!, message!, 'synthetic', run!, 'call', '{}'],
         );
       }
+      const scoped = [
+        ['conversation_tool_dependencies', 'conversation_tool_dependency_call'],
+        ['conversation_tool_periods', 'conversation_tool_period_call'],
+      ] as const;
+      for (const [table, index] of scoped) {
+        const suffix = table.endsWith('periods')
+          ? "'measurements', 'from', 'to'"
+          : "'manual_history', 'source'";
+        await tx.execute(`INSERT INTO ${table}
+          SELECT session_id || run_id, session_id, run_id, call_id, ${suffix}
+          FROM conversation_tool_events`);
+        await tx.execute(`DROP INDEX ${index}`);
+      }
       // Upgrading a populated view installs the index without rewriting rows.
       await tx.execute('DROP INDEX conversation_tool_events_message');
       await setupConversationToolGuards(tx);
@@ -171,6 +184,16 @@ test('artifact retirement seeks both message owner fields and leaves unrelated t
           String(row.detail).includes('conversation_tool_events_message'),
         ),
       ).toBe(true);
+      for (const [table, index] of scoped) {
+        const cleanupPlan = await tx.execute(
+          `EXPLAIN QUERY PLAN DELETE FROM ${table}
+          WHERE session_id=? AND run_id=? AND call_id=?`,
+          ['session-a', 'retired', 'call'],
+        );
+        expect(
+          cleanupPlan.rows.some(row => String(row.detail).includes(index)),
+        ).toBe(true);
+      }
       await tx.execute(
         "DELETE FROM conversation_artifacts WHERE id = 'message'",
       );
@@ -185,7 +208,33 @@ test('artifact retirement seeks both message owner fields and leaves unrelated t
         (await tx.execute('SELECT run_id FROM conversation_tool_removed_calls'))
           .rows,
       ).toEqual([{ run_id: 'retired' }]);
+      for (const [table] of scoped)
+        expect(
+          (await tx.execute(`SELECT run_id FROM ${table} ORDER BY run_id`))
+            .rows,
+        ).toEqual([{ run_id: 'same-message' }, { run_id: 'same-session' }]);
     });
+  } finally {
+    f.close();
+  }
+});
+
+test('rolling back tuple-index installation leaves original schema intact', async () => {
+  const f = await healthContextFixture();
+  try {
+    await createConversationArtifactStorage(f.database).currentGeneration();
+    const index = 'conversation_tool_period_call';
+    await f.database.execute(`DROP INDEX ${index}`);
+    const names = () =>
+      f.database.execute('PRAGMA index_list(conversation_tool_periods)');
+    const prior = await names();
+    await expect(
+      f.database.transaction(async tx => {
+        await setupConversationToolGuards(tx);
+        throw new Error('Synthetic index rollback');
+      }),
+    ).rejects.toThrow('Synthetic index rollback');
+    expect(await names()).toEqual(prior);
   } finally {
     f.close();
   }

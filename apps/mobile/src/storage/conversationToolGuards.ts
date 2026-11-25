@@ -36,6 +36,14 @@ export async function setupConversationToolGuards(tx: SqlExecutor) {
       WHERE record_kind = 'manual_history' AND record_id = OLD.id
     ); END`,
   );
+  // The retired call's exact tuple also owns its dependency and period rows.
+  // Source-first indexes cannot serve cleanup by this tuple.
+  await tx.execute(
+    'CREATE INDEX IF NOT EXISTS conversation_tool_dependency_call ON conversation_tool_dependencies (session_id, run_id, call_id)',
+  );
+  await tx.execute(
+    'CREATE INDEX IF NOT EXISTS conversation_tool_period_call ON conversation_tool_periods (session_id, run_id, call_id)',
+  );
   const erase = (table: string, condition: string) =>
     `DELETE FROM conversation_tool_events WHERE EXISTS (SELECT 1 FROM ${table} p WHERE p.session_id = conversation_tool_events.session_id AND p.run_id = conversation_tool_events.run_id AND p.call_id = conversation_tool_events.call_id AND (${condition}));`;
   await tx.execute(
