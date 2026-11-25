@@ -154,11 +154,13 @@ test('existing remote conversation offers only an opaque target and ends with a 
           excludedQuestions: [],
         },
       });
+    const actions = (execution: ReturnType<typeof compose>['execution']) =>
+      'actions' in execution ? execution.actions : [];
     expect(
-      compose(false).execution.actions?.some(action => action.id === toolId),
+      actions(compose(false).execution).some(action => action.id === toolId),
     ).toBe(false);
     const mutation = compose(true);
-    const action = mutation.execution.actions?.find(
+    const action = actions(mutation.execution).find(
       offered => offered.id === toolId,
     );
     expect(
