@@ -3,6 +3,15 @@ import type { TranscriptEvidenceSegment } from '@orot/domain';
 import type { EncounterTranscript } from '@orot/agent-runtime';
 import type { RecordWriter, SqlExecutor } from '@orot/storage';
 import { requireLiveCheckpointSource } from '@orot/storage';
+import { currentEncounterTranscriptPageSql } from './currentTranscriptPageSql';
+
+const singlePassSegmentLimit = 8;
+
+export class EncounterTranscriptEmpty extends Error {
+  constructor() {
+    super('Select a nonempty transcript.');
+  }
+}
 
 /** Reject oversized review inputs before any model or network authorization. */
 export class EncounterTranscriptTooLong extends Error {
@@ -24,8 +33,9 @@ export function currentEncounterTranscript(
     if ((latest.get(segment.transcriptId)?.revision ?? 0) < segment.revision)
       latest.set(segment.transcriptId, segment);
   }
-  if (!latest.size) throw new Error('Select a nonempty transcript.');
-  if (latest.size > 8) throw new EncounterTranscriptTooLong();
+  if (!latest.size) throw new EncounterTranscriptEmpty();
+  if (latest.size > singlePassSegmentLimit)
+    throw new EncounterTranscriptTooLong();
   return {
     sourceId,
     segments: [...latest.values()]
@@ -51,10 +61,16 @@ export async function readEncounterTranscript(
   const source = await writer.get('source_record', sourceId);
   if (!source || source.sourceKind !== 'audio_recording')
     throw new Error('Recording source unavailable.');
-  const result = await sql.execute(
-    "SELECT payload_json FROM transcript_segments WHERE json_extract(payload_json, '$.recordingSourceId') = ?",
-    [sourceId],
-  );
+  const result = await sql.execute(currentEncounterTranscriptPageSql, [
+    sourceId,
+    -1,
+    '',
+    singlePassSegmentLimit + 1,
+  ]);
+  // A lookahead row proves this single-pass path is incomplete. Do not
+  // decode the partial prefix or present it as the whole transcript.
+  if (result.rows.length > singlePassSegmentLimit)
+    throw new EncounterTranscriptTooLong();
   return currentEncounterTranscript(
     sourceId,
     result.rows.map(row =>

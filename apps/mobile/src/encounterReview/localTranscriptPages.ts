@@ -3,22 +3,10 @@ import { requireLiveCheckpointSource } from '@orot/storage';
 import type { SqlDatabase } from '@orot/storage';
 import { acquireIndependentReadEpoch } from '../storage/protectedReadEpoch';
 import { watchEncounterNativeAdmission } from './nativeAdmission';
+import { currentEncounterTranscriptPageSql } from '../agent/encounter/currentTranscriptPageSql';
 
 const PAGE_SIZE = 16;
 type NativeProtection = Parameters<typeof watchEncounterNativeAdmission>[0];
-
-const ordinal = "json_extract(candidate.payload_json, '$.segmentOrdinal')";
-const pageSql = `SELECT candidate.payload_json FROM transcript_segments AS candidate
-  WHERE json_extract(candidate.payload_json, '$.recordingSourceId') = ?
-    AND (${ordinal}, candidate.id) > (?, ?)
-    AND NOT EXISTS (
-      SELECT 1 FROM transcript_segments AS newer
-      WHERE json_extract(newer.payload_json, '$.transcriptId') =
-        json_extract(candidate.payload_json, '$.transcriptId')
-        AND json_extract(newer.payload_json, '$.revision') >
-          json_extract(candidate.payload_json, '$.revision')
-    )
-  ORDER BY ${ordinal}, candidate.id LIMIT ?`;
 
 function unavailable(): never {
   throw new Error('The selected recording is no longer admissible.');
@@ -101,12 +89,10 @@ export async function openLocalTranscriptPages(input: {
           [sourceId],
         );
         if (!source.rows.length || !(await confirm())) unavailable();
-        const result = await database.execute(pageSql, [
-          sourceId,
-          afterOrdinal,
-          afterId,
-          PAGE_SIZE + 1,
-        ]);
+        const result = await database.execute(
+          currentEncounterTranscriptPageSql,
+          [sourceId, afterOrdinal, afterId, PAGE_SIZE + 1],
+        );
         const segments = result.rows.slice(0, PAGE_SIZE).map(row => {
           const segment = TranscriptEvidenceSegmentSchema.parse(
             JSON.parse(String(row.payload_json)),

@@ -3,7 +3,7 @@ import { createReviewDiagnostics } from '../diagnostics';
 
 const fixture = sqliteReviewFixture();
 
-test.each([8, 9])(
+test.each([8, 9, 145])(
   'takes a canonical stored transcript with %s distinct current segments through the review boundary',
   async count => {
     const recordingId = sourceId + ':canonical-' + count;
@@ -38,9 +38,17 @@ test.each([8, 9])(
         };
       }),
     );
-    expect(
-      await fixture.repository().transcripts.listForRecording(recordingId),
-    ).toHaveLength(count);
+    const segments = await fixture
+      .repository()
+      .transcripts.listForRecording(recordingId);
+    expect(segments).toHaveLength(count);
+    await fixture
+      .repository()
+      .transcripts.correct(
+        segments.at(-1)!.id,
+        'Fixed synthetic closing segment.',
+        segments.at(-1)!.recordedAt,
+      );
     let diagnostics: ReturnType<typeof createReviewDiagnostics> | undefined;
     const { controller, synthetic } = fixture.controllerFor(
       false,
@@ -57,7 +65,7 @@ test.each([8, 9])(
     );
     const authorize = jest.fn(async () => 'authorized' as const);
     await controller.start({ authorize });
-    if (count === 9) expect(authorize).not.toHaveBeenCalled();
+    if (count > 8) expect(authorize).not.toHaveBeenCalled();
     expect(await fixture.rows()).toHaveLength(0);
     expect(synthetic.calls()).toBe(count === 8 ? 1 : 0);
     if (count === 8) {
