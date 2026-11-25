@@ -1,6 +1,9 @@
 import { transcriptSegment } from './localQueryTestSupport';
 import { openEncryptedStorage } from '../src/open';
-import { listTypedSourceDeletionReferences } from '../src/sourceDeletionReferences';
+import {
+  listTypedSourceDeletionReferences,
+  sourceDeletionDependencyPredicate,
+} from '../src/sourceDeletionReferences';
 import {
   createDatabase,
   options,
@@ -52,7 +55,9 @@ test('exact membership agrees with the original family projection across multipl
     const repository = await openEncryptedStorage(options(database));
     const source = await repository.sourceRecords.create(audioSourceRecord('exact-root'));
     const segment = transcriptSegment(source.id);
-    await repository.transcripts.append([segment]);
+    const other = await repository.sourceRecords.create(audioSourceRecord('unrelated-root'));
+    const otherSegment = transcriptSegment(other.id);
+    await repository.transcripts.append([segment, otherSegment]);
     const span = await repository.evidenceSpans.create(
       evidenceSpan('exact-span', source.id, {
         kind: 'audio_time_range',
@@ -79,7 +84,32 @@ test('exact membership agrees with the original family projection across multipl
       });
       ids.push(id);
     }
-    // The source cascade's pre-delete reader remains unmodified.
+    for (const [id, reference] of [
+      ['other-segment-descendant', otherSegment.id],
+      ['other-bundle-descendant', otherSegment.transcriptId],
+    ]) {
+      await repository.put('encounter', {
+        id,
+        effectiveAt: at,
+        recordedAt: at,
+        ingestedAt: at,
+        provenance: { origin: 'derived', sourceRecordIds: [reference] },
+        reviewState: { status: 'unreviewed' },
+        encounterKind: 'outpatient',
+        summary: 'Synthetic unrelated record',
+      });
+    }
+    // Compare with the exact unchanged live-trigger predicate before removing anything.
+    const triggerPredicate = sourceDeletionDependencyPredicate('encounter', 'encounters', '?');
+    const legacy = await database.execute(
+      `SELECT id FROM encounters WHERE ${triggerPredicate} ORDER BY id`,
+      [source.id, source.id],
+    );
+    const snapshot = (await listTypedSourceDeletionReferences(database, source.id))
+      .filter((reference) => reference.kind === 'encounter')
+      .map((reference) => reference.id)
+      .sort();
+    expect(snapshot).toEqual(legacy.rows.map((row) => row.id));
     expect(await repository.listSourceDeletionReferences(source.id)).toEqual([...ids].sort());
     const check = repository.hasSourceDeletionReferences;
     if (!check) throw new Error('Missing exact membership port');
@@ -88,6 +118,8 @@ test('exact membership agrees with the original family projection across multipl
     expect(await check(source.id, [...ids, 'nonmember'], signal)).toBe(false);
     expect(await check(source.id, [], signal)).toBe(false);
     expect(await repository.sourceRecords.delete(source.id)).toBe(true);
+    expect(await repository.get('encounter', 'other-segment-descendant')).not.toBeNull();
+    expect(await repository.get('encounter', 'other-bundle-descendant')).not.toBeNull();
     expect(await check(source.id, [source.id], signal)).toBe(false);
   } finally {
     await database.closeAsync?.();

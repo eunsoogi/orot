@@ -5,6 +5,16 @@ import type { SqlDatabase, SqlExecutor } from './sql';
 
 export const SOURCE_DELETION_TOMBSTONES_TABLE = 'source_deletion_tombstones';
 
+// Query-local sets are bound to a single exact source. Keep SQL row IDs and JSON
+// bundle values distinct so each retains its original SQLite comparison affinity.
+const snapshotSource = '(SELECT id FROM deletion_target)';
+const snapshotTranscriptSets = `WITH deletion_target(id) AS (SELECT ?),
+  target_transcripts AS MATERIALIZED (
+    SELECT id, json_extract(payload_json, '$.transcriptId') AS family
+    FROM transcript_segments
+    WHERE json_extract(payload_json, '$.recordingSourceId') = ${snapshotSource}
+  )`;
+
 /** Read both deletion projections from a consistent database snapshot. */
 export async function readSourceDeletionSnapshot(database: SqlDatabase, sourceId: string) {
   let references: readonly { kind: string; id: string }[] = [];
@@ -56,10 +66,17 @@ export function sourceDeletionDependencyPredicate(
   kind: RecordKind,
   table: string,
   sourceIdExpression: string,
+  snapshot = false,
 ): string {
   const dependencies = [
     `EXISTS (SELECT 1 FROM json_each(${table}.payload_json, '$.provenance.sourceRecordIds') AS linked_source WHERE linked_source.value = ${sourceIdExpression})`,
-    `EXISTS (
+    snapshot
+      ? `EXISTS (
+        SELECT 1 FROM json_each(${table}.payload_json, '$.provenance.sourceRecordIds') AS linked_transcript
+        WHERE linked_transcript.value IN (SELECT id FROM target_transcripts)
+        OR linked_transcript.value IN (SELECT family FROM target_transcripts)
+      )`
+      : `EXISTS (
       SELECT 1 FROM json_each(${table}.payload_json, '$.provenance.sourceRecordIds') AS linked_transcript
       JOIN transcript_segments AS source_transcript
         ON source_transcript.id = linked_transcript.value
@@ -85,7 +102,7 @@ export function sourceDeletionDependencyPredicate(
     dependencies.push(`EXISTS (
       SELECT 1 FROM visit_questions AS parent_question
       WHERE parent_question.id = json_extract(${table}.payload_json, '$.questionId')
-      AND ${sourceDeletionDependencyPredicate('visit_question', 'parent_question', sourceIdExpression)}
+      AND ${sourceDeletionDependencyPredicate('visit_question', 'parent_question', sourceIdExpression, snapshot)}
     )`);
   }
   return `(${dependencies.join(' OR ')})`;
@@ -130,14 +147,12 @@ export async function listTypedSourceDeletionReferences(
     if (kind === 'source_record' || kind === 'evidence_span' || kind === 'transcript_segment')
       continue;
     const table = STORAGE_TABLES[kind].table;
-    const predicate = sourceDeletionDependencyPredicate(kind, table, '?');
+    // The live trigger keeps its original SQL. This snapshot can resolve the recording's
+    // target set once per statement instead of joining it again for every record edge.
+    const predicate = sourceDeletionDependencyPredicate(kind, table, snapshotSource, true);
     const rows = await executor.execute(
-      `SELECT ${table}.id FROM ${table} WHERE ${predicate}`,
-      kind === 'visit_question_record'
-        ? [sourceId, sourceId, sourceId, sourceId, sourceId, sourceId]
-        : kind === 'visit_question' || kind === 'visit_brief'
-          ? [sourceId, sourceId, sourceId]
-          : [sourceId, sourceId],
+      `${snapshotTranscriptSets} SELECT ${table}.id FROM ${table} WHERE ${predicate}`,
+      [sourceId],
     );
     for (const row of rows.rows) add(kind, row.id);
   }
