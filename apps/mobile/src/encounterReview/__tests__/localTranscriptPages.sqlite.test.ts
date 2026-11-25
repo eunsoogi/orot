@@ -30,7 +30,12 @@ async function seed(count: number) {
   const source = await repo.get('source_record', sourceId);
   const [segment] = await repo.transcripts.listForRecording(sourceId);
   if (!source || !segment) throw new Error('Missing synthetic transcript.');
-  await repo.put('source_record', { ...source, id: recordingId });
+  const recordingDurationMs = count * 100;
+  await repo.put('source_record', {
+    ...source,
+    id: recordingId,
+    recordingDurationMs,
+  });
   const segments = Array.from({ length: count }, (_, index) => {
     const transcriptId = recordingId + ':segment:' + index;
     return {
@@ -38,6 +43,7 @@ async function seed(count: number) {
       id: transcriptId + ':r1',
       transcriptId,
       recordingSourceId: recordingId,
+      recordingDurationMs,
       provenance: { ...segment.provenance, sourceRecordIds: [recordingId] },
       segmentOrdinal: index,
       text: 'synthetic segment ' + index,
