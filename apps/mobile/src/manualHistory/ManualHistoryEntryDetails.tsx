@@ -192,7 +192,7 @@ export default function ManualHistoryEntryDetails({
                 busy={readingLayout && deleting}
                 onPress={() => {
                   // The screen owns progress until the deletion settles.
-                  void onDelete();
+                  onDelete();
                 }}
                 testID="manual-history-confirm-delete"
                 title={t('manualHistory.detail.confirmDeleteAction')}

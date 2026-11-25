@@ -38,6 +38,7 @@ it.each([false, true])(
       <HistoryMemoryDetail
         record={record}
         onChanged={jest.fn()}
+        onDeleted={jest.fn()}
         openRepository={async () => repository}
       />,
     );
