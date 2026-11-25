@@ -24,13 +24,15 @@ export async function setupConversationToolGuards(tx: SqlExecutor) {
   await tx.execute(
     'CREATE INDEX IF NOT EXISTS conversation_tool_dependency_source ON conversation_tool_dependencies (record_kind, record_id, session_id, run_id, call_id)',
   );
-  await tx.execute('DROP TRIGGER IF EXISTS tool_source_removed_manual_history');
-  await tx.execute(`CREATE TRIGGER tool_source_removed_manual_history AFTER DELETE ON manual_history_entries BEGIN
+  await replaceHealthPeriodTrigger(
+    tx,
+    `CREATE TRIGGER tool_source_removed_manual_history AFTER DELETE ON manual_history_entries BEGIN
     DELETE FROM conversation_tool_events
     WHERE (session_id, run_id, call_id) IN (
       SELECT session_id, run_id, call_id FROM conversation_tool_dependencies
       WHERE record_kind = 'manual_history' AND record_id = OLD.id
-    ); END`);
+    ); END`,
+  );
   const erase = (table: string, condition: string) =>
     `DELETE FROM conversation_tool_events WHERE EXISTS (SELECT 1 FROM ${table} p WHERE p.session_id = conversation_tool_events.session_id AND p.run_id = conversation_tool_events.run_id AND p.call_id = conversation_tool_events.call_id AND (${condition}));`;
   await tx.execute(

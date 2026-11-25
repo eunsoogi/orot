@@ -72,6 +72,11 @@ test('upgrades manual-history deletion to a typed covering lookup without weaken
         WHERE p.session_id=conversation_tool_events.session_id AND p.run_id=conversation_tool_events.run_id AND
         p.call_id=conversation_tool_events.call_id AND p.record_kind='manual_history' AND p.record_id=OLD.id); END`);
       await setupConversationToolGuards(tx);
+      const schemaVersion = async () =>
+        (await tx.execute('PRAGMA schema_version')).rows[0]?.schema_version;
+      const installedVersion = await schemaVersion();
+      await setupConversationToolGuards(tx);
+      expect(await schemaVersion()).toBe(installedVersion);
       for (const [session, run, call, kind] of [
         ['session', 'run', 'same-id', 'manual_history'],
         ['session', 'other-run', 'same-id', 'health_observation'],
