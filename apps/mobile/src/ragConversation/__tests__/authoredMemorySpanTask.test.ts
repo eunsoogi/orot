@@ -33,7 +33,7 @@ test('current model can select one authored routine; historic v25 schema remains
 test.each([
   {
     payload: { authoredMemorySpan: 'I practice the piano every Monday.' },
-    request,
+    request: candidateRequest,
   },
   {
     payload: { authoredMemorySpan: routine },
@@ -47,16 +47,16 @@ test.each([
   { payload: {}, request },
 ])(
   'unproven or omitted proposals cannot admit an automatic routine',
-  ({ payload, request }) => {
+  ({ payload, request: candidateRequest }) => {
     expect(
       ragConversationTask.validateResult(
         { ...answer, ...payload },
-        { ...input, request },
+        { ...input, request: candidateRequest },
       ),
     ).toMatchObject({ status: 'valid', value: answer });
     const result = ragConversationTask.validateResult(
       { ...answer, ...payload },
-      { ...input, request },
+      { ...input, request: candidateRequest },
     );
     if (result.status === 'valid')
       expect(result.value.authoredRoutineSpan).toBeUndefined();
