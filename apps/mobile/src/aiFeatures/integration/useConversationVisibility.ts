@@ -23,12 +23,12 @@ export function useConversationVisibility(
     requireForeground,
   };
   const current = useCallback(() => {
-    const current = visibility.current;
+    const live = visibility.current;
     return (
-      (!current.requireForeground || AppState.currentState === 'active') &&
-      (current.isEntryCurrent?.() ?? true) &&
-      !current.sourceDetailOpen &&
-      !current.providerSelectionOpen
+      (!live.requireForeground || AppState.currentState === 'active') &&
+      (live.isEntryCurrent?.() ?? true) &&
+      !live.sourceDetailOpen &&
+      !live.providerSelectionOpen
     );
   }, []);
   const route = bookmarkOwnership?.route;
