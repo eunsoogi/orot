@@ -1,6 +1,17 @@
 import { consent } from '../__fixtures__/sqliteReview';
 import { fixture, harness } from '../__fixtures__/longReviewHarness';
 
+jest.mock('../../storage/secureDatabase', () => ({
+  openLocalStorage: jest.fn(),
+  openLocalAgentMemoryDatabase: jest.fn(),
+}));
+jest.mock('../../aiFeatures/integration/provider', () => ({
+  resolveSelectedAiProvider: jest.fn(),
+}));
+jest.mock('../../ragConversation/conversationExecutionNative', () => ({
+  conversationExecutionNative: jest.fn(),
+}));
+
 test.each(['save', 'edit', 'lock', 'dispose'] as const)(
   'production long route reaches only a complete exact review and handles %s',
   async mode => {

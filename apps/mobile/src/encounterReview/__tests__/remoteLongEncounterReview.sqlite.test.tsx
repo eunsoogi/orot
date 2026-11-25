@@ -26,6 +26,17 @@ jest.mock('../../agent/execution/settingsConsentOwner', () => ({
   resolveSettingsConsentTarget: jest.fn(),
 }));
 
+jest.mock('../../storage/secureDatabase', () => ({
+  openLocalStorage: jest.fn(),
+  openLocalAgentMemoryDatabase: jest.fn(),
+}));
+jest.mock('../../aiFeatures/integration/provider', () => ({
+  resolveSelectedAiProvider: jest.fn(),
+}));
+jest.mock('../../ragConversation/conversationExecutionNative', () => ({
+  conversationExecutionNative: jest.fn(),
+}));
+
 test.each(['save', 'revoked', 'denied', 'late-owner'] as const)(
   'mounted long remote review preserves exact separate authorization and %s',
   async mode => {

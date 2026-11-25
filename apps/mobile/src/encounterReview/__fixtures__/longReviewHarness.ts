@@ -11,17 +11,6 @@ import { sourceId, sqliteReviewFixture } from './sqliteReview';
 import { EncounterReviewController } from '../controller';
 import { createEncounterReviewService } from '../service';
 
-jest.mock('../../storage/secureDatabase', () => ({
-  openLocalStorage: jest.fn(),
-  openLocalAgentMemoryDatabase: jest.fn(),
-}));
-jest.mock('../../aiFeatures/integration/provider', () => ({
-  resolveSelectedAiProvider: jest.fn(),
-}));
-jest.mock('../../ragConversation/conversationExecutionNative', () => ({
-  conversationExecutionNative: jest.fn(),
-}));
-
 export const fixture = sqliteReviewFixture();
 afterEach(() => jest.restoreAllMocks());
 export const recordingId = sourceId + ':long-route';
