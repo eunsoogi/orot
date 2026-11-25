@@ -111,3 +111,27 @@ test('a reviewed whitespace opening does not mark read, and a valid opening keep
   expect(f.session().pendingMessage?.initialResponse?.text).toBe(text);
   expect(f.session().messages[0].delivery?.readAt).toEqual(expect.any(String));
 });
+
+test.each(['stopped', 'replacement'])(
+  'reviewed layout does not publish to a %s opening owner',
+  async state => {
+    const f = setup();
+    const signal = new AbortController().signal;
+    if (state === 'stopped') f.stop();
+    else f.changePending({ id: 99 });
+    expect(
+      await f.activity.observer.onReviewedOpening(
+        {
+          callId: 'reviewed',
+          text: 'Synthetic routed opening',
+          presentation: 'card',
+        },
+        signal,
+      ),
+    ).toBe(false);
+    expect(
+      f.session().pendingMessage?.initialResponse?.presentation,
+    ).toBeUndefined();
+    expect(f.session().messages[0].delivery?.readAt).toBeUndefined();
+  },
+);

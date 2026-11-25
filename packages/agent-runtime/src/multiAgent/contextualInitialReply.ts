@@ -5,6 +5,7 @@ import {
   type InitialReplyStage,
 } from './initialReplyDiagnostics';
 import { createInitialReplyDeadline } from './initialReplyDeadline';
+import { readInitialReplyPresentation } from './initialReplyPresentation';
 import type { LanguageModelProvider, LanguageModelRequest } from '@orot/model-runtime';
 import type { ExecutionConsentPort, MultiAgentExecutionIdentity } from './contracts';
 import { callModel, observeUntilAbort } from './modelCall';
@@ -21,6 +22,7 @@ export async function generateContextualInitialReply(input: {
   isCurrent?: () => Promise<boolean>;
   validate: (text: string, request: string) => string | undefined;
   onObservation?: InitialReplyObserver;
+  onApprovedPresentation?: (layout: 'card') => void;
 }): Promise<string | undefined> {
   const controller = new AbortController();
   const abort = () => controller.abort();
@@ -134,7 +136,10 @@ export async function generateContextualInitialReply(input: {
       'Write one brief natural Korean opening reply to this particular user request, before any investigation. ' +
         'Use only non-factual conversational support or prospective intent to look into the request. ' +
         'Do not answer the question, quote private details, state health facts, provide advice or reassurance, ' +
-        'claim completed work, or promise a result. Do not copy a fixed receipt. Return only the opening sentence.',
+        'claim completed work, or promise a result. Do not copy a fixed receipt. ' +
+        (input.onApprovedPresentation
+          ? 'Return JSON with only text (the opening sentence) and layout (plain or card); choose card only when a distinct opening panel is useful.'
+          : 'Return only the opening sentence.'),
       input.request,
       128,
     );
@@ -142,7 +147,10 @@ export async function generateContextualInitialReply(input: {
     report('opening_generate', 'completed');
     activeStage = 'opening_validate';
     report(activeStage, 'started');
-    const candidate = input.validate(raw, input.request);
+    const proposed = input.onApprovedPresentation
+      ? readInitialReplyPresentation(raw)
+      : { text: raw, layout: undefined };
+    const candidate = proposed && input.validate(proposed.text, input.request);
     report(activeStage, candidate ? 'completed' : 'invalid_output');
     if (!candidate) return;
     const verdict = await invoke(
@@ -161,7 +169,9 @@ export async function generateContextualInitialReply(input: {
       'opening_review',
       controller.signal.aborted ? stopped() : allowed ? 'completed' : 'invalid_output',
     );
-    return allowed ? candidate : undefined;
+    if (!allowed) return undefined;
+    if (proposed?.layout === 'card') input.onApprovedPresentation?.('card');
+    return candidate;
   } catch {
     report(activeStage, controller.signal.aborted ? stopped() : 'failed');
     // Optional preview errors must never prevent the independently authorized final task.
