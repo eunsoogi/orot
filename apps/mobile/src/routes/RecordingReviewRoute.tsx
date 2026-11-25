@@ -16,6 +16,7 @@ import { useNavigationLeaveStateRegistration } from '../navigation';
 import { useRecordingSelection } from '../recording/RecordingSelectionContext';
 import RecordingPlaybackControls from '../recording/RecordingPlaybackControls';
 import RecordingExportPanel from '../recording/RecordingExportPanel';
+import { useRouteRecordingPlayback } from '../recording/useRouteRecordingPlayback';
 import { recordingService } from '../recording/recordingService';
 import TranscriptEvidencePanel from '../transcription/TranscriptEvidencePanel';
 import { transcriptEvidenceService } from '../transcription/transcriptEvidenceService';
@@ -75,6 +76,11 @@ export function RecordingReviewRoute({
     metadata?.status === 'missing' || metadata?.status === 'protected'
       ? undefined
       : selectedSource;
+  const playback = useRouteRecordingPlayback(
+    recordingService,
+    source?.id,
+    focused,
+  );
   return (
     <NavigationRouteScrollView pullToRefresh={recent}>
       {recent && selectedSource && routeOwner ? (
@@ -125,12 +131,19 @@ export function RecordingReviewRoute({
                       ? presentation.durationMs
                       : selection.summary.durationMs
                   }
-                  playbackService={recordingService}
+                  playbackService={playback}
                   autoPlay={selection.autoPlay && !autoPlayConsumed}
                   onAutoPlayConsumed={() => setAutoPlayConsumed(true)}
                 />
                 <TranscriptEvidencePanel
                   savedDetail
+                  playSegment={segment =>
+                    playback.playRange(
+                      segment.recordingSourceId,
+                      segment.audioRange.startMs,
+                      segment.audioRange.endMs,
+                    )
+                  }
                   recordingSourceId={source.id}
                   deletionBusy={exportBusy || review.busy}
                   onInteractionChange={setInteraction}
