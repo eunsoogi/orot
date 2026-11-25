@@ -1,7 +1,7 @@
-import { beginSourceOpenTiming } from '../../providers/sourceOpenDiagnostic';
 import { EvidenceRouteScrollView } from './EvidenceRouteScrollView';
 import { useNavigationRouteActions } from '../../navigation/useNavigationRouteActions';
-import { useEffect, useRef, useState } from 'react';
+import { useState } from 'react';
+import { useEvidenceSourceDetailRead } from './useEvidenceSourceDetailRead';
 import { StyleSheet, View } from 'react-native';
 import type { EvidenceReference } from '@orot/agent-runtime';
 import { t } from '../../i18n';
@@ -36,8 +36,6 @@ interface EvidenceSourceDetailScreenProps {
   ) => Promise<EvidenceSourceReadResult>;
 }
 
-type ScreenState = { readonly status: 'loading' } | EvidenceSourceReadResult;
-
 /** Re-reads a citation on entry and discards the result if the screen closes mid-request. */
 export function EvidenceSourceDetailScreen({
   navigationRouteKey,
@@ -48,13 +46,28 @@ export function EvidenceSourceDetailScreen({
   sourceOwner,
   readColdSource,
 }: EvidenceSourceDetailScreenProps) {
-  const timingRef = useRef<ReturnType<typeof beginSourceOpenTiming>>(undefined);
   const [attempt, setAttempt] = useState(0);
-  const [sourceStack, setSourceStack] = useState<readonly EvidenceReference[]>(
-    [],
-  );
-  const [state, setState] = useState<ScreenState>({ status: 'loading' });
+  const [selection, setSelection] = useState<{
+    root: EvidenceReference;
+    stack: readonly EvidenceReference[];
+  }>({ root: reference, stack: [] });
+  const sourceStack = selection.root === reference ? selection.stack : [];
+  const setSourceStack = (
+    next: (stack: readonly EvidenceReference[]) => readonly EvidenceReference[],
+  ) =>
+    setSelection(previous => ({
+      root: reference,
+      stack: next(previous.root === reference ? previous.stack : []),
+    }));
   const selectedReference = sourceStack.at(-1) ?? reference;
+  const { state, onHeaderLayout, onContentLayout } =
+    useEvidenceSourceDetailRead({
+      reference: selectedReference,
+      sourceOwner,
+      readSource,
+      readColdSource,
+      attempt,
+    });
   const quarantined =
     state.status === 'unavailable' &&
     state.reason === 'unverifiable_legacy_period';
@@ -90,37 +103,6 @@ export function EvidenceSourceDetailScreen({
     onNavigationStateChange,
   );
 
-  useEffect(() => {
-    const controller = new AbortController();
-    let mounted = true;
-    const timing = beginSourceOpenTiming(
-      controller.signal,
-      'source_open_detail_start',
-    );
-    timingRef.current = timing;
-    setState({ status: 'loading' });
-    const reading = sourceOwner
-      ? (readColdSource?.(sourceOwner, selectedReference, controller.signal) ??
-        Promise.resolve<EvidenceSourceReadResult>({ status: 'unavailable' }))
-      : readSource(selectedReference, controller.signal);
-    reading
-      .then(result => {
-        if (!mounted) return;
-        if (result.status === 'available')
-          timing?.mark('source_open_detail_proof');
-        setState(result);
-      })
-      .catch(() => {
-        if (mounted) setState({ status: 'unavailable' });
-      });
-    return () => {
-      mounted = false;
-      controller.abort();
-    };
-  }, [attempt, readSource, readColdSource, sourceOwner, selectedReference]);
-
-  useEffect(() => setSourceStack([]), [reference]);
-
   const presentation =
     state.status === 'available' ? presentEvidenceSource(state.document) : [];
   return (
@@ -149,9 +131,8 @@ export function EvidenceSourceDetailScreen({
           ) : null}
           <Text
             accessibilityRole="header"
-            onLayout={() =>
-              timingRef.current?.mark('source_open_detail_header')
-            }
+            onLayout={onHeaderLayout}
+            testID="ai-feature-source-heading"
             style={styles.heading}
           >
             {t('sourceDisplay.inspect')}
@@ -208,9 +189,7 @@ export function EvidenceSourceDetailScreen({
                 routeKey={navigationRouteKey}
                 edgeLane={lane}
                 sections={presentation}
-                onContentLayout={() =>
-                  timingRef.current?.mark('source_open_detail_ready')
-                }
+                onContentLayout={onContentLayout}
               />
               {state.document.sourceKind === 'generated_artifact' &&
               'analysis' in state.document ? (

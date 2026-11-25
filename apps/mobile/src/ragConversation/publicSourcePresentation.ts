@@ -1,7 +1,11 @@
+/** Public modals may use a longer animation than an already mounted detail header. */
 const presentationFallbackMs = 450;
 
 /** Prefer the native presentation receipt; an absent receipt cannot stall verification. */
-export function waitForPublicSourcePresentation(signal: AbortSignal) {
+export function waitForSourcePresentation(
+  signal: AbortSignal,
+  fallbackMs = presentationFallbackMs,
+) {
   let shown = () => {};
   const ready = new Promise<boolean>(resolve => {
     if (signal.aborted) {
@@ -17,9 +21,11 @@ export function waitForPublicSourcePresentation(signal: AbortSignal) {
       resolve(mayRead && !signal.aborted);
     };
     const abort = () => finish(false);
-    const fallback = setTimeout(() => finish(true), presentationFallbackMs);
+    const fallback = setTimeout(() => finish(true), fallbackMs);
     shown = () => finish(true);
     signal.addEventListener('abort', abort, { once: true });
   });
   return { ready, shown };
 }
+
+export const waitForPublicSourcePresentation = waitForSourcePresentation;
