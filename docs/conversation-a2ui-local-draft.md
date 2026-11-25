@@ -22,3 +22,17 @@ The copy menu, persistence and restored history receive only original
 prose and the existing arrangement skeleton. No field contents, action
 event or binding is logged, stored, put in conversation history or sent
 to any provider. Other templates and ordinary responses are unchanged.
+
+## Temporary acknowledgment
+
+From Conversation task v35, a coherent final ordinary surface can instead end
+in one Basic Catalog CheckBox. The model can request that control only through a
+final, exact `false` seed at `/local/checked` and a root Column update
+appending the single bound control. The app supplies the fixed visible label
+`이 화면에서만 확인 표시`. An unrelated binding, earlier field declaration,
+different seed or extra action metadata fails admission.
+
+The native switch writes only a Boolean to the existing ephemeral owner
+store. It has no registered action, cannot submit or save anything, and is
+retired on owner loss. A later reply and reopened history do not inherit the
+checked state or show the old control. Versions through v34 are unchanged.

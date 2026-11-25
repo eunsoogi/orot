@@ -1,3 +1,4 @@
+import { withFinalConversationCheckbox } from './conversationA2UICheckboxTask';
 import { withFinalConversationCardWeight } from './conversationA2UICardWeightTask';
 import { withFinalConversationCaption } from './conversationA2UICaptionTask';
 import { withConversationA2UIModal } from './conversationA2UIModalTask';
@@ -26,6 +27,8 @@ export function versionedConversationMemoryTasks(
   );
   const conversationTaskV32 = withConversationA2UIModal(conversationTaskV31);
   const conversationTaskV33 = withFinalConversationCaption(conversationTaskV32);
+  const conversationTaskV34 =
+    withFinalConversationCardWeight(conversationTaskV33);
   return {
     conversationTaskV25,
     conversationTaskV26,
@@ -43,7 +46,8 @@ export function versionedConversationMemoryTasks(
     conversationTaskSavedLayouts: {
       v32: conversationTaskV32,
       v33: conversationTaskV33,
+      v34: conversationTaskV34,
     },
-    ragConversationTask: withFinalConversationCardWeight(conversationTaskV33),
+    ragConversationTask: withFinalConversationCheckbox(conversationTaskV34),
   };
 }
