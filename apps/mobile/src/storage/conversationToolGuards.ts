@@ -12,6 +12,11 @@ import { periodRowReferences } from './conversationPeriodRemoval';
 
 /** Tool-only turns need the same source invalidation as retained conversation artifacts. */
 export async function setupConversationToolGuards(tx: SqlExecutor) {
+  // Artifact retirement can remove many messages from one large conversation.
+  // Match both exact ownership fields rather than scanning that session per message.
+  await tx.execute(
+    'CREATE INDEX IF NOT EXISTS conversation_tool_events_message ON conversation_tool_events (session_id, message_id)',
+  );
   await tx.execute(
     'CREATE TABLE IF NOT EXISTS conversation_tool_dependencies (artifact_id TEXT NOT NULL, session_id TEXT NOT NULL, run_id TEXT NOT NULL, call_id TEXT NOT NULL, record_kind TEXT NOT NULL, record_id TEXT NOT NULL, PRIMARY KEY (artifact_id, record_kind, record_id))',
   );
