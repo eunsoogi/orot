@@ -12,6 +12,7 @@ import {
   readRetainedRecordRows,
   retainedRecordKey,
 } from './retainedRecordRows';
+import { writeTypedFingerprint } from './writeTypedFingerprintScope';
 
 type RetainedRow = { readonly serialized: string; readonly stale: boolean };
 
@@ -32,10 +33,19 @@ export function assertRetainedRecordRevision(
   memory = false,
 ) {
   const parsed = JSON.parse(serialized);
-  if (
-    fingerprint(memory ? { text: parsed.text, meta: parsed.meta } : parsed) !==
-    revision
-  )
+  assertRetainedDigest(
+    fingerprint(memory ? { text: parsed.text, meta: parsed.meta } : parsed),
+    revision,
+    stale,
+  );
+}
+
+function assertRetainedDigest(
+  digest: string,
+  revision: string,
+  stale: boolean,
+) {
+  if (digest !== revision)
     throw new RetainedSourceInvalidError(
       'A cited source changed before saving.',
       'changed',
@@ -88,11 +98,14 @@ export async function assertRetainedRecordsCurrent(
       throw new RetainedSourceInvalidError(
         'The reviewed memory parent is unavailable.',
       );
-    assertRetainedRecordRevision(
-      serialized,
-      record.revision,
-      current!.stale,
-      memory,
-    );
+    const digest = writeTypedFingerprint(tx, record, serialized);
+    if (digest === undefined)
+      assertRetainedRecordRevision(
+        serialized,
+        record.revision,
+        current!.stale,
+        memory,
+      );
+    else assertRetainedDigest(digest, record.revision, current!.stale);
   }
 }
