@@ -14,6 +14,10 @@ import {
 import { EncounterReviewController } from '../controller';
 import { createEncounterReviewService } from '../service';
 
+jest.mock('../../storage/secureDatabase', () => ({
+  openLocalStorage: jest.fn(),
+  openLocalAgentMemoryDatabase: jest.fn(),
+}));
 jest.mock('../../aiFeatures/integration/provider', () => ({
   resolveSelectedAiProvider: jest.fn(),
 }));
