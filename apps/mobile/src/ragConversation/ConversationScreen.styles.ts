@@ -1,6 +1,12 @@
 import { StyleSheet } from 'react-native';
 import { appColors } from '../layout/appColors';
 
+const userMessagePosition = { alignSelf: 'flex-end', maxWidth: '85%' } as const;
+const userMessageSurface = {
+  backgroundColor: appColors.primaryAction,
+  borderRadius: 18,
+};
+
 /** Gives the history a flexible viewport above the fixed composer. */
 export const styles = StyleSheet.create({
   screen: { flex: 1, backgroundColor: appColors.background },
@@ -33,12 +39,9 @@ export const styles = StyleSheet.create({
     textAlign: 'center',
     marginTop: 28,
   },
-  userMessage: {
-    alignSelf: 'flex-end',
-    maxWidth: '85%',
-    backgroundColor: appColors.primaryAction,
-    borderRadius: 18,
-  },
+  userMessage: { ...userMessagePosition, ...userMessageSurface },
+  userMessagePosition,
+  userMessageSurface,
   // Fabric interop offsets a legacy host's content frame by its padding.
   // Keep the inset on this existing standard View instead.
   userMessageBody: { padding: 14 },

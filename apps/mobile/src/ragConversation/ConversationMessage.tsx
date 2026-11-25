@@ -94,6 +94,7 @@ export function ConversationMessage({
         entranceKey={conversationBubbleKey(message.role, message.id)}
         restored={message.restoredHistory || message.id <= 0}
         copyMenu={user ? copyMenus?.body : undefined}
+        isolateUserCopyPaint={user}
         testID={`conversation-${message.role}-message`}
         style={
           user
