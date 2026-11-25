@@ -25,9 +25,11 @@ import { conversationRequestHistory } from './conversationRequestHistory';
 import { possibilityPrompt } from './possibilityPrompt';
 import {
   conversationA2UIPresentationSchema,
+  allowsOrdinaryA2UI,
   admitConversationA2UIPresentation,
 } from './conversationA2UIPresentation';
 import type { ConversationA2UINode } from './conversationA2UI';
+import type { ConversationA2UILocalDraft } from './conversationA2UILocalDraft';
 import { withConversationA2UIFrameSequence } from './conversationA2UIFrameSequence';
 import { withProactiveMemory } from './proactiveConversationMemory';
 export interface RagConversationMessage {
@@ -38,6 +40,7 @@ export interface GroundedRagAnswer {
   readonly answer: string;
   readonly proactiveMemory?: true;
   readonly a2uiPresentation?: ConversationA2UINode;
+  readonly a2uiLocalDraft?: ConversationA2UILocalDraft;
   /** Omitted legacy values remain grounded; only explicit social/clarifying replies need no sources. */
   readonly answerKind?: 'grounded' | 'conversation' | 'prior_output';
   readonly literatureReferences?: readonly LiteratureIdentity[];
@@ -224,25 +227,20 @@ export const conversationTaskV20: TaskResponderContract<GroundedRagAnswer> = {
   },
 };
 
-function allowsOrdinaryA2UI({ context }: TaskResponderInput) {
-  if (Array.isArray(context)) return true;
-  return (
-    isObject(context) &&
-    !context.suppressA2UIPresentation &&
-    !context.photoAttachment &&
-    !context.targetEvidenceId &&
-    (!context.intent || context.intent === 'conversation')
-  );
-}
-
 export const conversationTaskV21 = withConversationA2UIFrameSequence(
   conversationTaskV20,
   allowsOrdinaryA2UI,
 );
 
 /** Replay of the previous version retains its original closed catalog. */
-export const ragConversationTask = withConversationA2UIFrameSequence(
+export const conversationTaskV22 = withConversationA2UIFrameSequence(
   conversationTaskV20,
   allowsOrdinaryA2UI,
   '22',
+);
+
+export const ragConversationTask = withConversationA2UIFrameSequence(
+  conversationTaskV20,
+  allowsOrdinaryA2UI,
+  '23',
 );

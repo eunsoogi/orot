@@ -13,6 +13,10 @@ import {
   draftA2UISurfaceId,
   matchesConversationA2UIProse,
 } from './conversationA2UIPresentation';
+import {
+  admitConversationA2UILocalDraftFrames,
+  conversationA2UILocalDraftFor,
+} from './conversationA2UILocalDraftFrames';
 import { isObject } from './taskHistory';
 import type { GroundedRagAnswer } from './task';
 
@@ -36,6 +40,17 @@ const staticCatalogFrameSchema = {
     'Use only Card, Column, Row, List and body Text.',
     'Use only Card, Column, Row, List, Divider, Icon (only info or calendarToday), Tabs and body Text. Each Tabs title and its panel text consume matching answer lines.',
   ),
+};
+
+const localDraftFrameSchema = {
+  ...staticCatalogFrameSchema,
+  description:
+    staticCatalogFrameSchema.description +
+    ' For a scratch area requested by the user only, a root Column can end in one local TextField and one reset Button. ' +
+    'Use these as the last two frames: updateDataModel with path "/local/draft" and value ""; then updateComponents with ' +
+    'the root Column, any ordinary definitions, then three nodes: TextField with label "이 화면에서만 쓰는 메모", variant "shortText", and value {"@path":"/local/draft"}; ' +
+    'Button with action {"event":{"name":"orot:reset-local-draft","context":{}}} and child set to the third node; Text with text "메모 지우기". ' +
+    'Append only the TextField and Button ids after the ordinary root children. No user information, initial values, or agent-bound actions.',
 };
 
 /** Reduce one completed provider reply in isolation. No provisional tree escapes. */
@@ -75,7 +90,7 @@ export function acceptConversationA2UIFrameSequence(
 export function withConversationA2UIFrameSequence(
   previous: TaskResponderContract<GroundedRagAnswer>,
   eligible: (input: TaskResponderInput) => boolean,
-  taskVersion: '21' | '22' = '21',
+  taskVersion: '21' | '22' | '23' = '21',
 ): TaskResponderContract<GroundedRagAnswer> {
   return {
     ...previous,
@@ -90,9 +105,11 @@ export function withConversationA2UIFrameSequence(
         properties: {
           ...properties,
           a2uiFrames:
-            taskVersion === '22'
-              ? staticCatalogFrameSchema
-              : frameSequenceSchema,
+            taskVersion === '23'
+              ? localDraftFrameSchema
+              : taskVersion === '22'
+                ? staticCatalogFrameSchema
+                : frameSequenceSchema,
         },
         required: [
           ...(Array.isArray(schema.required) ? schema.required : []),
@@ -114,17 +131,29 @@ export function withConversationA2UIFrameSequence(
         !eligible(input)
       )
         return validated;
-      const root = acceptConversationA2UIFrameSequence(
+      const answer = validated.value.answer;
+      let root = acceptConversationA2UIFrameSequence(
         a2uiFrames,
-        validated.value.answer,
-        taskVersion === '22',
+        answer,
+        taskVersion !== '21',
       );
-      return root
-        ? {
-            ...validated,
-            value: { ...validated.value, a2uiPresentation: root },
-          }
-        : validated;
+      if (!root && taskVersion === '23') {
+        const validateDraftBase = (frames: unknown, body: string) =>
+          acceptConversationA2UIFrameSequence(frames, body, true);
+        root = admitConversationA2UILocalDraftFrames(
+          a2uiFrames,
+          answer,
+          validateDraftBase,
+        );
+      }
+      if (!root) return validated;
+      const draft = conversationA2UILocalDraftFor(root);
+      const presented = {
+        ...validated.value,
+        a2uiPresentation: root,
+        ...(draft ? { a2uiLocalDraft: draft } : {}),
+      };
+      return { ...validated, value: presented };
     },
   };
 }
