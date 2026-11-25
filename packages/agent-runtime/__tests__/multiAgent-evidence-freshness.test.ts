@@ -6,6 +6,7 @@ import {
   type EvidenceReference,
   type MultiAgentWorkflowOptions,
 } from '../src';
+import { operationJournalFixture } from './workflow-operation-journal-fixture';
 
 const reference: EvidenceReference = {
   sourceKind: 'personal_record',
@@ -243,4 +244,31 @@ describe('multi-agent evidence freshness at model boundaries', () => {
     expect(revalidateEvidence).toHaveBeenCalledTimes(1);
     expect(generate).not.toHaveBeenCalled();
   });
+});
+
+test('preserves an unrelated journal completion refusal when evidence remains current', async () => {
+  const current = jest.fn(async () => true);
+  const { options, generate } = makeOptions(current, async () => 'authorized');
+  const { journal, records } = operationJournalFixture();
+  // Refuse persistence for an independent reason so stale evidence cannot mask it.
+  const complete = jest.fn(async () => false);
+  const acknowledge = jest.fn(async () => true);
+  const result = await runMultiAgentWorkflow({
+    ...options,
+    operationJournal: {
+      ...journal,
+      complete,
+      steering: {
+        enqueue: async () => true,
+        list: async () => [],
+        bind: async (_operation, request) => request,
+        acknowledge,
+      },
+    },
+  });
+  expect(result).toMatchObject({ status: 'unavailable', providerErrorCode: 'invalid_request' });
+  expect(generate).toHaveBeenCalledTimes(1);
+  expect(complete).toHaveBeenCalledTimes(1);
+  expect(acknowledge).not.toHaveBeenCalled();
+  expect([...records.values()].map(({ state }) => state.status)).toEqual(['pending']);
 });
