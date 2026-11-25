@@ -21,7 +21,8 @@ export const localA2UIDraftResetAction = 'orot:reset-local-draft';
  * become native behavior or leave this mounted draft. */
 export type ConversationA2UILocalDraft =
   | Readonly<{ fieldId: string; resetId: string; kind?: never }>
-  | Readonly<{ fieldId: string; kind: 'checkbox' | 'choice' }>;
+  | Readonly<{ fieldId: string; kind: 'checkbox' }>
+  | Readonly<{ fieldId: string; kind: 'choice' }>;
 
 export function mountConversationA2UILocalDraft(
   approved: ConversationA2UILocalDraft,
