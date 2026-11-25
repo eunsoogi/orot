@@ -51,7 +51,7 @@ function routeProps(
   };
 }
 
-test('retains loaded documents and their destination without a partial failure notice', async () => {
+test('keeps documents openable when recordings fail', async () => {
   const document = medicalDocument('document-ready-1');
   const service = documentImportService([document]);
   const retryRecordings = jest.fn();
