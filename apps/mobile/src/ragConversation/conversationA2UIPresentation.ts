@@ -1,3 +1,5 @@
+import type { TaskResponderInput } from '@orot/agent-runtime';
+import { isObject } from './taskHistory';
 import {
   applyConversationA2UIFrame,
   conversationA2UIFrameLimit,
@@ -82,4 +84,15 @@ export function conversationA2UIFrameProse(answer: string) {
   if (!answer || answer.length > 8_192) return undefined;
   const parts = answer.split(/\n\n?/u);
   return parts.every(part => conversationA2UIProse(part)) ? parts : undefined;
+}
+
+export function allowsOrdinaryA2UI({ context }: TaskResponderInput) {
+  if (Array.isArray(context)) return true;
+  return (
+    isObject(context) &&
+    !context.suppressA2UIPresentation &&
+    !context.photoAttachment &&
+    !context.targetEvidenceId &&
+    (!context.intent || context.intent === 'conversation')
+  );
 }

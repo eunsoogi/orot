@@ -1,6 +1,9 @@
 import { openSavedGeneratedReportReferences } from '../memory/openSavedGeneratedReportReferences';
 import { createContext, useContext, useEffect, useRef, useState } from 'react';
-import { AppState } from 'react-native';
+import {
+  captureReportBookmarkOwner,
+  type ReportBookmarkVisibility,
+} from './reportBookmarkOwnership';
 import { AppButton } from '../layout/AppButton';
 import { AppText } from '../layout/AppText';
 import { t } from '../i18n';
@@ -9,7 +12,7 @@ import type { DisplayMessage } from './conversationDisplayMessage';
 
 export const GeneratedReportBookmarkContext = createContext<{
   readonly sessionId: number;
-  readonly isCurrent?: () => boolean;
+  readonly isCurrent?: ReportBookmarkVisibility;
 } | null>(null);
 
 /** The button uses the visible report's own identity; no prompt or model can supply an ID. */
@@ -69,29 +72,19 @@ function BookmarkAction({
   const save = async () => {
     if (pressing.current) return;
     const lease = store.savedReportLease(owner.sessionId);
-    const current = () => {
-      const active = store.getSnapshot();
-      const session = active.sessions.find(item => item.id === active.activeId);
-      const now = store.savedReportLease(owner.sessionId);
-      return (
-        mounted.current &&
-        AppState.currentState === 'active' &&
-        latest.current.sessionId === owner.sessionId &&
-        (!latest.current.isCurrent || latest.current.isCurrent()) &&
-        active.activeId === owner.sessionId &&
-        Boolean(
-          session &&
-          !session.quarantined &&
-          !session.restoring &&
-          !session.modelSelectionPending &&
-          !session.modelSelectionFailed &&
-          !session.leaseRefreshRequired,
-        ) &&
-        now?.id === lease?.id &&
-        now?.version === lease?.version
-      );
-    };
-    if (!lease || !current()) return;
+    const lifetime = captureReportBookmarkOwner({
+      store,
+      sessionId: owner.sessionId,
+      current: owner.isCurrent,
+      mounted: () =>
+        mounted.current && latest.current.sessionId === owner.sessionId,
+      allowDraftChanges: true,
+    });
+    const current = lifetime.current;
+    if (!lease || !current()) {
+      lifetime.close();
+      return;
+    }
     pressing.current = true;
     setStatus('saving');
     try {
@@ -106,6 +99,7 @@ function BookmarkAction({
     } catch {
       if (mounted.current) setStatus(current() ? 'failed' : 'idle');
     } finally {
+      lifetime.close();
       pressing.current = false;
     }
   };

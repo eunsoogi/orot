@@ -139,10 +139,10 @@ func verifyWarmWindowBackAfterPortalResize(in window: UIWindow, controller: UIVi
     XCTAssertEqual(portal.bounds.height, 260, accuracy: 0.5)
     XCTAssertEqual(button.convert(button.bounds, to: window).minY, legacyTop, accuracy: 0.5)
 
-    // Only the native window grows: the bridge still advertises the same full height and safe top.
+    // The shared overlay revision is the only bridge update; action, full height and safe top stay fixed.
     window.frame = originalFrame
     controller.view.frame = window.bounds
-    surface.setNeedsLayout()
+    surface.geometryLayoutRevision = "[0,0,\(originalFrame.width),\(originalFrame.height)]"
     surface.layoutIfNeeded()
     portal.layoutIfNeeded()
     XCTAssertTrue(surface.innerActions.superview === portal)
@@ -155,6 +155,17 @@ func verifyWarmWindowBackAfterPortalResize(in window: UIWindow, controller: UIVi
     XCTAssertEqual(expanded.size.width, 48, accuracy: 0.5)
     XCTAssertEqual(expanded.size.height, 48, accuracy: 0.5)
     XCTAssertTrue(window.hitTest(CGPoint(x: expanded.midX, y: expanded.midY), with: nil) === button)
+
+    // Simulate a stale portal frame after a warm host update. Publishing that
+    // frame alone cannot repair it; the mounted owner must recompute admission.
+    portal.frame.size.height = 260
+    portal.layoutIfNeeded()
+    XCTAssertEqual(portal.bounds.height, 260, accuracy: 0.5)
+    surface.geometryLayoutRevision = "[0,1,\(originalFrame.width),\(originalFrame.height)]"
+    surface.layoutIfNeeded()
+    portal.layoutIfNeeded()
+    XCTAssertEqual(portal.bounds.height, originalFrame.height, accuracy: 0.5)
+    XCTAssertEqual(button.convert(button.bounds, to: window).minY, safeTop, accuracy: 0.5)
 }
 
 @MainActor

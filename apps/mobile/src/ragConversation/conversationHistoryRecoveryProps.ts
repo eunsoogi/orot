@@ -1,3 +1,4 @@
+import { readSelectedVoiceQuote } from './readSelectedVoiceQuote';
 import { visibleSavedHistoryDisplay } from './conversationSavedHistoryDisplay';
 import type {
   ConversationSession,
@@ -14,7 +15,10 @@ export function conversationHistoryRecoveryProps(
     Partial<
       Pick<
         ConversationSessions,
-        'toolSourceSessionId' | 'getSnapshot' | 'readExplicitPriorVoiceContext'
+        | 'toolSourceSessionId'
+        | 'getSnapshot'
+        | 'readExplicitPriorVoiceContext'
+        | 'subscribe'
       >
     >,
   active = true,
@@ -39,29 +43,11 @@ export function conversationHistoryRecoveryProps(
         return {
           ...card,
           observedQuote: (signal: AbortSignal) =>
-            store.readExplicitPriorVoiceContext!({
-              session: session.id,
+            readSelectedVoiceQuote(store, {
+              sessionId: session.id,
               marker: card.id,
+              revision: card.revision,
               signal,
-              isExplicitSelectionCurrent: () => {
-                const snapshot = store.getSnapshot?.();
-                const selected = snapshot?.sessions.find(
-                  item => item.id === snapshot.activeId,
-                );
-                return (
-                  selected?.id === session.id &&
-                  !selected.quarantined &&
-                  !selected.restoring &&
-                  Boolean(
-                    selected.taskCards?.some(
-                      item =>
-                        item.id === card.id &&
-                        item.revision === card.revision &&
-                        item.hasObservedVoiceCaptions,
-                    ),
-                  )
-                );
-              },
             }),
         };
       }),

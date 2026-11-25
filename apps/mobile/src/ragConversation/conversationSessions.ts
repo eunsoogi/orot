@@ -131,6 +131,15 @@ export function createConversationSessions(
     photoDrafts: photoSurface.photoDrafts,
     disposed: () => disposed,
   });
+  function disposeRequestOwnership() {
+    epoch.lifecycle++;
+    taskState.invalidate();
+    taskRefresh.invalidate();
+    dispatch.disposeBeforeSend();
+    requests.dispose();
+    restoration.dispose();
+    options.retention?.invalidate();
+  }
   const store = {
     ...conversationRecoveryActions({
       options,
@@ -148,6 +157,7 @@ export function createConversationSessions(
     loadOlderHistory: restoration.loadOlder,
     subscribe: listeners.subscribe,
     getSnapshot: () => snapshot,
+    ownsActiveSession: (id: number) => !disposed && snapshot.activeId === id,
     setDraft: (id: number, draft: string) =>
       update(id, conversationSessionErrorState.editDraft(find(id), draft)),
     setEntryPrompt: (id: number, entryPrompt?: string) =>
@@ -204,13 +214,7 @@ export function createConversationSessions(
       if (disposed) return;
       photoSurface.photoConsent.dispose();
       photoSurface.photoDrafts.clear().catch(() => {});
-      epoch.lifecycle++;
-      taskState.invalidate();
-      taskRefresh.invalidate();
-      dispatch.disposeBeforeSend();
-      requests.dispose();
-      restoration.dispose();
-      options.retention?.invalidate();
+      disposeRequestOwnership();
       removal.invalidate();
       apply(initialConversationSnapshot(empty()));
     },
@@ -219,13 +223,7 @@ export function createConversationSessions(
       photoSurface.photoDrafts.clear().catch(() => {});
       disposed = true;
       listeners.dispose();
-      epoch.lifecycle++;
-      taskState.invalidate();
-      taskRefresh.invalidate();
-      dispatch.disposeBeforeSend();
-      requests.dispose();
-      restoration.dispose();
-      options.retention?.invalidate();
+      disposeRequestOwnership();
       removal.invalidate();
       if (snapshot.deleted?.handle !== undefined)
         options.retention?.finalize(snapshot.deleted.handle).catch(() => {});
@@ -243,7 +241,7 @@ export function createConversationSessions(
     context: restoration.prepareContext,
     protectedPromptHistory: options.useProtectedPromptHistory,
     find,
-    current: id => !disposed && snapshot.activeId === id,
+    current: store.ownsActiveSession,
   });
   bindSender = policy.bindSender;
   return policy;

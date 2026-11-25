@@ -26,9 +26,9 @@ final class NavigationGlassSurfaceView: UIView {
         didSet { updatePresentation() }
     }
 
-    /// Overlay layout only invalidates measurement; the actual parent's callback still owns window conversion.
+    /// Overlay layout can change both portal admission and its published native frame.
     @objc var geometryLayoutRevision: String? {
-        didSet { (rootBar.isHidden ? innerActions as UIView : rootBar).superview?.setNeedsLayout() }
+        didSet { invalidateOverlayGeometry() }
     }
 
     @objc var layoutMode: String = "bottom" {

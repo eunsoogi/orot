@@ -1,5 +1,5 @@
 import { entryIntentSender } from './entryIntentSender';
-import { ConversationScreenHeader } from './ConversationScreenHeader';
+import { createConversationScreenHeader } from './ConversationScreenHeader';
 import { conversationHistoryRecoveryProps } from './conversationHistoryRecoveryProps';
 import { conversationComposerDisabled } from './conversationComposerDisabled';
 import { useConversationPresentationSnapshot } from './useConversationPresentationSnapshot';
@@ -9,6 +9,7 @@ import { useConversationSessions } from './ConversationSessionsContext';
 import { ConversationSteeringComposer } from './ConversationSteeringComposer';
 import { composerSendWithReportBookmark } from './explicitDailyReportBookmark';
 import { ConversationWorkspace } from './ConversationWorkspace';
+import { useConversationA2UILocalDraftOwner } from './conversationA2UILocalDraftOwner';
 import { styles } from './ConversationScreen.styles';
 import { KeyboardAvoidingView, Platform, View } from 'react-native';
 import { ConversationHistory } from './ConversationHistory';
@@ -22,7 +23,7 @@ import type { ConversationScreenProps } from './ConversationScreenProps';
 import { regenerateVisitQuestions } from './conversationVisitRegenerate';
 import { useConversationScreenControls } from './useConversationScreenControls';
 import { ConversationPhotoConsentSurface } from './ConversationPhotoConsentSurface';
-import { t } from '../i18n';
+import { createConversationScreenSources } from './conversationScreenSources';
 import { projectQuickChoice } from './conversationQuickChoicePreview';
 import { ConversationQuickChoices } from './ConversationQuickChoices';
 import * as ConversationTasks from './ConversationTaskPanels';
@@ -72,6 +73,11 @@ export function ConversationScreen({
     canPaint,
   );
   const { id, messages, pendingMessage, busy, error } = session;
+  const localDraftOwner = useConversationA2UILocalDraftOwner(
+    store,
+    id,
+    ownsConversationPresentation,
+  );
   const preflightError =
     session.errorSurface === 'composerPreflight' ? error : '';
   // Confirmed retries retain feature scope instead of becoming ordinary chat.
@@ -90,15 +96,12 @@ export function ConversationScreen({
     );
   const selectedReport =
     session.dailyReport ?? conversationEntryForSession(store, id)?.dailyReport;
-  const toolSourceSessionId = store.toolSourceSessionId(id);
-  const onLinkError = () =>
-    store.setError(id, t('ragConversation.conversation.sourceOpenFailed'));
-  const sourceActions = {
+  const sourceActions = createConversationScreenSources(
+    store,
+    id,
     onOpenSource,
-    onLinkError,
-    toolSourceSessionId,
     resolveToolSource,
-  };
+  );
   useAiFeatureScreenNavigationState(
     navigationRouteKey,
     {
@@ -108,14 +111,6 @@ export function ConversationScreen({
     },
     0,
     onNavigationStateChange,
-  );
-  const coldResumeBusy = busy || session.restoring || session.retryingSave;
-  const header = (
-    <ConversationScreenHeader
-      routeKey={navigationRouteKey}
-      onBack={onBack}
-      provider={providerSelection}
-    />
   );
   return (
     <KeyboardAvoidingView
@@ -132,6 +127,7 @@ export function ConversationScreen({
         onLayout={event => setContentHeight(event.nativeEvent.layout.height)}
       >
         <ConversationWorkspace
+          localDraftOwner={localDraftOwner}
           session={session}
           sourceActions={sourceActions}
           isEntryCurrent={isEntryCurrent}
@@ -163,7 +159,7 @@ export function ConversationScreen({
         >
           <ConversationHistory
             replyFocus={focus}
-            coldResumeBusy={coldResumeBusy}
+            coldResumeBusy={busy || session.restoring || session.retryingSave}
             onContinueCold={requestId =>
               store.resumeCold(id, requestId).catch(() => {})
             }
@@ -172,7 +168,11 @@ export function ConversationScreen({
             requestSessionId={id}
             requestActivity={session.requestActivity}
             compact={composerLayout.compact}
-            header={header}
+            header={createConversationScreenHeader(
+              navigationRouteKey,
+              onBack,
+              providerSelection,
+            )}
             steeringInstructions={session.steeringInstructions}
             messages={projectQuickChoice(session)}
             pendingMessage={pendingMessage}
@@ -202,7 +202,7 @@ export function ConversationScreen({
                 content="recaps"
                 store={store}
                 sessionId={id}
-                durableSessionId={toolSourceSessionId}
+                durableSessionId={sourceActions.toolSourceSessionId}
                 discover={discoverManualVisits}
                 messages={messages}
                 session={session}
@@ -238,7 +238,7 @@ export function ConversationScreen({
                 session={session}
                 onOpenSource={onOpenSource}
                 routeKey={navigationRouteKey}
-                durableSessionId={toolSourceSessionId}
+                durableSessionId={sourceActions.toolSourceSessionId}
                 renderStoredReportTask={renderStoredReportTask}
               />
             }

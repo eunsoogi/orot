@@ -9,6 +9,7 @@ import {
 } from './memoryContentChange';
 import { setupVisitQuestionGeneratedSourceGuards } from './visitQuestionGeneratedSources';
 import { generatedSummaryDescendants } from './generatedArtifactDescendants';
+import { setupStandaloneSummaryBodyReceipts } from './standaloneSummaryBodyReceipts';
 import { completeSummaryDeletion } from './summaryDeletionPolicy';
 
 // Outer UPSERT conflict handling overrides OR IGNORE inside triggers; filter duplicates explicitly.
@@ -24,6 +25,7 @@ export async function setupSummaryParentMutationGuards(tx: SqlExecutor) {
     'CREATE TABLE IF NOT EXISTS conversation_invalid_summaries (id TEXT PRIMARY KEY NOT NULL)',
   );
   await setupVisitQuestionGeneratedSourceGuards(tx);
+  await setupStandaloneSummaryBodyReceipts(tx);
   await tx.execute(`CREATE TRIGGER IF NOT EXISTS summary_parent_revision_changed AFTER UPDATE ON symptom_summary_runs
     WHEN OLD.id IS NOT NEW.id OR OLD.created_at IS NOT NEW.created_at OR OLD.model_name IS NOT NEW.model_name OR OLD.result_json IS NOT NEW.result_json BEGIN
     ${mark('SELECT OLD.id AS id')} END`);

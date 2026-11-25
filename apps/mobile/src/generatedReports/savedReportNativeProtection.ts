@@ -70,3 +70,22 @@ export function watchSavedReportNativeProtection(
     },
   };
 }
+
+/** Only the newly attested historical body requests a witness, but it stays
+ * subscribed for the whole selected view; an aborted owner is never revived. */
+export function savedHistoricalReadAdmission(
+  signal: AbortSignal,
+  onLost: () => void,
+) {
+  let watcher: ReturnType<typeof watchSavedReportNativeProtection>;
+  return {
+    async confirm() {
+      if (signal.aborted) return false;
+      watcher ??= watchSavedReportNativeProtection(signal, onLost);
+      return watcher ? watcher.confirm() : false;
+    },
+    dispose() {
+      watcher?.dispose();
+    },
+  };
+}

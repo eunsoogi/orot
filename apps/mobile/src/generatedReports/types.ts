@@ -55,5 +55,6 @@ export interface GeneratedReportReader {
   read(
     row: GeneratedReportRow,
     signal: AbortSignal,
+    onHistoricalProtectionLost?: () => void,
   ): Promise<GeneratedReportDetail | null>;
 }

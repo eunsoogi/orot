@@ -19,6 +19,7 @@ export async function readSavedHealthSummaryDetail(
   row: GeneratedReportRow,
   signal: AbortSignal,
   data: () => Promise<AiFeatureLocalData>,
+  confirmHistorical?: () => Promise<boolean>,
 ) {
   if (row.key !== `summary:${row.id}` || signal.aborted) return null;
   await createSymptomSummaryStorage(database).prepareRetentionGuards();
@@ -30,11 +31,12 @@ export async function readSavedHealthSummaryDetail(
   if (!original || signal.aborted) return null;
   let analysis;
   try {
-    analysis = await restoreSymptomSummary(
-      original.saved,
-      new LocalEvidenceReferenceRegistry(),
-      await data(),
-    );
+    if (!original.sourceRevision)
+      analysis = await restoreSymptomSummary(
+        original.saved,
+        new LocalEvidenceReferenceRegistry(),
+        await data(),
+      );
   } catch (error) {
     if (
       error instanceof RetainedSourceInvalidError &&
@@ -44,10 +46,23 @@ export async function readSavedHealthSummaryDetail(
     // An unavailable review read must not turn a committed report into a
     // diagnosis, resume anchor, source-action target, or new analysis attempt.
   }
+  if (original.sourceRevision && !(await confirmHistorical?.())) return null;
   const current = await readStandaloneSavedHealthSummary(database, row, signal);
   if (signal.aborted || !current || original.serialized !== current.serialized)
     return null;
+  if (current.sourceRevision) {
+    if (!(await confirmHistorical?.()) || signal.aborted) return null;
+    // Protection confirmation is async. Recheck exact body authority afterwards.
+    const latest = await readStandaloneSavedHealthSummary(
+      database,
+      row,
+      signal,
+    );
+    if (!latest?.sourceRevision || latest.serialized !== current.serialized)
+      return null;
+  }
   if (
+    !current.sourceRevision &&
     analysis &&
     analysis.savedSummary?.status === 'saved' &&
     !analysis.savedSummary.sourceChanged

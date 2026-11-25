@@ -58,7 +58,12 @@ export async function conversationWorkflowOutcome(
                 : {}),
               citations: [],
               ...(result.value.a2uiPresentation && !signal?.aborted
-                ? { a2uiPresentation: result.value.a2uiPresentation }
+                ? {
+                    a2uiPresentation: result.value.a2uiPresentation,
+                    ...(result.value.a2uiLocalDraft
+                      ? { a2uiLocalDraft: result.value.a2uiLocalDraft }
+                      : {}),
+                  }
                 : {}),
             },
       );

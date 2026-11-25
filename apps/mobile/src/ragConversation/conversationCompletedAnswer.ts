@@ -1,6 +1,7 @@
 import type { RagConversationOutcome } from './outcome';
 import type { ConversationSession } from './conversationSessionTypes';
 import type { createConversationTurnActivity } from './conversationTurnActivity';
+import { bindLiveConversationA2UILocalDraft } from './conversationA2UILocalDraftFrames';
 import { healthSummaryRetry } from './healthSummaryRetry';
 import { answerUsesDeletedHealthEvidence } from './conversationHealthDeletion';
 import { restoreFailedPrompt } from './conversationFailedPrompt';
@@ -155,7 +156,12 @@ export function conversationCompletedAnswer(input: {
               !session.pendingMessage?.withholdHealthBody &&
               session.pendingMessage?.id === messageId &&
               outcome.a2uiPresentation
-                ? { a2uiPresentation: outcome.a2uiPresentation }
+                ? {
+                    a2uiPresentation: bindLiveConversationA2UILocalDraft(
+                      outcome.a2uiPresentation,
+                      outcome.a2uiLocalDraft,
+                    ),
+                  }
                 : {}),
               ...(input.retainedTurnId &&
               outcome.committedRecordingCitations?.target.turnId ===
