@@ -37,6 +37,7 @@ export async function readSourceDeletionSnapshot(
   database: SqlDatabase,
   sourceId: string,
   observe?: SqlTimingObserver<OwnedSqlPhase>,
+  options?: { readonly useIndexedHealthCandidates: true },
 ) {
   let references: References = [];
   await timeOwnedSqlTransaction(
@@ -46,7 +47,7 @@ export async function readSourceDeletionSnapshot(
       references = await materializeTypedReferences(
         tx,
         id,
-        await readTrustedOrderedPeriodIndexes(tx),
+        options?.useIndexedHealthCandidates ? await readTrustedOrderedPeriodIndexes(tx) : undefined,
       );
     },
     observe,

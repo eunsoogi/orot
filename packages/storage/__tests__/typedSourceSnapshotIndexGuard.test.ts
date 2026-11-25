@@ -7,10 +7,18 @@ import {
 } from '../src/periodProvenanceIndexes';
 import {
   listTypedSourceDeletionReferences,
-  readSourceDeletionSnapshot,
+  readSourceDeletionSnapshot as readOwnedSnapshot,
 } from '../src/sourceDeletionReferences';
 import type { SqlDatabase } from '../src/sql';
 import { openSqliteTestDatabase } from './sqliteTestDatabase';
+
+function readSourceDeletionSnapshot(
+  database: SqlDatabase,
+  id: string,
+  observe?: Parameters<typeof readOwnedSnapshot>[2],
+) {
+  return readOwnedSnapshot(database, id, observe, { useIndexedHealthCandidates: true });
+}
 
 const root = 'root-recording';
 const from = '2026-11-15T00:00:00.000Z';
@@ -104,7 +112,12 @@ test('source snapshot retains exactly ordered identity and legacy shapes for all
 
     const stock = await listTypedSourceDeletionReferences(f.database, root);
     const calls: string[] = [];
+    const legacyCalls: string[] = [];
+    expect(await readOwnedSnapshot(f.observed(legacyCalls), root)).toEqual(stock);
+    expect(legacyCalls.some((sql) => sql.includes('sqlite_master'))).toBe(false);
+    expect(legacyCalls.some((sql) => sql.includes('INDEXED BY'))).toBe(false);
     const optimized = await readSourceDeletionSnapshot(f.observed(calls), root);
+    expect(calls.filter((sql) => sql.includes('sqlite_master'))).toHaveLength(1);
     expect(optimized).toEqual(stock);
     expect(optimized.slice(0, 5)).toEqual([
       { kind: 'source_record', id: root },

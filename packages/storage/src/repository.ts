@@ -222,7 +222,9 @@ export function createRecordRepository(database: SqlDatabase): RecordRepository 
       return [...new Set(references.map((reference) => reference.id))].sort();
     },
     async listTypedSourceDeletionReferences(sourceRecordId, observe) {
-      return readSourceDeletionSnapshot(database, sourceRecordId, observe);
+      return readSourceDeletionSnapshot(database, sourceRecordId, observe, {
+        useIndexedHealthCandidates: true,
+      });
     },
     async listDeletedSourceReferenceIds(referenceIds) {
       // Checkpoint resume must reject deleted identities without loading their former content.
@@ -246,3 +248,4 @@ export function createRecordRepository(database: SqlDatabase): RecordRepository 
     },
   };
 }
+
