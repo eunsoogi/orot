@@ -1,4 +1,7 @@
-import { semanticReportBookmarkSender } from './semanticReportBookmarkSender';
+import {
+  latestReportArtifact,
+  semanticReportBookmarkSender,
+} from './semanticReportBookmarkSender';
 import { openSavedGeneratedReportReferences } from '../memory/openSavedGeneratedReportReferences';
 import { dispatchConversationMessage } from './conversationVisitDispatch';
 import { Alert, AppState } from 'react-native';
@@ -15,7 +18,11 @@ type Owner = Readonly<{
   id: number;
   current?: ReportBookmarkVisibility;
 }>;
-type Target = Readonly<{ artifactId: string; runId: string; date: string }>;
+type DailyTarget = Readonly<{
+  artifactId: string;
+  runId: string;
+  date: string;
+}>;
 
 export function currentReportBookmarkOwner(owner: Owner) {
   const { sessions, activeId } = owner.store.getSnapshot();
@@ -35,7 +42,7 @@ export function currentReportBookmarkOwner(owner: Owner) {
 
 function candidates(owner: Owner) {
   const session = currentReportBookmarkOwner(owner);
-  const targets = new Map<string, Target>();
+  const targets = new Map<string, DailyTarget>();
   if (!session) return [];
   for (const { row } of visibleSavedHistoryDisplay(session) ?? []) {
     if (row.kind === 'answer' && !row.partial && row.dailyReport)
@@ -61,23 +68,33 @@ function candidates(owner: Owner) {
   return [...targets.values()];
 }
 
+function matchesAdjacentReport(
+  expected: { readonly artifactId: string; readonly kind?: 'daily-report' },
+  actual: ReturnType<typeof latestReportArtifact>,
+) {
+  return (
+    actual?.artifactId === expected.artifactId && actual?.kind === expected.kind
+  );
+}
+
 /** Only an explicit, whole-message, local command is handled; never ask a model to find a bookmark. */
 export function handleExplicitDailyReportBookmark(owner: Owner): boolean {
   const { store, id } = owner;
   const draftOwner = store.getSnapshot().sessions.find(row => row.id === id);
   if (!draftOwner) return false;
   const originalDraft = draftOwner.draft;
-  if (
-    !/^(?:(?:이|이 일일|지금 이)\s*보고서(?:를)?\s*(?:기억해(?:\s*줘)?|기억에\s*(?:저장|보관)해(?:\s*줘)?|저장해(?:\s*줘)?|보관해(?:\s*줘)?)|(?:please\s+)?(?:remember|save|bookmark)\s+this\s+(?:daily\s+)?report)[.!]?$/iu.test(
+  const command =
+    /^(?:(?:이( 일일)?|지금 이)\s*보고서(?:를)?\s*(?:기억해(?:\s*줘)?|기억에\s*(?:저장|보관)해(?:\s*줘)?|저장해(?:\s*줘)?|보관해(?:\s*줘)?)|(?:please\s+)?(?:remember|save|bookmark)\s+this\s+(?:(daily)\s+)?report)[.!]?$/iu.exec(
       originalDraft.trim(),
-    )
-  )
-    return false;
+    );
+  if (!command) return false;
+  const namedDaily = Boolean(command[1] || command[2]);
   if (store.photoDrafts.get(id).status !== 'empty') return false;
   const session = currentReportBookmarkOwner(owner);
   if (!session || session.busy || session.preparingSend) return true;
   const lease = store.savedReportLease(id);
-  const selected = candidates(owner);
+  const selected = namedDaily ? candidates(owner) : [];
+  const adjacent = namedDaily ? undefined : latestReportArtifact(store, id);
   const notice = (
     kind: 'generatedReportSaved' | 'generatedReportUnavailable',
   ) =>
@@ -93,7 +110,11 @@ export function handleExplicitDailyReportBookmark(owner: Owner): boolean {
     sessionId: id,
     current: owner.current,
   });
-  const save = async (target: Target) => {
+  const save = async (target: {
+    readonly artifactId: string;
+    readonly kind?: 'daily-report';
+    readonly runId?: string;
+  }) => {
     const current = () => {
       const active = currentReportBookmarkOwner(owner);
       const now = store.savedReportLease(id);
@@ -106,10 +127,13 @@ export function handleExplicitDailyReportBookmark(owner: Owner): boolean {
         !active.busy &&
         !active.preparingSend &&
         active.draft === originalDraft &&
-        candidates(owner).some(
-          row =>
-            row.runId === target.runId && row.artifactId === target.artifactId,
-        ),
+        (target.runId
+          ? candidates(owner).some(
+              row =>
+                row.runId === target.runId &&
+                row.artifactId === target.artifactId,
+            )
+          : matchesAdjacentReport(target, latestReportArtifact(store, id))),
       );
     };
     if (!lease || !current()) {
@@ -118,11 +142,11 @@ export function handleExplicitDailyReportBookmark(owner: Owner): boolean {
     }
     try {
       const bookmarks = await openSavedGeneratedReportReferences();
-      const saved = await bookmarks.bookmarkDailyReport({
-        artifactId: target.artifactId,
-        lease,
-        current,
-      });
+      const parameters = { artifactId: target.artifactId, lease, current };
+      const saved =
+        target.kind === 'daily-report'
+          ? await bookmarks.bookmarkDailyReport(parameters)
+          : await bookmarks.bookmarkHealthSummary(parameters);
       if (!current()) return;
       if (saved) store.setDraft(id, '');
       notice(saved ? 'generatedReportSaved' : 'generatedReportUnavailable');
@@ -132,7 +156,10 @@ export function handleExplicitDailyReportBookmark(owner: Owner): boolean {
       capture.close();
     }
   };
-  if (selected.length === 1 && selected[0]) save(selected[0]);
+  const saveDaily = (target: DailyTarget) =>
+    save({ ...target, kind: 'daily-report' });
+  if (adjacent) save(adjacent);
+  else if (selected.length === 1 && selected[0]) saveDaily(selected[0]);
   else if (selected.length > 1 && selected.length <= 4)
     Alert.alert(
       t('savedMemory.generatedReportDaily'),
@@ -141,7 +168,7 @@ export function handleExplicitDailyReportBookmark(owner: Owner): boolean {
         ...selected.map(target => ({
           text: target.date,
           onPress: () => {
-            save(target);
+            saveDaily(target);
           },
         })),
         {

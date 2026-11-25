@@ -17,7 +17,10 @@ export interface BoundReportBookmark {
   readonly current: () => boolean;
 }
 
-function latestReportArtifact(store: ConversationSessions, sessionId: number) {
+export function latestReportArtifact(
+  store: ConversationSessions,
+  sessionId: number,
+) {
   const session = store
     .getSnapshot()
     .sessions.find(row => row.id === sessionId);
