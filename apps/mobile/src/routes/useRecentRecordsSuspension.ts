@@ -19,7 +19,7 @@ export function useRecentRecordsSuspension(
   ownership?: NavigationRouteOwnership,
   tab?: RecordsTabAuthority,
 ) {
-  const [phase, setPhase] = useState<AppStateStatus | null>(
+  const [phase, setPhase] = useState<string | null | undefined>(
     AppState.currentState,
   );
   const position = useNavigationRouteScrollPosition();
