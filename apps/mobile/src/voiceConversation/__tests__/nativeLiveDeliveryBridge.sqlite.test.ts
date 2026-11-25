@@ -65,3 +65,47 @@ test('native bridge claim is exact and protected mutations retire it before sour
     Platform.OS = os;
   }
 });
+
+test('cancellation during native claim retires it before any result handoff', () => {
+  const original = NativeModules.VoiceRealtimeModule;
+  const os = Platform.OS;
+  const controller = new AbortController();
+  const unregister = jest.fn();
+  const retire = jest.fn(() => {
+    expect(unregister).not.toHaveBeenCalled();
+    return true;
+  });
+  const native = {
+    addListener: jest.fn(),
+    removeListeners: jest.fn(),
+    settleLiveResponsesToolCall: jest.fn(),
+    revokeLiveResponsesGrant: jest.fn(),
+    claimLiveResponsesResult: jest.fn(() => {
+      controller.abort();
+      return true;
+    }),
+    retireLiveResponsesResult: retire,
+  };
+  try {
+    Platform.OS = 'ios';
+    NativeModules.VoiceRealtimeModule = native;
+    const release = nativeLiveManagedTools()!.holdDelivery(
+      call,
+      () => unregister,
+      controller.signal,
+    );
+
+    expect(release).toBeUndefined();
+    expect(native.claimLiveResponsesResult).toHaveBeenCalledWith(
+      'call',
+      'challenge',
+    );
+    expect(retire).toHaveBeenCalledTimes(1);
+    expect(retire).toHaveBeenCalledWith('call', 'challenge');
+    expect(unregister).toHaveBeenCalledTimes(1);
+    expect(native.settleLiveResponsesToolCall).not.toHaveBeenCalled();
+  } finally {
+    NativeModules.VoiceRealtimeModule = original;
+    Platform.OS = os;
+  }
+});
