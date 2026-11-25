@@ -52,6 +52,17 @@ final class ProcessDiagnosticWitnessTests: XCTestCase {
             ProcessDiagnosticWitness.recordingDeletionLine(stage: "audio_cleanup", outcome: "started"),
             "OROT_PROVIDER_DIAGNOSTIC layer=app feature=recording_delete stage=audio_cleanup outcome=started",
         )
+        let detailedStages = [
+            "protected_database_open", "deletion_rag_prepare", "source_reference_snapshot",
+            "memory_engine_acquire", "memory_forget", "memory_deletion_fences", "memory_batch_commit",
+        ]
+        for stage in detailedStages {
+            XCTAssertEqual(
+                ProcessDiagnosticWitness.recordingDeletionLine(stage: stage, outcome: "started"),
+                "OROT_PROVIDER_DIAGNOSTIC layer=app feature=recording_delete stage=\(stage) outcome=started",
+            )
+            XCTAssertFalse(witness.acceptAndContinueJS(feature: "recording_delete", stage: stage, outcome: "started"))
+        }
         XCTAssertNil(ProcessDiagnosticWitness.recordingDeletionLine(stage: "audio_cleanup", outcome: "source-id"))
         XCTAssertNil(ProcessDiagnosticWitness.recordingDeletionLine(stage: "private-path", outcome: "completed"))
         XCTAssertFalse(witness.acceptAndContinueJS(feature: "recording_delete", stage: "audio_cleanup", outcome: "started"))
@@ -59,3 +70,4 @@ final class ProcessDiagnosticWitnessTests: XCTestCase {
         XCTAssertEqual(witness.snapshot()["receipts"] as? [String], [])
     }
 }
+

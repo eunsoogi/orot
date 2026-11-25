@@ -67,7 +67,9 @@ final class ProcessDiagnosticWitness: @unchecked Sendable {
         let stages = Set([
             "confirmation_tap", "progress_presented", "busy_committed", "busy_settled", "operation",
             "library_queue_wait", "source_read", "stop_check", "audio_staging", "memory_open",
-            "memory_queue_wait", "memory_provenance_scan", "derived_data_cleanup", "database_delete_commit",
+            "protected_database_open", "deletion_rag_prepare", "source_reference_snapshot",
+            "memory_queue_wait", "memory_provenance_scan", "memory_engine_acquire", "memory_forget",
+            "memory_deletion_fences", "memory_batch_commit", "derived_data_cleanup", "database_delete_commit",
             "audio_cleanup", "list_refresh", "list_summary_refresh", "list_summary_read",
         ])
         guard stages.contains(stage), ["started", "completed", "failed"].contains(outcome) else { return nil }
@@ -124,3 +126,4 @@ final class ProcessDiagnosticWitness: @unchecked Sendable {
         return ["launch": launch, "bridge": bridge, "receipts": receipts]
     }
 }
+

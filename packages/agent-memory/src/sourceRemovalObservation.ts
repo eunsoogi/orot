@@ -1,7 +1,7 @@
 import type { AgentMemoryStorageAdapter } from './types';
 import { provenanceFrom } from './validation';
 
-type Stage = 'queue' | 'provenance';
+type Stage = 'queue' | 'provenance' | 'engine' | 'forget' | 'fences' | 'commit';
 type Event = 'begin' | 'success' | 'failure';
 
 /** Optional observation emits stage and outcome only, never source or Memory data. */
@@ -16,6 +16,29 @@ export function observeRemoval(
     observer?.(stage, event);
   } catch {
     // Observation cannot interfere with a privacy-sensitive deletion.
+  }
+}
+
+/** Measure a fixed, whole phase without forwarding inputs, counts, or errors. */
+export function timeRemoval<T>(
+  observer: RemovalObserver | undefined,
+  stage: Stage,
+  operation: () => Promise<T>,
+): Promise<T> {
+  if (!observer) return operation();
+  observeRemoval(observer, stage, 'begin');
+  const reject = (error: unknown): never => {
+    observeRemoval(observer, stage, 'failure');
+    throw error;
+  };
+  try {
+    return operation().then((value) => {
+      observeRemoval(observer, stage, 'success');
+      return value;
+    }, reject);
+  } catch (error) {
+    observeRemoval(observer, stage, 'failure');
+    return Promise.reject(error);
   }
 }
 
