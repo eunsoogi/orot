@@ -26,7 +26,7 @@ export function SavedGeneratedReportDetail({
   const [result, setResult] = useState<
     | string
     | {
-        readonly visitQuestions: readonly {
+        readonly bookmarkedVisitQuestions: readonly {
           id: string;
           questionText: string;
           rationale: string;
@@ -69,7 +69,7 @@ export function SavedGeneratedReportDetail({
           isCurrent() &&
           (await admission.confirm()) &&
           isCurrent()
-          ? { visitQuestions: questions }
+          ? { bookmarkedVisitQuestions: questions }
           : null;
       }
       if (reportKind === 'health_summary') {
@@ -128,8 +128,8 @@ export function SavedGeneratedReportDetail({
         </AppText>
       ) : typeof result === 'string' ? (
         <AppText selectable>{result}</AppText>
-      ) : 'visitQuestions' in result ? (
-        result.visitQuestions.map(question => (
+      ) : 'bookmarkedVisitQuestions' in result ? (
+        result.bookmarkedVisitQuestions.map(question => (
           <View key={question.id}>
             <AppText selectable>{question.questionText}</AppText>
             {question.rationale ? (
