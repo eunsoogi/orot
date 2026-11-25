@@ -1,0 +1,133 @@
+import { TranscriptEvidenceSegmentSchema } from '@orot/domain';
+import { requireLiveCheckpointSource } from '@orot/storage';
+import type { SqlDatabase } from '@orot/storage';
+import { acquireIndependentReadEpoch } from '../storage/protectedReadEpoch';
+import { watchEncounterNativeAdmission } from './nativeAdmission';
+
+const PAGE_SIZE = 16;
+type NativeProtection = Parameters<typeof watchEncounterNativeAdmission>[0];
+
+const ordinal = "json_extract(candidate.payload_json, '$.segmentOrdinal')";
+const pageSql = `SELECT candidate.payload_json FROM transcript_segments AS candidate
+  WHERE json_extract(candidate.payload_json, '$.recordingSourceId') = ?
+    AND (${ordinal}, candidate.id) > (?, ?)
+    AND NOT EXISTS (
+      SELECT 1 FROM transcript_segments AS newer
+      WHERE json_extract(newer.payload_json, '$.transcriptId') =
+        json_extract(candidate.payload_json, '$.transcriptId')
+        AND json_extract(newer.payload_json, '$.revision') >
+          json_extract(candidate.payload_json, '$.revision')
+    )
+  ORDER BY ${ordinal}, candidate.id LIMIT ?`;
+
+function unavailable(): never {
+  throw new Error('The selected recording is no longer admissible.');
+}
+
+/**
+ * Private read-only substrate, not an enabled generation or checkpoint route.
+ * A caller must collect a complete review under this same live operation and
+ * reprove admission at dispatch and immediately before any result publication.
+ */
+export async function openLocalTranscriptPages(input: {
+  database: SqlDatabase;
+  sourceId: string;
+  signal: AbortSignal;
+  native: NativeProtection;
+  ownerCurrent: () => boolean;
+}) {
+  const { database, sourceId } = input;
+  const epoch = acquireIndependentReadEpoch(database);
+  if (!epoch) unavailable();
+  const lease = watchEncounterNativeAdmission(
+    input.native,
+    input.signal,
+    () => epoch.current() && input.ownerCurrent(),
+  );
+  if (!lease) {
+    epoch.dispose();
+    unavailable();
+  }
+
+  const dispose = () => {
+    lease.signal.removeEventListener('abort', dispose);
+    lease.dispose();
+    epoch.dispose();
+  };
+  lease.signal.addEventListener('abort', dispose, { once: true });
+  const dataVersion = async () =>
+    (await database.execute('PRAGMA data_version')).rows[0]?.data_version;
+  let initialVersion: number;
+  try {
+    if (!(await lease.confirm())) unavailable();
+    const version = await dataVersion();
+    if (typeof version !== 'number' || !(await lease.confirm())) unavailable();
+    initialVersion = version;
+  } catch (error) {
+    dispose();
+    throw error;
+  }
+  const confirm = async () => {
+    try {
+      if (
+        (await lease.confirm()) &&
+        (await dataVersion()) === initialVersion &&
+        (await lease.confirm())
+      )
+        return true;
+    } catch {
+      // A failed SQLite witness cannot make a page current.
+    }
+    dispose();
+    return false;
+  };
+  let afterOrdinal = -1;
+  let afterId = '';
+  let done = false;
+  let reading = false;
+  return {
+    signal: lease.signal,
+    confirm,
+    dispose,
+    async next() {
+      if (reading) throw new Error('A transcript page is already being read.');
+      reading = true;
+      try {
+        if (!(await confirm())) unavailable();
+        if (done) return null;
+        await requireLiveCheckpointSource(database, sourceId);
+        const source = await database.execute(
+          "SELECT 1 FROM source_records WHERE id = ? AND json_extract(payload_json, '$.sourceKind') = 'audio_recording'",
+          [sourceId],
+        );
+        if (!source.rows.length || !(await confirm())) unavailable();
+        const result = await database.execute(pageSql, [
+          sourceId,
+          afterOrdinal,
+          afterId,
+          PAGE_SIZE + 1,
+        ]);
+        const segments = result.rows.slice(0, PAGE_SIZE).map(row => {
+          const segment = TranscriptEvidenceSegmentSchema.parse(
+            JSON.parse(String(row.payload_json)),
+          );
+          if (segment.recordingSourceId !== sourceId) unavailable();
+          return segment;
+        });
+        if (!(await confirm())) unavailable();
+        const last = segments.at(-1);
+        if (last) {
+          afterOrdinal = last.segmentOrdinal;
+          afterId = last.id;
+        }
+        done = result.rows.length <= PAGE_SIZE;
+        return segments.length ? { segments, done } : null;
+      } catch (error) {
+        dispose();
+        throw error;
+      } finally {
+        reading = false;
+      }
+    },
+  };
+}
