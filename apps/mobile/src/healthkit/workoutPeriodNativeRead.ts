@@ -1,3 +1,4 @@
+import { workoutReadDiagnostics } from './workoutReadDiagnostics';
 import { NativeModules, Platform } from 'react-native';
 import type { PeriodWorkout, WorkoutPeriod } from './workoutPeriodCohort';
 import {
@@ -23,6 +24,7 @@ export type WorkoutPeriodResult =
 
 let nextCall = 0;
 const unavailable = { status: 'unavailable' } as const;
+const trace = workoutReadDiagnostics('shared');
 
 /** One local period read; native must support actual cancellation. No permissions are requested. */
 export async function readWorkoutPeriodHeartRate(
@@ -31,7 +33,10 @@ export async function readWorkoutPeriodHeartRate(
   signal: AbortSignal,
   recordsMonthChart?: { readonly timeZone: string },
 ): Promise<WorkoutPeriodResult> {
-  if (signal.aborted || Platform.OS !== 'ios') return unavailable;
+  if (signal.aborted || Platform.OS !== 'ios') {
+    trace.report('bridge', signal.aborted ? 'cancelled' : 'skipped');
+    return unavailable;
+  }
   const api = NativeModules.HealthKitModule as
     | {
         queryWorkoutPeriodHeartRate?(
@@ -44,18 +49,22 @@ export async function readWorkoutPeriodHeartRate(
         cancelWorkoutPeriodHeartRate?(callId: string): void;
       }
     | undefined;
-  if (!api?.queryWorkoutPeriodHeartRate || !api.cancelWorkoutPeriodHeartRate)
+  if (!api?.queryWorkoutPeriodHeartRate || !api.cancelWorkoutPeriodHeartRate) {
+    trace.report('bridge', 'missing');
     return unavailable;
+  }
   const callId = 'workout-period-' + String(++nextCall);
   const cancel = () => api.cancelWorkoutPeriodHeartRate!(callId);
   signal.addEventListener('abort', cancel, { once: true });
   try {
+    trace.report('bridge', 'started');
     const result = await api.queryWorkoutPeriodHeartRate({
       ...period,
       callId,
       ...(recordsMonthChart ? { recordsMonthChart } : {}),
       workouts: cohort,
     });
+    trace.report('bridge', signal.aborted ? 'cancelled' : 'completed');
     if (signal.aborted || !result || typeof result !== 'object')
       return unavailable;
     const value = result as Partial<
@@ -117,6 +126,7 @@ export async function readWorkoutPeriodHeartRate(
       membershipRevision,
     };
   } catch {
+    trace.report('bridge', signal.aborted ? 'cancelled' : 'failed');
     return unavailable;
   } finally {
     signal.removeEventListener('abort', cancel);

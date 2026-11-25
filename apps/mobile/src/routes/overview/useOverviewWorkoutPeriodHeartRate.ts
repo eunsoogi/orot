@@ -2,6 +2,8 @@ import { useLayoutEffect, useState } from 'react';
 import { createRecordRepository } from '@orot/storage';
 import { conversationExecutionNative } from '../../ragConversation/conversationExecutionNative';
 import { subscribeWorkoutImportCommitted } from '../../healthkit/workoutImportEvents';
+import { workoutReadDiagnostics } from '../../healthkit/workoutReadDiagnostics';
+import { confirmOverviewWorkoutProtection } from './overviewWorkoutProtection';
 import { readOwnedWorkoutPeriod } from '../../healthkit/ownedWorkoutPeriodRead';
 import type { WorkoutPeriodResult } from '../../healthkit/workoutPeriodNativeRead';
 import {
@@ -24,6 +26,7 @@ const unavailable = { status: 'unavailable' } as const;
 const loading = { status: 'loading' } as const;
 const startupWriterBudgetMs = 2_500;
 const briefInactiveMs = 5_000;
+const trace = workoutReadDiagnostics('overview');
 type Epoch = ReturnType<typeof acquireIndependentReadEpoch>;
 type ReadOwner = {
   abort: AbortController;
@@ -48,8 +51,10 @@ declare const require: (
 export function useOverviewWorkoutPeriodHeartRate(active: boolean): State {
   const [state, setState] = useState<State>(unavailable);
   useLayoutEffect(() => {
+    trace.report('route', active ? 'started' : 'skipped');
     const native = active ? conversationExecutionNative() : null;
     if (!native?.bridgeAvailable) {
+      if (active) trace.report('protection', 'missing');
       setState(unavailable);
       return;
     }
@@ -74,28 +79,15 @@ export function useOverviewWorkoutPeriodHeartRate(active: boolean): State {
     }
     const current = (target: ReadOwner) =>
       mounted && task === target && !target.abort.signal.aborted;
-    const waitForForeground = (target: ReadOwner) => {
-      if (!current(target)) return Promise.resolve(false);
-      if (phase() === 'active') return Promise.resolve(true);
-      if (phase() !== 'inactive') return Promise.resolve(false);
-      return new Promise<boolean>(resolve => {
-        target.foreground = resolve;
-      });
-    };
-    async function confirm(target: ReadOwner) {
-      while (await waitForForeground(target)) {
-        if (!current(target)) return false;
-        const available = await protection.protectedDataAvailable();
-        if (!current(target) || available !== true) return false;
-        if (phase() === 'active') return true;
-      }
-      return false;
-    }
+    const confirm = confirmOverviewWorkoutProtection(current, phase, () =>
+      protection.protectedDataAvailable(),
+    );
     async function start(
       canRecover = true,
       previous?: OverviewWorkoutRecovery,
     ) {
       if (!mounted || task || phase() !== 'active') return;
+      trace.report('route', 'completed');
       const window = overviewWorkoutReadWindow(previous?.period);
       const { period, currentWindow } = window;
       const cohortFence = overviewWorkoutCohortFence(previous?.cohort);
@@ -108,9 +100,12 @@ export function useOverviewWorkoutPeriodHeartRate(active: boolean): State {
       }, window.delay);
       setState(loading);
       try {
-        if (!(await confirm(target))) return;
+        if (!(await trace.observe('protection', () => confirm(target)))) return;
         const storage = require('../../storage/secureDatabase');
-        const database = await storage.openLocalAgentMemoryDatabase();
+        const database = await trace.observe(
+          'database',
+          storage.openLocalAgentMemoryDatabase,
+        );
         if (!current(target) || (previous && database !== previous.database))
           return;
         target.epoch = acquireIndependentReadEpoch(database);
@@ -123,12 +118,13 @@ export function useOverviewWorkoutPeriodHeartRate(active: boolean): State {
         // A known writer is not evidence of no associated heart rate. Wait once,
         // then acquire a fresh snapshot of the same still-authoritative owner.
         if (!target.epoch) {
+          trace.report('epoch', 'started');
           if (
             !(await awaitWriter()) ||
             !(await confirm(target)) ||
             !storage.isCurrentLocalAgentMemoryDatabase(database)
           )
-            return;
+            return trace.report('epoch', 'failed');
           target.epoch = acquireIndependentReadEpoch(database);
         }
         const scopeCurrent = () =>
@@ -138,7 +134,7 @@ export function useOverviewWorkoutPeriodHeartRate(active: boolean): State {
         const admitted = () =>
           scopeCurrent() && target.epoch?.current() === true;
         target.usable = admitted;
-        if (!admitted()) return;
+        if (!admitted()) return trace.report('epoch', 'cancelled');
         const { result } = await readOwnedWorkoutPeriod(period, {
           repository: createRecordRepository(database),
           signal: target.abort.signal,

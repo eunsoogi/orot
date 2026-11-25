@@ -9,6 +9,7 @@ public extension HealthKitModule {
         resolver resolve: @escaping RCTPromiseResolveBlock,
         rejecter _: @escaping RCTPromiseRejectBlock,
     ) {
+        WorkoutPeriodDiagnostics.report(.bridgeReceived)
         #if DEBUG && targetEnvironment(simulator)
             if hasSyntheticFixture {
                 resolve(["status": "unavailable"])
@@ -170,5 +171,35 @@ private enum WorkoutPeriodBridgeOperations {
         retired.expiry.cancel()
         retired.work.cancel()
         retired.call.resolve(["status": "unavailable"])
+    }
+}
+
+/// The opt-in trace accepts only fixed code-owned marks and a monotonic duration.
+enum WorkoutPeriodDiagnostics {
+    enum Mark: String {
+        case bridgeReceived, requestRejected, bridgeBusy, started, unavailable, empty, available, cancelled, timeout
+        case nativeGateRejected, workoutObjectsRead, associatedParentsRead, quantitiesRead
+    }
+
+    private static let enabled = ProcessInfo.processInfo.arguments.contains("-OROT_PROVIDER_DIAGNOSTICS")
+
+    static func report(_ mark: Mark, since start: DispatchTime? = nil) {
+        guard enabled else { return }
+        let elapsed = start.map { (DispatchTime.now().uptimeNanoseconds - $0.uptimeNanoseconds) / 1_000_000 } ?? 0
+        NSLog("OROT_PROVIDER_DIAGNOSTIC layer=app feature=workout_period stage=%@ elapsed_ms=%ld",
+              mark.rawValue, Int(min(elapsed, 300_000)))
+    }
+
+    /// Route and stage are fixed separately, never arbitrary Console strings.
+    static func handleJS(_ feature: String, stage: String, outcome: String) -> Bool {
+        guard feature == "workout_period" else { return false }
+        let parts = stage.split(separator: "_", omittingEmptySubsequences: false)
+        guard enabled, parts.count == 2,
+              ["records", "overview", "shared"].contains(String(parts[0])),
+              ["route", "protection", "database", "epoch", "cohort", "reproof", "bridge"].contains(String(parts[1])),
+              ["started", "completed", "failed", "cancelled", "skipped", "missing", "empty"].contains(outcome)
+        else { return true }
+        NSLog("OROT_PROVIDER_DIAGNOSTIC layer=js feature=workout_period stage=%@ outcome=%@", stage, outcome)
+        return true
     }
 }
