@@ -9,6 +9,7 @@ import { AppText } from '../layout/AppText';
 import { t } from '../i18n';
 import { useConversationSessions } from './ConversationSessionsContext';
 import type { DisplayMessage } from './conversationDisplayMessage';
+import { visitQuestionsBookmarkTarget } from './visitQuestionsBookmarkTarget';
 import type { DailyReportBookmarkTarget } from '../storage/dailyReportMemoryBookmark';
 
 export const GeneratedReportBookmarkContext = createContext<{
@@ -30,12 +31,26 @@ export function GeneratedReportBookmark({
       : undefined);
   const summary = message.healthSummary?.analysis.savedSummary;
   const daily = message.dailyReport;
+  const visit = message.visitQuestions;
+  // The saved/reviewed rows can change. Only the original visible generated subset is targetable.
+  const visitTarget =
+    !daily &&
+    !message.healthSummary &&
+    visit &&
+    !message.visitQuestionsUnavailable
+      ? visitQuestionsBookmarkTarget(
+          visit.appointment.id,
+          visit.review.items
+            .filter(item => item.origin === 'candidate')
+            .map(item => item.question),
+        )
+      : undefined;
   const bookmarkableSummary =
     !daily && summary?.status === 'saved' && !summary.sourceChanged;
   if (
     !owner ||
     message.role !== 'assistant' ||
-    (!daily && !bookmarkableSummary) ||
+    (!daily && !bookmarkableSummary && !visitTarget) ||
     (daily && (message.healthSummary || message.visitQuestions)) ||
     !artifactId ||
     message.streaming ||
@@ -51,10 +66,11 @@ export function GeneratedReportBookmark({
   };
   return (
     <BookmarkAction
-      key={JSON.stringify([artifactId, target])}
+      key={JSON.stringify([artifactId, target, visitTarget])}
       artifactId={artifactId}
       owner={owner}
       daily={target}
+      visit={visitTarget}
     />
   );
 }
@@ -63,9 +79,11 @@ function BookmarkAction({
   artifactId,
   owner,
   daily,
+  visit,
 }: {
   artifactId: string;
   daily?: DailyReportBookmarkTarget;
+  visit?: string;
   owner: NonNullable<React.ContextType<typeof GeneratedReportBookmarkContext>>;
 }) {
   const store = useConversationSessions();
@@ -109,7 +127,14 @@ function BookmarkAction({
             current,
             displayedReport: daily,
           })
-        : await storage.bookmarkHealthSummary({ artifactId, lease, current });
+        : visit
+          ? await storage.bookmarkVisitQuestions({
+              artifactId,
+              displayed: visit,
+              lease,
+              current,
+            })
+          : await storage.bookmarkHealthSummary({ artifactId, lease, current });
       if (mounted.current)
         setStatus(current() ? (saved ? 'saved' : 'failed') : 'idle');
     } catch {
@@ -125,13 +150,17 @@ function BookmarkAction({
         title={t(
           daily
             ? 'savedMemory.bookmarkDailyReport'
-            : 'savedMemory.bookmarkHealthSummary',
+            : visit
+              ? 'savedMemory.bookmarkVisitQuestions'
+              : 'savedMemory.bookmarkHealthSummary',
         )}
         variant="neutral"
         testID={
           daily
             ? 'conversation-bookmark-daily-report'
-            : 'conversation-bookmark-generated-report'
+            : visit
+              ? 'conversation-bookmark-visit-questions'
+              : 'conversation-bookmark-generated-report'
         }
         disabled={status === 'saving'}
         onPress={() => {

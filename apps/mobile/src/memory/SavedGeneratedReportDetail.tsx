@@ -20,11 +20,18 @@ export function SavedGeneratedReportDetail({
   isReadCurrent,
 }: {
   artifactId: string;
-  reportKind?: 'health_summary' | 'disease_possibilities';
+  reportKind?: 'health_summary' | 'disease_possibilities' | 'visit_questions';
   isReadCurrent: () => boolean;
 }) {
   const [result, setResult] = useState<
     | string
+    | {
+        readonly bookmarkedVisitQuestions: readonly {
+          id: string;
+          questionText: string;
+          rationale: string;
+        }[];
+      }
     | HealthSummaryResult
     | HistoricalBookmarkedHealthSummary
     | GeneratedReportDetail
@@ -52,6 +59,19 @@ export function SavedGeneratedReportDetail({
       }
       const storage = await openSavedGeneratedReportReferences();
       if (!isCurrent()) return null;
+      if (reportKind === 'visit_questions') {
+        if (!(await admission.confirm()) || !isCurrent()) return null;
+        const questions = await storage.readSavedVisitQuestionReference(
+          artifactId,
+          isCurrent,
+        );
+        return questions &&
+          isCurrent() &&
+          (await admission.confirm()) &&
+          isCurrent()
+          ? { bookmarkedVisitQuestions: questions }
+          : null;
+      }
       if (reportKind === 'health_summary') {
         const strict = await storage.readSavedHealthSummaryReference(
           artifactId,
@@ -94,7 +114,9 @@ export function SavedGeneratedReportDetail({
             ? 'savedMemory.generatedReportHealthSummary'
             : reportKind === 'disease_possibilities'
               ? 'savedMemory.generatedReportDiseasePossibilities'
-              : 'savedMemory.generatedReportDaily',
+              : reportKind === 'visit_questions'
+                ? 'savedMemory.generatedReportVisitQuestions'
+                : 'savedMemory.generatedReportDaily',
         )}
       </AppText>
       <AppText>{t('savedMemory.generatedReportOrigin')}</AppText>
@@ -106,6 +128,15 @@ export function SavedGeneratedReportDetail({
         </AppText>
       ) : typeof result === 'string' ? (
         <AppText selectable>{result}</AppText>
+      ) : 'bookmarkedVisitQuestions' in result ? (
+        result.bookmarkedVisitQuestions.map(question => (
+          <View key={question.id}>
+            <AppText selectable>{question.questionText}</AppText>
+            {question.rationale ? (
+              <AppText selectable>{question.rationale}</AppText>
+            ) : null}
+          </View>
+        ))
       ) : 'paragraphs' in result ? (
         <GeneratedReportContent detail={result} />
       ) : (
