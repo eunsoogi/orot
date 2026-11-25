@@ -36,6 +36,8 @@ export function PublicToolSourceSheet({
   readonly close: () => void;
   readonly open: (choice: PublicToolSourceChoice) => void;
 }) {
+  const sourceLabel = t('ragConversation.tool.sources');
+  const suffix = showSourceSuffix ? ` · ${sourceLabel}` : '';
   return (
     <NavigationModal
       visible={state !== null}
@@ -48,9 +50,7 @@ export function PublicToolSourceSheet({
         <ScrollView contentContainerStyle={styles.content}>
           <AppText accessibilityRole="header" style={styles.title}>
             {destination}
-            {showSourceSuffix
-              ? ` · ${t('ragConversation.tool.sources')}`
-              : ''}
+            {suffix}
           </AppText>
           {state.failed ? (
             <AppText accessibilityRole="alert">
