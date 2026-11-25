@@ -57,7 +57,8 @@ test('exact membership agrees with the original family projection across multipl
     const segment = transcriptSegment(source.id);
     const other = await repository.sourceRecords.create(audioSourceRecord('unrelated-root'));
     const otherSegment = transcriptSegment(other.id);
-    await repository.transcripts.append([segment, otherSegment]);
+    await repository.transcripts.append([segment]);
+    await repository.transcripts.append([otherSegment]);
     const span = await repository.evidenceSpans.create(
       evidenceSpan('exact-span', source.id, {
         kind: 'audio_time_range',
