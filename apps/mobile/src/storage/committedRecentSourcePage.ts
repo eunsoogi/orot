@@ -1,3 +1,4 @@
+import { reportRecentSourceFailure } from '../providers/recentSourceFailureDiagnostic';
 import {
   listRecentSourcePage,
   type RecentSourceCursor,
@@ -28,20 +29,39 @@ async function tryPage(
     queryFailed?: boolean;
   } = {};
   try {
-    await database.transaction(async tx => {
-      if (signal?.aborted) return;
-      snapshot.epoch = acquireIndependentReadEpoch(database);
-      if (!snapshot.epoch) return;
-      try {
-        snapshot.rows = await listRecentSourcePage(tx, before);
-      } catch {
-        // Settle normally; don't roll back an unrelated native dispatch.
-        snapshot.queryFailed = true;
-      }
-    });
+    await database
+      .transaction(async tx => {
+        if (signal?.aborted) return;
+        snapshot.epoch = acquireIndependentReadEpoch(database);
+        if (!snapshot.epoch) return;
+        try {
+          snapshot.rows = await listRecentSourcePage(tx, before);
+        } catch (error) {
+          reportRecentSourceFailure(
+            'recent_records_media_query',
+            error,
+            signal,
+          );
+          // Settle normally; don't roll back an unrelated native dispatch.
+          snapshot.queryFailed = true;
+        }
+      })
+      .catch(error => {
+        reportRecentSourceFailure(
+          'recent_records_media_settlement',
+          error,
+          signal,
+        );
+        throw error;
+      });
     if (snapshot.queryFailed)
       throw new Error('Committed recent sources are unavailable.');
     if (!signal?.aborted && snapshot.epoch?.current()) return snapshot.rows;
+    reportRecentSourceFailure(
+      'recent_records_media_witness',
+      undefined,
+      signal,
+    );
   } finally {
     snapshot.epoch?.dispose();
   }

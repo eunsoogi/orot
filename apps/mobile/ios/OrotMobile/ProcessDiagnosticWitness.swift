@@ -12,6 +12,15 @@ final class ProcessDiagnosticWitness: @unchecked Sendable {
         case admission = "recent_records_admission"
         case sourceRead = "recent_records_source_read"
         case reproof = "recent_records_reproof"
+        case agentWitness = "recent_records_agent_witness"
+        case agentCatalog = "recent_records_agent_catalog"
+        case agentSchema = "recent_records_agent_schema"
+        case agentLegacy = "recent_records_agent_legacy"
+        case agentSlice = "recent_records_agent_slice"
+        case agentCertify = "recent_records_agent_certify"
+        case mediaWitness = "recent_records_media_witness"
+        case mediaQuery = "recent_records_media_query"
+        case mediaSettlement = "recent_records_media_settlement"
     }
 
     private enum Route: String {

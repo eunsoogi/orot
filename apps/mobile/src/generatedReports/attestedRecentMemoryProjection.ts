@@ -1,3 +1,4 @@
+import { reportRecentSourceFailure } from '../providers/recentSourceFailureDiagnostic';
 import { localQueryTimestampKey, type SqlDatabase } from '@orot/storage';
 import {
   readCatalog,
@@ -176,41 +177,58 @@ export function openAttestedMemoryProbe(
       await guardedBoundTransaction(database, sensor, async tx => {
         rows = await readCatalog(tx, before, true, signal, limit);
       });
-      if (!sensor.current()) throw new BoundReadWitnessUnavailable();
+      // Native settlement can yield to a writer after the final sample.
+      // Keep the typed revision error so only a fresh first page can restart.
+      sensor.requireCurrent();
       return rows;
     },
     async read(before?: CatalogCursor, resume?: AgentProbeCursor) {
       let result:
         Awaited<ReturnType<typeof readAttestedIndexProbe>> | undefined;
-      await guardedBoundTransaction(database, sensor, async tx => {
-        const schema = await tx.execute(
-          "SELECT name,sql FROM sqlite_master WHERE name IN ('" +
-            supersessionIndex +
-            "','memory_parent_quarantine','agent_memory_removed_sources')",
-        );
-        if (
-          !schema.rows.some(
-            row =>
-              row.name === supersessionIndex &&
-              typeof row.sql === 'string' &&
-              row.sql.replace(/\s+/g, ' ') === exactSupersessionIndex,
-          ) ||
-          !schema.rows.some(row => row.name === 'agent_memory_removed_sources')
-        )
-          throw new BoundReadWitnessUnavailable();
-        const stillPending = await tx.execute(
-          'SELECT id FROM agent_memory_records INDEXED BY agent_memory_legacy_pending_idx WHERE recent_legacy_pending = 1 LIMIT 1',
-        );
-        if (stillPending.rows.length) throw new BoundReadWitnessUnavailable();
-        result = await readAttestedIndexProbe(
-          tx,
-          before,
-          resume,
-          schema.rows.some(row => row.name === 'memory_parent_quarantine'),
-        );
-      });
-      if (!result || !sensor.current()) throw new BoundReadWitnessUnavailable();
-      return result;
+      let phase:
+        | 'recent_records_agent_slice'
+        | 'recent_records_agent_schema'
+        | 'recent_records_agent_legacy' = 'recent_records_agent_slice';
+      try {
+        await guardedBoundTransaction(database, sensor, async tx => {
+          phase = 'recent_records_agent_schema';
+          const schema = await tx.execute(
+            "SELECT name,sql FROM sqlite_master WHERE name IN ('" +
+              supersessionIndex +
+              "','memory_parent_quarantine','agent_memory_removed_sources')",
+          );
+          if (
+            !schema.rows.some(
+              row =>
+                row.name === supersessionIndex &&
+                typeof row.sql === 'string' &&
+                row.sql.replace(/\s+/g, ' ') === exactSupersessionIndex,
+            ) ||
+            !schema.rows.some(
+              row => row.name === 'agent_memory_removed_sources',
+            )
+          )
+            throw new BoundReadWitnessUnavailable();
+          phase = 'recent_records_agent_legacy';
+          const stillPending = await tx.execute(
+            'SELECT id FROM agent_memory_records INDEXED BY agent_memory_legacy_pending_idx WHERE recent_legacy_pending = 1 LIMIT 1',
+          );
+          if (stillPending.rows.length) throw new BoundReadWitnessUnavailable();
+          phase = 'recent_records_agent_slice';
+          result = await readAttestedIndexProbe(
+            tx,
+            before,
+            resume,
+            schema.rows.some(row => row.name === 'memory_parent_quarantine'),
+          );
+        });
+        sensor.requireCurrent();
+        if (!result) throw new BoundReadWitnessUnavailable();
+        return result;
+      } catch (error) {
+        reportRecentSourceFailure(phase, error, signal);
+        throw error;
+      }
     },
   };
 }
