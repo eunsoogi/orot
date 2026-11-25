@@ -99,7 +99,7 @@ final class RealtimeVoiceAudio: RealtimeVoiceReadyCueAudioPort, RealtimeVoiceDis
         let current = epoch
         player.scheduleBuffer(cue, completionCallbackType: .dataPlayedBack) { [weak self] completion in
             DispatchQueue.main.async {
-                guard let self, completion == .dataPlayedBack, epoch == current, attached, engine.isRunning else { return }
+                guard let self, completion == .dataPlayedBack, self.epoch == current, self.attached, self.engine.isRunning else { return }
                 captureFence.open(after: mach_absolute_time())
                 ready()
             }
