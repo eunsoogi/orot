@@ -1,3 +1,4 @@
+import { SavedConversationAnswerDetail } from './SavedConversationAnswerDetail';
 import { SavedGeneratedReportDetail } from './SavedGeneratedReportDetail';
 import { SavedMemoryContent } from './SavedMemoryContent';
 import { useNavigationRouteRefresh } from '../navigation/navigationRouteRefresh';
@@ -6,6 +7,7 @@ import type { NavigationRouteOwnership } from '../navigation/navigationRouteCont
 import { useState } from 'react';
 import { HistoryMemoryDetail } from './HistoryMemoryDetail';
 import {
+  isConversationAnswerMemory,
   isGeneratedReportMemory,
   isHistoryMemory,
 } from './unifiedSavedMemories';
@@ -47,9 +49,14 @@ export function SavedMemoryDetail({
   const row = rows.find(value => value.id === selectedId);
   // Editable history and generated reports retain their own detail lifecycles.
   const isPlainMemory =
-    row && !isHistoryMemory(row) && !isGeneratedReportMemory(row);
+    row &&
+    !isHistoryMemory(row) &&
+    !isGeneratedReportMemory(row) &&
+    !isConversationAnswerMemory(row);
   useNavigationRouteRefresh(
-    active && (Boolean(isPlainMemory) || readOnlyRefreshing),
+    active &&
+      (Boolean(isPlainMemory || (row && isConversationAnswerMemory(row))) ||
+        readOnlyRefreshing),
     refreshReadOnly,
   );
   return (
@@ -107,9 +114,17 @@ export function SavedMemoryDetail({
           isReadCurrent={readyRead.isCurrent}
         />
       )}
-      {row && !isHistoryMemory(row) && !isGeneratedReportMemory(row) && (
-        <SavedMemoryContent memory={row} />
+      {readyRead && row && isConversationAnswerMemory(row) && (
+        <SavedConversationAnswerDetail
+          key={JSON.stringify([readyRead.request, row.id])}
+          artifactId={row.artifactId}
+          isReadCurrent={readyRead.isCurrent}
+        />
       )}
+      {row &&
+        !isHistoryMemory(row) &&
+        !isGeneratedReportMemory(row) &&
+        !isConversationAnswerMemory(row) && <SavedMemoryContent memory={row} />}
     </View>
   );
 }

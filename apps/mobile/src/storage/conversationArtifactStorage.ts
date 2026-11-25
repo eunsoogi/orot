@@ -1,3 +1,4 @@
+import { createConversationAnswerMemory } from './conversationAnswerMemoryStore';
 import { createConversationArtifactAppend } from './conversationArtifactAppend';
 import { readConversationGeneration as generation } from './conversationGeneration';
 import { createConversationWarmLeaseReader } from './conversationWarmLease';
@@ -37,6 +38,7 @@ export function createConversationArtifactStorage(database: SqlDatabase) {
   const listTimeline = conversationTimelinePages(database, ensure);
   const storage = {
     ...createSavedGeneratedReportReferences(database, ensure),
+    ...createConversationAnswerMemory(database, ensure),
     listTimeline,
     writeDirectPhotoReply: createDirectPhotoReplyWriter(database, ensure),
     ...createConversationProjectionReaders(database, ensure),
