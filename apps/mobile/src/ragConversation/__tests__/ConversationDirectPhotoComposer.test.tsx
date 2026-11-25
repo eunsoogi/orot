@@ -16,6 +16,11 @@ import {
 } from '../testSupport/directPhotoComposerFixture';
 import { conversationDirectPhotoPorts as ports } from '../conversationDirectPhotoPorts';
 
+jest.mock(
+  'react-native-safe-area-context',
+  () => require('react-native-safe-area-context/jest/mock').default,
+);
+
 jest.mock('../conversationDirectPhotoPorts', () => ({
   conversationDirectPhotoPorts: {
     hasPicker: jest.fn(() => true),
@@ -77,6 +82,38 @@ test('an image without text traverses the attached composer and only the dedicat
       directPhoto: true,
     }),
   ]);
+});
+
+test('a selected draft opens full-screen without sending and closes back to its thumbnail', async () => {
+  const f = await fixture();
+  await render(f.view);
+  await attach();
+  const thumbnail = screen.getByTestId('conversation-photo-preview');
+  const open = () =>
+    fireEvent.press(
+      screen.getByRole('button', { name: '첨부 사진 전체 화면으로 보기' }),
+    );
+  await open();
+  const viewer = screen.getByTestId('conversation-photo-viewer');
+  expect(viewer.props.presentationStyle).toBe('fullScreen');
+  const image = screen.getByTestId('conversation-photo-viewer-image');
+  expect(image.props.source).toEqual(thumbnail.props.source);
+  expect(image.props.resizeMode).toBe('contain');
+  expect(
+    screen.getByTestId('conversation-photo-viewer-zoom').props
+      .maximumZoomScale,
+  ).toBe(4);
+  expect(ports.grant).not.toHaveBeenCalled();
+  expect(f.start).not.toHaveBeenCalled();
+  await fireEvent.press(screen.getByRole('button', { name: '사진 닫기' }));
+  expect(screen.queryByTestId('conversation-photo-viewer')).toBeNull();
+  expect(screen.getByTestId('conversation-photo-preview')).toBeTruthy();
+  await open();
+  await fireEvent(
+    screen.getByTestId('conversation-photo-viewer'),
+    'requestClose',
+  );
+  expect(screen.queryByTestId('conversation-photo-viewer')).toBeNull();
 });
 
 test('opted-in automatic memory excludes a direct photo and its authored preference', async () => {
