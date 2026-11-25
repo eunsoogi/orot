@@ -1,7 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useIsFocused } from '@react-navigation/native';
 import { AppState } from 'react-native';
-import type { RecordRepository, SqlDatabase } from '@orot/storage';
 import {
   subscribeLocalDataClear,
   subscribeLocalSourceDeletion,
@@ -16,18 +15,16 @@ import {
   type OverviewMetric,
   type OverviewMetricChoice,
 } from './metricSelection';
+import {
+  workoutChoiceReceiptCurrent,
+  type OverviewWorkoutOwnerProps,
+  type WorkoutChoiceReceipt,
+} from './earlyWorkoutChoice';
 import type { OverviewMetricProjection } from './metricProjection';
-
-declare const require: (path: string) => {
-  openLocalStorage: () => Promise<RecordRepository>;
-  openLocalAgentMemoryDatabase: () => Promise<SqlDatabase>;
-  readIsolatedOverview?: typeof import('../../storage/secureDatabase').readIsolatedOverview;
-};
-
-// A discarded witness can be a concurrent commit or a just-resumed native
-// lifecycle. Use fresh leases, never a tight loop or an unguarded fallback.
+declare const require: (
+  path: '../../storage/secureDatabase',
+) => typeof import('../../storage/secureDatabase');
 const discardedReadRetryDelays = [100, 300] as const;
-
 /** Reads encrypted local data on entry; selecting metrics never invokes permission or synchronization flows. */
 export function useOverviewMetrics() {
   const focused = useIsFocused();
@@ -44,27 +41,26 @@ export function useOverviewMetrics() {
   const [attempt, setAttempt] = useState(0);
   const [initialWorkoutChoicePending, setInitialWorkoutChoicePending] =
     useState(true);
-  const [workoutSelectionEpoch, setWorkoutSelectionEpoch] = useState<
-    number | null
-  >(null);
+  const [workoutSelection, setWorkoutSelection] = useState<{
+    epoch: number;
+    witness: string | null | undefined;
+  } | null>(null);
+  const [startupWorkoutChoice, setStartupWorkoutChoice] =
+    useState<WorkoutChoiceReceipt>();
   const authenticatedSelection = useRef(0);
   const selectionGeneration = useRef(0);
   const loadGeneration = useRef(0);
-  // Keep the last snapshot only across recoverable retries such as midnight refreshes.
   const hasSnapshot = useRef(false);
-  // The workout route separately revalidates native protection and its own
-  // SQLite cohort. An app foreground projection refresh need not retire its
-  // already admitted choice, but reset/blur and failed re-admission do.
   const foregroundChoice = useRef(false);
   const [preserveWorkoutOwner, setPreserveWorkoutOwner] = useState(false);
   const retry = useCallback(() => {
-    // A newer read supersedes unresolved work without discarding a still-valid snapshot.
     loadGeneration.current += 1;
     setAttempt(value => value + 1);
   }, []);
   const invalidateSnapshot = useCallback(
     (foreground = false) => {
-      setWorkoutSelectionEpoch(null);
+      setWorkoutSelection(null);
+      setStartupWorkoutChoice(undefined);
       if (!foreground) foregroundChoice.current = false;
       setPreserveWorkoutOwner(foreground && foregroundChoice.current);
       // No previously presented measurements survive this invalidation.
@@ -89,7 +85,6 @@ export function useOverviewMetrics() {
     };
   }, [invalidateSnapshot]);
   useEffect(() => {
-    // Keep access revalidation active while another route is focused in Settings or Health.
     const subscription = AppState.addEventListener('change', appState => {
       if (appState === 'active') invalidateSnapshot(true);
     });
@@ -114,7 +109,8 @@ export function useOverviewMetrics() {
     if (!focused) {
       foregroundChoice.current = false;
       setPreserveWorkoutOwner(false);
-      setWorkoutSelectionEpoch(null);
+      setWorkoutSelection(null);
+      setStartupWorkoutChoice(undefined);
       return;
     }
     let active = true;
@@ -123,18 +119,27 @@ export function useOverviewMetrics() {
     const selectionReadGeneration = selectionGeneration.current;
     const currentLoadGeneration = loadGeneration.current;
     setState(hasSnapshot.current ? 'refreshing' : 'loading');
+    let chartPublished = false;
     const publish = (
       nextSelection: readonly OverviewMetricChoice[],
       nextMetrics: SelectedOverviewSnapshot['chart'],
+      choiceWitness?: string | null,
     ) => {
       if (!active || currentLoadGeneration !== loadGeneration.current) return;
-      if (selectionReadGeneration === selectionGeneration.current)
-        setSelection(nextSelection);
+      const selectionIsCurrent =
+        selectionReadGeneration === selectionGeneration.current;
+      if (selectionIsCurrent) setSelection(nextSelection);
       setMetrics(nextMetrics.metrics);
       setQuantityTruncated(nextMetrics.quantityTruncated);
       hasSnapshot.current = true;
-      setWorkoutSelectionEpoch(++authenticatedSelection.current);
+      chartPublished = true;
       setInitialWorkoutChoicePending(false);
+      setStartupWorkoutChoice(undefined);
+      setWorkoutSelection({
+        epoch: ++authenticatedSelection.current,
+        witness: selectionIsCurrent ? choiceWitness : undefined,
+      });
+
       foregroundChoice.current = true;
       setPreserveWorkoutOwner(false);
       setState('ready');
@@ -146,11 +151,24 @@ export function useOverviewMetrics() {
       try {
         const storage = require('../../storage/secureDatabase');
         const now = new Date();
+        if (discardRetries === 0 && authenticatedSelection.current === 0)
+          storage.readIsolatedOverview
+            ?.readWorkoutChoice?.(controller.signal, receipt => {
+              if (
+                isCurrent() &&
+                workoutChoiceReceiptCurrent(receipt) &&
+                !chartPublished &&
+                !controller.signal.aborted &&
+                selectionReadGeneration === selectionGeneration.current
+              )
+                setStartupWorkoutChoice(receipt);
+            })
+            .catch(() => {});
         const result = await storage.readIsolatedOverview?.(
           now,
           controller.signal,
-          ({ selection: isolatedSelection, chart }) =>
-            publish(isolatedSelection, chart),
+          ({ selection: isolatedSelection, chart, workoutChoiceWitness }) =>
+            publish(isolatedSelection, chart, workoutChoiceWitness),
         );
         if (result === 'published' || controller.signal.aborted) return;
         if (result === 'discarded' || discardRetries > 0) {
@@ -163,6 +181,7 @@ export function useOverviewMetrics() {
           if (delay === undefined) {
             foregroundChoice.current = false;
             setPreserveWorkoutOwner(false);
+            setStartupWorkoutChoice(undefined);
             setState('failed');
           } else {
             setState('loading');
@@ -183,16 +202,20 @@ export function useOverviewMetrics() {
           now,
           controller.signal,
         );
-        publish(snapshot.selection, snapshot.chart);
+        publish(
+          snapshot.selection,
+          snapshot.chart,
+          snapshot.workoutChoiceWitness,
+        );
       } catch {
         if (isCurrent()) {
           setPreserveWorkoutOwner(false);
           if (!hasSnapshot.current) foregroundChoice.current = false;
+          setStartupWorkoutChoice(undefined);
           setState(hasSnapshot.current ? 'stale' : 'failed');
         }
       }
     };
-    // Start asynchronously, as before, so immediate effect cleanup can win.
     Promise.resolve().then(() => load(0));
     return () => {
       active = false;
@@ -204,17 +227,15 @@ export function useOverviewMetrics() {
   const save = useCallback(async (next: readonly OverviewMetricChoice[]) => {
     const storage = require('../../storage/secureDatabase');
     await saveOverviewMetricSelection(await storage.openLocalStorage(), next);
-    // An older refresh may finish after this write; it must not replace the saved choice.
     selectionGeneration.current += 1;
     setSelection(next);
+    setStartupWorkoutChoice(undefined);
   }, []);
-  const workoutOwner: {
-    workoutSelectionEpoch?: number | null;
-    preserveWorkoutOwner?: boolean;
-    initialWorkoutChoicePending?: boolean;
-  } = {
-    workoutSelectionEpoch,
+  const workoutOwner: OverviewWorkoutOwnerProps = {
+    workoutSelectionEpoch: workoutSelection?.epoch ?? null,
+    workoutSelectionWitness: workoutSelection?.witness,
     preserveWorkoutOwner,
+    startupWorkoutChoice,
     initialWorkoutChoicePending,
   };
   return {

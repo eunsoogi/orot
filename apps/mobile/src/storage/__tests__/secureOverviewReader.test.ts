@@ -2,7 +2,6 @@ import { IOS_LIBRARY_PATH, open, type DB } from '@op-engineering/op-sqlite';
 import type { ConversationExecutionEvent } from '../../ragConversation/conversationExecutionLease';
 import { conversationExecutionNative } from '../../ragConversation/conversationExecutionNative';
 import { projectOverviewMetricSnapshot } from '../../routes/overview/metricLoader';
-import { loadOverviewMetricSelection } from '../../routes/overview/metricSelection';
 import { createSecureOverviewReader } from '../secureOverviewReader';
 import { guardedNativeDatabase } from '../protectedReadEpoch';
 
@@ -17,10 +16,14 @@ jest.mock('../../ragConversation/conversationExecutionNative', () => ({
 jest.mock('../../routes/overview/metricLoader', () => ({
   projectOverviewMetricSnapshot: jest.fn(),
 }));
-jest.mock('../../routes/overview/metricSelection', () => ({
-  ...jest.requireActual('../../routes/overview/metricSelection'),
-  loadOverviewMetricSelection: jest.fn(),
-}));
+
+const preferenceKey = 'home:metric-selection:v1';
+const preferenceValue = JSON.stringify([
+  'sleep',
+  'workoutHeartRate',
+  'heartRate',
+]);
+const preferenceUpdatedAt = '2035-01-15T00:00:00Z';
 
 function fixture() {
   const events: string[] = [];
@@ -29,12 +32,24 @@ function fixture() {
     transaction: jest.fn(async () => {}),
   };
   const writer = guardedNativeDatabase(rawWriter) as unknown as DB;
-  const execute = jest.fn(async (sql: string) =>
+  const execute = jest.fn(async (sql: string, bindings?: unknown[]) =>
     sql === 'PRAGMA data_version'
       ? { rows: [{ data_version: 7 }] }
       : sql.includes('health_context_generation')
         ? { rows: [{ ready: 1 }] }
-        : { rows: [] },
+        : sql.startsWith(
+              'SELECT checkpoint_key, value, updated_at FROM healthkit_sync_checkpoints',
+            ) && bindings?.[0] === preferenceKey
+          ? {
+              rows: [
+                {
+                  checkpoint_key: preferenceKey,
+                  value: preferenceValue,
+                  updated_at: preferenceUpdatedAt,
+                },
+              ],
+            }
+          : { rows: [] },
   );
   const close = jest.fn(() => {
     events.push('close');
@@ -65,9 +80,6 @@ function fixture() {
   jest
     .mocked(projectOverviewMetricSnapshot)
     .mockResolvedValue({ metrics: {}, quantityTruncated: false });
-  jest
-    .mocked(loadOverviewMetricSelection)
-    .mockResolvedValue(['sleep', 'workoutHeartRate', 'heartRate']);
   const key = jest.fn(async () => 'synthetic-key');
   const ready = jest.fn(async () => undefined);
   const read = createSecureOverviewReader(
@@ -116,7 +128,11 @@ test('production adapter opens the same existing owner and publishes only after 
   );
   expect(publish).toHaveBeenCalledWith(
     expect.objectContaining({
-      selection: ['sleep', 'workoutHeartRate', 'heartRate'],
+      selection: ['sleep', 'heartRate'],
+      workoutChoiceWitness: JSON.stringify([
+        preferenceUpdatedAt,
+        preferenceValue,
+      ]),
     }),
   );
   expect(f.events).toEqual(['begin', 'settled', 'close', 'publish']);
@@ -159,4 +175,21 @@ test('a delayed native protection event cannot turn an SQL/open error into fallb
   expect(publish).not.toHaveBeenCalled();
   expect(f.protectedDataAvailable).toHaveBeenCalledTimes(2);
   expect(f.unsubscribe).toHaveBeenCalledTimes(1);
+});
+
+test('legacy workout choice yields a protected receipt for the grouped heart card', async () => {
+  jest.mocked(projectOverviewMetricSnapshot).mockClear();
+  const f = fixture();
+  const publish = jest.fn(() => {
+    f.events.push('publish');
+  });
+  await expect(
+    f.read.readWorkoutChoice(new AbortController().signal, publish),
+  ).resolves.toBe('published');
+  expect(publish).toHaveBeenCalledWith({
+    witness: JSON.stringify([preferenceUpdatedAt, preferenceValue]),
+    expires: expect.any(Number),
+  });
+  expect(projectOverviewMetricSnapshot).not.toHaveBeenCalled();
+  expect(f.events).toEqual(['begin', 'settled', 'close', 'publish']);
 });

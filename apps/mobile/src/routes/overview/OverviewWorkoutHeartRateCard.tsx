@@ -1,3 +1,4 @@
+import type { WorkoutChoiceReceipt } from './earlyWorkoutChoice';
 import { StyleSheet, View } from 'react-native';
 import { t } from '../../i18n';
 import { formatHeartRateBpm } from '../../i18n/heartRateDisplay';
@@ -10,16 +11,25 @@ export function OverviewWorkoutHeartRateCard({
   width,
   active,
   embedded,
-  selectionEpoch,
   unverifiedSelection = false,
+  selectionEpoch,
+  selectionWitness,
+  startupWorkoutChoice,
 }: {
   readonly width: number | undefined;
   readonly active: boolean;
   readonly embedded?: boolean;
-  readonly selectionEpoch?: number | null;
   readonly unverifiedSelection?: boolean;
+  readonly selectionEpoch?: number | null;
+  readonly selectionWitness?: string | null;
+  readonly startupWorkoutChoice?: WorkoutChoiceReceipt;
 }) {
-  const state = useOverviewWorkoutPeriodHeartRate(active, selectionEpoch);
+  const state = useOverviewWorkoutPeriodHeartRate(
+    active,
+    selectionEpoch,
+    startupWorkoutChoice,
+    selectionWitness,
+  );
   return (
     <View
       style={[
