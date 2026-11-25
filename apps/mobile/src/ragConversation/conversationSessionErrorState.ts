@@ -33,7 +33,7 @@ export const conversationSessionErrorState = {
     return {
       draft,
       draftEditRevision:
-        (session.draftEditRevision ?? 0) + Number(session.draft !== draft),
+        (session?.draftEditRevision ?? 0) + Number(session?.draft !== draft),
       // The notice describes the rejected draft, not the newly edited text.
       ...(session?.errorSurface === 'composerPreflight' &&
       session.draft !== draft
