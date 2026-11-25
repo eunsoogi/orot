@@ -49,6 +49,8 @@ export class RecordingDeletionTimingProbe implements RecordingDeletionTimingProb
     if (
       stage === 'list-refresh' ||
       stage === 'list-summary-refresh' ||
+      (stage === 'busy-settled' &&
+        (this.reportedEventCount > 0 || this.deletionOutcome === 'failure')) ||
       (stage === 'progress-presented' && this.reportedEventCount > 0)
     ) {
       // Preserve late native layout observations without treating them as ordered success.
@@ -167,11 +169,15 @@ export class RecordingDeletionTimingProbe implements RecordingDeletionTimingProb
         'confirmation-tap',
         'progress-presented',
       ),
+      confirmationToBusySettled: markDelta('confirmation-tap', 'busy-settled'),
+      committedBusyDuration: markDelta('busy-committed', 'busy-settled'),
       libraryQueueWait: duration('library-queue-wait'),
       sourceRead: duration('source-read'),
       stopCheck: duration('stop-check'),
       audioStaging: duration('audio-staging'),
       memoryOpen: duration('memory-open'),
+      memoryQueueWait: duration('memory-queue-wait'),
+      memoryProvenanceScan: duration('memory-provenance-scan'),
       derivedDataCleanup: duration('derived-data-cleanup'),
       databaseDeleteCommit: duration('database-delete-commit'),
       audioCleanup: duration('audio-cleanup'),

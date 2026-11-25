@@ -4,6 +4,8 @@ import type { RecordingDeletionTrace } from './recordingDeletionTrace';
 export type RecordingDeletionTimingMark =
   | 'confirmation-tap'
   | 'progress-presented'
+  | 'busy-committed'
+  | 'busy-settled'
   | 'list-refresh'
   | 'list-summary-refresh';
 
@@ -13,6 +15,8 @@ export type RecordingDeletionTimingSpan =
   | 'stop-check'
   | 'audio-staging'
   | 'memory-open'
+  | 'memory-queue-wait'
+  | 'memory-provenance-scan'
   | 'derived-data-cleanup'
   | 'database-delete-commit'
   | 'audio-cleanup'

@@ -96,7 +96,9 @@ test('marks confirmation, visible progress and committed row refresh in order', 
   });
   expect(probe.mark.mock.calls).toEqual([
     ['confirmation-tap'],
+    ['busy-committed'],
     ['progress-presented'],
+    ['busy-settled'],
     ['list-refresh'],
   ]);
   alert.mockRestore();

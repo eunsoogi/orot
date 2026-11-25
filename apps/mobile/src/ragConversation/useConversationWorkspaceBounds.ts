@@ -7,6 +7,7 @@ import { observeNavigationTest } from '../navigation/navigationTestObservation';
 import { useNavigationOcclusion } from '../navigation/useNavigationContentInset';
 import { conversationWorkspaceOcclusion } from './conversationWorkspaceOcclusion';
 import { conversationHingeLayout } from './conversationHingeLayout';
+import { conversationProfileVisualLift } from './conversationWorkspaceLayout';
 
 type Limits = { readonly width: number; readonly height: number };
 
@@ -181,5 +182,10 @@ export function useConversationWorkspaceBounds(routeKey?: string) {
     plan.visible,
     fontScale,
   ]);
-  return { ref, measure, plan, workspaceOcclusion };
+  const profileVisualLift = conversationProfileVisualLift(geometry, shared, {
+    x: hostBounds.x + plan.leading,
+    y: hostBounds.y + plan.top,
+    width: plan.visible ? plan.activityWidth : plan.transcriptWidth,
+  });
+  return { ref, measure, plan, profileVisualLift, workspaceOcclusion };
 }

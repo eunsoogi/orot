@@ -58,7 +58,7 @@ async function mount() {
   await render(
     <NavigationRouteRefreshContext.Provider
       value={run => {
-        refresh = run;
+        refresh = () => run(() => undefined);
         return () => {
           refresh = undefined;
         };

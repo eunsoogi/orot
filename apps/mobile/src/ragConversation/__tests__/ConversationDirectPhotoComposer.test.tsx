@@ -49,6 +49,9 @@ test('an image without text traverses the attached composer and only the dedicat
   await render(f.view);
   await attach();
   expect(screen.getByTestId('conversation-photo-preview')).toBeTruthy();
+  expect(
+    screen.queryByText(t('ragConversation.photo.imageDisclosure')),
+  ).toBeNull();
   expect(f.start).not.toHaveBeenCalled();
   await send();
   expect(screen.queryByTestId('conversation-photo-consent')).toBeNull();

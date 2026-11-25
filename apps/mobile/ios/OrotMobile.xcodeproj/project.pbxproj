@@ -8,6 +8,7 @@
 
 /* Begin PBXBuildFile section */
 		652B141D147F4AF795148EF8 /* ConversationBubbleCopyViewManager.m in Sources */ = {isa = PBXBuildFile; fileRef = 57D050A8E6C54A179AFBDD76 /* ConversationBubbleCopyViewManager.m */; };
+		9F405D3D32784ED2A0408D80 /* RouteRefreshFeedbackModule.m in Sources */ = {isa = PBXBuildFile; fileRef = 7CFC65CFF33F460F8EAC5110 /* RouteRefreshFeedbackModule.m */; };
 		B8A130BD6D51CFCE98120001 /* ClassificationReaderGeometryUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = B8A130BD6D51CFCE98120002 /* ClassificationReaderGeometryUITests.swift */; };
 		B8A130BD6D51CFCE98120101 /* ClassificationResultScrollingUITestConditions.swift in Sources */ = {isa = PBXBuildFile; fileRef = B8A130BD6D51CFCE98120102 /* ClassificationResultScrollingUITestConditions.swift */; };
 		CE1131000000000000000003 /* RealtimeVoiceSystemLifecycleTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = CE1131000000000000000004 /* RealtimeVoiceSystemLifecycleTests.swift */; };
@@ -445,6 +446,7 @@
 
 /* Begin PBXFileReference section */
 		57D050A8E6C54A179AFBDD76 /* ConversationBubbleCopyViewManager.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; name = ConversationBubbleCopyViewManager.m; path = OrotMobile/ConversationBubbleCopyViewManager.m; sourceTree = "<group>"; };
+		7CFC65CFF33F460F8EAC5110 /* RouteRefreshFeedbackModule.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; name = RouteRefreshFeedbackModule.m; path = OrotMobile/RouteRefreshFeedbackModule.m; sourceTree = "<group>"; };
 		B8A130BD6D51CFCE98120002 /* ClassificationReaderGeometryUITests.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = ClassificationReaderGeometryUITests.swift; sourceTree = "<group>"; };
 		B8A130BD6D51CFCE98120102 /* ClassificationResultScrollingUITestConditions.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = ClassificationResultScrollingUITestConditions.swift; sourceTree = "<group>"; };
 		CE1131000000000000000004 /* RealtimeVoiceSystemLifecycleTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RealtimeVoiceSystemLifecycleTests.swift; sourceTree = "<group>"; };
@@ -1046,6 +1048,7 @@
 				B821C7E44F1D4E9B981B2102 /* RootURLModule.swift */,
 				B821C7E44F1D4E9B981B2103 /* RootURLModule.m */,
 				57D050A8E6C54A179AFBDD76 /* ConversationBubbleCopyViewManager.m */,
+				7CFC65CFF33F460F8EAC5110 /* RouteRefreshFeedbackModule.m */,
 				B2EB315EC5D5450DABCC07D7 /* ConsentFingerprintModule.swift */,
 				F097A6B0483243F38A41E365 /* ConsentFingerprintModule.m */,
 				F24E00000000000000000011 /* LocalE5EmbeddingModule.swift */,
@@ -1837,6 +1840,7 @@
 				A821C7E44F1D4E9B981B2102 /* RootURLModule.swift in Sources */,
 				A821C7E44F1D4E9B981B2103 /* RootURLModule.m in Sources */,
 				652B141D147F4AF795148EF8 /* ConversationBubbleCopyViewManager.m in Sources */,
+				9F405D3D32784ED2A0408D80 /* RouteRefreshFeedbackModule.m in Sources */,
 				5DE544E9C786430A8CEAE33C /* ConsentFingerprintModule.swift in Sources */,
 				2D158C819B404E85932B08B6 /* ConsentFingerprintModule.m in Sources */,
 				F24E00000000000000000001 /* LocalE5EmbeddingModule.swift in Sources */,

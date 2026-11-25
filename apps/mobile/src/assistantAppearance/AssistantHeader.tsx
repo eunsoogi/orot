@@ -38,10 +38,12 @@ export function AssistantHeader({
   session,
   status,
   editable = true,
+  visualLift = 0,
 }: {
   session: ConversationSession;
   status?: string | null;
   editable?: boolean;
+  visualLift?: number;
 }) {
   const appearance = useAssistantAppearance();
   return appearance ? (
@@ -50,6 +52,7 @@ export function AssistantHeader({
       appearance={appearance}
       status={status}
       editable={editable}
+      visualLift={visualLift}
     />
   ) : null;
 }
@@ -60,10 +63,12 @@ function ActiveAssistantHeader({
   appearance,
   status,
   editable,
+  visualLift,
 }: {
   session: ConversationSession;
   status?: string | null;
   editable: boolean;
+  visualLift: number;
   appearance: NonNullable<ReturnType<typeof useAssistantAppearance>>;
 }) {
   const focused = useIsFocused();
@@ -89,6 +94,9 @@ function ActiveAssistantHeader({
       AccessibilityInfo.announceForAccessibility(stage!);
     announced.current = identity;
   }, [activity, stage, session.id, appearance.ready, focused, foreground]);
+  // Move only appearance, never the existing Pressable or its layout reservation.
+  const visualPosition =
+    visualLift > 0 ? { transform: [{ translateY: -visualLift }] } : undefined;
   return (
     <Pressable
       accessibilityRole="button"
@@ -106,10 +114,18 @@ function ActiveAssistantHeader({
       style={styles.container}
       testID="assistant-floating-identity"
     >
-      <View style={styles.avatar}>
+      <View
+        pointerEvents="none"
+        style={[styles.avatar, visualPosition]}
+        testID="assistant-profile-artwork"
+      >
         <AvatarSymbol avatar={appearance.value.avatar} size={64} />
       </View>
-      <View style={styles.identity}>
+      <View
+        pointerEvents="none"
+        style={[styles.identity, visualPosition]}
+        testID="assistant-profile-label"
+      >
         <ComposerGlassBackground />
         <AppText style={styles.name}>
           {appearance.value.name ?? defaultAssistantName}

@@ -1,9 +1,10 @@
-import type { ReactNode } from 'react';
+import { useLayoutEffect, useState, type ReactNode } from 'react';
 import { Image, Pressable, StyleSheet, View } from 'react-native';
 import { AppText as Text } from '../layout/AppText';
 import { AppSymbol } from '../layout/AppSymbol';
 import { appColors } from '../layout/appColors';
 import { t } from '../i18n';
+import { ConversationPhotoViewer } from './ConversationPhotoViewer';
 import { ComposerInlineAction } from './ComposerInlineAction';
 import { styles as composerStyles } from './ConversationScreen.styles';
 import type { PhotoDraftFailure } from './conversationPhotoTypes';
@@ -49,6 +50,14 @@ export function ConversationPhotoAttachment({
   readonly onRemove: () => void;
   readonly children?: ReactNode;
 }) {
+  const viewableURI =
+    hasPhoto && status === 'ready' && deliveryMode === 'image' && !disabled
+      ? previewData
+      : undefined;
+  const [openedURI, setOpenedURI] = useState<string>();
+  // Removal, replacement or a retired composer closes the in-memory viewer.
+  useLayoutEffect(() => setOpenedURI(undefined), [viewableURI]);
+  const closeViewer = () => setOpenedURI(undefined);
   const selectDisabled =
     disabled ||
     pickerDisabled ||
@@ -62,19 +71,31 @@ export function ConversationPhotoAttachment({
   } as const;
   return (
     <View>
+      {viewableURI && openedURI === viewableURI ? (
+        <ConversationPhotoViewer photoURI={viewableURI} onClose={closeViewer} />
+      ) : null}
       {hasPhoto ? (
         <View style={styles.previewRow} testID="conversation-photo-tray">
           <View
             style={[styles.previewFrame, compact && styles.compactPreviewFrame]}
           >
             {previewData ? (
-              <Image
-                accessibilityLabel={t('ragConversation.photo.preview')}
-                resizeMode="cover"
-                source={{ uri: previewData }}
+              <Pressable
+                accessible={Boolean(viewableURI)}
+                accessibilityRole="button"
+                accessibilityLabel={t('ragConversation.photo.openFullScreen')}
+                disabled={!viewableURI}
+                onPress={() => setOpenedURI(viewableURI)}
                 style={styles.preview}
-                testID="conversation-photo-preview"
-              />
+              >
+                <Image
+                  accessibilityLabel={t('ragConversation.photo.preview')}
+                  resizeMode="cover"
+                  source={{ uri: previewData }}
+                  style={styles.preview}
+                  testID="conversation-photo-preview"
+                />
+              </Pressable>
             ) : (
               <AppSymbol name="photo" color={appColors.secondary} />
             )}
@@ -93,18 +114,15 @@ export function ConversationPhotoAttachment({
           </View>
         </View>
       ) : null}
-      {status === 'preparing' ||
-      status === 'transferring' ||
-      status === 'error' ? (
+      {/* Preparation still locks the controls; image transfer disclosure stays in settings consent. */}
+      {status === 'transferring' || status === 'error' ? (
         <Text accessibilityLiveRegion="polite" style={styles.status}>
           {t(
-            status === 'preparing'
-              ? 'ragConversation.photo.preparing'
-              : status === 'transferring'
-                ? 'ragConversation.photo.transferring'
-                : errorReason
-                  ? errorKeys[errorReason]
-                  : 'ragConversation.photo.error',
+            status === 'transferring'
+              ? 'ragConversation.photo.transferring'
+              : errorReason
+                ? errorKeys[errorReason]
+                : 'ragConversation.photo.error',
           )}
         </Text>
       ) : null}
@@ -113,13 +131,9 @@ export function ConversationPhotoAttachment({
           {t('ragConversation.photo.unavailable')}
         </Text>
       ) : null}
-      {status === 'ready' && deliveryReady && deliveryMode ? (
+      {status === 'ready' && deliveryReady && deliveryMode === 'ocr' ? (
         <Text style={styles.status}>
-          {t(
-            deliveryMode === 'image'
-              ? 'ragConversation.photo.imageDisclosure'
-              : 'ragConversation.photo.ocrDisclosure',
-          )}
+          {t('ragConversation.photo.ocrDisclosure')}
         </Text>
       ) : null}
       {cleanupPending && onRetryCleanup ? (

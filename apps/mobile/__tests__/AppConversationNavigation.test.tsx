@@ -4,8 +4,9 @@ import {
   screen,
   waitFor,
 } from '@testing-library/react-native';
-import { AccessibilityInfo, AppState } from 'react-native';
+import { AccessibilityInfo, AppState, Dimensions } from 'react-native';
 import App from '../App';
+import { openGeometry } from '../src/navigation/__fixtures__/navigationOpenGeometry';
 import * as replyFocusModule from '../src/replyNotifications/replyFocus';
 
 jest.mock('../src/healthkit/commonObservations/importLocal', () => ({
@@ -111,4 +112,67 @@ test('keeps recording under Records when leaving an conversation route', async (
   await waitFor(() =>
     expect(screen.queryByTestId('ai-feature-flow')).toBeNull(),
   );
+});
+
+test('lifts Conversation visuals using the top indicator', async () => {
+  jest
+    .spyOn(AccessibilityInfo, 'isReduceMotionEnabled')
+    .mockResolvedValue(true);
+  const window = Dimensions.get('window');
+  const sameWindow = openGeometry.windowBounds;
+  Dimensions.set({ window: { ...window, ...sameWindow, fontScale: 1.6 } });
+  const app = await render(<App />);
+  try {
+    await fireEvent.press(screen.getByTestId('navigation-tab-conversation'));
+    const sensor = screen.getByTestId('navigation-window-geometry-sensor');
+    const geometry = {
+      ...openGeometry,
+      safeAreaInsets: { ...openGeometry.safeAreaInsets, top: 56 },
+      navigationSide: 'right' as const,
+    };
+    const update = (systemTopBarFrame?: typeof sameWindow) =>
+      fireEvent(sensor, 'geometryChange', {
+        nativeEvent: { ...geometry, systemTopBarFrame },
+      });
+    await update();
+    const rail = await screen.findByTestId('navigation-right-rail-host');
+    expect(rail).toBeTruthy();
+
+    const identity = await screen.findByTestId('assistant-floating-identity');
+    const artwork = screen.getByTestId('assistant-profile-artwork');
+    const label = screen.getByTestId('assistant-profile-label');
+    const input = screen.getByTestId('rag-conversation-input');
+    const history = screen.getByTestId('rag-conversation-history');
+    const touchStyle = identity.props.style;
+    const ordinaryArtwork = artwork.props.style;
+    const ordinaryLabel = label.props.style;
+    await fireEvent.changeText(input, '계속할 대화 초안');
+
+    await update({ ...sameWindow, height: 40 });
+    expect(artwork).toHaveStyle({ transform: [{ translateY: -12 }] });
+    expect(label).toHaveStyle({ transform: [{ translateY: -12 }] });
+    expect(screen.queryByTestId('navigation-right-rail-host')).toBeNull();
+    expect(screen.getByTestId('navigation-tab-conversation')).toBeTruthy();
+    expect(screen.getByTestId('assistant-floating-identity')).toBe(identity);
+    expect(identity.props.style).toEqual(touchStyle);
+    expect(identity).toBeEnabled();
+    expect(label).toHaveProp('pointerEvents', 'none');
+    expect(screen.getByTestId('rag-conversation-history')).toBe(history);
+    expect(screen.getByTestId('rag-conversation-input')).toBe(input);
+    expect(input).toHaveDisplayValue('계속할 대화 초안');
+
+    await update({ ...sameWindow, height: 55 });
+    expect(artwork.props.style).toEqual(ordinaryArtwork);
+    expect(label.props.style).toEqual(ordinaryLabel);
+    await update({ x: 905, y: 0, width: 46, height: 150 });
+    expect(screen.getByTestId('navigation-right-rail-host')).toBeTruthy();
+    expect(artwork.props.style).toEqual(ordinaryArtwork);
+    expect(label.props.style).toEqual(ordinaryLabel);
+    await fireEvent.press(identity);
+    const editor = await screen.findByTestId('assistant-appearance-scroll');
+    expect(editor).toBeTruthy();
+  } finally {
+    await app.unmount();
+    Dimensions.set({ window });
+  }
 });

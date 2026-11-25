@@ -135,21 +135,33 @@ test('quiet current microphone samples visibly change bars', async () => {
   );
   const idle = bars(view);
   const center = () => bars(view)[2] ?? 0;
+  const scale = () => {
+    const style = StyleSheet.flatten<{
+      transform?: readonly { scale?: number }[];
+    }>(view.getByTestId('voice-activity-waveform', hidden).props.style);
+    return style?.transform?.[0]?.scale ?? 1;
+  };
   expect(idle).toHaveLength(5);
+  expect(scale()).toBe(1);
   await act(() => emit(sample(0.03)));
   expect(bars(view)).toEqual(idle);
   await act(() => emit(sample(0.03, current, 'input')));
   const quiet = center();
+  const quietScale = scale();
+  expect(quietScale).toBeGreaterThanOrEqual(1.25);
   expect(quiet).toBeGreaterThan((idle[2] ?? 0) + 4);
   await act(() => {
     jest.advanceTimersByTime(100);
     emit(sample(0.08, current, 'input'));
   });
   expect(center()).toBeGreaterThan(quiet + 2);
+  expect(scale()).toBeGreaterThan(quietScale);
+  expect(scale()).toBeLessThanOrEqual(1.4);
   await act(() => {
     jest.advanceTimersByTime(241);
   });
   expect(bars(view)).toEqual(idle);
+  expect(scale()).toBe(1);
 });
 
 test('reduced motion keeps a static mark and invalid or PCM-bearing input is never retained', async () => {

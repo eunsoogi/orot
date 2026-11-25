@@ -61,12 +61,12 @@ test('sparse measured heart bands use the real month domain without fabricated p
   expect(chartWindows(data, 'time', 1)).toEqual([data]);
 });
 
-test('bar domain slots have x only, measured zero would remain distinct and source steps are not averaged', () => {
+test('daily step lines leave unmeasured slots empty and do not average source totals', () => {
   const { kind, data } = buildHealthRecordsMonthChart('steps', window, {
     kind: 'quantity',
     rows: [{ ...row, concept: 'step_count', unit: 'count', sum: 536 }],
   });
-  expect(kind).toBe('bar');
+  expect(kind).toBe('line');
   expect(data.series[0]?.points[0]?.value).toBe(536);
   const rows = placeChartWindow(chartRows(data, 'day'), window, 'day');
   expect(rows[0]).toEqual({ x: '2026-10-22' });

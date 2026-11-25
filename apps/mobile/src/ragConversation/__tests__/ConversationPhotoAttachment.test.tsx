@@ -2,6 +2,11 @@ import { fireEvent, render, screen } from '@testing-library/react-native';
 import { ConversationPhotoAttachment } from '../ConversationPhotoAttachment';
 import { ConversationComposer } from '../ConversationComposer';
 
+jest.mock(
+  'react-native-safe-area-context',
+  () => require('react-native-safe-area-context/jest/mock').default,
+);
+
 test('photo selection and removal are explicit actions, independent of send', async () => {
   const onSelect = jest.fn();
   const onRemove = jest.fn();
@@ -37,7 +42,7 @@ test('photo selection and removal are explicit actions, independent of send', as
   expect(onSelect).toHaveBeenCalledTimes(1);
 });
 
-test('preparation and errors are announced without triggering another selection', async () => {
+test('preparation is quiet while selection stays locked and errors still appear', async () => {
   const onSelect = jest.fn();
   const view = await render(
     <ConversationPhotoAttachment
@@ -46,7 +51,7 @@ test('preparation and errors are announced without triggering another selection'
       onRemove={jest.fn()}
     />,
   );
-  expect(screen.getByText('사진을 준비하고 있어요.')).toBeTruthy();
+  expect(screen.queryByText('사진을 준비하고 있어요.')).toBeNull();
   expect(screen.getByRole('button', { name: '사진 첨부' })).toBeDisabled();
   await view.rerender(
     <ConversationPhotoAttachment
@@ -209,4 +214,35 @@ test('a selected photo cannot be silently omitted when attachment delivery is un
       '사진에서 추출한 글자를 보내요. 사진 자체는 보내지 않아요.',
     ),
   ).toBeTruthy();
+});
+
+test('replacing the current draft closes its viewer and never shows the old pixels', async () => {
+  const props = {
+    status: 'ready' as const,
+    deliveryMode: 'image' as const,
+    deliveryReady: true,
+    onSelect: jest.fn(),
+    onRemove: jest.fn(),
+  };
+  const first = 'data:image/jpeg;base64,c3ludGhldGlj';
+  const second = 'data:image/jpeg;base64,YW5vdGhlcg==';
+  const { rerender } = await render(
+    <ConversationPhotoAttachment {...props} previewData={first} />,
+  );
+  const open = () =>
+    fireEvent.press(
+      screen.getByRole('button', { name: '첨부 사진 전체 화면으로 보기' }),
+    );
+  await open();
+  expect(screen.getByTestId('conversation-photo-viewer')).toBeTruthy();
+  await rerender(
+    <ConversationPhotoAttachment {...props} previewData={second} />,
+  );
+  expect(screen.queryByTestId('conversation-photo-viewer')).toBeNull();
+  await open();
+  expect(
+    screen.getByTestId('conversation-photo-viewer-image').props.source,
+  ).toEqual({ uri: second });
+  await rerender(<ConversationPhotoAttachment {...props} status="empty" />);
+  expect(screen.queryByTestId('conversation-photo-viewer')).toBeNull();
 });

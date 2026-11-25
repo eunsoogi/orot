@@ -33,7 +33,7 @@ type Props = {
 
 /** Stable presentation wrappers preserve transcript, composer and session across reflow. */
 export function ConversationWorkspace(props: Props) {
-  const { ref, measure, plan, workspaceOcclusion } =
+  const { ref, measure, plan, profileVisualLift, workspaceOcclusion } =
     useConversationWorkspaceBounds(props.routeKey);
   return (
     <View
@@ -55,6 +55,7 @@ export function ConversationWorkspace(props: Props) {
       >
         <FloatingAssistantSurface
           session={props.session}
+          profileVisualLift={profileVisualLift}
           identityWidth={
             plan.visible ? plan.activityWidth : plan.transcriptWidth
           }
