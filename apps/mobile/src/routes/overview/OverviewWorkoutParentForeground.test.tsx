@@ -120,3 +120,46 @@ test.each([
     }
   },
 );
+
+test.each(['available', 'denied'] as const)(
+  'shows pending choice without opening native workout until cold projection: %s',
+  async outcome => {
+    const lane = await setup();
+    jest.mocked(useIsFocused).mockReturnValue(true);
+    let release: (() => void) | undefined;
+    jest
+      .mocked(readIsolatedOverview)
+      .mockImplementation(async (_now, _signal, publish) => {
+        await new Promise<void>(resolve => {
+          release = resolve;
+        });
+        publish({
+          selection: ['heartRate'],
+          chart: { metrics: {}, quantityTruncated: false },
+        });
+        return 'published';
+      });
+    try {
+      const view = await render(<OverviewMetrics />);
+      await waitFor(() => expect(release).toBeDefined());
+      expect(result()).toHaveTextContent(/불러오는 중/);
+      expect(lane.queryWorkoutPeriodHeartRate).not.toHaveBeenCalled();
+      await act(async () => {
+        if (outcome === 'denied') lane.revoke();
+        release?.();
+      });
+      await waitFor(() =>
+        expect(result()).toHaveTextContent(
+          outcome === 'available' ? '120 BPM' : /심박수를 확인할 수 없어요/,
+        ),
+      );
+      expect(lane.queryWorkoutPeriodHeartRate).toHaveBeenCalledTimes(
+        outcome === 'available' ? 1 : 0,
+      );
+      expect(lane.requestReadAuthorizations).not.toHaveBeenCalled();
+      await view.unmount();
+    } finally {
+      lane.close();
+    }
+  },
+);

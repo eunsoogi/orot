@@ -138,6 +138,7 @@ export function OverviewMetrics({ onEdit }: { readonly onEdit?: () => void }) {
                 metrics={data.metrics}
                 workoutSelectionEpoch={data.workoutSelectionEpoch}
                 preserveWorkoutOwner={data.preserveWorkoutOwner}
+                initialWorkoutChoicePending={data.initialWorkoutChoicePending}
                 state={data.state}
               />
             ) : isOverviewSnapshotMetric(metric) ? (

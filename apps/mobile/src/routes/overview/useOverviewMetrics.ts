@@ -42,6 +42,8 @@ export function useOverviewMetrics() {
     'loading' | 'ready' | 'refreshing' | 'stale' | 'failed'
   >('loading');
   const [attempt, setAttempt] = useState(0);
+  const [initialWorkoutChoicePending, setInitialWorkoutChoicePending] =
+    useState(true);
   const [workoutSelectionEpoch, setWorkoutSelectionEpoch] = useState<
     number | null
   >(null);
@@ -132,6 +134,7 @@ export function useOverviewMetrics() {
       setQuantityTruncated(nextMetrics.quantityTruncated);
       hasSnapshot.current = true;
       setWorkoutSelectionEpoch(++authenticatedSelection.current);
+      setInitialWorkoutChoicePending(false);
       foregroundChoice.current = true;
       setPreserveWorkoutOwner(false);
       setState('ready');
@@ -208,9 +211,11 @@ export function useOverviewMetrics() {
   const workoutOwner: {
     workoutSelectionEpoch?: number | null;
     preserveWorkoutOwner?: boolean;
+    initialWorkoutChoicePending?: boolean;
   } = {
     workoutSelectionEpoch,
     preserveWorkoutOwner,
+    initialWorkoutChoicePending,
   };
   return {
     ...workoutOwner,
