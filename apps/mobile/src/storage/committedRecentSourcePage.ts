@@ -9,8 +9,9 @@ import {
   awaitIndependentReadSettlement,
 } from './protectedReadEpoch';
 
-// Allow two independently settled startup mutations within one first-page window.
-const initialContentionBudgetMs = 1_000;
+// Cold schema and startup writes can hold the first read queue longer than one second.
+// This applies only to a known unsettled owner, never to failed SQL or later pages.
+const initialContentionBudgetMs = 2_500;
 const maxInitialContentionRetries = 2;
 
 /** A single indexed read takes a turn on the same queue as protected writes.
