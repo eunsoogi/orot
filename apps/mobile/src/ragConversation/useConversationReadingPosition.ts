@@ -201,6 +201,9 @@ export function useConversationReadingPosition(input: {
   useEffect(reveal);
 
   return {
+    // Losing a pending target on backgrounding is not a completed restoration.
+    readyToFollow:
+      state.ready && !state.cancelled && !state.target && current(),
     pending: Boolean(
       state.id &&
       !state.cancelled &&
