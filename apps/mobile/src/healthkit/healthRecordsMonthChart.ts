@@ -62,11 +62,7 @@ export function buildHealthRecordsMonthChart(
 ): { data: ChartData; kind: ChartKind } {
   const metric = metrics[category];
   const kind =
-    metric === 'heartRate'
-      ? 'range'
-      : ['steps', 'workouts'].includes(metric)
-        ? 'bar'
-        : 'line';
+    metric === 'heartRate' ? 'range' : metric === 'workouts' ? 'bar' : 'line';
   const groups = new Map<
     string,
     ChartSeries & { points: Array<ChartSeries['points'][number]> }
@@ -95,7 +91,11 @@ export function buildHealthRecordsMonthChart(
     };
     const total = category === 'steps' || category === 'workouts';
     item.points.push({
-      x: kind !== 'line' ? localDay(row.effectiveAt) : row.effectiveAt,
+      // Steps stay in their existing local daily buckets when switching renderer.
+      x:
+        kind !== 'line' || category === 'steps'
+          ? localDay(row.effectiveAt)
+          : row.effectiveAt,
       value: 'minutes' in row ? row.minutes : total ? row.sum : row.mean,
       source: recordSource(row.source),
       ...('min' in row && !total
