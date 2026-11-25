@@ -70,11 +70,11 @@ const subscribeIdle = () => () => {};
  * observes admission even when the answer body and owner context are memoized. */
 export function useOwnedConversationA2UIStamp(
   owner: Owner | undefined,
-  root: ConversationA2UINode,
+  root: ConversationA2UINode | undefined,
   enabled: boolean,
 ) {
   const read = useCallback(
-    () => (enabled ? owner?.surface(root) : undefined),
+    () => (enabled && root ? owner?.surface(root) : undefined),
     [enabled, owner, root],
   );
   return useSyncExternalStore(

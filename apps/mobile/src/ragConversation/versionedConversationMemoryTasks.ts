@@ -1,3 +1,4 @@
+import { withConversationA2UIModal } from './conversationA2UIModalTask';
 import type { TaskResponderContract } from '@orot/agent-runtime';
 import { withReplyPreferenceSpan } from './authoredReplyPreferenceSpan';
 import { withAuthoredMemorySpan } from './authoredMemorySpanTask';
@@ -17,6 +18,10 @@ export function versionedConversationMemoryTasks(
     withReplyPreferenceSpan(conversationTaskV24, true),
     '28',
   );
+  const conversationTaskV31 = withAuthoredMemorySpan(
+    withReplyPreferenceSpan(alignedVerticalListTask, true),
+    '31',
+  );
   return {
     conversationTaskV25,
     conversationTaskV26,
@@ -30,9 +35,7 @@ export function versionedConversationMemoryTasks(
       withReplyPreferenceSpan(horizontalListTask, true),
       '30',
     ),
-    ragConversationTask: withAuthoredMemorySpan(
-      withReplyPreferenceSpan(alignedVerticalListTask, true),
-      '31',
-    ),
+    conversationTaskV31,
+    ragConversationTask: withConversationA2UIModal(conversationTaskV31),
   };
 }

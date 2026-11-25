@@ -164,7 +164,6 @@ export const structuredConversationTask =
 export const proactiveConversationTaskV16 = withProactiveMemory(
   structuredConversationTask,
 );
-
 // Prompt text is part of protected execution identity, not a migration of prior turns.
 export const recordFirstConversationTaskV17 = {
   ...proactiveConversationTaskV16,
@@ -241,6 +240,7 @@ export const {
   conversationTaskV28,
   conversationTaskV29,
   conversationTaskV30,
+  conversationTaskV31,
   ragConversationTask,
 } = versionedConversationMemoryTasks(
   conversationTaskV24,
