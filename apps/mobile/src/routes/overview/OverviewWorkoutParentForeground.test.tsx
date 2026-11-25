@@ -126,6 +126,10 @@ test.each(['available', 'denied'] as const)(
   async outcome => {
     const lane = await setup();
     jest.mocked(useIsFocused).mockReturnValue(true);
+    const remove = jest.fn();
+    const listener = jest
+      .spyOn(AppState, 'addEventListener')
+      .mockReturnValue({ remove });
     let release: (() => void) | undefined;
     jest
       .mocked(readIsolatedOverview)
@@ -158,7 +162,9 @@ test.each(['available', 'denied'] as const)(
       );
       expect(lane.requestReadAuthorizations).not.toHaveBeenCalled();
       await view.unmount();
+      expect(remove).toHaveBeenCalledTimes(1);
     } finally {
+      listener.mockRestore();
       lane.close();
     }
   },
