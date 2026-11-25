@@ -1,4 +1,7 @@
 export { bindRecordingToUnchangedVisit } from './automaticRecapBinding';
+export { timeOwnedSqlTransaction, timeSqlWork } from './ownedSqlTiming';
+export type { OwnedSqlPhase, SqlTimingObserver } from './ownedSqlTiming';
+
 export type { AutomaticVisitSnapshot } from './automaticRecapBinding';
 export { STORAGE_TABLES, isRecordKind, parseRecord } from './contracts';
 export { bindRecordingToVisit, readRecapBinding, unbindRecordingFromVisit } from './recapBinding';

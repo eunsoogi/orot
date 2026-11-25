@@ -54,6 +54,9 @@ final class ProcessDiagnosticWitnessTests: XCTestCase {
         )
         let detailedStages = [
             "protected_database_open", "deletion_rag_prepare", "source_reference_snapshot",
+            "source_reference_db_admission", "source_reference_sql", "source_reference_db_settlement",
+            "memory_batch_db_admission", "memory_batch_state_read", "memory_batch_record_writes",
+            "memory_batch_fence_writes", "memory_batch_db_settlement",
             "memory_engine_acquire", "memory_forget", "memory_deletion_fences", "memory_batch_commit",
         ]
         for stage in detailedStages {

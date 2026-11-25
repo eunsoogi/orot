@@ -41,6 +41,7 @@ export function createScopedAgentMemoryCascade(
         kinds,
         undefined,
         { namespaceIdentity, candidates },
+        intent.observe,
       );
       if (changed) notifyCommittedAgentMemoryVisibility(database);
       return committedMemoryIds;

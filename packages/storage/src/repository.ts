@@ -30,6 +30,7 @@ import {
   readSourceDeletionSnapshot,
   SOURCE_DELETION_TOMBSTONES_TABLE,
 } from './sourceDeletionReferences';
+import type { TypedSourceDeletionReader } from './sourceDeletionReferences';
 import type { SqlDatabase, SqlExecutor, SqlTransaction } from './sql';
 import { hasExactSourceDeletionReferences } from './sourceDeletionMembership';
 import { clearResearchArtifacts } from './researchDeletion';
@@ -47,7 +48,7 @@ export interface RecordWriter {
   putSyncCheckpoint(checkpoint: SyncCheckpoint): Promise<void>;
 }
 
-export interface RecordRepository extends RecordWriter {
+export interface RecordRepository extends RecordWriter, TypedSourceDeletionReader {
   readonly listHealthObservationMonthChart: HealthObservationMonthChartLoader;
   listHealthMedicationPage(request: HealthMedicationPageRequest): Promise<HealthMedicationPage>;
   listHealthObservationPage(
@@ -79,9 +80,6 @@ export interface RecordRepository extends RecordWriter {
     referenceIds: readonly string[],
     signal: AbortSignal,
   ): Promise<boolean>;
-  listTypedSourceDeletionReferences(
-    sourceRecordId: string,
-  ): Promise<readonly { kind: string; id: string }[]>;
   listDeletedSourceReferenceIds(referenceIds: readonly string[]): Promise<readonly string[]>;
 }
 
@@ -223,8 +221,8 @@ export function createRecordRepository(database: SqlDatabase): RecordRepository 
       const references = await readSourceDeletionSnapshot(database, sourceRecordId);
       return [...new Set(references.map((reference) => reference.id))].sort();
     },
-    async listTypedSourceDeletionReferences(sourceRecordId) {
-      return readSourceDeletionSnapshot(database, sourceRecordId);
+    async listTypedSourceDeletionReferences(sourceRecordId, observe) {
+      return readSourceDeletionSnapshot(database, sourceRecordId, observe);
     },
     async listDeletedSourceReferenceIds(referenceIds) {
       // Checkpoint resume must reject deleted identities without loading their former content.

@@ -63,6 +63,18 @@ export async function verifyRecordingDeletionPhaseIsolation(
     commitGate.release();
 
     await expect(deletion).resolves.toEqual({ audioCleanupPending: false });
+    expect(stages().map(([phase]) => phase)).toEqual(
+      expect.arrayContaining([
+        'source-reference-db-admission',
+        'source-reference-sql',
+        'source-reference-db-settlement',
+        'memory-batch-db-admission',
+        'memory-batch-state-read',
+        'memory-batch-record-writes',
+        'memory-batch-fence-writes',
+        'memory-batch-db-settlement',
+      ]),
+    );
     expect(stages()).toContainEqual(['memory-batch-commit', 'end']);
     expect(stages()).toContainEqual(['database-delete-commit', 'end']);
     expect(await repository.get('source_record', sourceId)).toBeNull();
