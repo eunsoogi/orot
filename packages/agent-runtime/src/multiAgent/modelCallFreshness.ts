@@ -179,7 +179,14 @@ export async function callModelWithEvidenceFreshness<TResult>(
     }
     return 'ready';
   };
-  const outcome = await journaledModelCall(context, initialRequest, consent, onTextEvent, prepare);
+  const outcome = await journaledModelCall(
+    context,
+    initialRequest,
+    consent,
+    onTextEvent,
+    prepare,
+    () => ensureCurrent('underlying_call_unconfirmed'),
+  );
   if (staleAfterConsent || context.outcome || !outcome) return;
   if (outcome.status !== 'response') return outcome;
   return (await ensureCurrent('underlying_call_unconfirmed')) ? outcome : undefined;
