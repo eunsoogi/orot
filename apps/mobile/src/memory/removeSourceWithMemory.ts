@@ -1,5 +1,9 @@
 import type { AgentMemoryService } from '@orot/agent-memory';
-import type { SqlDatabase } from '@orot/storage';
+import type {
+  OwnedSqlPhase,
+  SqlDatabase,
+  SqlTimingObserver,
+} from '@orot/storage';
 import type { LocalE5RagService } from '../rag/localE5RagService';
 import { RecordIdSchema } from '@orot/domain';
 import { createLocalE5RagService } from '../rag/localE5RagService';
@@ -50,10 +54,25 @@ export async function removeLocalSourceWithMemory(
       forget: 'memory-forget',
       fences: 'memory-deletion-fences',
       commit: 'memory-batch-commit',
+      'batch-admission': 'memory-batch-db-admission',
+      'batch-state-read': 'memory-batch-state-read',
+      'batch-record-writes': 'memory-batch-record-writes',
+      'batch-fence-writes': 'memory-batch-fence-writes',
+      'batch-settlement': 'memory-batch-db-settlement',
     } as const;
     const name = span[stage];
     if (event === 'begin') beginRecordingDeletionTiming(timingProbe, name);
     else endRecordingDeletionTiming(timingProbe, name, event);
+  };
+  const observeSnapshot: SqlTimingObserver<OwnedSqlPhase> = (phase, event) => {
+    const span = {
+      admission: 'source-reference-db-admission',
+      body: 'source-reference-sql',
+      settlement: 'source-reference-db-settlement',
+    } as const;
+    if (event === 'begin')
+      beginRecordingDeletionTiming(timingProbe, span[phase]);
+    else endRecordingDeletionTiming(timingProbe, span[phase], event);
   };
   let derivedCleanupEnded = false;
   const endDerivedCleanup = (outcome: 'success' | 'failure') => {
@@ -79,10 +98,10 @@ export async function removeLocalSourceWithMemory(
         timingProbe,
         'source-reference-snapshot',
         async () => {
-          const typed =
-            await repository.listTypedSourceDeletionReferences?.(
-              normalizedSourceId,
-            );
+          const typed = await repository.listTypedSourceDeletionReferences?.(
+            normalizedSourceId,
+            ...(timingProbe ? [observeSnapshot] : []),
+          );
           const references = typed
             ? [...new Set(typed.map(reference => reference.id))].sort()
             : await repository.listSourceDeletionReferences(normalizedSourceId);

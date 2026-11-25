@@ -1,8 +1,9 @@
 import type { Memory } from 'rememori';
-import type { AgentMemoryStorageAdapter } from './types';
+import type { AgentMemoryStorageAdapter, SourceCascadeBatchPhase } from './types';
 import { provenanceFrom } from './validation';
 
-type Stage = 'queue' | 'provenance' | 'engine' | 'forget' | 'fences' | 'commit';
+type Stage =
+  'queue' | 'provenance' | 'engine' | 'forget' | 'fences' | 'commit' | SourceCascadeBatchPhase;
 type Event = 'begin' | 'success' | 'failure';
 
 /** Optional observation emits stage and outcome only, never source or Memory data. */
@@ -139,6 +140,7 @@ export async function runSourceRemovalBatch({
         references: selection.references,
         candidateIds: selection.ids,
         typedReferences,
+        observe,
       }),
     );
     return {

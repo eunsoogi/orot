@@ -2,6 +2,20 @@ import { RecordIdSchema } from '@orot/domain';
 import { STORAGE_TABLES } from './contracts';
 import type { RecordKind } from './contracts';
 import type { SqlDatabase, SqlExecutor } from './sql';
+import {
+  timeOwnedSqlTransaction,
+  type OwnedSqlPhase,
+  type SqlTimingObserver,
+} from './ownedSqlTiming';
+
+type References = readonly { kind: string; id: string }[];
+
+export interface TypedSourceDeletionReader {
+  listTypedSourceDeletionReferences(
+    sourceRecordId: string,
+    observe?: SqlTimingObserver<OwnedSqlPhase>,
+  ): Promise<References>;
+}
 
 export const SOURCE_DELETION_TOMBSTONES_TABLE = 'source_deletion_tombstones';
 
@@ -16,11 +30,19 @@ const snapshotTranscriptSets = `WITH deletion_target(id) AS (SELECT ?),
   )`;
 
 /** Read both deletion projections from a consistent database snapshot. */
-export async function readSourceDeletionSnapshot(database: SqlDatabase, sourceId: string) {
-  let references: readonly { kind: string; id: string }[] = [];
-  await database.transaction(async (tx) => {
-    references = await listTypedSourceDeletionReferences(tx, sourceId);
-  });
+export async function readSourceDeletionSnapshot(
+  database: SqlDatabase,
+  sourceId: string,
+  observe?: SqlTimingObserver<OwnedSqlPhase>,
+) {
+  let references: References = [];
+  await timeOwnedSqlTransaction(
+    database,
+    async (tx) => {
+      references = await listTypedSourceDeletionReferences(tx, sourceId);
+    },
+    observe,
+  );
   return references;
 }
 

@@ -9,9 +9,11 @@ import {
   setupUserStatementMemoryGuards,
 } from './userStatementMemoryGuards';
 import type { SqlDatabase } from '@orot/storage';
+import { timeOwnedSqlTransaction, timeSqlWork } from '@orot/storage';
 import type {
   AgentMemoryStorageAdapter,
   PersistedMemoryRecord,
+  AgentMemorySourceCascade,
 } from '@orot/agent-memory';
 import {
   deletedSymptomIds,
@@ -41,117 +43,152 @@ export async function commitAgentMemoryWrites(
   removedKinds: Map<string, readonly string[] | undefined>,
   witness?: Parameters<AgentMemoryStorageAdapter['commitBatch']>[0],
   scopedCascade?: ScopedMemoryCascade,
+  observe?: AgentMemorySourceCascade['observe'],
 ) {
   let changed = false;
   const committedMemoryIds: string[] = [];
-  await database.transaction(async transaction => {
-    if (
-      [...writes.values()].some(
-        record =>
-          (record?.meta.provenance as { reviewState?: string } | undefined)
-            ?.reviewState === 'user_stated',
-      )
-    )
-      await setupUserStatementMemoryGuards(transaction);
-    const removedResult = await transaction.execute(
-      'SELECT source_id FROM agent_memory_removed_sources ORDER BY source_id',
-    );
-    const removedSourceIds = new Set(
-      removedResult.rows.flatMap(row =>
-        typeof row.source_id === 'string' ? [row.source_id] : [],
-      ),
-    );
-    const snapshot = scopedCascade?.candidates.size
-      ? await transaction.execute(allMemoryRows)
-      : undefined;
-    const scopedFences =
-      scopedCascade && snapshot
-        ? scopedMemoryCascadeFences(
-            snapshot.rows,
-            scopedCascade,
-            removedSourceIdsToAdd,
+  await timeOwnedSqlTransaction(
+    database,
+    async transaction => {
+      const state = await timeSqlWork(observe, 'batch-state-read', async () => {
+        if (
+          [...writes.values()].some(
+            record =>
+              (record?.meta.provenance as { reviewState?: string } | undefined)
+                ?.reviewState === 'user_stated',
           )
-        : undefined;
-    for (const id of scopedFences ?? []) {
-      removedSourceIdsToAdd.add(id);
-      removedKinds.set(id, undefined);
-    }
-    for (const sourceId of removedSourceIdsToAdd)
-      removedSourceIds.add(sourceId);
-    const invalidatedSourceIds =
-      await listSupersededTranscriptRevisionIds(transaction);
-    const removedSymptoms = await deletedSymptomIds(transaction);
-    for (const record of writes.values()) {
-      if (record) {
-        await assertUserStatementMemoryCurrent(transaction, record);
-        await assertPriorMemoryAvailable(transaction, record);
-        await attestNewMemoryPeriods(transaction, record);
-        if (!(await memoryParentAvailable(transaction, record)))
-          throw new Error('The reviewed memory parent is unavailable.');
-        if (referencesDeletedSymptom(record, removedSymptoms))
-          throw new Error('Memory cannot reference a deleted symptom.');
-        assertNoSourceReference(
-          record,
-          removedSourceIds,
-          'Memory cannot reference a source being or already removed.',
-        );
-        assertNoSourceReference(
-          record,
-          invalidatedSourceIds,
-          'Memory cannot reference a superseded transcript revision.',
-        );
-      }
-    }
-    if (removedSourceIdsToAdd.size > 0 || invalidatedSourceIds.size > 0) {
-      const records = snapshot ?? (await transaction.execute(allMemoryRows));
-      for (const row of records.rows) {
-        const record = decodeAgentMemoryRecord(row.record_json);
-        // A separately requested source deletion still owns its existing hard-delete boundary.
-        if (
-          referencesDeletedSymptom(record, removedSymptoms) &&
-          !referencesAnySource(record, removedSourceIdsToAdd)
         )
-          continue;
-        if (
-          referencesAnySource(record, removedSourceIds) ||
-          referencesAnySource(record, invalidatedSourceIds)
-        ) {
-          const deleted = await transaction.execute(
-            'DELETE FROM agent_memory_records WHERE id = ?',
-            [record.id],
-          );
-          if ((deleted.rowsAffected ?? 0) > 0) {
-            changed = true;
-            if (scopedFences?.has(record.id))
-              committedMemoryIds.push(record.id);
+          await setupUserStatementMemoryGuards(transaction);
+        const removedResult = await transaction.execute(
+          'SELECT source_id FROM agent_memory_removed_sources ORDER BY source_id',
+        );
+        const removedSourceIds = new Set(
+          removedResult.rows.flatMap(row =>
+            typeof row.source_id === 'string' ? [row.source_id] : [],
+          ),
+        );
+        const snapshot = scopedCascade?.candidates.size
+          ? await transaction.execute(allMemoryRows)
+          : undefined;
+        const scopedFences =
+          scopedCascade && snapshot
+            ? scopedMemoryCascadeFences(
+                snapshot.rows,
+                scopedCascade,
+                removedSourceIdsToAdd,
+              )
+            : undefined;
+        for (const id of scopedFences ?? []) {
+          removedSourceIdsToAdd.add(id);
+          removedKinds.set(id, undefined);
+        }
+        for (const sourceId of removedSourceIdsToAdd)
+          removedSourceIds.add(sourceId);
+        const invalidatedSourceIds =
+          await listSupersededTranscriptRevisionIds(transaction);
+        const removedSymptoms = await deletedSymptomIds(transaction);
+        for (const record of writes.values()) {
+          if (record) {
+            await assertUserStatementMemoryCurrent(transaction, record);
+            await assertPriorMemoryAvailable(transaction, record);
+            await attestNewMemoryPeriods(transaction, record);
+            if (!(await memoryParentAvailable(transaction, record)))
+              throw new Error('The reviewed memory parent is unavailable.');
+            if (referencesDeletedSymptom(record, removedSymptoms))
+              throw new Error('Memory cannot reference a deleted symptom.');
+            assertNoSourceReference(
+              record,
+              removedSourceIds,
+              'Memory cannot reference a source being or already removed.',
+            );
+            assertNoSourceReference(
+              record,
+              invalidatedSourceIds,
+              'Memory cannot reference a superseded transcript revision.',
+            );
           }
         }
-      }
-    }
-    for (const [id, record] of writes) {
-      if (record)
-        changed =
-          (await insertAgentMemoryRecord(transaction, record)) || changed;
-      else {
-        const deleted = await transaction.execute(
-          'DELETE FROM agent_memory_records WHERE id = ?',
-          [id],
-        );
-        changed = (deleted.rowsAffected ?? 0) > 0 || changed;
-      }
-    }
-    if (witness)
-      await attestNonPeriodVisitMemory(
-        transaction,
-        writes.get(witness.recordId),
-        witness.context,
-      );
-    changed =
-      (await writeAgentMemoryDeletionMarkers(
-        transaction,
-        removedSourceIdsToAdd,
-        removedKinds,
-      )) || changed;
-  });
+        const records =
+          removedSourceIdsToAdd.size > 0 || invalidatedSourceIds.size > 0
+            ? (snapshot ?? (await transaction.execute(allMemoryRows)))
+            : undefined;
+        return {
+          records,
+          scopedFences,
+          removedSymptoms,
+          removedSourceIds,
+          invalidatedSourceIds,
+        };
+      });
+      await timeSqlWork(observe, 'batch-record-writes', async () => {
+        const {
+          records,
+          scopedFences,
+          removedSymptoms,
+          removedSourceIds,
+          invalidatedSourceIds,
+        } = state;
+        if (records) {
+          for (const row of records.rows) {
+            const record = decodeAgentMemoryRecord(row.record_json);
+            // A separately requested source deletion still owns its existing hard-delete boundary.
+            if (
+              referencesDeletedSymptom(record, removedSymptoms) &&
+              !referencesAnySource(record, removedSourceIdsToAdd)
+            )
+              continue;
+            if (
+              referencesAnySource(record, removedSourceIds) ||
+              referencesAnySource(record, invalidatedSourceIds)
+            ) {
+              const deleted = await transaction.execute(
+                'DELETE FROM agent_memory_records WHERE id = ?',
+                [record.id],
+              );
+              if ((deleted.rowsAffected ?? 0) > 0) {
+                changed = true;
+                if (scopedFences?.has(record.id))
+                  committedMemoryIds.push(record.id);
+              }
+            }
+          }
+        }
+        for (const [id, record] of writes) {
+          if (record)
+            changed =
+              (await insertAgentMemoryRecord(transaction, record)) || changed;
+          else {
+            const deleted = await transaction.execute(
+              'DELETE FROM agent_memory_records WHERE id = ?',
+              [id],
+            );
+            changed = (deleted.rowsAffected ?? 0) > 0 || changed;
+          }
+        }
+        if (witness)
+          await attestNonPeriodVisitMemory(
+            transaction,
+            writes.get(witness.recordId),
+            witness.context,
+          );
+      });
+      changed =
+        (await timeSqlWork(observe, 'batch-fence-writes', () =>
+          writeAgentMemoryDeletionMarkers(
+            transaction,
+            removedSourceIdsToAdd,
+            removedKinds,
+          ),
+        )) || changed;
+    },
+    observe &&
+      ((phase, event) => {
+        if (phase !== 'body')
+          observe(
+            phase === 'admission' ? 'batch-admission' : 'batch-settlement',
+            event,
+          );
+      }),
+  );
   return { changed, committedMemoryIds };
 }

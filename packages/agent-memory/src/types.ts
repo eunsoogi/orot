@@ -55,10 +55,23 @@ export interface AgentMemoryHit {
 export interface PersistedMemoryRecord extends MemoryRecord {}
 
 /** Source-scoped app request; these IDs are candidates, not deletion authority. */
+export type SourceCascadeBatchPhase =
+  | 'batch-admission'
+  | 'batch-state-read'
+  | 'batch-record-writes'
+  | 'batch-fence-writes'
+  | 'batch-settlement';
+
+export type SourceCascadeBatchObserver = (
+  phase: SourceCascadeBatchPhase,
+  event: 'begin' | 'success' | 'failure',
+) => void;
+
 export interface AgentMemorySourceCascade {
   readonly references: ReadonlySet<string>;
   readonly typedReferences?: readonly { id: string; kind: string }[];
   readonly candidateIds: readonly string[];
+  readonly observe?: SourceCascadeBatchObserver;
 }
 
 /** Rememori's storage contract plus the atomic operations needed by app corrections. */
