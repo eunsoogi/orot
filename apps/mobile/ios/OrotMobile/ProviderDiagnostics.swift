@@ -19,7 +19,7 @@ final class OrotProviderDiagnostics: NSObject {
     }
 
     @objc func report(_ feature: String, stage: String, outcome: String) {
-        guard ProcessInfo.processInfo.arguments.contains("-OROT_PROVIDER_DIAGNOSTICS") else { return }
+        guard ProcessInfo.processInfo.arguments.contains("-OROT_PROVIDER_DIAGNOSTICS"), !WorkoutPeriodDiagnostics.handleJS(feature, stage: stage, outcome: outcome) else { return }
         if feature == "live_health" {
             // Never accept text, request identifiers, source identities, or provider/audio payloads.
             let stages = ["grant_lookup", "owner_reproof", "local_confirmation", "data_open", "evidence_lookup",

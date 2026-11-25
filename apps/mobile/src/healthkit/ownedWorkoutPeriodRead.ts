@@ -1,3 +1,4 @@
+import { workoutReadDiagnostics } from './workoutReadDiagnostics';
 import type { RecordRepository } from '@orot/storage';
 import {
   loadWorkoutPeriodCohort,
@@ -16,6 +17,7 @@ type Owner = Readonly<{
   confirm(): Promise<boolean>;
   admitNativeCohort?(cohort: readonly PeriodWorkout[]): boolean;
 }>;
+const trace = workoutReadDiagnostics('shared');
 type Available = Extract<WorkoutPeriodResult, { status: 'available' }>;
 
 /** Both the protected SQL cohort and HealthKit membership must be proved in
@@ -28,19 +30,23 @@ export async function readOwnedWorkoutPeriod(
   const read = async (): Promise<WorkoutPeriodResult | undefined> => {
     const current = () => !owner.signal.aborted && owner.current();
     try {
-      const cohort = await loadWorkoutPeriodCohort(
-        owner.repository,
-        scope,
+      const cohort = await trace.observe(
+        'cohort',
+        () => loadWorkoutPeriodCohort(owner.repository, scope, current),
         current,
       );
+      if (cohort?.length === 0) trace.report('cohort', 'empty');
       if (
         !cohort ||
         !current() ||
-        !(await owner.confirm()) ||
-        !current() ||
-        owner.admitNativeCohort?.(cohort) === false
+        !(await trace.observe('reproof', owner.confirm, current)) ||
+        !current()
       )
         return undefined;
+      if (owner.admitNativeCohort?.(cohort) === false) {
+        trace.report('cohort', 'failed');
+        return undefined;
+      }
       // The optional local consumer guard cannot replace either source reproof.
       if (!current()) return undefined;
       const result = await readWorkoutPeriodHeartRate(

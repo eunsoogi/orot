@@ -14,6 +14,7 @@ import {
   awaitIndependentReadSettlement,
 } from '../storage/protectedReadEpoch';
 import { subscribeWorkoutImportCommitted } from './workoutImportEvents';
+import { workoutReadDiagnostics } from './workoutReadDiagnostics';
 import { loadWorkoutPeriodCohort } from './workoutPeriodCohort';
 import {
   readWorkoutPeriodHeartRate,
@@ -22,6 +23,7 @@ import {
 
 type State = WorkoutPeriodResult | { status: 'idle' | 'reading' };
 const startupWriterBudgetMs = 2_500;
+const trace = workoutReadDiagnostics('records');
 
 declare const require: (
   path: '../storage/secureDatabase',
@@ -62,17 +64,17 @@ export function useRecordsWorkoutMonthHeartRate({
     }
     async function read() {
       if (!mounted || active || !visible()) return;
+      trace.report('route', 'started');
       const end = Date.parse(toInclusive);
       const from = Date.parse(fromInclusive);
       if (!Number.isFinite(end) || !Number.isFinite(from) || !(from < end))
         return;
-      // Keep Records' exact inclusive end, expressed as a half-open native bound.
       const period = {
         fromInclusive,
         toExclusive: new Date(end + 1).toISOString(),
       };
       const timeZone = Intl.DateTimeFormat().resolvedOptions().timeZone;
-      if (!timeZone) return;
+      if (!timeZone) return trace.report('route', 'failed');
       const abort = new AbortController();
       active = abort;
       const owns = () => mounted && active === abort;
@@ -85,6 +87,7 @@ export function useRecordsWorkoutMonthHeartRate({
         if (owns()) retire();
       });
       if (!protection) {
+        trace.report('protection', 'missing');
         if (owns()) retire();
         if (mounted && visible()) setState({ status: 'unavailable' });
         return;
@@ -93,14 +96,22 @@ export function useRecordsWorkoutMonthHeartRate({
       setState({ status: 'reading' });
       let next: State = { status: 'unavailable' };
       try {
-        if (!(await protection.confirm()) || !current()) return;
+        if (
+          !(await trace.observe('protection', protection.confirm)) ||
+          !current()
+        )
+          return;
         const storage = require('../storage/secureDatabase');
-        const database = await storage.openLocalAgentMemoryDatabase();
+        const database = await trace.observe(
+          'database',
+          storage.openLocalAgentMemoryDatabase,
+        );
         if (!current()) return;
         epoch = acquireIndependentReadEpoch(database);
         // A known local writer blocks admission, not the underlying HealthKit data.
         // Never adopt a new owner or keep an invalidated snapshot after waiting.
         if (!epoch) {
+          trace.report('epoch', 'started');
           if (
             !(await awaitIndependentReadSettlement(
               database,
@@ -112,7 +123,7 @@ export function useRecordsWorkoutMonthHeartRate({
             !current() ||
             !storage.isCurrentLocalAgentMemoryDatabase(database)
           )
-            return;
+            return trace.report('epoch', 'failed');
           epoch = acquireIndependentReadEpoch(database);
         }
         const sourceCurrent = () =>
@@ -122,15 +133,22 @@ export function useRecordsWorkoutMonthHeartRate({
           storage.isCurrentLocalAgentMemoryDatabase(database) &&
           epoch?.current() === true;
         const admitted = () => current() && sourceCurrent();
-        const cohort = await loadWorkoutPeriodCohort(
-          createRecordRepository(database),
-          period,
+        if (!admitted()) return trace.report('epoch', 'cancelled');
+        const cohort = await trace.observe(
+          'cohort',
+          () =>
+            loadWorkoutPeriodCohort(
+              createRecordRepository(database),
+              period,
+              admitted,
+            ),
           admitted,
         );
+        if (cohort?.length === 0) trace.report('cohort', 'empty');
         if (
           !cohort ||
           !admitted() ||
-          !(await protection.confirm()) ||
+          !(await trace.observe('reproof', protection.confirm, admitted)) ||
           !admitted()
         )
           return;
@@ -214,6 +232,7 @@ export function useRecordsWorkoutMonthHeartRate({
       retire();
       read();
     });
+    trace.report('route', 'completed');
     read();
     return () => {
       mounted = false;

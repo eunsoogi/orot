@@ -3,23 +3,6 @@ import Foundation
 import HealthKit
 import UIKit
 
-/// The opt-in trace accepts only fixed code-owned marks and a monotonic duration.
-enum WorkoutPeriodDiagnostics {
-    enum Mark: String {
-        case requestRejected, bridgeBusy, started, unavailable, empty, available, cancelled, timeout
-        case workoutObjectsRead, associatedParentsRead, quantitiesRead
-    }
-
-    private static let enabled = ProcessInfo.processInfo.arguments.contains("-OROT_PROVIDER_DIAGNOSTICS")
-
-    static func report(_ mark: Mark, since start: DispatchTime? = nil) {
-        guard enabled else { return }
-        let elapsed = start.map { (DispatchTime.now().uptimeNanoseconds - $0.uptimeNanoseconds) / 1_000_000 } ?? 0
-        NSLog("OROT_PROVIDER_DIAGNOSTIC layer=app feature=workout_period stage=%@ elapsed_ms=%ld",
-              mark.rawValue, Int(min(elapsed, 300_000)))
-    }
-}
-
 /// Private local producer; not the React bridge. The caller must first obtain a complete,
 /// stable imported cohort from protected storage. It must re-check that scope before use.
 @MainActor
@@ -69,7 +52,10 @@ enum WorkoutPeriodHealthKitProducer {
         guard UIApplication.shared.applicationState == .active, active(), HKHealthStore.isHealthDataAvailable(),
               period.start < period.end, completeCohort.count <= maxWorkouts,
               Set(completeCohort.map(\.id)).count == completeCohort.count
-        else { return .unavailable }
+        else {
+            WorkoutPeriodDiagnostics.report(.nativeGateRejected, since: started)
+            return .unavailable
+        }
         if completeCohort.isEmpty {
             return .emptyVisible
         }
