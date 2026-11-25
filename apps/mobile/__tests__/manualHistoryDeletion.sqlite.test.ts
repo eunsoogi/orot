@@ -93,12 +93,8 @@ async function fixture() {
     sharedExecute,
     sharedTransaction,
     schemaWrites,
-    holdAdmission: (gate: Promise<unknown>) => {
-      beforeAdmission = gate;
-    },
-    holdCommit: (gate: Promise<unknown>) => {
-      beforeCommit = gate;
-    },
+    holdAdmission: (gate: Promise<unknown>) => (beforeAdmission = gate),
+    holdCommit: (gate: Promise<unknown>) => (beforeCommit = gate),
     failOn: (handler: (query: string) => void) => {
       failQuery = handler;
     },
