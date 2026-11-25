@@ -45,7 +45,13 @@ const memory = 'records-recent-source-memory:agent:' + memoryId;
 const error = 'records-recent-sources-error';
 const retry = 'records-recent-sources-retry';
 
-test.each(['Voice Model Back', 'native foreground'] as const)(
+test.each([
+  'Voice Model Back',
+  'native foreground',
+  'inactive compact',
+  'inactive full',
+  'background full',
+] as const)(
   'a warm mixed Records preview returns without a transient Retry: %s',
   async journey => {
     const oldAppState = AppState.currentState;
@@ -137,6 +143,11 @@ test.each(['Voice Model Back', 'native foreground'] as const)(
         Readiness,
       );
       try {
+        const full = journey.endsWith(' full');
+        if (full)
+          await fireEvent.press(
+            await screen.findByTestId('records-recent-view-all'),
+          );
         expect(await screen.findByText(file)).toBeTruthy();
         expect(await screen.findByTestId(memory)).toBeTruthy();
         const warmGrants = grants;
@@ -152,7 +163,12 @@ test.each(['Voice Model Back', 'native foreground'] as const)(
             'settings-provider',
           );
         } else {
-          await act(async () => phase('background'));
+          await act(async () =>
+            phase(journey.startsWith('inactive') ? 'inactive' : 'background'),
+          );
+          expect(
+            screen.queryByTestId('records-recent-sources-loading'),
+          ).toBeNull();
           expect(screen.queryByText(file)).toBeNull();
           expect(screen.queryByTestId(memory)).toBeNull();
         }
@@ -162,7 +178,11 @@ test.each(['Voice Model Back', 'native foreground'] as const)(
           else phase('active');
         });
         await entered.promise;
-        expect(controller.getSnapshot().currentRoute.name).toBe('root');
+        expect(controller.getSnapshot().currentRoute.name).toBe(
+          full ? 'recent-records' : 'root',
+        );
+        if (journey !== 'Voice Model Back')
+          expect(screen.queryByText(file)).toBeNull();
         expect(screen.queryByTestId(error)).toBeNull();
         expect(screen.queryByTestId(retry)).toBeNull();
         expect(grants).toBeGreaterThan(warmGrants);
