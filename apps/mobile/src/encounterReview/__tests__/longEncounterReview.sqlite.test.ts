@@ -14,14 +14,15 @@ import {
 import { EncounterReviewController } from '../controller';
 import { createEncounterReviewService } from '../service';
 
-jest.mock('../../providers/selection/keychainSelectionStore', () => ({
-  providerSelectionStore: { load: jest.fn() },
+jest.mock('../../aiFeatures/integration/provider', () => ({
+  resolveSelectedAiProvider: jest.fn(),
 }));
 jest.mock('../../ragConversation/conversationExecutionNative', () => ({
   conversationExecutionNative: jest.fn(),
 }));
 
 const fixture = sqliteReviewFixture();
+afterEach(() => jest.restoreAllMocks());
 const dataText = 'Synthetic ninth line only.';
 const choice = { providerId: APPLE_PROVIDER_ID, modelId: 'synthetic-local' };
 
@@ -51,14 +52,19 @@ async function harness() {
     bridgeAvailable: true,
     currentPhase: () => 'active',
     protectedDataAvailable: async () => true,
+    begin: async () => false,
+    end: () => {},
+    isActive: async () => false,
     subscribe: listener => {
       listeners.add(listener);
-      return () => listeners.delete(listener);
+      return () => {
+        listeners.delete(listener);
+      };
     },
-  } as NonNullable<ReturnType<typeof conversationExecutionNative>>);
+  });
   const guarded = guardedNativeDatabase(fixture.database());
   jest.mocked(openLocalAgentMemoryDatabase).mockResolvedValue(guarded);
-  jest.mocked(providerSelectionStore.load).mockResolvedValue(choice);
+  jest.spyOn(providerSelectionStore, 'load').mockResolvedValue(choice);
   let calls = 0;
   const provider: LanguageModelProvider = {
     kind: 'language-model',
