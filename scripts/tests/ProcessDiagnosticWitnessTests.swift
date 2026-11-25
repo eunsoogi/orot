@@ -45,4 +45,17 @@ final class ProcessDiagnosticWitnessTests: XCTestCase {
         _ = witness.acceptAndContinueJS(feature: "workout_period", stage: "overview_bridge_83", outcome: "completed")
         XCTAssertEqual(witness.snapshot()["receipts"] as? [String], [])
     }
+
+    func testRecordingDeletionIsRedactedAndDoesNotEnterTheSettingsRing() throws {
+        let witness = try XCTUnwrap(ProcessDiagnosticWitness.make(arguments: ["-OROT_PROVIDER_DIAGNOSTICS"]))
+        XCTAssertEqual(
+            ProcessDiagnosticWitness.recordingDeletionLine(stage: "audio_cleanup", outcome: "started"),
+            "OROT_PROVIDER_DIAGNOSTIC layer=app feature=recording_delete stage=audio_cleanup outcome=started",
+        )
+        XCTAssertNil(ProcessDiagnosticWitness.recordingDeletionLine(stage: "audio_cleanup", outcome: "source-id"))
+        XCTAssertNil(ProcessDiagnosticWitness.recordingDeletionLine(stage: "private-path", outcome: "completed"))
+        XCTAssertFalse(witness.acceptAndContinueJS(feature: "recording_delete", stage: "audio_cleanup", outcome: "started"))
+        XCTAssertFalse(witness.acceptAndContinueJS(feature: "recording_delete", stage: "private-path", outcome: "failed"))
+        XCTAssertEqual(witness.snapshot()["receipts"] as? [String], [])
+    }
 }

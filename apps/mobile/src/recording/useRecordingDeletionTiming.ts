@@ -4,6 +4,7 @@ import {
   RecordingDeletionTimingContext,
   withRecordingDeletionTiming,
 } from './recordingDeletionTiming';
+import { processRecordingDeletionProbe } from './processRecordingDeletionProbe';
 import type { RecordingLibraryService } from './recordingLibraryServiceTypes';
 import type { RecordingLibrarySummary } from './recordingLibraryServiceTypes';
 
@@ -12,7 +13,9 @@ export function useRecordingDeletionTiming(
   recordings: readonly RecordingLibrarySummary[],
   deletionBusy: boolean,
 ) {
-  const probe = useContext(RecordingDeletionTimingContext);
+  const probe =
+    useContext(RecordingDeletionTimingContext) ??
+    processRecordingDeletionProbe();
   const observedBusy = useRef(false);
   // Effects observe committed React state; neither event is a native pixel timestamp.
   useEffect(() => {
