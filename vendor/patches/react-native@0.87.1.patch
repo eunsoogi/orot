@@ -30,7 +30,7 @@ index eb5555d60f7ac6fad9401bdfb11b1fa13f21f236..3d79f91c7e86e3d589692fdaa29383e6
        global.__BUNDLE_LOADER_REPORTER__?.onSuccess(requestUrl);
      })
 diff --git a/package.json b/package.json
-index d2e544a3d9975834fd381b4d5ce4d8fc98889f16..2a9a905175dca6b62d0a232f648bc313df2f559c 100644
+index d2e544a3d9975834fd381b4d5ce4d8fc98889f16..52c6ef40e3d447b84d797c79bac1e109547f411a 100644
 --- a/package.json
 +++ b/package.json
 @@ -59,6 +59,7 @@
@@ -51,6 +51,17 @@ index d2e544a3d9975834fd381b4d5ce4d8fc98889f16..2a9a905175dca6b62d0a232f648bc313
      "scripts/bundle.js",
      "scripts/cocoapods",
      "scripts/codegen",
+@@ -203,9 +206,9 @@
+             "PlatformConstants": {
+               "unstableRequiresMainQueueSetup": true
+             },
+             "SampleTurboModule": {
+-              "unstableRequiresMainQueueSetup": true
++              "unstableRequiresMainQueueSetup": false
+             },
+             "StatusBarManager": {
+               "unstableRequiresMainQueueSetup": true
+             }
 diff --git a/scripts/cocoapods/new_architecture.rb b/scripts/cocoapods/new_architecture.rb
 index e4353427a977d0a34c5cc381b74296f968460d72..e261d8d21624b2608e718309808e43a76721ac7b 100644
 --- a/scripts/cocoapods/new_architecture.rb
