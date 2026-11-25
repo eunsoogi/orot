@@ -7,7 +7,7 @@ import { t } from '../i18n';
 import { hubSpacing } from '../layout/hubSpacing';
 
 interface RecordsRecentSourceStateProps {
-  readonly state: 'loading' | 'failed' | 'partial' | 'empty';
+  readonly state: 'loading' | 'failed' | 'empty';
   readonly errorMessage?: string | null;
   readonly showDocumentLibraryEmpty?: boolean;
   readonly onRetry: () => void;
@@ -31,24 +31,6 @@ export function RecordsRecentSourceState({
         <Text accessibilityLiveRegion="polite">
           {t('records.recent.loading')}
         </Text>
-      </View>
-    );
-  }
-
-  if (state === 'partial') {
-    // This recovery action never suggests that the visible records failed.
-    return (
-      <View style={styles.state} testID="records-recent-partial">
-        <Text accessibilityLiveRegion="polite" style={styles.empty}>
-          {t('records.recent.partialError')}
-        </Text>
-        <AppButton
-          onPress={onRetry}
-          testID="records-recent-partial-retry"
-          title={t('records.recent.retryMissing')}
-          variant="text"
-          size="compact"
-        />
       </View>
     );
   }
