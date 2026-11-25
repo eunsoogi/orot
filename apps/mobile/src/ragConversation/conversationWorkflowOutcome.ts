@@ -59,6 +59,9 @@ export async function conversationWorkflowOutcome(
               ...(result.value.replyPreferenceSpan
                 ? { replyPreferenceSpan: result.value.replyPreferenceSpan }
                 : {}),
+              ...(result.value.authoredRoutineSpan
+                ? { authoredRoutineSpan: result.value.authoredRoutineSpan }
+                : {}),
               citations: [],
               ...(result.value.a2uiPresentation && !signal?.aborted
                 ? {

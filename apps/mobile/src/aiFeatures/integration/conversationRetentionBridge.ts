@@ -138,6 +138,12 @@ export function createConversationRetentionBridge(input: {
           (!input.entryContext || input.entryContext.intent === 'conversation')
             ? { replyPreferenceSpan: outcome.replyPreferenceSpan }
             : {}),
+          ...(outcome.authoredRoutineSpan &&
+          !input.submittedInput &&
+          input.observer?.inputOrigin === 'composer' &&
+          (!input.entryContext || input.entryContext.intent === 'conversation')
+            ? { authoredRoutineSpan: outcome.authoredRoutineSpan }
+            : {}),
           providerId: input.providerId,
           modelId: input.modelId,
           ...(input.entryContext?.intent === 'possibilities'

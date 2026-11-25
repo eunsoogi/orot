@@ -3,6 +3,7 @@ import type {
   TaskResponderInput,
 } from '@orot/agent-runtime';
 import { isEligibleConversationMemorySource } from '../manualHistory/conversationHistoryIntent';
+import { isAuthoredRoutineMemoryStatement } from '../memory/authoredRoutineMemory';
 import { isProactiveMemoryStatement } from '../memory/userStatementMemory';
 import { isObject } from './taskHistory';
 import type { GroundedRagAnswer } from './task';
@@ -37,6 +38,21 @@ export function validateReplyPreferenceSpan(
   selected: unknown,
 ): string | undefined {
   if (typeof selected !== 'string' || !isProactiveMemoryStatement(selected))
+    return undefined;
+  return segments(current).filter(segment => segment === selected).length === 1
+    ? selected
+    : undefined;
+}
+
+/** Share ownership boundaries with the preference span, not its distinct enrollment. */
+export function validateAuthoredRoutineSpan(
+  current: string,
+  selected: unknown,
+): string | undefined {
+  if (
+    typeof selected !== 'string' ||
+    !isAuthoredRoutineMemoryStatement(selected)
+  )
     return undefined;
   return segments(current).filter(segment => segment === selected).length === 1
     ? selected
