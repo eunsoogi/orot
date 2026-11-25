@@ -55,12 +55,12 @@ final class ProcessDiagnosticWitness: @unchecked Sendable {
 
     /// Recording deletion appears only on the opted-in native log, not the Settings receipt ring.
     static func recordingDeletionLine(stage: String, outcome: String) -> String? {
-        let stages: Set<String> = [
+        let stages = Set([
             "confirmation_tap", "progress_presented", "busy_committed", "busy_settled", "operation",
             "library_queue_wait", "source_read", "stop_check", "audio_staging", "memory_open",
             "memory_queue_wait", "memory_provenance_scan", "derived_data_cleanup", "database_delete_commit",
             "audio_cleanup", "list_refresh", "list_summary_refresh", "list_summary_read",
-        ]
+        ])
         guard stages.contains(stage), ["started", "completed", "failed"].contains(outcome) else { return nil }
         return "OROT_PROVIDER_DIAGNOSTIC layer=app feature=recording_delete stage=" + stage + " outcome=" + outcome
     }
