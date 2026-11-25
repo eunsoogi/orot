@@ -77,7 +77,13 @@ function Entry() {
   return (
     <>
       <Pressable
-        onPress={() => mockResolveRun(run, run.credentials('owned-live-call'))}
+        onPress={() => {
+          const credentials = run.credentials('owned-live-call');
+          // Production handles this when opening. Install the test observer
+          // before fireEvent flushes an immediately rejected native decision.
+          credentials.catch(() => undefined);
+          mockResolveRun(run, credentials);
+        }}
       >
         <Text>Start Live call</Text>
       </Pressable>
@@ -172,7 +178,18 @@ test.each([true, false, null] as const)(
     });
     mockStartup.mockResolvedValue({ kind: 'active', companion });
     mockProtected.mockResolvedValue(true);
-    mockNativeReview.mockResolvedValue(choice);
+    let abortedAtReview: boolean | undefined;
+    mockNativeReview.mockImplementation(
+      async (
+        _id: string,
+        _companion: unknown,
+        _baseline: unknown,
+        signal: AbortSignal,
+      ) => {
+        abortedAtReview = signal.aborted;
+        return choice;
+      },
+    );
     const view = await render(<Entry />);
     try {
       await fireEvent.press(screen.getByText('Start Live call'));
@@ -186,11 +203,13 @@ test.each([true, false, null] as const)(
           () => false,
         ),
       ).toBe(choice !== null);
+      expect(mockNativeReview).toHaveBeenCalledTimes(1);
+      expect(abortedAtReview).toBe(false);
       expect(mockNativeReview).toHaveBeenCalledWith(
         'owned-live-call',
         companion.binding,
         nativeGrant,
-        expect.objectContaining({ aborted: false }),
+        expect.objectContaining({ aborted: choice === false }),
       );
       expect(screen.queryByTestId('live-tool-confirmation-inline')).toBeNull();
       expect(run.nativeGrant('owned-live-call')).toBe(
