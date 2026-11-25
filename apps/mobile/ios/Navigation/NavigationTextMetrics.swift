@@ -2,6 +2,8 @@ import UIKit
 
 /// One typography contract supplies both UIKit labels and their layout measurements.
 enum NavigationTextMetrics {
+    static let pageIconDiameter: CGFloat = 48
+
     /// Spoken labels must not drive compact geometry when not painted.
     private static func hasVisibleTitle(_ action: NavigationActionDescriptor) -> Bool {
         if action.rootTab || action.id == "back" || action.id == "home" {
@@ -22,6 +24,7 @@ enum NavigationTextMetrics {
     }
 
     static func width(for action: NavigationActionDescriptor, traits: UITraitCollection) -> CGFloat {
+        if action.isIconOnlyPageAction { return pageIconDiameter }
         let title = hasVisibleTitle(action)
             ? (action.label as NSString).size(withAttributes: [.font: font(for: action, traits: traits)]).width
             : 0

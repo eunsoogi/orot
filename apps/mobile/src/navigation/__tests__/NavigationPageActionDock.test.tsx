@@ -1,6 +1,7 @@
 import { act, render } from '@testing-library/react-native';
-import { ActionSheetIOS, View } from 'react-native';
+import { ActionSheetIOS, StyleSheet, View } from 'react-native';
 import type { NavigationSurfaceProps } from '../NavigationActionBar';
+import { NavigationBottomPageActions } from '../NavigationBottomPageActions';
 import { NavigationGlassSurface } from '../NavigationGlassSurface';
 import { NavigationPageActionDock } from '../NavigationPageActionDock';
 import { registerNavigationTestObserver } from '../navigationTestObservation';
@@ -169,4 +170,39 @@ test('retains the page action icon and its label below on the bottom bar', async
       systemImageName: 'checkmark',
     }),
   );
+});
+
+test('fallback page and overflow symbols are circles regardless of spoken label length', async () => {
+  const onMore = jest.fn();
+  const view = await render(
+    <NavigationBottomPageActions
+      actions={[
+        {
+          id: 'edit',
+          label: 'Edit',
+          accessibilityLabel: 'Edit the current record',
+          systemImageName: 'pencil',
+          onPress: jest.fn(),
+          testID: 'page-edit',
+        },
+      ]}
+      disabled={false}
+      height={64}
+      includeMore
+      isDarkAppearance={false}
+      onMore={onMore}
+      pageWidths={[88]}
+      moreWidth={120}
+      surface={({ children }) => <View>{children}</View>}
+    />,
+  );
+  for (const role of view.getAllByRole('button')) {
+    expect(StyleSheet.flatten(role.props.style)).toMatchObject({
+      width: 50,
+      height: 50,
+      borderRadius: 25,
+    });
+  }
+  expect(view.getAllByRole('button')).toHaveLength(2);
+  expect(view.getByLabelText('Edit the current record')).toBeTruthy();
 });
