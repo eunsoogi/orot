@@ -43,10 +43,17 @@ export async function removeLocalSourceWithMemory(
   const observeMemoryStage: NonNullable<
     Parameters<AgentMemoryService['removeSource']>[4]
   > = (stage, event) => {
-    const span =
-      stage === 'queue' ? 'memory-queue-wait' : 'memory-provenance-scan';
-    if (event === 'begin') beginRecordingDeletionTiming(timingProbe, span);
-    else endRecordingDeletionTiming(timingProbe, span, event);
+    const span = {
+      queue: 'memory-queue-wait',
+      provenance: 'memory-provenance-scan',
+      engine: 'memory-engine-acquire',
+      forget: 'memory-forget',
+      fences: 'memory-deletion-fences',
+      commit: 'memory-batch-commit',
+    } as const;
+    const name = span[stage];
+    if (event === 'begin') beginRecordingDeletionTiming(timingProbe, name);
+    else endRecordingDeletionTiming(timingProbe, name, event);
   };
   let derivedCleanupEnded = false;
   const endDerivedCleanup = (outcome: 'success' | 'failure') => {
@@ -57,18 +64,31 @@ export async function removeLocalSourceWithMemory(
 
   try {
     const normalizedSourceId = RecordIdSchema.parse(sourceId);
-    const [database, repository] = await Promise.all([
-      openLocalAgentMemoryDatabase(),
-      openLocalStorage(),
-    ]);
+    const [database, repository] = await withRecordingDeletionTiming(
+      timingProbe,
+      'protected-database-open',
+      () => Promise.all([openLocalAgentMemoryDatabase(), openLocalStorage()]),
+    );
     const rag = deletionRag(database);
-    await rag.prepare();
+    await withRecordingDeletionTiming(timingProbe, 'deletion-rag-prepare', () =>
+      rag.prepare(),
+    );
     // Capture cascade roots before SQL removal so transcript-only memory references are deleted too.
-    const typedReferences =
-      await repository.listTypedSourceDeletionReferences?.(normalizedSourceId);
-    const deletionReferences = typedReferences
-      ? [...new Set(typedReferences.map(reference => reference.id))].sort()
-      : await repository.listSourceDeletionReferences(normalizedSourceId);
+    const { typedReferences, deletionReferences } =
+      await withRecordingDeletionTiming(
+        timingProbe,
+        'source-reference-snapshot',
+        async () => {
+          const typed =
+            await repository.listTypedSourceDeletionReferences?.(
+              normalizedSourceId,
+            );
+          const references = typed
+            ? [...new Set(typed.map(reference => reference.id))].sort()
+            : await repository.listSourceDeletionReferences(normalizedSourceId);
+          return { typedReferences: typed, deletionReferences: references };
+        },
+      );
     // Memory invalidation commits before source removal; refresh even if the latter fails.
     const result = await memory
       .removeSource(

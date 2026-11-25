@@ -16,6 +16,7 @@ import { createTranscriptEvidenceService } from '../../transcription/transcriptE
 import { removeLocalSourceWithMemory } from '../../memory/removeSourceWithMemory';
 import { createRecordingLibraryService } from '../recordingLibraryService';
 import { saveRecordingSource } from '../recordingPersistence';
+import { verifyRecordingDeletionPhaseIsolation } from '../testSupport/verifyRecordingDeletionPhaseIsolation';
 import { getAutomaticTranscriptionStore } from '../automaticTranscriptionStore';
 
 // Replace platform I/O only. The secure facade, repository, SQL migrations and deletion cascade stay real.
@@ -82,12 +83,10 @@ async function harness(sourceId: string) {
     },
     openLocalStorage,
   );
-  const memory = await createAgentMemory({
-    embedder,
-    storage: new SqlCipherAgentMemoryStorage(
-      await openLocalAgentMemoryDatabase(),
-    ),
-  });
+  const storage = new SqlCipherAgentMemoryStorage(
+    await openLocalAgentMemoryDatabase(),
+  );
+  const memory = await createAgentMemory({ embedder, storage });
   const audioOrder: string[] = [];
   const library = createRecordingLibraryService({
     loadRepository: openLocalStorage,
@@ -107,7 +106,7 @@ async function harness(sourceId: string) {
       },
     },
   });
-  return { repository, memory, library, audioOrder };
+  return { repository, memory, library, audioOrder, storage };
 }
 
 test.each([false, true])(
@@ -216,3 +215,6 @@ test('completed metadata delivery cannot hold deletion behind the production fac
     await memory.close();
   }
 });
+
+test('separates a held pre-Memory snapshot from a held post-provenance Memory commit', () =>
+  verifyRecordingDeletionPhaseIsolation(harness));

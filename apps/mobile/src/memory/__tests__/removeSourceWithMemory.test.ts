@@ -91,6 +91,12 @@ test('separates derived cleanup from the source database commit', async () => {
   ).toEqual([
     ['confirmation-tap', 'mark'],
     ['derived-data-cleanup', 'begin'],
+    ['protected-database-open', 'begin'],
+    ['protected-database-open', 'end'],
+    ['deletion-rag-prepare', 'begin'],
+    ['deletion-rag-prepare', 'end'],
+    ['source-reference-snapshot', 'begin'],
+    ['source-reference-snapshot', 'end'],
     ['derived-data-cleanup', 'end'],
     ['database-delete-commit', 'begin'],
     ['database-delete-commit', 'end'],
@@ -126,15 +132,21 @@ test('closes a failed derived cleanup span without invoking the source commit', 
   expect(repository.sourceRecords.delete).not.toHaveBeenCalled();
   expect(memory.removeSource).not.toHaveBeenCalled();
   expect(probe.snapshot().events).toEqual([
+    { stage: 'confirmation-tap', phase: 'mark', elapsedMs: 0 },
+    { stage: 'derived-data-cleanup', phase: 'begin', elapsedMs: 0 },
+    { stage: 'protected-database-open', phase: 'begin', elapsedMs: 0 },
     {
-      stage: 'confirmation-tap',
-      phase: 'mark',
+      stage: 'protected-database-open',
+      phase: 'end',
       elapsedMs: 0,
+      outcome: 'success',
     },
+    { stage: 'deletion-rag-prepare', phase: 'begin', elapsedMs: 0 },
     {
-      stage: 'derived-data-cleanup',
-      phase: 'begin',
+      stage: 'deletion-rag-prepare',
+      phase: 'end',
       elapsedMs: 0,
+      outcome: 'failure',
     },
     {
       stage: 'derived-data-cleanup',
