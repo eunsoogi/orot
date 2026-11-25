@@ -1,4 +1,5 @@
 import { act, render, screen, waitFor } from '@testing-library/react-native';
+import { notifyWorkoutImportCommitted } from '../../healthkit/workoutImportEvents';
 import { OverviewWorkoutHeartRateCard } from './OverviewWorkoutHeartRateCard';
 import { setup } from './testSupport/overviewWorkoutCardHarness';
 
@@ -124,6 +125,51 @@ test.each(['same scope', 'owner replaced', 'protection revoked'] as const)(
           expect(result()).toHaveTextContent(/심박수를 확인할 수 없어요/),
         );
         expect(lane.queryWorkoutPeriodHeartRate).toHaveBeenCalledTimes(1);
+      }
+      expect(lane.requestReadAuthorizations).not.toHaveBeenCalled();
+      await view.unmount();
+    } finally {
+      lane.close();
+    }
+  },
+);
+
+test.each(['available', 'revoked', 'rejected'] as const)(
+  'a workout import superseding pre-native foreground reproof: %s',
+  async outcome => {
+    const lane = await setup();
+    const old = lane.holdSecondProbe();
+    try {
+      const view = await render(
+        <OverviewWorkoutHeartRateCard active width={302} />,
+      );
+      await old.entered;
+      await act(async () => {
+        lane.transition('inactive');
+        notifyWorkoutImportCommitted();
+        old.release(true);
+      });
+      expect(result()).toHaveTextContent(/불러오는 중/);
+      expect(lane.queryWorkoutPeriodHeartRate).not.toHaveBeenCalled();
+
+      const replacement = lane.holdFirstProtectionProbe();
+      await act(async () => {
+        lane.transition('active');
+      });
+      await replacement.entered;
+      expect(result()).toHaveTextContent(/불러오는 중/);
+      await act(async () => {
+        if (outcome === 'revoked') lane.revoke();
+        replacement.release(outcome !== 'rejected');
+      });
+      if (outcome === 'available') {
+        await waitFor(() => expect(result()).toHaveTextContent('120 BPM'));
+        expect(lane.queryWorkoutPeriodHeartRate).toHaveBeenCalledTimes(1);
+      } else {
+        await waitFor(() =>
+          expect(result()).toHaveTextContent(/심박수를 확인할 수 없어요/),
+        );
+        expect(lane.queryWorkoutPeriodHeartRate).not.toHaveBeenCalled();
       }
       expect(lane.requestReadAuthorizations).not.toHaveBeenCalled();
       await view.unmount();
