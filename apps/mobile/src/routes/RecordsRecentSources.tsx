@@ -53,8 +53,9 @@ export function RecordsRecentSources(props: RecordsRecentSourcesProps) {
     canAdvance,
     loadErrors,
   } = useRecordsRecentFeed(props);
-  // Keep pending-page feedback out of the retained timeline's leading layout.
-  const statusAtTail = showAll && records.length > 0;
+  // Available records remain the primary content even if another source fails.
+  const hasRecords = records.length > 0;
+  const statusAtTail = hasRecords && (showAll || loadErrors.length > 0);
   const status = (
     <>
       {isLoading ? (
@@ -62,7 +63,7 @@ export function RecordsRecentSources(props: RecordsRecentSourcesProps) {
       ) : null}
       {loadErrors.length > 0 ? (
         <RecordsRecentSourceState
-          state="failed"
+          state={hasRecords ? 'partial' : 'failed'}
           errorMessage={loadErrors.join('\n')}
           onRetry={retrySources}
         />

@@ -176,7 +176,7 @@ test('failed refresh keeps rows and manual Retry refreshes both first pages', as
   expect(control().props.refreshing).toBe(false);
   expect(media.mock.lastCall?.[1]?.signal.aborted).toBe(true);
   await fireEvent.press(
-    await screen.findByTestId('records-recent-sources-retry'),
+    await screen.findByTestId('records-recent-partial-retry'),
   );
   expect(await screen.findByTestId(report('retried'))).toBeTruthy();
   expect(screen.queryByTestId(report('30'))).toBeNull();

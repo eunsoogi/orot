@@ -138,27 +138,31 @@ test('first Records entry after v17 upgrade waits for both first pages without a
   }
 });
 
-test('a failed indexed query keeps the verified report visible and offers Retry', async () => {
+test('an indexed failure offers scoped recovery after the verified report', async () => {
   const f = openInterleavableRecentSourceDatabase();
   let mounted: Awaited<ReturnType<typeof mountRecords>> | undefined;
   try {
     await seedFile(f);
     await f.database.execute('DROP INDEX source_records_recent_page_idx');
     mounted = await mountRecords();
-    expect(
-      await screen.findByTestId('records-recent-sources-error'),
-    ).toBeTruthy();
+    expect(await screen.findByTestId('records-recent-partial')).toBeTruthy();
     expect(screen.getByTestId('records-recent-source-visit:30')).toBeTruthy();
+    expect(
+      screen
+        .getAllByTestId(/^records-recent-(source-visit:30|partial)$/)
+        .map(item => item.props.testID),
+    ).toEqual(['records-recent-source-visit:30', 'records-recent-partial']);
+    expect(screen.queryByTestId('records-recent-sources-retry')).toBeNull();
     expect(screen.queryByText('Synthetic carried-forward file')).toBeNull();
     expect(jest.mocked(loadRecentSourceMaterial)).toHaveBeenCalledTimes(1);
     await rewindBeforeMemoryMetadata(f.database, 17);
     await runMigrations(f.database);
-    await fireEvent.press(screen.getByTestId('records-recent-sources-retry'));
+    await fireEvent.press(screen.getByTestId('records-recent-partial-retry'));
     expect(
       await screen.findByText('Synthetic carried-forward file'),
     ).toBeTruthy();
     expect(screen.getByTestId('records-recent-source-visit:30')).toBeTruthy();
-    expect(screen.queryByTestId('records-recent-sources-error')).toBeNull();
+    expect(screen.queryByTestId('records-recent-partial')).toBeNull();
     expect(jest.mocked(loadRecentSourceMaterial)).toHaveBeenCalledTimes(2);
   } finally {
     await mounted?.unmount();
