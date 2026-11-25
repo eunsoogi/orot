@@ -47,9 +47,6 @@ declare const require: (
   'openLocalAgentMemoryDatabase' | 'isCurrentLocalAgentMemoryDatabase'
 >;
 
-/** Brief inactive transitions suspend publication, not an owned same-window read.
- * Background, lock, deletion, or a changed protected owner drops the snapshot.
- */
 export function useOverviewWorkoutPeriodHeartRate(active: boolean): State {
   const [state, setState] = useState<State>(unavailable);
   useLayoutEffect(() => {
@@ -231,7 +228,10 @@ export function useOverviewWorkoutPeriodHeartRate(active: boolean): State {
       }
     });
     const unsubscribeImport = subscribeWorkoutImportCommitted(() => {
-      retire();
+      const replacing =
+        !!task && (phase() === 'active' || phase() === 'inactive');
+      retire(!replacing && !!task);
+      if (replacing) setState(loading);
       start();
     });
     const unsubscribeClear = subscribeLocalDataClear(retire);
