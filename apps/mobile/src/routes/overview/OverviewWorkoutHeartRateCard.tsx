@@ -47,7 +47,9 @@ export function OverviewWorkoutHeartRateCard({
               })
             : state.status === 'loading'
               ? t('healthRecords.loading')
-              : t('healthRecords.workoutHeartRate.periodUnavailable')}
+              : state.status === 'emptyVisible'
+                ? t('healthRecords.workoutHeartRate.periodEmpty')
+                : t('healthRecords.workoutHeartRate.periodUnavailable')}
         </Text>
       </View>
       <Text style={embedded && styles.detail}>
