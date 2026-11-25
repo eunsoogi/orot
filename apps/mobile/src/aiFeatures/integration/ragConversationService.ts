@@ -82,8 +82,8 @@ export function createRagConversationService(
         selectedAi,
       );
       if (!selected) return { status: 'failure', kind: 'consent_required' };
-      const current = report?.isCurrent;
-      opening = start(selected, request, observer, consent, signal, current);
+      const scope = { current: report?.isCurrent, entryContext };
+      opening = start(selected, request, observer, consent, signal, scope);
       stage = 'data';
       const data =
         target.data ?? (await withProviderStage('rag', 'data', loadLocalData));

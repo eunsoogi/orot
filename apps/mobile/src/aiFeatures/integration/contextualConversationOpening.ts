@@ -27,6 +27,7 @@ export function startContextualConversationOpening(input: {
   isCurrent?: () => boolean;
   isEvidenceCurrent?: () => Promise<boolean>;
   diagnosticFeature?: Feature;
+  allowA2UIPresentation?: boolean;
 }) {
   const controller = new AbortController();
   const stop = () => controller.abort();
@@ -44,7 +45,15 @@ export function startContextualConversationOpening(input: {
       reportOpening('opening_delivery', 'unavailable', input.diagnosticFeature);
       return;
     }
+    let presentation: 'card' | undefined;
     const text = await generateContextualInitialReply({
+      ...(input.allowA2UIPresentation && input.observer.onReviewedOpening
+        ? {
+            onApprovedPresentation: (layout: 'card') => {
+              presentation = layout;
+            },
+          }
+        : {}),
       onObservation: (stage, outcome) =>
         reportOpening(stage, outcome, input.diagnosticFeature),
       provider: input.selected.provider,
@@ -70,7 +79,7 @@ export function startContextualConversationOpening(input: {
       const opening = { callId: id, text };
       if (input.observer.onReviewedOpening) {
         const published = await input.observer.onReviewedOpening(
-          opening,
+          { ...opening, ...(presentation ? { presentation } : {}) },
           controller.signal,
         );
         reportOpening(
@@ -112,6 +121,7 @@ export function startRagConversationOpening(
   consent: ExecutionConsentPort,
   signal: AbortSignal,
   isEvidenceCurrent?: () => Promise<boolean>,
+  allowA2UIPresentation = false,
 ) {
   return startContextualConversationOpening({
     selected,
@@ -120,6 +130,7 @@ export function startRagConversationOpening(
     consent,
     signal,
     isEvidenceCurrent,
+    allowA2UIPresentation,
     consentScope: evidenceConsentScope({
       purpose: 'record_conversation',
       generatedArtifacts: false,

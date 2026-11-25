@@ -46,6 +46,8 @@ export interface DisplayMessage extends RagConversationMessage {
     readonly callId: string;
     readonly text: string;
     readonly source?: 'receipt';
+    /** Live layout metadata from an independently reviewed opening, never persisted. */
+    readonly presentation?: 'card';
   };
   /** Only deduplicates the identical archived opening; grants no durable actions. */
   readonly rejectedOpeningTurnId?: string;

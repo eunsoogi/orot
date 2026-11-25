@@ -1,7 +1,9 @@
 import { useState } from 'react';
-import { StyleSheet, useWindowDimensions, View } from 'react-native';
+import { Pressable, StyleSheet, useWindowDimensions, View } from 'react-native';
 import { AppText } from '../layout/AppText';
+import { AppSymbol } from '../layout/AppSymbol';
 import { appColors } from '../layout/appColors';
+import { conversationA2UIIcons } from './conversationA2UIStaticCatalog';
 import type { ConversationA2UINode } from './conversationA2UI';
 
 /** The caller supplies only the parser's verified tree, not wire messages.
@@ -16,7 +18,7 @@ export function ConversationA2UISurface({
   const { fontScale } = useWindowDimensions();
   return (
     <View testID={testID} style={styles.surface}>
-      <SurfaceNode node={root} fontScale={fontScale} />
+      <SurfaceNode key={root.id} node={root} fontScale={fontScale} />
     </View>
   );
 }
@@ -24,10 +26,37 @@ export function ConversationA2UISurface({
 function SurfaceNode({
   node,
   fontScale,
+  horizontal = false,
 }: {
+  readonly horizontal?: boolean;
   readonly node: ConversationA2UINode;
   readonly fontScale: number;
 }) {
+  if (node.component === 'Divider') {
+    return (
+      <View
+        testID="conversation-a2ui-divider"
+        accessibilityElementsHidden
+        importantForAccessibility="no-hide-descendants"
+        style={
+          node.axis === 'vertical' && horizontal
+            ? styles.verticalDivider
+            : styles.divider
+        }
+      />
+    );
+  }
+  if (node.component === 'Icon') {
+    return (
+      <AppSymbol
+        name={conversationA2UIIcons[node.name]}
+        color={appColors.secondary}
+      />
+    );
+  }
+  if (node.component === 'Tabs') {
+    return <SurfaceTabs tabs={node.tabs} fontScale={fontScale} />;
+  }
   if (node.component === 'Text') {
     return (
       <AppText
@@ -61,18 +90,73 @@ function SurfaceRow({
   const [width, setWidth] = useState(0);
   // Prefer readable stacked order before layout, at larger text sizes, or
   // when nesting leaves too little width for two long, wrapping values.
-  const columns = nodes.length === 2 && fontScale < 1.4 && width >= 240;
+  const contentCount = nodes.filter(
+    node => node.component !== 'Divider',
+  ).length;
+  const columns =
+    contentCount >= 2 &&
+    fontScale < 1.4 &&
+    width >= contentCount * 120 &&
+    nodes.every(
+      node => node.component !== 'Divider' || node.axis === 'vertical',
+    );
   return (
     <View
       testID="conversation-a2ui-row"
       onLayout={event => setWidth(event.nativeEvent.layout.width)}
       style={columns ? styles.columns : styles.stack}
     >
-      {nodes.map(node => (
-        <View key={node.id} style={columns ? styles.column : styles.surface}>
-          <SurfaceNode node={node} fontScale={fontScale} />
-        </View>
-      ))}
+      {nodes.map(node =>
+        columns && node.component === 'Divider' ? (
+          <SurfaceNode
+            key={node.id}
+            node={node}
+            fontScale={fontScale}
+            horizontal
+          />
+        ) : (
+          <View key={node.id} style={columns ? styles.column : styles.surface}>
+            <SurfaceNode node={node} fontScale={fontScale} />
+          </View>
+        ),
+      )}
+    </View>
+  );
+}
+
+function SurfaceTabs({
+  tabs,
+  fontScale,
+}: {
+  readonly tabs: Extract<ConversationA2UINode, { component: 'Tabs' }>['tabs'];
+  readonly fontScale: number;
+}) {
+  const [selection, setSelection] = useState<string | undefined>(undefined);
+  const selected = tabs.find(tab => tab.child.id === selection) ?? tabs[0];
+  if (!selected) return null;
+  // Selection changes only local presentation. No callback leaves this surface.
+  return (
+    <View style={styles.stack}>
+      <View accessibilityRole="tablist" style={styles.tabList}>
+        {tabs.map(tab => (
+          <Pressable
+            key={tab.child.id}
+            accessibilityRole="tab"
+            accessibilityState={{ selected: tab === selected }}
+            onPress={() => setSelection(tab.child.id)}
+            style={
+              tab === selected ? [styles.tab, styles.selectedTab] : styles.tab
+            }
+          >
+            <AppText allowFontScaling>{tab.title}</AppText>
+          </Pressable>
+        ))}
+      </View>
+      <SurfaceNode
+        key={selected.child.id}
+        node={selected.child}
+        fontScale={fontScale}
+      />
     </View>
   );
 }
@@ -89,11 +173,30 @@ const styles = StyleSheet.create({
   },
   columns: {
     flexDirection: 'row',
-    alignItems: 'flex-start',
+    alignItems: 'stretch',
     gap: 12,
     minWidth: 0,
   },
   column: { flex: 1, minWidth: 0 },
+  divider: {
+    backgroundColor: appColors.border,
+    alignSelf: 'stretch',
+    height: StyleSheet.hairlineWidth,
+  },
+  verticalDivider: {
+    backgroundColor: appColors.border,
+    width: StyleSheet.hairlineWidth,
+    alignSelf: 'stretch',
+  },
+  tabList: { flexDirection: 'row', flexWrap: 'wrap', gap: 6, minWidth: 0 },
+  tab: {
+    minHeight: 44,
+    maxWidth: '100%',
+    justifyContent: 'center',
+    paddingHorizontal: 12,
+    borderRadius: 8,
+  },
+  selectedTab: { backgroundColor: appColors.primarySoft },
   body: { fontSize: 15, flexShrink: 1 },
   caption: { fontSize: 13, color: appColors.secondary, flexShrink: 1 },
 });

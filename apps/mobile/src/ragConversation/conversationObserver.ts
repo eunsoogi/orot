@@ -22,7 +22,9 @@ export type RagConversationObserver = Pick<
   ) => void;
   /** Only the completed, separately reviewed opening producer owns this durable display port. */
   readonly onReviewedOpening?: (
-    opening: import('../storage/conversationReviewedOpeningStorage').ReviewedOpening,
+    opening: import('../storage/conversationReviewedOpeningStorage').ReviewedOpening & {
+      readonly presentation?: 'card';
+    },
     signal: AbortSignal,
   ) => Promise<boolean>;
   readonly onSteeringReady?: (

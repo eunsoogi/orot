@@ -29,12 +29,12 @@ function gate<T>() {
   });
   return { promise, resolve };
 }
-
 const opening = '요청하신 흐름을 살펴볼게요.';
+const candidate = JSON.stringify({ text: opening, layout: 'card' });
 const answer = '합성 최종 답변';
 const openingID = 'conversation-assistant-opening-message';
 const answerID = 'rag-conversation-answer-body';
-
+const layoutID = 'conversation-reviewed-opening-a2ui';
 function MountedConversation({
   send,
 }: {
@@ -51,7 +51,6 @@ function MountedConversation({
     />
   );
 }
-
 test.each([
   ['composer', 'ALLOW'],
   ['possibilities', 'ALLOW'],
@@ -60,6 +59,7 @@ test.each([
   ['composer', 'review-timeout'],
   ['composer', 'missing-terminal'],
   ['possibilities', 'stop'],
+  ['composer', 'stop'],
 ] as const)(
   'shows only a completed, reviewed Apple opening: %s / %s',
   async (path, verdict) => {
@@ -90,11 +90,12 @@ test.each([
     >(async function* () {
       const phase = stream.mock.calls.length;
       if (phase === 1) {
-        yield { type: 'snapshot', text: opening };
+        const raw = path === 'composer' ? candidate : opening;
+        yield { type: 'snapshot', text: raw };
         if (!(await generation.promise)) return;
         yield {
           type: 'completed',
-          response: { text: opening, toolCalls: [], finishReason: 'complete' },
+          response: { text: raw, toolCalls: [], finishReason: 'complete' },
         };
       } else if (phase === 2) {
         const text = await review.promise;
@@ -158,7 +159,6 @@ test.each([
       await waitFor(() => expect(stream).toHaveBeenCalledTimes(1));
       expect(screen.queryByTestId(openingID)).toBeNull();
       expect(runner).not.toHaveBeenCalled();
-
       await act(async () => generation.resolve(verdict !== 'missing-terminal'));
       if (verdict !== 'missing-terminal') {
         await waitFor(() => expect(stream).toHaveBeenCalledTimes(2));
@@ -203,6 +203,8 @@ test.each([
         const firstReply = await screen.findByTestId(openingID);
         expect(firstReply).toBeVisible();
         expect(firstReply).toHaveTextContent(opening);
+        const hasLayout = Boolean(screen.queryByTestId(layoutID));
+        expect(hasLayout).toBe(path === 'composer');
         expect(marks).toEqual(
           expect.arrayContaining([
             'opening_generate:completed',
@@ -228,6 +230,7 @@ test.each([
         expect(body).toBeVisible();
         expect(body).toHaveTextContent(/^합성 최종 답변(?:\s|$)/u);
       });
+      expect(screen.queryByTestId(layoutID)).toBeNull();
       expect(stream).toHaveBeenCalledTimes(
         verdict === 'missing-terminal' ? 1 : 2,
       );
