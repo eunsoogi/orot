@@ -5,6 +5,7 @@ import { resolve } from 'node:path';
 import { iosTestBuildSpec } from './ios-test-config.mjs';
 import { productContext } from './ios-test-product-context.mjs';
 import { iosTestResourceSampler } from './ios-test-resources.mjs';
+import { verifyIosEagerModules } from './verify-ios-eager-modules.mjs';
 import { verifyIosFabricProvider } from './verify-ios-fabric-registrations.mjs';
 
 const [profile, directory] = process.argv.slice(2);
@@ -60,7 +61,10 @@ try {
     result.once('exit', (code, signal) => resolveStatus(signal ? 1 : (code ?? 1)));
   });
   // Xcode can regenerate the provider, so only certify the post-build output.
-  if (xcodeStatus === 0) verifyIosFabricProvider();
+  if (xcodeStatus === 0) {
+    verifyIosEagerModules();
+    verifyIosFabricProvider();
+  }
   status = xcodeStatus;
 } catch (error) {
   console.error(error);

@@ -174,3 +174,8 @@ When changing a patch or package version, regenerate its pnpm lock entry and
 verify fresh installation, affected behavior and clean native compilation. A
 prebuilt-header change also needs original-versus-patched executable hashes and
 actual Debug/Release switching evidence.
+
+React Native 0.87.1's iOS package metadata excludes the RNTester-only
+`SampleTurboModule` from eager main-queue resolution. Orot's pinned Debug
+prebuilt does not ship this sample module. The generated provider is checked
+by the native test producer; all other main-queue registrations are unchanged.
