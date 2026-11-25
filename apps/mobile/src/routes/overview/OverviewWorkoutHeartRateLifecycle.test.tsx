@@ -73,6 +73,57 @@ test('a parked native reply stays unshown while inactive and publishes on active
   }
 });
 
+test('a failed native reply after a brief interruption retries once in foreground', async () => {
+  const lane = await setup();
+  try {
+    let reject!: (reason: Error) => void;
+    lane.queryWorkoutPeriodHeartRate.mockReturnValueOnce(
+      new Promise((_, fail) => {
+        reject = fail;
+      }),
+    );
+    const view = await render(
+      <OverviewWorkoutHeartRateCard active width={302} />,
+    );
+    await waitFor(() =>
+      expect(lane.queryWorkoutPeriodHeartRate).toHaveBeenCalledTimes(1),
+    );
+    await act(async () => {
+      lane.transition('inactive');
+      reject(new Error('held native period read interrupted'));
+    });
+    expect(result()).toHaveTextContent(/불러오는 중/);
+    expect(lane.queryWorkoutPeriodHeartRate).toHaveBeenCalledTimes(1);
+    await act(async () => {
+      lane.transition('active');
+      lane.transition('active');
+    });
+    await waitFor(() => expect(result()).toHaveTextContent('120 BPM'));
+    expect(lane.queryWorkoutPeriodHeartRate).toHaveBeenCalledTimes(2);
+    expect(lane.requestReadAuthorizations).not.toHaveBeenCalled();
+    await view.unmount();
+  } finally {
+    lane.close();
+  }
+});
+
+test('a failed native reply with no interruption settles without a retry', async () => {
+  const lane = await setup();
+  try {
+    lane.queryWorkoutPeriodHeartRate.mockRejectedValueOnce(
+      new Error('unavailable in foreground'),
+    );
+    const view = await render(
+      <OverviewWorkoutHeartRateCard active width={302} />,
+    );
+    await waitFor(() => expect(result()).toHaveTextContent(/확인할 수 없어요/));
+    expect(lane.queryWorkoutPeriodHeartRate).toHaveBeenCalledTimes(1);
+    await view.unmount();
+  } finally {
+    lane.close();
+  }
+});
+
 test('true background clears a proven amount and resumes with one fresh query only', async () => {
   const lane = await setup();
   try {
@@ -104,7 +155,7 @@ test('only a committed workout import re-queries the focused empty period', asyn
     const view = await render(
       <OverviewWorkoutHeartRateCard active width={302} />,
     );
-    await waitFor(() => expect(result()).toHaveTextContent(/확인할 수 없어요/));
+    await waitFor(() => expect(result()).toHaveTextContent(/기록이 없어요/));
     expect(lane.queryWorkoutPeriodHeartRate).toHaveBeenCalledTimes(1);
     const now = () => new Date().toISOString();
     const workout = healthKitSample('workouts', {
