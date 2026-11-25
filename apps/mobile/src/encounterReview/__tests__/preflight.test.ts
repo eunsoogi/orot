@@ -1,3 +1,5 @@
+import type { SelectedAiResolution } from '../../aiFeatures/integration/provider';
+import { syntheticEncounterModel } from '../../agent/encounter/syntheticFixture';
 import {
   sqliteEncounterFixture,
   sourceId,
@@ -45,4 +47,36 @@ test('a recording without transcript cannot begin extraction or resolve a model'
   ).toEqual({ status: 'no-transcript' });
   expect(resolve).not.toHaveBeenCalled();
   expect(await fixture.repository().list('health_observation')).toHaveLength(0);
+});
+
+test('a replaced on-device selection cannot begin or request disclosure', async () => {
+  const { model, calls } = syntheticEncounterModel(sourceId, true);
+  const selected: SelectedAiResolution = {
+    status: 'ready',
+    selection: { providerId: model.provider.id, modelId: 'synthetic' },
+    option: {
+      provider: model.provider,
+      modelId: 'synthetic',
+      displayName: 'Synthetic',
+      privacyBoundary: 'on-device',
+      availability: { status: 'available' },
+    },
+    provider: model.provider,
+    modelId: 'synthetic',
+    recipient: 'synthetic-on-device',
+    remoteProcessing: false,
+    onDeviceSelectionWitness: {
+      isCurrent: () => false,
+      subscribe: jest.fn(() => () => {}),
+    },
+  };
+  const service = createEncounterReviewService(async () => selected);
+  const startConsent = {
+    authorize: jest.fn(async () => 'authorized' as const),
+  };
+  expect(
+    await service.start(sourceId, startConsent, new AbortController().signal),
+  ).toEqual({ status: 'unavailable' });
+  expect(startConsent.authorize).not.toHaveBeenCalled();
+  expect(calls()).toBe(0);
 });

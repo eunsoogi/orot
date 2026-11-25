@@ -72,7 +72,11 @@ test('waits for live destination admission and loads metadata once, resolving on
     expect(screen.getByText('second synthetic protected report')).toBeVisible(),
   );
   expect(read).toHaveBeenCalledTimes(1);
-  expect(read).toHaveBeenCalledWith(row('second'), expect.any(AbortSignal));
+  expect(read).toHaveBeenCalledWith(
+    row('second'),
+    expect.any(AbortSignal),
+    expect.any(Function),
+  );
   await view.unmount();
 });
 

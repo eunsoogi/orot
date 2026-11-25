@@ -167,7 +167,7 @@ export function createSymptomSummaryStorage(
           'INSERT INTO symptom_summary_runs (id, created_at, model_name, result_json) VALUES (?, ?, ?, ?)',
           [value.id, value.createdAt, value.modelName, serialized],
         );
-        await markCurrentSummaryPeriodPolicy(tx, value.id);
+        await markCurrentSummaryPeriodPolicy(tx, value);
         for (const source of value.sources) {
           if (isPeriodSummarySource(source)) {
             await appendSummaryPeriod(tx, value.id, source);

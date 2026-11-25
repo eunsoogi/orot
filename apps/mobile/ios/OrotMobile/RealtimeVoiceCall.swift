@@ -79,9 +79,15 @@ final class RealtimeVoiceCall {
                     if id != nil {
                         VoiceSystemCallLifecycle.report(.routeChanged)
                     }
+                } else if name == AVAudioSession.interruptionNotification {
+                    let stage = VoiceSystemCallLifecycle.interruptionStage(note)
+                    if id != nil {
+                        VoiceSystemCallLifecycle.report(stage)
+                    }
+                    // The process-wide end does not prove loss of the current owner or authorize restarting one.
+                    guard stage != .interruptionEnded else { return }
                 } else if id != nil {
-                    VoiceSystemCallLifecycle.report(name == AVAudioSession.interruptionNotification
-                        ? VoiceSystemCallLifecycle.interruptionStage(note) : .protectedDataLost)
+                    VoiceSystemCallLifecycle.report(.protectedDataLost)
                 }
                 fail()
             })

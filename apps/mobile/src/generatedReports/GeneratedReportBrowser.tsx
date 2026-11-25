@@ -142,7 +142,7 @@ export function GeneratedReportBrowser({
     try {
       const reader = await open();
       if (controller.signal.aborted || !canAccess()) return;
-      const result = await reader.read(row, controller.signal);
+      const result = await reader.read(row, controller.signal, invalidate);
       if (controller.signal.aborted || !canAccess()) return;
       setDetail(
         result
