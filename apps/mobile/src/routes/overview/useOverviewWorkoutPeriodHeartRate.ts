@@ -5,6 +5,12 @@ import { subscribeWorkoutImportCommitted } from '../../healthkit/workoutImportEv
 import { readOwnedWorkoutPeriod } from '../../healthkit/ownedWorkoutPeriodRead';
 import type { WorkoutPeriodResult } from '../../healthkit/workoutPeriodNativeRead';
 import {
+  canReacquireOverviewWorkoutSnapshot,
+  overviewWorkoutReadWindow,
+  overviewWorkoutCohortFence,
+  type OverviewWorkoutRecovery,
+} from './overviewWorkoutSnapshotRecovery';
+import {
   subscribeLocalDataClear,
   subscribeLocalSourceDeletion,
 } from '../../storage/localDataClearEvents';
@@ -35,13 +41,6 @@ declare const require: (
   typeof import('../../storage/secureDatabase'),
   'openLocalAgentMemoryDatabase' | 'isCurrentLocalAgentMemoryDatabase'
 >;
-
-function workoutPeriod(now: Date) {
-  const from = new Date(now);
-  from.setHours(0, 0, 0, 0);
-  from.setDate(from.getDate() - 6);
-  return { fromInclusive: from.toISOString(), toExclusive: now.toISOString() };
-}
 
 /** Brief inactive transitions suspend publication, not an owned same-window read.
  * Background, lock, deletion, or a changed protected owner drops the snapshot.
@@ -92,63 +91,79 @@ export function useOverviewWorkoutPeriodHeartRate(active: boolean): State {
       }
       return false;
     }
-    async function start(canRecover = true) {
+    async function start(
+      canRecover = true,
+      previous?: OverviewWorkoutRecovery,
+    ) {
       if (!mounted || task || phase() !== 'active') return;
-      const now = new Date();
-      const midnight = new Date(
-        now.getFullYear(),
-        now.getMonth(),
-        now.getDate() + 1,
-      );
-      const zone = Intl.DateTimeFormat().resolvedOptions().timeZone;
+      const window = overviewWorkoutReadWindow(previous?.period);
+      const { period, currentWindow } = window;
+      const cohortFence = overviewWorkoutCohortFence(previous?.cohort);
       const target: ReadOwner = { abort: new AbortController() };
       task = target;
       clearTimeout(boundary);
-      boundary = setTimeout(
-        () => {
-          retire();
-          start();
-        },
-        Math.max(1, midnight.getTime() - now.getTime()),
-      );
+      boundary = setTimeout(() => {
+        retire();
+        start();
+      }, window.delay);
       setState(loading);
       try {
         if (!(await confirm(target))) return;
         const storage = require('../../storage/secureDatabase');
         const database = await storage.openLocalAgentMemoryDatabase();
-        if (!current(target)) return;
+        if (!current(target) || (previous && database !== previous.database))
+          return;
         target.epoch = acquireIndependentReadEpoch(database);
+        const awaitWriter = () =>
+          awaitIndependentReadSettlement(
+            database,
+            startupWriterBudgetMs,
+            target.abort.signal,
+          );
         // A known writer is not evidence of no associated heart rate. Wait once,
         // then acquire a fresh snapshot of the same still-authoritative owner.
         if (!target.epoch) {
           if (
-            !(await awaitIndependentReadSettlement(
-              database,
-              startupWriterBudgetMs,
-              target.abort.signal,
-            )) ||
+            !(await awaitWriter()) ||
             !(await confirm(target)) ||
             !storage.isCurrentLocalAgentMemoryDatabase(database)
           )
             return;
           target.epoch = acquireIndependentReadEpoch(database);
         }
-        const admitted = () =>
+        const scopeCurrent = () =>
           current(target) &&
-          Date.now() < midnight.getTime() &&
-          zone === Intl.DateTimeFormat().resolvedOptions().timeZone &&
-          storage.isCurrentLocalAgentMemoryDatabase(database) &&
-          target.epoch?.current() === true;
+          currentWindow() &&
+          storage.isCurrentLocalAgentMemoryDatabase(database);
+        const admitted = () =>
+          scopeCurrent() && target.epoch?.current() === true;
         target.usable = admitted;
         if (!admitted()) return;
-        const period = workoutPeriod(now);
         const { result } = await readOwnedWorkoutPeriod(period, {
           repository: createRecordRepository(database),
           signal: target.abort.signal,
           current: admitted,
           confirm: () => confirm(target),
+          admitNativeCohort: cohortFence.admit,
         });
-        if (!result || !admitted() || phase() !== 'active') return;
+        if (!admitted()) {
+          const cohort = cohortFence.dispatched();
+          if (
+            cohort &&
+            canRecover &&
+            (await canReacquireOverviewWorkoutSnapshot(
+              target.epoch?.current(),
+              () => scopeCurrent() && phase() === 'active',
+              awaitWriter,
+              () => confirm(target),
+            ))
+          ) {
+            dropTask(false);
+            start(false, { database, period, cohort });
+          }
+          return;
+        }
+        if (!result || phase() !== 'active') return;
         target.settled =
           result.status === 'available' || result.status === 'emptyVisible';
         if (target.settled) {

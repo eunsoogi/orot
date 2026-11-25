@@ -182,6 +182,11 @@ export async function setup() {
           next === 'active' ? { kind: 'foreground' } : { kind: 'phase' },
         );
     },
+    restoreProtection() {
+      protectedData = true;
+      for (const subscriber of subscribers)
+        subscriber({ kind: 'protectedData', available: true });
+    },
     revoke() {
       protectedData = false;
       for (const subscriber of subscribers)

@@ -3,6 +3,7 @@ import { createRecordRepository } from '@orot/storage';
 import { NavigationContext } from '@react-navigation/native';
 import { useContext, useLayoutEffect, useState } from 'react';
 import { AppState } from 'react-native';
+import { conversationExecutionNative } from '../ragConversation/conversationExecutionNative';
 import { watchSavedReportNativeProtection } from '../generatedReports/savedReportNativeProtection';
 import {
   subscribeLocalDataClear,
@@ -84,6 +85,7 @@ export function useRecordsWorkoutMonthHeartRate({
         if (owns()) retire();
       });
       if (!protection) {
+        if (owns()) retire();
         if (mounted && visible()) setState({ status: 'unavailable' });
         return;
       }
@@ -150,14 +152,34 @@ export function useRecordsWorkoutMonthHeartRate({
       } catch {
         // Native/database absence is not evidence for zero workout heart rate.
       } finally {
-        if (owns() && !accepted) {
-          epoch?.dispose();
-          epoch = undefined;
+        if (!current()) {
+          if (owns()) retire();
+        } else {
+          setState(next);
+          // Only a positively proved snapshot can keep an owner across refocus.
+          // A finished failed read must not prevent the next explicit focus read.
+          if (!accepted) {
+            active = undefined;
+            abort.abort();
+            epoch?.dispose();
+            epoch = undefined;
+          }
         }
-        if (current()) setState(next);
-        else if (owns()) retire();
       }
     }
+    // Protected availability may return without a second JS AppState transition.
+    // It is only a retry signal: the new read must prove protection and owner again.
+    function watchRestoration() {
+      try {
+        return conversationExecutionNative()?.subscribe(event => {
+          if (event.kind === 'protectedData' && event.available) read();
+        });
+      } catch {
+        // Only the per-request watcher may authorize a read.
+        return undefined;
+      }
+    }
+    const protectionRestored = watchRestoration();
     const visibility = AppState.addEventListener('change', phase => {
       if (phase === 'active') read();
       else retire();
@@ -197,6 +219,7 @@ export function useRecordsWorkoutMonthHeartRate({
       mounted = false;
       retire();
       visibility.remove();
+      protectionRestored?.();
       focus?.();
       blur?.();
       clear();

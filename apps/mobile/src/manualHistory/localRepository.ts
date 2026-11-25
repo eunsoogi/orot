@@ -1,6 +1,6 @@
 import { openLocalStorage } from '../storage/secureDatabase';
 import { openLocalAgentMemoryDatabase } from '../storage/secureDatabase';
-import { createLocalE5RagService } from '../rag/localE5RagService';
+import { SqlCipherRagEmbeddingStorage } from '../storage/ragEmbeddingStorage';
 import type {
   ManualHistoryScreenRecord,
   ManualHistoryScreenRepository,
@@ -36,7 +36,6 @@ export async function openLocalManualHistoryRepository(): Promise<ManualHistoryS
     openLocalAgentMemoryDatabase(),
   ]);
   const repository = storage.manualHistory;
-  const rag = createLocalE5RagService(database);
   return {
     async list() {
       return (await repository.list()).map(toScreenRecord);
@@ -66,14 +65,17 @@ export async function openLocalManualHistoryRepository(): Promise<ManualHistoryS
       return (await repository.history(id)).map(toScreenRecord);
     },
     async delete(id) {
-      // Schema setup uses the global queue; finish it before owning the deletion transaction.
-      // Source lineage and vector tombstones still commit or roll back together below.
-      await rag.prepare();
+      // Admit a single protected writer. Warm schema proof, cold setup, and
+      // source/vector retirement all use the caller-owned executor.
       let deleted = false;
       await database.transaction(async transaction => {
-        deleted = await repository.delete(id, transaction, lineageIds =>
-          rag.deleteChunks([], lineageIds, transaction),
-        );
+        deleted = await repository.delete(id, transaction, async lineageIds => {
+          const vectors =
+            await SqlCipherRagEmbeddingStorage.forCallerTransaction(
+              transaction,
+            );
+          await vectors.deleteEvidence(lineageIds, [], transaction);
+        });
       });
       return deleted;
     },

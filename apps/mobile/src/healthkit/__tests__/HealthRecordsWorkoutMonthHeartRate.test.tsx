@@ -129,3 +129,41 @@ test('workout category selection supplies one owned month read without replacing
     lane.close();
   }
 });
+
+test('a late native protection restore retries a previously unavailable Workout read', async () => {
+  const prior = AppState.currentState;
+  AppState.currentState = 'active';
+  const lane = await setup();
+  try {
+    lane.queryWorkoutPeriodHeartRate.mockRejectedValueOnce(
+      new Error('transient synthetic native failure'),
+    );
+    const loader: HealthObservationPageLoader = Object.assign(
+      jest.fn(async () => ({ records: [], nextCursor: null })),
+      { readMonthChart: jest.fn(async () => new Promise<never>(() => {})) },
+    );
+    const view = await renderWithRootSafeArea(
+      <HealthRecordsLibraryScreen
+        loadObservations={loader}
+        onBack={jest.fn()}
+        onOpenHealthImport={jest.fn()}
+        onOpenDetail={jest.fn()}
+      />,
+    );
+    await fireEvent.press(screen.getByTestId('health-record-filter-workouts'));
+    await waitFor(() =>
+      expect(
+        screen.getByText(/운동과 연결된 심박수를 확인할 수 없어요/),
+      ).toBeTruthy(),
+    );
+    expect(lane.queryWorkoutPeriodHeartRate).toHaveBeenCalledTimes(1);
+    await act(() => lane.restoreProtection());
+    await waitFor(() => expect(screen.getByLabelText(/120 BPM/)).toBeTruthy());
+    expect(lane.queryWorkoutPeriodHeartRate).toHaveBeenCalledTimes(2);
+    expect(lane.requestReadAuthorizations).not.toHaveBeenCalled();
+    await view.unmount();
+  } finally {
+    AppState.currentState = prior;
+    lane.close();
+  }
+});

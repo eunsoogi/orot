@@ -1,8 +1,6 @@
 import { healthMetricNamesKo } from './healthMetricNamesKo';
 
 export const healthRecordsKo = {
-  'records.recent.partialError': '일부 기록을 불러오지 못했어요.',
-  'records.recent.retryMissing': '누락된 기록 다시 불러오기',
   'healthRecords.workout.walking': '걷기',
   'healthRecords.workout.running': '달리기',
   'healthRecords.workout.cycling': '사이클',

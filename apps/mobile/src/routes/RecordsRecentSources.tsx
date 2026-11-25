@@ -53,17 +53,17 @@ export function RecordsRecentSources(props: RecordsRecentSourcesProps) {
     canAdvance,
     loadErrors,
   } = useRecordsRecentFeed(props);
-  // Available records remain the primary content even if another source fails.
+  // A source failure must not add an error banner to records that are already usable.
   const hasRecords = records.length > 0;
-  const statusAtTail = hasRecords && (showAll || loadErrors.length > 0);
+  const statusAtTail = hasRecords && showAll;
   const status = (
     <>
       {isLoading ? (
         <RecordsRecentSourceState state="loading" onRetry={retrySources} />
       ) : null}
-      {loadErrors.length > 0 ? (
+      {!hasRecords && loadErrors.length > 0 ? (
         <RecordsRecentSourceState
-          state={hasRecords ? 'partial' : 'failed'}
+          state="failed"
           errorMessage={loadErrors.join('\n')}
           onRetry={retrySources}
         />

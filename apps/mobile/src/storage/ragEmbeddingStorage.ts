@@ -43,10 +43,11 @@ export class SqlCipherRagEmbeddingStorage implements LocalEmbeddingVectorStore {
 
   constructor(private readonly database: SqlDatabase) {}
 
-  /** Create a read adapter for this transaction only; missing or legacy schema uses stock setup. */
-  static async forVectorRead(
+  /** Bind schema proof and legacy setup to the caller's exact transaction. */
+  static async forCallerTransaction(
     transaction: SqlTransaction,
   ): Promise<SqlCipherRagEmbeddingStorage> {
+    // The adapter cannot enqueue global work behind the transaction it owns.
     const storage = new SqlCipherRagEmbeddingStorage({
       execute: (sql, values) => transaction.execute(sql, values),
       transaction: operation => operation(transaction),
@@ -54,6 +55,10 @@ export class SqlCipherRagEmbeddingStorage implements LocalEmbeddingVectorStore {
     if (await hasExactEmbeddingSchema(transaction))
       storage.schemaReady = Promise.resolve();
     return storage;
+  }
+
+  static forVectorRead(transaction: SqlTransaction) {
+    return SqlCipherRagEmbeddingStorage.forCallerTransaction(transaction);
   }
 
   /** Prepares RAG tables before callers join vector cleanup to an open deletion transaction. */
