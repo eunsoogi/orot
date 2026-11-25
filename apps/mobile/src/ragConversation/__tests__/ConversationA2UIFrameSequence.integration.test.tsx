@@ -50,30 +50,29 @@ test.each([
   ],
   ['contains unvalidated revised prose', [...valid, revised]],
   ['requires genuine first create', [update, create, data]],
-  ['unknown frame rolls back staged changes', [...valid, frame('callTool', {})]],
+  ['unknown operation', [...valid, frame('callTool', {})]],
   ['malformed frame after valid frames', [...valid, '{']],
   ['over operation budget', [...valid, ...Array<string>(12).fill(data)]],
 ] as const)('uses plain text if %s', (_name, frames) => {
   expect(acceptConversationA2UIFrameSequence(frames, answer)).toBeUndefined();
 });
 
-test('archives a completed line layout without storing frames or separate prose', () => {
+test('archives only the completed line layout', () => {
   const root = acceptConversationA2UIFrameSequence(valid, answer);
   expect(root).toBeDefined();
   const archived = storeConversationA2UILayout(root!, answer);
   expect(archived).toEqual({ version: 2, tree: ['Card', ['List', 0, 0]] });
+  const children = fruits.map(text => ({ text }));
   expect(restoreConversationA2UILayout(archived, answer)).toMatchObject({
     component: 'Card',
-    children: [
-      { component: 'List', children: fruits.map(text => ({ text })) },
-    ],
+    children: [{ component: 'List', children }],
   });
   expect(
     restoreConversationA2UILayout({ ...archived, version: 1 }, answer),
   ).toBeUndefined();
 });
 
-test('only the completed owning transcript bubble receives the final tree', async () => {
+test('publishes the tree only in its completed owning bubble', async () => {
   const model = fixture();
   let release!: (result: ReturnType<typeof response>) => void;
   let began!: () => void;
