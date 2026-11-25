@@ -64,15 +64,16 @@ export async function readCatalog(
   const queries: string[] = [];
   if (tables.has('symptom_summary_runs')) {
     const daily = tables.has('daily_report_revisions');
+    const summaryGuardTables = [
+      'symptom_summary_sources',
+      'legacy_symptom_deleted',
+      'agent_memory_records',
+      'symptom_summary_periods',
+      'symptom_entries',
+    ].every(table => tables.has(table));
     const summaryVisibility = !feed
       ? '1'
-      : [
-            'symptom_summary_sources',
-            'legacy_symptom_deleted',
-            'agent_memory_records',
-            'symptom_summary_periods',
-            'symptom_entries',
-          ].every(table => tables.has(table))
+      : summaryGuardTables
         ? visibleSummary
         : '0';
     const currentDaily =
@@ -87,11 +88,28 @@ export async function readCatalog(
     const quarantine = tables.has('summary_period_policy')
       ? "EXISTS(SELECT 1 FROM summary_period_policy p WHERE p.summary_id=r.id AND p.status='quarantined')"
       : '1';
+    // Metadata only: a positive reason from the original protected append may
+    // keep this exact historical row selectable. The detail still requires a
+    // current owner/lock witness and rereads the exact body; no link is admitted.
+    const readableHistory =
+      daily &&
+      summaryGuardTables &&
+      tables.has('conversation_invalid_summaries') &&
+      tables.has('summary_period_policy') &&
+      tables.has('standalone_summary_body_receipts')
+        ? `d.run_id IS NULL
+          AND json_extract(r.result_json, '$.analysis.presentation') = 'symptom_summary'
+          AND json_extract(r.result_json, '$.inputLineage') = 'complete'
+          AND json_extract(r.result_json, '$.createdAt') = r.created_at
+          AND EXISTS (SELECT 1 FROM summary_period_policy p WHERE p.summary_id=r.id AND p.status='current')
+          AND EXISTS (SELECT 1 FROM standalone_summary_body_receipts b WHERE b.summary_id=r.id AND b.source_revision=1)
+          AND (${visibleSummary})`
+        : '0';
     queries.push(`SELECT 'summary:'||r.id AS key,r.id,'summary' AS origin,
       CASE ${daily ? "WHEN d.run_id IS NOT NULL THEN 'daily_report'" : ''}
         WHEN json_extract(r.result_json,'$.analysis.presentation')='symptom_summary' THEN 'health_summary'
         ELSE 'possibilities' END AS kind,r.created_at AS createdAt,
-      (${invalid}) OR (${quarantine}) AS unavailable
+      ((${invalid}) AND NOT COALESCE((${readableHistory}), 0)) OR (${quarantine}) AS unavailable
       FROM symptom_summary_runs r ${daily ? 'LEFT JOIN daily_report_revisions d ON d.run_id=r.id' : ''}
       WHERE (${summaryVisibility}) AND (${currentDaily}) AND json_valid(r.result_json) AND (
         ${daily ? 'd.run_id IS NOT NULL OR' : ''}

@@ -10,6 +10,7 @@ import {
 } from '../readers';
 import { conversationExecutionNative } from '../../ragConversation/conversationExecutionNative';
 import { generatedReportCopy as copy } from '../text';
+import { listRecentMaterial } from '../catalog';
 
 jest.mock('../readers', () => ({
   ...jest.requireActual('../readers'),
@@ -48,6 +49,12 @@ async function fixture() {
   return { ...f, row, revise, read, body, reader, unexpectedSourceRead };
 }
 
+async function recent({ database, row }: Awaited<ReturnType<typeof fixture>>) {
+  return (await listRecentMaterial(database)).find(
+    item => item.key === row.key,
+  );
+}
+
 type Native = NonNullable<ReturnType<typeof conversationExecutionNative>>;
 type Event = Parameters<Parameters<Native['subscribe']>[0]>[0];
 function nativeProtection() {
@@ -82,7 +89,11 @@ test('a real same-record amount correction keeps only the original saved content
     const bytes = await f.body();
     await f.revise(83);
     expect(await f.body()).toBe(bytes);
-    const detail = await f.read();
+    const row = await recent(f);
+    expect(row).toEqual({ ...f.row, unavailable: false });
+    if (!row || row.origin !== 'summary') throw new Error('Missing summary.');
+    const signal = new AbortController().signal;
+    const detail = await f.reader.read(row, signal, jest.fn());
     expect(detail?.paragraphs).toContain(original);
     expect(detail?.warning).toBe(copy.historicalHealthSummary);
     expect(detail?.conversationSources).toBeUndefined();
@@ -96,6 +107,7 @@ test('a real same-record amount correction keeps only the original saved content
     expect(ui.queryByRole('link')).toBeNull();
     await ui.unmount();
     await f.quarantine();
+    expect(await recent(f)).toBeUndefined();
     expect(await f.read()).toBeNull();
   } finally {
     f.close();
@@ -169,6 +181,7 @@ test.each([
           [f.inside.id],
         );
     }
+    expect(await recent(f)).toBeUndefined();
     expect(await f.read()).toBeNull();
     expect(f.unexpectedSourceRead).not.toHaveBeenCalled();
   } finally {
