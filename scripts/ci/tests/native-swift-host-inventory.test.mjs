@@ -16,6 +16,7 @@ test('host regressions retain every migrated test outside the iOS inventory', ()
       'testMixedExactAssociatedInputsKeepTheSampleWeightedPeriod',
       'testRecordsRollingMonthUsesObservedLocalDatesAcrossDST',
       'testWrongOrIncompleteMembershipAndCancellationNeverBecomeAnAverage',
+      'testVisibleWorkoutCohortCannotOmitNativeWorkoutsOrAdmitDuplicatedRows',
     ],
     AppleNativeToolLifecycleTests: [
       'testPrivateCloudToolResultResumesOnlyItsMatchingProducer',

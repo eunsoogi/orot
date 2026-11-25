@@ -57,7 +57,7 @@ enum WorkoutPeriodHealthKitProducer {
             WorkoutPeriodDiagnostics.report(.nativeGateRejected, since: started)
             return .unavailable
         }
-        if completeCohort.isEmpty && !requireVisiblePeriodMatch {
+        if completeCohort.isEmpty, !requireVisiblePeriodMatch {
             return .emptyVisible
         }
         do {

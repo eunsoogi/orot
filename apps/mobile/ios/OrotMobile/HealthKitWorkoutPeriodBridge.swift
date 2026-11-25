@@ -60,7 +60,7 @@ private final class WorkoutPeriodReadCall: @unchecked Sendable {
         let strict = raw["workoutCohortPolicy"] as? String == "exact-visible-native-cohort"
         guard !strict || (raw.count == 5 && end.timeIntervalSince(start) <= 31 * 86400) else { return nil }
         let requestedTimeZone: String?
-        if raw.count == 5 && !strict {
+        if raw.count == 5, !strict {
             guard let chart = raw["recordsMonthChart"] as? [String: String], chart.count == 1,
                   let identifier = chart["timeZone"], identifier.count <= 64,
                   identifier.range(of: "^[A-Za-z0-9_+/-]+$", options: .regularExpression) != nil,
