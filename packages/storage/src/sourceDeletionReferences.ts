@@ -151,7 +151,12 @@ export async function listTypedSourceDeletionReferences(
     // target set once per statement instead of joining it again for every record edge.
     const predicate = sourceDeletionDependencyPredicate(kind, table, snapshotSource, true);
     const rows = await executor.execute(
-      `${snapshotTranscriptSets} SELECT ${table}.id FROM ${table} WHERE ${predicate}`,
+      // Keep SELECT as the outer statement so SQL adapters can classify this
+      // read and return its rows; the target CTE remains inside the same snapshot.
+      `SELECT id FROM (
+        ${snapshotTranscriptSets}
+        SELECT ${table}.id FROM ${table} WHERE ${predicate}
+      ) AS exact_deletion_snapshot`,
       [sourceId],
     );
     for (const row of rows.rows) add(kind, row.id);
