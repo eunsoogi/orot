@@ -76,7 +76,25 @@ final class ProcessDiagnosticWitness: @unchecked Sendable {
         return "OROT_PROVIDER_DIAGNOSTIC layer=app feature=recording_delete stage=" + stage + " outcome=" + outcome
     }
 
+    /// Fixed terminal outcomes are process logs only; never store them in the Settings ring.
+    static func recordsMediaAdmissionLine(stage: String, outcome: String) -> String? {
+        let first = [
+            "recovered", "owner_missing", "owner_detached", "settlement_failed", "wait_expired",
+            "budget_expired", "cap_missing_witness", "cap_revision_changed", "readmission_refused", "cancelled",
+        ]
+        let next = ["missing_witness", "revision_changed", "cancelled"]
+        guard (stage == "first_page" && first.contains(outcome)) ||
+            (stage == "next_page" && next.contains(outcome)) else { return nil }
+        return "OROT_PROVIDER_DIAGNOSTIC layer=app feature=records_media_admission stage=" + stage + " outcome=" + outcome
+    }
+
     func acceptAndContinueJS(feature: String, stage: String, outcome: String) -> Bool {
+        if feature == "records_media_admission" {
+            if let line = Self.recordsMediaAdmissionLine(stage: stage, outcome: outcome) {
+                NSLog("%@", line)
+            }
+            return false
+        }
         if feature == "recording_delete" {
             if let line = Self.recordingDeletionLine(stage: stage, outcome: outcome) {
                 NSLog("%@", line)
@@ -126,3 +144,4 @@ final class ProcessDiagnosticWitness: @unchecked Sendable {
         return ["launch": launch, "bridge": bridge, "receipts": receipts]
     }
 }
+

@@ -1,4 +1,8 @@
 import type { SqlDatabase } from '@orot/storage';
+import {
+  settleKnownIndependentRead,
+  type ReadSettlement,
+} from './independentReadSettlement';
 
 type Epoch = {
   readonly ownerIdentity: object;
@@ -12,7 +16,6 @@ type Epoch = {
   preDispatchRetirements?: Set<() => void>;
 };
 const epochs = new WeakMap<SqlDatabase, Epoch>();
-
 export function protectedSqlRead(query: string): boolean {
   if (/^PRAGMA (?:schema_version|data_version|compile_options)$/i.test(query))
     return true;
@@ -155,7 +158,6 @@ export function guardedNativeDatabase<T extends SqlDatabase>(native: T): T {
   epochs.set(proxy, epoch);
   return proxy;
 }
-
 export function aliasProtectedReadEpoch(
   owner: SqlDatabase,
   facade: SqlDatabase,
@@ -163,17 +165,14 @@ export function aliasProtectedReadEpoch(
   const epoch = epochs.get(owner);
   if (epoch) epochs.set(facade, epoch);
 }
-
 export function acquireProtectedReadEpoch(owner: SqlDatabase) {
   return acquireEpoch(owner, false);
 }
-
 /** A different native connection cannot see a dirty transaction until commit.
  * Same-connection protected algorithms keep their existing admission rules. */
 export function acquireIndependentReadEpoch(owner: SqlDatabase) {
   return acquireEpoch(owner, true);
 }
-
 function acquireEpoch(owner: SqlDatabase, independent: boolean) {
   const epoch = epochs.get(owner);
   if (
@@ -209,7 +208,6 @@ function acquireEpoch(owner: SqlDatabase, independent: boolean) {
     },
   };
 }
-
 /** A rejected snapshot can re-enter only after that same known connection
  * settles. Missing/detached/unsettled owners are not retryable contention. */
 export function awaitIndependentReadSettlement(
@@ -217,26 +215,31 @@ export function awaitIndependentReadSettlement(
   timeoutMs: number,
   signal?: AbortSignal,
 ): Promise<boolean> {
+  return readSettlement(
+    owner,
+    timeoutMs,
+    signal,
+    outcome => outcome === 'settled',
+  );
+}
+
+export function awaitIndependentReadSettlementResult(
+  owner: SqlDatabase,
+  timeoutMs: number,
+  signal?: AbortSignal,
+) {
+  return readSettlement(owner, timeoutMs, signal, outcome => outcome);
+}
+
+function readSettlement<R>(
+  owner: SqlDatabase,
+  timeoutMs: number,
+  signal: AbortSignal | undefined,
+  result: (outcome: ReadSettlement) => R,
+) {
   const epoch = epochs.get(owner);
-  const usable = () =>
-    !signal?.aborted && !epoch?.detached && !epoch?.unsettledFailure;
-  if (!epoch || !usable()) return Promise.resolve(false);
-  const idle = () => epoch.pending === 0 && epoch.dirtyTransactions === 0;
-  if (idle()) return Promise.resolve(true);
-  const listeners = (epoch.settleListeners ??= new Set());
-  return new Promise(resolve => {
-    const finish = (value: boolean) => {
-      listeners.delete(settled);
-      signal?.removeEventListener('abort', cancelled);
-      clearTimeout(timer);
-      resolve(value);
-    };
-    const settled = () => finish(usable());
-    const cancelled = () => finish(false);
-    const timer = setTimeout(cancelled, timeoutMs);
-    listeners.add(settled);
-    signal?.addEventListener('abort', cancelled, { once: true });
-  });
+  if (!epoch) return Promise.resolve(result('owner_missing'));
+  return settleKnownIndependentRead(epoch, timeoutMs, signal, result);
 }
 
 /** Identity only; aliases for one guarded connection share it, reopened connections do not. */
