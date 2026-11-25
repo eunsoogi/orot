@@ -7,7 +7,7 @@ import {
   useState,
 } from 'react';
 import type { ReactNode } from 'react';
-import { Modal, Pressable, ScrollView, View } from 'react-native';
+import { Modal, Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import { AppText } from '../layout/AppText';
 import { t } from '../i18n';
 import { conversationExecutionNative } from './conversationExecutionNative';
@@ -114,7 +114,7 @@ export function ConversationA2UIModal({
           animationType="none"
           presentationStyle="pageSheet"
         >
-          <View accessibilityViewIsModal style={{ flex: 1, padding: 20 }}>
+          <View accessibilityViewIsModal style={styles.sheet}>
             <Pressable
               accessibilityRole="button"
               onPress={close}
@@ -129,3 +129,7 @@ export function ConversationA2UIModal({
     </>
   );
 }
+
+const styles = StyleSheet.create({
+  sheet: { flex: 1, padding: 20 },
+});

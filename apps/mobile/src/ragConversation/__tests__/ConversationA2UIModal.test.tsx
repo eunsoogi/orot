@@ -120,19 +120,30 @@ it('opens only from an exact live tap, closes on retirement, and restores inline
   expect(screen.queryByText('검증된 내용')).toBeNull();
 
   let complete!: (available: boolean) => void;
+  let entered!: () => void;
+  const checking = new Promise<void>(resolve => {
+    entered = resolve;
+  });
   protectedDataAvailable.mockImplementationOnce(
     () =>
       new Promise(resolve => {
         complete = resolve;
+        entered();
       }),
   );
-  await fireEvent.press(screen.getByTestId('conversation-a2ui-open-modal'));
+  // RNTL awaits the onPress promise. Release the native test gate before
+  // awaiting that dispatch, but only after the actual check is in flight.
   await act(async () => {
+    const press = fireEvent.press(
+      screen.getByTestId('conversation-a2ui-open-modal'),
+    );
+    await checking;
     current = false;
     listeners.forEach(listener => listener());
     current = true;
     listeners.forEach(listener => listener());
     complete(true);
+    await press;
   });
   expect(screen.queryByTestId('conversation-a2ui-close-modal')).toBeNull();
   await fireEvent.press(screen.getByTestId('conversation-a2ui-open-modal'));

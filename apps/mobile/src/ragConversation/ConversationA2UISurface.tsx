@@ -105,7 +105,9 @@ function SurfaceNode({
     return (
       <ConversationA2UITabs
         tabs={node.tabs}
-        child={child => <SurfaceNode node={child} fontScale={fontScale} />}
+        renderChild={child => (
+          <SurfaceNode node={child} fontScale={fontScale} />
+        )}
       />
     );
   }

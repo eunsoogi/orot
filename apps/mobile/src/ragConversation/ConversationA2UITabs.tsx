@@ -7,10 +7,10 @@ import { a2uiSurfaceStyles as styles } from './conversationA2UISurfaceStyles';
 
 export function ConversationA2UITabs({
   tabs,
-  child,
+  renderChild,
 }: {
   readonly tabs: Extract<ConversationA2UINode, { component: 'Tabs' }>['tabs'];
-  readonly child: (node: ConversationA2UINode) => ReactNode;
+  readonly renderChild: (node: ConversationA2UINode) => ReactNode;
 }) {
   const [selection, setSelection] = useState<string | undefined>(undefined);
   const selected = tabs.find(tab => tab.child.id === selection) ?? tabs[0];
@@ -33,7 +33,7 @@ export function ConversationA2UITabs({
           </Pressable>
         ))}
       </View>
-      <Fragment key={selected.child.id}>{child(selected.child)}</Fragment>
+      <Fragment key={selected.child.id}>{renderChild(selected.child)}</Fragment>
     </View>
   );
 }
