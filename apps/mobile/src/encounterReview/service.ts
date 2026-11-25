@@ -27,7 +27,7 @@ import type { ReviewDiagnostics, ReviewDiagnosticAttempt } from './diagnostics';
 import { createEncounterStartAdmission } from './startAdmission';
 import { runWithEncounterNativeAdmission } from './runNativeAdmission';
 import { openEncounterReviewSessions } from './openSessions';
-
+import { createLongEncounterReview } from './longEncounterReview';
 /** Known-source discovery precedes graph invocation; missing checkpoints must never initiate extraction on restore. */
 async function readSessionResult(
   sourceId: string,
@@ -88,8 +88,6 @@ async function readSessionResult(
     return { status: 'unavailable' };
   }
   if (approval && result.status === 'saved') {
-    // A completed graph is history, not proof that this caller's decision committed.
-    // Revalidate the exact receipt on the canonical transaction, including for concurrent controllers.
     diagnostics?.stage('approval_receipt');
     const recordIds = await persistEncounterApproval(
       repository,
@@ -106,7 +104,6 @@ async function readSessionResult(
   }
   return result;
 }
-
 async function resume(
   sourceId: string,
   signal: AbortSignal,
@@ -120,19 +117,26 @@ async function resume(
     return { status: signal.aborted ? 'cancelled' : 'unavailable' };
   }
 }
-
 /** Production composition shares the selected model and consent UI, while approvals remain local explicit gestures. */
 export function createEncounterReviewService(
   resolveSelected = resolveSelectedAiProvider,
   observations?: ReviewDiagnostics,
 ): EncounterReviewService {
+  const long =
+    resolveSelected === resolveSelectedAiProvider
+      ? createLongEncounterReview(resolveSelected)
+      : undefined;
   return {
     diagnostics: observations,
     restore: (sourceId, signal) =>
       resume(sourceId, signal, undefined, observations?.current()),
-    decide: (sourceId, approval, signal) =>
-      resume(sourceId, signal, approval, observations?.current()),
-    async start(sourceId, consent, signal) {
+    async decide(sourceId, approval, signal) {
+      return (
+        (await long?.decide(sourceId, approval, signal)) ??
+        resume(sourceId, signal, approval, observations?.current())
+      );
+    },
+    async start(sourceId, consent, signal, lifetime) {
       const diagnostics = observations?.current();
       diagnostics?.stage('source_lookup');
       const repository = await openLocalStorage();
@@ -155,6 +159,8 @@ export function createEncounterReviewService(
         if (error instanceof EncounterTranscriptEmpty)
           return { status: 'no-transcript' };
         if (!(error instanceof EncounterTranscriptTooLong)) throw error;
+        if (lifetime && long)
+          return long.start(sourceId, repository, consent, signal, lifetime);
         diagnostics?.unavailable('transcript_read');
         return { status: 'transcript-too-long' };
       }
@@ -186,7 +192,6 @@ export function createEncounterReviewService(
         async (executionSignal, confirm) => {
           diagnostics?.stage('session_begin');
           const { discovery } = await openEncounterReviewSessions(sourceId);
-          // A stop while storage opens must not replace the last discoverable review.
           if (signal.aborted) return { status: 'cancelled' };
           if (!(await confirm()) || !admission.selectionCurrent())
             return { status: 'unavailable' };
@@ -200,7 +205,6 @@ export function createEncounterReviewService(
           }
           if (signal.aborted) return { status: 'cancelled' };
           if (executionSignal.aborted) return { status: 'unavailable' };
-          // Keep the source-bound checkpoint thread; only its verified nonce becomes the workflow ID.
           const executionId = discovery.executionId(session);
           const model = composeEncounterModel(
             sourceId,
@@ -232,5 +236,4 @@ export function createEncounterReviewService(
     },
   };
 }
-
 export const encounterReviewService = createEncounterReviewService();

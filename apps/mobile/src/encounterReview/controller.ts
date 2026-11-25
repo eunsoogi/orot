@@ -8,14 +8,15 @@ import type {
 import type { ReviewDiagnostics } from './diagnostics';
 
 export type ReviewResult =
-  | EncounterGraphResult
+  | (EncounterGraphResult & { readonly retireSignal?: AbortSignal })
   | {
       status:
         | 'idle'
         | 'no-transcript'
         | 'selection-required'
         | 'consent-denied'
-        | 'transcript-too-long';
+        | 'transcript-too-long'
+        | 'review-capacity';
     };
 export interface EncounterReviewService {
   diagnostics?: ReviewDiagnostics;
@@ -24,6 +25,7 @@ export interface EncounterReviewService {
     sourceId: string,
     consent: ExecutionConsentPort,
     signal: AbortSignal,
+    lifetime?: AbortSignal,
   ): Promise<ReviewResult>;
   decide(
     sourceId: string,
@@ -50,6 +52,8 @@ export class EncounterReviewController {
   state: ReviewState = { status: 'loading', candidates: [], selected: [] };
   private operation?: AbortController;
   private disposed = false;
+  private lifetime = new AbortController();
+  private retirePending?: () => void;
   constructor(
     readonly sourceId: string,
     private readonly service: EncounterReviewService,
@@ -86,11 +90,25 @@ export class EncounterReviewController {
     if (this.operation !== operation || this.disposed) return;
     this.operation = undefined;
     if (operation.signal.aborted) result = { status: 'cancelled' };
+    this.retirePending?.();
+    this.retirePending = undefined;
+    if (result.status === 'pending' && result.retireSignal?.aborted)
+      result = { status: 'unavailable' };
     if (result.status === 'pending') {
       // Keep the displayed original immutable. Edits and exclusions are a separate gesture payload.
       const pending = JSON.parse(
         JSON.stringify(result.pending),
       ) as EncounterPending;
+      const retire = result.retireSignal;
+      if (retire) {
+        const invalidate = () => {
+          if (!this.busy && this.state.pending?.threadId === pending.threadId)
+            this.set({ status: 'unavailable', candidates: [], selected: [] });
+        };
+        retire.addEventListener('abort', invalidate, { once: true });
+        this.retirePending = () =>
+          retire.removeEventListener('abort', invalidate);
+      }
       this.set({
         status: 'pending',
         pending,
@@ -107,10 +125,11 @@ export class EncounterReviewController {
   }
   activate() {
     this.disposed = false;
+    if (this.lifetime.signal.aborted) this.lifetime = new AbortController();
   }
   start(consent: ExecutionConsentPort) {
     return this.run('running', signal =>
-      this.service.start(this.sourceId, consent, signal),
+      this.service.start(this.sourceId, consent, signal, this.lifetime.signal),
     );
   }
   edit(id: string, field: 'text' | 'dosageInstruction', text: string) {
@@ -164,6 +183,9 @@ export class EncounterReviewController {
   }
   dispose() {
     this.disposed = true;
+    this.retirePending?.();
+    this.retirePending = undefined;
+    this.lifetime.abort();
     const operation = this.operation;
     this.operation = undefined;
     operation?.abort();
