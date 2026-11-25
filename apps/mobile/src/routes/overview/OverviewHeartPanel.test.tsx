@@ -80,7 +80,7 @@ test('renders one chartless card with independently labeled real values at narro
     expect(panel.getByText('운동 심박수')).toBeVisible();
     expect(panel.getByText('61 BPM')).toBeVisible();
     expect(panel.getByText('102 BPM')).toBeVisible();
-    expect(panel.getByText('평균 118 BPM')).toBeVisible();
+    expect(panel.getByText('118 BPM')).toBeVisible();
     expect(panel.queryAllByTestId(/^overview-metric-chart-/u)).toHaveLength(0);
   }
 });
