@@ -81,7 +81,7 @@ test('workout category selection supplies one owned month read without replacing
     await fireEvent.press(screen.getByTestId('health-record-filter-all'));
     expect(lane.queryWorkoutPeriodHeartRate).not.toHaveBeenCalled();
     await fireEvent.press(screen.getByTestId('health-record-filter-workouts'));
-    await waitFor(() => expect(screen.getByText('평균 120 BPM')).toBeTruthy());
+    await waitFor(() => expect(screen.getByText('120 BPM')).toBeTruthy());
     expect(lane.queryWorkoutPeriodHeartRate).toHaveBeenCalledTimes(1);
     expect(lane.queryWorkoutHeartRate).not.toHaveBeenCalled();
     expect(lane.requestReadAuthorizations).not.toHaveBeenCalled();
@@ -107,15 +107,15 @@ test('workout category selection supplies one owned month read without replacing
       focused = false;
       listeners.get('blur')?.();
     });
-    expect(screen.queryByText('평균 120 BPM')).toBeNull();
+    expect(screen.queryByText('120 BPM')).toBeNull();
     await act(() => {
       focused = true;
       listeners.get('focus')?.();
     });
-    await waitFor(() => expect(screen.getByText('평균 120 BPM')).toBeTruthy());
+    await waitFor(() => expect(screen.getByText('120 BPM')).toBeTruthy());
     expect(lane.queryWorkoutPeriodHeartRate).toHaveBeenCalledTimes(1);
     await act(() => lane.revoke());
-    expect(screen.queryByText('평균 120 BPM')).toBeNull();
+    expect(screen.queryByText('120 BPM')).toBeNull();
     await view.unmount();
   } finally {
     AppState.currentState = prior;
