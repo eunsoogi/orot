@@ -24,7 +24,8 @@ export function layoutSkeletonPublisher(input: {
         layout && !pending.withholdHealthBody
           ? { current: owns, layout }
           : undefined;
-      input.update(input.id, { pendingMessage: { ...pending, layoutSkeleton } });
+      const pendingMessage = { ...pending, layoutSkeleton };
+      input.update(input.id, { pendingMessage });
     },
   };
 }

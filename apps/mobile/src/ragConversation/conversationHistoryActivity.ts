@@ -43,7 +43,10 @@ export function conversationHistoryActivity(
       ? undefined
       : pending?.initialResponse;
   const layoutSkeleton =
-    read && activity && !pending?.withholdHealthBody && pending?.layoutSkeleton?.current()
+    read &&
+    activity &&
+    !pending?.withholdHealthBody &&
+    pending?.layoutSkeleton?.current()
       ? pending.layoutSkeleton.layout
       : undefined;
   const hasPendingContent = Boolean(

@@ -105,7 +105,12 @@ test.each(['complete', 'Stop', 'leave and return'] as const)(
     };
     const view = await render(transcript());
     sessions.setDraft(1, '과일 예시를 보여 주세요.');
-    const run = sessions.send(1, (question, previousMessages, signal, observer) =>
+    const runTurn: Parameters<typeof sessions.send>[1] = (
+      question,
+      previousMessages,
+      signal,
+      observer,
+    ) =>
       runRagConversationTurn(
         {
           ...options,
@@ -136,8 +141,8 @@ test.each(['complete', 'Stop', 'leave and return'] as const)(
             }
           },
         },
-      ),
-    );
+      );
+    const run = sessions.send(1, runTurn);
     try {
       await waitFor(() =>
         expect(native.startResponse).toHaveBeenCalledTimes(1),
@@ -187,7 +192,8 @@ test.each(['complete', 'Stop', 'leave and return'] as const)(
         { kind: 'row', slots: 2 },
       ]);
       if (ending === 'Stop') sessions.cancel(1);
-      native.emit({ requestId, type: 'completed', text: firstPart + secondPart });
+      const full = firstPart + secondPart;
+      native.emit({ requestId, type: 'completed', text: full });
       await run;
       await view.rerender(transcript());
       expect(

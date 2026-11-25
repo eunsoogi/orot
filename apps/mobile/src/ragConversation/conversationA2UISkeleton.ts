@@ -30,12 +30,13 @@ export function projectConversationA2UISkeleton(
     )
       return undefined;
     const next = applyConversationA2UIFrame(surface, frame, draftA2UISurfaceId);
-    if (!next || next === surface || next.status === 'invalid') return undefined;
+    if (!next || next === surface || next.status === 'invalid')
+      return undefined;
     surface = next;
   }
   if (!surface?.root) return undefined;
   const layout = container(surface.root);
-  if (layout.component === 'Text' || !layout.children.length) return undefined;
+  if (!('children' in layout) || !layout.children.length) return undefined;
   const length = layout.children.length;
   return {
     kind: layout.component === 'Row' && length === 2 ? 'row' : 'stack',

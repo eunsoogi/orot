@@ -13,9 +13,12 @@ export function ConversationA2UILiveSkeleton({
 }) {
   const { fontScale } = useWindowDimensions();
   const row = layout.kind === 'row' && fontScale < 1.4;
+  const testID = row
+    ? 'conversation-a2ui-skeleton-row'
+    : 'conversation-a2ui-skeleton';
   return (
     <View
-      testID={row ? 'conversation-a2ui-skeleton-row' : 'conversation-a2ui-skeleton'}
+      testID={testID}
       accessible={false}
       accessibilityElementsHidden
       importantForAccessibility="no-hide-descendants"
