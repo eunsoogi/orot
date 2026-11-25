@@ -45,6 +45,7 @@ export type ConversationA2UINode =
       readonly component: 'Card' | RowKind;
       readonly children: readonly ConversationA2UINode[];
       readonly alignment?: ConversationA2UIAlignment;
+      readonly direction?: 'horizontal';
     };
 
 export type ConversationA2UIState =
@@ -168,6 +169,7 @@ export function applyConversationA2UIFrame(
   allowStaticCatalog = false,
   allowAlignment = false,
   allowRowWeight = false,
+  allowListDirection = false,
 ): ConversationA2UIState | null {
   if (
     previous &&
@@ -182,6 +184,7 @@ export function applyConversationA2UIFrame(
     allowStaticCatalog,
     allowAlignment,
     allowRowWeight,
+    allowListDirection,
   );
   if (frame === 'foreign') return previous;
   const invalid = {

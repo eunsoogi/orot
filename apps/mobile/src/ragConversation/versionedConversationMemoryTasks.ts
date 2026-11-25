@@ -7,6 +7,7 @@ import type { GroundedRagAnswer } from './task';
 export function versionedConversationMemoryTasks(
   conversationTaskV24: TaskResponderContract<GroundedRagAnswer>,
   weightedTask: TaskResponderContract<GroundedRagAnswer>,
+  horizontalListTask: TaskResponderContract<GroundedRagAnswer>,
 ) {
   const conversationTaskV25 = withReplyPreferenceSpan(conversationTaskV24);
   const conversationTaskV26 = withAuthoredMemorySpan(conversationTaskV25);
@@ -20,9 +21,13 @@ export function versionedConversationMemoryTasks(
     conversationTaskV26,
     conversationTaskV27,
     conversationTaskV28,
-    ragConversationTask: withAuthoredMemorySpan(
+    conversationTaskV29: withAuthoredMemorySpan(
       withReplyPreferenceSpan(weightedTask, true),
       '29',
+    ),
+    ragConversationTask: withAuthoredMemorySpan(
+      withReplyPreferenceSpan(horizontalListTask, true),
+      '30',
     ),
   };
 }

@@ -8,7 +8,7 @@ type Icon = keyof typeof conversationA2UIIcons;
 type Axis = 'horizontal' | 'vertical';
 export type Shape =
   | 0
-  | readonly [Container | 'Tabs', ...Shape[]]
+  | readonly [Container | 'Tabs' | 'HorizontalList', ...Shape[]]
   | readonly ['Divider', Axis]
   | readonly ['Icon', Icon]
   | readonly ['WeightedText', number]
@@ -26,9 +26,14 @@ export const isAxis = (value: unknown): value is Axis =>
 
 /** Contains only app-approved arrangement, not wire frames, IDs or independent prose. */
 export type ArchivedA2UILayout = Readonly<{
-  version: 1 | 2 | 3 | 4 | 5;
+  version: 1 | 2 | 3 | 4 | 5 | 6;
   tree: Shape;
 }>;
+
+const archiveVersions: readonly unknown[] = [1, 2, 3, 4, 5, 6];
+export const archiveVersion = (
+  value: unknown,
+): value is ArchivedA2UILayout['version'] => archiveVersions.includes(value);
 
 const containers = new Set<Container>(['Card', 'Column', 'List', 'Row']);
 export const container = (value: unknown): value is Container =>
