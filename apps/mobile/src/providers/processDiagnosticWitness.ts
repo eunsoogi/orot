@@ -35,7 +35,7 @@ export function markProcessDiagnosticBridge() {
 }
 
 const receiptPattern =
-  /^(?:records recent_records_(?:pre_admission|admission|source_read|reproof) (?:started|completed|failed|cancelled|unavailable|stale_evidence)|workout (?:records|overview|shared)_(?:route|protection|database|epoch|cohort|reproof|bridge) (?:started|completed|failed|cancelled|skipped|missing|empty)|workout native (?:bridgeReceived|requestRejected|bridgeBusy|started|unavailable|empty|available|cancelled|timeout|nativeGateRejected|workoutObjectsRead|associatedParentsRead|quantitiesRead))$/;
+  /^(?:records recent_records_(?:pre_admission|admission|source_read|reproof|agent_(?:witness|catalog|schema|legacy|slice|certify)|media_(?:witness|query|settlement)) (?:started|completed|failed|cancelled|unavailable|stale_evidence)|workout (?:records|overview|shared)_(?:route|protection|database|epoch|cohort|reproof|bridge) (?:started|completed|failed|cancelled|skipped|missing|empty)|workout native (?:bridgeReceived|requestRejected|bridgeBusy|started|unavailable|empty|available|cancelled|timeout|nativeGateRejected|workoutObjectsRead|associatedParentsRead|quantitiesRead))$/;
 
 export async function readProcessDiagnosticWitness(): Promise<Snapshot | null> {
   try {

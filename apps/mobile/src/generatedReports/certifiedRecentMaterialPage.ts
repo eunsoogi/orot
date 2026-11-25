@@ -1,3 +1,4 @@
+import { reportRecentSourceFailure } from '../providers/recentSourceFailureDiagnostic';
 import { localQueryTimestampKey, type SqlDatabase } from '@orot/storage';
 import type { CatalogCursor, RecentMaterialRow } from './catalog';
 import {
@@ -104,8 +105,18 @@ export async function readProtectedRecentMaterialPage(
 ) {
   const current = () =>
     !options.signal.aborted && options.isCurrent() && lease.isCurrent();
-  const enter = () =>
-    openAttestedMemoryProbe(lease.database, current, options.signal);
+  const enter = () => {
+    try {
+      return openAttestedMemoryProbe(lease.database, current, options.signal);
+    } catch (error) {
+      reportRecentSourceFailure(
+        'recent_records_agent_witness',
+        error,
+        options.signal,
+      );
+      throw error;
+    }
+  };
   let probe: ReturnType<typeof enter>;
   try {
     probe = enter();
@@ -152,16 +163,33 @@ export async function readProtectedRecentMaterialPage(
     key: row.key,
   });
   try {
-    const ordinary = await probe.ordinary(before, width + 1);
+    const ordinary = await probe.ordinary(before, width + 1).catch(error => {
+      reportRecentSourceFailure(
+        'recent_records_agent_catalog',
+        error,
+        options.signal,
+      );
+      throw error;
+    });
     const advance = async (): Promise<Step> => {
       const slice = await probe.read(before, cursor);
-      const result = certifyMaterialProbe(
-        ordinary,
-        state,
-        slice,
-        positionOf,
-        width + 1,
-      );
+      let result: Result<RecentMaterialRow>;
+      try {
+        result = certifyMaterialProbe(
+          ordinary,
+          state,
+          slice,
+          positionOf,
+          width + 1,
+        );
+      } catch (error) {
+        reportRecentSourceFailure(
+          'recent_records_agent_certify',
+          error,
+          options.signal,
+        );
+        throw error;
+      }
       if (result.kind === 'complete')
         return {
           kind: 'complete',
