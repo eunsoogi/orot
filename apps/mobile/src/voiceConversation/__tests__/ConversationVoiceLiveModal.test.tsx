@@ -37,8 +37,10 @@ test('explicit composer start reaches the real Live modal without the discarded 
   AppState.currentState = 'active';
   const start = jest.fn();
   let updateState: Parameters<typeof createRealtimeVoiceSession>[0]['changed'];
+  let caption: Parameters<typeof createRealtimeVoiceSession>[0]['transcript'];
   jest.mocked(createRealtimeVoiceSession).mockImplementation(input => {
     updateState = input.changed;
+    caption = input.transcript;
     start.mockImplementation(() =>
       input.changed({ phase: 'authorizing', identity: null }),
     );
@@ -51,20 +53,21 @@ test('explicit composer start reaches the real Live modal without the discarded 
     } as unknown as ReturnType<typeof createRealtimeVoiceSession>;
   });
   try {
+    const snapshot = { activeId: 1, sessions: [{ id: 1 }, { id: 2 }] };
     const store = {
-      getSnapshot: () => ({ activeId: 1, sessions: [{ id: 1 }] }),
+      getSnapshot: () => snapshot,
       photoDrafts: { get: () => ({ status: 'empty' }) },
     } as unknown as ConversationVoiceProps['store'];
-    await render(
-      <ConversationVoiceEntry
-        sessionId={1}
-        busy={false}
-        photoPending={false}
-        selectionRevision={0}
-        store={store}
-        resolveSelectedAi={jest.fn()}
-        onSend={jest.fn()}
-      />,
+    const props = {
+      busy: false,
+      photoPending: false,
+      selectionRevision: 0,
+      store,
+      resolveSelectedAi: jest.fn(),
+      onSend: jest.fn(),
+    };
+    const view = await render(
+      <ConversationVoiceEntry sessionId={1} {...props} />,
     );
     const control = await screen.findByTestId('conversation-voice-control');
     expect(start).not.toHaveBeenCalled();
@@ -75,14 +78,36 @@ test('explicit composer start reaches the real Live modal without the discarded 
     expect(await screen.findByText('실시간 음성 대화')).toBeTruthy();
     expect(screen.getByTestId('voice-call-end')).toBeTruthy();
     expect(screen.queryByText(/API 음성 처리|기존 기록 미전송/)).toBeNull();
+    const firstCaption = caption!;
+    const callId = 'live-1000-1';
     await act(async () => {
-      updateState({ phase: 'listening', identity: null });
+      updateState({
+        phase: 'listening',
+        identity: { sessionId: 1, providerId: 'openai-live', turnId: callId },
+      });
+      firstCaption({ callId, itemId: '1', role: 'user', text: '합성 질문' });
+      firstCaption({ callId, itemId: '2', role: 'assistant', text: '합성 응답' });
+      firstCaption({
+        callId: 'live-999-9',
+        itemId: '2',
+        role: 'assistant',
+        text: '다른 통화',
+      });
     });
+    expect(screen.getByText('나: 합성 질문')).toBeTruthy();
+    expect(screen.getByText('AI: 합성 응답')).toBeTruthy();
+    expect(screen.queryByText(/다른 통화/)).toBeNull();
     expect(screen.queryByTestId('voice-call-finish')).toBeNull();
     expect(screen.queryByText(/완료를 눌러/)).toBeNull();
     expect(
       screen.getByText('듣고 있어요. 잠시 멈추면 답변을 준비해요.'),
     ).toBeTruthy();
+    snapshot.activeId = 2;
+    await view.rerender(<ConversationVoiceEntry sessionId={2} {...props} />);
+    await act(() =>
+      firstCaption({ callId, itemId: '3', role: 'assistant', text: '이전 통화' }),
+    );
+    expect(screen.queryByText(/합성 질문|합성 응답|이전 통화/)).toBeNull();
   } finally {
     AppState.currentState = previous;
   }
