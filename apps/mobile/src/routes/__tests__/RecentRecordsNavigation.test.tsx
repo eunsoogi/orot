@@ -184,7 +184,11 @@ test('lists five categories together and opens each selected protected destinati
     'generated-report-detail',
   );
   expect(await screen.findByText('synthetic report body')).toBeTruthy();
-  expect(read).toHaveBeenCalledWith(report, expect.anything());
+  expect(read).toHaveBeenCalledWith(
+    report,
+    expect.any(AbortSignal),
+    expect.any(Function),
+  );
 
   await fireEvent.press(screen.getByTestId('navigation-back'));
   await fireEvent.press(

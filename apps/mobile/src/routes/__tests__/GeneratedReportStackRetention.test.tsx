@@ -98,7 +98,11 @@ test.each([false, true])(
     expect(screen.queryByRole('button', { name: copy.back })).toBeNull();
     expect(screen.queryByTestId(id(37))).toBeNull();
     await waitFor(() => expect(screen.getByText(text)).toBeVisible());
-    expect(read).toHaveBeenCalledWith(row(37), expect.any(AbortSignal));
+    expect(read).toHaveBeenCalledWith(
+      row(37),
+      expect.any(AbortSignal),
+      expect.any(Function),
+    );
     expect(JSON.stringify(controller.getSnapshot())).not.toContain(text);
     const control = duo
       ? 'navigation-right-rail'

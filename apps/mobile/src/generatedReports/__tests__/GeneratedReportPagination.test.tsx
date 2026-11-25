@@ -153,7 +153,11 @@ test('opening a current row wins over pagination; the late page is discarded and
     expect(screen.getByText('Exact synthetic selected report')).toBeVisible(),
   );
   expect(read).toHaveBeenCalledTimes(1);
-  expect(read).toHaveBeenCalledWith(selected, expect.any(AbortSignal));
+  expect(read).toHaveBeenCalledWith(
+    selected,
+    expect.any(AbortSignal),
+    expect.any(Function),
+  );
   await act(() => second.resolve([row(99)]));
   expect(screen.getByText('Exact synthetic selected report')).toBeVisible();
   await fireEvent.press(screen.getByRole('button', { name: '목록으로' }));
