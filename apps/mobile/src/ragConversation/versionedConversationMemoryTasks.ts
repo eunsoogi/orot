@@ -1,3 +1,4 @@
+import { withFinalConversationCardWeight } from './conversationA2UICardWeightTask';
 import { withFinalConversationCaption } from './conversationA2UICaptionTask';
 import { withConversationA2UIModal } from './conversationA2UIModalTask';
 import type { TaskResponderContract } from '@orot/agent-runtime';
@@ -24,6 +25,7 @@ export function versionedConversationMemoryTasks(
     '31',
   );
   const conversationTaskV32 = withConversationA2UIModal(conversationTaskV31);
+  const conversationTaskV33 = withFinalConversationCaption(conversationTaskV32);
   return {
     conversationTaskV25,
     conversationTaskV26,
@@ -38,7 +40,10 @@ export function versionedConversationMemoryTasks(
       '30',
     ),
     conversationTaskV31,
-    conversationTaskV32,
-    ragConversationTask: withFinalConversationCaption(conversationTaskV32),
+    conversationTaskSavedLayouts: {
+      v32: conversationTaskV32,
+      v33: conversationTaskV33,
+    },
+    ragConversationTask: withFinalConversationCardWeight(conversationTaskV33),
   };
 }

@@ -14,7 +14,7 @@ import {
   conversationTaskV29,
   conversationTaskV30,
   conversationTaskV31,
-  conversationTaskV32,
+  conversationTaskSavedLayouts,
   proactiveConversationTaskV16,
   recordFirstConversationTaskV17,
   modelRoutedConversationTaskV18,
@@ -41,8 +41,10 @@ export function restoreConversationTask(
 ): typeof ragConversationTask | undefined {
   if (identity.taskType !== ragConversationTask.taskType) return undefined;
   if (identity.taskVersion === currentTask.taskVersion) return currentTask;
-  if (identity.taskVersion === conversationTaskV32.taskVersion)
-    return conversationTaskV32;
+  if (identity.taskVersion === conversationTaskSavedLayouts.v33.taskVersion)
+    return conversationTaskSavedLayouts.v33;
+  if (identity.taskVersion === conversationTaskSavedLayouts.v32.taskVersion)
+    return conversationTaskSavedLayouts.v32;
   if (identity.taskVersion === conversationTaskV31.taskVersion)
     return conversationTaskV31;
   if (identity.taskVersion === conversationTaskV30.taskVersion)
