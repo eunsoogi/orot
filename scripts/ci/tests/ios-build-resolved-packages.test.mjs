@@ -4,6 +4,7 @@ import { mkdtempSync, writeFileSync, readFileSync, rmSync, symlinkSync } from 'n
 import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
 import test from 'node:test';
+import { eagerCore, eagerProvider } from './fixtures/ios-eager-provider.mjs';
 import { provider } from './fixtures/ios-fabric-provider.mjs';
 
 function withBuildStub(callback) {
@@ -13,6 +14,11 @@ function withBuildStub(callback) {
     // Use the real scripts but never generate or modify any files under the source checkout.
     symlinkSync(resolve('scripts'), join(directory, 'scripts'), 'dir');
     writeFileSync(join(directory, 'fabric-fixture.mm'), provider());
+    writeFileSync(join(directory, 'eager-fixture.mm'), eagerProvider(eagerCore));
+    writeFileSync(
+      join(directory, 'eager-sample.mm'),
+      eagerProvider([...eagerCore, 'SampleTurboModule']),
+    );
     writeFileSync(
       join(directory, 'xcodebuild'),
       `#!${process.execPath}
@@ -26,11 +32,16 @@ if (status === 0 && mode !== 'missing') {
   mkdirSync(dirname(output), { recursive: true });
   writeFileSync(output, mode === 'valid' ? readFileSync('fabric-fixture.mm') : '/* missing registrations */');
 }
+if (status === 0 && process.env.EAGER_OUTPUT !== 'missing') {
+  mkdirSync(dirname(output), { recursive: true });
+  writeFileSync(dirname(output) + '/RCTUnstableModulesRequiringMainQueueSetupProvider.mm',
+    readFileSync(process.env.EAGER_OUTPUT === 'sample' ? 'eager-sample.mm' : 'eager-fixture.mm'));
+}
 process.exit(status);
 `,
       { mode: 0o755 },
     );
-    callback((profile, status, fabricOutput = 'valid') => {
+    callback((profile, status, fabricOutput = 'valid', eagerOutput = 'valid') => {
       const result = spawnSync(
         process.execPath,
         ['scripts/ci/build-ios-tests.mjs', profile, join(directory, 'products')],
@@ -44,6 +55,7 @@ process.exit(status);
             PATH: directory + ':' + process.env.PATH,
             BUILD_STATUS: String(status),
             FABRIC_OUTPUT: fabricOutput,
+            EAGER_OUTPUT: eagerOutput,
           },
         },
       );
@@ -103,6 +115,17 @@ for (const mode of ['missing', 'invalid']) {
       assertBuildStatus(result, 1);
       assert.doesNotMatch(result.stdout, /Verified iOS Fabric registrations/);
       assert.match(result.stderr, /ENOENT|Unexpected generated Fabric provider structure/);
+    });
+  });
+}
+
+for (const mode of ['missing', 'sample']) {
+  test(`successful Xcode with ${mode} eager module output fails post-build certification`, () => {
+    withBuildStub((build) => {
+      const result = build('provider-selection', 0, 'valid', mode);
+      assertBuildStatus(result, 1);
+      assert.doesNotMatch(result.stdout, /Verified iOS Fabric registrations/);
+      assert.match(result.stderr, /ENOENT|registry does not match the prebuilt core/);
     });
   });
 }

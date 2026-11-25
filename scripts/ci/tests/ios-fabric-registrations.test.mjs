@@ -81,9 +81,8 @@ test('rejects comment, inactive preprocessor and alternate method decoys', () =>
 test('canonical app-host build verifies the generated source only after successful Xcode', () => {
   const wrapper = readFileSync(new URL('../build-ios-tests.mjs', import.meta.url), 'utf8');
   assert.equal(wrapper.match(/verifyIosFabricProvider\(\);/g)?.length, 1);
-  assert.ok(
-    wrapper.indexOf('await new Promise') <
-      wrapper.indexOf('if (xcodeStatus === 0) verifyIosFabricProvider();'),
-  );
-  assert.match(wrapper, /if \(xcodeStatus === 0\) verifyIosFabricProvider\(\);/);
+  const guard =
+    /if \(xcodeStatus === 0\) \{\s*verifyIosEagerModules\(\);\s*verifyIosFabricProvider\(\);\s*\}/;
+  assert.match(wrapper, guard);
+  assert.ok(wrapper.indexOf('await new Promise') < wrapper.search(guard));
 });
