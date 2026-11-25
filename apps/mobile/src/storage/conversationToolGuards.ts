@@ -8,7 +8,10 @@ import {
   memoryContentChangedPredicate,
 } from './memoryContentChange';
 import { markerMatchesArtifactSource } from './typedDeletionMarkers';
-import { periodRowReferences } from './conversationPeriodRemoval';
+import {
+  indexedMarkerPeriodTables,
+  markerPeriodContributorMatches,
+} from './markerPeriodContributors';
 
 /** Tool-only turns need the same source invalidation as retained conversation artifacts. */
 export async function setupConversationToolGuards(tx: SqlExecutor) {
@@ -85,6 +88,7 @@ export async function setupConversationToolGuards(tx: SqlExecutor) {
         WHERE ${markerMatch('agent_memory_removed_sources')}
       ); END`,
   );
+  const indexedPeriodTables = await indexedMarkerPeriodTables(tx);
   for (const [table, guard] of Object.entries(healthPeriodDeletionGuards())) {
     const next = guard.replaceAll('OLD.', 'NEW.');
     const changed = `OLD.id IS NOT NEW.id OR ${jsonValueChangedPredicate('OLD.payload_json', 'NEW.payload_json')}`;
@@ -109,7 +113,14 @@ export async function setupConversationToolGuards(tx: SqlExecutor) {
       'source_deletion_tombstones',
       'agent_memory_removed_sources',
     ]) {
-      const condition = `EXISTS (SELECT 1 FROM ${table} h WHERE ${periodRowReferences('NEW.source_id', marker, kinds[table]!)} AND (${guard.replaceAll('OLD.', 'h.')}))`;
+      const condition = markerPeriodContributorMatches(
+        table,
+        'NEW.source_id',
+        marker,
+        kinds[table]!,
+        guard.replaceAll('OLD.', 'h.'),
+        indexedPeriodTables.has(table),
+      );
       await replaceHealthPeriodTrigger(
         tx,
         `CREATE TRIGGER IF NOT EXISTS tool_period_${table}_${marker} AFTER INSERT ON ${marker} BEGIN ${erase('conversation_tool_periods', condition)} END`,
