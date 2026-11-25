@@ -9,6 +9,8 @@ import { openSqliteTestDatabase } from '../../../../../packages/storage/__tests_
 import { openLocalStorage } from '../../storage/secureDatabase';
 import { OverviewMetricSelectionEditor } from './OverviewMetricSelectionEditor';
 import { overviewMetricTitle } from './OverviewMetricCard';
+import { OverviewHeartPanel } from './OverviewHeartPanel';
+import { t } from '../../i18n';
 import { OverviewMetrics } from './OverviewMetrics';
 import { useOverviewMetrics } from './useOverviewMetrics';
 import {
@@ -91,4 +93,67 @@ test('keeps one heart choice in the editor and associates workout only in the gr
   } finally {
     lane.close();
   }
+});
+
+test('announces the exact source and whole BPM of each available heart reading', async () => {
+  const metric = (
+    name: 'heartRate' | 'restingHeartRate' | 'walkingHeartRate',
+    amount: number,
+    date: string,
+    source: string,
+  ) => ({
+    metric: name,
+    unit: 'count/min',
+    source,
+    latest: { date, value: amount },
+    measuredAt: null,
+    timeZone: 'Asia/Seoul',
+    days: [],
+    comparison: null,
+  });
+  const view = await render(
+    <OverviewHeartPanel
+      width={304}
+      state="ready"
+      metrics={{
+        heartRate: metric('heartRate', 74.9, '2035-01-15', 'Fixture one'),
+        restingHeartRate: metric(
+          'restingHeartRate',
+          58.2,
+          '2035-01-14',
+          'Fixture two',
+        ),
+        walkingHeartRate: metric(
+          'walkingHeartRate',
+          83.7,
+          '2035-01-13',
+          t('overview.sourceUnknown'),
+        ),
+      }}
+    />,
+  );
+  expect(screen.getByText('74 BPM')).toBeVisible();
+  for (const date of ['2035-01-15', '2035-01-14', '2035-01-13'])
+    expect(screen.getAllByText(date)).toHaveLength(1);
+  expect(
+    screen.getByLabelText(
+      ['74 BPM', t('chart.source', { source: 'Fixture one' })].join(', '),
+    ),
+  ).toBeVisible();
+  expect(
+    screen.getByLabelText(
+      ['58 BPM', t('chart.source', { source: 'Fixture two' })].join(', '),
+    ),
+  ).toBeVisible();
+  expect(
+    screen.getByLabelText(
+      [
+        '83 BPM',
+        t('chart.source', { source: t('overview.sourceUnknown') }),
+      ].join(', '),
+    ),
+  ).toBeVisible();
+  expect(screen.queryByText('Fixture one')).toBeNull();
+  expect(screen.queryByTestId('overview-metric-chart-heartRate')).toBeNull();
+  await view.unmount();
 });
