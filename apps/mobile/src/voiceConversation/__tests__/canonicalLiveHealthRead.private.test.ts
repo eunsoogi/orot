@@ -112,3 +112,70 @@ test.each([
     }
   },
 );
+
+test('optional serial execution requires fresh approvals and never replays a denied or approved invocation', async () => {
+  const f = await fixture();
+  const first = canonicalCall;
+  const second = {
+    ...first,
+    challengeId: 'fresh-native-challenge',
+    responseId: 'fresh-response',
+    toolCallId: 'fresh-tool-call',
+    args: JSON.stringify({ days: 8, topics: ['measurements'] }),
+  };
+  const approveLocal = jest.fn(
+    async (call: { challengeId: string }, args: string, signal: AbortSignal) =>
+      call.challengeId === second.challengeId &&
+      args === second.args &&
+      signal === f.controller.signal,
+  );
+  const approveTransfer = jest.fn(async () => () => true);
+  const openData = jest.fn(f.input.openData);
+  const resolve = jest.fn(async () => ({
+    capability: 'local-health-context' as const,
+    current: () => true,
+  }));
+  const execute = createCanonicalLiveHealthRead({
+    permitSerialInvocations: true,
+    resolve,
+    owns: f.input.isChallengeCurrent,
+    protectedCurrent: f.input.protectedDataCurrent,
+    protectedAvailable: async () => true,
+    approveLocal,
+    approveTransfer,
+    openData,
+    holdDelivery: (_call, beforeDispatch) => beforeDispatch(() => {}),
+    settle: f.settle,
+  });
+  try {
+    f.setActive(first);
+    await execute(first, f.controller.signal);
+    await execute(first, f.controller.signal);
+    expect(openData).not.toHaveBeenCalled();
+    expect(f.settle.mock.calls).toEqual([
+      [first.callId, first.challengeId, null],
+    ]);
+    f.setActive(second);
+    await execute(second, f.controller.signal);
+    await execute(second, f.controller.signal);
+    const replay = { ...second, challengeId: 'replacement-native-challenge' };
+    f.setActive(replay);
+    await execute(replay, f.controller.signal);
+    expect(approveLocal.mock.calls).toEqual([
+      [first, first.args, f.controller.signal],
+      [second, second.args, f.controller.signal],
+    ]);
+    expect(resolve).toHaveBeenCalledTimes(2);
+    expect(openData).toHaveBeenCalledTimes(1);
+    expect(f.settle).toHaveBeenCalledTimes(2);
+    const exact = f.settle.mock.calls[1]?.[2];
+    expect(exact).toEqual(expect.stringContaining('heart_rate'));
+    expect(approveTransfer).toHaveBeenCalledWith(
+      second,
+      exact,
+      f.controller.signal,
+    );
+  } finally {
+    f.close();
+  }
+});

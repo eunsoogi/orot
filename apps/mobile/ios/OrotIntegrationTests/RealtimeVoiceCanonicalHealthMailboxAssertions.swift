@@ -94,9 +94,50 @@ extension RealtimeVoiceLifecycleTests {
         wait(for: [denied], timeout: 1)
         XCTAssertEqual(settled, [false])
         _ = mailbox.begin(request) { XCTAssertNil($0) }
+        try assertDistinctSerialCanonicalChallenges()
         #if OROT_TESTS && targetEnvironment(simulator)
             try assertCanonicalResultUsesActualSocketQueue()
         #endif
+    }
+
+    private func assertDistinctSerialCanonicalChallenges() throws {
+        let fixture = Fixture()
+        let admission = try XCTUnwrap(RealtimeVoiceCanonicalHealthAdmission(fixture.options))
+        let authority = LiveNativeResultDispatchAuthority()
+        let epoch = UUID()
+        func request(_ function: String) -> RealtimeVoiceCanonicalHealthMailbox.Request {
+            .init(call: "call", session: "session", epoch: epoch, response: "response",
+                  delegation: "delegation", function: function, rawArguments: "{}")
+        }
+        var challenges: [String] = []
+        var current = true
+        let mailbox = RealtimeVoiceCanonicalHealthMailbox(
+            call: "call", baseline: fixture.baseline, capability: admission,
+            authority: authority, key: fixture.key, read: fixture.read, permitSerialInvocations: true,
+            owns: { _ in current }, emit: { name, payload in
+                if name == "VoiceRealtimeManagedToolCall", let challenge = payload["challengeId"] as? String {
+                    challenges.append(challenge)
+                }
+            },
+        )
+        let first = request("first")
+        let second = request("second")
+        _ = mailbox.begin(first) { XCTAssertNil($0) }
+        let denied = try XCTUnwrap(challenges.first)
+        _ = mailbox.begin(second) { XCTAssertNil($0) }
+        XCTAssertEqual(challenges, [denied])
+        mailbox.settle(denied, output: nil) { XCTAssertTrue($0) }
+        _ = mailbox.begin(first) { XCTAssertNil($0) }
+        XCTAssertEqual(challenges, [denied])
+        let cancel = mailbox.begin(second) { _ in XCTFail("retired challenge replied") }
+        let next = try XCTUnwrap(challenges.last)
+        XCTAssertNotEqual(next, denied)
+        current = false
+        cancel()
+        mailbox.settle(next, output: nil) { XCTAssertFalse($0) }
+        current = true
+        _ = mailbox.begin(second) { XCTAssertNil($0) }
+        XCTAssertEqual(challenges, [denied, next])
     }
 }
 
