@@ -1,11 +1,15 @@
 import { act, fireEvent, render, screen } from '@testing-library/react-native';
-import { AppState, Switch } from 'react-native';
+import { AppState } from 'react-native';
 import { ConversationTranscriptMessages } from '../ConversationTranscriptMessages';
-import { conversationA2UILocalDraftFor } from '../conversationA2UILocalDraftFrames';
+import {
+  bindLiveConversationA2UILocalDraft,
+  conversationA2UILocalDraftFor,
+} from '../conversationA2UILocalDraftFrames';
 import { conversationA2UICatalog } from '../conversationA2UI';
 import {
   localA2UICheckLabel as fieldLabel,
   localA2UICheckPath as path,
+  mountConversationA2UILocalDraft,
 } from '../conversationA2UILocalDraft';
 import {
   ConversationA2UILocalDraftOwner,
@@ -144,28 +148,23 @@ test.each([
       });
       expect(await screen.findByLabelText(fieldLabel)).toBeTruthy();
       const control = screen.getByLabelText(fieldLabel);
-      // Get the callback from the composed React Native Switch, not its host wrapper.
-      const lateChange: unknown =
-        screen.UNSAFE_getByType(Switch).props.onValueChange;
-      if (typeof lateChange !== 'function')
-        throw new Error('Expected an owned Switch change callback.');
       expect(control.props.value).toBe(false);
       await fireEvent(control, 'valueChange', true);
       expect(screen.getByLabelText(fieldLabel).props.value).toBe(true);
       await fireEvent(screen.getByLabelText(fieldLabel), 'valueChange', false);
       expect(screen.getByLabelText(fieldLabel).props.value).toBe(false);
+      await fireEvent(screen.getByLabelText(fieldLabel), 'valueChange', true);
+      expect(screen.getByLabelText(fieldLabel).props.value).toBe(true);
       expect(model.generate).toHaveBeenCalledTimes(1);
       await view.unmount();
       expect(screen.queryByLabelText(fieldLabel)).toBeNull();
 
-      // A new mount of this same answer must not accept the old control callback.
+      // Remounting the same answer starts with a fresh, unchecked control.
       const replacement = await render(<Scene />);
       try {
         expect((await screen.findByLabelText(fieldLabel)).props.value).toBe(
           false,
         );
-        await act(async () => lateChange(true));
-        expect(screen.getByLabelText(fieldLabel).props.value).toBe(false);
         await fireEvent(screen.getByLabelText(fieldLabel), 'valueChange', true);
         expect(screen.getByLabelText(fieldLabel).props.value).toBe(true);
         expect(model.generate).toHaveBeenCalledTimes(1);
@@ -178,3 +177,40 @@ test.each([
     }
   },
 );
+
+test('retiring an owned checkbox rejects a captured change after replacement', () => {
+  const root = bindLiveConversationA2UILocalDraft(
+    {
+      id: 'root',
+      component: 'Column',
+      children: [{ id: 'body', component: 'Text', text: answer }],
+    },
+    { fieldId: 'field', kind: 'checkbox' },
+  );
+  const approved = conversationA2UILocalDraftFor(root);
+  if (approved?.kind !== 'checkbox')
+    throw new Error('Expected the validated local checkbox plan.');
+  const surfaceId = 'orot:1:12';
+  const first = mountConversationA2UILocalDraft(
+    approved,
+    surfaceId,
+    () => true,
+  );
+  if (!first) throw new Error('The first checkbox did not mount.');
+  const lateChange = first.change;
+  expect(lateChange(approved.fieldId, true)).toBe(true);
+  first.retire();
+
+  const replacement = mountConversationA2UILocalDraft(
+    approved,
+    surfaceId,
+    () => true,
+  );
+  if (!replacement) throw new Error('The replacement checkbox did not mount.');
+  expect(replacement.read(approved.fieldId)).toBe(false);
+  expect(lateChange(approved.fieldId, true)).toBe(false);
+  expect(replacement.read(approved.fieldId)).toBe(false);
+  expect(replacement.change(approved.fieldId, true)).toBe(true);
+  expect(replacement.read(approved.fieldId)).toBe(true);
+  replacement.retire();
+});
