@@ -42,27 +42,45 @@ export function useOverviewMetrics() {
     'loading' | 'ready' | 'refreshing' | 'stale' | 'failed'
   >('loading');
   const [attempt, setAttempt] = useState(0);
+  const [workoutSelectionEpoch, setWorkoutSelectionEpoch] = useState<
+    number | null
+  >(null);
+  const authenticatedSelection = useRef(0);
   const selectionGeneration = useRef(0);
   const loadGeneration = useRef(0);
   // Keep the last snapshot only across recoverable retries such as midnight refreshes.
   const hasSnapshot = useRef(false);
+  // The workout route separately revalidates native protection and its own
+  // SQLite cohort. An app foreground projection refresh need not retire its
+  // already admitted choice, but reset/blur and failed re-admission do.
+  const foregroundChoice = useRef(false);
+  const [preserveWorkoutOwner, setPreserveWorkoutOwner] = useState(false);
   const retry = useCallback(() => {
     // A newer read supersedes unresolved work without discarding a still-valid snapshot.
     loadGeneration.current += 1;
     setAttempt(value => value + 1);
   }, []);
-  const invalidateSnapshot = useCallback(() => {
-    // A committed clear, source deletion, or OS return can invalidate retained health values.
-    hasSnapshot.current = false;
-    setMetrics({});
-    setQuantityTruncated(false);
-    setState('loading');
-    retry();
-  }, [retry]);
+  const invalidateSnapshot = useCallback(
+    (foreground = false) => {
+      setWorkoutSelectionEpoch(null);
+      if (!foreground) foregroundChoice.current = false;
+      setPreserveWorkoutOwner(foreground && foregroundChoice.current);
+      // No previously presented measurements survive this invalidation.
+      hasSnapshot.current = false;
+      setMetrics({});
+      setQuantityTruncated(false);
+      setState('loading');
+      retry();
+    },
+    [retry],
+  );
   useEffect(() => {
-    const unsubscribeClear = subscribeLocalDataClear(invalidateSnapshot);
-    const unsubscribeSourceDeletion =
-      subscribeLocalSourceDeletion(invalidateSnapshot);
+    const unsubscribeClear = subscribeLocalDataClear(() =>
+      invalidateSnapshot(),
+    );
+    const unsubscribeSourceDeletion = subscribeLocalSourceDeletion(() =>
+      invalidateSnapshot(),
+    );
     return () => {
       unsubscribeClear();
       unsubscribeSourceDeletion();
@@ -71,7 +89,7 @@ export function useOverviewMetrics() {
   useEffect(() => {
     // Keep access revalidation active while another route is focused in Settings or Health.
     const subscription = AppState.addEventListener('change', appState => {
-      if (appState === 'active') invalidateSnapshot();
+      if (appState === 'active') invalidateSnapshot(true);
     });
     return () => subscription.remove();
   }, [invalidateSnapshot]);
@@ -91,7 +109,12 @@ export function useOverviewMetrics() {
     return () => clearTimeout(timer);
   }, [focused, attempt, retry, invalidateSnapshot]);
   useEffect(() => {
-    if (!focused) return;
+    if (!focused) {
+      foregroundChoice.current = false;
+      setPreserveWorkoutOwner(false);
+      setWorkoutSelectionEpoch(null);
+      return;
+    }
     let active = true;
     const controller = new AbortController();
     let retryTimer: ReturnType<typeof setTimeout> | undefined;
@@ -108,6 +131,9 @@ export function useOverviewMetrics() {
       setMetrics(nextMetrics.metrics);
       setQuantityTruncated(nextMetrics.quantityTruncated);
       hasSnapshot.current = true;
+      setWorkoutSelectionEpoch(++authenticatedSelection.current);
+      foregroundChoice.current = true;
+      setPreserveWorkoutOwner(false);
       setState('ready');
     };
     const isCurrent = () =>
@@ -132,6 +158,8 @@ export function useOverviewMetrics() {
           setQuantityTruncated(false);
           const delay = discardedReadRetryDelays[discardRetries];
           if (delay === undefined) {
+            foregroundChoice.current = false;
+            setPreserveWorkoutOwner(false);
             setState('failed');
           } else {
             setState('loading');
@@ -154,7 +182,11 @@ export function useOverviewMetrics() {
         );
         publish(snapshot.selection, snapshot.chart);
       } catch {
-        if (isCurrent()) setState(hasSnapshot.current ? 'stale' : 'failed');
+        if (isCurrent()) {
+          setPreserveWorkoutOwner(false);
+          if (!hasSnapshot.current) foregroundChoice.current = false;
+          setState(hasSnapshot.current ? 'stale' : 'failed');
+        }
       }
     };
     // Start asynchronously, as before, so immediate effect cleanup can win.
@@ -173,5 +205,20 @@ export function useOverviewMetrics() {
     selectionGeneration.current += 1;
     setSelection(next);
   }, []);
-  return { selection, metrics, quantityTruncated, state, retry, save };
+  const workoutOwner: {
+    workoutSelectionEpoch?: number | null;
+    preserveWorkoutOwner?: boolean;
+  } = {
+    workoutSelectionEpoch,
+    preserveWorkoutOwner,
+  };
+  return {
+    ...workoutOwner,
+    selection,
+    metrics,
+    quantityTruncated,
+    state,
+    retry,
+    save,
+  };
 }

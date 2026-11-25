@@ -108,16 +108,23 @@ export function OverviewHeartPanel({
   width,
   metrics,
   state,
+  workoutSelectionEpoch,
+  preserveWorkoutOwner,
 }: {
   readonly width: number | '100%';
   readonly metrics: Partial<Record<HeartReading, OverviewMetricProjection>>;
   readonly state: State;
+  readonly workoutSelectionEpoch?: number | null;
+  readonly preserveWorkoutOwner?: boolean;
 }) {
   const focused = useIsFocused();
   // The provisional default selection is not authority for a native workout read.
   const active =
     focused &&
-    (state === 'ready' || state === 'refreshing' || state === 'stale');
+    (state === 'ready' ||
+      state === 'refreshing' ||
+      (state === 'loading' && preserveWorkoutOwner === true) ||
+      state === 'stale');
   return (
     <View
       style={[overview.card, overview.gridCard, styles.panel, { width }]}
@@ -149,6 +156,7 @@ export function OverviewHeartPanel({
           width={undefined}
           active={active}
           embedded
+          selectionEpoch={workoutSelectionEpoch}
         />
       </View>
     </View>
