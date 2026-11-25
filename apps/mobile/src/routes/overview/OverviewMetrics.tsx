@@ -50,9 +50,7 @@ export function OverviewMetrics({ onEdit }: { readonly onEdit?: () => void }) {
     ChartStatus,
     'loading' | 'stale' | 'error' | 'empty'
   > =
-    data.state === 'loading' ||
-    data.state === 'foreground-refreshing' ||
-    data.state === 'refreshing'
+    data.state === 'loading' || data.state === 'refreshing'
       ? 'loading'
       : data.state === 'failed'
         ? 'error'
@@ -139,6 +137,7 @@ export function OverviewMetrics({ onEdit }: { readonly onEdit?: () => void }) {
                 width={gridLayout.cardWidth}
                 metrics={data.metrics}
                 workoutSelectionEpoch={data.workoutSelectionEpoch}
+                preserveWorkoutOwner={data.preserveWorkoutOwner}
                 state={data.state}
               />
             ) : isOverviewSnapshotMetric(metric) ? (

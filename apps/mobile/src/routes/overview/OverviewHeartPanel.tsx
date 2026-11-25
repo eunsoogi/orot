@@ -24,13 +24,7 @@ export function groupOverviewCardSelection(
 }
 
 type HeartReading = 'heartRate' | 'restingHeartRate' | 'walkingHeartRate';
-type State =
-  | 'loading'
-  | 'foreground-refreshing'
-  | 'ready'
-  | 'refreshing'
-  | 'stale'
-  | 'failed';
+type State = 'loading' | 'ready' | 'refreshing' | 'stale' | 'failed';
 
 function title(metric: HeartReading) {
   switch (metric) {
@@ -44,11 +38,7 @@ function title(metric: HeartReading) {
 }
 function unavailable(state: State) {
   if (state === 'failed') return t('overview.metricError');
-  if (
-    state === 'loading' ||
-    state === 'foreground-refreshing' ||
-    state === 'refreshing'
-  )
+  if (state === 'loading' || state === 'refreshing')
     return t('healthRecords.loading');
   return t('overview.metricEmpty');
 }
@@ -112,11 +102,13 @@ export function OverviewHeartPanel({
   metrics,
   state,
   workoutSelectionEpoch,
+  preserveWorkoutOwner,
 }: {
   readonly width: number | '100%';
   readonly metrics: Partial<Record<HeartReading, OverviewMetricProjection>>;
   readonly state: State;
   readonly workoutSelectionEpoch?: number | null;
+  readonly preserveWorkoutOwner?: boolean;
 }) {
   const focused = useIsFocused();
   // The provisional default selection is not authority for a native workout read.
@@ -124,7 +116,7 @@ export function OverviewHeartPanel({
     focused &&
     (state === 'ready' ||
       state === 'refreshing' ||
-      state === 'foreground-refreshing' ||
+      (state === 'loading' && preserveWorkoutOwner === true) ||
       state === 'stale');
   return (
     <View

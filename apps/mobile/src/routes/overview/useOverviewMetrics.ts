@@ -39,12 +39,7 @@ export function useOverviewMetrics() {
   >({});
   const [quantityTruncated, setQuantityTruncated] = useState(false);
   const [state, setState] = useState<
-    | 'loading'
-    | 'foreground-refreshing'
-    | 'ready'
-    | 'refreshing'
-    | 'stale'
-    | 'failed'
+    'loading' | 'ready' | 'refreshing' | 'stale' | 'failed'
   >('loading');
   const [attempt, setAttempt] = useState(0);
   const [workoutSelectionEpoch, setWorkoutSelectionEpoch] = useState<
@@ -59,7 +54,7 @@ export function useOverviewMetrics() {
   // SQLite cohort. An app foreground projection refresh need not retire its
   // already admitted choice, but reset/blur and failed re-admission do.
   const foregroundChoice = useRef(false);
-  const refreshingForeground = useRef(false);
+  const [preserveWorkoutOwner, setPreserveWorkoutOwner] = useState(false);
   const retry = useCallback(() => {
     // A newer read supersedes unresolved work without discarding a still-valid snapshot.
     loadGeneration.current += 1;
@@ -69,14 +64,12 @@ export function useOverviewMetrics() {
     (foreground = false) => {
       setWorkoutSelectionEpoch(null);
       if (!foreground) foregroundChoice.current = false;
-      refreshingForeground.current = foreground && foregroundChoice.current;
+      setPreserveWorkoutOwner(foreground && foregroundChoice.current);
       // No previously presented measurements survive this invalidation.
       hasSnapshot.current = false;
       setMetrics({});
       setQuantityTruncated(false);
-      setState(
-        refreshingForeground.current ? 'foreground-refreshing' : 'loading',
-      );
+      setState('loading');
       retry();
     },
     [retry],
@@ -118,7 +111,7 @@ export function useOverviewMetrics() {
   useEffect(() => {
     if (!focused) {
       foregroundChoice.current = false;
-      refreshingForeground.current = false;
+      setPreserveWorkoutOwner(false);
       setWorkoutSelectionEpoch(null);
       return;
     }
@@ -127,9 +120,7 @@ export function useOverviewMetrics() {
     let retryTimer: ReturnType<typeof setTimeout> | undefined;
     const selectionReadGeneration = selectionGeneration.current;
     const currentLoadGeneration = loadGeneration.current;
-    const pendingState = () =>
-      refreshingForeground.current ? 'foreground-refreshing' : 'loading';
-    setState(hasSnapshot.current ? 'refreshing' : pendingState());
+    setState(hasSnapshot.current ? 'refreshing' : 'loading');
     const publish = (
       nextSelection: readonly OverviewMetricChoice[],
       nextMetrics: SelectedOverviewSnapshot['chart'],
@@ -142,7 +133,7 @@ export function useOverviewMetrics() {
       hasSnapshot.current = true;
       setWorkoutSelectionEpoch(++authenticatedSelection.current);
       foregroundChoice.current = true;
-      refreshingForeground.current = false;
+      setPreserveWorkoutOwner(false);
       setState('ready');
     };
     const isCurrent = () =>
@@ -168,10 +159,10 @@ export function useOverviewMetrics() {
           const delay = discardedReadRetryDelays[discardRetries];
           if (delay === undefined) {
             foregroundChoice.current = false;
-            refreshingForeground.current = false;
+            setPreserveWorkoutOwner(false);
             setState('failed');
           } else {
-            setState(pendingState());
+            setState('loading');
             retryTimer = setTimeout(() => {
               if (
                 AppState.currentState !== 'inactive' &&
@@ -192,7 +183,7 @@ export function useOverviewMetrics() {
         publish(snapshot.selection, snapshot.chart);
       } catch {
         if (isCurrent()) {
-          refreshingForeground.current = false;
+          setPreserveWorkoutOwner(false);
           if (!hasSnapshot.current) foregroundChoice.current = false;
           setState(hasSnapshot.current ? 'stale' : 'failed');
         }
@@ -214,8 +205,12 @@ export function useOverviewMetrics() {
     selectionGeneration.current += 1;
     setSelection(next);
   }, []);
-  const workoutOwner: { workoutSelectionEpoch?: number | null } = {
+  const workoutOwner: {
+    workoutSelectionEpoch?: number | null;
+    preserveWorkoutOwner?: boolean;
+  } = {
     workoutSelectionEpoch,
+    preserveWorkoutOwner,
   };
   return {
     ...workoutOwner,
