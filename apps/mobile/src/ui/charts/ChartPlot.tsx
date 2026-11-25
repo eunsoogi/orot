@@ -24,7 +24,7 @@ type Props = {
   compact?: boolean;
   /** Overview removes detail UI entirely while retaining an accessible chart description. */
   hideDetails?: boolean;
-  /** Omit raw units and only retain labels that distinguish measured series. */
+  /** Omit raw legend units; keep source in the selected mark when needed. */
   legendLabelsOnly?: boolean;
   /** Preserve the chart image and summary before the user requests details. */
   accessibleCollapsedPlot?: boolean;
@@ -165,6 +165,7 @@ export function ChartPlot({
           height={height}
           title={title}
           kind={kind}
+          includeSelectedSource={legendLabelsOnly}
           testID={testID ? `${testID}-plot` : undefined}
         />
       ) : (
