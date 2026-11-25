@@ -128,6 +128,14 @@ export async function conversationWorkflowOutcome(
               ? `${result.value.answer}\n\n${t('ragConversation.literature.historicalRankedEvidence')}`
               : `${result.value.answer}\n\n${t('ragConversation.literature.historicalEvidence')}`,
       citations: presentation.citations,
+      // A separately verified current authorship span is not an evidence or
+      // answer excerpt. Forward it only after the grounded answer gates pass.
+      ...(result.value.replyPreferenceSpan
+        ? { replyPreferenceSpan: result.value.replyPreferenceSpan }
+        : {}),
+      ...(result.value.authoredRoutineSpan
+        ? { authoredRoutineSpan: result.value.authoredRoutineSpan }
+        : {}),
       ...(result.value.proactiveMemory === true
         ? { proactiveMemory: true as const }
         : {}),
