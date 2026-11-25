@@ -24,7 +24,13 @@ export function groupOverviewCardSelection(
 }
 
 type HeartReading = 'heartRate' | 'restingHeartRate' | 'walkingHeartRate';
-type State = 'loading' | 'ready' | 'refreshing' | 'stale' | 'failed';
+type State =
+  | 'loading'
+  | 'foreground-refreshing'
+  | 'ready'
+  | 'refreshing'
+  | 'stale'
+  | 'failed';
 
 function title(metric: HeartReading) {
   switch (metric) {
@@ -38,7 +44,11 @@ function title(metric: HeartReading) {
 }
 function unavailable(state: State) {
   if (state === 'failed') return t('overview.metricError');
-  if (state === 'loading' || state === 'refreshing')
+  if (
+    state === 'loading' ||
+    state === 'foreground-refreshing' ||
+    state === 'refreshing'
+  )
     return t('healthRecords.loading');
   return t('overview.metricEmpty');
 }
@@ -101,16 +111,21 @@ export function OverviewHeartPanel({
   width,
   metrics,
   state,
+  workoutSelectionEpoch,
 }: {
   readonly width: number | '100%';
   readonly metrics: Partial<Record<HeartReading, OverviewMetricProjection>>;
   readonly state: State;
+  readonly workoutSelectionEpoch?: number | null;
 }) {
   const focused = useIsFocused();
   // The provisional default selection is not authority for a native workout read.
   const active =
     focused &&
-    (state === 'ready' || state === 'refreshing' || state === 'stale');
+    (state === 'ready' ||
+      state === 'refreshing' ||
+      state === 'foreground-refreshing' ||
+      state === 'stale');
   return (
     <View
       style={[overview.card, overview.gridCard, styles.panel, { width }]}
@@ -142,6 +157,7 @@ export function OverviewHeartPanel({
           width={undefined}
           active={active}
           embedded
+          selectionEpoch={workoutSelectionEpoch}
         />
       </View>
     </View>

@@ -10,12 +10,14 @@ export function OverviewWorkoutHeartRateCard({
   width,
   active,
   embedded,
+  selectionEpoch,
 }: {
   readonly width: number | undefined;
   readonly active: boolean;
   readonly embedded?: boolean;
+  readonly selectionEpoch?: number | null;
 }) {
-  const state = useOverviewWorkoutPeriodHeartRate(active);
+  const state = useOverviewWorkoutPeriodHeartRate(active, selectionEpoch);
   return (
     <View
       style={[

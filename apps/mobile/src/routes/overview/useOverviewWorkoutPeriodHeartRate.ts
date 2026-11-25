@@ -1,4 +1,5 @@
 import { useLayoutEffect, useState } from 'react';
+import { useOverviewWorkoutSelectionAdmission } from './overviewWorkoutSelectionAdmission';
 import { createRecordRepository } from '@orot/storage';
 import { conversationExecutionNative } from '../../ragConversation/conversationExecutionNative';
 import { subscribeWorkoutImportCommitted } from '../../healthkit/workoutImportEvents';
@@ -21,7 +22,6 @@ import {
   acquireIndependentReadEpoch,
   awaitIndependentReadSettlement,
 } from '../../storage/protectedReadEpoch';
-
 type State = WorkoutPeriodResult | { status: 'loading' };
 const unavailable = { status: 'unavailable' } as const;
 const loading = { status: 'loading' } as const;
@@ -39,15 +39,14 @@ type ReadOwner = {
   usable?: () => boolean;
   recover?: () => Promise<void>;
 };
-
 declare const require: (
   path: '../../storage/secureDatabase',
-) => Pick<
-  typeof import('../../storage/secureDatabase'),
-  'openLocalAgentMemoryDatabase' | 'isCurrentLocalAgentMemoryDatabase'
->;
-
-export function useOverviewWorkoutPeriodHeartRate(active: boolean): State {
+) => typeof import('../../storage/secureDatabase');
+export function useOverviewWorkoutPeriodHeartRate(
+  active: boolean,
+  selectionEpoch?: number | null,
+): State {
+  const admission = useOverviewWorkoutSelectionAdmission(selectionEpoch);
   const [state, setState] = useState<State>(unavailable);
   useLayoutEffect(() => {
     trace.report('route', active ? 'started' : 'skipped');
@@ -82,11 +81,9 @@ export function useOverviewWorkoutPeriodHeartRate(active: boolean): State {
     const confirm = confirmOverviewWorkoutProtection(current, phase, target =>
       probe.confirm(() => current(target), protection.protectedDataAvailable),
     );
-    async function start(
-      canRecover = true,
-      previous?: OverviewWorkoutRecovery,
-    ) {
-      if (!mounted || task || phase() !== 'active') return;
+    async function start(recheck = true, previous?: OverviewWorkoutRecovery) {
+      if (!mounted || task || phase() !== 'active' || !admission.mayStart())
+        return;
       trace.report('route', 'completed');
       const window = overviewWorkoutReadWindow(previous?.period);
       const { period, currentWindow } = window;
@@ -148,7 +145,7 @@ export function useOverviewWorkoutPeriodHeartRate(active: boolean): State {
           const cohort = cohortFence.dispatched() ?? observedCohort;
           if (
             cohort &&
-            canRecover &&
+            recheck &&
             (await canReacquireOverviewWorkoutSnapshot(
               target.epoch?.current(),
               () => scopeCurrent() && phase() === 'active',
@@ -166,7 +163,7 @@ export function useOverviewWorkoutPeriodHeartRate(active: boolean): State {
           result.status === 'available' || result.status === 'emptyVisible';
         if (target.settled) {
           setState(result);
-        } else if (canRecover && target.interrupted) {
+        } else if (recheck && target.interrupted) {
           dropTask(false);
           start(false);
         }
@@ -217,12 +214,13 @@ export function useOverviewWorkoutPeriodHeartRate(active: boolean): State {
       } else if (event.kind === 'foreground') foreground();
       else if (event.kind === 'phase') {
         if (phase() === 'inactive') {
+          admission.pause();
           inactiveSince ??= Date.now();
           if (task && !task.settled) task.interrupted = true;
         } else if (phase() === 'active') foreground();
         else if (phase() === 'background') {
+          admission.pause();
           retire(false);
-          // Drop protected data now, without announcing a failed read before resume.
           setState(loading);
         } else retire();
       }
@@ -236,15 +234,17 @@ export function useOverviewWorkoutPeriodHeartRate(active: boolean): State {
     });
     const unsubscribeClear = subscribeLocalDataClear(retire);
     const unsubscribeDelete = subscribeLocalSourceDeletion(() => retire());
+    const unbindAdmission = admission.connect(start);
     start();
     return () => {
       mounted = false;
+      unbindAdmission();
       retire();
       unsubscribeProtection();
       unsubscribeImport();
       unsubscribeClear();
       unsubscribeDelete();
     };
-  }, [active]);
+  }, [active, admission]);
   return active ? state : unavailable;
 }
