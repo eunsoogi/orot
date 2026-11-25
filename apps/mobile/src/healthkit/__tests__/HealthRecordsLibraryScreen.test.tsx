@@ -1,5 +1,10 @@
 import { medicationMonthFixture } from '../testSupport/medicationMonthFixture';
-import { fireEvent, render, screen } from '@testing-library/react-native';
+import {
+  fireEvent,
+  render,
+  screen,
+  within,
+} from '@testing-library/react-native';
 import { mapBloodPressureCorrelation } from '../bloodPressure/mapper';
 import { correlation, correlationAt } from '../bloodPressure/testSupport';
 import {
@@ -189,4 +194,31 @@ test('opens unified import from the health records library action', async () => 
     await screen.findByTestId('health-records-open-health-import'),
   );
   expect(onOpenHealthImport).toHaveBeenCalledTimes(1);
+});
+
+test('uses the short metric titles in category controls and cards', async () => {
+  await render(
+    <HealthRecordsLibraryScreen
+      loadObservations={async () => ({ records: [], nextCursor: null })}
+      onBack={jest.fn()}
+      onOpenHealthImport={jest.fn()}
+      onOpenDetail={jest.fn()}
+    />,
+  );
+
+  for (const [category, title] of [
+    ['workouts', '운동'],
+    ['sleep', '수면'],
+  ]) {
+    const filter = screen.getByTestId('health-record-filter-' + category);
+    expect(filter).toHaveTextContent(title);
+    expect(screen.getByRole('button', { name: title })).toBe(filter);
+    await fireEvent.press(filter);
+    const card = await screen.findByTestId(
+      'health-record-category-' + category,
+    );
+    expect(within(card).getByText(title)).toBeVisible();
+  }
+  expect(screen.queryByText('운동 기록')).toBeNull();
+  expect(screen.queryByText('기록된 수면')).toBeNull();
 });
