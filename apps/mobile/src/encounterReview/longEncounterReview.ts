@@ -2,7 +2,6 @@ import {
   encounterCanonical,
   requireEncounterActive,
   validateEncounterApproval,
-  validateEncounterCandidates,
 } from '@orot/agent-runtime';
 import type {
   EncounterApproval,
@@ -20,6 +19,7 @@ import {
 import { acquireIndependentReadEpoch } from '../storage/protectedReadEpoch';
 import { conversationExecutionNative } from '../ragConversation/conversationExecutionNative';
 import { encounterConflicts } from '../agent/encounter/conflicts';
+import { validateLongEncounterCandidates } from '../agent/encounter/validateLongEncounterCandidates';
 import { persistEncounterApproval } from '../agent/encounter/persistence';
 import { readLongTranscriptReview } from '../agent/encounter/longTranscriptReviewRead';
 import type { ReviewResult } from './controller';
@@ -107,7 +107,6 @@ export function createLongEncounterReview(
         });
         if (signal.aborted) return { status: 'cancelled' };
         if (result.status !== 'complete') return { status: 'unavailable' };
-        if (result.candidates.length > 32) return { status: 'review-capacity' };
         const { discovery } = await openEncounterReviewSessions(sourceId);
         if (!(await lease.confirm()) || signal.aborted)
           return { status: 'unavailable' };
@@ -136,7 +135,7 @@ export function createLongEncounterReview(
               snapshot,
               () => requireEncounterActive(lease.signal),
             );
-            validateEncounterCandidates(snapshot.candidates, transcript);
+            validateLongEncounterCandidates(snapshot.candidates, transcript);
             snapshot.conflicts = await encounterConflicts(
               writer,
               snapshot.candidates,

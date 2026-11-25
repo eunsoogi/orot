@@ -31,13 +31,13 @@ const recordingId = sourceId + ':long-route';
 const dataText = 'Synthetic ninth line only.';
 const choice = { providerId: APPLE_PROVIDER_ID, modelId: 'synthetic-local' };
 
-async function harness() {
+async function harness(count = 9) {
   const repository = fixture.repository();
   const recording = await repository.get('source_record', sourceId);
   const [first] = await repository.transcripts.listForRecording(sourceId);
   if (!recording || !first) throw new Error('Synthetic seed missing.');
   await repository.put('source_record', { ...recording, id: recordingId });
-  const segments = Array.from({ length: 9 }, (_, i) => {
+  const segments = Array.from({ length: count }, (_, i) => {
     const transcriptId = recordingId + ':segment-' + i;
     return {
       ...first,
@@ -87,31 +87,32 @@ async function harness() {
     },
     async generate() {
       calls++;
-      if (calls > 2) throw new Error('No model replay.');
-      const terminal = calls === 2;
+      if (calls > Math.ceil(count / 8)) throw new Error('No model replay.');
+      const included =
+        count > 32
+          ? segments.slice((calls - 1) * 8, calls * 8)
+          : calls === 2
+            ? [final]
+            : [];
       return providerSuccess({
         text: JSON.stringify({
           type: 'result',
           value: {
-            candidates: terminal
-              ? [
-                  {
-                    kind: 'plan',
-                    speaker: 'unknown',
-                    text: dataText,
-                    evidence: [
-                      {
-                        segmentId: final.id,
-                        startOffset: 0,
-                        endOffset: dataText.length,
-                        quote: dataText,
-                      },
-                    ],
-                  },
-                ]
-              : [],
+            candidates: included.map(segment => ({
+              kind: 'plan',
+              speaker: 'unknown',
+              text: dataText,
+              evidence: [
+                {
+                  segmentId: segment.id,
+                  startOffset: 0,
+                  endOffset: dataText.length,
+                  quote: dataText,
+                },
+              ],
+            })),
           },
-          citations: terminal ? [final.id] : [],
+          citations: included.map(segment => segment.id),
         }),
         toolCalls: [],
         finishReason: 'complete',
@@ -189,3 +190,27 @@ test.each(['save', 'edit', 'lock', 'dispose'] as const)(
     }
   },
 );
+
+test('reviews all 33 on-device candidates; explicitly saves only the terminal evidence', async () => {
+  const f = await harness(33);
+  try {
+    await f.controller.start(consent);
+    expect(f.controller.state.status).toBe('pending');
+    expect(f.controller.state.candidates).toHaveLength(33);
+    expect(f.controller.state.selected).toEqual([]);
+    expect(f.calls()).toBe(5);
+    expect(await fixture.rows()).toHaveLength(0);
+    await f.controller.decide('approve');
+    expect(f.controller.state.status).toBe('pending');
+    expect(await fixture.rows()).toHaveLength(0);
+    const last = f.controller.state.candidates.at(-1)!;
+    expect(last.evidence[0]?.segmentId).toBe(f.final.id);
+    f.controller.toggle(last.id);
+    await f.controller.decide('approve');
+    expect(f.controller.state.status).toBe('saved');
+    expect(await fixture.rows()).toHaveLength(1);
+    expect(f.calls()).toBe(5);
+  } finally {
+    f.controller.dispose();
+  }
+});

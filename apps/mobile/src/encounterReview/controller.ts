@@ -113,7 +113,10 @@ export class EncounterReviewController {
         status: 'pending',
         pending,
         candidates: pending.candidates.map(candidate => ({ ...candidate })),
-        selected: pending.candidates.map(candidate => candidate.id),
+        selected:
+          pending.candidates.length > 32
+            ? []
+            : pending.candidates.map(candidate => candidate.id),
       });
     } else this.set({ status: result.status, candidates: [], selected: [] });
     diagnostics?.settled(this.state.status);
@@ -154,7 +157,12 @@ export class EncounterReviewController {
     });
   }
   decide(decision: 'approve' | 'deny') {
-    if (this.busy || !this.dirty || !this.state.pending)
+    if (
+      this.busy ||
+      !this.dirty ||
+      !this.state.pending ||
+      (decision === 'approve' && !this.state.selected.length)
+    )
       return Promise.resolve();
     const approval: EncounterApproval = {
       pending: this.state.pending,

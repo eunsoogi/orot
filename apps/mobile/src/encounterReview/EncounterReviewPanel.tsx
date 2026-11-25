@@ -2,10 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { StyleSheet, View } from 'react-native';
 import { AppText } from '../layout/AppText';
 import { EncounterReviewActions } from './EncounterReviewActions';
-import {
-  MaterialLibraryRows,
-  materialLibraryStyles,
-} from '../layout/MaterialLibraryRows';
+import { materialLibraryStyles } from '../layout/MaterialLibraryRows';
 import { appColors } from '../layout/appColors';
 import { useInferenceConsent } from '../agent/execution/useInferenceConsent';
 import {
@@ -14,7 +11,7 @@ import {
 } from './controller';
 import type { EncounterReviewService, ReviewState } from './controller';
 import { localEncounterReviewService } from './localService';
-import { CandidatePanel } from './CandidatePanel';
+import { EncounterCandidatePages } from './EncounterCandidatePages';
 import { reviewCopy as copy } from './strings';
 
 /** A source key, never geometry, owns this controller and its unsaved edits through route reflow. */
@@ -71,21 +68,13 @@ export function EncounterReviewPanel({
           : copy[state.status]}
       </AppText>
       {pending && reviewable ? (
-        <MaterialLibraryRows testID="encounter-candidate-list">
-          {state.candidates.map((candidate, index) => (
-            <CandidatePanel
-              key={candidate.id}
-              candidate={candidate}
-              pending={pending}
-              divider={index < state.candidates.length - 1}
-              selected={state.selected.includes(candidate.id)}
-              onToggle={() => controller.toggle(candidate.id)}
-              onEdit={(field, text) =>
-                controller.edit(candidate.id, field, text)
-              }
-            />
-          ))}
-        </MaterialLibraryRows>
+        <EncounterCandidatePages
+          key={pending.threadId}
+          pending={pending}
+          state={state}
+          controller={controller}
+          disabled={disabled}
+        />
       ) : null}
       <EncounterReviewActions
         status={state.status}
