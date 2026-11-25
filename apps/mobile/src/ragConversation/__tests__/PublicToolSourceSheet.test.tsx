@@ -61,6 +61,10 @@ test('opens a cancellable source window before a retained lookup finishes, ignor
   );
   expect(within(sheet).getByRole('progressbar')).toBeTruthy();
   expect(within(sheet).queryByRole('link')).toBeNull();
+  // The app's actual modal first owns the generic progress frame.
+  expect(resolve).not.toHaveBeenCalled();
+  await fireEvent(sheet, 'show');
+  await fireEvent(sheet, 'show');
   expect(resolve).toHaveBeenCalledTimes(1);
   await fireEvent.press(
     within(sheet).getByRole('button', { name: '현재 화면 닫기' }),
@@ -112,6 +116,10 @@ test.each(['revoked', 'changed', 'unsafe'] as const)(
     await fireEvent.press(
       screen.getByRole('button', { name: /원문 출처 확인/u }),
     );
+    await fireEvent(
+      await screen.findByTestId('conversation-public-tool-source-sheet'),
+      'show',
+    );
     const link = await screen.findByRole('link', {
       name: /Synthetic public source/u,
     });
@@ -151,3 +159,31 @@ test.each([
     expect(screen.getByRole('header', { name: title })).toBeTruthy();
   },
 );
+
+test('closing before presentation never begins source resolution', async () => {
+  const resolve = jest.fn(async () => publicRef);
+  await render(
+    <ConversationToolEventSources
+      event={event}
+      sessionId="synthetic"
+      durableMessageId="turn"
+      allowSourceActions
+      resolveToolSource={resolve}
+      onOpenSource={jest.fn()}
+      onLinkError={jest.fn()}
+    />,
+  );
+  await fireEvent.press(
+    screen.getByRole('button', { name: /원문 출처 확인/u }),
+  );
+  const sheet = await screen.findByTestId(
+    'conversation-public-tool-source-sheet',
+  );
+  expect(within(sheet).getByRole('progressbar')).toBeTruthy();
+  const callback = sheet.props.onShow;
+  await fireEvent.press(
+    within(sheet).getByRole('button', { name: '현재 화면 닫기' }),
+  );
+  await act(async () => callback?.());
+  expect(resolve).not.toHaveBeenCalled();
+});

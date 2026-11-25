@@ -149,6 +149,8 @@ test('a completed literature source can be opened while an independent Overview 
     const sheet = screen.getByTestId('conversation-public-tool-source-sheet');
     expect(within(sheet).getByRole('progressbar')).toBeVisible();
     expect(within(sheet).queryByRole('link')).toBeNull();
+    expect(resolveSource).not.toHaveBeenCalled();
+    await fireEvent(sheet, 'show');
     expect(resolveSource).toHaveBeenCalledTimes(1);
     expect(call).toHaveBeenCalledWith(
       literatureOwner.sessionId,

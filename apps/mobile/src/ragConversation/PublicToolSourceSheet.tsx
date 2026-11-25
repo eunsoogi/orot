@@ -18,6 +18,7 @@ export type PublicToolSourceChoice = {
 };
 export type PublicToolSourceSheetState = {
   readonly timing?: SourceOpenTiming;
+  readonly onPresented?: () => void;
   readonly key: string;
   readonly choices?: readonly PublicToolSourceChoice[];
   readonly failed?: boolean;
@@ -46,7 +47,10 @@ export function PublicToolSourceSheet({
       presentationStyle="pageSheet"
       allowSwipeDismissal
       onRequestClose={close}
-      onShow={() => state?.timing?.mark('source_open_public_show')}
+      onShow={() => {
+        state?.timing?.mark('source_open_public_show');
+        state?.onPresented?.();
+      }}
       testID="conversation-public-tool-source-sheet"
     >
       {state ? (
