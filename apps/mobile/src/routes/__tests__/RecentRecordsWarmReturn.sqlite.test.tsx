@@ -40,7 +40,7 @@ jest.mock('../recentSourceReader', () => ({
 
 const mediaId = 'synthetic-warm-file';
 const memoryId = 'synthetic-warm-memory';
-const file = 'records-recent-source-' + mediaId;
+const file = 'Synthetic warm file';
 const memory = 'records-recent-source-memory:agent:' + memoryId;
 const error = 'records-recent-sources-error';
 const retry = 'records-recent-sources-retry';
@@ -94,7 +94,7 @@ test.each(['Voice Model Back', 'native foreground'] as const)(
         id: mediaId,
         sourceKind: 'medical_document',
         ingestedAt: '2026-11-24T02:00:00Z',
-        title: 'Synthetic warm file',
+        title: file,
         provenance: { origin: 'imported', sourceRecordIds: [] },
         reviewState: { status: 'unreviewed' },
       });
@@ -137,7 +137,7 @@ test.each(['Voice Model Back', 'native foreground'] as const)(
         Readiness,
       );
       try {
-        expect(await screen.findByTestId(file)).toBeTruthy();
+        expect(await screen.findByText(file)).toBeTruthy();
         expect(await screen.findByTestId(memory)).toBeTruthy();
         const warmGrants = grants;
         if (journey === 'Voice Model Back') {
@@ -153,7 +153,7 @@ test.each(['Voice Model Back', 'native foreground'] as const)(
           );
         } else {
           await act(async () => phase('background'));
-          expect(screen.queryByTestId(file)).toBeNull();
+          expect(screen.queryByText(file)).toBeNull();
           expect(screen.queryByTestId(memory)).toBeNull();
         }
         readAgain = true;
@@ -168,7 +168,7 @@ test.each(['Voice Model Back', 'native foreground'] as const)(
         expect(grants).toBeGreaterThan(warmGrants);
         await act(async () => resume.resolve());
         await waitFor(() => {
-          expect(screen.getByTestId(file)).toBeTruthy();
+          expect(screen.getByText(file)).toBeTruthy();
           expect(screen.getByTestId(memory)).toBeTruthy();
         });
         expect(screen.queryByTestId(retry)).toBeNull();
