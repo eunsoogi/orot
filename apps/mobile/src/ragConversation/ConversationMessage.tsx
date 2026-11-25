@@ -8,6 +8,7 @@ import type { EvidenceReference } from '@orot/agent-runtime';
 import { AppButton } from '../layout/AppButton';
 import { AppText as Text } from '../layout/AppText';
 import { ConversationMessageText } from './ConversationMessageText';
+import { ConversationSentPhoto } from './ConversationSentPhoto';
 import { ConversationPreviousOutputs } from './ConversationPreviousOutputs';
 import { ConversationInitialResponse } from './ConversationInitialResponse';
 import { ConversationBubbleEntrance } from './ConversationBubbleEntrance';
@@ -180,9 +181,9 @@ export function ConversationMessage({
             </View>
           ) : null}
           {user && (message.photoAttached || message.submittedInput?.ocr) ? (
-            <Text style={[styles.messageText, styles.userText]}>
-              {t('ragConversation.photo.message')}
-            </Text>
+            <ConversationSentPhoto
+              previewURI={message.directPhotoPreviewData}
+            />
           ) : null}
           {!user &&
           message.streaming &&

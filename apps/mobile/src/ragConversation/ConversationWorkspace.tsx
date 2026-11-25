@@ -18,6 +18,9 @@ import { ConversationToolEvents } from './ConversationToolEvents';
 import { SeparatedConversationActivity } from './ConversationWorkspaceContext';
 import { useConversationWorkspaceBounds } from './useConversationWorkspaceBounds';
 
+import { conversationComposerDisabled } from './conversationComposerDisabled';
+import { DirectPhotoPresentationScope } from './DirectPhotoPresentationScope';
+
 type SourceActions = Pick<
   ConversationHistoryProps,
   'onOpenSource' | 'onLinkError' | 'toolSourceSessionId' | 'resolveToolSource'
@@ -28,6 +31,7 @@ type Props = {
   session: ConversationSession;
   children: ReactNode;
   composer?: ReactNode;
+  photoPresentationAllowed?: boolean;
   routeKey?: string;
 };
 
@@ -80,24 +84,34 @@ export function ConversationWorkspace(props: Props) {
             >
               <SeparatedConversationActivity.Provider value={plan.visible}>
                 <TranscriptInset separated={plan.visible}>
-                  <FloatingComposerSurface
-                    composer={
-                      <NavigationOcclusionContext.Provider
-                        value={workspaceOcclusion}
-                      >
-                        {props.composer}
-                      </NavigationOcclusionContext.Provider>
+                  <DirectPhotoPresentationScope
+                    sessionId={props.session.id}
+                    available={
+                      (props.photoPresentationAllowed ?? true) &&
+                      (props.isEntryCurrent?.() ?? true) &&
+                      !conversationComposerDisabled(props.session) &&
+                      !props.session.leaseRefreshRequired
                     }
                   >
-                    <GeneratedReportBookmarkContext.Provider
-                      value={{
-                        sessionId: props.session.id,
-                        isCurrent: props.isEntryCurrent,
-                      }}
+                    <FloatingComposerSurface
+                      composer={
+                        <NavigationOcclusionContext.Provider
+                          value={workspaceOcclusion}
+                        >
+                          {props.composer}
+                        </NavigationOcclusionContext.Provider>
+                      }
                     >
-                      {props.children}
-                    </GeneratedReportBookmarkContext.Provider>
-                  </FloatingComposerSurface>
+                      <GeneratedReportBookmarkContext.Provider
+                        value={{
+                          sessionId: props.session.id,
+                          isCurrent: props.isEntryCurrent,
+                        }}
+                      >
+                        {props.children}
+                      </GeneratedReportBookmarkContext.Provider>
+                    </FloatingComposerSurface>
+                  </DirectPhotoPresentationScope>
                 </TranscriptInset>
               </SeparatedConversationActivity.Provider>
             </View>

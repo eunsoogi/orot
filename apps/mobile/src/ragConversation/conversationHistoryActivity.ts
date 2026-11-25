@@ -7,6 +7,8 @@ import {
 import type { DisplayMessage } from './ConversationMessage';
 import type { ConversationActivitySnapshot } from './conversationActivity';
 import type { ConversationSession } from './conversationSessionTypes';
+import { presentDirectPhotos } from './directPhotoPresentation';
+import { useDirectPhotoPresentation } from './DirectPhotoPresentationScope';
 import { parseConversationMessageDelivery } from './conversationMessageDelivery';
 
 /** Hides empty assistant placeholders while preserving the keyed partial response. */
@@ -93,9 +95,23 @@ export function useConversationHistoryPresentation(input: {
   expectedOffset: Parameters<typeof useConversationHistoryUserTurnFollow>[3];
 }) {
   const { saved, messages } = input;
+  const directPhoto = useDirectPhotoPresentation();
+  const transcript = useMemo(
+    () =>
+      presentDirectPhotos(
+        savedHistoryTranscript(saved ?? [], messages),
+        directPhoto,
+        input.sessionId,
+      ),
+    [saved, messages, directPhoto, input.sessionId],
+  );
+  const followMessages = useMemo(
+    () => presentDirectPhotos(messages, directPhoto, input.sessionId, true),
+    [directPhoto, input.sessionId, messages],
+  );
   useConversationHistoryUserTurnFollow(
     input.sessionId ?? null,
-    messages,
+    followMessages,
     input.followsBottom,
     input.expectedOffset,
     input.pendingMessage &&
@@ -103,10 +119,6 @@ export function useConversationHistoryPresentation(input: {
       input.sessionId === input.requestActivity?.sessionId
       ? input.steeringInstructions?.find(row => row.submittedHere)?.id
       : undefined,
-  );
-  const transcript = useMemo(
-    () => savedHistoryTranscript(saved ?? [], messages),
-    [saved, messages],
   );
   return conversationHistoryActivity(
     transcript,

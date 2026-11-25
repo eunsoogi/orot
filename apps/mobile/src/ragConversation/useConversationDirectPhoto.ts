@@ -1,9 +1,11 @@
 import { AppState } from 'react-native';
-import { useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { createConversationPhotoImageSend } from '../aiFeatures/integration/sendConversationPhotoImage';
 import { chatGPTPlanDirectPhoto } from '@orot/provider-openai';
 import { t } from '../i18n';
+import { beginDirectPhotoPresentation } from './directPhotoPresentation';
 import { conversationDirectPhotoPorts as native } from './conversationDirectPhotoPorts';
+import { useDirectPhotoPublisher } from './DirectPhotoPresentationScope';
 import type {
   ConversationSession,
   ConversationSessions,
@@ -23,6 +25,7 @@ export function useConversationDirectPhoto(
   isEntryCurrent?: () => boolean,
   ports = native,
 ) {
+  const publish = useDirectPhotoPublisher();
   const [state, setState] = useState<State>({});
   const active = useRef<AbortController | null>(null);
   const visible = useRef(false);
@@ -30,10 +33,11 @@ export function useConversationDirectPhoto(
   owner.current = isEntryCurrent;
   const sessionId = session.id;
   const routeVisible = isEntryCurrent?.() ?? true;
-  const clear = () => {
+  const clear = useCallback(() => {
     active.current?.abort();
     active.current = null;
-  };
+    publish?.(null);
+  }, [publish]);
   useEffect(() => {
     visible.current = true;
     const stateChange = AppState.addEventListener('change', value => {
@@ -47,14 +51,14 @@ export function useConversationDirectPhoto(
       stateChange.remove();
       clear();
     };
-  }, [store, sessionId]);
+  }, [clear, store, sessionId]);
 
   useEffect(() => {
     if (!routeVisible) {
       clear();
       setState({});
     }
-  }, [routeVisible]);
+  }, [clear, routeVisible]);
 
   const current = () => {
     const snapshot = store.getSnapshot();
@@ -107,8 +111,23 @@ export function useConversationDirectPhoto(
       store.getSnapshot().sessions.find(item => item.id === sessionId)?.draft ??
       '';
     const prompt = currentPrompt();
+    const unavailable = t('ragConversation.photo.imageUnavailable');
+    const retain = store.retainDirectPhoto(sessionId);
+    if (!retain) {
+      active.current = null;
+      setState({ image, message: unavailable });
+      return;
+    }
     const ownsPrompt = () => owns() && currentPrompt() === prompt;
-    setState({ image, sending: true });
+    setState(publish ? { sending: true } : { image, sending: true });
+    const presentation = beginDirectPhotoPresentation(
+      publish,
+      controller.signal,
+      sessionId,
+      retain.id,
+      prompt,
+      image,
+    );
     const stop = () => {
       if (!ownsPrompt()) controller.abort();
     };
@@ -138,14 +157,6 @@ export function useConversationDirectPhoto(
         setState({
           image,
           message: t('ragConversation.photo.imageSettingsRequired'),
-        });
-        return;
-      }
-      const retain = store.retainDirectPhoto(sessionId);
-      if (!retain) {
-        setState({
-          image,
-          message: t('ragConversation.photo.imageUnavailable'),
         });
         return;
       }
@@ -193,6 +204,7 @@ export function useConversationDirectPhoto(
           return;
         }
         unsubscribeOwner();
+        if (saved) presentation?.complete();
         setState(
           saved
             ? {}
@@ -203,18 +215,15 @@ export function useConversationDirectPhoto(
         setState({
           image,
           ...(result.status === 'unsupported' || result.status === 'unavailable'
-            ? { message: t('ragConversation.photo.imageUnavailable') }
+            ? { message: unavailable }
             : {}),
         });
       }
     } catch {
-      if (owns())
-        setState({
-          image,
-          message: t('ragConversation.photo.imageUnavailable'),
-        });
+      if (owns()) setState({ image, message: unavailable });
     } finally {
       unsubscribeOwner();
+      presentation?.dispose(active.current === controller);
       if (active.current === controller) {
         active.current = null;
         // A retired request must release its pixels without changing newer state.
@@ -233,7 +242,8 @@ export function useConversationDirectPhoto(
       send().catch(() => {});
     },
     remove() {
-      clear();
+      active.current?.abort();
+      active.current = null;
       setState({});
     },
   };

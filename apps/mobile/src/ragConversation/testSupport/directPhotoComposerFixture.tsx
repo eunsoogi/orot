@@ -16,6 +16,7 @@ import { createConversationSessionRetention } from '../conversationSessionRetent
 import { conversationSavedHistoryDisplayOption } from '../../aiFeatures/integration/conversationSavedHistoryDisplayOption';
 import { Transcript } from './savedHistoryDisplayFixture';
 import { conversationDirectPhotoPorts as ports } from '../conversationDirectPhotoPorts';
+import { DirectPhotoPresentationScope } from '../DirectPhotoPresentationScope';
 
 export const onSendText = jest.fn();
 export const onPickOCR = jest.fn();
@@ -179,7 +180,7 @@ export async function directPhotoComposerFixture({
     return snapshot.sessions.find(item => item.id === snapshot.activeId)!;
   };
   const view = (
-    <>
+    <DirectPhotoPresentationScope sessionId={session().id} available>
       <Transcript store={store} />
       <ConversationSteeringComposer
         store={store}
@@ -190,7 +191,7 @@ export async function directPhotoComposerFixture({
         onCancel={jest.fn()}
         onChangeText={text => store.setDraft(session().id, text)}
       />
-    </>
+    </DirectPhotoPresentationScope>
   );
   return {
     store,
