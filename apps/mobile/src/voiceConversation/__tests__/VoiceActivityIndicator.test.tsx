@@ -16,7 +16,7 @@ const hidden = { includeHiddenElements: true };
 const bars = (view: Awaited<ReturnType<typeof render>>) =>
   view
     .queryAllByTestId('voice-activity-waveform-bar', hidden)
-    .map(bar => Number(StyleSheet.flatten<ViewStyle>(bar.props.style).height));
+    .map(bar => Number(StyleSheet.flatten<ViewStyle>(bar.props.style)?.height));
 const old = 'live-fixture-old';
 const current = 'live-fixture';
 const sample = (
