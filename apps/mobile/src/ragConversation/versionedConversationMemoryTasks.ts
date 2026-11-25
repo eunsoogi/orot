@@ -8,6 +8,7 @@ export function versionedConversationMemoryTasks(
   conversationTaskV24: TaskResponderContract<GroundedRagAnswer>,
   weightedTask: TaskResponderContract<GroundedRagAnswer>,
   horizontalListTask: TaskResponderContract<GroundedRagAnswer>,
+  alignedVerticalListTask: TaskResponderContract<GroundedRagAnswer>,
 ) {
   const conversationTaskV25 = withReplyPreferenceSpan(conversationTaskV24);
   const conversationTaskV26 = withAuthoredMemorySpan(conversationTaskV25);
@@ -25,9 +26,13 @@ export function versionedConversationMemoryTasks(
       withReplyPreferenceSpan(weightedTask, true),
       '29',
     ),
-    ragConversationTask: withAuthoredMemorySpan(
+    conversationTaskV30: withAuthoredMemorySpan(
       withReplyPreferenceSpan(horizontalListTask, true),
       '30',
+    ),
+    ragConversationTask: withAuthoredMemorySpan(
+      withReplyPreferenceSpan(alignedVerticalListTask, true),
+      '31',
     ),
   };
 }

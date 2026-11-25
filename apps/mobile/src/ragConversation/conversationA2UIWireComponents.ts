@@ -48,7 +48,7 @@ export function parseComponents(
   allowStaticCatalog: boolean,
   allowAlignment: boolean,
   allowRowWeight = false,
-  allowListDirection = false,
+  allowListDirection: boolean | 'vertical_align' = false,
 ): WireNode[] {
   if (!Array.isArray(value) || value.length === 0 || value.length > maxNodes)
     fail();
@@ -134,11 +134,19 @@ export function parseComponents(
       fail();
     const supportsAlignment = allowAlignment && component !== 'List';
     const supportsDirection = allowListDirection && component === 'List';
+    const supportsListAlign =
+      allowListDirection === 'vertical_align' &&
+      component === 'List' &&
+      node.direction !== 'horizontal';
     keys(node, [
       'id',
       'component',
       'children',
-      ...(supportsAlignment ? ['align', 'justify'] : []),
+      ...(supportsAlignment
+        ? ['align', 'justify']
+        : supportsListAlign
+          ? ['align']
+          : []),
       ...(supportsDirection ? ['direction'] : []),
     ]);
     const direction = node.direction;
@@ -148,9 +156,10 @@ export function parseComponents(
       direction !== 'horizontal'
     )
       fail();
-    const alignment = supportsAlignment
-      ? conversationA2UIAlignment(node.align, node.justify)
-      : undefined;
+    const alignment =
+      supportsAlignment || supportsListAlign
+        ? conversationA2UIAlignment(node.align, node.justify)
+        : undefined;
     if (
       !Array.isArray(node.children) ||
       node.children.length === 0 ||

@@ -49,7 +49,6 @@ export interface GroundedRagAnswer {
   readonly literatureReferences?: readonly LiteratureIdentity[];
   readonly localReferences?: readonly LocalClaimIdentity[];
 }
-
 /** Distinguishes dialogue from claims needing current sources; history is context only.
  * Publish prose only after complete-response validation. Tool progress has its own observer.
  * This v14 base also reconstructs protected legacy checkpoints without new formatting contracts. */
@@ -172,7 +171,6 @@ export const recordFirstConversationTaskV17 = {
   taskVersion: '17',
   systemPrompt: `${recordFirstResponsePrompt} ${proactiveConversationTaskV16.systemPrompt}`,
 };
-
 const routedStructuredTask = withStructuredPossibilityReport(
   legacyTask,
   requestsRoutedPossibilityReport,
@@ -194,7 +192,6 @@ export const conversationTaskV19 = {
   taskVersion: '19',
   systemPrompt: modelRoutedConversationTaskV18.systemPrompt,
 };
-
 /** The optional layout cannot change evidence decisions or legacy checkpoints. */
 export const conversationTaskV20: TaskResponderContract<GroundedRagAnswer> = {
   ...conversationTaskV19,
@@ -235,6 +232,7 @@ export const {
   ragConversationTask: conversationTaskV24,
   weightedTask,
   horizontalListTask,
+  alignedVerticalListTask,
 } = versionedConversationA2UITasks(conversationTaskV20, allowsOrdinaryA2UI);
 export const {
   conversationTaskV25,
@@ -242,9 +240,11 @@ export const {
   conversationTaskV27,
   conversationTaskV28,
   conversationTaskV29,
+  conversationTaskV30,
   ragConversationTask,
 } = versionedConversationMemoryTasks(
   conversationTaskV24,
   weightedTask,
   horizontalListTask,
+  alignedVerticalListTask,
 );

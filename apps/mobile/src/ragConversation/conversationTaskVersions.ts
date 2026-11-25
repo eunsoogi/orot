@@ -12,6 +12,7 @@ import {
   conversationTaskV27,
   conversationTaskV28,
   conversationTaskV29,
+  conversationTaskV30,
   proactiveConversationTaskV16,
   recordFirstConversationTaskV17,
   modelRoutedConversationTaskV18,
@@ -38,6 +39,8 @@ export function restoreConversationTask(
 ): typeof ragConversationTask | undefined {
   if (identity.taskType !== ragConversationTask.taskType) return undefined;
   if (identity.taskVersion === currentTask.taskVersion) return currentTask;
+  if (identity.taskVersion === conversationTaskV30.taskVersion)
+    return conversationTaskV30;
   if (identity.taskVersion === conversationTaskV29.taskVersion)
     return conversationTaskV29;
   if (identity.taskVersion === conversationTaskV28.taskVersion)

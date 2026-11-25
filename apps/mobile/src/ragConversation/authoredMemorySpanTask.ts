@@ -10,7 +10,7 @@ import { isObject } from './taskHistory';
  * v27 adds grounded replies; v28 admits owned possibilities follow-up prose. */
 export function withAuthoredMemorySpan(
   preferenceTask: TaskResponderContract<GroundedRagAnswer>,
-  version: '26' | '27' | '28' | '29' | '30' = '26',
+  version: '26' | '27' | '28' | '29' | '30' | '31' = '26',
 ): TaskResponderContract<GroundedRagAnswer> {
   const schemaFor = (
     input: Parameters<
