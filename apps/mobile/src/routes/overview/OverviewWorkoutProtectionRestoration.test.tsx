@@ -48,3 +48,42 @@ test.each(['restored', 'unchanged', 'revoked'] as const)(
     }
   },
 );
+
+test.each(['same scope', 'owner replaced', 'protection revoked'] as const)(
+  'a writer invalidating the epoch during pre-native reproof: %s',
+  async outcome => {
+    const lane = await setup();
+    const probe = lane.holdSecondProbe();
+    try {
+      const view = await render(
+        <OverviewWorkoutHeartRateCard active width={302} />,
+      );
+      await probe.entered;
+      expect(lane.queryWorkoutPeriodHeartRate).not.toHaveBeenCalled();
+      await act(async () => {
+        const writer = await lane.holdStartupWriter();
+        await writer.release();
+        if (outcome === 'owner replaced') lane.replaceOwner();
+        if (outcome === 'protection revoked') lane.revoke();
+        probe.release(outcome !== 'protection revoked');
+      });
+      if (outcome === 'same scope') {
+        await waitFor(() =>
+          expect(lane.queryWorkoutPeriodHeartRate).toHaveBeenCalledTimes(1),
+        );
+        await waitFor(() =>
+          expect(result()).toHaveTextContent('120 BPM'),
+        );
+      } else {
+        await waitFor(() =>
+          expect(result()).toHaveTextContent(/심박수를 확인할 수 없어요/),
+        );
+        expect(lane.queryWorkoutPeriodHeartRate).not.toHaveBeenCalled();
+      }
+      expect(lane.requestReadAuthorizations).not.toHaveBeenCalled();
+      await view.unmount();
+    } finally {
+      lane.close();
+    }
+  },
+);
