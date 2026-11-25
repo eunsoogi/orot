@@ -1,4 +1,5 @@
 import { beginSourceOpenTiming } from '../providers/sourceOpenDiagnostic';
+import { waitForPublicSourcePresentation } from './publicSourcePresentation';
 import {
   PublicToolSourceSheet,
   type PublicToolSourceChoice,
@@ -20,6 +21,12 @@ import {
   sourceKey,
   sourceKindLabel,
 } from './ConversationToolEventPresentation';
+
+function withoutSourceKey(current: ReadonlySet<string>, key: string) {
+  const next = new Set(current);
+  next.delete(key);
+  return next;
+}
 
 export type ResolveConversationToolSource = (
   reference: ToolSourceReference,
@@ -53,12 +60,7 @@ export function ConversationToolEventSources({
     publicOperation.current?.abort();
     publicOperation.current = null;
     sheet?.timing?.retire();
-    if (sheet)
-      setResolving(current => {
-        const next = new Set(current);
-        next.delete(sheet.key);
-        return next;
-      });
+    if (sheet) setResolving(current => withoutSourceKey(current, sheet.key));
     setSheet(null);
   };
   const activeControllers = useRef(new Set<AbortController>());
@@ -104,23 +106,27 @@ export function ConversationToolEventSources({
           external ? 'source_open_public_tap' : 'source_open_local_tap',
         )
       : undefined;
+    const presentation =
+      external && !selectedWebSource
+        ? waitForPublicSourcePresentation(controller.signal)
+        : undefined;
     if (external) {
       // A second press cannot start another lookup before React disables the chip.
       publicOperation.current = controller;
       setSheet(current =>
         selectedWebSource && current?.key === key
           ? { ...current, opening: true }
-          : { key, timing },
+          : { key, timing, onPresented: presentation?.shown },
       );
     }
     activeControllers.current.add(controller);
     setResolving(current => new Set(current).add(key));
-    setErrors(current => {
-      const next = new Set(current);
-      next.delete(key);
-      return next;
-    });
+    setErrors(current => withoutSourceKey(current, key));
     try {
+      // Leave the tap free to commit the empty, cancellable sheet before a
+      // resolver can do synchronous validation on the shared JS thread.
+      if (presentation && !(await presentation.ready)) return;
+      if (controller.signal.aborted) return;
       const verified = await resolveToolSource(source, controller.signal, {
         sessionId,
         operationRunId: event.operationRunId,
@@ -167,11 +173,7 @@ export function ConversationToolEventSources({
       if (publicOperation.current === controller)
         publicOperation.current = null;
       if (!controller.signal.aborted)
-        setResolving(current => {
-          const next = new Set(current);
-          next.delete(key);
-          return next;
-        });
+        setResolving(current => withoutSourceKey(current, key));
     }
   };
 
