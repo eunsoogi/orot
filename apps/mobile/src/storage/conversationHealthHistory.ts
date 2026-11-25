@@ -1,3 +1,4 @@
+import { exactAuthoredMemorySentence } from './authoredMemorySelection';
 import { enqueueManualHistoryMemory } from './userStatementMemoryJobs';
 import {
   additionalHistoryOperation,
@@ -31,6 +32,10 @@ export interface ConversationHistorySave {
   /** Only the local composer command can opt into this non-evidence lane. */
   readonly localOnly?: true;
   readonly operation?: ConversationActionIdentity;
+  readonly approvedCurrentSentence?: {
+    readonly statement: string;
+    readonly current: () => boolean;
+  };
   /** Host-validated user selection; never copied directly from a model grant. */
   readonly approvedSource?: {
     readonly requestId: string;
@@ -47,12 +52,17 @@ export async function saveConversationHealthHistory(
   signal: AbortSignal,
 ): Promise<string> {
   const details =
+    input.approvedCurrentSentence?.statement ??
     input.approvedSource?.text ??
     (input.localOnly
       ? conversationHistoryIntent(input.question)
       : legacyConversationHistoryIntent(input.question));
   if (
     (input.localOnly && (input.approvedSource || input.operation)) ||
+    (input.approvedCurrentSentence &&
+      (!input.localOnly ||
+        !input.approvedCurrentSentence.current() ||
+        !exactAuthoredMemorySentence(input.question, details))) ||
     !details ||
     !isEligibleConversationMemorySource(details)
   )
@@ -138,7 +148,8 @@ export async function saveConversationHealthHistory(
     await commitConversationActionRecovery(tx, input, id);
     if (input.localOnly)
       await validateConversationHistorySource(tx, input, details);
-    if (signal.aborted) throw new Error('History save cancelled.');
+    if (signal.aborted || input.approvedCurrentSentence?.current() === false)
+      throw new Error('History save cancelled.');
     // A protected local-only write neither publishes after cancellation nor leaves
     // a window between its final exact user-source validation and COMMIT.
     if (input.localOnly) tx.commit();

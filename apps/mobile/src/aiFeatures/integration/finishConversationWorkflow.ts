@@ -1,3 +1,4 @@
+import type { ConversationMemoryReceipt } from './conversationMemoryReceipts';
 import { observeConversationFinalHistory } from '../../ragConversation/conversationFinalizationDiagnostics';
 import type { RagConversationOutcome } from '../../ragConversation/outcome';
 import type { RagConversationObserver } from '../../ragConversation/conversationObserver';
@@ -71,18 +72,21 @@ export async function finishConversationWorkflow(
 /** The provider cannot create a success receipt. Render only a proven commit. */
 export function answerMemoryOutcome(
   outcome: RagConversationOutcome,
-  receipt: 'not_attempted' | 'not_saved' | 'saved' | 'generated-report',
+  receipt: ConversationMemoryReceipt,
 ): RagConversationOutcome {
   if (
-    receipt === 'not_saved' &&
+    (receipt === 'not_saved' || receipt === 'authored-not-saved') &&
     outcome.status === 'failure' &&
     outcome.kind === 'cancelled'
   )
     return outcome;
-  if (receipt === 'not_saved')
+  if (receipt === 'not_saved' || receipt === 'authored-not-saved')
     return {
       status: 'failure',
-      kind: 'answer_memory_not_saved',
+      kind:
+        receipt === 'authored-not-saved'
+          ? 'authored_memory_not_saved'
+          : 'answer_memory_not_saved',
       discardUnverifiedDraft: true,
     };
   return receipt !== 'not_attempted'
