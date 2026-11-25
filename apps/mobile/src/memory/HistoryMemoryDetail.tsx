@@ -1,3 +1,4 @@
+import { traceSavedMemoryDeletion } from './savedMemoryDeletionDiagnostics';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { StyleSheet, View } from 'react-native';
 import { appColors } from '../layout/appColors';
@@ -86,12 +87,20 @@ export function HistoryMemoryDetail({
           onChanged('manual-history:' + saved.id);
         }
       } else {
+        traceSavedMemoryDeletion('saved_memory_delete_confirmation', 'started');
         const removed = await repository.delete(record.id);
         if (!removed) throw new Error('Original unavailable');
-        // Publish a commit receipt, not a generic change that rereads the entire library.
-        if (alive.current) onDeleted();
+        // Receipt marks publication to the owning detail, not a measured native frame.
+        if (alive.current) {
+          onDeleted();
+          traceSavedMemoryDeletion('saved_memory_delete_receipt', 'completed');
+        } else {
+          traceSavedMemoryDeletion('saved_memory_delete_receipt', 'cancelled');
+        }
       }
     } catch {
+      if (!input)
+        traceSavedMemoryDeletion('saved_memory_delete_receipt', 'failed');
       if (alive.current)
         setError(
           t(input ? 'manualHistory.error.save' : 'manualHistory.error.delete'),
@@ -162,7 +171,7 @@ export function HistoryMemoryDetail({
 async function openHistoryRepository() {
   const { openLocalManualHistoryRepository } =
     require('../manualHistory/localRepository') as typeof import('../manualHistory/localRepository');
-  return openLocalManualHistoryRepository();
+  return openLocalManualHistoryRepository(traceSavedMemoryDeletion);
 }
 
 const styles = StyleSheet.create({

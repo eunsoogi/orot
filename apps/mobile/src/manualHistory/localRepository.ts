@@ -1,3 +1,4 @@
+import type { SavedMemoryDeletionTrace } from '../memory/savedMemoryDeletionDiagnostics';
 import { openLocalStorage } from '../storage/secureDatabase';
 import { openLocalAgentMemoryDatabase } from '../storage/secureDatabase';
 import { SqlCipherRagEmbeddingStorage } from '../storage/ragEmbeddingStorage';
@@ -30,7 +31,9 @@ function toScreenRecord(
   };
 }
 
-export async function openLocalManualHistoryRepository(): Promise<ManualHistoryScreenRepository> {
+export async function openLocalManualHistoryRepository(
+  trace?: SavedMemoryDeletionTrace,
+): Promise<ManualHistoryScreenRepository> {
   const [storage, database] = await Promise.all([
     openLocalStorage(),
     openLocalAgentMemoryDatabase(),
@@ -68,15 +71,42 @@ export async function openLocalManualHistoryRepository(): Promise<ManualHistoryS
       // Admit a single protected writer. Warm schema proof, cold setup, and
       // source/vector retirement all use the caller-owned executor.
       let deleted = false;
-      await database.transaction(async transaction => {
-        deleted = await repository.delete(id, transaction, async lineageIds => {
-          const vectors =
-            await SqlCipherRagEmbeddingStorage.forCallerTransaction(
-              transaction,
-            );
-          await vectors.deleteEvidence(lineageIds, [], transaction);
+      // Boundary changes are driven by callback admission and durable transaction
+      // settlement, not by the UI assuming a pending promise has committed.
+      let phase: 'queue' | 'lineage' | 'commit' = 'queue';
+      trace?.('saved_memory_delete_queue', 'started');
+      try {
+        await database.transaction(async transaction => {
+          trace?.('saved_memory_delete_queue', 'completed');
+          phase = 'lineage';
+          trace?.('saved_memory_delete_lineage', 'started');
+          deleted = await repository.delete(
+            id,
+            transaction,
+            async lineageIds => {
+              trace?.('saved_memory_delete_vectors', 'started');
+              try {
+                const vectors =
+                  await SqlCipherRagEmbeddingStorage.forCallerTransaction(
+                    transaction,
+                  );
+                await vectors.deleteEvidence(lineageIds, [], transaction);
+                trace?.('saved_memory_delete_vectors', 'completed');
+              } catch (error) {
+                trace?.('saved_memory_delete_vectors', 'failed');
+                throw error;
+              }
+            },
+          );
+          trace?.('saved_memory_delete_lineage', 'completed');
+          phase = 'commit';
+          trace?.('saved_memory_delete_commit', 'started');
         });
-      });
+        trace?.('saved_memory_delete_commit', 'completed');
+      } catch (error) {
+        trace?.(`saved_memory_delete_${phase}`, 'failed');
+        throw error;
+      }
       return deleted;
     },
   };
