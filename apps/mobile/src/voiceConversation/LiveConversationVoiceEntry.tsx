@@ -66,6 +66,9 @@ export function LiveConversationVoiceEntry(
     );
   };
   useEffect(() => {
+    setTranscripts([]);
+    setVisible(false);
+    setState(initialVoiceState);
     const managed = liveResponsesConversationRun({
       current: () => current() && permission.current(),
       confirm: confirmation.confirm,
@@ -99,7 +102,9 @@ export function LiveConversationVoiceEntry(
             [
               ...prior.filter(
                 item =>
-                  item.itemId !== event.itemId || item.role !== event.role,
+                  item.callId !== event.callId ||
+                  item.itemId !== event.itemId ||
+                  item.role !== event.role,
               ),
               { ...event, text: event.text.slice(0, 12000) },
             ].slice(-20),
@@ -197,7 +202,11 @@ export function LiveConversationVoiceEntry(
       state={state}
       status={status}
       model={liveModel}
-      transcripts={transcripts}
+      transcripts={transcripts.filter(
+        item =>
+          state.identity?.sessionId === props.sessionId &&
+          item.callId === state.identity.turnId,
+      )}
       inlineToolConfirmation
       toolConfirmation={confirmation.node}
       disabled={!available || props.busy || props.photoPending}
