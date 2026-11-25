@@ -1,4 +1,11 @@
-import { Image, Modal, Pressable, ScrollView, StyleSheet } from 'react-native';
+import {
+  Image,
+  Modal,
+  Pressable,
+  ScrollView,
+  StyleSheet,
+  View,
+} from 'react-native';
 import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context';
 import { t } from '../i18n';
 import { AppSymbol } from '../layout/AppSymbol';
@@ -26,20 +33,14 @@ export function ConversationPhotoViewer({
       testID="conversation-photo-viewer"
     >
       <SafeAreaProvider>
-        <SafeAreaView
+        <View
           style={styles.screen}
           accessibilityViewIsModal
           onAccessibilityEscape={onClose}
         >
-          <Pressable
-            accessibilityRole="button"
-            accessibilityLabel={t('ragConversation.photo.closeFullScreen')}
-            onPress={onClose}
-            style={styles.close}
-          >
-            <AppSymbol name="xmark" size={22} color="#fff" />
-          </Pressable>
           <ScrollView
+            automaticallyAdjustContentInsets={false}
+            contentInsetAdjustmentBehavior="never"
             bouncesZoom
             centerContent
             contentContainerStyle={styles.content}
@@ -60,7 +61,22 @@ export function ConversationPhotoViewer({
               testID="conversation-photo-viewer-image"
             />
           </ScrollView>
-        </SafeAreaView>
+          <SafeAreaView
+            edges={['top', 'left', 'right']}
+            pointerEvents="box-none"
+            style={styles.controls}
+            testID="conversation-photo-viewer-controls"
+          >
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel={t('ragConversation.photo.closeFullScreen')}
+              onPress={onClose}
+              style={styles.close}
+            >
+              <AppSymbol name="xmark" size={22} color="#fff" />
+            </Pressable>
+          </SafeAreaView>
+        </View>
       </SafeAreaProvider>
     </Modal>
   );
@@ -68,6 +84,7 @@ export function ConversationPhotoViewer({
 
 const styles = StyleSheet.create({
   screen: { flex: 1, backgroundColor: '#000' },
+  controls: { position: 'absolute', top: 0, left: 0, right: 0 },
   close: {
     alignSelf: 'flex-end',
     alignItems: 'center',

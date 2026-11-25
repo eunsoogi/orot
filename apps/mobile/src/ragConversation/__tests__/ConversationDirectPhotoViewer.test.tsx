@@ -32,10 +32,18 @@ test('a selected draft opens full-screen without sending and closes back to its 
     const image = screen.getByTestId('conversation-photo-viewer-image');
     expect(image.props.source).toEqual(thumbnail.props.source);
     expect(image.props.resizeMode).toBe('contain');
-    expect(
-      screen.getByTestId('conversation-photo-viewer-zoom').props
-        .maximumZoomScale,
-    ).toBe(4);
+    const zoom = screen.getByTestId('conversation-photo-viewer-zoom');
+    expect(zoom.props.maximumZoomScale).toBe(4);
+    expect(zoom.props.automaticallyAdjustContentInsets).toBe(false);
+    expect(zoom.props.contentInsetAdjustmentBehavior).toBe('never');
+    const controls = screen.getByTestId('conversation-photo-viewer-controls');
+    expect(controls.props.pointerEvents).toBe('box-none');
+    expect(controls.props.style).toMatchObject({
+      position: 'absolute',
+      top: 0,
+      left: 0,
+      right: 0,
+    });
     expect(ports.grant).not.toHaveBeenCalled();
     expect(f.start).not.toHaveBeenCalled();
     await fireEvent.press(screen.getByRole('button', { name: '사진 닫기' }));
