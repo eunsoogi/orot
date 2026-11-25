@@ -2,7 +2,7 @@ import {
   openLocalAgentMemoryDatabase,
   openLocalStorage,
 } from '../src/storage/secureDatabase';
-import { createLocalE5RagService } from '../src/rag/localE5RagService';
+import { SqlCipherRagEmbeddingStorage } from '../src/storage/ragEmbeddingStorage';
 import { openLocalManualHistoryRepository } from '../src/manualHistory/localRepository';
 import type { ManualHistoryScreenDraft } from '../src/manualHistory/types';
 
@@ -10,15 +10,17 @@ jest.mock('../src/storage/secureDatabase', () => ({
   openLocalStorage: jest.fn(),
   openLocalAgentMemoryDatabase: jest.fn(),
 }));
-jest.mock('../src/rag/localE5RagService', () => ({
-  createLocalE5RagService: jest.fn(),
+jest.mock('../src/storage/ragEmbeddingStorage', () => ({
+  SqlCipherRagEmbeddingStorage: { forCallerTransaction: jest.fn() },
 }));
 
 const mockedOpenLocalStorage = jest.mocked(openLocalStorage);
 const mockedOpenLocalAgentMemoryDatabase = jest.mocked(
   openLocalAgentMemoryDatabase,
 );
-const mockedCreateLocalE5RagService = jest.mocked(createLocalE5RagService);
+const forCallerTransaction = jest.mocked(
+  SqlCipherRagEmbeddingStorage.forCallerTransaction,
+);
 type LocalStorage = Awaited<ReturnType<typeof openLocalStorage>>;
 
 const originalEntry = {
@@ -78,7 +80,10 @@ describe('openLocalManualHistoryRepository', () => {
         },
       ),
     };
-    const deleteChunks = jest.fn().mockResolvedValue(undefined);
+    const deleteEvidence = jest.fn().mockResolvedValue(undefined);
+    forCallerTransaction.mockResolvedValue({
+      deleteEvidence,
+    } as unknown as SqlCipherRagEmbeddingStorage);
     mockedOpenLocalStorage.mockResolvedValue({
       manualHistory,
     } as unknown as LocalStorage);
@@ -87,10 +92,6 @@ describe('openLocalManualHistoryRepository', () => {
         ReturnType<typeof openLocalAgentMemoryDatabase>
       >,
     );
-    mockedCreateLocalE5RagService.mockReturnValue({
-      deleteChunks,
-      prepare: jest.fn(async () => {}),
-    } as unknown as ReturnType<typeof createLocalE5RagService>);
 
     const repository = await openLocalManualHistoryRepository();
 
@@ -151,9 +152,10 @@ describe('openLocalManualHistoryRepository', () => {
       transaction,
       expect.any(Function),
     );
-    expect(deleteChunks).toHaveBeenCalledWith(
-      [],
+    expect(forCallerTransaction).toHaveBeenCalledWith(transaction);
+    expect(deleteEvidence).toHaveBeenCalledWith(
       [originalEntry.id, correctedEntry.id],
+      [],
       transaction,
     );
   });
@@ -174,7 +176,7 @@ describe('openLocalManualHistoryRepository', () => {
       history: jest.fn(),
       delete: jest.fn().mockResolvedValue(false),
     };
-    const deleteChunks = jest.fn();
+    forCallerTransaction.mockClear();
     mockedOpenLocalStorage.mockResolvedValue({
       manualHistory,
     } as unknown as LocalStorage);
@@ -183,10 +185,6 @@ describe('openLocalManualHistoryRepository', () => {
         ReturnType<typeof openLocalAgentMemoryDatabase>
       >,
     );
-    mockedCreateLocalE5RagService.mockReturnValue({
-      deleteChunks,
-      prepare: jest.fn(async () => {}),
-    } as unknown as ReturnType<typeof createLocalE5RagService>);
 
     const repository = await openLocalManualHistoryRepository();
 
@@ -197,6 +195,6 @@ describe('openLocalManualHistoryRepository', () => {
       transaction,
       expect.any(Function),
     );
-    expect(deleteChunks).not.toHaveBeenCalled();
+    expect(forCallerTransaction).not.toHaveBeenCalled();
   });
 });
