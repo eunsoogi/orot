@@ -79,6 +79,7 @@ export type Stage =
   | 'saved_memory_open'
   | 'saved_memory_read'
   | 'saved_memory_wait'
+  | 'recent_records_pre_admission'
   | 'recent_records_admission'
   | 'recent_records_source_read'
   | 'recent_records_reproof'
