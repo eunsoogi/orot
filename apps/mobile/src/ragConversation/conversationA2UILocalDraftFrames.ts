@@ -5,12 +5,16 @@ import {
   localA2UIDraftPath,
   localA2UIDraftResetAction,
   localA2UIDraftResetLabel,
-  type ConversationA2UILocalDraft,
+  type ConversationA2UILocalDraft as DraftControls,
 } from './conversationA2UILocalDraft';
 import { draftA2UISurfaceId } from './conversationA2UIPresentation';
 
-const approvals = new WeakMap<ConversationA2UINode, ConversationA2UILocalDraft>();
+const approvals = new WeakMap<ConversationA2UINode, DraftControls>();
 const maxFrames = 12;
+type ValidateLayout = (
+  frames: unknown,
+  answer: string,
+) => ConversationA2UINode | undefined;
 const controlId = /^[A-Za-z][A-Za-z0-9_-]{0,63}$/u;
 
 function record(value: unknown) {
@@ -89,20 +93,13 @@ export function conversationA2UILocalDraftFor(root: ConversationA2UINode) {
 export function admitConversationA2UILocalDraftFrames(
   input: unknown,
   answer: string,
-  validate: (
-    frames: unknown,
-    answer: string,
-  ) => ConversationA2UINode | undefined,
+  validate: ValidateLayout,
 ): ConversationA2UINode | undefined {
   if (
     !Array.isArray(input) ||
     input.length < 3 ||
     input.length > maxFrames ||
-    !input.every(
-      (frame): frame is string =>
-        typeof frame === 'string' &&
-        frame.length <= conversationA2UIFrameLimit,
-    ) ||
+    !input.every(validFrame) ||
     input.reduce((sum, frame) => sum + frame.length, 0) >
       conversationA2UIFrameLimit * 2
   )
@@ -197,7 +194,11 @@ function ownsComponentId(component: unknown, ids: ReadonlySet<string>) {
 function countNodes(node: ConversationA2UINode): number {
   if (node.component === 'Tabs')
     return 1 + node.tabs.reduce((sum, tab) => sum + countNodes(tab.child), 0);
-  return 'children' in node
-    ? 1 + node.children.reduce((sum, child) => sum + countNodes(child), 0)
-    : 1;
+  if (!('children' in node)) return 1;
+  return 1 + node.children.reduce((sum, child) => sum + countNodes(child), 0);
+}
+
+function validFrame(frame: unknown): frame is string {
+  if (typeof frame !== 'string') return false;
+  return frame.length <= conversationA2UIFrameLimit;
 }

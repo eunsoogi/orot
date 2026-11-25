@@ -4,7 +4,7 @@ import {
   localA2UIDraftFieldLabel,
   localA2UIDraftPath,
   localA2UIDraftResetAction,
-  localA2UIDraftResetLabel,
+  localA2UIDraftResetLabel as resetLabel,
 } from '../conversationA2UILocalDraft';
 import {
   admitConversationA2UILocalDraftFrames,
@@ -34,7 +34,7 @@ const button = {
   child: 'label',
   action: { event: { name: localA2UIDraftResetAction, context: {} } },
 };
-const label = { id: 'label', component: 'Text', text: localA2UIDraftResetLabel };
+const label = { id: 'label', component: 'Text', text: resetLabel };
 const root = {
   id: 'root',
   component: 'Column',
@@ -45,11 +45,13 @@ const update = (components: readonly object[]) =>
 const validate = (frames: unknown, prose: string) =>
   acceptConversationA2UIFrameSequence(frames, prose, true);
 const allowed = update([root, field, button, label]);
+const admit = (frames: readonly string[], prose = answer) =>
+  admitConversationA2UILocalDraftFrames(frames, prose, validate);
 
 test('only the coherent root owns the control pair', () => {
   const frames = [create, data, allowed];
   expect(validate(frames, answer)).toBeUndefined();
-  const result = admitConversationA2UILocalDraftFrames(frames, answer, validate)!;
+  const result = admit(frames)!;
   expect(result).toEqual({
     id: 'root',
     component: 'Column',
@@ -63,12 +65,11 @@ test('only the coherent root owns the control pair', () => {
 });
 
 test('rejects invalid input and terminal frames', () => {
-  const check = (frames: readonly string[], body = answer) =>
-    expect(
-      admitConversationA2UILocalDraftFrames(frames, body, validate),
-    ).toBeUndefined();
-  const after = (...items: readonly object[]) =>
+  const check = (frames: readonly string[], prose = answer) =>
+    expect(admit(frames, prose)).toBeUndefined();
+  function after(...items: object[]) {
     check([create, data, update(items)]);
+  }
   const otherLabel = { ...field, label: '개인정보를 적으세요' };
   const otherPath = { ...field, value: { '@path': '/unsafe' } };
   const otherAction = {
