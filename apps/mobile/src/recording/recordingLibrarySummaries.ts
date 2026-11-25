@@ -1,5 +1,8 @@
 import type { RecordRepository } from '@orot/storage';
-import type { TranscriptEvidenceSegment } from '@orot/domain';
+import {
+  TranscriptEvidenceSegmentSchema,
+  type TranscriptEvidenceSegment,
+} from '@orot/domain';
 import type { RecordingSourceRecord } from './recordingTypes';
 import type {
   RecordingLibrarySummary,
@@ -14,30 +17,59 @@ interface RecordingSummarySnapshot {
   > | null;
 }
 
-/** Read through the existing transaction queue, then release it before any audio queue or native work. */
+// Only the current revision can affect a summary. Use the existing uniqueness
+// index to test newer revisions without materializing their verbatim payload.
+const latestTranscriptMetadata = `SELECT retained.payload_json
+  FROM transcript_segments AS retained
+  WHERE NOT EXISTS (
+    SELECT 1 FROM transcript_segments AS newer INDEXED BY transcript_segments_revision_idx
+    WHERE json_extract(newer.payload_json, '$.transcriptId') =
+          json_extract(retained.payload_json, '$.transcriptId')
+      AND json_extract(newer.payload_json, '$.revision') >
+          json_extract(retained.payload_json, '$.revision')
+  )
+  ORDER BY retained.id`;
+
+/** Keep source membership and newest revision selection on one protected
+ * snapshot, but release the SQLite transaction before decoding transcripts. */
 export async function readRecordingSummarySnapshot(
   repository: RecordRepository,
 ): Promise<RecordingSummarySnapshot> {
-  const snapshot = await repository.transaction(async writer => {
+  const snapshot = await repository.transaction(async (writer, sql) => {
     const sources = await writer.list('source_record');
-    let segments: TranscriptEvidenceSegment[] | null;
     try {
-      segments = await writer.list('transcript_segment');
+      if (sql) {
+        const { rows } = await sql.execute(latestTranscriptMetadata);
+        return { sources, rawSegments: rows.map(row => row.payload_json) };
+      }
+      // Repository test/legacy ports without a transaction executor retain their typed behavior.
+      return { sources, segments: await writer.list('transcript_segment') };
     } catch {
-      // Only metadata read failure is optional. Begin, source-read and final commit errors still propagate.
+      // Only metadata read failure is optional. Source and transaction errors still propagate.
+      return { sources, segments: null };
+    }
+  });
+  let segments = snapshot.segments ?? null;
+  if (snapshot.rawSegments) {
+    try {
+      segments = snapshot.rawSegments.map(payload => {
+        if (typeof payload !== 'string')
+          throw new Error('Invalid transcript snapshot.');
+        return TranscriptEvidenceSegmentSchema.parse(JSON.parse(payload));
+      });
+    } catch {
       segments = null;
     }
-    return { sources, segments };
-  });
+  }
   // Aggregation is outside the transaction: no filesystem, UI, or audio-queue await can hold its lock.
   const sourceIds = new Set(
     snapshot.sources
       .filter(source => source.sourceKind === 'audio_recording')
       .map(source => source.id),
   );
-  if (snapshot.segments === null) return { sourceIds, segmentsBySource: null };
+  if (segments === null) return { sourceIds, segmentsBySource: null };
   const latest = new Map<string, TranscriptEvidenceSegment>();
-  for (const segment of snapshot.segments) {
+  for (const segment of segments) {
     const current = latest.get(segment.transcriptId);
     if (!current || segment.revision > current.revision)
       latest.set(segment.transcriptId, segment);

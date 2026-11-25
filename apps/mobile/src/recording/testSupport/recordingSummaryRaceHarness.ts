@@ -146,7 +146,16 @@ export function holdMetadataResult(repository: RecordRepository) {
           return rows;
         },
       };
-      return operation(observed, sql);
+      return operation(
+        observed,
+        sql && {
+          async execute(query, binds) {
+            if (query.includes('FROM transcript_segments AS retained'))
+              readMetadata = true;
+            return sql.execute(query, binds);
+          },
+        },
+      );
     });
     if (readMetadata) await holdOnce();
     return result;
