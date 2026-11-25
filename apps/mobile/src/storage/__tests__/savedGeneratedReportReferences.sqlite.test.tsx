@@ -34,7 +34,7 @@ jest.mock('../../memory/openSavedGeneratedReportReferences', () => ({
   openSavedGeneratedReportReferences: jest.fn(),
 }));
 
-test.each(['explicit-local', 'semantic'] as const)(
+test.each(['tap', 'explicit-local', 'semantic'] as const)(
   'bookmarks the original daily report and sweeps deleted roots: %s',
   async mode => {
     const device = dailyReportDeviceAuthorityFixture();

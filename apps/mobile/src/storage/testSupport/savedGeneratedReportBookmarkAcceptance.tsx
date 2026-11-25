@@ -22,7 +22,7 @@ import type { createConversationArtifactStorage } from '../conversationArtifactS
 export async function expectReportBookmarkMounted(
   conversations: ReturnType<typeof createConversationArtifactStorage>,
   historical: ConversationArtifact,
-  mode: 'explicit-local' | 'semantic',
+  mode: 'tap' | 'explicit-local' | 'semantic',
 ) {
   jest
     .mocked(openSavedGeneratedReportReferences)
@@ -33,6 +33,26 @@ export async function expectReportBookmarkMounted(
   expect(
     (await reader(historical.sessionId, 0, new AbortController().signal)).rows,
   ).toMatchObject([{ kind: 'answer', dailyReport: historical.dailyReport }]);
+  if (mode === 'tap') {
+    const displayedReport = {
+      runId: historical.dailyReport!.runId,
+      revision: historical.dailyReport!.revision,
+      identityKey: historical.dailyReport!.identity.key,
+    };
+    for (const drift of [
+      { runId: 'other-report' },
+      { revision: 2 },
+      { identityKey: 'different-period' },
+    ])
+      expect(
+        await conversations.bookmarkDailyReport({
+          artifactId: historical.id,
+          lease: { id: historical.sessionId, version: 0 },
+          current: () => true,
+          displayedReport: { ...displayedReport, ...drift },
+        }),
+      ).toBe(false);
+  }
   const appState = Object.getOwnPropertyDescriptor(AppState, 'currentState');
   Object.defineProperty(AppState, 'currentState', {
     configurable: true,
@@ -132,37 +152,58 @@ export async function expectReportBookmarkMounted(
     const bookmark = jest.spyOn(conversations, 'bookmarkDailyReport');
     const alert = jest.spyOn(Alert, 'alert').mockImplementation(() => {});
     try {
-      await fireEvent.changeText(
-        screen.getByTestId('rag-conversation-input'),
-        mode === 'semantic'
-          ? '방금 본 일일 보고서를 나중에 다시 열 수 있게 보관해 줄래?'
-          : '이 보고서를 기억해줘.',
-      );
-      const { sessions, activeId } = store.getSnapshot();
-      const active = sessions.find(row => row.id === activeId);
-      expect({
-        lease: store.savedReportLease(activeId),
-        archive: active?.savedHistoryDisplay?.map(
-          x => x.row.kind === 'answer' && Boolean(x.row.dailyReport),
-        ),
-        live: active?.messages.map(x => [
-          x.role,
-          Boolean(x.dailyReport),
-          Boolean(x.retainedTurnId),
-        ]),
-      }).toMatchObject({
-        lease: { id: historical.sessionId, version: 0 },
-        archive: [true],
-      });
-      await fireEvent(
-        screen.getByTestId('rag-conversation-send'),
-        'composerPress',
-      );
+      if (mode === 'tap') {
+        const button = await screen.findByTestId(
+          'conversation-bookmark-daily-report',
+        );
+        await fireEvent.press(button);
+        expect(bookmark).toHaveBeenCalledWith(
+          expect.objectContaining({
+            artifactId: historical.id,
+            displayedReport: {
+              runId: historical.dailyReport!.runId,
+              revision: historical.dailyReport!.revision,
+              identityKey: historical.dailyReport!.identity.key,
+            },
+          }),
+        );
+      } else {
+        await fireEvent.changeText(
+          screen.getByTestId('rag-conversation-input'),
+          mode === 'semantic'
+            ? '방금 본 일일 보고서를 나중에 다시 열 수 있게 보관해 줄래?'
+            : '이 보고서를 기억해줘.',
+        );
+        const { sessions, activeId } = store.getSnapshot();
+        const active = sessions.find(row => row.id === activeId);
+        expect({
+          lease: store.savedReportLease(activeId),
+          archive: active?.savedHistoryDisplay?.map(
+            x => x.row.kind === 'answer' && Boolean(x.row.dailyReport),
+          ),
+          live: active?.messages.map(x => [
+            x.role,
+            Boolean(x.dailyReport),
+            Boolean(x.retainedTurnId),
+          ]),
+        }).toMatchObject({
+          lease: { id: historical.sessionId, version: 0 },
+          archive: [true],
+        });
+        await fireEvent(
+          screen.getByTestId('rag-conversation-send'),
+          'composerPress',
+        );
+      }
       await waitFor(() => expect(bookmark).toHaveBeenCalledTimes(1));
       await expect(bookmark.mock.results[0]?.value).resolves.toBe(true);
       if (mode === 'semantic')
         expect(
           await screen.findByText('Synthetic committed receipt'),
+        ).toBeTruthy();
+      else if (mode === 'tap')
+        expect(
+          await screen.findByText('보고서 링크를 기억에 보관했어요.'),
         ).toBeTruthy();
       else
         await waitFor(() =>
