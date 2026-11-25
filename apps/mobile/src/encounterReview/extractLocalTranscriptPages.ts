@@ -99,7 +99,15 @@ export async function extractLocalTranscriptPages(
         if (!(await current())) return interrupted();
         validateEncounterCandidates(extracted, batch);
         segments.push(...encounterReferences(batch));
-        for (const { id: _id, ...candidate } of extracted) {
+        for (const item of extracted) {
+          const { kind, text, dosageInstruction, speaker, evidence } = item;
+          const candidate = {
+            kind,
+            text,
+            dosageInstruction,
+            speaker,
+            evidence,
+          };
           const key = encounterCanonical(candidate);
           if (!candidates.has(key))
             candidates.set(key, {
