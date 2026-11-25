@@ -240,7 +240,7 @@ export const {
   conversationTaskV29,
   conversationTaskV30,
   conversationTaskV31,
-  conversationTaskV32,
+  conversationTaskSavedLayouts,
   ragConversationTask,
 } = versionedConversationMemoryTasks(
   conversationTaskV24,
