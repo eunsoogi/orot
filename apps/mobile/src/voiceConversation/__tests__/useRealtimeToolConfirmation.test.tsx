@@ -170,7 +170,7 @@ it('presents separately approved Live read and exact outbound payload inline wit
     [
       'live-outbound-result',
       '{"synthetic":65}',
-      '이 집계 결과를 AI에 보낼까요?',
+      '이 조회 결과를 AI에 보낼까요?',
     ],
   ] as const) {
     let decision!: Promise<boolean>;
