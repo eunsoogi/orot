@@ -12,6 +12,7 @@
 		B8A130BD6D51CFCE98120001 /* ClassificationReaderGeometryUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = B8A130BD6D51CFCE98120002 /* ClassificationReaderGeometryUITests.swift */; };
 		B8A130BD6D51CFCE98120101 /* ClassificationResultScrollingUITestConditions.swift in Sources */ = {isa = PBXBuildFile; fileRef = B8A130BD6D51CFCE98120102 /* ClassificationResultScrollingUITestConditions.swift */; };
 		CE1131000000000000000003 /* RealtimeVoiceSystemLifecycleTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = CE1131000000000000000004 /* RealtimeVoiceSystemLifecycleTests.swift */; };
+		1DD94C0E2B5E4357867104F3 /* RealtimeVoiceForegroundAdmissionTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 38FDBD8EBE1E431FA693CBDF /* RealtimeVoiceForegroundAdmissionTests.swift */; };
 		CE2068000000000000000001 /* RealtimeVoiceConnectingCueTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = CE2068000000000000000002 /* RealtimeVoiceConnectingCueTests.swift */; };
 		CB1180000000000000000005 /* RealtimeVoiceToolLifecycleTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = CB1180000000000000000006 /* RealtimeVoiceToolLifecycleTests.swift */; };
 		CB1180000000000000000015 /* RealtimeVoiceManagedResponsesTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = CB1180000000000000000016 /* RealtimeVoiceManagedResponsesTests.swift */; };
@@ -450,6 +451,7 @@
 		B8A130BD6D51CFCE98120002 /* ClassificationReaderGeometryUITests.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = ClassificationReaderGeometryUITests.swift; sourceTree = "<group>"; };
 		B8A130BD6D51CFCE98120102 /* ClassificationResultScrollingUITestConditions.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = ClassificationResultScrollingUITestConditions.swift; sourceTree = "<group>"; };
 		CE1131000000000000000004 /* RealtimeVoiceSystemLifecycleTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RealtimeVoiceSystemLifecycleTests.swift; sourceTree = "<group>"; };
+		38FDBD8EBE1E431FA693CBDF /* RealtimeVoiceForegroundAdmissionTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RealtimeVoiceForegroundAdmissionTests.swift; sourceTree = "<group>"; };
 		CE2068000000000000000002 /* RealtimeVoiceConnectingCueTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RealtimeVoiceConnectingCueTests.swift; sourceTree = "<group>"; };
 		CB1180000000000000000006 /* RealtimeVoiceToolLifecycleTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RealtimeVoiceToolLifecycleTests.swift; sourceTree = "<group>"; };
 		CB1180000000000000000016 /* RealtimeVoiceManagedResponsesTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RealtimeVoiceManagedResponsesTests.swift; sourceTree = "<group>"; };
@@ -1162,6 +1164,7 @@
 			isa = PBXGroup;
 			children = (
 				CE1131000000000000000004 /* RealtimeVoiceSystemLifecycleTests.swift */,
+				38FDBD8EBE1E431FA693CBDF /* RealtimeVoiceForegroundAdmissionTests.swift */,
 				CE2068000000000000000002 /* RealtimeVoiceConnectingCueTests.swift */,
 				CB1180000000000000000006 /* RealtimeVoiceToolLifecycleTests.swift */,
 				CB1180000000000000000016 /* RealtimeVoiceManagedResponsesTests.swift */,
@@ -2030,6 +2033,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				CE1131000000000000000003 /* RealtimeVoiceSystemLifecycleTests.swift in Sources */,
+				1DD94C0E2B5E4357867104F3 /* RealtimeVoiceForegroundAdmissionTests.swift in Sources */,
 				CE2068000000000000000001 /* RealtimeVoiceConnectingCueTests.swift in Sources */,
 				CB1180000000000000000005 /* RealtimeVoiceToolLifecycleTests.swift in Sources */,
 				CB1180000000000000000015 /* RealtimeVoiceManagedResponsesTests.swift in Sources */,
