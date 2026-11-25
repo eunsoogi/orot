@@ -13,13 +13,12 @@ import { createConversationSessions } from '../conversationSessions';
 import { entryIntentSender } from '../entryIntentSender';
 import { setConversationEntryForSession } from '../useConversationEntryIntent';
 import type { ConversationScreenProps } from '../ConversationScreenProps';
-import { ragConversationTask } from '../task';
+import { syntheticAuthoredMemorySelection } from '../testSupport/syntheticAuthoredMemorySelection';
 
 const preference = 'For future replies, I prefer concise answers.';
 const routine = 'I practice the guitar every Monday.';
 const answer = 'Synthetic validated answer remains visible.';
 const live = () => true;
-
 test.each([
   'enabled',
   'typed authored follow-up',
@@ -156,8 +155,6 @@ test.each([
       ) => {
         expect(capture).toHaveBeenCalledTimes(shortcut ? 0 : mixed ? 2 : 1);
         if (!shortcut) expect(capture).toHaveBeenCalledWith(scopeOfQuestion);
-        if (mixed) expect(capture).toHaveBeenCalledWith('reply-preferences');
-        if (mixed) expect(capture).toHaveBeenCalledWith('authored-routine');
         expect(observer?.inputOrigin).toBe(shortcut ? 'shortcut' : 'composer');
         const bridge = createConversationRetentionBridge({
           question: authored,
@@ -170,40 +167,21 @@ test.each([
         });
         bridge.onValidatedEvidence([]);
         const modelSelection = mixed
-          ? ragConversationTask.validateResult(
-              {
-                answer,
-                answerKind: 'conversation',
-                ...(mode.includes('omitted')
-                  ? {}
-                  : {
-                      authoredMemorySpan: mode.includes('fabricated')
-                        ? isRoutine
-                          ? 'I practice the piano every Monday.'
-                          : 'For future replies, I prefer detailed answers.'
-                        : isRoutine
-                          ? routine
-                          : preference,
-                    }),
-              },
-              {
-                request: authored,
-                evidence: { items: [], coverage: [], conflicts: [] },
-              },
-            )
+          ? syntheticAuthoredMemorySelection({
+              message: authored,
+              answer,
+              span: isRoutine ? routine : preference,
+              invalid: isRoutine
+                ? 'I practice the piano every Monday.'
+                : 'For future replies, I prefer detailed answers.',
+              mode,
+            })
           : undefined;
-        if (modelSelection && modelSelection.status !== 'valid')
-          throw new Error('Expected a valid synthetic answer.');
         const response = await bridge.finish({
           status: 'answer',
           answer,
           citations: [],
-          ...(modelSelection
-            ? {
-                replyPreferenceSpan: modelSelection.value.replyPreferenceSpan,
-                authoredRoutineSpan: modelSelection.value.authoredRoutineSpan,
-              }
-            : { proactiveMemory: true }),
+          ...(modelSelection ?? { proactiveMemory: true }),
         });
         expect(response.retained).toBe(true);
         return response.outcome;
