@@ -2,6 +2,7 @@ import type { RecordRepository } from '@orot/storage';
 import {
   loadWorkoutPeriodCohort,
   type WorkoutPeriod,
+  type PeriodWorkout,
 } from './workoutPeriodCohort';
 import {
   readWorkoutPeriodHeartRate,
@@ -13,6 +14,7 @@ type Owner = Readonly<{
   signal: AbortSignal;
   current(): boolean;
   confirm(): Promise<boolean>;
+  admitNativeCohort?(cohort: readonly PeriodWorkout[]): boolean;
 }>;
 type Available = Extract<WorkoutPeriodResult, { status: 'available' }>;
 
@@ -31,8 +33,16 @@ export async function readOwnedWorkoutPeriod(
         scope,
         current,
       );
-      if (!cohort || !current() || !(await owner.confirm()) || !current())
+      if (
+        !cohort ||
+        !current() ||
+        !(await owner.confirm()) ||
+        !current() ||
+        owner.admitNativeCohort?.(cohort) === false
+      )
         return undefined;
+      // The optional local consumer guard cannot replace either source reproof.
+      if (!current()) return undefined;
       const result = await readWorkoutPeriodHeartRate(
         scope,
         cohort,
