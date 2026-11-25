@@ -33,6 +33,19 @@ export function hasConversationMemoryCommand(question: string): boolean {
   return payload(question) !== undefined;
 }
 
+/** Identify the end of the existing colon control label, without selecting a
+ * statement. A post-model source check can then prove exactly what was omitted. */
+export function protectedMemoryControlPrefixEnd(message: string): number {
+  const matched = commandPrefix.exec(message);
+  if (!matched?.[1]) return 0;
+  const end = matched[0].length - matched[1].length;
+  // The explicit past-history label has a separate legacy action. Do not
+  // erase that choice or reinterpret it through this source-span exception.
+  return /과거 건강 기록|past health history/iu.test(message.slice(0, end))
+    ? 0
+    : end;
+}
+
 /** Keep the exact pre-existing action grammar as a distinct evidence lane. */
 export function legacyConversationHistoryIntent(
   question: string,
