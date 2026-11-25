@@ -1,3 +1,4 @@
+import { admitRemoteLongEncounter } from './remoteLongEncounterAdmission';
 import {
   encounterCanonical,
   requireEncounterActive,
@@ -9,7 +10,7 @@ import type {
   ExecutionConsentPort,
 } from '@orot/agent-runtime';
 import type { RecordRepository } from '@orot/storage';
-import { APPLE_PROVIDER_ID } from '@orot/provider-apple';
+import { APPLE_PCC_PROVIDER_ID, APPLE_PROVIDER_ID } from '@orot/provider-apple';
 import type { resolveSelectedAiProvider } from '../aiFeatures/integration/provider';
 import { providerSelectionStore } from '../providers/selection/keychainSelectionStore';
 import {
@@ -30,6 +31,7 @@ import { openEncounterReviewSessions } from './openSessions';
 type Owner = {
   pending?: EncounterPending;
   readonly lease: NonNullable<ReturnType<typeof watchEncounterNativeAdmission>>;
+  readonly reviewIsCurrent?: () => boolean;
 };
 
 export function createLongEncounterReview(
@@ -44,21 +46,42 @@ export function createLongEncounterReview(
       signal: AbortSignal,
       lifetime: AbortSignal,
     ): Promise<ReviewResult> {
-      // Do not contact account/catalog services when the private long route cannot be used.
+      const selectionCurrent = providerSelectionStore.liveWitness();
       const choice = await providerSelectionStore.load();
       if (signal.aborted || lifetime.aborted) return { status: 'cancelled' };
-      if (choice?.providerId !== APPLE_PROVIDER_ID)
-        return { status: 'transcript-too-long' };
-      const selected = await resolve();
-      if (selected.status !== 'ready') return { status: selected.status };
-      const witness = selected.onDeviceSelectionWitness;
+      // The native PCC adapter admits one app call per page. Leave the existing
+      // short-only remote transports untouched until their replay boundary is proved.
       if (
-        selected.remoteProcessing ||
+        !choice ||
+        (choice.providerId !== APPLE_PROVIDER_ID &&
+          choice.providerId !== APPLE_PCC_PROVIDER_ID)
+      )
+        return { status: 'transcript-too-long' };
+      const local = choice.providerId === APPLE_PROVIDER_ID;
+      const remote =
+        !local && selectionCurrent?.()
+          ? await admitRemoteLongEncounter({
+              choice,
+              selectionCurrent,
+              sourceId,
+              lifetime,
+              signal,
+              resolve,
+              consent,
+            })
+          : undefined;
+      if (signal.aborted || lifetime.aborted) return { status: 'cancelled' };
+      if (!local && !remote) return { status: 'unavailable' };
+      const selected = local ? await resolve() : null;
+      if (selected && selected.status !== 'ready')
+        return { status: selected.status };
+      const witness = remote ?? selected?.onDeviceSelectionWitness;
+      if (
         !witness?.isCurrent() ||
-        selected.modelId !== choice.modelId
+        (selected &&
+          (selected.remoteProcessing || selected.modelId !== choice.modelId))
       )
         return { status: 'unavailable' };
-
       const native = conversationExecutionNative();
       const prior = owners.get(sourceId);
       prior?.lease.dispose();
@@ -66,7 +89,7 @@ export function createLongEncounterReview(
         witness.isCurrent(),
       );
       if (!lease) return { status: 'unavailable' };
-      const operation: Owner = { lease };
+      const operation: Owner = { lease, reviewIsCurrent: remote?.isCurrent };
       owners.set(sourceId, operation);
       const cancel = () => lease.dispose();
       signal.addEventListener('abort', cancel, { once: true });
@@ -92,21 +115,28 @@ export function createLongEncounterReview(
           crypto.getRandomValues(new Uint8Array(16)),
           byte => byte.toString(16).padStart(2, '0'),
         ).join('');
-        const result = await prepareLocalEncounterExtraction({
-          read: {
-            database,
-            sourceId,
-            signal: lease.signal,
-            native,
-            ownerCurrent: () =>
-              !signal.aborted && !lifetime.aborted && witness.isCurrent(),
-          },
-          selected,
-          consent,
-          executionId: 'encounter-local-long-' + executionId,
-        });
+        const read = {
+          database,
+          sourceId,
+          signal: lease.signal,
+          native,
+          ownerCurrent: () =>
+            !signal.aborted && !lifetime.aborted && witness.isCurrent(),
+        };
+        const result = remote
+          ? await remote.extract(read, 'encounter-remote-long-' + executionId)
+          : selected &&
+            (await prepareLocalEncounterExtraction({
+              read,
+              selected,
+              consent,
+              executionId: 'encounter-local-long-' + executionId,
+            }));
         if (signal.aborted) return { status: 'cancelled' };
-        if (result.status !== 'complete') return { status: 'unavailable' };
+        if (result?.status !== 'complete')
+          return {
+            status: remote?.denied() ? 'consent-denied' : 'unavailable',
+          };
         const { discovery } = await openEncounterReviewSessions(sourceId);
         if (!(await lease.confirm()) || signal.aborted)
           return { status: 'unavailable' };
@@ -151,6 +181,7 @@ export function createLongEncounterReview(
           if (
             (await dataVersion()) !== version ||
             !epoch.current() ||
+            !witness.isCurrent() ||
             lease.signal.aborted
           )
             return { status: 'unavailable' };
@@ -198,6 +229,7 @@ export function createLongEncounterReview(
           owner.lease.signal,
           true,
           readLongTranscriptReview,
+          owner.reviewIsCurrent,
         );
         return { status: 'saved', recordIds };
       } catch {
