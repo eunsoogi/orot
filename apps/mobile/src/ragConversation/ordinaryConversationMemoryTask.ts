@@ -74,8 +74,9 @@ export function beginOrdinaryConversationMemoryTask(
       // typed responses cannot overwrite this live composer witness.
       if (!current() || !source || issued) return;
       issued = true;
-      const mixed =
-        originalScope === undefined && candidate.entryIntent === undefined;
+      // The bridge proposes mixed text only from an owned composer response.
+      // Carry its existing possibilities mode through to the unchanged SQL gate.
+      const mixed = originalScope === undefined;
       const preference =
         mixed &&
         validateReplyPreferenceSpan(question, candidate.replyPreferenceSpan);

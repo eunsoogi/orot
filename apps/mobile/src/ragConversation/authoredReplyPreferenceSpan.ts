@@ -59,13 +59,23 @@ export function validateAuthoredRoutineSpan(
     : undefined;
 }
 
-function eligible(input: TaskResponderInput): boolean {
+function eligible(
+  input: TaskResponderInput,
+  allowAuthoredPossibilities: boolean,
+): boolean {
   const context = input.context;
   return (
     canProposeReplyPreferenceSpan(input.request) &&
     (!isObject(context) ||
-      ((!context.intent || context.intent === 'conversation') &&
-        context.photoAttachment !== true))
+      (context.photoAttachment !== true &&
+        (!context.intent ||
+          context.intent === 'conversation' ||
+          (allowAuthoredPossibilities &&
+            context.intent === 'possibilities' &&
+            context.authoredCurrentRequest === true &&
+            context.explicitPossibilityChoice !== true &&
+            context.typedPossibilityReport !== true &&
+            !context.targetEvidenceId))))
   );
 }
 
@@ -73,13 +83,14 @@ function eligible(input: TaskResponderInput): boolean {
  * preference. Historic tasks retain their prior schema and never get this field. */
 export function withReplyPreferenceSpan(
   task: TaskResponderContract<GroundedRagAnswer>,
+  allowAuthoredPossibilities = false,
 ): TaskResponderContract<GroundedRagAnswer> {
   return {
     ...task,
     taskVersion: '25',
     createResultSchema(input) {
       const schema = task.createResultSchema?.(input) ?? task.resultSchema;
-      if (!eligible(input)) return schema;
+      if (!eligible(input, allowAuthoredPossibilities)) return schema;
       const properties = isObject(schema.properties) ? schema.properties : {};
       return {
         ...schema,
@@ -101,7 +112,7 @@ export function withReplyPreferenceSpan(
       if (
         validated.status !== 'valid' ||
         validated.value.answerKind !== 'conversation' ||
-        !eligible(input)
+        !eligible(input, allowAuthoredPossibilities)
       )
         return validated;
       const span = validateReplyPreferenceSpan(

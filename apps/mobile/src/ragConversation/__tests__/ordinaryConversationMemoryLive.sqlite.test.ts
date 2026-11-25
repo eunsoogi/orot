@@ -13,32 +13,17 @@ import { createConversationSessions } from '../conversationSessions';
 import { entryIntentSender } from '../entryIntentSender';
 import { setConversationEntryForSession } from '../useConversationEntryIntent';
 import type { ConversationScreenProps } from '../ConversationScreenProps';
-import { syntheticAuthoredMemorySelection } from '../testSupport/syntheticAuthoredMemorySelection';
+import {
+  syntheticAuthoredMemoryCases,
+  syntheticAuthoredMemoryContext,
+  syntheticAuthoredMemorySelection,
+} from '../testSupport/syntheticAuthoredMemorySelection';
 
 const preference = 'For future replies, I prefer concise answers.';
 const routine = 'I practice the guitar every Monday.';
 const answer = 'Synthetic validated answer remains visible.';
 const live = () => true;
-test.each([
-  'enabled',
-  'typed authored follow-up',
-  'typed shortcut with identical phrase',
-  'disabled',
-  'deleted while optional save waits',
-  'routine when both are enabled',
-  'typed routine when both are enabled',
-  'typed routine shortcut with identical phrase',
-  'routine with only preferences enabled',
-  'routine with wrong-scope receipt',
-  'mixed authored span',
-  'mixed authored span omitted',
-  'mixed authored span fabricated',
-  'mixed authored span disabled',
-  'mixed routine',
-  'mixed routine with only preferences enabled',
-  'mixed routine omitted',
-  'mixed routine fabricated',
-] as const)(
+test.each(syntheticAuthoredMemoryCases)(
   'a real live retained session saves only an eligible local note: %s',
   async mode => {
     const isRoutine = mode.includes('routine');
@@ -133,14 +118,18 @@ test.each([
           }),
         },
       });
-      const typed = mode.startsWith('typed');
+      const typed = mode.includes('typed');
+      const requestedReport = mode === 'mixed typed report';
       const shortcut = mode.includes('shortcut');
       const hasGrant =
         !mode.includes('disabled') &&
         mode !== 'routine with wrong-scope receipt' &&
         (!isRoutine || Boolean(routineReceipt));
       const acceptedProposal =
-        !mixed || (!mode.includes('omitted') && !mode.includes('fabricated'));
+        !mixed ||
+        (!mode.includes('omitted') &&
+          !mode.includes('fabricated') &&
+          !requestedReport);
       const expectedWrite =
         hasGrant &&
         !shortcut &&
@@ -175,6 +164,7 @@ test.each([
                 ? 'I practice the piano every Monday.'
                 : 'For future replies, I prefer detailed answers.',
               mode,
+              context: syntheticAuthoredMemoryContext(entryContext, shortcut),
             })
           : undefined;
         const response = await bridge.finish({
@@ -190,6 +180,7 @@ test.each([
         setConversationEntryForSession(sessions, 1, {
           intent: 'possibilities',
           entryKey: 'selected-current-choice',
+          ...(requestedReport ? { typedPossibilityReport: true } : {}),
         });
       sessions.setDraft(1, question);
       const dispatch = entryIntentSender(

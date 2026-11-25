@@ -1,6 +1,10 @@
 import { restoreConversationTask } from '../conversationTaskVersions';
 import { runRagConversationTurn } from '../service';
-import { conversationTaskV26, ragConversationTask } from '../task';
+import {
+  conversationTaskV26,
+  conversationTaskV27,
+  ragConversationTask,
+} from '../task';
 import { fixture, response } from '../testSupport/conversationEnvelopeFixtures';
 
 const routine = 'I practice the guitar every Monday.';
@@ -57,4 +61,36 @@ test.each([
     else expect(result).not.toHaveProperty(name);
   }
   expect(f.generate).toHaveBeenCalledTimes(1);
+});
+
+test('preserves exact v27 while fresh authored possibilities follow-ups expose the span', () => {
+  const restored = restoreConversationTask({
+    taskType: ragConversationTask.taskType,
+    taskVersion: '27',
+  });
+  const context = { intent: 'possibilities', authoredCurrentRequest: true };
+  const followUp = { ...input, context };
+  expect(restored).toBe(conversationTaskV27);
+  expect(
+    restored?.createResultSchema?.(followUp).properties,
+  ).not.toHaveProperty('authoredMemorySpan');
+  expect(
+    ragConversationTask.createResultSchema?.(followUp).properties,
+  ).toHaveProperty('authoredMemorySpan');
+  const fences: ReadonlyArray<Record<string, boolean | string>> = [
+    { authoredCurrentRequest: false },
+    { explicitPossibilityChoice: true },
+    { typedPossibilityReport: true },
+    { photoAttachment: true },
+    { targetEvidenceId: 'synthetic-visit' },
+    { intent: 'health-summary' },
+  ];
+  for (const fence of fences) {
+    expect(
+      ragConversationTask.createResultSchema?.({
+        ...followUp,
+        context: { ...context, ...fence },
+      }).properties,
+    ).not.toHaveProperty('authoredMemorySpan');
+  }
 });
