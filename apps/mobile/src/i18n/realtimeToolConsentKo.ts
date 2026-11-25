@@ -20,6 +20,13 @@ export const realtimeToolConsentKo = {
     'OpenAI Realtime 음성 응답을 위해 아래 결과를 OpenAI로 전송할까요?',
   'realtimeToolConsent.resultInformation':
     '아래에 표시된 정확한 결과 내용만 이번 한 번 전송해요. 이전의 목적별 허용은 이 전송에 적용하지 않아요.',
+  'realtimeToolConsent.liveSessionTitle':
+    '이번 통화에서 건강 기록 도구를 사용할까요?',
+  'realtimeToolConsent.liveSessionLabel': '이번 통화에만 적용',
+  'realtimeToolConsent.liveSessionBoundary':
+    '필요할 때마다 어떤 기록을 조회할지 먼저 확인해요. 조회 결과를 보내기 전에도 내용을 보여드리고 다시 확인해요.',
+  'realtimeToolConsent.liveSessionAllow': '이번 통화에 사용',
+  'realtimeToolConsent.liveSessionAudioOnly': '음성만 사용',
   'realtimeToolConsent.liveReadTitle': '이 건강 기록을 조회할까요?',
   'realtimeToolConsent.liveResultTitle': '이 집계 결과를 AI에 보낼까요?',
   'realtimeToolConsent.liveReadLabel': '조회할 항목과 기간',

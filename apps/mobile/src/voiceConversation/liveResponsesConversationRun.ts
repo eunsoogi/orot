@@ -1,9 +1,8 @@
 import {
   bindCanonicalLiveHealthRun,
-  matchesCanonicalLiveHealthOwner,
   type CanonicalLiveHealthSelection,
 } from './bindCanonicalLiveHealthRun';
-import { readCanonicalLiveHealthStartup } from '../voiceSettings/liveCanonicalHealthSettings';
+import { createCanonicalLiveSessionApproval } from './confirmCanonicalLiveSession';
 import { AppState } from 'react-native';
 import { conversationExecutionNative } from '../ragConversation/conversationExecutionNative';
 import { loadLiveCallSettings } from '../voiceSettings/liveVoicePreferencesKeychain';
@@ -15,6 +14,8 @@ import { createLiveResponsesHealthToolExecutor } from './liveResponsesHealthTool
 import { nativeLiveManagedTools } from './nativeRealtimeVoice';
 import type { RealtimeToolConfirmationRequest } from './useRealtimeToolConfirmation';
 
+type SessionApproval = ReturnType<typeof createCanonicalLiveSessionApproval>;
+const unavailable = () => new Error('Live delegation unavailable');
 export function liveResponsesConversationRun(input: {
   current: () => boolean;
   stop: () => void;
@@ -23,6 +24,7 @@ export function liveResponsesConversationRun(input: {
   const native = nativeLiveManagedTools();
   const protection = native ? conversationExecutionNative() : null;
   let mode: CanonicalLiveHealthSelection | undefined;
+  let review: SessionApproval | undefined;
   let enabledModeCurrent: (() => boolean) | undefined;
   let companion: ReturnType<typeof bindCanonicalLiveHealthRun>;
   let protectionRevoked = false;
@@ -34,6 +36,7 @@ export function liveResponsesConversationRun(input: {
   let challenge:
     { callId: string; challengeId: string; abort: AbortController } | undefined;
   const clear = () => {
+    review?.retire();
     ++revision;
     companion?.retire();
     companion = undefined;
@@ -124,7 +127,6 @@ export function liveResponsesConversationRun(input: {
               return null;
             return () => !signal.aborted && current() && owner.current();
           },
-          // Audio-only startup must not initialize protected local evidence storage.
           openData: async () =>
             (
               await import('../aiFeatures/integration/localData')
@@ -168,64 +170,62 @@ export function liveResponsesConversationRun(input: {
       },
     );
   return {
-    async credentials() {
+    async credentials(id?: string) {
       clear();
       const ownedRevision = revision;
+      const approval = (review = createCanonicalLiveSessionApproval());
       protectionRevoked = false;
       admittedResponses = false;
       const credentials = await loadLiveCallSettings();
-      // Older native modules cannot make this mode available; their existing audio path stays intact.
       if (!native) return credentials;
       const selected = await loadLiveResponsesSettings(
         credentials.credentialEpoch,
       );
+      const ownsStart = () => revision === ownedRevision && current();
       if (revision !== ownedRevision || selected.kind === 'unavailable')
-        throw new Error('Live delegation unavailable');
+        throw unavailable();
       if (selected.kind === 'active') {
-        admittedResponses = true;
         if (!execute || !selected.current() || protectionRevoked)
-          throw new Error('Live delegation unavailable');
+          throw unavailable();
         grant = selected;
         const detach = selected.subscribe(revoke);
         if (grant !== selected) {
           detach();
-          throw new Error('Live delegation unavailable');
+          throw unavailable();
         }
         unwatch = detach;
-        if (native.canonicalAvailable) {
-          const startup = await readCanonicalLiveHealthStartup(selected);
-          if (startup.kind === 'unavailable')
-            throw new Error('Live delegation unavailable');
-          const candidate =
-            startup.kind === 'active' ? startup.companion : undefined;
-          if (revision !== ownedRevision || grant !== selected || !current())
-            throw new Error('Live delegation unavailable');
-          if (
-            candidate &&
-            !matchesCanonicalLiveHealthOwner(candidate, selected)
-          )
-            throw new Error('Live delegation unavailable');
-          mode = candidate;
-          enabledModeCurrent =
-            startup.kind === 'off'
-              ? startup.current
-              : startup.companion.current;
+        if (native.canonicalAvailable && protection) {
+          const result = await approval.confirm({
+            id,
+            selection: selected,
+            current: ownsStart,
+            protectedAvailable: protection.protectedDataAvailable,
+            review: input.confirm,
+          });
+          if (result.kind === 'stale' || !ownsStart()) throw unavailable();
+          if (result.kind === 'denied') {
+            clear();
+            return credentials;
+          }
+          enabledModeCurrent = result.current;
+          mode = result.kind === 'approved' ? result.companion : undefined;
         }
+        admittedResponses = true;
       }
       return credentials;
     },
     nativeGrant(id: string) {
       if (!admittedResponses) return null;
-      if (!grant) throw new Error('Live delegation unavailable');
-      if (!current() || (enabledModeCurrent && !enabledModeCurrent()))
-        throw new Error('Live delegation unavailable');
+      if (!grant || !current()) throw unavailable();
+      if ((mode && !review?.allows(id)) || enabledModeCurrent?.() === false)
+        throw unavailable();
       callId = id;
       return grant.nativeGrant;
     },
     canonicalRegistration(id: string) {
       if (!mode) return;
       if (!native || !protection || callId !== id || !current() || companion)
-        throw new Error('Live delegation unavailable');
+        throw unavailable();
       companion = bindCanonicalLiveHealthRun({
         id,
         selection: mode,
@@ -235,7 +235,7 @@ export function liveResponsesConversationRun(input: {
         confirm: input.confirm,
         revokeCall: revoke,
       });
-      if (!companion) throw new Error('Live delegation unavailable');
+      if (!companion) throw unavailable();
       return companion.registration;
     },
     retire: clear,

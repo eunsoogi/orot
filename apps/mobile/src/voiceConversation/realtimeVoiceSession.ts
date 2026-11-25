@@ -16,7 +16,7 @@ export function createRealtimeVoiceSession(input: {
   model: string;
   liveAudioOnly?: boolean;
   sessionId: number;
-  credentials: () => Promise<{
+  credentials: (id: string) => Promise<{
     model: string;
     apiKey: string;
     preferences?: Preferences;
@@ -141,7 +141,7 @@ export function createRealtimeVoiceSession(input: {
     input.changed(state);
     (async () => {
       try {
-        const credential = await input.credentials();
+        const credential = await input.credentials(id);
         if (call !== id || current !== epoch) return;
         if (!valid()) {
           stop('consent');

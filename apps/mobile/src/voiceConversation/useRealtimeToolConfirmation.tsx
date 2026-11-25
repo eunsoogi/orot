@@ -9,7 +9,8 @@ import { disclosureStyles as styles } from '../agent/execution/InferenceDisclosu
 
 export interface RealtimeToolConfirmationRequest {
   readonly text: string;
-  readonly use?: 'live-local-read' | 'live-outbound-result';
+  readonly use?:
+    'live-local-read' | 'live-outbound-result' | 'live-canonical-session';
   readonly recipient: string;
   readonly model: string;
   readonly signal: AbortSignal;
@@ -82,21 +83,26 @@ export function useRealtimeToolConfirmation(inline = false) {
       finish(false);
     };
   }, [finish]);
+  const sessionReview = request?.use === 'live-canonical-session';
   const contents = request ? (
     <>
       <AppText accessibilityRole="header" style={styles.title}>
-        {request.use === 'live-local-read'
-          ? t('realtimeToolConsent.liveReadTitle')
-          : request.use === 'live-outbound-result'
-            ? t('realtimeToolConsent.liveResultTitle')
-            : t('realtimeToolConsent.title')}
+        {sessionReview
+          ? t('realtimeToolConsent.liveSessionTitle')
+          : request.use === 'live-local-read'
+            ? t('realtimeToolConsent.liveReadTitle')
+            : request.use === 'live-outbound-result'
+              ? t('realtimeToolConsent.liveResultTitle')
+              : t('realtimeToolConsent.title')}
       </AppText>
       <AppText style={styles.label}>
-        {request.use === 'live-local-read'
-          ? t('realtimeToolConsent.liveReadLabel')
-          : request.use === 'live-outbound-result'
-            ? t('realtimeToolConsent.liveResultLabel')
-            : t('realtimeToolConsent.recognized')}
+        {sessionReview
+          ? t('realtimeToolConsent.liveSessionLabel')
+          : request.use === 'live-local-read'
+            ? t('realtimeToolConsent.liveReadLabel')
+            : request.use === 'live-outbound-result'
+              ? t('realtimeToolConsent.liveResultLabel')
+              : t('realtimeToolConsent.recognized')}
       </AppText>
       <AppText
         selectable
@@ -125,7 +131,11 @@ export function useRealtimeToolConfirmation(inline = false) {
       )}
       <View style={styles.footer}>
         <AppButton
-          title={t('realtimeToolConsent.allow')}
+          title={t(
+            sessionReview
+              ? 'realtimeToolConsent.liveSessionAllow'
+              : 'realtimeToolConsent.allow',
+          )}
           testID="realtime-tool-confirmation-allow"
           onPress={() => {
             // Do not open a subsequent approval while UIKit is still dismissing this sheet.
@@ -137,7 +147,11 @@ export function useRealtimeToolConfirmation(inline = false) {
         />
         <AppButton
           variant="neutral"
-          title={t('realtimeToolConsent.cancel')}
+          title={t(
+            sessionReview
+              ? 'realtimeToolConsent.liveSessionAudioOnly'
+              : 'realtimeToolConsent.cancel',
+          )}
           testID="realtime-tool-confirmation-cancel"
           onPress={() => finish(false, request)}
         />
