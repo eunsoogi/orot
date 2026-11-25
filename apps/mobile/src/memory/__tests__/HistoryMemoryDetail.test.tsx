@@ -36,9 +36,11 @@ function setup() {
     history: jest.fn().mockResolvedValue([record]),
   };
   const onChanged = jest.fn();
+  const onDeleted = jest.fn();
   return {
     repository,
     onChanged,
+    onDeleted,
     openRepository: jest.fn().mockResolvedValue(repository),
   };
 }
@@ -63,7 +65,8 @@ it('requires explicit confirmation and supports cancelling deletion', async () =
   await fireEvent.press(screen.getByTestId('manual-history-delete'));
   await fireEvent.press(screen.getByTestId('manual-history-confirm-delete'));
   expect(props.repository.delete).toHaveBeenCalledWith(record.id);
-  expect(props.onChanged).toHaveBeenCalledWith('manual-history:' + record.id);
+  expect(props.onDeleted).toHaveBeenCalledTimes(1);
+  expect(props.onChanged).not.toHaveBeenCalled();
 });
 it('prioritizes selectable conversation-memory text and shows a focused confirmation', async () => {
   AppState.currentState = 'active';
@@ -117,7 +120,8 @@ it('keeps a focused, visibly pending confirmation until the actual deletion sett
   expect(props.onChanged).not.toHaveBeenCalled();
   await act(async () => finish());
   expect(props.repository.delete).toHaveBeenCalledTimes(1);
-  expect(props.onChanged).toHaveBeenCalledWith('manual-history:' + record.id);
+  expect(props.onDeleted).toHaveBeenCalledTimes(1);
+  expect(props.onChanged).not.toHaveBeenCalled();
 });
 
 it('corrects the existing original without creating and retains unknown date', async () => {
@@ -156,6 +160,7 @@ it('does not navigate or republish after a late mutation settles after unmount',
   await view.unmount();
   await act(async () => finish());
   expect(props.onChanged).not.toHaveBeenCalled();
+  expect(props.onDeleted).not.toHaveBeenCalled();
 });
 
 it('erases an actual memory destination on background while deletion is pending', async () => {

@@ -38,6 +38,18 @@ export function SavedMemoryDetail({
     correctionTarget && correctionTarget.original === memoryId
       ? correctionTarget.id
       : memoryId;
+  const [deletedTarget, setDeletedTarget] = useState<{
+    readonly routeId: string | undefined;
+    readonly selectedId: string;
+    readonly ownership: NavigationRouteOwnership | undefined;
+  }>();
+  // A receipt is local to this exact native destination and selection. It
+  // suppresses private content and requery only after the write has committed.
+  const deletionCommitted =
+    deletedTarget &&
+    deletedTarget.routeId === memoryId &&
+    deletedTarget.selectedId === selectedId &&
+    deletedTarget.ownership === ownership;
   const {
     rows,
     state,
@@ -45,7 +57,12 @@ export function SavedMemoryDetail({
     refreshReadOnly,
     readOnlyRefreshing,
     readyRead,
-  } = useSavedMemories(load, active, ownership, selectedId);
+  } = useSavedMemories(
+    load,
+    active && !deletionCommitted,
+    ownership,
+    selectedId,
+  );
   const row = rows.find(value => value.id === selectedId);
   // Editable history and generated reports retain their own detail lifecycles.
   const isPlainMemory =
@@ -68,10 +85,10 @@ export function SavedMemoryDetail({
       <Text accessibilityRole="header" style={styles.detailTitle}>
         {t('savedMemory.detailTitle')}
       </Text>
-      {state === 'loading' && (
+      {!deletionCommitted && state === 'loading' && (
         <Text accessibilityLiveRegion="polite">{t('savedMemory.loading')}</Text>
       )}
-      {state === 'invalidated' && (
+      {!deletionCommitted && state === 'invalidated' && (
         <>
           <Text accessibilityLiveRegion="polite">
             {t('savedMemory.invalidated')}
@@ -84,7 +101,7 @@ export function SavedMemoryDetail({
           />
         </>
       )}
-      {state === 'failed' && (
+      {!deletionCommitted && state === 'failed' && (
         <>
           <Text accessibilityRole="alert">{t('savedMemory.failed')}</Text>
           <AppButton
@@ -95,11 +112,27 @@ export function SavedMemoryDetail({
           />
         </>
       )}
-      {state === 'ready' && !row && <Text>{t('savedMemory.notFound')}</Text>}
+      {!deletionCommitted && state === 'ready' && !row && (
+        <Text>{t('savedMemory.notFound')}</Text>
+      )}
+      {deletionCommitted && active && (ownership?.isCurrent() ?? true) && (
+        <Text accessibilityLiveRegion="polite">
+          {t('manualHistory.notice.deleted')}
+        </Text>
+      )}
       {row && isHistoryMemory(row) && (
         <HistoryMemoryDetail
           key={row.id}
           record={row.record}
+          onDeleted={() => {
+            // Route ownership can disappear before the child unmounts.
+            if (!readyRead?.isCurrent()) return;
+            setDeletedTarget({
+              routeId: memoryId,
+              selectedId: row.id,
+              ownership,
+            });
+          }}
           onChanged={id => {
             setCorrectionTarget({ original: memoryId, id });
             refresh();
