@@ -18,6 +18,7 @@ import {
 import { resolveSelectedAiProvider } from '../aiFeatures/integration/provider';
 import { runLocalEncounterProcessing } from '../agent/encounter/workflow';
 import {
+  EncounterTranscriptEmpty,
   EncounterTranscriptTooLong,
   readEncounterTranscript,
 } from '../agent/encounter/transcript';
@@ -140,10 +141,6 @@ export function createEncounterReviewService(
         diagnostics?.unavailable('source_lookup');
         return { status: 'unavailable' };
       }
-      diagnostics?.stage('transcript_list');
-      const transcripts =
-        await repository.transcripts.listForRecording(sourceId);
-      if (!transcripts.length) return { status: 'no-transcript' };
       diagnostics?.stage('transcript_read');
       let expectedTranscript: EncounterTranscript;
       try {
@@ -154,11 +151,14 @@ export function createEncounterReviewService(
           },
         );
       } catch (error) {
-        if (!(error instanceof EncounterTranscriptTooLong)) throw error;
         if (signal.aborted) return { status: 'cancelled' };
+        if (error instanceof EncounterTranscriptEmpty)
+          return { status: 'no-transcript' };
+        if (!(error instanceof EncounterTranscriptTooLong)) throw error;
         diagnostics?.unavailable('transcript_read');
         return { status: 'transcript-too-long' };
       }
+      if (signal.aborted) return { status: 'cancelled' };
       diagnostics?.stage('provider_selection');
       const selected = await resolveSelected();
       if (selected.status !== 'ready') {

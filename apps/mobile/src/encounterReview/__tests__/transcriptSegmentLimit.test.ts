@@ -3,19 +3,25 @@ import { createReviewDiagnostics } from '../diagnostics';
 
 const fixture = sqliteReviewFixture();
 
-test.each([8, 9])(
+test.each([8, 9, 145])(
   'takes a canonical stored transcript with %s distinct current segments through the review boundary',
   async count => {
     const recordingId = sourceId + ':canonical-' + count;
     const source = await fixture.repository().get('source_record', sourceId);
     if (!source) throw new Error('Fixture recording missing.');
-    await fixture
-      .repository()
-      .put('source_record', { ...source, id: recordingId });
     const [original] = await fixture
       .repository()
       .transcripts.listForRecording(sourceId);
     if (!original) throw new Error('Fixture transcript missing.');
+    const recordingDurationMs = Math.max(
+      original.recordingDurationMs,
+      2900 + count,
+    );
+    await fixture.repository().put('source_record', {
+      ...source,
+      id: recordingId,
+      recordingDurationMs,
+    });
     await fixture.repository().transcripts.append(
       Array.from({ length: count }, (_, index) => {
         const ordinal = index;
@@ -26,6 +32,7 @@ test.each([8, 9])(
           id: transcriptId + ':r1',
           transcriptId,
           recordingSourceId: recordingId,
+          recordingDurationMs,
           provenance: {
             ...original.provenance,
             sourceRecordIds: [recordingId],
@@ -38,9 +45,17 @@ test.each([8, 9])(
         };
       }),
     );
-    expect(
-      await fixture.repository().transcripts.listForRecording(recordingId),
-    ).toHaveLength(count);
+    const segments = await fixture
+      .repository()
+      .transcripts.listForRecording(recordingId);
+    expect(segments).toHaveLength(count);
+    await fixture
+      .repository()
+      .transcripts.correct(
+        segments.at(-1)!.id,
+        'Fixed synthetic closing segment.',
+        segments.at(-1)!.recordedAt,
+      );
     let diagnostics: ReturnType<typeof createReviewDiagnostics> | undefined;
     const { controller, synthetic } = fixture.controllerFor(
       false,
@@ -57,7 +72,7 @@ test.each([8, 9])(
     );
     const authorize = jest.fn(async () => 'authorized' as const);
     await controller.start({ authorize });
-    if (count === 9) expect(authorize).not.toHaveBeenCalled();
+    if (count > 8) expect(authorize).not.toHaveBeenCalled();
     expect(await fixture.rows()).toHaveLength(0);
     expect(synthetic.calls()).toBe(count === 8 ? 1 : 0);
     if (count === 8) {
