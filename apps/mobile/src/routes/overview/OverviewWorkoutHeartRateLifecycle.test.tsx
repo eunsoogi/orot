@@ -132,7 +132,9 @@ test('true background clears a proven amount and resumes with one fresh query on
     );
     await waitFor(() => expect(result()).toHaveTextContent('120 BPM'));
     await act(async () => lane.transition('background'));
+    expect(result()).toHaveTextContent(/불러오는 중/);
     expect(result()).not.toHaveTextContent('120');
+    expect(lane.queryWorkoutPeriodHeartRate).toHaveBeenCalledTimes(1);
     await act(async () => {
       lane.transition('active');
       lane.transition('active');
@@ -205,3 +207,32 @@ test('only a committed workout import re-queries the focused empty period', asyn
     lane.close();
   }
 });
+
+test.each([false, true])(
+  'waits for a protected startup writer without issuing HealthKit work while unsettled (revoked: %s)',
+  async revoke => {
+    const lane = await setup();
+    const writer = await lane.holdStartupWriter();
+    try {
+      const view = await render(
+        <OverviewWorkoutHeartRateCard active width={302} />,
+      );
+      expect(result()).toHaveTextContent(/불러오는 중/);
+      expect(lane.queryWorkoutPeriodHeartRate).not.toHaveBeenCalled();
+      if (revoke) await act(() => lane.revoke());
+      await act(() => writer.release());
+      if (revoke) {
+        expect(lane.queryWorkoutPeriodHeartRate).not.toHaveBeenCalled();
+        expect(result()).not.toHaveTextContent('120');
+      } else {
+        await waitFor(() => expect(result()).toHaveTextContent('120 BPM'));
+        expect(lane.queryWorkoutPeriodHeartRate).toHaveBeenCalledTimes(1);
+      }
+      expect(lane.requestReadAuthorizations).not.toHaveBeenCalled();
+      await view.unmount();
+    } finally {
+      await writer.release();
+      lane.close();
+    }
+  },
+);

@@ -122,6 +122,31 @@ export async function setup() {
     replaceOwner() {
       currentOwner = false;
     },
+    async holdStartupWriter() {
+      let enter!: () => void;
+      let release!: () => void;
+      const entered = new Promise<void>(resolve => {
+        enter = resolve;
+      });
+      const held = new Promise<void>(resolve => {
+        release = resolve;
+      });
+      // Exercise real transaction admission through the same guarded connection.
+      const writer = guarded.transaction(async tx => {
+        await tx.execute(
+          'UPDATE health_observations SET ingested_at = ingested_at',
+        );
+        enter();
+        await held;
+      });
+      await Promise.race([entered, writer]);
+      return {
+        async release() {
+          release();
+          await writer;
+        },
+      };
+    },
     consumeProbe() {
       return protectedProbe?.();
     },
