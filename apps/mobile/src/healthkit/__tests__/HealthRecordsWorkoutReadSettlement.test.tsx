@@ -19,6 +19,7 @@ jest.mock('../../ragConversation/conversationExecutionNative', () => ({
   conversationExecutionNative: jest.fn(),
 }));
 
+const empty = /이 기간에 표시할 운동 심박수 기록이 없어요/;
 const unavailable = /운동과 연결된 심박수를 확인할 수 없어요/;
 const state = () =>
   screen.getByTestId('health-records-workout-month-heart-rate');
@@ -90,7 +91,12 @@ test.each(['unavailable', 'emptyVisible'] as const)(
         }),
       );
       const view = await openWorkoutFilter();
-      await waitFor(() => expect(state()).toHaveTextContent(unavailable));
+      const provedEmpty = status === 'emptyVisible';
+      await waitFor(() =>
+        expect(state()).toHaveTextContent(provedEmpty ? empty : unavailable),
+      );
+      expect(state()).not.toHaveTextContent(provedEmpty ? unavailable : empty);
+      expect(screen.queryByLabelText(/\d BPM/)).toBeNull();
       const now = () => new Date().toISOString();
       const workout = healthKitSample('workouts', {
         id: '195dd035-5be5-4124-ad39-113445fb56c4',
