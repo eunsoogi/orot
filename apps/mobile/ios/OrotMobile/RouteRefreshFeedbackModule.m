@@ -10,18 +10,20 @@
 RCT_EXPORT_MODULE(RouteRefreshFeedbackModule)
 
 + (BOOL)requiresMainQueueSetup {
-  return NO;
+    return NO;
+}
+
+- (dispatch_queue_t)methodQueue {
+    return dispatch_get_main_queue();
 }
 
 RCT_EXPORT_METHOD(didAcceptPull) {
-  dispatch_async(dispatch_get_main_queue(), ^{
     if (UIApplication.sharedApplication.applicationState != UIApplicationStateActive) {
         return;
     }
     UIImpactFeedbackGenerator *generator =
         [[UIImpactFeedbackGenerator alloc] initWithStyle:UIImpactFeedbackStyleLight];
     [generator impactOccurred];
-  });
 }
 
 @end

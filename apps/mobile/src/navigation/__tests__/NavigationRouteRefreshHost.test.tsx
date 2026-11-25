@@ -113,7 +113,7 @@ describe('shared route refresh control', () => {
     const read = jest.fn(async () => undefined);
     function Detail() {
       useEffect(() => {
-        void read();
+        read().catch(() => undefined);
       }, []);
       useNavigationRouteRefresh(true, async accept => {
         if (!allow) return;
@@ -122,7 +122,15 @@ describe('shared route refresh control', () => {
         await read();
         await held;
       });
-      return <Text onPress={() => void read()}>Synthetic Retry</Text>;
+      return (
+        <Text
+          onPress={() => {
+            read().catch(() => undefined);
+          }}
+        >
+          Synthetic Retry
+        </Text>
+      );
     }
     try {
       Platform.OS = 'ios';
@@ -142,20 +150,24 @@ describe('shared route refresh control', () => {
       await fireEvent.press(screen.getByText('Synthetic Retry'));
       expect(read).toHaveBeenCalledTimes(2);
       expect(impact).not.toHaveBeenCalled();
-      const pull = screen.getByTestId('navigation-route-scroll').props
-        .refreshControl.props.onRefresh;
+      const scroll = screen.getByTestId('navigation-route-scroll');
+      const { onRefresh: pull } = scroll.props.refreshControl.props;
       await act(async () => {
         await pull();
       });
       expect(impact).not.toHaveBeenCalled();
       allow = true;
+      let first: Promise<void> | undefined;
       await act(async () => {
-        void pull();
+        first = pull();
         await pull();
       });
       expect(impact).toHaveBeenCalledTimes(1);
       expect(read).toHaveBeenCalledTimes(3);
-      await act(async () => complete());
+      await act(async () => {
+        complete();
+        await first;
+      });
     } finally {
       complete();
       NativeModules.RouteRefreshFeedbackModule = old;
