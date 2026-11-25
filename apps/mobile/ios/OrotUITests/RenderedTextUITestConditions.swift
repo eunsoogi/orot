@@ -50,6 +50,5 @@ enum RenderedTextUITestConditions {
             value.components(separatedBy: .whitespacesAndNewlines).joined()
         }
         XCTAssertEqual(compact(strings.joined(separator: " ")), compact(expected), "Observed rendered text: \(strings)")
-
     }
 }
