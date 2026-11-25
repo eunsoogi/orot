@@ -144,7 +144,7 @@ export function ConversationHistory({
     });
   const wasRestoringPosition = useRef(reading.pending);
   useEffect(() => {
-    if (wasRestoringPosition.current && !reading.pending) followLatest();
+    if (wasRestoringPosition.current && reading.readyToFollow) followLatest();
     wasRestoringPosition.current = reading.pending;
   });
   return (
