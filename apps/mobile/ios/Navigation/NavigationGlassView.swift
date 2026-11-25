@@ -228,7 +228,6 @@ final class NavigationGlassSurfaceView: UIView {
         innerActions.alignment = usesRightRail ? .fill : .center
         for (id, button) in contextualButtons {
             guard let action = renderedActions.first(where: { $0.id == id }) else { continue }
-            NavigationGlassButton.updateMinimumWidth(for: action, button: button, usesRightRail: usesRightRail, constraints: &contextualButtonWidthConstraints)
             NavigationGlassButton.setHeight(bottomHeight, for: action, button: button, usesRightRail: usesRightRail)
             NavigationRailConstraints.updateFixedWidth(for: action, button: button, usesRightRail: usesRightRail, constraints: &contextualButtonFixedWidthConstraints)
         }

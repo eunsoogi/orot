@@ -14,21 +14,14 @@ enum NavigationGlassButton {
             max(action.rootTab ? 52 : 48, height - (action.rootTab ? 8 : 0))
         }
         button.constraints.first { $0.identifier == "navigation-control-height" }?.constant = target
-        if action.isIconOnlyPageAction, var configuration = button.configuration {
-            // Use the default style again on rail transitions without remounting the control.
-            if !usesRightRail {
-                configuration.cornerStyle = .capsule
-            } else if #available(iOS 26.0, *) {
-                configuration.cornerStyle = action.primary ? UIButton.Configuration.prominentGlass().cornerStyle : UIButton.Configuration.plain().cornerStyle
-            } else {
-                configuration.cornerStyle = action.primary ? UIButton.Configuration.filled().cornerStyle : UIButton.Configuration.plain().cornerStyle
-            }
-            button.configuration = configuration
-        }
+        NavigationTextMetrics.applyPageIconShape(action, to: button, usesRightRail: usesRightRail)
     }
 
     /// Keeps contextual controls at their shipping sizes except for the compact rail Home target.
     static func fixedWidth(for action: NavigationActionDescriptor, usesRightRail: Bool, traits: UITraitCollection) -> CGFloat? {
+        if !usesRightRail, action.isIconOnlyPageAction {
+            return NavigationTextMetrics.pageIconDiameter
+        }
         // Page actions use icons and the same lane width as navigation on the rail.
         if usesRightRail, action.id.hasPrefix("page:") {
             return NavigationRootGlassBar.exteriorWidth
@@ -57,10 +50,9 @@ enum NavigationGlassButton {
     static func updateMinimumWidth(for action: NavigationActionDescriptor, button: UIButton, usesRightRail: Bool, constraints: inout [String: NSLayoutConstraint]) {
         guard action.id != "home", action.id != "back" else { return }
         let compactPageAction = action.id == "page:overflow" || (usesRightRail && action.id.hasPrefix("page:"))
-        // Match the measured circle even when a stale, wider layoutWidth crosses the bridge.
         let circular = !usesRightRail && action.isIconOnlyPageAction
-        let minimumWidth = circular ? NavigationTextMetrics.pageIconDiameter : usesRightRail && compactPageAction ? 44 : action.layoutWidth ?? NavigationTextMetrics.width(for: action, traits: button.traitCollection)
-        let relation: NSLayoutConstraint.Relation = circular || (action.layoutWidth != nil && !usesRightRail) ? .equal : .greaterThanOrEqual
+        let minimumWidth = circular || (usesRightRail && compactPageAction) ? 44 : action.layoutWidth ?? NavigationTextMetrics.width(for: action, traits: button.traitCollection)
+        let relation: NSLayoutConstraint.Relation = !circular && action.layoutWidth != nil && !usesRightRail ? .equal : .greaterThanOrEqual
         if let existing = constraints[action.id], existing.relation != relation {
             existing.isActive = false
             constraints.removeValue(forKey: action.id)
@@ -221,11 +213,6 @@ struct NavigationActionDescriptor: Equatable {
     let primary: Bool
     let selected: Bool
     let rootTab: Bool
-    /// Spoken-only page labels never size standalone controls, unlike text actions and root tabs.
-    var isIconOnlyPageAction: Bool {
-        !rootTab && id.hasPrefix("page:") && systemImageName != nil && !showsTitleWithSystemImage
-    }
-
     let showsTitleWithSystemImage: Bool
     let titleBelowImage: Bool
     let layoutWidth: CGFloat?
