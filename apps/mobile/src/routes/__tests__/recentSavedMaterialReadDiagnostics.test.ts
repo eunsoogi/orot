@@ -84,6 +84,11 @@ test('a missing optional source witness and throwing sink do not reject admissio
     throw new Error('synthetic sink failure');
   });
   expect(
-    enterRecentReadGate(() => true, () => true, {}, { current: null }),
+    enterRecentReadGate(
+      () => true,
+      () => true,
+      {},
+      { current: null },
+    ),
   ).toBe(true);
 });
