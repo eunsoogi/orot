@@ -14,7 +14,9 @@ export function EvidenceSourceSections({
   sections,
   routeKey,
   edgeLane,
+  onContentLayout,
 }: {
+  readonly onContentLayout?: () => void;
   readonly sections: readonly EvidenceSourceDetailSection[];
   readonly routeKey?: string;
   readonly edgeLane?: {
@@ -87,6 +89,7 @@ export function EvidenceSourceSections({
       onLayout={event => {
         const nextWidth = event.nativeEvent.layout.width;
         if (Number.isFinite(nextWidth)) {
+          onContentLayout?.();
           setDetailWidth(previous =>
             previous === nextWidth ? previous : nextWidth,
           );

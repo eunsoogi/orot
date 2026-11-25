@@ -1,3 +1,4 @@
+import type { SourceOpenTiming } from '../providers/sourceOpenDiagnostic';
 import { navigationText } from '../i18n/navigation';
 import {
   ActivityIndicator,
@@ -16,6 +17,7 @@ export type PublicToolSourceChoice = {
   readonly url: string;
 };
 export type PublicToolSourceSheetState = {
+  readonly timing?: SourceOpenTiming;
   readonly key: string;
   readonly choices?: readonly PublicToolSourceChoice[];
   readonly failed?: boolean;
@@ -40,6 +42,7 @@ export function PublicToolSourceSheet({
       presentationStyle="pageSheet"
       allowSwipeDismissal
       onRequestClose={close}
+      onShow={() => state?.timing?.mark('source_open_public_show')}
       testID="conversation-public-tool-source-sheet"
     >
       {state ? (
@@ -73,6 +76,11 @@ export function PublicToolSourceSheet({
                 disabled={state.opening}
                 style={styles.link}
                 onPress={() => open(choice)}
+                onLayout={
+                  i === 0
+                    ? () => state.timing?.mark('source_open_public_ready')
+                    : undefined
+                }
               >
                 <AppText style={styles.linkLabel}>{choice.title}</AppText>
               </Pressable>
