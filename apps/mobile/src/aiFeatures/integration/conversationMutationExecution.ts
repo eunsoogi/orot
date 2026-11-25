@@ -93,7 +93,10 @@ export function conversationMutationExecution(input: {
           sessionVersion: observer!.retentionSession!.version,
         })
       : execution,
-    disposeAnswerMemory: answerMemory ? answerMemory.dispose : undefined,
+    disposeAnswerMemory() {
+      if (answerMemory) answerMemory.dispose?.();
+      if (authoredMemory) authoredMemory.dispose();
+    },
     memorySaved: () =>
       settleConversationMemoryReceipt({
         authored: authoredMemory ? authoredMemory.receipt() : undefined,
