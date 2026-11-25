@@ -18,7 +18,14 @@ const waveformWeights = [0.4, 0.7, 1, 0.8, 0.45] as const;
 function VoiceWaveform({ amplitude }: { amplitude: number }) {
   const strength = Math.min(1, Math.sqrt(amplitude) * 2.4);
   return (
-    <View style={styles.waveform}>
+    <View
+      testID="voice-activity-waveform"
+      // Grow within the existing frame, not the surrounding screen layout.
+      style={[
+        styles.waveform,
+        amplitude > 0 && { transform: [{ scale: 1.25 + strength * 0.15 }] },
+      ]}
+    >
       {waveformWeights.map(weight => (
         <View
           key={weight}
