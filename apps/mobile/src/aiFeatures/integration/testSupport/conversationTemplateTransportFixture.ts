@@ -40,12 +40,18 @@ export function syntheticTemplateTransport(
     return {
       provider,
       calls: () => generate.mock.calls.length,
-      assertRequest(question: string) {
+      assertRequest(question: string, expectedGuidance?: string) {
         const [wire, id] = generate.mock.calls[0]!;
         expect(wire.toolChoice).toBe('required');
         expect(
           wire.messages.filter(message => message.role !== 'system'),
         ).toEqual([{ role: 'user', content: question }]);
+        if (expectedGuidance)
+          expect(
+            wire.messages.find(message => message.role === 'system'),
+          ).toMatchObject({
+            content: expect.stringContaining(expectedGuidance),
+          });
         expect(wire.tools).toHaveLength(1);
         expect(cancel).toHaveBeenCalledTimes(1);
         expect(cancel).toHaveBeenCalledWith(id);
@@ -88,7 +94,7 @@ export function syntheticTemplateTransport(
   return {
     provider,
     calls: () => start.mock.calls.length,
-    assertRequest(question: string) {
+    assertRequest(question: string, expectedGuidance?: string) {
       const [, account, wire] = start.mock.calls[0]!;
       expect(account).toBe('synthetic');
       expect(wire.model).toBe('selected-model');
@@ -98,6 +104,12 @@ export function syntheticTemplateTransport(
           message => 'role' in message && message.role !== 'system',
         ),
       ).toEqual([{ role: 'user', content: question }]);
+      if (expectedGuidance)
+        expect(
+          wire.messages.find(
+            message => 'role' in message && message.role === 'system',
+          ),
+        ).toMatchObject({ content: expect.stringContaining(expectedGuidance) });
       expect(wire.tools).toHaveLength(1);
     },
   };
