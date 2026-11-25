@@ -27,20 +27,25 @@ jest.mock('../../ragConversation/conversationExecutionNative', () => ({
 
 const fixture = sqliteReviewFixture();
 afterEach(() => jest.restoreAllMocks());
+const recordingId = sourceId + ':long-route';
 const dataText = 'Synthetic ninth line only.';
 const choice = { providerId: APPLE_PROVIDER_ID, modelId: 'synthetic-local' };
 
 async function harness() {
   const repository = fixture.repository();
+  const recording = await repository.get('source_record', sourceId);
   const [first] = await repository.transcripts.listForRecording(sourceId);
-  if (!first) throw new Error('Synthetic seed missing.');
-  const segments = Array.from({ length: 8 }, (_, i) => {
-    const transcriptId = sourceId + ':extra-' + i;
+  if (!recording || !first) throw new Error('Synthetic seed missing.');
+  await repository.put('source_record', { ...recording, id: recordingId });
+  const segments = Array.from({ length: 9 }, (_, i) => {
+    const transcriptId = recordingId + ':segment-' + i;
     return {
       ...first,
       id: transcriptId + ':r1',
       transcriptId,
-      segmentOrdinal: i + 1,
+      recordingSourceId: recordingId,
+      provenance: { ...first.provenance, sourceRecordIds: [recordingId] },
+      segmentOrdinal: i,
       text: dataText,
       audioRange: { startMs: 2900 + i, endMs: 2901 + i },
     };
@@ -134,7 +139,7 @@ async function harness() {
   });
   const service = createEncounterReviewService();
   const controller = new EncounterReviewController(
-    sourceId,
+    recordingId,
     service,
     jest.fn(),
   );
