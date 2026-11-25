@@ -68,21 +68,23 @@ private struct LiveCaptionDisplay {
         guard owner == nil || owner == incoming,
               let eventID = event["event_id"] as? String, !eventID.isEmpty, eventID.utf8.count <= 128,
               !seen.contains(eventID), let delta = event["delta"] as? String, !delta.isEmpty,
-              delta.utf16.count <= 2_000 else { return nil }
+              delta.utf16.count <= 2000 else { return nil }
         let speaker: String
         switch event["type"] as? String {
         case "session.input_transcript.delta": speaker = "user"
         case "session.output_transcript.delta": speaker = "assistant"
         default: return nil
         }
-        if role != speaker || text.utf16.count + delta.utf16.count > 2_000 {
+        if role != speaker || text.utf16.count + delta.utf16.count > 2000 {
             guard !delta.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else { return nil }
             order += 1
             role = speaker
             text = ""
         }
         owner = incoming
-        if seen.count == 128 { seen.removeFirst() }
+        if seen.count == 128 {
+            seen.removeFirst()
+        }
         seen.append(eventID)
         text += delta
         return ["callId": incoming.call, "itemId": "observed-\(order)", "role": speaker, "text": text]
