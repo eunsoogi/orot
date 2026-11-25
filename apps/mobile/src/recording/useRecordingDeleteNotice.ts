@@ -26,6 +26,7 @@ export function useRecordingDeleteNotice(service: RecordingLibraryService) {
     clear();
     return ++operation.current;
   }, [clear]);
+  const owns = useCallback((owner: number) => owner === operation.current, []);
   const fail = useCallback((owner: number) => {
     if (owner === operation.current) setDeleteNotice('error');
   }, []);
@@ -50,6 +51,7 @@ export function useRecordingDeleteNotice(service: RecordingLibraryService) {
     deleteNotice,
     clear,
     begin,
+    owns,
     fail,
     requestError,
     cleanupPending,

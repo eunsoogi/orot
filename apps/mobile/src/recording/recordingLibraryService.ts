@@ -142,6 +142,25 @@ export function createRecordingLibraryService(
     return result;
   }
 
+  function deleteQueued(
+    sourceId: string,
+    timingProbe?: RecordingDeletionTimingProbe,
+    onCommitted?: () => void,
+  ) {
+    // Confirmation can arrive during a library read; measure that wait before source I/O starts.
+    // Queue acquisition succeeds even when the preceding read failed; recovery exclusion is unchanged.
+    beginRecordingDeletionTiming(timingProbe, 'library-queue-wait');
+    return serializeAudioOperation(() => {
+      endRecordingDeletionTiming(timingProbe, 'library-queue-wait', 'success');
+      return performRecordingDeletion(
+        sourceId,
+        timingProbe,
+        deletionDependencies,
+        onCommitted,
+      );
+    });
+  }
+
   return {
     list() {
       return serializeAudioOperation(async () => {
@@ -158,22 +177,9 @@ export function createRecordingLibraryService(
         return recordingLibrarySummaries(recordings, snapshot);
       });
     },
-    deleteRecording(sourceId, timingProbe) {
-      // Confirmation can arrive during a library read; measure that wait before source I/O starts.
-      // Queue acquisition succeeds even when the preceding read failed; recovery exclusion is unchanged.
-      beginRecordingDeletionTiming(timingProbe, 'library-queue-wait');
-      return serializeAudioOperation(() => {
-        endRecordingDeletionTiming(
-          timingProbe,
-          'library-queue-wait',
-          'success',
-        );
-        return performRecordingDeletion(
-          sourceId,
-          timingProbe,
-          deletionDependencies,
-        );
-      });
+    deleteRecording: deleteQueued,
+    deleteRecordingWithCommit(sourceId, onCommitted, timingProbe) {
+      return deleteQueued(sourceId, timingProbe, onCommitted);
     },
   };
 }

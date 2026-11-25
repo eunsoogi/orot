@@ -30,6 +30,7 @@ export async function performRecordingDeletion(
   sourceId: string,
   timingProbe: RecordingDeletionTimingProbe | undefined,
   dependencies: RecordingDeletionOperationDependencies,
+  onCommitted?: () => void,
 ): Promise<RecordingDeletionResult> {
   const {
     loadRepository,
@@ -82,6 +83,14 @@ export async function performRecordingDeletion(
         );
       }
       throw error;
+    }
+
+    // The source and lineage cascade finished. Only presentation may observe
+    // this receipt; cleanup and the audio queue continue to own the staged file.
+    try {
+      onCommitted?.();
+    } catch {
+      // A visual observer must not trigger restore or stop post-commit cleanup.
     }
 
     let audioCleanupPending = false;

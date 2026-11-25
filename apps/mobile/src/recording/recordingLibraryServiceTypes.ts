@@ -22,7 +22,7 @@ export interface RecordingAudioDeletion {
   commit(sourceId: string): Promise<void>;
 }
 
-/** Optional timing input is used only by the explicit Simulator measurement harness. */
+/** The optional commit receipt is for presentation only; the queue still owns audio cleanup. */
 export interface RecordingLibraryService {
   list(): Promise<readonly RecordingSourceRecord[]>;
   readonly listSummaries?: () => Promise<readonly RecordingLibrarySummary[]>;
@@ -30,4 +30,9 @@ export interface RecordingLibraryService {
     sourceId: string,
     timingProbe?: RecordingDeletionTimingProbe,
   ): Promise<RecordingDeletionResult>;
+  readonly deleteRecordingWithCommit?: (
+    sourceId: string,
+    onCommitted: () => void,
+    timingProbe?: RecordingDeletionTimingProbe,
+  ) => Promise<RecordingDeletionResult>;
 }

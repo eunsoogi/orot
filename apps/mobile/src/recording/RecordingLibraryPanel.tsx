@@ -37,6 +37,7 @@ export default function RecordingLibraryPanel({
   const [deleteTarget, setDeleteTarget] =
     useState<RecordingSourceRecord | null>(null);
   const [busy, setBusy] = useState(false);
+  const [sourceCommitted, setSourceCommitted] = useState(false);
   // Each operation owns its settlement; export completion must never clear an outstanding deletion.
   const [exportBusy, setExportBusy] = useState(false);
   const notice = useRecordingDeleteNotice(service);
@@ -87,17 +88,29 @@ export default function RecordingLibraryPanel({
     setBusy(true);
     onBusyChange?.(true);
     const operation = notice.begin();
-    try {
-      const result = await deletionTiming.deleteRecording(service, target.id);
+    let shown = false;
+    const showCommitted = () => {
+      if (shown || !notice.owns(operation)) return;
+      shown = true;
+      setSourceCommitted(true);
       setDeleteTarget(null);
-      onSourceDeleted?.(target.id);
-      // The cascade has committed. Publish its result immediately, without a full metadata reread.
       deletedIds.add(target.id);
       deletionTiming.markListRefreshPending();
       setRecordings(current =>
         current.filter(item => item.source.id !== target.id),
       );
       setSelectedSourceId(current => (current === target.id ? null : current));
+    };
+    try {
+      const result = await deletionTiming.deleteRecording(
+        service,
+        target.id,
+        showCommitted,
+      );
+      // Services without the commit receipt retain their existing settlement.
+      showCommitted();
+      if (!notice.owns(operation)) return;
+      onSourceDeleted?.(target.id);
       if (result.audioCleanupPending) {
         notice.cleanupPending(operation);
         refreshAfterDelete(target.id);
@@ -108,6 +121,7 @@ export default function RecordingLibraryPanel({
       // Re-read after failure so an interrupted operation is shown from persisted state.
       await refreshAfterDelete(target.id);
     } finally {
+      setSourceCommitted(false);
       setBusy(false);
       onBusyChange?.(false);
     }
@@ -176,7 +190,7 @@ export default function RecordingLibraryPanel({
         />
       ) : null}
       <RecordingDeletionConfirmation
-        busy={busy || actionsDisabled}
+        busy={(busy && !sourceCommitted) || actionsDisabled}
         onCancel={() => setDeleteTarget(null)}
         onConfirm={confirmDelete}
         onProgressPresented={deletionTiming.markProgressPresented}
