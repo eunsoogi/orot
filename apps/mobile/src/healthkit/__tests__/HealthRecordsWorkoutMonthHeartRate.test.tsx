@@ -81,7 +81,13 @@ test('workout category selection supplies one owned month read without replacing
     await fireEvent.press(screen.getByTestId('health-record-filter-all'));
     expect(lane.queryWorkoutPeriodHeartRate).not.toHaveBeenCalled();
     await fireEvent.press(screen.getByTestId('health-record-filter-workouts'));
-    await waitFor(() => expect(screen.getByLabelText(/120 BPM/)).toBeTruthy());
+    await waitFor(() =>
+      expect(
+        screen.getByLabelText(
+          /건강 앱이 운동에 연결한 최근 한 달 심박수, 120 BPM/,
+        ),
+      ).toBeTruthy(),
+    );
     expect(lane.queryWorkoutPeriodHeartRate).toHaveBeenCalledTimes(1);
     expect(lane.queryWorkoutHeartRate).not.toHaveBeenCalled();
     expect(lane.requestReadAuthorizations).not.toHaveBeenCalled();
@@ -167,3 +173,49 @@ test('a late native protection restore retries a previously unavailable Workout 
     lane.close();
   }
 });
+
+test.each([
+  ['emptyVisible', '이 기간에 표시할 운동 심박수 기록이 없어요.'],
+  ['unavailable', '이 기간에 운동과 연결된 심박수를 확인할 수 없어요.'],
+])(
+  'Workout differentiates a proved empty period from failed access (%s)',
+  async (status, message) => {
+    const prior = AppState.currentState;
+    AppState.currentState = 'active';
+    const lane = await setup();
+    try {
+      lane.queryWorkoutPeriodHeartRate.mockImplementationOnce(
+        async request => ({
+          ...resultFor(request),
+          status,
+        }),
+      );
+      const loader: HealthObservationPageLoader = Object.assign(
+        jest.fn(async () => ({ records: [], nextCursor: null })),
+        { readMonthChart: jest.fn(async () => new Promise<never>(() => {})) },
+      );
+      const view = await renderWithRootSafeArea(
+        <HealthRecordsLibraryScreen
+          loadObservations={loader}
+          onBack={jest.fn()}
+          onOpenHealthImport={jest.fn()}
+          onOpenDetail={jest.fn()}
+        />,
+      );
+      await fireEvent.press(
+        screen.getByTestId('health-record-filter-workouts'),
+      );
+      await waitFor(() => expect(screen.getByText(message)).toBeTruthy());
+      expect(
+        screen.queryByLabelText(/건강 앱이 운동에 연결한 최근 한 달 심박수/),
+      ).toBeNull();
+      expect(screen.queryByLabelText(/0 BPM/)).toBeNull();
+      expect(lane.queryWorkoutPeriodHeartRate).toHaveBeenCalledTimes(1);
+      expect(lane.requestReadAuthorizations).not.toHaveBeenCalled();
+      await view.unmount();
+    } finally {
+      AppState.currentState = prior;
+      lane.close();
+    }
+  },
+);

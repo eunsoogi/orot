@@ -28,6 +28,11 @@ test('displays the direct period average only on the opted-in visible card and n
     expect(openLocalAgentMemoryDatabase).not.toHaveBeenCalled();
     await view.rerender(<OverviewWorkoutHeartRateCard active width={302} />);
     await waitFor(() => expect(result()).toHaveTextContent('120 BPM'));
+    expect(
+      screen.getByLabelText('건강 앱이 운동에 연결한 심박수, 120 BPM'),
+    ).toBeTruthy();
+    expect(screen.getByText('오늘 포함 최근 7일')).toBeTruthy();
+    expect(screen.queryByText('건강 앱이 운동에 연결한 심박수')).toBeNull();
     expect(screen.queryByRole('button', { name: '운동 선택하기' })).toBeNull();
     expect(lane.queryWorkoutPeriodHeartRate).toHaveBeenCalledTimes(1);
     const request = lane.queryWorkoutPeriodHeartRate.mock.calls[0]![0];
