@@ -1,4 +1,4 @@
-import { createAgentMemory } from '@orot/agent-memory';
+import { createAgentMemory, listSavedMemories } from '@orot/agent-memory';
 import type { SqlDatabase } from '@orot/storage';
 import { openLocalAgentMemoryDatabase } from '../../storage/secureDatabase';
 import { guardedNativeDatabase } from '../../storage/protectedReadEpoch';
@@ -31,6 +31,12 @@ test.each([
   'selected real re-reviewed SQLite memory stays protected across initial contention: %s',
   async scenario => {
     const f = await historicalMemoryFixture(true);
+    // Production lists eligible memory and its withheld metadata before the
+    // user can choose the historical detail. That pass persists quarantine.
+    expect(await listSavedMemories(f.storage)).toEqual([]);
+    expect(await f.storage.listUnavailableMetadata()).toEqual(
+      expect.arrayContaining([expect.objectContaining({ id: f.id })]),
+    );
     await f.db.execute(
       'CREATE TABLE synthetic_historical_pending(value INTEGER)',
     );
