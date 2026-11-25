@@ -21,9 +21,7 @@ export async function setupConversationToolGuards(tx: SqlExecutor) {
   // Source-first lookup avoids probing dependencies for every saved call
   // while the shared protected writer is held. DELETE still fires every
   // existing per-call tombstone/lineage cleanup trigger in this transaction.
-  await tx.execute(
-    'CREATE INDEX IF NOT EXISTS conversation_tool_dependency_source ON conversation_tool_dependencies (record_kind, record_id, session_id, run_id, call_id)',
-  );
+  await setupToolDependencySourceLookup(tx);
   await replaceHealthPeriodTrigger(
     tx,
     `CREATE TRIGGER tool_source_removed_manual_history AFTER DELETE ON manual_history_entries BEGIN
@@ -59,15 +57,21 @@ export async function setupConversationToolGuards(tx: SqlExecutor) {
   await tx.execute(
     `CREATE TRIGGER IF NOT EXISTS tool_manual_corrected AFTER INSERT ON manual_history_entries WHEN NEW.supersedes_id IS NOT NULL BEGIN ${erase('conversation_tool_dependencies', "p.record_kind = 'manual_history' AND p.record_id = NEW.supersedes_id")} END`,
   );
-  for (const marker of [
-    'source_deletion_tombstones',
-    'agent_memory_removed_sources',
-  ]) {
-    const match = `conversation_tool_dependencies.record_id = NEW.source_id AND conversation_tool_dependencies.record_kind NOT IN ('generated_summary', 'generated_conversation', 'generated_research') AND ${markerMatchesArtifactSource(marker, 'NEW.source_id', 'conversation_tool_dependencies', 'identity')}`;
-    await tx.execute(
-      `CREATE TRIGGER IF NOT EXISTS tool_marker_${marker} AFTER INSERT ON ${marker} BEGIN DELETE FROM conversation_tool_events WHERE EXISTS (SELECT 1 FROM conversation_tool_dependencies WHERE session_id = conversation_tool_events.session_id AND run_id = conversation_tool_events.run_id AND call_id = conversation_tool_events.call_id AND ${match}); END`,
-    );
-  }
+  const markerMatch = (marker: string) =>
+    `conversation_tool_dependencies.record_id = NEW.source_id AND conversation_tool_dependencies.record_kind NOT IN ('generated_summary', 'generated_conversation', 'generated_research') AND ${markerMatchesArtifactSource(marker, 'NEW.source_id', 'conversation_tool_dependencies', 'identity')}`;
+  await tx.execute(
+    `CREATE TRIGGER IF NOT EXISTS tool_marker_source_deletion_tombstones AFTER INSERT ON source_deletion_tombstones BEGIN DELETE FROM conversation_tool_events WHERE EXISTS (SELECT 1 FROM conversation_tool_dependencies WHERE session_id = conversation_tool_events.session_id AND run_id = conversation_tool_events.run_id AND call_id = conversation_tool_events.call_id AND ${markerMatch('source_deletion_tombstones')}); END`,
+  );
+  // Recording cascades can insert a fence for every affected typed identity. Find
+  // matching calls by exact record ID, retaining the same wildcard/alias rules.
+  await replaceHealthPeriodTrigger(
+    tx,
+    `CREATE TRIGGER tool_marker_agent_memory_removed_sources AFTER INSERT ON agent_memory_removed_sources BEGIN
+      DELETE FROM conversation_tool_events WHERE (session_id, run_id, call_id) IN (
+        SELECT session_id, run_id, call_id FROM conversation_tool_dependencies
+        WHERE ${markerMatch('agent_memory_removed_sources')}
+      ); END`,
+  );
   for (const [table, guard] of Object.entries(healthPeriodDeletionGuards())) {
     const next = guard.replaceAll('OLD.', 'NEW.');
     const changed = `OLD.id IS NOT NEW.id OR ${jsonValueChangedPredicate('OLD.payload_json', 'NEW.payload_json')}`;
@@ -120,5 +124,22 @@ export async function setupConversationToolGuards(tx: SqlExecutor) {
     );
   await tx.execute(
     `CREATE TRIGGER IF NOT EXISTS tool_summary_changed AFTER UPDATE ON symptom_summary_runs WHEN OLD.result_json IS NOT NEW.result_json OR OLD.id IS NOT NEW.id BEGIN ${erase('conversation_tool_dependencies', "p.record_kind = 'generated_summary' AND p.record_id = OLD.id")} END`,
+  );
+}
+
+/** Reorient the existing covering index atomically, without maintaining a second copy.
+ * Manual history still searches both equality keys; a marker can have an unknown kind. */
+async function setupToolDependencySourceLookup(tx: SqlExecutor): Promise<void> {
+  const result = await tx.execute(
+    'PRAGMA index_info(conversation_tool_dependency_source)',
+  );
+  if (
+    result.rows.map(row => row.name).join(',') ===
+    'record_id,record_kind,session_id,run_id,call_id'
+  )
+    return;
+  await tx.execute('DROP INDEX IF EXISTS conversation_tool_dependency_source');
+  await tx.execute(
+    'CREATE INDEX conversation_tool_dependency_source ON conversation_tool_dependencies (record_id, record_kind, session_id, run_id, call_id)',
   );
 }
