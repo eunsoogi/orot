@@ -120,7 +120,7 @@ final class OrotProviderDiagnostics: NSObject {
                "conversation_save_prepare", "conversation_save_admission", "conversation_save_authority", "conversation_save_lineage",
                "conversation_save_persist", "conversation_save_settlement", "conversation_save_lineage_period_majority", "conversation_save_lineage_period_seen",
                "saved_memory_modules", "saved_memory_open", "saved_memory_read", "saved_memory_wait", "recent_records_pre_admission", "recent_records_admission", "recent_records_source_read", "recent_records_reproof", "recent_records_agent_witness", "recent_records_agent_catalog", "recent_records_agent_schema", "recent_records_agent_legacy", "recent_records_agent_slice", "recent_records_agent_certify", "recent_records_media_witness", "recent_records_media_query", "recent_records_media_settlement",
-               "saved_memory_delete_confirmation", "saved_memory_delete_queue", "saved_memory_delete_lineage",
+               "saved_memory_delete_confirmation", "saved_memory_delete_queue", "saved_memory_delete_lineage", "saved_memory_delete_record", "saved_memory_delete_successor", "saved_memory_delete_sql",
                "saved_memory_delete_vectors", "saved_memory_delete_commit", "saved_memory_delete_receipt", "database_transaction", "database_transaction_wait",
                "sql_schema", "sql_generation", "sql_aggregate", "sql_vector", "sql_health_records", "sql_artifact", "sql_other",
                "transaction_healthkit", "transaction_memory", "selection", "data", "workflow", "provider_error", "validation", "persistence",

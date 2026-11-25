@@ -1,3 +1,4 @@
+import { observeManualHistoryDeletionSql } from '../memory/observeManualHistoryDeletionSql';
 import type { SavedMemoryDeletionTrace } from '../memory/savedMemoryDeletionDiagnostics';
 import { openLocalStorage } from '../storage/secureDatabase';
 import { openLocalAgentMemoryDatabase } from '../storage/secureDatabase';
@@ -82,7 +83,9 @@ export async function openLocalManualHistoryRepository(
           trace?.('saved_memory_delete_lineage', 'started');
           deleted = await repository.delete(
             id,
-            transaction,
+            trace
+              ? observeManualHistoryDeletionSql(transaction, trace)
+              : transaction,
             async lineageIds => {
               trace?.('saved_memory_delete_vectors', 'started');
               try {
