@@ -1,9 +1,16 @@
+import {
+  dispatchGuardedMutation,
+  withOwnedMemoryDelete,
+  manualHistoryMemoryDelete,
+  protectedSqlRead,
+  type GuardedMutationBoundary,
+} from './guardedMutationBoundary';
+export { protectedSqlRead } from './guardedMutationBoundary';
 import type { SqlDatabase } from '@orot/storage';
 import {
   settleKnownIndependentRead,
   type ReadSettlement,
 } from './independentReadSettlement';
-
 type Epoch = {
   readonly ownerIdentity: object;
   active: number;
@@ -16,19 +23,12 @@ type Epoch = {
   preDispatchRetirements?: Set<() => void>;
 };
 const epochs = new WeakMap<SqlDatabase, Epoch>();
-export function protectedSqlRead(query: string): boolean {
-  if (/^PRAGMA (?:schema_version|data_version|compile_options)$/i.test(query))
-    return true;
-  return (
-    /^[\t \r\n]*SELECT\b/i.test(query) &&
-    !query.includes(';') &&
-    !/\b(?:load_extension|writefile|eval)\s*\(/i.test(query)
-  );
-}
-
 /** Only secure production open or real SQLite test setup authorizes this gateway.
  * Any possible mutation/control that enters during a witness invalidates before dispatch. */
-export function guardedNativeDatabase<T extends SqlDatabase>(native: T): T {
+export function guardedNativeDatabase<T extends SqlDatabase>(
+  native: T,
+  deleteTrace?: GuardedMutationBoundary,
+): T {
   const epoch: Epoch = {
     ownerIdentity: {},
     active: 0,
@@ -46,7 +46,7 @@ export function guardedNativeDatabase<T extends SqlDatabase>(native: T): T {
     if (epoch.pending === 0 && epoch.dirtyTransactions === 0)
       epoch.settleListeners?.forEach(listener => listener());
   };
-  const track = <R>(call: () => R): R => {
+  const track = <R>(call: () => R, trace?: GuardedMutationBoundary): R => {
     // Direct execute shares the native connection with tx.execute. Either can
     // make an admitted callback dirty, and op-sqlite commits after it returns.
     for (const transaction of openTransactions) markDirty(transaction);
@@ -58,16 +58,11 @@ export function guardedNativeDatabase<T extends SqlDatabase>(native: T): T {
       notifySettlement();
     };
     try {
-      // Synchronous process-local retirement must precede any native SQL submission.
-      // An infrastructure throw rejects this submission, never leaves a possibly live ticket beside a queued write.
-      const listeners = epoch.preDispatchRetirements;
-      if (listeners) {
-        for (const retire of listeners) {
-          retire();
-          listeners.delete(retire);
-        }
-      }
-      const result = call();
+      const result = dispatchGuardedMutation(
+        epoch.preDispatchRetirements,
+        call,
+        trace,
+      );
       if (
         result &&
         typeof (result as unknown as PromiseLike<unknown>).then === 'function'
@@ -94,13 +89,20 @@ export function guardedNativeDatabase<T extends SqlDatabase>(native: T): T {
         // dispatch may still be queued and execute inside this transaction.
         if (epoch.pending !== 0) markDirty(scope);
         try {
-          await operation({
-            execute(sql, binds) {
-              return query(sql, () => tx.execute(sql, binds));
+          await withOwnedMemoryDelete(
+            operation,
+            {
+              execute: (sql, binds) => query(sql, () => tx.execute(sql, binds)),
+              commit: () => track(() => tx.commit()),
+              rollback: () => track(() => tx.rollback()),
             },
-            commit: () => track(() => tx.commit()),
-            rollback: () => track(() => tx.rollback()),
-          });
+            deleteTrace &&
+              (id =>
+                track(
+                  () => tx.execute(manualHistoryMemoryDelete, [id]),
+                  deleteTrace,
+                )),
+          );
         } catch (error) {
           callbackFailure = { error };
           throw error;
@@ -222,7 +224,6 @@ export function awaitIndependentReadSettlement(
     outcome => outcome === 'settled',
   );
 }
-
 export function awaitIndependentReadSettlementResult(
   owner: SqlDatabase,
   timeoutMs: number,
@@ -230,7 +231,6 @@ export function awaitIndependentReadSettlementResult(
 ) {
   return readSettlement(owner, timeoutMs, signal, outcome => outcome);
 }
-
 function readSettlement<R>(
   owner: SqlDatabase,
   timeoutMs: number,
@@ -241,7 +241,6 @@ function readSettlement<R>(
   if (!epoch) return Promise.resolve(result('owner_missing'));
   return settleKnownIndependentRead(epoch, timeoutMs, signal, result);
 }
-
 /** Identity only; aliases for one guarded connection share it, reopened connections do not. */
 export function protectedDatabaseOwnerIdentity(
   owner: SqlDatabase,

@@ -1,3 +1,4 @@
+import { manualDeletionNativeDiagnostics } from './manualDeletionNativeDiagnostics';
 import { createSecureOverviewReader } from './secureOverviewReader';
 import {
   guardedNativeDatabase,
@@ -134,6 +135,7 @@ export function openLocalStorage(): Promise<RecordRepository> {
               encryptionKey,
               failOnCreate: !allowCreate,
             }),
+            manualDeletionNativeDiagnostics(),
           );
           database = observeSharedDatabase(guarded);
           aliasProtectedReadEpoch(guarded, database);
