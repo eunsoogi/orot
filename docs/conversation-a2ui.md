@@ -92,3 +92,21 @@ existing scaled caption style, does not infer a caption from phrasing, and
 keeps the original copy text. Caption is not a heading or action; Modal, Tabs,
 weights and incremental caption updates do not use this variant. The existing
 archive keeps the exact caption paragraph readable as ordinary body text.
+
+## Final repeated children
+
+Task v37 admits one data-bound Row, Column, or List from the
+[Basic Catalog's ChildList form](https://a2ui.org/specification/v1.0-basic-catalog-implementation-guide/).
+The create frame must name a shallow local template with the exact
+`{"path":"/items","componentId":"template"}` child form. An optional final
+`updateDataModel` can replace the complete `/items` array once. A reusable
+template can nest cards and rows/columns around text bound to single relative
+item keys. The renderer never resolves an absolute path, external request,
+function, action, alias or second repeated template.
+
+The terminal parser materializes up to 12 items and 64 total graph nodes under
+derived stable IDs, removes the original data model, and runs the same exact
+accepted-prose validation as a static layout. Only that ordered tree can be
+rendered or archived. A foreign frame, mismatched answer, or unsupported
+template falls back to original prose. This increment does not enable
+streamed template publication, arbitrary data-bound widgets, or sendDataModel.
