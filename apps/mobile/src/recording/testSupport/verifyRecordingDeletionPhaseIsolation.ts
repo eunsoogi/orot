@@ -21,7 +21,7 @@ export async function verifyRecordingDeletionPhaseIsolation(
     await harness(sourceId);
   const snapshot =
     repository.listTypedSourceDeletionReferences!.bind(repository);
-  const storageCommit = storage.commitBatch.bind(storage);
+  const storageCommit = storage.commitSourceCascade.bind(storage);
   const snapshotGate = gate();
   const commitGate = gate();
   const snapshotSpy = jest
@@ -31,7 +31,7 @@ export async function verifyRecordingDeletionPhaseIsolation(
       return snapshot(...args);
     });
   const commitSpy = jest
-    .spyOn(storage, 'commitBatch')
+    .spyOn(storage, 'commitSourceCascade')
     .mockImplementationOnce(async (...args) => {
       await commitGate.hold();
       return storageCommit(...args);
@@ -54,9 +54,9 @@ export async function verifyRecordingDeletionPhaseIsolation(
 
     await Promise.race([commitGate.entered, prematureCompletion]);
     expect(stages()).toContainEqual(['memory-provenance-scan', 'end']);
-    expect(stages()).toContainEqual(['memory-engine-acquire', 'end']);
-    expect(stages()).toContainEqual(['memory-forget', 'end']);
-    expect(stages()).toContainEqual(['memory-deletion-fences', 'end']);
+    // The native fast path has no speculative engine or ID-only forget stage.
+    expect(stages()).not.toContainEqual(['memory-engine-acquire', 'begin']);
+    expect(stages()).not.toContainEqual(['memory-forget', 'begin']);
     expect(stages().at(-1)).toEqual(['memory-batch-commit', 'begin']);
     expect(await repository.get('source_record', sourceId)).not.toBeNull();
     expect(audioOrder).toEqual(['stage']);

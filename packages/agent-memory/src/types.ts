@@ -54,6 +54,13 @@ export interface AgentMemoryHit {
 
 export interface PersistedMemoryRecord extends MemoryRecord {}
 
+/** Source-scoped app request; these IDs are candidates, not deletion authority. */
+export interface AgentMemorySourceCascade {
+  readonly references: ReadonlySet<string>;
+  readonly typedReferences?: readonly { id: string; kind: string }[];
+  readonly candidateIds: readonly string[];
+}
+
 /** Rememori's storage contract plus the atomic operations needed by app corrections. */
 export interface AgentMemoryStorageAdapter extends StorageAdapter {
   listRecords(): Promise<PersistedMemoryRecord[]>;
@@ -65,6 +72,11 @@ export interface AgentMemoryStorageAdapter extends StorageAdapter {
   listQuarantineRevision?(): Promise<string>;
   markSourceRemoved(sourceId: string, kinds?: readonly string[]): Promise<void>;
   beginBatch(): void;
+  /** The owning adapter rechecks current scope, applies fences atomically and returns committed Memory IDs. */
+  commitSourceCascade?(
+    intent: AgentMemorySourceCascade,
+    namespaceIdentity?: string,
+  ): Promise<readonly string[]>;
   /** An optional app-private witness is consumed only by the same write batch. */
   commitBatch(witness?: { readonly recordId: string; readonly context: unknown }): Promise<void>;
   rollbackBatch(): void;

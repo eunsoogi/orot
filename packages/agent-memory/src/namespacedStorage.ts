@@ -42,6 +42,9 @@ export function namespacedStorage(
     listQuarantineRevision: storage.listQuarantineRevision?.bind(storage),
     markSourceRemoved: (sourceId, kinds) => storage.markSourceRemoved(sourceId, kinds),
     beginBatch: () => storage.beginBatch(),
+    ...(storage.commitSourceCascade && {
+      commitSourceCascade: (intent) => storage.commitSourceCascade!(intent, identity),
+    }),
     commitBatch: (witness) =>
       trustedNamespace.length || !witness ? storage.commitBatch() : storage.commitBatch(witness),
     rollbackBatch: () => storage.rollbackBatch(),

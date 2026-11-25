@@ -78,7 +78,7 @@ async function selectSourceRemoval(
     ...dependentReferenceIds.map((referenceId) => referenceId.trim()).filter(Boolean),
   ]);
   const ids = await scanRemoval(storage, references, observe);
-  return { ids, deletionFences: new Set([...references, ...ids]) };
+  return { ids, references, deletionFences: new Set([...references, ...ids]) };
 }
 
 type SourceRemovalSelection = Awaited<ReturnType<typeof selectSourceRemoval>>;
@@ -133,6 +133,19 @@ export async function runSourceRemovalBatch({
   runBatch,
 }: SourceRemovalWork) {
   const selection = await selectSourceRemoval(storage, sourceId, dependentReferenceIds, observe);
+  if (storage.commitSourceCascade) {
+    const committed = await timeRemoval(observe, 'commit', () =>
+      storage.commitSourceCascade!({
+        references: selection.references,
+        candidateIds: selection.ids,
+        typedReferences,
+      }),
+    );
+    return {
+      deletionFences: new Set([...selection.references, ...committed]),
+      memoriesDeleted: committed.length,
+    };
+  }
   const memoriesDeleted = await runBatch(() =>
     removeMemoryReferences(storage, getEngine, selection, typedReferences, observe),
   );
