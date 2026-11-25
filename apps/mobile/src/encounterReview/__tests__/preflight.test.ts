@@ -71,7 +71,9 @@ test('a replaced on-device selection cannot begin or request disclosure', async 
     },
   };
   const service = createEncounterReviewService(async () => selected);
-  const startConsent = { authorize: jest.fn(async () => 'authorized' as const) };
+  const startConsent = {
+    authorize: jest.fn(async () => 'authorized' as const),
+  };
   expect(
     await service.start(sourceId, startConsent, new AbortController().signal),
   ).toEqual({ status: 'unavailable' });
