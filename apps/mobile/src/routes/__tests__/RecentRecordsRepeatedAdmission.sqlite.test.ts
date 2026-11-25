@@ -124,3 +124,81 @@ test.each(['agent', 'media', 'native refusal'] as const)(
     }
   },
 );
+
+test.each(['active', 'background and resume', 'native denial'] as const)(
+  'waits through a dirty native transaction before admitting the agent catalog: %s',
+  async journey => {
+    const f = openInterleavableRecentSourceDatabase();
+    const database = f.database;
+    let firstWrite!: () => void;
+    const dirty = new Promise<void>(resolve => {
+      firstWrite = resolve;
+    });
+    let secondWrite!: () => void;
+    const nextStatement = new Promise<void>(resolve => {
+      secondWrite = resolve;
+    });
+    let writer: Promise<void> | undefined;
+    const retired = new AbortController();
+    try {
+      await runMigrations(database);
+      await database.execute(
+        'CREATE TABLE synthetic_recent_contention(value INTEGER)',
+      );
+      await database.execute(
+        'INSERT INTO synthetic_recent_contention VALUES(0)',
+      );
+      await seedAgent(database);
+      const lease = { database, isCurrent: () => true };
+      writer = database.transaction(async tx => {
+        await tx.execute(statement);
+        firstWrite();
+        // The first mutation is no longer pending, but COMMIT has not occurred.
+        await nextStatement;
+        await tx.execute(statement);
+      });
+      await dirty;
+      const canRetry = jest.fn(async () => journey !== 'native denial');
+      const read = (signal: AbortSignal) =>
+        readProtectedRecentMaterialPage(lease, undefined, {
+          signal,
+          isCurrent: () => !signal.aborted,
+          canRetry,
+        });
+      let page = read(retired.signal);
+      let old: Promise<unknown> | undefined;
+      if (journey === 'background and resume') {
+        old = expect(page).rejects.toThrow();
+        retired.abort();
+        page = read(new AbortController().signal);
+      }
+      const refusal =
+        journey === 'native denial'
+          ? expect(page).rejects.toThrow()
+          : undefined;
+      secondWrite();
+      await writer;
+      await old;
+      if (journey === 'native denial') {
+        await refusal;
+      } else {
+        const result = await page;
+        try {
+          expect(result.kind).toBe('complete');
+          if (result.kind === 'complete')
+            expect(result.rows.map(row => row.key)).toContain(
+              'memory:agent:synthetic-agent-admission',
+            );
+        } finally {
+          result.witness.dispose();
+        }
+      }
+      expect(canRetry).toHaveBeenCalledTimes(1);
+    } finally {
+      retired.abort();
+      secondWrite();
+      await Promise.allSettled([writer]);
+      f.close();
+    }
+  },
+);

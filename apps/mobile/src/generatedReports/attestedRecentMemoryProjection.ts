@@ -145,7 +145,12 @@ export function openAttestedMemoryProbe(
   signal: AbortSignal,
 ) {
   const currentOwner = () => !signal.aborted && isRouteCurrent();
-  const sensor = createBoundReadResultWitness(database, currentOwner);
+  // Do not queue a new catalog behind a writer already known to be dirty.
+  // Its next statement could invalidate a same-connection witness before the
+  // queued catalog even starts. Wait for native settlement at first admission.
+  const sensor = createBoundReadResultWitness(database, currentOwner, {
+    requireSettledOwner: true,
+  });
   if (!sensor || !currentOwner()) {
     sensor?.dispose();
     throw new BoundReadWitnessUnavailable();

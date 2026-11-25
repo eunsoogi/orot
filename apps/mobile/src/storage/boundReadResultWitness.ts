@@ -1,5 +1,6 @@
 import type { SqlDatabase, SqlExecutor } from '@orot/storage';
 import {
+  acquireIndependentReadEpoch,
   acquireProtectedReadEpoch,
   protectedSqlRead,
 } from './protectedReadEpoch';
@@ -34,8 +35,11 @@ const stamp = async (tx: SqlExecutor) => {
 export function createBoundReadResultWitness(
   owner: SqlDatabase,
   stillOwned: () => boolean,
+  options?: { readonly requireSettledOwner: boolean },
 ) {
-  const epoch = acquireProtectedReadEpoch(owner);
+  const epoch = options?.requireSettledOwner
+    ? acquireIndependentReadEpoch(owner)
+    : acquireProtectedReadEpoch(owner);
   if (!epoch) return;
   let version: string | undefined;
   const current = () => epoch.current() && stillOwned();
