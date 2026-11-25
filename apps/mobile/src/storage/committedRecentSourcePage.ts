@@ -1,4 +1,5 @@
 import { reportRecentSourceFailure } from '../providers/recentSourceFailureDiagnostic';
+import { BoundReadRevisionChanged } from './boundReadResultWitness';
 import {
   listRecentSourcePage,
   type RecentSourceCursor,
@@ -13,7 +14,7 @@ import {
 // Cold schema and startup writes can hold the first read queue longer than one second.
 // This applies only to a known unsettled owner, never to failed SQL or later pages.
 const initialContentionBudgetMs = 2_500;
-const maxInitialContentionRetries = 2;
+const maxInitialContentionRetries = 4;
 
 /** A single indexed read takes a turn on the same queue as protected writes.
  * Return no candidate, rather than a mixed snapshot, when a direct mutation
@@ -59,7 +60,7 @@ async function tryPage(
     if (!signal?.aborted && snapshot.epoch?.current()) return snapshot.rows;
     reportRecentSourceFailure(
       'recent_records_media_witness',
-      undefined,
+      snapshot.epoch ? new BoundReadRevisionChanged() : undefined,
       signal,
     );
   } finally {

@@ -117,34 +117,37 @@ export async function readProtectedRecentMaterialPage(
       throw error;
     }
   };
+  const budget = 2_500;
+  const deadline = performance.now() + budget;
   let probe: ReturnType<typeof enter>;
-  try {
-    probe = enter();
-  } catch (error) {
-    // A same-owner write can block the first witness entirely. Retry only this
-    // admission, not a catalog/SQLite failure or an existing pagination cursor.
-    if (
-      before ||
-      !(error instanceof BoundReadWitnessUnavailable) ||
-      !options.canRetry ||
-      !current()
-    )
-      throw error;
-    const budget = 2_500;
-    const deadline = performance.now() + budget;
-    if (
-      !(await awaitIndependentReadSettlement(
-        lease.database,
-        budget,
-        options.signal,
-      )) ||
-      !current() ||
-      !(await options.canRetry()) ||
-      !current() ||
-      performance.now() >= deadline
-    )
-      throw error;
-    probe = enter();
+  // The native protection round trip can admit another same-owner writer
+  // between settlement and reacquisition. Keep the first-page budget, not a stale witness.
+  for (let retries = 0; ; retries++) {
+    try {
+      probe = enter();
+      break;
+    } catch (error) {
+      // Never retry a catalog/SQLite error or move a protected pagination cursor.
+      const remaining = deadline - performance.now();
+      if (
+        before ||
+        !(error instanceof BoundReadWitnessUnavailable) ||
+        !options.canRetry ||
+        !current() ||
+        retries >= 4 ||
+        remaining <= 0 ||
+        !(await awaitIndependentReadSettlement(
+          lease.database,
+          remaining,
+          options.signal,
+        )) ||
+        !current() ||
+        !(await options.canRetry()) ||
+        !current() ||
+        performance.now() >= deadline
+      )
+        throw error;
+    }
   }
   const witness = { ...probe.witness, dispose: probe.close };
   const width = 20;
