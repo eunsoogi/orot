@@ -32,8 +32,7 @@ import type { ConversationA2UINode } from './conversationA2UI';
 import type { ConversationA2UILocalDraft } from './conversationA2UILocalDraft';
 import { versionedConversationA2UITasks } from './conversationA2UIFrameSequence';
 import { withProactiveMemory } from './proactiveConversationMemory';
-import { withReplyPreferenceSpan } from './authoredReplyPreferenceSpan';
-import { withAuthoredMemorySpan } from './authoredMemorySpanTask';
+import { versionedConversationMemoryTasks } from './versionedConversationMemoryTasks';
 export interface RagConversationMessage {
   readonly role: 'user' | 'assistant';
   readonly content: string;
@@ -236,15 +235,13 @@ export const {
   conversationTaskV22,
   conversationTaskV23,
   ragConversationTask: conversationTaskV24,
+  weightedTask,
 } = versionedConversationA2UITasks(conversationTaskV20, allowsOrdinaryA2UI);
 
-export const conversationTaskV25 = withReplyPreferenceSpan(conversationTaskV24);
-export const conversationTaskV26 = withAuthoredMemorySpan(conversationTaskV25);
-export const conversationTaskV27 = withAuthoredMemorySpan(
+export const {
   conversationTaskV25,
-  '27',
-);
-export const ragConversationTask = withAuthoredMemorySpan(
-  withReplyPreferenceSpan(conversationTaskV24, true),
-  '28',
-);
+  conversationTaskV26,
+  conversationTaskV27,
+  conversationTaskV28,
+  ragConversationTask,
+} = versionedConversationMemoryTasks(conversationTaskV24, weightedTask);

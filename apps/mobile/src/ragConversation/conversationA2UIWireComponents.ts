@@ -6,6 +6,7 @@ import {
   conversationA2UIAlignment,
   type ConversationA2UIAlignment,
 } from './conversationA2UIAlignment';
+import { isConversationA2UIRowWeight } from './conversationA2UIRowWeight';
 import {
   dataString,
   fail,
@@ -32,6 +33,7 @@ export type WireNode =
       readonly component: 'Text';
       readonly variant: TextVariant;
       readonly text: string | readonly string[];
+      readonly weight?: number;
     }
   | {
       readonly id: string;
@@ -44,6 +46,7 @@ export function parseComponents(
   value: unknown,
   allowStaticCatalog: boolean,
   allowAlignment: boolean,
+  allowRowWeight = false,
 ): WireNode[] {
   if (!Array.isArray(value) || value.length === 0 || value.length > maxNodes)
     fail();
@@ -55,14 +58,29 @@ export function parseComponents(
     seen.add(nodeId);
     const component = node.component;
     if (component === 'Text') {
-      keys(node, ['id', 'component', 'text', 'variant']);
+      keys(node, [
+        'id',
+        'component',
+        'text',
+        'variant',
+        ...(allowRowWeight ? ['weight'] : []),
+      ]);
+      const weight = node.weight;
+      if (Object.hasOwn(node, 'weight') && !isConversationA2UIRowWeight(weight))
+        fail();
       const variant = node.variant ?? 'body';
       if (
         (variant !== 'body' && variant !== 'caption') ||
         node.variant === null
       )
         fail();
-      return { id: nodeId, component, variant, text: dataString(node.text) };
+      return {
+        id: nodeId,
+        component,
+        variant,
+        text: dataString(node.text),
+        ...(isConversationA2UIRowWeight(weight) ? { weight } : {}),
+      };
     }
     // Reject these even on provisional V21 frames: replacing an unsupported
     // widget before the final frame must not retroactively make V21 valid.

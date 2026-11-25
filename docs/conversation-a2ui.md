@@ -49,3 +49,13 @@ grounding, permissions and navigation keep their existing pathways.
   The archive preserves the old paragraph boundary and can also retain an
   accepted line-based arrangement. Catalog arrangements containing tabs or static leaves use a distinct version; tab titles come from the same stored answer and open at the first panel. Provisional frames do not paint during
   model generation. No new endpoint, request, or transfer is introduced.
+
+### Bounded proportional row children
+
+Conversation task v29 additionally admits the pinned Basic Catalog's literal numeric
+`weight` on a body `Text` child directly owned by a `Row`. Ratios from 1 to 3
+divide width only when the smallest child remains readable; narrow and large-text
+layouts retain source order in a stack. Other components, scratch surfaces and
+historical tasks do not accept this property. Completed eligible replies archive
+only the validated layout ratio and reconstruct prose from the existing answer.
+No new control, URL, function, tool or external action is admitted.

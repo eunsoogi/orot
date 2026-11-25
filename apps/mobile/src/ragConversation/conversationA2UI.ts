@@ -1,3 +1,4 @@
+import { resolve, updateData } from './conversationA2UIDataTree';
 import type { ConversationA2UIAlignment } from './conversationA2UIAlignment';
 import type { ConversationA2UIStaticLeaf } from './conversationA2UIStaticCatalog';
 import {
@@ -37,6 +38,7 @@ export type ConversationA2UINode =
       readonly component: 'Text';
       readonly variant: TextVariant;
       readonly text: string;
+      readonly weight?: number;
     }
   | {
       readonly id: string;
@@ -66,39 +68,6 @@ export type ConversationA2UIState =
       readonly frameUnits: number;
     };
 
-function updateData(
-  original: Data,
-  path: readonly string[],
-  value: string | Data | null,
-): Data {
-  if (!path.length) {
-    if (typeof value === 'string') fail();
-    return value ?? Object.create(null);
-  }
-  const data: Data = Object.assign(Object.create(null), original);
-  const [segment, ...rest] = path;
-  const previous = data[segment];
-  if (rest.length) {
-    if (typeof previous === 'string') fail();
-    data[segment] = updateData(previous ?? Object.create(null), rest, value);
-  } else if (value === null) {
-    delete data[segment];
-  } else {
-    data[segment] = value;
-  }
-  return data;
-}
-
-function resolve(data: Data, path: readonly string[]): string | undefined {
-  let current: Data | string | undefined = data;
-  for (const segment of path) {
-    if (typeof current === 'string') fail();
-    current = current?.[segment];
-  }
-  if (current !== undefined && typeof current !== 'string') fail();
-  return current;
-}
-
 /** Every reference, including hidden tab panels, participates in one graph. */
 function childIds(component: WireNode): readonly string[] {
   if (component.component === 'Tabs')
@@ -111,12 +80,23 @@ function buildTree(
   data: Data,
 ): ConversationA2UINode | null {
   // Validate structural integrity across *all* components, even unrendered ones.
-  const parents = new Set<string>();
+  const parents = new Map<string, WireNode['component']>();
   for (const component of componentsById.values()) {
     for (const child of childIds(component)) {
       if (child === 'root' || parents.has(child)) fail();
-      parents.add(child);
+      parents.set(child, component.component);
     }
+  }
+  // A node cannot donate width to a sibling layout. Allow temporarily unparented
+  // non-root definitions until the same bounded update sequence installs them.
+  for (const value of componentsById.values()) {
+    const parent = parents.get(value.id);
+    if (
+      value.component === 'Text' &&
+      value.weight !== undefined &&
+      (value.id === 'root' || (parent !== undefined && parent !== 'Row'))
+    )
+      fail();
   }
   const active = new Set<string>();
   const subtreeDepths = new Map<string, number>();
@@ -187,6 +167,7 @@ export function applyConversationA2UIFrame(
   expectedSurfaceId: string,
   allowStaticCatalog = false,
   allowAlignment = false,
+  allowRowWeight = false,
 ): ConversationA2UIState | null {
   if (
     previous &&
@@ -200,6 +181,7 @@ export function applyConversationA2UIFrame(
     expectedSurfaceId,
     allowStaticCatalog,
     allowAlignment,
+    allowRowWeight,
   );
   if (frame === 'foreign') return previous;
   const invalid = {
