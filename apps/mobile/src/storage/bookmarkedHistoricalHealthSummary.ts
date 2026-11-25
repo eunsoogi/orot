@@ -7,6 +7,7 @@ import { isPeriodSummarySource } from '../diseaseHypotheses/savedSummaries';
 import type { HealthSummaryResult } from '../ragConversation/healthSummary';
 import { decodeConversationArtifact } from './conversationArtifactCodec';
 import { readStandaloneSavedHealthSummaryRow } from './standaloneSavedHealthSummary';
+import { acquireIndependentReadEpoch } from './protectedReadEpoch';
 
 export type HistoricalBookmarkedHealthSummary = HealthSummaryResult & {
   readonly historicalSnapshot: true;
@@ -82,6 +83,27 @@ export async function readBookmarkedHistoricalHealthSummary(
   current: () => boolean,
   confirmProtected: () => Promise<boolean>,
 ): Promise<HistoricalBookmarkedHealthSummary | null> {
+  if (!current()) return null;
+  const epoch = acquireIndependentReadEpoch(database);
+  if (!epoch) return null;
+  try {
+    return await readSelected(
+      database,
+      id,
+      () => current() && epoch.current(),
+      confirmProtected,
+    );
+  } finally {
+    epoch.dispose();
+  }
+}
+
+async function readSelected(
+  database: SqlDatabase,
+  id: string,
+  current: () => boolean,
+  confirmProtected: () => Promise<boolean>,
+): Promise<HistoricalBookmarkedHealthSummary | null> {
   const read = async () => {
     const result: {
       value: Awaited<ReturnType<typeof readAttestedPin>>;
@@ -106,7 +128,8 @@ export async function readBookmarkedHistoricalHealthSummary(
     return null;
   const confirmed = await reprove();
   if (!confirmed) return null;
-  const { analysis, id: summaryId, createdAt, modelName } = confirmed.body.saved;
+  const { analysis, id: summaryId, createdAt, modelName } =
+    confirmed.body.saved;
   return {
     reference: confirmed.reference,
     historicalSnapshot: true,

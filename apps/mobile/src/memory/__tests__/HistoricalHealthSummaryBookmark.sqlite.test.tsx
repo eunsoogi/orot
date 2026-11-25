@@ -4,6 +4,8 @@ import { window } from '../../aiFeatures/integration/testSupport/healthContextPe
 import { generatedReportCopy } from '../../generatedReports/text';
 import { conversationExecutionNative } from '../../ragConversation/conversationExecutionNative';
 import { setup } from '../../storage/testSupport/conversationHistoryDisplayFixture';
+import { createConversationArtifactStorage } from '../../storage/conversationArtifactStorage';
+import { guardedNativeDatabase } from '../../storage/protectedReadEpoch';
 import { openSavedGeneratedReportReferences } from '../openSavedGeneratedReportReferences';
 import { SavedMemoryDetail } from '../SavedMemoryDetail';
 
@@ -33,13 +35,16 @@ async function bookmarked() {
       "UPDATE health_observations SET payload_json=json_set(payload_json,'$.value.amount',83) WHERE id=?",
       [f.inside.id],
     );
-  const read = (confirm = jest.fn().mockResolvedValue(true)) =>
-    f.storage.readBookmarkedHistoricalHealthSummary(
+  // Use the actual protected test SQLite owner, not the fixture's diagnostic decorator.
+  const db = guardedNativeDatabase(f.db);
+  const storage = createConversationArtifactStorage(db);
+  const read = (confirm: () => Promise<boolean> = async () => true) =>
+    storage.readBookmarkedHistoricalHealthSummary(
       artifactId,
       current,
       confirm,
     );
-  return { ...f, pin, revise, read };
+  return { ...f, db, storage, pin, revise, read };
 }
 
 test('the mounted Memory detail reads the exact original after model replacement and attested correction, then retires it on native lock', async () => {
@@ -80,7 +85,9 @@ test('the mounted Memory detail reads the exact original after model replacement
       await f.storage.readSavedHealthSummaryReference(artifactId, current),
     ).toBeNull();
     expect(await f.pin()).toBe(false);
-    jest.mocked(openSavedGeneratedReportReferences).mockResolvedValue(f.storage);
+    jest
+      .mocked(openSavedGeneratedReportReferences)
+      .mockResolvedValue(f.storage);
     const load = async () =>
       (await f.storage.listSavedGeneratedReportReferences()).map(row => ({
         sourceKind: 'saved_generated_report' as const,
@@ -91,7 +98,9 @@ test('the mounted Memory detail reads the exact original after model replacement
         createdAt: Date.parse(row.savedAt),
       }));
     const memoryId = 'generated-report:' + artifactId;
-    const view = await render(<SavedMemoryDetail memoryId={memoryId} load={load} />);
+    const view = await render(
+      <SavedMemoryDetail memoryId={memoryId} load={load} />,
+    );
     try {
       const original = f.saved.analysis.hypotheses[0]!.summary;
       expect(await screen.findByText(original)).toBeVisible();
@@ -118,6 +127,7 @@ test.each([
   'denied',
   'deleted-source',
   'deleted-session',
+  'hidden-session',
   'rewritten',
   'changed-pin',
 ] as const)('historical Memory requires positive proof: %s', async scenario => {
@@ -131,6 +141,8 @@ test.each([
       await f.repository.delete('health_observation', f.inside.id);
     if (scenario === 'deleted-session')
       await f.storage.deleteSession('selected');
+    if (scenario === 'hidden-session')
+      await f.storage.hideSession('selected');
     if (scenario === 'rewritten')
       await f.db.execute(
         "UPDATE symptom_summary_runs SET result_json=json_set(result_json,'$.analysis.hypotheses[0].summary','replacement') WHERE id=?",
@@ -148,7 +160,7 @@ test.each([
   }
 });
 
-test('source or view loss during the native protection check cannot publish the old body', async () => {
+test('source loss during the native protection check cannot publish the old body', async () => {
   const f = await bookmarked();
   try {
     await f.revise();
