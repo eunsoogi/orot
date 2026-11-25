@@ -110,12 +110,14 @@ export function OverviewHeartPanel({
   state,
   workoutSelectionEpoch,
   preserveWorkoutOwner,
+  initialWorkoutChoicePending,
 }: {
   readonly width: number | '100%';
   readonly metrics: Partial<Record<HeartReading, OverviewMetricProjection>>;
   readonly state: State;
   readonly workoutSelectionEpoch?: number | null;
   readonly preserveWorkoutOwner?: boolean;
+  readonly initialWorkoutChoicePending?: boolean;
 }) {
   const focused = useIsFocused();
   // The provisional default selection is not authority for a native workout read.
@@ -157,6 +159,11 @@ export function OverviewHeartPanel({
           active={active}
           embedded
           selectionEpoch={workoutSelectionEpoch}
+          unverifiedSelection={
+            focused &&
+            state === 'loading' &&
+            initialWorkoutChoicePending === true
+          }
         />
       </View>
     </View>

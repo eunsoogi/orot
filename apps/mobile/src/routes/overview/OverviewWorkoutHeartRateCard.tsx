@@ -11,11 +11,13 @@ export function OverviewWorkoutHeartRateCard({
   active,
   embedded,
   selectionEpoch,
+  unverifiedSelection = false,
 }: {
   readonly width: number | undefined;
   readonly active: boolean;
   readonly embedded?: boolean;
   readonly selectionEpoch?: number | null;
+  readonly unverifiedSelection?: boolean;
 }) {
   const state = useOverviewWorkoutPeriodHeartRate(active, selectionEpoch);
   return (
@@ -55,7 +57,7 @@ export function OverviewWorkoutHeartRateCard({
             ? t('healthRecords.workoutHeartRate.periodAverage', {
                 mean: formatHeartRateBpm(state.mean),
               })
-            : state.status === 'loading'
+            : state.status === 'loading' || unverifiedSelection
               ? t('healthRecords.loading')
               : state.status === 'emptyVisible'
                 ? t('healthRecords.workoutHeartRate.periodEmpty')
