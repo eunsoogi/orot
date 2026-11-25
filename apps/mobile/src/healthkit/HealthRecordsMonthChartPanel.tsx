@@ -65,6 +65,7 @@ export function HealthRecordsMonthChartPanel({
     active?.projection,
     active?.failed,
   );
+  const usesDailyTotalTooltip = category === 'steps' || kind !== 'line';
   return (
     <View
       onLayout={event => setMeasuredWidth(event.nativeEvent.layout.width)}
@@ -75,8 +76,9 @@ export function HealthRecordsMonthChartPanel({
         compact
         width={measuredWidth}
         height={200}
-        hideDetails={kind !== 'line'}
-        barTooltip={kind !== 'line'}
+        hideDetails={usesDailyTotalTooltip}
+        barTooltip={usesDailyTotalTooltip}
+        lineAxis={category === 'steps' ? 'day' : 'time'}
         kind={kind}
         rangeAxis="day"
         title={healthRecordCategoryTitle(category)}

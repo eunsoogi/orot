@@ -1,6 +1,8 @@
-import { render, within } from '@testing-library/react-native';
+import { render, waitFor, within } from '@testing-library/react-native';
+import type { HealthObservationMonthChartLoader } from '@orot/storage';
 import type { ChartData } from '../../ui/charts';
 import { healthObservation } from '../../../../../packages/storage/__tests__/localQueryTestSupport';
+import { HealthRecordsMonthChartPanel } from '../HealthRecordsMonthChartPanel';
 import { HealthRecordsCategoryCard } from '../HealthRecordsCategoryCard';
 import { sleepPreviewPoints } from '../HealthRecordsSleepChart';
 import { sleepAnalysisTypeIdentifier } from '../sleep/types';
@@ -130,4 +132,53 @@ test('Sleep mounts a daily minutes line and keeps its detail action below chart 
   );
   expect(empty.data.coverage.status).toBe('empty');
   expect(empty.data.series[0].points).toEqual([]);
+});
+
+test('Records Steps uses the shared day line and keeps its floating total tooltip', async () => {
+  const window = {
+    fromInclusive: '2026-11-01T00:00:00.000Z',
+    toInclusive: '2026-11-30T12:00:00.000Z',
+  };
+  const load = jest
+    .fn<
+      ReturnType<HealthObservationMonthChartLoader>,
+      Parameters<HealthObservationMonthChartLoader>
+    >()
+    .mockResolvedValue({
+      kind: 'quantity',
+      rows: [
+        {
+          effectiveAt: new Date(2026, 10, 8, 12).toISOString(),
+          concept: 'step_count',
+          unit: 'count',
+          source: '["imported","healthkit","synthetic","watch"]',
+          sampleCount: 2,
+          min: 15,
+          max: 25,
+          mean: 20,
+          sum: 40,
+        },
+      ],
+    });
+  const view = await render(
+    <HealthRecordsMonthChartPanel
+      category="steps"
+      load={load}
+      window={window}
+    />,
+  );
+  await waitFor(() => {
+    const chart = view.getByTestId('health-record-chart-values-steps');
+    expect(JSON.parse(chart.props.children)).toMatchObject({
+      kind: 'line',
+      lineAxis: 'day',
+      barTooltip: true,
+      hideDetails: true,
+      data: {
+        xWindow: window,
+        series: [{ points: [{ x: '2026-11-08', value: 40 }] }],
+      },
+    });
+  });
+  expect(load).toHaveBeenCalledWith('steps', window);
 });
