@@ -10,7 +10,10 @@ import {
   listSupersededTranscriptRevisionIds,
 } from './agentMemoryStorageRecords';
 import { openLocalAgentMemoryDatabase } from './secureDatabase';
-import { acquireIndependentReadEpoch } from './protectedReadEpoch';
+import {
+  acquireIndependentReadEpoch,
+  awaitIndependentReadSettlement,
+} from './protectedReadEpoch';
 import { hasHistoricalMemoryRevocation } from './historicalMemoryRevocation';
 import { ownsHistoricalVisitMemory } from './historicalVisitMemoryAuthority';
 import { conversationExecutionNative } from '../ragConversation/conversationExecutionNative';
@@ -29,8 +32,9 @@ export async function readHistoricalSavedMemory(
   if (!id || id !== id.trim()) return null;
   const protection = conversationExecutionNative();
   if (!protection?.bridgeAvailable) return null;
-  let active = true;
-  const current = () => active && protection.currentPhase?.() === 'active';
+  const lifetime = new AbortController();
+  const current = () =>
+    !lifetime.signal.aborted && protection.currentPhase?.() === 'active';
   const confirm = async () => {
     try {
       return (await protection.protectedDataAvailable()) === true;
@@ -43,15 +47,36 @@ export async function readHistoricalSavedMemory(
       event.kind === 'phase' ||
       (event.kind === 'protectedData' && !event.available)
     )
-      active = false;
+      lifetime.abort();
   });
   try {
     if (!current() || !(await confirm()) || !current()) return null;
     // A cached encrypted handle alone does not prove the device can currently reveal data.
     const database = await openLocalAgentMemoryDatabase();
     if (!current()) return null;
-    const epoch = acquireIndependentReadEpoch(database);
-    if (!epoch) return null;
+    let epoch = acquireIndependentReadEpoch(database);
+    if (!epoch) {
+      // A legitimate write on this owner can delay the initial witness. Only
+      // retry admission, not a failed historical proof or a selected stale row.
+      const budget = 2_500;
+      const deadline = performance.now() + budget;
+      if (
+        !(await awaitIndependentReadSettlement(
+          database,
+          budget,
+          lifetime.signal,
+        )) ||
+        !current() ||
+        !(await confirm()) ||
+        !current() ||
+        (await openLocalAgentMemoryDatabase()) !== database ||
+        !current() ||
+        performance.now() >= deadline
+      )
+        return null;
+      epoch = acquireIndependentReadEpoch(database);
+      if (!epoch) return null;
+    }
     try {
       let result: HistoricalMemory | null = null;
       await database.transaction(async tx => {
@@ -68,6 +93,7 @@ export async function readHistoricalSavedMemory(
       epoch.dispose();
     }
   } finally {
+    lifetime.abort();
     unsubscribe();
   }
 }
