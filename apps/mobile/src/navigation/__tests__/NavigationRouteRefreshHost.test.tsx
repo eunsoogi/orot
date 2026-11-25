@@ -118,7 +118,7 @@ describe('shared route refresh control', () => {
     };
     function Detail() {
       useEffect(() => {
-        read().catch(() => undefined);
+        load();
       }, []);
       useNavigationRouteRefresh(true, async accept => {
         if (!allow) return;
