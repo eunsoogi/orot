@@ -152,7 +152,7 @@ export function useOverviewMetrics() {
         const storage = require('../../storage/secureDatabase');
         const now = new Date();
         if (discardRetries === 0 && authenticatedSelection.current === 0)
-          void storage.readIsolatedOverview
+          storage.readIsolatedOverview
             ?.readWorkoutChoice?.(controller.signal, receipt => {
               if (
                 isCurrent() &&
