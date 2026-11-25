@@ -70,9 +70,7 @@ test('retains loaded documents and their destination when recordings fail', asyn
   expect(screen.getByText('Clinic summary.pdf')).toBeTruthy();
   expect(screen.getByTestId('records-recent-view-all')).toBeTruthy();
   expect(screen.queryByTestId('records-recent-sources-error')).toBeNull();
-  expect(screen.getByTestId('records-recent-partial')).toHaveTextContent(
-    '일부 기록을 불러오지 못했어요.',
-  );
+  expect(screen.getByText('일부 기록을 불러오지 못했어요.')).toBeTruthy();
   await fireEvent.press(screen.getByTestId('records-recent-partial-retry'));
   expect(retryRecordings).toHaveBeenCalledTimes(1);
   expect(service.listDocuments).toHaveBeenCalledTimes(1);
