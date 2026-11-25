@@ -114,7 +114,7 @@ test('keeps recording under Records when leaving an conversation route', async (
   );
 });
 
-test('raises only the Conversation profile visuals when the native indicator moves to the top', async () => {
+test('lifts Conversation visuals using the top indicator', async () => {
   jest
     .spyOn(AccessibilityInfo, 'isReduceMotionEnabled')
     .mockResolvedValue(true);
@@ -135,7 +135,8 @@ test('raises only the Conversation profile visuals when the native indicator mov
         nativeEvent: { ...geometry, systemTopBarFrame },
       });
     await update();
-    expect(await screen.findByTestId('navigation-right-rail-host')).toBeTruthy();
+    const rail = await screen.findByTestId('navigation-right-rail-host');
+    expect(rail).toBeTruthy();
 
     const identity = await screen.findByTestId('assistant-floating-identity');
     const artwork = screen.getByTestId('assistant-profile-artwork');
@@ -168,7 +169,8 @@ test('raises only the Conversation profile visuals when the native indicator mov
     expect(artwork.props.style).toEqual(ordinaryArtwork);
     expect(label.props.style).toEqual(ordinaryLabel);
     await fireEvent.press(identity);
-    expect(await screen.findByTestId('assistant-appearance-scroll')).toBeTruthy();
+    const editor = await screen.findByTestId('assistant-appearance-scroll');
+    expect(editor).toBeTruthy();
   } finally {
     await app.unmount();
     Dimensions.set({ window });
