@@ -36,13 +36,13 @@ const row = frame('updateComponents', {
     { id: 'content', component: 'Row', children: ['first', 'second'] },
   ],
 });
-const loadingEnvelope = JSON.stringify({
+const envelope = JSON.stringify({
   type: 'result',
-  value: { answerKind: 'conversation', answer, a2uiFrames: [] },
+  value: { answerKind: 'conversation', answer, a2uiFrames: [create, row] },
   citations: [],
-}).split('[]')[0]!;
-const firstPart = loadingEnvelope + JSON.stringify(create) + ',';
-const secondPart = JSON.stringify(row) + ']},"citations":[]}';
+});
+const firstPart = envelope.slice(0, envelope.indexOf(JSON.stringify(row)));
+const secondPart = envelope.slice(firstPart.length);
 
 function chatGPTFixture() {
   let subscribe: ((event: ChatGPTPlanNativeEvent) => void) | undefined;
@@ -192,8 +192,7 @@ test.each(['complete', 'Stop', 'leave and return'] as const)(
         { kind: 'row', slots: 2 },
       ]);
       if (ending === 'Stop') sessions.cancel(1);
-      const full = firstPart + secondPart;
-      native.emit({ requestId, type: 'completed', text: full });
+      native.emit({ requestId, type: 'completed', text: envelope });
       await run;
       await view.rerender(transcript());
       expect(
