@@ -1,3 +1,4 @@
+import { GeneratedVisitQuestionPreview } from './GeneratedVisitQuestionPreview';
 import { conversationDailyReportText } from '../aiFeatures/integration/conversationDailyReportText';
 import { GeneratedReportContent } from '../generatedReports/GeneratedReportContent';
 import { openGeneratedReportReader } from '../generatedReports/readers';
@@ -129,14 +130,9 @@ export function SavedGeneratedReportDetail({
       ) : typeof result === 'string' ? (
         <AppText selectable>{result}</AppText>
       ) : 'bookmarkedVisitQuestions' in result ? (
-        result.bookmarkedVisitQuestions.map(question => (
-          <View key={question.id}>
-            <AppText selectable>{question.questionText}</AppText>
-            {question.rationale ? (
-              <AppText selectable>{question.rationale}</AppText>
-            ) : null}
-          </View>
-        ))
+        <GeneratedVisitQuestionPreview
+          questions={result.bookmarkedVisitQuestions}
+        />
       ) : 'paragraphs' in result ? (
         <GeneratedReportContent detail={result} />
       ) : (

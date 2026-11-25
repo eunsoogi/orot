@@ -18,6 +18,7 @@ export function captureReportBookmarkOwner(input: {
   readonly mounted?: () => boolean;
   readonly allowDraftChanges?: boolean;
   readonly allowOwnSend?: boolean;
+  readonly onLost?: () => void;
 }) {
   const { store, sessionId, current } = input;
   const route = current?.route;
@@ -66,8 +67,13 @@ export function captureReportBookmarkOwner(input: {
     invalidated = true;
     for (const cleanup of cleanups.splice(0)) cleanup();
   };
+  const revoke = () => {
+    if (invalidated) return;
+    close();
+    input.onLost?.();
+  };
   const check = () => {
-    if (!invalidated && !stillCurrent()) close();
+    if (!invalidated && !stillCurrent()) revoke();
     return !invalidated;
   };
   const track = (unsubscribe: (() => void) | undefined) => {
@@ -80,11 +86,11 @@ export function captureReportBookmarkOwner(input: {
   track(route?.subscribe(check));
   track(
     current?.subscribeRoot?.(visible => {
-      if (!visible) close();
+      if (!visible) revoke();
     }),
   );
   const appState = AppState.addEventListener('change', state => {
-    if (state !== 'active') close();
+    if (state !== 'active') revoke();
   });
   track(() => appState.remove());
   return { current: check, close };
