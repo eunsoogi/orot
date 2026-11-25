@@ -115,6 +115,18 @@ export function createConversationRetentionBridge(input: {
                 outcome.answer,
               )
             : undefined;
+        // A shortcut itself is not current user prose. A typed follow-up can
+        // carry a validated span only outside a specific report/visit request.
+        const allowAuthoredSpan =
+          !input.submittedInput &&
+          input.observer?.inputOrigin === 'composer' &&
+          (!input.entryContext ||
+            input.entryContext.intent === 'conversation' ||
+            (input.entryContext.intent === 'possibilities' &&
+              !input.entryContext.typedPossibilityReport &&
+              !input.entryContext.appointmentId &&
+              !input.entryContext.dailyReport &&
+              !input.entryContext.reportRequest));
         return {
           question: input.question,
           ...(archivedA2UILayout ? { archivedA2UILayout } : {}),
@@ -132,16 +144,10 @@ export function createConversationRetentionBridge(input: {
             input.observer?.inputOrigin === 'composer')
             ? { proactiveMemory: true as const }
             : {}),
-          ...(outcome.replyPreferenceSpan &&
-          !input.submittedInput &&
-          input.observer?.inputOrigin === 'composer' &&
-          (!input.entryContext || input.entryContext.intent === 'conversation')
+          ...(outcome.replyPreferenceSpan && allowAuthoredSpan
             ? { replyPreferenceSpan: outcome.replyPreferenceSpan }
             : {}),
-          ...(outcome.authoredRoutineSpan &&
-          !input.submittedInput &&
-          input.observer?.inputOrigin === 'composer' &&
-          (!input.entryContext || input.entryContext.intent === 'conversation')
+          ...(outcome.authoredRoutineSpan && allowAuthoredSpan
             ? { authoredRoutineSpan: outcome.authoredRoutineSpan }
             : {}),
           providerId: input.providerId,

@@ -38,6 +38,10 @@ test.each([
   'mixed routine with only preferences enabled',
   'mixed routine omitted',
   'mixed routine fabricated',
+  'mixed typed authored follow-up',
+  'mixed typed routine follow-up',
+  'mixed typed shortcut with identical phrase',
+  'mixed typed report',
 ] as const)(
   'a real live retained session saves only an eligible local note: %s',
   async mode => {
@@ -133,14 +137,18 @@ test.each([
           }),
         },
       });
-      const typed = mode.startsWith('typed');
+      const typed = mode.includes('typed');
+      const requestedReport = mode === 'mixed typed report';
       const shortcut = mode.includes('shortcut');
       const hasGrant =
         !mode.includes('disabled') &&
         mode !== 'routine with wrong-scope receipt' &&
         (!isRoutine || Boolean(routineReceipt));
       const acceptedProposal =
-        !mixed || (!mode.includes('omitted') && !mode.includes('fabricated'));
+        !mixed ||
+        (!mode.includes('omitted') &&
+          !mode.includes('fabricated') &&
+          !requestedReport);
       const expectedWrite =
         hasGrant &&
         !shortcut &&
@@ -175,6 +183,19 @@ test.each([
                 ? 'I practice the piano every Monday.'
                 : 'For future replies, I prefer detailed answers.',
               mode,
+              ...(typed
+                ? {
+                    context: {
+                      intent: entryContext!.intent,
+                      ...(shortcut
+                        ? { explicitPossibilityChoice: true }
+                        : { authoredCurrentRequest: true }),
+                      ...(entryContext?.typedPossibilityReport
+                        ? { typedPossibilityReport: true }
+                        : {}),
+                    },
+                  }
+                : {}),
             })
           : undefined;
         const response = await bridge.finish({
@@ -190,6 +211,7 @@ test.each([
         setConversationEntryForSession(sessions, 1, {
           intent: 'possibilities',
           entryKey: 'selected-current-choice',
+          ...(requestedReport ? { typedPossibilityReport: true } : {}),
         });
       sessions.setDraft(1, question);
       const dispatch = entryIntentSender(

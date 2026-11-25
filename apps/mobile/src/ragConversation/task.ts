@@ -240,7 +240,11 @@ export const {
 
 export const conversationTaskV25 = withReplyPreferenceSpan(conversationTaskV24);
 export const conversationTaskV26 = withAuthoredMemorySpan(conversationTaskV25);
-export const ragConversationTask = withAuthoredMemorySpan(
+export const conversationTaskV27 = withAuthoredMemorySpan(
   conversationTaskV25,
-  true,
+  '27',
+);
+export const ragConversationTask = withAuthoredMemorySpan(
+  withReplyPreferenceSpan(conversationTaskV24, true),
+  '28',
 );

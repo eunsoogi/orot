@@ -7,10 +7,10 @@ import type { GroundedRagAnswer } from './task';
 import { isObject } from './taskHistory';
 
 /** Historical v26 accepts mixed-composer proposals only on dialogue replies.
- * Fresh v27 retains the same wire schema and may also accept a grounded reply. */
+ * v27 adds grounded replies; v28 admits owned possibilities follow-up prose. */
 export function withAuthoredMemorySpan(
   preferenceTask: TaskResponderContract<GroundedRagAnswer>,
-  allowGrounded = false,
+  version: '26' | '27' | '28' = '26',
 ): TaskResponderContract<GroundedRagAnswer> {
   const schemaFor = (
     input: Parameters<
@@ -20,7 +20,7 @@ export function withAuthoredMemorySpan(
     preferenceTask.createResultSchema?.(input) ?? preferenceTask.resultSchema;
   return {
     ...preferenceTask,
-    taskVersion: allowGrounded ? '27' : '26',
+    taskVersion: version,
     createResultSchema(input) {
       const schema = schemaFor(input);
       if (
@@ -61,7 +61,7 @@ export function withAuthoredMemorySpan(
       if (
         validated.status !== 'valid' ||
         (validated.value.answerKind !== 'conversation' &&
-          !(allowGrounded && validated.value.answerKind === 'grounded')) ||
+          !(version !== '26' && validated.value.answerKind === 'grounded')) ||
         !isObject(schema.properties) ||
         !('replyPreferenceSpan' in schema.properties)
       )

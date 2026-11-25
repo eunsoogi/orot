@@ -7,6 +7,7 @@ export function syntheticAuthoredMemorySelection(input: {
   span: string;
   invalid: string;
   mode: string;
+  context?: import('@orot/model-runtime').JsonValue;
 }) {
   const result = ragConversationTask.validateResult(
     {
@@ -22,6 +23,7 @@ export function syntheticAuthoredMemorySelection(input: {
     },
     {
       request: input.message,
+      context: input.context,
       evidence: { items: [], coverage: [], conflicts: [] },
     },
   );
