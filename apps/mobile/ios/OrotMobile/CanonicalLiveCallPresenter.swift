@@ -21,7 +21,12 @@ final class CanonicalLiveCallPresenter {
     }
 
     static func isAvailable() -> Bool {
-        MainActor.assumeIsolated {
+        #if OROT_TESTS && targetEnvironment(simulator)
+            if ComposedCanonicalOpenFixture.requested, ComposedCanonicalOpenFixture.session?.protectedBlocked == true {
+                return false
+            }
+        #endif
+        return MainActor.assumeIsolated {
             UIApplication.shared.applicationState == .active && UIApplication.shared.isProtectedDataAvailable
         }
     }
@@ -122,15 +127,43 @@ final class CanonicalLiveCallPresenter {
 }
 
 extension VoiceRealtimeModule {
+    static func canonicalReviewEnabled(_ identifier: String) -> Bool {
+        #if OROT_TESTS && targetEnvironment(simulator)
+            if ComposedCanonicalOpenFixture.requested {
+                return ComposedCanonicalOpenFixture.allowed && ComposedCanonicalOpenFixture.session?.id == identifier
+            }
+        #endif
+        return RealtimeVoiceCanonicalHealthAdmission.enabledForLiveBridge
+    }
+
+    static func canonicalAuthority(_ service: String, _ account: String) -> [String: Any]? {
+        #if OROT_TESTS && targetEnvironment(simulator)
+            if ComposedCanonicalOpenFixture.requested {
+                return ComposedCanonicalOpenFixture.read(service, account)
+            }
+        #endif
+        return RealtimeVoiceCanonicalHealthAdmission.read(service, account)
+    }
+
+    func emitCanonicalReviewEvent(_ name: String, _ body: [String: Any]) {
+        #if OROT_TESTS && targetEnvironment(simulator)
+            if ComposedCanonicalOpenFixture.requested {
+                ComposedCanonicalOpenFixture.session?.receive(name, body)
+                return
+            }
+        #endif
+        sendEvent(withName: name, body: body)
+    }
+
     @objc(reviewCanonicalLiveCall:canonical:baseline:resolver:rejecter:)
     func reviewCanonicalLiveCall(_ identifier: String, canonical: NSDictionary, baseline: NSDictionary,
                                  resolver resolve: @escaping RCTPromiseResolveBlock, rejecter _: @escaping RCTPromiseRejectBlock)
     {
         DispatchQueue.main.async { [self] in
-            guard RealtimeVoiceCanonicalHealthAdmission.enabledForLiveBridge, active == nil,
+            guard Self.canonicalReviewEnabled(identifier), active == nil,
                   let scope = RealtimeVoiceCanonicalHealthAdmission(canonical),
                   let grant = LiveResponsesSettingsGrant(baseline),
-                  let key = RealtimeVoiceCanonicalHealthAdmission.read(
+                  let key = Self.canonicalAuthority(
                       "com.orot.mobile.voice-settings.v1", "voice-settings",
                   )?["apiKey"] as? String
             else {
@@ -139,7 +172,7 @@ extension VoiceRealtimeModule {
             }
             canonicalCallReview.begin(.init(call: identifier, capability: scope), current: { [weak self] in
                 guard let self else { return false }
-                return active == nil && scope.current(base: grant, key: key)
+                return active == nil && scope.current(base: grant, key: key, read: Self.canonicalAuthority)
             }, decide: { decision in
                 resolve(decision)
             })

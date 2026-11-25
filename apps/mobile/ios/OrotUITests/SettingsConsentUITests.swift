@@ -64,7 +64,8 @@ final class SettingsConsentUITests: OrotFailFastTestCase {
             app.launchArguments += ["-OROT_TEST_HOST", "-OROT_SETTINGS_CONSENT_BOUNDARIES", "synthetic"]
         }
         if canonicalQueue {
-            app.launchArguments += ["-OROT_SETTINGS_CONSENT_CANONICAL_QUEUE", "synthetic"]
+            app.launchArguments += ["-OROT_SETTINGS_CONSENT_CANONICAL_QUEUE", "synthetic",
+                                    "-OROT_SETTINGS_CONSENT_CANONICAL_OPEN", "synthetic"]
         }
         app.launch()
         if canonicalQueue {
@@ -73,6 +74,23 @@ final class SettingsConsentUITests: OrotFailFastTestCase {
             XCTAssertTrue(UITestConditions.exists(node(app, "settings-boundary-status")))
         } else if phase != "cleanup" {
             XCTAssertTrue(UITestConditions.exists(node(app, "settings-consent-native-inspect")))
+        }
+    }
+
+    @MainActor
+    private func verifyComposedCanonicalOpen(_ app: XCUIApplication) {
+        let status = node(app, "settings-canonical-open-status")
+        for scenario in ["open-allow", "open-decline", "open-mismatch", "open-reject-transfer", "open-locked", "open-retired"] {
+            tap(app, "settings-canonical-" + scenario)
+            let review = app.alerts["이번 통화에서 건강 기록 도구를 사용할까요?"]
+            XCTAssertTrue(UITestConditions.exists(review))
+            if scenario == "open-retired" {
+                XCUIDevice.shared.press(.home)
+                app.activate()
+            } else {
+                review.buttons[scenario == "open-decline" ? "음성만 사용" : "이번 통화에 사용"].tap()
+            }
+            XCTAssertTrue(wait { UITestConditions.text(status) == scenario + "-passed" })
         }
     }
 
@@ -106,6 +124,8 @@ final class SettingsConsentUITests: OrotFailFastTestCase {
             expectStatus("queue-\(scenario)-passed")
             expectInvocations(index + 1)
         }
+
+        verifyComposedCanonicalOpen(app)
 
         // Retain stored pair/SQL rows deliberately while invalidating the authority witness.
         tap(app, prefix + "review")

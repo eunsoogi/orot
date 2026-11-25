@@ -9,8 +9,8 @@ final class VoiceRealtimeModule: RCTEventEmitter {
             self?.sendEvent(withName: event, body: body)
         }
         #if OROT_TESTS && targetEnvironment(simulator)
-            if SettingsConsentRealtimeFixture.requested {
-                return SettingsConsentRealtimeFixture.makeCall(emit: emit)
+            if let fixture = ComposedCanonicalOpenFixture.fixtureCall(emit: emit) {
+                return fixture
             }
         #endif
         return RealtimeVoiceCall(systemCall: VoiceSystemCallLifecycle.shared, emit: emit)
@@ -24,7 +24,6 @@ final class VoiceRealtimeModule: RCTEventEmitter {
             DispatchQueue.main.async { resolve(SettingsConsentRealtimeFixture.snapshot(lateEvent: lateEvent)) }
         }
     #endif
-
     private(set) var active: String?
     private var responsesMailbox: OwnedLiveResponsesMailbox?
     private let resultAuthority = LiveNativeResultDispatchAuthority()
@@ -47,7 +46,8 @@ final class VoiceRealtimeModule: RCTEventEmitter {
     {
         DispatchQueue.main.async { [self] in
             guard active == nil else { reject("VOICE_BUSY", "Voice is already active.", nil); return }
-            guard RealtimeVoiceCanonicalHealthAdmission.permitsStartupOptions(options),
+            let read = Self.canonicalAuthority
+            guard RealtimeVoiceCanonicalHealthAdmission.permitsStartupOptions(options, enabled: Self.canonicalReviewEnabled(identifier)),
                   Set(options.allKeys.compactMap { $0 as? String }).isSubset(of: ["language", "voice", "responsesGrant", "canonicalHealthGrant", "canonicalHealthDeclaration"]),
                   let language = options["language"] as? String, let voice = options["voice"] as? String
             else {
@@ -56,25 +56,25 @@ final class VoiceRealtimeModule: RCTEventEmitter {
             let canonicalRequested = options["canonicalHealthGrant"] != nil || options["canonicalHealthDeclaration"] != nil
             var admission: LiveResponsesAdmission?
             if let request = options["responsesGrant"] {
-                guard let grant = LiveResponsesSettingsGrant(request), grant.isCurrent(key: apiKey) else {
+                guard let grant = LiveResponsesSettingsGrant(request), grant.isCurrent(key: apiKey, read: read) else {
                     reject("VOICE_LIVE_FAILED", "Live voice is unavailable.", nil); return
                 }
                 if canonicalRequested {
                     guard let request = options["canonicalHealthGrant"],
                           let companion = RealtimeVoiceCanonicalHealthAdmission(request),
                           let declaration = options["canonicalHealthDeclaration"] as? [String: Any],
-                          companion.configuration(declaration, base: grant, key: apiKey) != nil,
+                          companion.configuration(declaration, base: grant, key: apiKey, read: read) != nil,
                           canonicalCallReview.consume(.init(call: identifier, capability: companion))
                     else { reject("VOICE_LIVE_FAILED", "Live voice is unavailable.", nil); return }
                     let mailbox = RealtimeVoiceCanonicalHealthMailbox(
-                        call: identifier, baseline: grant, capability: companion, authority: resultAuthority, key: apiKey,
+                        call: identifier, baseline: grant, capability: companion, authority: resultAuthority, key: apiKey, read: read,
                         owns: { [weak self] request in
                             guard let self else { return false }
                             return active == request.call && call.id == request.call && call.liveSessionID == request.session
                                 && call.liveSocketEpoch == request.epoch && call.ready && !call.paused
                                 && call.token != nil && call.foreground() && call.liveIsCurrent()
                         },
-                        emit: { [weak self] event, body in self?.sendEvent(withName: event, body: body) },
+                        emit: { [weak self] event, body in self?.emitCanonicalReviewEvent(event, body) },
                     )
                     responsesMailbox = OwnedLiveResponsesMailbox(identifier: identifier, mode: .canonical(mailbox, grant))
                     admission = mailbox.bridge(backendModel: grant.backendModel, declaration: declaration)
