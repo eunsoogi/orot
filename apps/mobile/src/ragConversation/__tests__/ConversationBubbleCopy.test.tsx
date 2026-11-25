@@ -206,7 +206,7 @@ test.each(['live', 'restored', 'pending shortcut', 'without copy'] as const)(
     );
     const shell = screen.getByTestId('conversation-user-message');
     const body = within(shell).getByTestId('conversation-message-body');
-    const isolated = mode === 'live' || mode === 'restored';
+    const isolated = mode !== 'without copy';
     let position = shell;
     if (isolated) {
       let parent = shell.parent;
