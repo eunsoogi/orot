@@ -169,7 +169,13 @@ test('starts the newly selected recording when the prior library playback is pen
   await fireEvent.press(
     await screen.findByTestId('recording-playback-list-button-recording-ui-1'),
   );
-  expect(playbackService.playRange).toHaveBeenCalledWith(source.id, 0, 372000);
+  expect(playbackService.playRange).toHaveBeenNthCalledWith(
+    1,
+    source.id,
+    0,
+    372000,
+    expect.any(Symbol),
+  );
   expect(screen.getByLabelText('녹음 재생 중…')).toBeTruthy();
 
   await fireEvent.press(
@@ -177,10 +183,14 @@ test('starts the newly selected recording when the prior library playback is pen
   );
 
   await waitFor(() =>
-    expect(playbackService.playRange).toHaveBeenCalledWith(
+    expect(playbackService.playRange).toHaveBeenNthCalledWith(
+      2,
       secondSource.id,
       0,
       372000,
+      expect.any(Symbol),
     ),
   );
+  const [first, second] = jest.mocked(playbackService.playRange).mock.calls;
+  expect(second?.[3]).not.toBe(first?.[3]);
 });
