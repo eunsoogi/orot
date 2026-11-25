@@ -96,19 +96,20 @@ export function createRagConversationService(
         registry,
         signal,
       });
+      const preparedHistory = await prepareConversationHistory(
+        {
+          messages: previousMessages,
+          session: observer?.retentionSession,
+          retainedHistory: observer?.retainedHistory,
+          data,
+          registry,
+          signal,
+        },
+        report,
+        { entry: entryContext, hasPhoto: !!photo, question: request },
+      );
       const { history, historyIsCurrent, researchInputs, guardHistory } =
-        await prepareConversationHistory(
-          {
-            messages: previousMessages,
-            session: observer?.retentionSession,
-            retainedHistory: observer?.retainedHistory,
-            data,
-            registry,
-            signal,
-          },
-          report,
-          { entry: entryContext, hasPhoto: !!photo },
-        );
+        (await preparedHistory.prepareAfterOpening(opening)) ?? preparedHistory;
       const external = conversationExternalEvidence({
         ...deps,
         selected,
@@ -118,8 +119,6 @@ export function createRagConversationService(
         researchInputs,
         owner: history.recoveredOwnerIsCurrent,
       });
-      opening[history.recoveredOwnerIsCurrent ? 'dispose' : 'ready']();
-      await opening.done;
       const searchPlan = await planSearch({
         external,
         observer,
