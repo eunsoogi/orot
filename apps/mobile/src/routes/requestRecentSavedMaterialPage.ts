@@ -2,6 +2,7 @@ import {
   reportRecentReadStage,
   reportRecentReadCompletion,
   observeRecentReadStage,
+  enterRecentReadGate,
 } from './recentSavedMaterialReadDiagnostics';
 import {
   isWitnessedPage,
@@ -77,7 +78,7 @@ export async function requestRecentSavedMaterialPage<Row extends RecentPageRow>(
   // Its old operation may not publish or turn that gap into a Retry alert.
   const ownsRead = () =>
     inTab() && canAccess() && (load.sourceIsCurrent?.() ?? true);
-  if (!ownsRead() || pending.current) return false;
+  if (!enterRecentReadGate(inTab, canAccess, load, pending)) return false;
   const operation = new AbortController();
   pending.current = operation;
   const current = () => ownsRead() && !operation.signal.aborted;

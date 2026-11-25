@@ -1,3 +1,4 @@
+import OSLog
 import React
 import React_RCTAppDelegate
 import ReactAppDependencyProvider
@@ -22,6 +23,14 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
         didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]? = nil,
     ) -> Bool {
         self.launchOptions = launchOptions
+
+        // Confirm that launch opt-in reached this process before the JS bridge starts.
+        if ProcessInfo.processInfo.arguments.contains("-OROT_PROVIDER_DIAGNOSTICS") {
+            let diagnostics = Logger(subsystem: "com.orot.mobile", category: "provider-diagnostics")
+            diagnostics.notice(
+                "OROT_PROVIDER_DIAGNOSTIC layer=native feature=pipeline stage=launch_opt_in outcome=completed",
+            )
+        }
 
         #if OROT_TESTS && targetEnvironment(simulator)
             if TestFixtureCommand.runIfRequested() {
