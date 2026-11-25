@@ -110,9 +110,11 @@ describe('shared route refresh control', () => {
     const held = new Promise<void>(resolve => {
       complete = resolve;
     });
-    const read = jest.fn(async () => undefined);
+    const load = jest.fn();
+    const retryRead = jest.fn();
+    const gestureRead = jest.fn();
     const retry = () => {
-      read().catch(() => undefined);
+      retryRead();
     };
     function Detail() {
       useEffect(() => {
@@ -122,7 +124,7 @@ describe('shared route refresh control', () => {
         if (!allow) return;
         accept();
         accept();
-        await read();
+        gestureRead();
         await held;
       });
       return <Text onPress={retry}>Synthetic Retry</Text>;
@@ -137,13 +139,15 @@ describe('shared route refresh control', () => {
           controller={controller}
           scrollable={route => appRouteIsScrollable(route, 'conversation')}
         >
-          {() => <Detail />}
+          {({ route }) =>
+            route.name === 'home' ? <Text>Home</Text> : <Detail />
+          }
         </NavigationRouteAdapter>,
       );
       expect(impact).not.toHaveBeenCalled();
-      expect(read).toHaveBeenCalledTimes(1);
+      expect(load).toHaveBeenCalled();
       await fireEvent.press(screen.getByText('Synthetic Retry'));
-      expect(read).toHaveBeenCalledTimes(2);
+      expect(retryRead).toHaveBeenCalledTimes(1);
       expect(impact).not.toHaveBeenCalled();
       const scroll = screen.getByTestId('navigation-route-scroll');
       const { onRefresh: pull } = scroll.props.refreshControl.props;
@@ -158,7 +162,7 @@ describe('shared route refresh control', () => {
         await pull();
       });
       expect(impact).toHaveBeenCalledTimes(1);
-      expect(read).toHaveBeenCalledTimes(3);
+      expect(gestureRead).toHaveBeenCalledTimes(1);
       await act(async () => {
         complete();
         await first;
