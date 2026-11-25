@@ -10,6 +10,11 @@ import { withWritePeriodCalculations } from './writePeriodCalculationScope';
 import type { dailyReportAutomaticMemorySetting } from './dailyReportAutomaticMemorySetting';
 
 type Lease = Readonly<{ id: string; version: number }>;
+export type DailyReportBookmarkTarget = Readonly<{
+  runId: string;
+  revision: number;
+  identityKey: string;
+}>;
 
 export const visibleDailyReportBookmarks = `FROM saved_generated_report_refs b
   JOIN conversation_artifacts a ON a.id = b.artifact_id
@@ -50,10 +55,14 @@ export function createDailyReportBookmark(
       lease: Lease;
       current: () => boolean;
       savedAt?: string;
+      displayedReport?: DailyReportBookmarkTarget;
     },
     automatic?: { token: object; runId: string; revision: number },
   ) {
     if (!input.current()) return false;
+    // Only the explicit tap equality gate uses display metadata; prove the
+    // canonical artifact and its report revision again within the owner.
+    const displayed = input.displayedReport && { ...input.displayedReport };
     const automaticCurrent = automatic
       ? setting.consume(automatic.token, input)
       : undefined;
@@ -90,6 +99,16 @@ export function createDailyReportBookmark(
         ),
       );
       const reference = artifact.dailyReport;
+      if (
+        displayed &&
+        (artifact.healthSummary ||
+          artifact.visitQuestions ||
+          reference.runId !== displayed.runId ||
+          reference.revision !== displayed.revision ||
+          reference.identity.key !== displayed.identityKey ||
+          !(await completedDailyReportRequest(tx, artifact.id, input.lease)))
+      )
+        return;
       if (
         automatic &&
         (!automaticCurrent ||

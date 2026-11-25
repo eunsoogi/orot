@@ -9,6 +9,7 @@ import { AppText } from '../layout/AppText';
 import { t } from '../i18n';
 import { useConversationSessions } from './ConversationSessionsContext';
 import type { DisplayMessage } from './conversationDisplayMessage';
+import type { DailyReportBookmarkTarget } from '../storage/dailyReportMemoryBookmark';
 
 export const GeneratedReportBookmarkContext = createContext<{
   readonly sessionId: number;
@@ -28,31 +29,43 @@ export function GeneratedReportBookmark({
       ? message.voiceTimelineOrder?.id
       : undefined);
   const summary = message.healthSummary?.analysis.savedSummary;
-  // Daily reports remain in report history. Rendering an answer must not
-  // save a Memory reference or reuse the separate health-summary action.
+  const daily = message.dailyReport;
   const bookmarkableSummary =
-    !message.dailyReport &&
-    summary?.status === 'saved' &&
-    !summary.sourceChanged;
+    !daily && summary?.status === 'saved' && !summary.sourceChanged;
   if (
     !owner ||
     message.role !== 'assistant' ||
-    !bookmarkableSummary ||
+    (!daily && !bookmarkableSummary) ||
+    (daily && (message.healthSummary || message.visitQuestions)) ||
     !artifactId ||
     message.streaming ||
     message.incomplete
   )
     return null;
+  // A tap uses the same report revision the user sees; a newly replaced
+  // revision cannot inherit a pending click on the original.
+  const target = daily && {
+    runId: daily.runId,
+    revision: daily.revision,
+    identityKey: daily.identity.key,
+  };
   return (
-    <BookmarkAction key={artifactId} artifactId={artifactId} owner={owner} />
+    <BookmarkAction
+      key={JSON.stringify([artifactId, target])}
+      artifactId={artifactId}
+      owner={owner}
+      daily={target}
+    />
   );
 }
 
 function BookmarkAction({
   artifactId,
   owner,
+  daily,
 }: {
   artifactId: string;
+  daily?: DailyReportBookmarkTarget;
   owner: NonNullable<React.ContextType<typeof GeneratedReportBookmarkContext>>;
 }) {
   const store = useConversationSessions();
@@ -89,11 +102,14 @@ function BookmarkAction({
     setStatus('saving');
     try {
       const storage = await openSavedGeneratedReportReferences();
-      const saved = await storage.bookmarkHealthSummary({
-        artifactId,
-        lease,
-        current,
-      });
+      const saved = daily
+        ? await storage.bookmarkDailyReport({
+            artifactId,
+            lease,
+            current,
+            displayedReport: daily,
+          })
+        : await storage.bookmarkHealthSummary({ artifactId, lease, current });
       if (mounted.current)
         setStatus(current() ? (saved ? 'saved' : 'failed') : 'idle');
     } catch {
@@ -106,9 +122,17 @@ function BookmarkAction({
   return (
     <>
       <AppButton
-        title={t('savedMemory.bookmarkHealthSummary')}
+        title={t(
+          daily
+            ? 'savedMemory.bookmarkDailyReport'
+            : 'savedMemory.bookmarkHealthSummary',
+        )}
         variant="neutral"
-        testID="conversation-bookmark-generated-report"
+        testID={
+          daily
+            ? 'conversation-bookmark-daily-report'
+            : 'conversation-bookmark-generated-report'
+        }
         disabled={status === 'saving'}
         onPress={() => {
           save();
