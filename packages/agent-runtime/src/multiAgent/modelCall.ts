@@ -39,12 +39,16 @@ type LanguageModelTextEvent = Extract<
   { readonly type: 'text_delta' | 'text_snapshot' }
 >;
 
+export type ModelTextObserver = ((event: LanguageModelTextEvent) => void) & {
+  readonly projectOwnedTransport?: (event: LanguageModelTextEvent) => void;
+};
+
 // Returning an iterator is only a stop request; providers expose no stronger cancellation proof.
 async function collectStream(
   provider: LanguageModelProvider,
   request: LanguageModelRequest,
   signal: AbortSignal,
-  onTextEvent?: (event: LanguageModelTextEvent) => void,
+  onTextEvent?: ModelTextObserver,
 ): Promise<ProviderCallOutcome> {
   let providerStop: ProviderStopObservation = 'underlying_call_unconfirmed';
   const operation = invokeProductionRequest(
@@ -62,6 +66,7 @@ async function collectStream(
     () => {
       providerStop = 'iterator_return_requested';
     },
+    onTextEvent?.projectOwnedTransport,
   );
   const result = await observeAdapter(operation, signal);
   return result.status === 'cancelled' ? { ...result, providerStop } : result;
@@ -126,7 +131,7 @@ export async function callModel(
   consent: ExecutionConsentPort,
   signal: AbortSignal,
   telemetry?: TelemetrySink,
-  onTextEvent?: (event: LanguageModelTextEvent) => void,
+  onTextEvent?: ModelTextObserver,
   onModelStage?: ModelStageObserver,
 ): Promise<ModelCallOutcome> {
   const authorization = await authorizeModelCall(request, execution, consent, signal);
@@ -151,7 +156,7 @@ export async function dispatchAuthorizedModelCall(
   authorization: ModelAuthorizationGrant,
   signal: AbortSignal,
   telemetry?: TelemetrySink,
-  onTextEvent?: (event: LanguageModelTextEvent) => void,
+  onTextEvent?: ModelTextObserver,
   onModelStage?: ModelStageObserver,
 ): Promise<ModelCallOutcome> {
   // The grant is invocation-local, single use, and bound to the unchanged exact payload.

@@ -2,6 +2,7 @@ import type {
   LanguageModelProvider,
   LanguageModelRequest,
   LanguageModelResponse,
+  LanguageModelStreamEvent,
 } from '@orot/model-runtime';
 import { NativeStreamingChatModel } from './streaming';
 import { NativeChatModelError } from './chatModel';
@@ -21,6 +22,9 @@ export async function invokeProductionRequest(
   streaming = false,
   onText?: (text: string) => void,
   onStopRequest?: () => void,
+  onOwnedNativeText?: (
+    event: Extract<LanguageModelStreamEvent, { type: 'text_delta' | 'text_snapshot' }>,
+  ) => void,
 ): Promise<LanguageModelResponse> {
   let response: LanguageModelResponse | undefined;
   const observed: LanguageModelProvider = {
@@ -51,8 +55,22 @@ export async function invokeProductionRequest(
             signal?.addEventListener('abort', stop, { once: true });
             try {
               for await (const result of { [Symbol.asyncIterator]: () => iterator }) {
-                if (result.ok && result.value.type === 'completed')
-                  response = result.value.response;
+                if (result.ok) {
+                  const event = result.value;
+                  if (event.type === 'completed') response = event.response;
+                  // Keep general LangChain previews buffered. Only a closed, ephemeral
+                  // projection is allowed to observe owned native text before completion.
+                  if (
+                    !signal?.aborted &&
+                    (event.type === 'text_delta' || event.type === 'text_snapshot')
+                  ) {
+                    try {
+                      onOwnedNativeText?.(event);
+                    } catch {
+                      /* Optional layout projection cannot affect the workflow. */
+                    }
+                  }
+                }
                 yield result;
               }
             } finally {
