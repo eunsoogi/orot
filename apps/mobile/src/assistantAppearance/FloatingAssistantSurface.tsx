@@ -7,15 +7,17 @@ import { FloatingProfileGradient } from './FloatingProfileGradient';
 import { FloatingIdentityInset } from './FloatingIdentityInset';
 import { AssistantHeader } from './AssistantHeader';
 
-/** Float within the already safe, adaptive content panel, never against window coordinates. */
+/** Keep the floating hit target and transcript inset within the safe adaptive content panel. */
 export function FloatingAssistantSurface({
   session,
   children,
   identityWidth,
+  profileVisualLift = 0,
 }: {
   session: ConversationSession;
   children: ReactNode;
   identityWidth?: number;
+  profileVisualLift?: number;
 }) {
   const [height, setHeight] = useState(0);
   const appearance = useAssistantAppearance();
@@ -41,7 +43,7 @@ export function FloatingAssistantSurface({
           onLayout={event => setHeight(event.nativeEvent.layout.height)}
         >
           <FloatingProfileGradient />
-          <AssistantHeader session={session} />
+          <AssistantHeader session={session} visualLift={profileVisualLift} />
         </View>
       ) : null}
     </View>
