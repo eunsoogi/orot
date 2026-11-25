@@ -5,6 +5,9 @@ import { syntheticEncounterModel } from '../../agent/encounter/syntheticFixture'
 import { sqliteReviewFixture, sourceId } from '../__fixtures__/sqliteReview';
 import { createEncounterReviewService } from '../service';
 
+jest.mock('../../aiFeatures/integration/provider', () => ({
+  resolveSelectedAiProvider: jest.fn(),
+}));
 jest.mock('../../ragConversation/conversationExecutionNative', () => ({
   conversationExecutionNative: jest.fn(),
 }));
