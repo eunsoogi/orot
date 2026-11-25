@@ -13,12 +13,17 @@ import { conversationA2UICatalog } from '../conversationA2UI';
 const evidence = { items: [], coverage: [], conflicts: [] };
 const plainMarkdown = '**천만에요.**';
 const plainAnswer = '천만에요.';
-const envelope = (answer: string, a2ui?: string) => ({
+const envelope = (
+  answer: string,
+  a2ui?: string,
+  a2uiFrames?: readonly string[],
+) => ({
   type: 'result',
   value: {
     answerKind: 'conversation',
     answer,
     ...(a2ui !== undefined ? { a2ui } : {}),
+    ...(a2uiFrames !== undefined ? { a2uiFrames } : {}),
   },
   citations: [],
 });
@@ -49,12 +54,12 @@ test.each([
   ['native model', 'on-device'],
   ['private cloud model', 'private-cloud-compute'],
 ] as const)(
-  '%s compiles v20 to a genuinely optional native string',
+  '%s compiles a bounded native frame array',
   async (_name, route) => {
     const captured: ReturnType<typeof serializeAppleRequest>[] = [];
     const response = {
       text: '',
-      structuredOutput: envelope(plainMarkdown),
+      structuredOutput: envelope(plainMarkdown, undefined, []),
       toolCalls: [],
       finishReason: 'complete' as const,
     };
@@ -90,9 +95,13 @@ test.each([
           schema: expect.objectContaining({
             properties: expect.arrayContaining([
               expect.objectContaining({
-                name: 'a2ui',
-                optional: true,
-                schema: { kind: 'string' },
+                name: 'a2uiFrames',
+                optional: false,
+                schema: {
+                  kind: 'array',
+                  maximumElements: 12,
+                  item: { kind: 'string' },
+                },
                 description: expect.stringContaining('orot:response:draft'),
               }),
             ]),
@@ -106,6 +115,11 @@ test.each([
 test.each([
   ['keeps legacy Markdown fallback', envelope(plainMarkdown, '{'), undefined],
   ['admits verified layout', envelope(plainAnswer, exactSurface), 'Text'],
+  [
+    'admits a staged frame sequence',
+    envelope(plainAnswer, undefined, [exactSurface]),
+    'Text',
+  ],
 ])(
   'ChatGPT text encoder %s without a second request',
   async (_name, result, rootKind) => {
