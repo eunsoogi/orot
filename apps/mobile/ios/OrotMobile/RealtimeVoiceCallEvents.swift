@@ -13,10 +13,14 @@ extension RealtimeVoiceCall {
 
     /// Presentation gets only the scalar from the currently owned active audio graph.
     func bindDisplayMeter(callID: String, captureEpoch epoch: UUID) {
+        outputRenderStartedAt = nil
         (audio as? RealtimeVoiceDisplayMeterPort)?.displayLevel = { [weak self] direction, level in
             guard let self, id == callID, captureEpoch == epoch, ready, !paused, liveIsCurrent(),
                   level.isFinite, (0 ... 1).contains(level)
             else { return }
+            if direction == .output, level > 0 {
+                observeRenderedOutput()
+            }
             emit("VoiceRealtimeAudioLevel", [
                 "callId": callID,
                 "direction": direction == .input ? "input" : "output",
@@ -68,7 +72,14 @@ extension RealtimeVoiceCall {
             guard ready, !paused, liveIsCurrent(), let encoded = event["delta"] as? String,
                   let data = Data(base64Encoded: encoded), !data.isEmpty, data.count.isMultiple(of: 2)
             else { return }
-            do { try audio.append(data); state("speaking") } catch { fail() }
+            let start = audio.isDrained ? outputRenderClock() : nil
+            do {
+                try audio.append(data)
+                if let start {
+                    outputRenderStartedAt = start
+                }
+                state("speaking")
+            } catch { fail() }
         default:
             // Caption collection remains independent of the managed response lease.
             break
@@ -83,6 +94,7 @@ extension RealtimeVoiceCall {
             return
         }
         retireManagedResponses()
+        outputRenderStartedAt = nil
         _ = audio.cancel()
         if ready, !paused {
             state("listening")

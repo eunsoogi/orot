@@ -32,6 +32,26 @@ extension RealtimeVoiceLifecycleTests {
         await drainCueCallbacks()
         XCTAssertEqual(socket.sent.last?["type"] as? String, "session.input_audio.append")
 
+        // Exercise the real call admission and existing player-render event port without a route or provider.
+        var renderDurations: [Int] = []
+        call.outputRenderClock = { .now() }
+        call.reportOutputRender = { renderDurations.append($0) }
+        let delta = ["type": "session.output_audio.delta", "delta": Data([0, 1]).base64EncodedString()]
+        let oldMeter = try XCTUnwrap(audio.displayLevel)
+        oldMeter(.output, 0.5)
+        XCTAssertTrue(renderDurations.isEmpty)
+        socket.received?(delta)
+        oldMeter(.output, 0)
+        oldMeter(.input, 0.5)
+        XCTAssertTrue(renderDurations.isEmpty)
+        oldMeter(.output, 0.5)
+        oldMeter(.output, 0.5)
+        XCTAssertEqual(renderDurations.count, 1)
+        socket.received?(delta)
+        call.interrupt()
+        oldMeter(.output, 0.5)
+        XCTAssertEqual(renderDurations.count, 1)
+
         try call.pause("call")
         let requested = expectation(description: "unmute sent on same synthetic session")
         socket.sentEvent = { event in
@@ -48,6 +68,11 @@ extension RealtimeVoiceLifecycleTests {
         XCTAssertEqual(audio.starts, 2)
         XCTAssertEqual(audio.cueCompletions.count, 1)
         XCTAssertTrue(call.ready)
+        socket.received?(delta)
+        oldMeter(.output, 0.5)
+        XCTAssertEqual(renderDurations.count, 1)
+        audio.displayLevel?(.output, 0.5)
+        XCTAssertEqual(renderDurations.count, 2)
         try call.stop("call")
     }
 
@@ -116,7 +141,8 @@ extension RealtimeVoiceLifecycleTests {
     }
 }
 
-private final class HeldReadyCueAudio: RealtimeVoiceReadyCueAudioPort {
+private final class HeldReadyCueAudio: RealtimeVoiceReadyCueAudioPort, RealtimeVoiceDisplayMeterPort {
+    var displayLevel: ((RealtimeVoiceLevelDirection, Double) -> Void)?
     enum Failure: Error { case synthetic }
     var startFails = false
     var starts = 0

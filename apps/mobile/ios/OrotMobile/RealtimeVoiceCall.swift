@@ -41,6 +41,9 @@ final class RealtimeVoiceCall {
     var managedResponses: LiveResponsesToolBridge?
     var managedResponsesTransport = false
     var captureEpoch = UUID()
+    var outputRenderStartedAt: DispatchTime?
+    var outputRenderClock = LiveManagedToolLatency.start
+    var reportOutputRender: (Int) -> Void = { NSLog("OROT_PROVIDER_DIAGNOSTIC layer=app feature=live_health stage=pcm_append_to_rendered_output elapsed_ms=%d", $0) }
     var lifecycleEpoch = UUID()
     var awaitingInputCommit = false
     var observers: [NSObjectProtocol] = []
@@ -232,5 +235,16 @@ final class RealtimeVoiceCall {
                 try? ownership.release(owned)
             }
         }
+    }
+
+    /// Valid only for the first observed nonzero render of this owned enqueue burst.
+    func observeRenderedOutput() {
+        guard let start = outputRenderStartedAt else { return }
+        outputRenderStartedAt = nil
+        let now = DispatchTime.now().uptimeNanoseconds
+        guard now >= start.uptimeNanoseconds else { return }
+        let elapsed = (now - start.uptimeNanoseconds) / 1_000_000
+        guard elapsed <= 300_000 else { return }
+        reportOutputRender(Int(elapsed))
     }
 }
