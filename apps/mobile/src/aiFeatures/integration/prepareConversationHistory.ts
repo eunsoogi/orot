@@ -26,8 +26,22 @@ export async function prepareConversationHistory(
     (!route.entry || route.entry.intent === 'conversation') &&
     !route.entry?.appointmentId &&
     !route.entry?.dailyReport;
+  const openStorage = input.data.openConversationArtifactStorage;
+  let promptStorage: ReturnType<NonNullable<typeof openStorage>> | undefined;
+  // A retry keeps the original protected reader, not whichever storage a
+  // later open might return after a replacement.
+  const boundInput = openStorage
+    ? {
+        ...input,
+        data: {
+          ...input.data,
+          openConversationArtifactStorage: () =>
+            (promptStorage ??= openStorage()),
+        },
+      }
+    : input;
   const readProtectedDialogue = () =>
-    loadFreshConversationDialogue(input, recoverImplicitHistory);
+    loadFreshConversationDialogue(boundInput, recoverImplicitHistory);
   let history: FreshConversationHistory =
     (await readProtectedDialogue()) ??
     (await loadConversationHistory({ ...input, recoverImplicitHistory }));
