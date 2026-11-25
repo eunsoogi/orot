@@ -135,3 +135,58 @@ test('upgrades manual-history deletion to a typed covering lookup without weaken
     f.close();
   }
 });
+
+test('artifact retirement seeks both message owner fields and leaves unrelated tools', async () => {
+  const f = await healthContextFixture();
+  try {
+    const store = createConversationArtifactStorage(f.database);
+    await store.createSession('session-a', await store.currentGeneration());
+    await f.database.transaction(async tx => {
+      await tx.execute(
+        "INSERT INTO conversation_artifacts VALUES ('message', 'session-a', 'synthetic', '{}')",
+      );
+      for (const [session, message, run] of [
+        ['session-a', 'message', 'retired'],
+        ['session-a', 'other-message', 'same-session'],
+        ['session-b', 'message', 'same-message'],
+      ]) {
+        await tx.execute(
+          'INSERT INTO conversation_tool_events VALUES (?, ?, ?, ?, ?, ?)',
+          [session!, message!, 'synthetic', run!, 'call', '{}'],
+        );
+      }
+      // Upgrading a populated view installs the index without rewriting rows.
+      await tx.execute('DROP INDEX conversation_tool_events_message');
+      await setupConversationToolGuards(tx);
+      const version = () => tx.execute('PRAGMA schema_version');
+      const installed = await version();
+      await setupConversationToolGuards(tx);
+      expect(await version()).toEqual(installed);
+      const plan = await tx.execute(
+        'EXPLAIN QUERY PLAN DELETE FROM conversation_tool_events WHERE session_id = ? AND message_id = ?',
+        ['session-a', 'message'],
+      );
+      expect(
+        plan.rows.some(row =>
+          String(row.detail).includes('conversation_tool_events_message'),
+        ),
+      ).toBe(true);
+      await tx.execute(
+        "DELETE FROM conversation_artifacts WHERE id = 'message'",
+      );
+      expect(
+        (
+          await tx.execute(
+            'SELECT run_id FROM conversation_tool_events ORDER BY run_id',
+          )
+        ).rows,
+      ).toEqual([{ run_id: 'same-message' }, { run_id: 'same-session' }]);
+      expect(
+        (await tx.execute('SELECT run_id FROM conversation_tool_removed_calls'))
+          .rows,
+      ).toEqual([{ run_id: 'retired' }]);
+    });
+  } finally {
+    f.close();
+  }
+});
