@@ -83,7 +83,7 @@ export function withConversationA2UIFrameSequence(
       if (!isObject(value) || !('a2uiFrames' in value))
         return previous.validateResult(value, input);
       const a2uiFrames = value.a2uiFrames;
-      const prose = { ...value };
+      const prose: Record<string, (typeof value)[string]> = { ...value };
       delete prose.a2uiFrames;
       delete prose.a2ui;
       const validated = previous.validateResult(prose, input);
