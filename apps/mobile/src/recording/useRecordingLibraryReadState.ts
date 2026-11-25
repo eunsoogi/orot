@@ -12,13 +12,13 @@ export function useRecordingLibraryReadState({
   service,
   automaticTranscription,
   refreshKey,
-  deletionBusy,
+  deletionBusy = false,
   onReconciled,
 }: {
   readonly service: RecordingLibraryService;
   readonly automaticTranscription: AutomaticTranscriptionSnapshot | null;
   readonly refreshKey?: string | null;
-  readonly deletionBusy: boolean;
+  readonly deletionBusy?: boolean;
   readonly onReconciled: () => void;
 }) {
   const [recordings, setRecordings] = useState<

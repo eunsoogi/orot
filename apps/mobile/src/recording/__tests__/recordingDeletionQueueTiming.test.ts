@@ -98,16 +98,17 @@ test('attributes held cleanup after commit without moving the success boundary',
   probe.mark('confirmation-tap');
   const settled = jest.fn();
   const deletion = service.deleteRecording('synthetic-recording', probe);
+  const observed = deletion.then(settled);
   try {
     await started;
     now = 5_000;
     expect(removeSource).toHaveBeenCalledTimes(1);
-    void deletion.then(settled);
     await Promise.resolve();
     expect(settled).not.toHaveBeenCalled();
   } finally {
     release();
   }
   await expect(deletion).resolves.toEqual({ audioCleanupPending: false });
+  await observed;
   expect(probe.snapshot().durationsMs.audioCleanup).toBe(5_000);
 });
