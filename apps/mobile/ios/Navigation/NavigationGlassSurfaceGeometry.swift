@@ -2,6 +2,15 @@ import React
 import UIKit
 
 extension NavigationGlassSurfaceView {
+    /// The React surface owns portal admission; the control parent owns frame publication.
+    /// A warm overlay change must wake both when the existing portal is outside the new host.
+    func invalidateOverlayGeometry() {
+        if layoutMode != "bottom" {
+            setNeedsLayout()
+        }
+        (rootBar.isHidden ? innerActions as UIView : rootBar).superview?.setNeedsLayout()
+    }
+
     /// Pins only an admitted window-owned right Back, keeping the old insets for local and left renderers.
     func contextualRailTop(hostHeight: CGFloat, mountedToWindow: Bool, observe: Bool = false) -> CGFloat {
         let hasBack = renderedActions.contains { $0.id == "back" }
