@@ -24,6 +24,9 @@ export type WorkoutPeriodResult =
 
 let nextCall = 0;
 const unavailable = { status: 'unavailable' } as const;
+const exactCohortPolicy = 'exact-visible-native-cohort';
+type WorkoutReadContract =
+  { readonly timeZone: string } | { readonly requireVisiblePeriodMatch: true };
 const trace = workoutReadDiagnostics('shared');
 
 /** One local period read; native must support actual cancellation. No permissions are requested. */
@@ -31,18 +34,22 @@ export async function readWorkoutPeriodHeartRate(
   period: WorkoutPeriod,
   cohort: readonly PeriodWorkout[],
   signal: AbortSignal,
-  recordsMonthChart?: { readonly timeZone: string },
+  contract?: WorkoutReadContract,
 ): Promise<WorkoutPeriodResult> {
   if (signal.aborted || Platform.OS !== 'ios') {
     trace.report('bridge', signal.aborted ? 'cancelled' : 'skipped');
     return unavailable;
   }
+  const recordsMonthChart =
+    contract && 'timeZone' in contract ? contract : undefined;
+  const exact = contract && 'requireVisiblePeriodMatch' in contract;
   const api = NativeModules.HealthKitModule as
     | {
         queryWorkoutPeriodHeartRate?(
           request: WorkoutPeriod & {
             callId: string;
             recordsMonthChart?: { readonly timeZone: string };
+            workoutCohortPolicy?: typeof exactCohortPolicy;
             workouts: readonly PeriodWorkout[];
           },
         ): Promise<unknown>;
@@ -62,6 +69,7 @@ export async function readWorkoutPeriodHeartRate(
       ...period,
       callId,
       ...(recordsMonthChart ? { recordsMonthChart } : {}),
+      ...(exact ? { workoutCohortPolicy: exactCohortPolicy } : {}),
       workouts: cohort,
     });
     trace.report('bridge', signal.aborted ? 'cancelled' : 'completed');
@@ -70,6 +78,12 @@ export async function readWorkoutPeriodHeartRate(
     const value = result as Partial<
       Extract<WorkoutPeriodResult, { status: 'available' }>
     > & { status?: unknown };
+    if (
+      exact &&
+      (result as { workoutCohortPolicy?: unknown }).workoutCohortPolicy !==
+        exactCohortPolicy
+    )
+      return unavailable;
     if ((result as { status?: unknown }).status === 'emptyVisible')
       return { status: 'emptyVisible' };
     const {

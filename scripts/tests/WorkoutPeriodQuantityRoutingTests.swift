@@ -43,6 +43,24 @@ final class WorkoutPeriodQuantityRoutingTests: XCTestCase {
         XCTAssertEqual(aggregate.finish(completed: true), .unavailable)
     }
 
+    func testVisibleWorkoutCohortCannotOmitNativeWorkoutsOrAdmitDuplicatedRows() {
+        let first = UUID()
+        let second = UUID()
+        let additional = UUID()
+        XCTAssertTrue(Accumulator.exactCohort(imported: [first, second], observed: [second, first]))
+        XCTAssertFalse(Accumulator.exactCohort(imported: [first], observed: [first, second]))
+        XCTAssertFalse(Accumulator.exactCohort(imported: [first, second], observed: [first]))
+        XCTAssertFalse(Accumulator.exactCohort(imported: [first, second], observed: [first, first]))
+        XCTAssertFalse(Accumulator.exactCohort(imported: [first, second], observed: [first, additional]))
+        XCTAssertFalse(Accumulator.exactCohort(imported: [], observed: [additional]))
+        let start = Date(timeIntervalSince1970: 100)
+        let end = Date(timeIntervalSince1970: 200)
+        let window = Accumulator.Window(start: start, end: end)
+        XCTAssertTrue(window.overlaps(start: start.addingTimeInterval(-10), end: start.addingTimeInterval(10)))
+        XCTAssertFalse(window.overlaps(start: start.addingTimeInterval(-10), end: start))
+        XCTAssertFalse(window.overlaps(start: end, end: end.addingTimeInterval(10)))
+    }
+
     func testRecordsRollingMonthUsesObservedLocalDatesAcrossDST() throws {
         let formatter = ISO8601DateFormatter()
         formatter.formatOptions = [.withInternetDateTime, .withFractionalSeconds]

@@ -1,4 +1,7 @@
-import { readOwnedWorkoutPeriod } from '../../healthkit/ownedWorkoutPeriodRead';
+import {
+  readLocalConversationWorkoutPeriod,
+  readOwnedWorkoutPeriod,
+} from '../../healthkit/ownedWorkoutPeriodRead';
 import { conversationExecutionNative } from '../../ragConversation/conversationExecutionNative';
 import {
   isCurrentLocalAgentMemoryDatabase,
@@ -33,8 +36,8 @@ async function fixture() {
     ...lane,
     database,
     turn,
-    read: () =>
-      readOwnedWorkoutPeriod(period, {
+    read: (read = readOwnedWorkoutPeriod) =>
+      read(period, {
         repository: lane.repository,
         signal: turn.signal,
         current: () =>
@@ -141,6 +144,51 @@ test('denies a same-valued reproof while a protected workout deletion is held', 
   } finally {
     finishDeletion?.();
     await deletion;
+    lane.close();
+  }
+});
+
+test('strict local Conversation proof rejects a display-only native reply without complete-period coverage', async () => {
+  const lane = await fixture();
+  try {
+    const witness = await lane.read(readLocalConversationWorkoutPeriod);
+    expect(witness.result).toEqual({ status: 'unavailable' });
+    expect(lane.queryWorkoutPeriodHeartRate).toHaveBeenCalledWith(
+      expect.objectContaining({
+        workoutCohortPolicy: 'exact-visible-native-cohort',
+        workouts: expect.arrayContaining([
+          expect.objectContaining({ id: one.toLowerCase() }),
+          expect.objectContaining({ id: two.toLowerCase() }),
+        ]),
+      }),
+    );
+    await expect(witness.reprove()).resolves.toBe(false);
+    expect(lane.queryWorkoutPeriodHeartRate).toHaveBeenCalledTimes(1);
+  } finally {
+    lane.close();
+  }
+});
+
+test('strict local Workout witness reproves fresh complete coverage, never substituting an ordinary or partial result', async () => {
+  const lane = await fixture();
+  try {
+    lane.queryWorkoutPeriodHeartRate.mockImplementationOnce(async request => ({
+      ...resultFor(request),
+      workoutCohortPolicy: 'exact-visible-native-cohort',
+    }));
+    const witness = await lane.read(readLocalConversationWorkoutPeriod);
+    expect(witness.result).toMatchObject({ status: 'available', mean: 120 });
+    lane.queryWorkoutPeriodHeartRate.mockImplementationOnce(async request => ({
+      ...resultFor(request),
+      workoutCohortPolicy: 'exact-visible-native-cohort',
+    }));
+    await expect(witness.reprove()).resolves.toBe(true);
+    // A new visible Workout missing from import invalidates native completeness,
+    // even if a display-only read happens to return the same numbers.
+    await expect(witness.reprove()).resolves.toBe(false);
+    expect(lane.queryWorkoutPeriodHeartRate).toHaveBeenCalledTimes(3);
+    expect(lane.requestReadAuthorizations).not.toHaveBeenCalled();
+  } finally {
     lane.close();
   }
 });
