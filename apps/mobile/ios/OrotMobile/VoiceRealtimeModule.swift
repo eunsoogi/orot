@@ -28,6 +28,7 @@ final class VoiceRealtimeModule: RCTEventEmitter {
     private var active: String?
     private var responsesMailbox: OwnedLiveResponsesMailbox?
     private let resultAuthority = LiveNativeResultDispatchAuthority()
+    private let canonicalCallReview = CanonicalLiveNativeCallReview()
     override static func requiresMainQueueSetup() -> Bool {
         true
     }
@@ -62,7 +63,8 @@ final class VoiceRealtimeModule: RCTEventEmitter {
                     guard let request = options["canonicalHealthGrant"],
                           let companion = RealtimeVoiceCanonicalHealthAdmission(request),
                           let declaration = options["canonicalHealthDeclaration"] as? [String: Any],
-                          companion.configuration(declaration, base: grant, key: apiKey) != nil
+                          companion.configuration(declaration, base: grant, key: apiKey) != nil,
+                          canonicalCallReview.consume(.init(call: identifier, capability: companion), current: { self.call.foreground() })
                     else { reject("VOICE_LIVE_FAILED", "Live voice is unavailable.", nil); return }
                     let mailbox = RealtimeVoiceCanonicalHealthMailbox(
                         call: identifier, baseline: grant, capability: companion, authority: resultAuthority, key: apiKey,
@@ -173,6 +175,7 @@ final class VoiceRealtimeModule: RCTEventEmitter {
 
     private func stop(_ identifier: String, graceful: Bool, resolve: @escaping RCTPromiseResolveBlock, reject: @escaping RCTPromiseRejectBlock) {
         DispatchQueue.main.async { [self] in
+            canonicalCallReview.retire(identifier)
             do {
                 let waitsForClose = graceful && call.id == identifier
                 var pendingDuration: [String: Any]?
