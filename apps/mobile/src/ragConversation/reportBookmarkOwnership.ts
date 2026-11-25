@@ -17,6 +17,7 @@ export function captureReportBookmarkOwner(input: {
   readonly current?: ReportBookmarkVisibility;
   readonly mounted?: () => boolean;
   readonly allowDraftChanges?: boolean;
+  readonly allowOwnSend?: boolean;
 }) {
   const { store, sessionId, current } = input;
   const route = current?.route;
@@ -35,7 +36,11 @@ export function captureReportBookmarkOwner(input: {
       captured &&
       session &&
       activeId === sessionId &&
-      (input.allowDraftChanges || session.draft === original.draft) &&
+      (input.allowDraftChanges ||
+        session.draftEditRevision === original.draftEditRevision) &&
+      (input.allowDraftChanges ||
+        input.allowOwnSend ||
+        session.draft === original.draft) &&
       now?.id === captured.id &&
       now.version === captured.version &&
       !session.quarantined &&
@@ -43,7 +48,9 @@ export function captureReportBookmarkOwner(input: {
       !session.modelSelectionPending &&
       !session.modelSelectionFailed &&
       !session.leaseRefreshRequired &&
-      (input.allowDraftChanges || (!session.busy && !session.preparingSend)) &&
+      (input.allowDraftChanges ||
+        input.allowOwnSend ||
+        (!session.busy && !session.preparingSend)) &&
       (input.mounted?.() ?? true) &&
       AppState.currentState === 'active' &&
       (route?.isCurrent() ?? true) &&

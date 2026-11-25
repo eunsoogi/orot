@@ -1,3 +1,4 @@
+import { semanticReportBookmarkSender } from './semanticReportBookmarkSender';
 import { openSavedGeneratedReportReferences } from '../memory/openSavedGeneratedReportReferences';
 import { dispatchConversationMessage } from './conversationVisitDispatch';
 import { Alert, AppState } from 'react-native';
@@ -168,7 +169,14 @@ export function composerSendWithReportBookmark(
 ) {
   return () => {
     if (current && !current()) return;
-    if (!handleExplicitDailyReportBookmark({ store, id, current }))
-      dispatchConversationMessage(store, id, send, prepare, current);
+    if (handleExplicitDailyReportBookmark({ store, id, current })) return;
+    const bound = semanticReportBookmarkSender(store, id, current, send);
+    return dispatchConversationMessage(
+      store,
+      id,
+      bound.send,
+      prepare,
+      current,
+    ).finally(bound.close);
   };
 }
