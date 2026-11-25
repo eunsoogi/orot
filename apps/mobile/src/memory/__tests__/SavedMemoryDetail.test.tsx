@@ -190,3 +190,23 @@ test('pull replaces the selected saved text without scheduling default-loader ma
   expect(screen.queryByText(memory.text)).toBeNull();
   expect(resume).toHaveBeenCalledTimes(1);
 });
+
+test('long selected memory stays selectable above quieter provenance', async () => {
+  const text = 'Synthetic memory line. '.repeat(35);
+  await render(
+    <SavedMemoryDetail
+      memoryId={memory.id}
+      load={async () => [{ ...memory, text }]}
+    />,
+  );
+  const sections = screen.getAllByTestId(/^saved-memory-(content|metadata)$/);
+  expect(sections.map(section => section.props.testID)).toEqual([
+    'saved-memory-content',
+    'saved-memory-metadata',
+  ]);
+  expect(screen.getByTestId('saved-memory-verbatim').props.selectable).toBe(
+    true,
+  );
+  expect(screen.getByText(text.trim())).toBeTruthy();
+  expect(screen.getByText('사용자 확인')).toBeTruthy();
+});

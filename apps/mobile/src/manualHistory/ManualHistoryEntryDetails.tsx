@@ -13,6 +13,7 @@ interface ManualHistoryEntryDetailsProps {
   onClose?: () => void;
   onDelete: () => void | Promise<void>;
   deleting: boolean;
+  readingLayout?: boolean;
 }
 
 function effectiveDateLabel(
@@ -46,19 +47,32 @@ export default function ManualHistoryEntryDetails({
   onClose,
   onDelete,
   deleting,
+  readingLayout = false,
 }: ManualHistoryEntryDetailsProps) {
   const [confirmDelete, setConfirmDelete] = useState(false);
   return (
-    <View style={styles.container} testID="manual-history-detail">
+    <View
+      style={readingLayout ? styles.reading : styles.container}
+      testID="manual-history-detail"
+    >
       <Text accessibilityRole="header" style={styles.sectionTitle}>
         {t('manualHistory.form.detailsLabel')}
       </Text>
-      <Text testID="manual-history-date-detail">
+      {readingLayout ? (
+        <Text style={styles.readingBody}>{entry.details}</Text>
+      ) : null}
+      <Text
+        style={readingLayout && styles.readingMetadata}
+        testID="manual-history-date-detail"
+      >
         {effectiveDateLabel(entry.effectiveDate)}
       </Text>
-      <Text>{entry.details}</Text>
+      {!readingLayout ? <Text>{entry.details}</Text> : null}
       {history.length <= 1 ? (
-        <Text testID="manual-history-current-status">
+        <Text
+          style={readingLayout && styles.readingMetadata}
+          testID="manual-history-current-status"
+        >
           {t('manualHistory.status', { review: reviewLabel(entry) })}
         </Text>
       ) : null}
@@ -70,7 +84,7 @@ export default function ManualHistoryEntryDetails({
           {history.map((version, index) => (
             <View
               key={version.id}
-              style={styles.version}
+              style={readingLayout ? styles.readingVersion : styles.version}
               testID={'manual-history-version-' + version.id}
             >
               <Text>
@@ -111,52 +125,65 @@ export default function ManualHistoryEntryDetails({
           ))}
         </View>
       ) : null}
-      <Button
-        variant="secondary"
-        disabled={deleting}
-        onPress={onCorrect}
-        testID="manual-history-correct"
-        title={t('manualHistory.detail.correct')}
-      />
-      {!confirmDelete ? (
+      <View
+        style={readingLayout ? styles.readingActions : styles.standardActions}
+        testID={readingLayout ? 'history-memory-actions' : undefined}
+      >
         <Button
-          variant="secondary"
+          variant={readingLayout ? 'text' : 'secondary'}
+          size={readingLayout ? 'compact' : undefined}
           disabled={deleting}
-          onPress={() => setConfirmDelete(true)}
-          testID="manual-history-delete"
-          title={t('manualHistory.detail.delete')}
+          onPress={onCorrect}
+          testID="manual-history-correct"
+          title={t('manualHistory.detail.correct')}
         />
-      ) : (
-        <View
-          style={styles.confirmation}
-          testID="manual-history-delete-confirmation"
-        >
-          <Text>{t('manualHistory.detail.confirmDelete')}</Text>
+        {!confirmDelete ? (
           <Button
-            variant="secondary"
+            variant={readingLayout ? 'destructive' : 'secondary'}
+            size={readingLayout ? 'compact' : undefined}
             disabled={deleting}
-            onPress={onDelete}
-            testID="manual-history-confirm-delete"
-            title={t('manualHistory.detail.confirmDeleteAction')}
+            onPress={() => setConfirmDelete(true)}
+            testID="manual-history-delete"
+            title={t('manualHistory.detail.delete')}
           />
+        ) : (
+          <View
+            style={[
+              styles.confirmation,
+              readingLayout && styles.readingConfirmation,
+            ]}
+            testID="manual-history-delete-confirmation"
+          >
+            <Text>{t('manualHistory.detail.confirmDelete')}</Text>
+            <Button
+              variant={readingLayout ? 'destructive' : 'secondary'}
+              size={readingLayout ? 'compact' : undefined}
+              disabled={deleting}
+              onPress={onDelete}
+              testID="manual-history-confirm-delete"
+              title={t('manualHistory.detail.confirmDeleteAction')}
+            />
+            <Button
+              variant={readingLayout ? 'text' : 'secondary'}
+              size={readingLayout ? 'compact' : undefined}
+              disabled={deleting}
+              onPress={() => setConfirmDelete(false)}
+              testID="manual-history-cancel-delete"
+              title={t('manualHistory.detail.cancelDelete')}
+            />
+          </View>
+        )}
+        {onClose ? (
           <Button
-            variant="secondary"
+            variant={readingLayout ? 'text' : 'secondary'}
+            size={readingLayout ? 'compact' : undefined}
             disabled={deleting}
-            onPress={() => setConfirmDelete(false)}
-            testID="manual-history-cancel-delete"
-            title={t('manualHistory.detail.cancelDelete')}
+            onPress={onClose}
+            testID="manual-history-close-details"
+            title={t('manualHistory.detail.close')}
           />
-        </View>
-      )}
-      {onClose ? (
-        <Button
-          variant="secondary"
-          disabled={deleting}
-          onPress={onClose}
-          testID="manual-history-close-details"
-          title={t('manualHistory.detail.close')}
-        />
-      ) : null}
+        ) : null}
+      </View>
     </View>
   );
 }
@@ -169,6 +196,18 @@ const styles = StyleSheet.create({
     gap: 16,
     paddingTop: 16,
   },
+  reading: { gap: 12, minWidth: 0 },
+  readingBody: { color: appColors.text, fontSize: 18, lineHeight: 29 },
+  readingMetadata: { color: appColors.secondary, fontSize: 14, lineHeight: 20 },
+  readingVersion: { gap: 6, paddingVertical: 6 },
+  standardActions: { gap: 16 },
+  readingActions: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+    alignItems: 'center',
+  },
+  readingConfirmation: { flexBasis: '100%' },
   sectionTitle: { color: appColors.text, fontSize: 18, fontWeight: '600' },
   entryTitle: { color: appColors.text, fontSize: 18, fontWeight: '600' },
   history: { gap: 8, paddingTop: 8 },

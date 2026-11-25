@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { View } from 'react-native';
+import { StyleSheet, View } from 'react-native';
+import { appColors } from '../layout/appColors';
 import { t } from '../i18n';
 import { AppText as Text } from '../layout/AppText';
 import { AppButton } from '../layout/AppButton';
@@ -98,8 +99,7 @@ export function HistoryMemoryDetail({
     }
   }
   return (
-    <View testID="history-memory-detail">
-      <Text>{t('manualHistory.provenance')}</Text>
+    <View style={styles.content} testID="history-memory-detail">
       {error ? <Text accessibilityRole="alert">{error}</Text> : null}
       {!repository && error ? (
         <AppButton
@@ -122,10 +122,15 @@ export function HistoryMemoryDetail({
           />
         ) : (
           <>
-            <Text selectable testID="manual-history-current-title">
+            <Text
+              selectable
+              style={styles.title}
+              testID="manual-history-current-title"
+            >
               {record.title}
             </Text>
             <ManualHistoryEntryDetails
+              readingLayout
               entry={record}
               history={history}
               deleting={saving}
@@ -142,6 +147,7 @@ export function HistoryMemoryDetail({
             ) : null}
           </>
         ))}
+      <Text style={styles.provenance}>{t('manualHistory.provenance')}</Text>
     </View>
   );
 }
@@ -152,3 +158,14 @@ async function openHistoryRepository() {
     require('../manualHistory/localRepository') as typeof import('../manualHistory/localRepository');
   return openLocalManualHistoryRepository();
 }
+
+const styles = StyleSheet.create({
+  content: { gap: 14, minWidth: 0 },
+  title: {
+    color: appColors.text,
+    fontSize: 20,
+    lineHeight: 28,
+    fontWeight: '600',
+  },
+  provenance: { color: appColors.secondary, fontSize: 14, lineHeight: 20 },
+});

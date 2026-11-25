@@ -1,17 +1,19 @@
 import { StyleSheet } from 'react-native';
+import { hubSpacing } from '../layout/hubSpacing';
 import { appColors } from '../layout/appColors';
 
 /** Bounded local-memory presentation shared by all loading and recovery states. */
 export const savedMemoryStyles = StyleSheet.create({
   section: { gap: 12, minWidth: 0 },
   // Standalone detail has no Records panel ancestor to provide reading margins.
-  detail: { paddingHorizontal: 24, paddingVertical: 16 },
+  detail: { paddingHorizontal: hubSpacing.horizontal },
   readingDetail: {
     width: '100%',
     maxWidth: 800,
     alignSelf: 'center',
-    gap: 20,
-    paddingVertical: 24,
+    gap: 24,
+    paddingTop: hubSpacing.top,
+    paddingBottom: hubSpacing.bottom,
   },
   entry: {
     borderRadius: 18,
@@ -28,6 +30,12 @@ export const savedMemoryStyles = StyleSheet.create({
     gap: 12,
   },
   title: { fontSize: 18, fontWeight: '700', color: appColors.text },
+  detailTitle: {
+    color: appColors.text,
+    fontSize: 25,
+    lineHeight: 33,
+    fontWeight: '700',
+  },
   description: { fontSize: 14, lineHeight: 20, color: appColors.secondary },
   row: {
     gap: 8,
