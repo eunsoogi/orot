@@ -15,6 +15,7 @@ import { createSymptomSummaryStorage } from './symptomSummaryStorage';
 import { isGeneratedSummarySource } from '../ragConversation/conversationArtifactSources';
 import { withWritePeriodCalculations } from './writePeriodCalculationScope';
 import { beginConversationSave } from './conversationSaveDiagnostic';
+import { withWriteTypedFingerprints } from './writeTypedFingerprintScope';
 
 /** Keep validation, dependency indexes and completion in the same transaction.
  * The diagnostic brackets only the existing work and never admits or repairs it. */
@@ -64,12 +65,14 @@ export function createConversationArtifactAppend(
           await withWritePeriodCalculations(
             tx,
             validate =>
-              assertConversationArtifactCurrent(
-                tx,
-                database,
-                decoded,
-                true,
-                validate,
+              withWriteTypedFingerprints(tx, () =>
+                assertConversationArtifactCurrent(
+                  tx,
+                  database,
+                  decoded,
+                  true,
+                  validate,
+                ),
               ),
             diagnostic?.beginPeriod,
           );
