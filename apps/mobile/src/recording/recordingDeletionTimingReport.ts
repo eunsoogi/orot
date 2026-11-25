@@ -20,12 +20,16 @@ export interface RecordingDeletionTimingReport {
   readonly events: readonly RecordingDeletionTimingEvent[];
   readonly durationsMs: {
     readonly confirmationToProgress: number | null;
+    readonly confirmationToBusySettled?: number | null;
+    readonly committedBusyDuration?: number | null;
     /** Absent from earlier v1 samples; it includes only acquisition of the library's serial queue. */
     readonly libraryQueueWait: number | null;
     readonly sourceRead: number | null;
     readonly stopCheck: number | null;
     readonly audioStaging: number | null;
     readonly memoryOpen: number | null;
+    readonly memoryQueueWait?: number | null;
+    readonly memoryProvenanceScan?: number | null;
     readonly derivedDataCleanup: number | null;
     readonly databaseDeleteCommit: number | null;
     readonly audioCleanup: number | null;

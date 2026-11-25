@@ -19,6 +19,7 @@ test('reports ordered stage durations using monotonic milliseconds only', () => 
   probe.mark('confirmation-tap');
   now += 3;
   probe.mark('progress-presented');
+  probe.mark('busy-committed');
 
   const spans = [
     'source-read',
@@ -37,6 +38,7 @@ test('reports ordered stage durations using monotonic milliseconds only', () => 
 
   probe.finish('success');
   now += 4;
+  probe.mark('busy-settled');
   probe.mark('list-refresh');
   probe.mark('list-refresh');
 
@@ -46,6 +48,8 @@ test('reports ordered stage durations using monotonic milliseconds only', () => 
     succeeded: true,
     durationsMs: {
       confirmationToProgress: 3,
+      confirmationToBusySettled: 42,
+      committedBusyDuration: 39,
       sourceRead: 5,
       stopCheck: 5,
       audioStaging: 5,

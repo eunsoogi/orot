@@ -10,8 +10,22 @@ import type { RecordingLibrarySummary } from './recordingLibraryServiceTypes';
 /** Connects the opt-in measurement harness to committed progress and list updates. */
 export function useRecordingDeletionTiming(
   recordings: readonly RecordingLibrarySummary[],
+  deletionBusy: boolean,
 ) {
   const probe = useContext(RecordingDeletionTimingContext);
+  const observedBusy = useRef(false);
+  // Effects observe committed React state; neither event is a native pixel timestamp.
+  useEffect(() => {
+    if (!probe) {
+      observedBusy.current = false;
+    } else if (deletionBusy) {
+      observedBusy.current = true;
+      markRecordingDeletionTiming(probe, 'busy-committed');
+    } else if (observedBusy.current) {
+      observedBusy.current = false;
+      markRecordingDeletionTiming(probe, 'busy-settled');
+    }
+  }, [deletionBusy, probe]);
   const pendingListRefresh = useRef(false);
 
   useEffect(() => {

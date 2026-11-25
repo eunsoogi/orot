@@ -6,6 +6,7 @@ import { commitMemoryWriteBatch, writeMemory } from './memoryWrites';
 import { readMemoryById, readMemoryByKey, recordsForKey } from './memoryKeys';
 import { forgetAllPersistedRecords } from './allMemoryDeletion';
 import { isAgentMemoryKind, isProvenance, metadataFrom, provenanceFrom } from './validation';
+import { observeRemoval, scanRemoval, type RemovalObserver } from './sourceRemovalObservation';
 export class LocalAgentMemory implements AgentMemoryService {
   private engine: Memory | null = null;
   private tail: Promise<void> = Promise.resolve();
@@ -145,8 +146,11 @@ export class LocalAgentMemory implements AgentMemoryService {
     deleteSourceRecord: () => Promise<boolean>,
     dependentReferenceIds: readonly string[] = [],
     typedReferences?: readonly { id: string; kind: string }[],
+    observe?: RemovalObserver,
   ): Promise<AgentMemorySourceRemovalResult> {
+    observeRemoval(observe, 'queue', 'begin');
     return this.enqueue(async () => {
+      observeRemoval(observe, 'queue', 'success');
       const normalizedId = sourceId.trim();
       if (!normalizedId) throw new Error('A source identifier is required.');
       const references = new Set([
@@ -154,12 +158,7 @@ export class LocalAgentMemory implements AgentMemoryService {
         ...dependentReferenceIds.map((referenceId) => referenceId.trim()).filter(Boolean),
       ]);
 
-      const records = await this.storage.listRecords();
-      const ids = records
-        .filter((record) =>
-          provenanceFrom(record.meta)?.sourceIds.some((referenceId) => references.has(referenceId)),
-        )
-        .map((record) => record.id);
+      const ids = await scanRemoval(this.storage, references, observe);
       const deletionFences = new Set([...references, ...ids]);
       const memoriesDeleted = await this.runBatch(async () => {
         const engine = await this.getEngine();

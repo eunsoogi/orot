@@ -2,6 +2,7 @@ import type { Embedder, RecallOptions } from 'rememori';
 import type { AgentMemoryHit, AgentMemoryInput, AgentMemoryStorageAdapter } from './types';
 import { LocalAgentMemory } from './localAgentMemory';
 import { namespacedStorage } from './namespacedStorage';
+import type { RemovalObserver } from './sourceRemovalObservation';
 
 export interface CreateAgentMemoryOptions {
   readonly embedder: Embedder;
@@ -37,6 +38,7 @@ export interface AgentMemoryService {
     deleteSourceRecord: () => Promise<boolean>,
     dependentReferenceIds?: readonly string[],
     typedReferences?: readonly { id: string; kind: string }[],
+    observe?: RemovalObserver,
   ): Promise<AgentMemorySourceRemovalResult>;
   close(): Promise<void>;
 }
