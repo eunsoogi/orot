@@ -128,8 +128,12 @@ async function readSelected(
     return null;
   const confirmed = await reprove();
   if (!confirmed) return null;
-  const { analysis, id: summaryId, createdAt, modelName } =
-    confirmed.body.saved;
+  const {
+    analysis,
+    id: summaryId,
+    createdAt,
+    modelName,
+  } = confirmed.body.saved;
   return {
     reference: confirmed.reference,
     historicalSnapshot: true,

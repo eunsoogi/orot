@@ -39,11 +39,7 @@ async function bookmarked() {
   const db = guardedNativeDatabase(f.db);
   const storage = createConversationArtifactStorage(db);
   const read = (confirm: () => Promise<boolean> = async () => true) =>
-    storage.readBookmarkedHistoricalHealthSummary(
-      artifactId,
-      current,
-      confirm,
-    );
+    storage.readBookmarkedHistoricalHealthSummary(artifactId, current, confirm);
   return { ...f, db, storage, pin, revise, read };
 }
 
@@ -141,8 +137,7 @@ test.each([
       await f.repository.delete('health_observation', f.inside.id);
     if (scenario === 'deleted-session')
       await f.storage.deleteSession('selected');
-    if (scenario === 'hidden-session')
-      await f.storage.hideSession('selected');
+    if (scenario === 'hidden-session') await f.storage.hideSession('selected');
     if (scenario === 'rewritten')
       await f.db.execute(
         "UPDATE symptom_summary_runs SET result_json=json_set(result_json,'$.analysis.hypotheses[0].summary','replacement') WHERE id=?",
