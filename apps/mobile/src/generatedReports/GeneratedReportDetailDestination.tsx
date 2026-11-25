@@ -136,7 +136,7 @@ export function GeneratedReportDetailDestination({
           return;
         const reader = await openGeneratedReportReader();
         if (!current() || (verify && (!(await verify()) || !current()))) return;
-        const detail = await reader.read(row, controller.signal);
+        const detail = await reader.read(row, controller.signal, invalidate);
         if (!current() || (verify && (!(await verify()) || !current()))) return;
         const prior = refresh?.prior;
         const refreshedTarget = detail?.conversationSources?.target;
