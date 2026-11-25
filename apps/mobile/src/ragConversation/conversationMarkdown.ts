@@ -29,7 +29,7 @@ const item = /^ {0,3}([-+*]|\d{1,9}[.)])[ \t]+(.+)$/u;
 export function parseAssistantMarkdown(
   content: string,
 ): readonly MarkdownBlock[] | undefined {
-  if (content.length > maxLength || !/[\n\\`_*#\[+~-]/u.test(content))
+  if (content.length > maxLength || !/[\n\\`_*#[+~-]/u.test(content))
     return undefined;
   const lines = content.split(/\r\n?|\n/u);
   if (lines.length > maxLines) return undefined;

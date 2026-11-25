@@ -7,7 +7,7 @@ export type MarkdownRun = {
 };
 
 const token =
-  /\\[\\`*_[\]()!#<>]|!\[[^\[\]\n]*\]\([^()\n]*\)|\[[^\[\]\n]+\]\([^()\s]+\)|`[^`\n]+`|\*\*[^*\n]+\*\*|__[^_\n]+__|\*[^*\n]+\*|_[^_\n]+_|<\/?[A-Za-z][^<>\n]*>/gu;
+  /\\[\\`*_[\]()!#<>]|!\[[^[\]\n]*\]\([^()\n]*\)|\[[^[\]\n]+\]\([^()\s]+\)|`[^`\n]+`|\*\*[^*\n]+\*\*|__[^_\n]+__|\*[^*\n]+\*|_[^_\n]+_|<\/?[A-Za-z][^<>\n]*>/gu;
 
 /** Parse a bounded, nonrecursive inline subset. Unrecognized syntax remains visible. */
 export function markdownRuns(text: string): readonly MarkdownRun[] {
