@@ -31,7 +31,8 @@ extension RealtimeVoiceCall {
                 guard allowed else { self.fail(); return }
                 let begin = { [weak self] in
                     guard let self else { return }
-                    guard id == identifier, lifecycleEpoch == epoch, liveSocketEpoch != epoch else { return }
+                    guard id == identifier, lifecycleEpoch == epoch, liveSocketEpoch != epoch,
+                          token != nil, foreground() else { return }
                     let startID = UUID().uuidString
                     liveSocketEpoch = epoch
                     socket.received = { [weak self] event in
@@ -62,6 +63,9 @@ extension RealtimeVoiceCall {
                             }
                         }
                     }
+                    // Admission callbacks can revoke the foreground grant before the credentialed open.
+                    guard id == identifier, lifecycleEpoch == epoch else { return }
+                    guard token != nil, foreground() else { fail(); return }
                     socket.open(model: model, key: key)
                     guard id == identifier, lifecycleEpoch == epoch else { return }
                     guard token != nil, foreground() else { fail(); return }

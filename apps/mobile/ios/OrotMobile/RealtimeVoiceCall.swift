@@ -61,7 +61,9 @@ final class RealtimeVoiceCall {
             state("listening")
         }
         observers.append(NotificationCenter.default.addObserver(forName: UIApplication.didBecomeActiveNotification, object: nil, queue: .main) { [weak self] _ in
-            let action = self?.pending; self?.pending = nil; action?()
+            // A queued process-wide notice can outlive its active state. Preserve the pending owner.
+            guard let self, foreground() else { return }
+            let action = pending; pending = nil; action?()
         })
         for name in [UIApplication.didEnterBackgroundNotification, UIApplication.protectedDataWillBecomeUnavailableNotification, AVAudioSession.interruptionNotification, AVAudioSession.routeChangeNotification] {
             observers.append(NotificationCenter.default.addObserver(forName: name, object: nil, queue: .main) { [weak self] note in
