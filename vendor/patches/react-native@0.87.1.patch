@@ -354,3 +354,25 @@ index 53c64b3c897737c381d8b5ba196bf14bcc0b7af1..0580be68caa701b3c44f8a49eb75955b
          :execution_position => :before_compile,
          :script => <<-EOS
          . "$REACT_NATIVE_PATH/scripts/xcode/with-environment.sh"
+diff --git a/scripts/codegen/generate-artifacts-executor/generateUnstableModulesRequiringMainQueueSetupProvider.js b/scripts/codegen/generate-artifacts-executor/generateUnstableModulesRequiringMainQueueSetupProvider.js
+--- a/scripts/codegen/generate-artifacts-executor/generateUnstableModulesRequiringMainQueueSetupProvider.js
++++ b/scripts/codegen/generate-artifacts-executor/generateUnstableModulesRequiringMainQueueSetupProvider.js
+@@ -13 +13,5 @@
+-const {TEMPLATES_FOLDER_PATH} = require('./constants');
++const {
++  REACT_NATIVE_PACKAGE_ROOT_FOLDER,
++  TEMPLATES_FOLDER_PATH,
++  packageJson,
++} = require('./constants');
+@@ -33,0 +38,11 @@
++  // CocoaPods autolinking config intentionally excludes React Native itself.
++  // Restore its pinned, shipped eager module annotations only for this registry.
++  const core = packageJson.codegenConfig?.libraries?.find(
++    ({name}) => name === 'FBReactNativeSpec',
++  );
++  if (core && !libraries.some(library => library.config?.name === core.name)) {
++    libraries = [
++      {config: core, libraryPath: REACT_NATIVE_PACKAGE_ROOT_FOLDER},
++      ...libraries,
++    ];
++  }
