@@ -103,9 +103,9 @@ test('provisional defaults never enable a native workout read before owned metri
     workoutSelectionEpoch: null,
   });
   const { rerender } = await render(<OverviewMetrics />);
-  expect(workout).toHaveBeenCalledWith(false, null);
+  expect(workout).toHaveBeenCalledWith(false, null, undefined, undefined);
   expect(workout.mock.calls.some(([active]) => active)).toBe(false);
   mocked.mockReturnValue({ ...state(), workoutSelectionEpoch: 1 });
   await rerender(<OverviewMetrics />);
-  expect(workout).toHaveBeenCalledWith(true, 1);
+  expect(workout).toHaveBeenCalledWith(true, 1, undefined, undefined);
 });

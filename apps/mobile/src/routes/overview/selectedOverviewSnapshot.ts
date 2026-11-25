@@ -6,30 +6,36 @@ import {
 import { projectOverviewMetricSnapshot } from './metricLoader';
 import { readOverviewMetricSnapshot } from './metricReadCancellation';
 import {
-  loadOverviewMetricSelection,
+  loadOverviewMetricSelectionProof,
   type OverviewMetricChoice,
   snapshotOverviewMetricSelection,
 } from './metricSelection';
 
 export type SelectedOverviewSnapshot = {
   selection: OverviewMetricChoice[];
+  workoutChoiceWitness?: string | null;
   chart: Awaited<ReturnType<typeof projectOverviewMetricSnapshot>>;
 };
 
-/** Selection and chart values must describe the same guarded snapshot. */
-export async function readSelectedOverviewProjection(
-  tx: SqlExecutor,
-  now: Date,
-): Promise<SelectedOverviewSnapshot> {
+export async function readOverviewPreferenceProof(tx: SqlExecutor) {
   const preferences = createRecordRepository({
     execute: tx.execute,
     async transaction() {
       throw new Error('Overview preference snapshot is read-only.');
     },
   });
-  const selection = await loadOverviewMetricSelection(preferences);
+  return loadOverviewMetricSelectionProof(preferences);
+}
+
+/** Selection and chart values must describe the same guarded snapshot. */
+export async function readSelectedOverviewProjection(
+  tx: SqlExecutor,
+  now: Date,
+): Promise<SelectedOverviewSnapshot> {
+  const { selection, witness } = await readOverviewPreferenceProof(tx);
   return {
     selection,
+    workoutChoiceWitness: witness,
     chart: await projectOverviewMetricSnapshot(
       tx,
       now,

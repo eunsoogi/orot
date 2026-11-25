@@ -1,3 +1,4 @@
+import type { WorkoutChoiceReceipt } from './earlyWorkoutChoice';
 import { useIsFocused } from '@react-navigation/native';
 import { StyleSheet, View } from 'react-native';
 import { AppText as Text } from '../../layout/AppText';
@@ -109,6 +110,8 @@ export function OverviewHeartPanel({
   metrics,
   state,
   workoutSelectionEpoch,
+  workoutSelectionWitness,
+  startupWorkoutChoice,
   preserveWorkoutOwner,
   initialWorkoutChoicePending,
 }: {
@@ -116,6 +119,8 @@ export function OverviewHeartPanel({
   readonly metrics: Partial<Record<HeartReading, OverviewMetricProjection>>;
   readonly state: State;
   readonly workoutSelectionEpoch?: number | null;
+  readonly workoutSelectionWitness?: string | null;
+  readonly startupWorkoutChoice?: WorkoutChoiceReceipt;
   readonly preserveWorkoutOwner?: boolean;
   readonly initialWorkoutChoicePending?: boolean;
 }) {
@@ -125,7 +130,8 @@ export function OverviewHeartPanel({
     focused &&
     (state === 'ready' ||
       state === 'refreshing' ||
-      (state === 'loading' && preserveWorkoutOwner === true) ||
+      (state === 'loading' &&
+        (preserveWorkoutOwner === true || !!startupWorkoutChoice)) ||
       state === 'stale');
   return (
     <View
@@ -159,10 +165,13 @@ export function OverviewHeartPanel({
           active={active}
           embedded
           selectionEpoch={workoutSelectionEpoch}
+          selectionWitness={workoutSelectionWitness}
+          startupWorkoutChoice={startupWorkoutChoice}
           unverifiedSelection={
             focused &&
             state === 'loading' &&
-            initialWorkoutChoicePending === true
+            initialWorkoutChoicePending === true &&
+            !startupWorkoutChoice
           }
         />
       </View>

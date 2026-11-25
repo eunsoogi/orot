@@ -4,11 +4,17 @@ import {
   open,
   type DB,
 } from '@op-engineering/op-sqlite';
+import type { SqlExecutor } from '@orot/storage';
 import { conversationExecutionNative } from '../ragConversation/conversationExecutionNative';
 import {
   readSelectedOverviewProjection,
+  readOverviewPreferenceProof,
   type SelectedOverviewSnapshot,
 } from '../routes/overview/selectedOverviewSnapshot';
+import {
+  selectedWorkoutChoiceProof,
+  type WorkoutChoiceReceipt,
+} from '../routes/overview/earlyWorkoutChoice';
 import { acquireIndependentReadEpoch } from './protectedReadEpoch';
 import {
   readIndependentOverviewSnapshot,
@@ -17,13 +23,13 @@ import {
 
 /** The key-capable secure opener calls this narrow chart reader only after
  * existing writer initialization. No source/agent repository is exposed. */
-async function readSecureOverviewProjection(input: {
+async function readSecureOverviewProjection<T>(input: {
   owner: DB;
   ownerIsCurrent: () => boolean;
   open: () => DB;
-  now: Date;
+  project: (tx: SqlExecutor) => Promise<T>;
   signal: AbortSignal;
-  publish: (value: SelectedOverviewSnapshot) => void;
+  publish: (value: T) => void;
 }): Promise<OverviewReadOutcome> {
   const protection = conversationExecutionNative();
   if (!protection?.bridgeAvailable) return 'unavailable';
@@ -58,7 +64,7 @@ async function readSecureOverviewProjection(input: {
       input.open,
       current,
       confirm,
-      tx => readSelectedOverviewProjection(tx, input.now),
+      input.project,
       input.publish,
     );
   } finally {
@@ -76,10 +82,10 @@ export function createSecureOverviewReader(
   readExistingKey: () => Promise<string | null>,
   name: string,
 ) {
-  return async (
-    now: Date,
+  const run = async <T>(
+    project: (tx: SqlExecutor) => Promise<T>,
     signal: AbortSignal,
-    publish: (value: SelectedOverviewSnapshot) => void,
+    publish: (value: T) => void,
   ): Promise<OverviewReadOutcome> => {
     if (signal.aborted) return 'discarded';
     await readyWriter();
@@ -105,9 +111,23 @@ export function createSecureOverviewReader(
           readOnly: true,
           failOnCreate: true,
         }),
-      now,
+      project,
       signal,
       publish,
     });
   };
+  const readOverview = (
+    now: Date,
+    signal: AbortSignal,
+    publish: (value: SelectedOverviewSnapshot) => void,
+  ) => run(tx => readSelectedOverviewProjection(tx, now), signal, publish);
+  const readWorkoutChoice = (
+    signal: AbortSignal,
+    publish: (receipt: WorkoutChoiceReceipt) => void,
+  ) =>
+    run(readOverviewPreferenceProof, signal, preference => {
+      const receipt = selectedWorkoutChoiceProof(preference);
+      if (receipt) publish(receipt);
+    });
+  return Object.assign(readOverview, { readWorkoutChoice });
 }

@@ -95,9 +95,22 @@ export function validateOverviewMetricSelection(
 export async function loadOverviewMetricSelection(
   repository: Pick<RecordRepository, 'getSyncCheckpoint'>,
 ): Promise<OverviewMetricChoice[]> {
+  return (await loadOverviewMetricSelectionProof(repository)).selection;
+}
+
+export async function loadOverviewMetricSelectionProof(
+  repository: Pick<RecordRepository, 'getSyncCheckpoint'>,
+) {
   const checkpoint = await repository.getSyncCheckpoint(selectionKey);
-  if (!checkpoint) return [...defaultOverviewMetrics];
-  return validateOverviewMetricSelection(JSON.parse(checkpoint.value));
+  const selection = checkpoint
+    ? validateOverviewMetricSelection(JSON.parse(checkpoint.value))
+    : [...defaultOverviewMetrics];
+  return {
+    selection,
+    witness: checkpoint
+      ? JSON.stringify([checkpoint.updatedAt, checkpoint.value])
+      : null,
+  };
 }
 
 export async function saveOverviewMetricSelection(
