@@ -120,7 +120,8 @@ it('keeps a focused, visibly pending confirmation until the actual deletion sett
   expect(props.onChanged).not.toHaveBeenCalled();
   await act(async () => finish());
   expect(props.repository.delete).toHaveBeenCalledTimes(1);
-  expect(props.onChanged).toHaveBeenCalledWith('manual-history:' + record.id);
+  expect(props.onDeleted).toHaveBeenCalledTimes(1);
+  expect(props.onChanged).not.toHaveBeenCalled();
 });
 
 it('corrects the existing original without creating and retains unknown date', async () => {
