@@ -4,17 +4,17 @@ runs:
   using: composite
   steps:
     - name: Identify exact SwiftPM cache entries
-      id: pins
+      id: onnx_archive_paths
       shell: bash
       run: node scripts/ci/verify-onnx-artifact-cache.mjs paths "$GITHUB_OUTPUT"
     - name: Restore exact pinned archives
-      id: archives
+      id: onnx_archive_restore
       uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9
       with:
-        path: ${{ steps.pins.outputs.paths }}
+        path: ${{ steps.onnx_archive_paths.outputs.paths }}
         key: orot-onnx-swiftpm-archives-v1-${{ hashFiles('vendor/onnxruntime-swift-package-manager/Package.swift') }}
     - name: Resolve original binary artifacts on cache miss
-      if: steps.archives.outputs.cache-hit != 'true'
+      if: steps.onnx_archive_restore.outputs.cache-hit != 'true'
       shell: bash
       # Use the upstream SwiftPM URLs and checksums with normal TLS. A real
       # upstream outage on a cold runner must still fail; never repack an archive.
@@ -27,8 +27,8 @@ runs:
       shell: bash
       run: node scripts/ci/verify-onnx-artifact-cache.mjs verify
     - name: Save only independently verified archives
-      if: steps.archives.outputs.cache-hit != 'true' && github.ref == 'refs/heads/main'
+      if: steps.onnx_archive_restore.outputs.cache-hit != 'true' && github.ref == 'refs/heads/main'
       uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9
       with:
-        path: ${{ steps.pins.outputs.paths }}
-        key: ${{ steps.archives.outputs.cache-primary-key }}
+        path: ${{ steps.onnx_archive_paths.outputs.paths }}
+        key: ${{ steps.onnx_archive_restore.outputs.cache-primary-key }}
