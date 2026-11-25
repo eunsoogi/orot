@@ -1,4 +1,4 @@
-import { render, screen } from '@testing-library/react-native';
+import { render, screen, within } from '@testing-library/react-native';
 import { StyleSheet } from 'react-native';
 import { SavedMemoryContent } from '../SavedMemoryContent';
 import type { AgentSavedMemory } from '../unifiedSavedMemories';
@@ -17,17 +17,19 @@ const memory: AgentSavedMemory = {
 
 test('groups exact selectable text and metadata without truncating or shrinking the body', async () => {
   await render(<SavedMemoryContent memory={memory} />);
-  expect(screen.getByRole('header', { name: '기억 내용' })).toBeTruthy();
-  expect(screen.getByRole('header', { name: '저장 정보' })).toBeTruthy();
-  const body = screen.getByTestId('saved-memory-verbatim');
+  const reading = within(screen.getByTestId('saved-memory-content'));
+  const metadata = within(screen.getByTestId('saved-memory-metadata'));
+  expect(metadata.getByRole('header', { name: '저장 정보' })).toBeTruthy();
+  expect(metadata.queryByTestId('saved-memory-verbatim')).toBeNull();
+  const body = reading.getByTestId('saved-memory-verbatim');
   expect(body.props.children).toBe(text);
   expect(body.props.selectable).toBe(true);
   expect(body.props.numberOfLines).toBeUndefined();
   expect(StyleSheet.flatten(body.props.style)).toMatchObject({
-    fontSize: 16,
-    lineHeight: 26,
+    fontSize: 18,
+    lineHeight: 29,
   });
-  expect(screen.getByText('연결된 출처 2개')).toBeTruthy();
+  expect(metadata.getByText('연결된 출처 2개')).toBeTruthy();
   expect(screen.queryByText('source-a')).toBeNull();
   expect(screen.queryAllByRole('button')).toHaveLength(0);
 });
