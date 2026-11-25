@@ -59,6 +59,7 @@ test.each([
     const result = await runMultiAgentWorkflow(
       {
         ...run.options,
+        confirmTerminalLocalAction: undefined,
         request,
         task: restoreConversationTask({
           taskType: ragConversationTask.taskType,
@@ -110,6 +111,7 @@ test('v10 never publishes unreviewed tool prose or spends a second opening revie
   const result = await runMultiAgentWorkflow(
     {
       ...run.options,
+      confirmTerminalLocalAction: undefined,
       request: '걷기 기록을 비교해줘',
       task: ragConversationTask,
     },

@@ -148,7 +148,7 @@ export function conversationAnswerMemoryAction(input: {
           observer?.expectedConversationModel?.isCurrent?.() !== false;
         const storage = await data.openConversationArtifactStorage?.();
         if (!storage || !current()) return false;
-        const operation =
+        const operation: AnswerMemoryTerminalOperation | undefined =
           input.terminalRunId && terminal
             ? { ...terminal, toolId, toolVersion }
             : undefined;

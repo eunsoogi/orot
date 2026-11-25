@@ -22,7 +22,6 @@ const runId = 'synthetic-terminal-remember-graph';
 const currentId = 'follow-up-turn';
 const sessionId = 'synthetic-session';
 const toolId = 'remember-conversation-answer';
-const version = '1';
 const empty = { items: [], coverage: [], conflicts: [] };
 
 type Mode =
