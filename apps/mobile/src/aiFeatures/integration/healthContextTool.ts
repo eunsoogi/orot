@@ -33,7 +33,8 @@ export function parseHealthContextToolInput(
         !Number.isSafeInteger(v.days) ||
         v.days < 1)) ||
     (v.detail !== undefined &&
-      !['summary', 'weekly', 'daily'].includes(String(v.detail))) ||
+      (typeof v.detail !== 'string' ||
+        !['summary', 'weekly', 'daily'].includes(v.detail))) ||
     (v.topics !== undefined &&
       (!Array.isArray(v.topics) ||
         !v.topics.length ||
@@ -70,7 +71,7 @@ export function parseHealthContextToolInput(
       (scope?.window.doseHistory
         ? ['medications']
         : [...HEALTH_CONTEXT_TOPICS]),
-    detail: (v.detail as string) ?? 'summary',
+    detail: v.detail ?? 'summary',
     ...(v.window ? { window: v.window as JsonObject } : {}),
   };
 }

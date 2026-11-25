@@ -1,3 +1,4 @@
+import { parseHealthContextToolInput } from '../../aiFeatures/integration/healthContextTool';
 import { utf8ByteLength } from '../../aiFeatures/integration/evidenceUtils';
 import {
   fixture,
@@ -86,8 +87,6 @@ test.each([
           f.controller.signal,
         );
         expect(exact).toContain('heart_rate');
-        // This SQLite fixture distinguishes the broader canonical result from the legacy 512-byte aggregate.
-        // Transport support above 2 KiB is covered by the registered native ticket assertion.
         expect(utf8ByteLength(String(exact))).toBeGreaterThan(512);
         expect(utf8ByteLength(String(exact))).toBeLessThanOrEqual(8192);
         const parsed = JSON.parse(exact!);
@@ -190,13 +189,15 @@ test('optional serial execution requires fresh approvals and never replays a den
 test.each([
   ['out-of-range', { days: 0, topics: ['measurements'] }],
   ['unknown-field', { topics: ['measurements'], unsupported: true }],
+  ['detail-array', { topics: ['measurements'], detail: ['daily'] }],
+  ['topic-array', { topics: [['measurements']] }],
+  ['window-array', { window: [] }],
   ['all-history', {}],
 ] as const)(
   'requires honest local approval before any read: %s',
   async (mode, input) => {
-    const args = JSON.stringify(input);
     const f = await fixture();
-    const call = { ...canonicalCall, args };
+    const call = { ...canonicalCall, args: JSON.stringify(input) };
     f.setActive(call);
     const approveLocal = jest.fn(
       async (owned: { callId: string }, preview: string) => {
@@ -230,7 +231,10 @@ test.each([
         expect(preview).toContain('"measurements"');
         expect(preview).toContain('"medications"');
         expect(preview).toContain('"detail": "summary"');
-      } else expect(approveLocal).not.toHaveBeenCalled();
+      } else {
+        expect(approveLocal).not.toHaveBeenCalled();
+        expect(parseHealthContextToolInput(input, true)).toBeUndefined();
+      }
       expect(openData).not.toHaveBeenCalled();
       expect(f.read).not.toHaveBeenCalled();
       expect(approveTransfer).not.toHaveBeenCalled();
