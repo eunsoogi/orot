@@ -32,12 +32,12 @@ jest.mock('../recentSourceReader', () => ({
 }));
 
 test.each([
-  ['settings Back', 1],
-  ['ordinary foreground', 1],
-  ['first open before publication', 5],
+  ['settings Back', 1, 2],
+  ['ordinary foreground', 1, 2],
+  ['first open before publication', 5, 1],
 ] as const)(
   'reopens a fresh protected snapshot: %s',
-  async (journey, stamp) => {
+  async (journey, stamp, writeCount) => {
     AppState.currentState = 'active';
     jest
       .mocked(conversationExecutionNative)
@@ -70,8 +70,9 @@ test.each([
                 sql.startsWith('SELECT total_changes() AS local') &&
                 ++samples === stamp
               ) {
-                armed = false;
                 conflicts++;
+                samples = 0;
+                armed = conflicts < writeCount;
                 // An ordinary guarded write crosses the read witness without
                 // changing the eligible row, protected owner, or permission.
                 await database.execute('UPDATE lifecycle_fixture SET used = 1');
@@ -143,7 +144,7 @@ test.each([
           }
           expect(await screen.findByTestId(row)).toBeTruthy();
         }
-        expect(conflicts).toBe(1);
+        expect(conflicts).toBe(writeCount);
         expect(screen.queryByTestId('records-recent-sources-error')).toBeNull();
         expect(screen.queryByText('Synthetic private Memory text')).toBeNull();
       } finally {

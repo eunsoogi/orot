@@ -25,6 +25,9 @@ import { BoundReadRevisionChanged } from '../storage/boundReadResultWitness';
 import { recentPageSize } from './RecordsRecentTimeline';
 import { linkRecentRefresh, type RecentPageRefresh } from './recentPageRefresh';
 
+// A warm return can race more than one short, unrelated committed write.
+const maxFirstPageRevisionRestarts = 2;
+
 export async function isProtectedDataReadable(
   protection: ConversationExecutionAdapter,
 ) {
@@ -175,15 +178,27 @@ export async function requestRecentSavedMaterialPage<Row extends RecentPageRow>(
         ? { rows, more }
         : null;
     };
-    const result = await candidate().catch(async error => {
-      // The budget includes both initial read and prepublication reproof.
-      // Never reuse the old cursor or retry a true SQL/protection failure.
-      if (before || !(error instanceof BoundReadRevisionChanged)) throw error;
-      witness?.dispose?.();
-      witness = undefined;
-      if (!(await verify()) || !current()) throw error;
-      return candidate();
-    });
+    let restarts = 0;
+    const readWithRevisionRecovery = async (): ReturnType<typeof candidate> => {
+      try {
+        return await candidate();
+      } catch (error) {
+        // Only a first page can restart from scratch after a transient revision.
+        // No stale cursor, broader authority, or retry of a real SQL failure.
+        if (
+          before ||
+          !(error instanceof BoundReadRevisionChanged) ||
+          restarts >= maxFirstPageRevisionRestarts
+        )
+          throw error;
+        restarts++;
+        witness?.dispose?.();
+        witness = undefined;
+        if (!(await verify()) || !current()) throw error;
+        return readWithRevisionRecovery();
+      }
+    };
+    const result = await readWithRevisionRecovery();
     if (!result || !current()) return false;
     if (!pageIsCurrent()) {
       refuse();
