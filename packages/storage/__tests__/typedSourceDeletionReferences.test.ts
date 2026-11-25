@@ -8,6 +8,7 @@ import {
   createDatabase,
   options,
   audioSourceRecord,
+  hashB,
   evidenceSpan,
 } from './sourceEvidenceTestSupport';
 
@@ -55,7 +56,11 @@ test('exact membership agrees with the original family projection across multipl
     const repository = await openEncryptedStorage(options(database));
     const source = await repository.sourceRecords.create(audioSourceRecord('exact-root'));
     const segment = transcriptSegment(source.id);
-    const other = await repository.sourceRecords.create(audioSourceRecord('unrelated-root'));
+    const other = await repository.sourceRecords.create({
+      ...audioSourceRecord('unrelated-root'),
+      contentHash: hashB,
+    });
+    expect(other.id).not.toBe(source.id);
     const otherSegment = transcriptSegment(other.id);
     await repository.transcripts.append([segment]);
     await repository.transcripts.append([otherSegment]);
