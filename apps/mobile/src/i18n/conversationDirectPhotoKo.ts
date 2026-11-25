@@ -1,5 +1,7 @@
 /** UI copy for the explicitly selected image route, distinct from OCR. */
 export const conversationDirectPhotoKo = {
+  'ragConversation.photo.openFullScreen': '첨부 사진 전체 화면으로 보기',
+  'ragConversation.photo.closeFullScreen': '사진 닫기',
   'ragConversation.photo.imageDisclosure':
     '첨부한 사진을 이미지로 보냅니다. 텍스트로 바꿔 보내지 않아요.',
   'ragConversation.photo.imageInvalid':
