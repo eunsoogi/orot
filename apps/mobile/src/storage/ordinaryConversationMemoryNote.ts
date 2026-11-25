@@ -6,7 +6,10 @@ import {
 } from '@orot/storage';
 import { isAuthoredRoutineMemoryStatement } from '../memory/authoredRoutineMemory';
 import { isProactiveMemoryStatement } from '../memory/userStatementMemory';
-import { validateReplyPreferenceSpan } from '../ragConversation/authoredReplyPreferenceSpan';
+import {
+  validateAuthoredRoutineSpan,
+  validateReplyPreferenceSpan,
+} from '../ragConversation/authoredReplyPreferenceSpan';
 import {
   readOrdinaryConversationMemoryEnrollment,
   matchesOrdinaryConversationMemoryEnrollment,
@@ -36,7 +39,18 @@ export async function saveOrdinaryConversationMemoryNote(
   const isCurrent = () => attemptIsCurrent() && captured.isCurrent();
   const scope = captured.scope ?? 'reply-preferences';
   let authored: string | undefined;
-  if (source.replyPreferenceSpan !== undefined) {
+  if (
+    source.replyPreferenceSpan !== undefined &&
+    source.authoredRoutineSpan !== undefined
+  )
+    return false;
+  if (source.authoredRoutineSpan !== undefined) {
+    if (scope === 'authored-routine' && !source.entryIntent)
+      authored = validateAuthoredRoutineSpan(
+        source.question,
+        source.authoredRoutineSpan,
+      );
+  } else if (source.replyPreferenceSpan !== undefined) {
     // Match the whole original at the completion boundary, then retain only
     // this exact user-authored span. The model never supplies substitute text.
     if (scope === 'reply-preferences' && !source.entryIntent)

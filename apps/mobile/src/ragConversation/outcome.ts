@@ -35,6 +35,7 @@ export type RagConversationOutcome =
       readonly committedRecordingCitations?: CommittedConversationCitations;
       readonly proactiveMemory?: true;
       readonly replyPreferenceSpan?: string;
+      readonly authoredRoutineSpan?: string;
       /** Only the host’s committed local answer bookmark can set this receipt. */
       readonly committedAnswerMemory?: true;
       readonly a2uiPresentation?: import('./conversationA2UI').ConversationA2UINode;

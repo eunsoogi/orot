@@ -1,5 +1,5 @@
 import { validateReplyPreferenceSpan } from '../authoredReplyPreferenceSpan';
-import { ragConversationTask } from '../task';
+import { conversationTaskV25 as ragConversationTask } from '../task';
 import { restoreConversationTask } from '../conversationTaskVersions';
 
 const authored = 'For future replies, I prefer concise answers.';

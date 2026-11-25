@@ -19,6 +19,7 @@ export interface ConversationRetentionCandidate {
   readonly archivedA2UILayout?: ArchivedA2UILayout;
   readonly proactiveMemory?: true;
   readonly replyPreferenceSpan?: string;
+  readonly authoredRoutineSpan?: string;
   readonly providerId: string;
   readonly modelId: string;
   /** Preserve the selected exploration mode without persisting route identifiers. */
@@ -51,5 +52,6 @@ export function withoutLiveMemoryAdvice(
     ...candidate,
     proactiveMemory: undefined,
     replyPreferenceSpan: undefined,
+    authoredRoutineSpan: undefined,
   };
 }

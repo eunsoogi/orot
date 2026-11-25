@@ -13,13 +13,12 @@ import { createConversationSessions } from '../conversationSessions';
 import { entryIntentSender } from '../entryIntentSender';
 import { setConversationEntryForSession } from '../useConversationEntryIntent';
 import type { ConversationScreenProps } from '../ConversationScreenProps';
-import { ragConversationTask } from '../task';
+import { syntheticAuthoredMemorySelection } from '../testSupport/syntheticAuthoredMemorySelection';
 
 const preference = 'For future replies, I prefer concise answers.';
 const routine = 'I practice the guitar every Monday.';
 const answer = 'Synthetic validated answer remains visible.';
 const live = () => true;
-
 test.each([
   'enabled',
   'typed authored follow-up',
@@ -35,6 +34,10 @@ test.each([
   'mixed authored span omitted',
   'mixed authored span fabricated',
   'mixed authored span disabled',
+  'mixed routine',
+  'mixed routine with only preferences enabled',
+  'mixed routine omitted',
+  'mixed routine fabricated',
 ] as const)(
   'a real live retained session saves only an eligible local note: %s',
   async mode => {
@@ -42,7 +45,7 @@ test.each([
     const mixed = mode.startsWith('mixed');
     const question = mixed
       ? 'Hello from a synthetic test. ' +
-        preference +
+        (isRoutine ? routine : preference) +
         ' The rest is not a note.'
       : isRoutine
         ? routine
@@ -93,7 +96,7 @@ test.each([
         'a'.repeat(64),
       );
       const routineReceipt =
-        isRoutine && mode !== 'routine with only preferences enabled'
+        isRoutine && !mode.includes('only preferences enabled')
           ? await enable('authored-routine', 'b'.repeat(64))
           : undefined;
       const capture = jest.fn(async (scope: LocalConversationMemoryScope) =>
@@ -137,7 +140,7 @@ test.each([
         mode !== 'routine with wrong-scope receipt' &&
         (!isRoutine || Boolean(routineReceipt));
       const acceptedProposal =
-        !mixed || mode === 'mixed authored span' || mode.includes('disabled');
+        !mixed || (!mode.includes('omitted') && !mode.includes('fabricated'));
       const expectedWrite =
         hasGrant &&
         !shortcut &&
@@ -150,7 +153,7 @@ test.each([
         observer,
         entryContext,
       ) => {
-        expect(capture).toHaveBeenCalledTimes(shortcut ? 0 : 1);
+        expect(capture).toHaveBeenCalledTimes(shortcut ? 0 : mixed ? 2 : 1);
         if (!shortcut) expect(capture).toHaveBeenCalledWith(scopeOfQuestion);
         expect(observer?.inputOrigin).toBe(shortcut ? 'shortcut' : 'composer');
         const bridge = createConversationRetentionBridge({
@@ -164,33 +167,21 @@ test.each([
         });
         bridge.onValidatedEvidence([]);
         const modelSelection = mixed
-          ? ragConversationTask.validateResult(
-              {
-                answer,
-                answerKind: 'conversation',
-                ...(mode.includes('omitted')
-                  ? {}
-                  : {
-                      replyPreferenceSpan: mode.includes('fabricated')
-                        ? 'For future replies, I prefer detailed answers.'
-                        : preference,
-                    }),
-              },
-              {
-                request: authored,
-                evidence: { items: [], coverage: [], conflicts: [] },
-              },
-            )
+          ? syntheticAuthoredMemorySelection({
+              message: authored,
+              answer,
+              span: isRoutine ? routine : preference,
+              invalid: isRoutine
+                ? 'I practice the piano every Monday.'
+                : 'For future replies, I prefer detailed answers.',
+              mode,
+            })
           : undefined;
-        if (modelSelection && modelSelection.status !== 'valid')
-          throw new Error('Expected a valid synthetic answer.');
         const response = await bridge.finish({
           status: 'answer',
           answer,
           citations: [],
-          ...(modelSelection
-            ? { replyPreferenceSpan: modelSelection.value.replyPreferenceSpan }
-            : { proactiveMemory: true }),
+          ...(modelSelection ?? { proactiveMemory: true }),
         });
         expect(response.retained).toBe(true);
         return response.outcome;
@@ -219,6 +210,9 @@ test.each([
       expect(
         Object.prototype.hasOwnProperty.call(kept, 'replyPreferenceSpan'),
       ).toBe(false);
+      expect(
+        Object.prototype.hasOwnProperty.call(kept, 'authoredRoutineSpan'),
+      ).toBe(false);
       expect(kept?.entryIntent).toBe(typed ? 'possibilities' : undefined);
       const noteId = 'conversation-local-memory:auto:' + identity!.messageId;
       expect(await readManualHistoryEntry(f.database, noteId)).toBeNull();
@@ -237,7 +231,13 @@ test.each([
       }
       const note = await readManualHistoryEntry(f.database, noteId);
       expect(note?.details).toBe(
-        expectedWrite ? (mixed ? preference : question) : undefined,
+        expectedWrite
+          ? mixed
+            ? isRoutine
+              ? routine
+              : preference
+            : question
+          : undefined,
       );
     } finally {
       controller.abort();

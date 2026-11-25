@@ -6,6 +6,7 @@ import type { ConversationRetentionCandidate } from './conversationRetention';
 import {
   canProposeReplyPreferenceSpan,
   validateReplyPreferenceSpan,
+  validateAuthoredRoutineSpan,
 } from './authoredReplyPreferenceSpan';
 
 export type OrdinaryConversationMemoryPort = {
@@ -28,21 +29,34 @@ export function beginOrdinaryConversationMemoryTask(
   signal: AbortSignal,
 ) {
   const originalScope = localConversationMemoryScope(question);
-  const scope =
-    originalScope ??
-    (canProposeReplyPreferenceSpan(question) ? 'reply-preferences' : undefined);
-  if (signal.aborted || !scope) return;
-  let capture: ReturnType<typeof port.capture>;
-  try {
-    capture = port.capture(scope).catch(() => undefined);
-  } catch {
-    return;
+  const scopes: LocalConversationMemoryScope[] = originalScope
+    ? [originalScope]
+    : canProposeReplyPreferenceSpan(question)
+      ? ['reply-preferences', 'authored-routine']
+      : [];
+  if (signal.aborted || scopes.length === 0) return;
+  // Read each independent enrollment before awaiting; a later Settings enable must
+  // not retroactively enroll a pending response from an older composer turn.
+  const admissions = new Map<
+    LocalConversationMemoryScope,
+    ReturnType<typeof port.capture>
+  >();
+  for (const scope of scopes) {
+    try {
+      admissions.set(
+        scope,
+        port.capture(scope).catch(() => undefined),
+      );
+    } catch {
+      /* Optional scope unavailable; never substitute the other grant. */
+    }
   }
   let active = true;
   let issued = false;
   let finishing = false;
   let source: OrdinaryConversationCompletionIdentity | undefined;
   let proposed = false;
+  let selectedScope = originalScope;
   const discard = () => {
     active = false;
     source = undefined;
@@ -60,10 +74,17 @@ export function beginOrdinaryConversationMemoryTask(
       // typed responses cannot overwrite this live composer witness.
       if (!current() || !source || issued) return;
       issued = true;
-      const selected =
-        originalScope === undefined &&
-        candidate.entryIntent === undefined &&
+      const mixed =
+        originalScope === undefined && candidate.entryIntent === undefined;
+      const preference =
+        mixed &&
         validateReplyPreferenceSpan(question, candidate.replyPreferenceSpan);
+      const routine =
+        mixed &&
+        validateAuthoredRoutineSpan(question, candidate.authoredRoutineSpan);
+      const selected = Boolean(preference) !== Boolean(routine);
+      if (selected)
+        selectedScope = preference ? 'reply-preferences' : 'authored-routine';
       proposed =
         ((originalScope !== undefined && candidate.proactiveMemory === true) ||
           Boolean(selected)) &&
@@ -82,7 +103,9 @@ export function beginOrdinaryConversationMemoryTask(
       if (proposed && candidate.entryIntent === 'possibilities')
         source = { ...source, entryIntent: candidate.entryIntent };
       if (proposed && selected)
-        source = { ...source, replyPreferenceSpan: selected };
+        source = preference
+          ? { ...source, replyPreferenceSpan: preference }
+          : { ...source, authoredRoutineSpan: routine || undefined };
     },
     async finish(ownerCurrent: () => boolean) {
       if (finishing) return false;
@@ -95,11 +118,12 @@ export function beginOrdinaryConversationMemoryTask(
       }
       proposed = false;
       try {
-        const receipt = await capture;
+        if (!selectedScope) return false;
+        const receipt = await admissions.get(selectedScope);
         const canCommit = () => current() && ownerCurrent();
         if (
           !receipt?.isCurrent() ||
-          (receipt.scope ?? 'reply-preferences') !== scope ||
+          (receipt.scope ?? 'reply-preferences') !== selectedScope ||
           !canCommit()
         )
           return false;
