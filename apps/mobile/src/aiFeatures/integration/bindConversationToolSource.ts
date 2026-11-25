@@ -45,14 +45,14 @@ export function bindConversationToolSource(input: {
             ? await exact.call(input.storage, ...identity, timing)
             : await exact.call(input.storage, ...identity),
         ]
-      : timing
-        ? await input.storage.readToolTurns(
-            input.sessionId,
-            undefined,
-            undefined,
-            timing,
-          )
-        : await input.storage.readToolTurns(input.sessionId);
+      : await input.storage.readToolTurns(
+          input.sessionId,
+          undefined,
+          // Check every sibling in the owning turn, but don't hydrate other
+          // messages on each side of this selected source read.
+          [input.messageId],
+          timing,
+        );
     for (const turn of turns) {
       if (turn?.messageId !== input.messageId) continue;
       const event = turn.toolEvents.find(
