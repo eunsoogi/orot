@@ -79,11 +79,9 @@ final class ProcessDiagnosticWitnessTests: XCTestCase {
         let next = ["missing_witness", "revision_changed", "cancelled"]
         for (stage, outcomes) in [("first_page", first), ("next_page", next)] {
             for outcome in outcomes {
-                XCTAssertEqual(
-                    ProcessDiagnosticWitness.recordsMediaAdmissionLine(stage: stage, outcome: outcome),
-                    "OROT_PROVIDER_DIAGNOSTIC layer=app feature=records_media_admission stage=" + stage +
-                        " outcome=" + outcome
-                )
+                let expected = "OROT_PROVIDER_DIAGNOSTIC layer=app feature=records_media_admission stage=" + stage +
+                    " outcome=" + outcome
+                XCTAssertEqual(ProcessDiagnosticWitness.recordsMediaAdmissionLine(stage: stage, outcome: outcome), expected)
                 XCTAssertFalse(witness.acceptAndContinueJS(feature: "records_media_admission", stage: stage, outcome: outcome))
             }
         }
@@ -94,4 +92,3 @@ final class ProcessDiagnosticWitnessTests: XCTestCase {
         XCTAssertEqual(witness.snapshot()["receipts"] as? [String], [])
     }
 }
-
