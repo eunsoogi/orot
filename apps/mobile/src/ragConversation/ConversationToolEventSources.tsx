@@ -231,6 +231,8 @@ export function ConversationToolEventSources({
         <PublicToolSourceSheet
           state={sheet}
           destination={sourceKindLabel('external_medical', event.toolName)}
+          // Public web already includes “source” in its accessible name.
+          showSourceSuffix={event.toolName !== 'public-web-search'}
           close={close}
           open={choice => {
             const source = event.sources.find(
