@@ -1,3 +1,23 @@
+import {
+  reportRecentReadStage,
+  reportRecentReadCompletion,
+  observeRecentReadStage,
+} from './recentSavedMaterialReadDiagnostics';
+import {
+  isWitnessedPage,
+  type LoadRecentPage,
+  type RecentPageRow,
+  type RecentPageState,
+  type RecentPageWitness,
+  type Ref,
+} from './recentSavedMaterialPageTypes';
+export type {
+  LoadRecentPage,
+  RecentPage,
+  RecentPageRow,
+  RecentPageState,
+  RecentPageWitness,
+} from './recentSavedMaterialPageTypes';
 import type { Dispatch, SetStateAction } from 'react';
 import { conversationExecutionNative } from '../ragConversation/conversationExecutionNative';
 import type { ConversationExecutionAdapter } from '../ragConversation/conversationExecutionLease';
@@ -14,52 +34,6 @@ export async function isProtectedDataReadable(
     return false;
   }
 }
-
-export type RecentPageRow = {
-  readonly key: string;
-  readonly createdAt: string;
-};
-
-export type RecentPageWitness = {
-  // The source's unchanging revision and protected-owner lease, not just the route.
-  readonly isCurrent: () => boolean;
-  readonly requireCurrent?: () => void;
-  readonly verify: (rethrowRevision?: true) => Promise<boolean>;
-  readonly dispose?: () => void;
-};
-
-type WitnessedRecentPage<Row> =
-  | {
-      readonly kind: 'pending';
-      readonly witness: RecentPageWitness;
-      readonly advance: () => Promise<WitnessedRecentPage<Row>>;
-    }
-  | {
-      readonly kind: 'complete';
-      readonly witness: RecentPageWitness;
-      readonly rows: readonly Row[];
-      readonly more: boolean;
-    };
-
-export type RecentPage<Row> = readonly Row[] | WitnessedRecentPage<Row>;
-
-function isWitnessedPage<Row>(
-  page: RecentPage<Row>,
-): page is WitnessedRecentPage<Row> {
-  return 'witness' in page;
-}
-
-type Ref<T> = { current: T };
-type RecentPageError = 'failed' | 'refused';
-export type RecentPageState = 'idle' | 'loading' | 'ready' | RecentPageError;
-export type LoadRecentPage<Row> = ((
-  before?: RecentPageRow,
-  options?: {
-    signal: AbortSignal;
-    canRetry: () => Promise<boolean>;
-    isCurrent: () => boolean;
-  },
-) => Promise<RecentPage<Row>>) & { readonly sourceIsCurrent?: () => boolean };
 
 export async function requestRecentSavedMaterialPage<Row extends RecentPageRow>(
   ports: {
@@ -119,7 +93,9 @@ export async function requestRecentSavedMaterialPage<Row extends RecentPageRow>(
   const unlink = epoch && linkRecentRefresh(epoch, operation, release);
   const verify = async () => {
     if (!current() || !protection?.bridgeAvailable) return false;
+    reportRecentReadStage('recent_records_admission', 'started');
     const admitted = await isProtectedDataReadable(protection);
+    reportRecentReadCompletion('recent_records_admission', current, admitted);
     if (!current()) return false;
     if (!admitted) refuse();
     return admitted;
@@ -127,6 +103,7 @@ export async function requestRecentSavedMaterialPage<Row extends RecentPageRow>(
   try {
     setState('loading');
     if (!protection?.bridgeAvailable) {
+      reportRecentReadStage('recent_records_admission', 'failed');
       if (requireBridge || epoch) refuse();
       else {
         setMore(false);
@@ -136,12 +113,14 @@ export async function requestRecentSavedMaterialPage<Row extends RecentPageRow>(
     }
     if (!(await verify()) || !current()) return false;
     const read = () =>
-      load(before && { createdAt: before.createdAt, key: before.key }, {
-        signal: operation.signal,
-        canRetry: verify,
-        isCurrent: current,
-      });
-    const checkPage = async (restart?: true) => {
+      observeRecentReadStage('recent_records_source_read', current, () =>
+        load(before && { createdAt: before.createdAt, key: before.key }, {
+          signal: operation.signal,
+          canRetry: verify,
+          isCurrent: current,
+        }),
+      );
+    const checkWitness = async (restart?: true) => {
       if (!(await verify())) return false;
       if (!witness) return current();
       let valid = false;
@@ -161,6 +140,10 @@ export async function requestRecentSavedMaterialPage<Row extends RecentPageRow>(
       }
       return true;
     };
+    const checkPage = (restart?: true) =>
+      observeRecentReadStage('recent_records_reproof', current, () =>
+        checkWitness(restart),
+      );
     const pageIsCurrent = () => current() && (witness?.isCurrent() ?? true);
     const candidate = async () => {
       const response = await read();
