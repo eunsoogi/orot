@@ -67,6 +67,7 @@ jest.mock('../../manualHistory/localRepository', () => ({
 jest.mock('../openSavedGeneratedReportReferences', () => ({
   openSavedGeneratedReportReferences: async () => ({
     listSavedGeneratedReportReferences: async () => [],
+    listSavedConversationAnswers: async () => [],
   }),
 }));
 jest.mock('../resumeStatementMemoryAfterRead', () => ({

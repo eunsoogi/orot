@@ -9,6 +9,7 @@ test.each(['openai', 'apple-pcc'] as const)(
       mode === 'apple-pcc' ? apple.provider : { ...apple.provider, id: mode };
     const run = jest.fn();
     const authorize = jest.fn();
+    const search = jest.fn();
     const send = createRagConversationService({
       selectedAi: async () => ({
         status: 'ready',
@@ -21,6 +22,7 @@ test.each(['openai', 'apple-pcc'] as const)(
       }),
       consent: { authorize },
       queryConsent: { authorize },
+      externalEvidence: { search },
       registry: new LocalEvidenceReferenceRegistry(),
       loadLocalData: async () => localData([]).data,
       ragRunner: run,
@@ -33,5 +35,6 @@ test.each(['openai', 'apple-pcc'] as const)(
     ).toMatchObject({ status: 'failure' });
     expect(authorize).not.toHaveBeenCalled();
     expect(run).not.toHaveBeenCalled();
+    expect(search).not.toHaveBeenCalled();
   },
 );

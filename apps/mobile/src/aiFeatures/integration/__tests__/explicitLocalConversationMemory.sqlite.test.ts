@@ -64,7 +64,7 @@ it('saves an ordinary typed memory once, reopens and recalls locally, and exclud
   try {
     expect(await run()).toEqual({
       status: 'answer',
-      answer: expect.stringContaining('저장하지 않았어요'),
+      answer: '이 기기의 기억에 저장했어요.',
       citations: [],
     });
     expect((await run())?.status).toBe('answer');
@@ -193,7 +193,7 @@ it('a previously local-only typed summary never sends or falsely claims a save',
     });
     expect(local).toMatchObject({
       status: 'answer',
-      answer: '이 기기의 기억에 저장했어요.',
+      answer: expect.stringContaining('저장하지 않았어요'),
     });
     expect(downstream).not.toHaveBeenCalled();
     expect(select).not.toHaveBeenCalled();

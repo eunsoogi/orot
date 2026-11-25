@@ -11,7 +11,7 @@ test('opens one original under the current Memory detail owner', async () => {
   jest.mocked(openSavedGeneratedReportReferences).mockResolvedValue({
     readSavedConversationAnswer: read,
   } as never);
-  render(
+  await render(
     <SavedConversationAnswerDetail
       artifactId="synthetic-answer"
       isReadCurrent={() => true}
