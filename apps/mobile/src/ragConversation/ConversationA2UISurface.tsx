@@ -119,7 +119,9 @@ function SurfaceNode({
   return (
     <View
       testID={
-        node.component === 'Column' ? 'conversation-a2ui-column' : undefined
+        node.component === 'Column' || node.component === 'List'
+          ? `conversation-a2ui-${node.component.toLowerCase()}`
+          : undefined
       }
       style={
         node.component === 'Card'

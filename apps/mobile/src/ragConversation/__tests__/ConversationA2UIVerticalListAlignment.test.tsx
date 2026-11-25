@@ -1,5 +1,5 @@
 import { render } from '@testing-library/react-native';
-import { StyleSheet, View } from 'react-native';
+import { StyleSheet } from 'react-native';
 import { ConversationA2UISurface } from '../ConversationA2UISurface';
 import { conversationA2UICatalog } from '../conversationA2UI';
 import { acceptConversationA2UIFrameSequence } from '../conversationA2UIFrameSequence';
@@ -52,12 +52,9 @@ test('the mounted bubble positions a vertical List using the model’s cross-axi
   expect(root).toBeDefined();
   const view = await render(<ConversationA2UISurface root={root!} />);
   expect(
-    view
-      .UNSAFE_getAllByType(View)
-      .some(
-        item => StyleSheet.flatten(item.props.style)?.alignItems === 'flex-end',
-      ),
-  ).toBe(true);
+    StyleSheet.flatten(view.getByTestId('conversation-a2ui-list').props.style)
+      ?.alignItems,
+  ).toBe('flex-end');
   expect(
     view.getAllByText(/요약|세부 사항|참고/u).map(node => node.props.children),
   ).toEqual(['요약', '세부 사항', '참고']);
@@ -73,12 +70,9 @@ test('the mounted bubble positions a vertical List using the model’s cross-axi
   expect(restored).toBeDefined();
   await view.rerender(<ConversationA2UISurface root={restored!} />);
   expect(
-    view
-      .UNSAFE_getAllByType(View)
-      .some(
-        item => StyleSheet.flatten(item.props.style)?.alignItems === 'flex-end',
-      ),
-  ).toBe(true);
+    StyleSheet.flatten(view.getByTestId('conversation-a2ui-list').props.style)
+      ?.alignItems,
+  ).toBe('flex-end');
   expect(
     restoreConversationA2UILayout({ version: 6, tree: archive?.tree }, answer),
   ).toBeUndefined();

@@ -81,5 +81,5 @@ export function readAlignedA2UIArchiveShape(shape: unknown[], version: number) {
     shape[2] === null ? undefined : shape[2],
     shape[3] === null ? undefined : shape[3],
   );
-  return alignment ? { kind, alignment } : undefined;
+  return alignment ? ({ kind, alignment } as const) : undefined;
 }

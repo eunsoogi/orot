@@ -116,15 +116,15 @@ export function storeConversationA2UILayout(
     );
     if (!children.every((child): child is Shape => child !== undefined)) return;
     if (hasAlignment) {
-      const list = value.component === 'List' && !horizontal;
-      if (!list && value.component !== 'Column' && value.component !== 'Row')
-        return;
+      const kind = value.component;
+      if (kind === 'Card' || horizontal) return;
+      const list = kind === 'List';
       const layout = readArchivedA2UIAlignment(value.alignment, list);
       if (!layout) return;
       raise(list ? 7 : 4);
       return [
         'Aligned',
-        value.component,
+        kind,
         layout.align ?? null,
         layout.justify ?? null,
         ...children,
