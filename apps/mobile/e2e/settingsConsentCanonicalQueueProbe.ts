@@ -48,3 +48,33 @@ export async function runCanonicalSettingsQueueProbe(
     result.continuation === false
   );
 }
+
+export const composedCanonicalScenarios = [
+  'open-allow',
+  'open-decline',
+  'open-mismatch',
+  'open-reject-transfer',
+  'open-retired',
+  'open-locked',
+] as const;
+
+export async function runComposedCanonicalOpenProbe(
+  identifier: string,
+  scenario: (typeof composedCanonicalScenarios)[number],
+): Promise<boolean> {
+  const namespace = consentFixtureIdentity(identifier);
+  if (Platform.OS !== 'ios') return false;
+  const native = NativeModules.VoiceRealtimeModule;
+  if (typeof native?.settingsConsentCanonicalQueueProbe !== 'function')
+    return false;
+  const value: unknown = await native.settingsConsentCanonicalQueueProbe(
+    namespace,
+    scenario,
+  );
+  return Boolean(
+    value &&
+    typeof value === 'object' &&
+    'passed' in value &&
+    value.passed === true,
+  );
+}

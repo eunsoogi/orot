@@ -3,6 +3,8 @@ import { Button, NativeModules, Text, View } from 'react-native';
 import type { createCanonicalSettingsConsentFixture } from './settingsConsentCanonicalHealthFixture';
 import {
   runCanonicalSettingsQueueProbe,
+  composedCanonicalScenarios,
+  runComposedCanonicalOpenProbe,
   type CanonicalQueueScenario,
 } from './settingsConsentCanonicalQueueProbe';
 
@@ -21,6 +23,7 @@ export function NativeCanonicalQueueFixtureControls({
   const [status, setStatus] = useState('ready');
   const [invocations, setInvocations] = useState(0);
   const [completed, setCompleted] = useState(0);
+  const [composed, setComposed] = useState('ready');
   const review = useRef<((approved: boolean) => void) | undefined>(undefined);
   const running = useRef<AbortController | undefined>(undefined);
   useEffect(
@@ -30,6 +33,32 @@ export function NativeCanonicalQueueFixtureControls({
     },
     [],
   );
+  const openComposed = async (
+    scenario: (typeof composedCanonicalScenarios)[number],
+  ) => {
+    if (running.current || !fixture.owner()) return;
+    const controller = new AbortController();
+    running.current = controller;
+    const owner = () => fixture.owner() && running.current === controller;
+    setComposed('running');
+    try {
+      const ok = await fixture.coordinator.invoke(
+        {
+          signal: controller.signal,
+          owner,
+          unlocked: async () =>
+            (await NativeModules.ConversationExecutionModule?.protectedDataAvailable?.()) ===
+            true,
+        },
+        () => runComposedCanonicalOpenProbe(fixture.identifier, scenario),
+      );
+      if (owner()) setComposed(ok ? scenario + '-passed' : 'failed');
+    } catch {
+      if (owner()) setComposed('failed');
+    } finally {
+      if (running.current === controller) running.current = undefined;
+    }
+  };
   const execute = async (scenario?: CanonicalQueueScenario) => {
     if (running.current || !fixture.owner()) return;
     const controller = new AbortController();
@@ -75,6 +104,17 @@ export function NativeCanonicalQueueFixtureControls({
   };
   return (
     <View>
+      <Text testID="settings-canonical-open-status">{composed}</Text>
+      {composedCanonicalScenarios.map(scenario => (
+        <Button
+          key={scenario}
+          testID={'settings-canonical-' + scenario}
+          title={scenario}
+          onPress={() => {
+            openComposed(scenario);
+          }}
+        />
+      ))}
       <Text testID="settings-canonical-queue-status">{status}</Text>
       <Text testID="settings-canonical-queue-invocations">{invocations}</Text>
       <Text testID="settings-canonical-queue-completed">{completed}</Text>

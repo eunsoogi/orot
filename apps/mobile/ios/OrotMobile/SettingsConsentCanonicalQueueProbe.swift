@@ -167,7 +167,11 @@
             _ identifier: String, scenario: String, resolver resolve: @escaping RCTPromiseResolveBlock,
             rejecter _: @escaping RCTPromiseRejectBlock,
         ) {
-            DispatchQueue.main.async {
+            DispatchQueue.main.async { [self] in
+                if ComposedCanonicalOpenFixture.requested, scenario.hasPrefix("open-") {
+                    ComposedCanonicalOpenFixture.run(self, identifier: identifier, scenario: scenario) { resolve($0) }
+                    return
+                }
                 SettingsConsentCanonicalQueueProbe.run(identifier: identifier, rawScenario: scenario) { resolve($0) }
             }
         }

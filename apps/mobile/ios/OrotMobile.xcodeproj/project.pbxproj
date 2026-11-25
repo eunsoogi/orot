@@ -39,6 +39,8 @@
 		E73A4A9DC65F411B8186B011 /* RealtimeVoiceCanonicalHealthMailbox.swift in Sources */ = {isa = PBXBuildFile; fileRef = E73A4A9DC65F411B8186A011 /* RealtimeVoiceCanonicalHealthMailbox.swift */; };
 		E73A4A9DC65F411B8186B010 /* RealtimeVoiceCanonicalHealthAdmission.swift in Sources */ = {isa = PBXBuildFile; fileRef = E73A4A9DC65F411B8186A010 /* RealtimeVoiceCanonicalHealthAdmission.swift */; };
 		E73A4A9DC65F411B8186B052 /* CanonicalLiveCallPresenter.swift in Sources */ = {isa = PBXBuildFile; fileRef = E73A4A9DC65F411B8186A052 /* CanonicalLiveCallPresenter.swift */; };
+		E73A4A9DC65F411B8186B053 /* ComposedCanonicalOpenFixture.swift in Sources */ = {isa = PBXBuildFile; fileRef = E73A4A9DC65F411B8186A053 /* ComposedCanonicalOpenFixture.swift */; };
+		E73A4A9DC65F411B8186B054 /* ComposedCanonicalFixtureTransport.swift in Sources */ = {isa = PBXBuildFile; fileRef = E73A4A9DC65F411B8186A054 /* ComposedCanonicalFixtureTransport.swift */; };
 		F40DFDA44E25442F829B17D7 /* RealtimeVoiceResponsesMailbox.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9F244E5C3A124BFC92A5929D /* RealtimeVoiceResponsesMailbox.swift */; };
 		A32CEFB009D745E0AD3A3D1A /* RealtimeVoiceSocketFrame.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1A4DE0BF65DE4917856558B9 /* RealtimeVoiceSocketFrame.swift */; };
 		CB1180000000000000000001 /* RealtimeVoiceToolLease.swift in Sources */ = {isa = PBXBuildFile; fileRef = CB1180000000000000000002 /* RealtimeVoiceToolLease.swift */; };
@@ -480,6 +482,8 @@
 		E73A4A9DC65F411B8186A011 /* RealtimeVoiceCanonicalHealthMailbox.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OrotMobile/RealtimeVoiceCanonicalHealthMailbox.swift; sourceTree = "<group>"; };
 		E73A4A9DC65F411B8186A010 /* RealtimeVoiceCanonicalHealthAdmission.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OrotMobile/RealtimeVoiceCanonicalHealthAdmission.swift; sourceTree = "<group>"; };
 		E73A4A9DC65F411B8186A052 /* CanonicalLiveCallPresenter.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OrotMobile/CanonicalLiveCallPresenter.swift; sourceTree = "<group>"; };
+		E73A4A9DC65F411B8186A053 /* ComposedCanonicalOpenFixture.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OrotMobile/ComposedCanonicalOpenFixture.swift; sourceTree = "<group>"; };
+		E73A4A9DC65F411B8186A054 /* ComposedCanonicalFixtureTransport.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OrotMobile/ComposedCanonicalFixtureTransport.swift; sourceTree = "<group>"; };
 		9F244E5C3A124BFC92A5929D /* RealtimeVoiceResponsesMailbox.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OrotMobile/RealtimeVoiceResponsesMailbox.swift; sourceTree = "<group>"; };
 		1A4DE0BF65DE4917856558B9 /* RealtimeVoiceSocketFrame.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OrotMobile/RealtimeVoiceSocketFrame.swift; sourceTree = "<group>"; };
 		CB1180000000000000000002 /* RealtimeVoiceToolLease.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OrotMobile/RealtimeVoiceToolLease.swift; sourceTree = "<group>"; };
@@ -934,6 +938,8 @@
 				E73A4A9DC65F411B8186A011 /* RealtimeVoiceCanonicalHealthMailbox.swift */,
 				E73A4A9DC65F411B8186A010 /* RealtimeVoiceCanonicalHealthAdmission.swift */,
 				E73A4A9DC65F411B8186A052 /* CanonicalLiveCallPresenter.swift */,
+				E73A4A9DC65F411B8186A053 /* ComposedCanonicalOpenFixture.swift */,
+				E73A4A9DC65F411B8186A054 /* ComposedCanonicalFixtureTransport.swift */,
 				9F244E5C3A124BFC92A5929D /* RealtimeVoiceResponsesMailbox.swift */,
 				1A4DE0BF65DE4917856558B9 /* RealtimeVoiceSocketFrame.swift */,
 				CB1180000000000000000002 /* RealtimeVoiceToolLease.swift */,
@@ -1709,6 +1715,8 @@
 				E73A4A9DC65F411B8186B011 /* RealtimeVoiceCanonicalHealthMailbox.swift in Sources */,
 				E73A4A9DC65F411B8186B010 /* RealtimeVoiceCanonicalHealthAdmission.swift in Sources */,
 				E73A4A9DC65F411B8186B052 /* CanonicalLiveCallPresenter.swift in Sources */,
+				E73A4A9DC65F411B8186B053 /* ComposedCanonicalOpenFixture.swift in Sources */,
+				E73A4A9DC65F411B8186B054 /* ComposedCanonicalFixtureTransport.swift in Sources */,
 				F40DFDA44E25442F829B17D7 /* RealtimeVoiceResponsesMailbox.swift in Sources */,
 				A32CEFB009D745E0AD3A3D1A /* RealtimeVoiceSocketFrame.swift in Sources */,
 				CB1180000000000000000001 /* RealtimeVoiceToolLease.swift in Sources */,
