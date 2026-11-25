@@ -99,7 +99,7 @@ export function useRecentSavedMaterial<Row extends RecentPageRow>(
   }, [abort, forgetWitnesses]);
   const refuse = useCallback(() => {
     invalidate();
-    setState('failed');
+    setState('refused');
   }, [invalidate]);
   const { accessVersion, canAccess } = useGeneratedReportAccess(
     active && enabled,

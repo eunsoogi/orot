@@ -2,16 +2,13 @@ import { useMemo, useRef, useState } from 'react';
 import { loadRecentMaterial } from '../generatedReports/recentMaterialReader';
 import { readProtectedRecentMaterialPage } from '../generatedReports/certifiedRecentMaterialPage';
 import { subscribeAgentMemoryVisibility } from '../storage/agentMemoryVisibilityEvents';
-import { t } from '../i18n';
 import { useNavigationRouteRefresh } from '../navigation/navigationRouteRefresh';
 import { subscribeRecentSourceSaved } from '../storage/recentSourceEvents';
 import type { RecordsRecentSourcesProps } from './RecordsRecentSources';
 import {
   buildRecentRecordEntries,
-  certifiedRecentPrefix,
   groupRecentRecords,
   recentPageSize,
-  recentStreamFrontier,
   type RecentRecordEntry,
 } from './RecordsRecentTimeline';
 import {
@@ -21,6 +18,10 @@ import {
 import { useRecentPageDemand } from './useRecentPageDemand';
 import { useRecentSavedMaterial } from './useRecentSavedMaterial';
 import { refreshRecentPages } from './recentPageRefresh';
+import {
+  describeRecentFeed,
+  recentStreamHasError,
+} from './recentFeedPresentation';
 
 /** Independent cursor streams share one visible depth without blocking healthy sources. */
 export function useRecordsRecentFeed(props: RecordsRecentSourcesProps) {
@@ -140,22 +141,23 @@ export function useRecordsRecentFeed(props: RecordsRecentSourcesProps) {
     }
   }
   useNavigationRouteRefresh(showAll && active && streams.length > 0, refresh);
-  // Keep a certified common prefix; unresolved cursors can hide newer rows.
-  const certified = certifiedRecentPrefix(records, [
-    ...(onOpenReport ? [recentStreamFrontier(reports, 'material')] : []),
-    ...(pagedAudio || pagedDocuments
-      ? [recentStreamFrontier(media, 'source')]
-      : []),
-  ]);
+  const legacyRecordingState = pagedAudio ? 'ready' : recordingState;
+  const legacyDocumentState = pagedDocuments ? 'ready' : documentsState;
+  const { certified, partial, loadErrors } = describeRecentFeed(records, {
+    reports: onOpenReport ? reports : undefined,
+    media: pagedAudio || pagedDocuments ? media : undefined,
+    legacyRecordingFailed: legacyRecordingState === 'failed',
+    legacyDocumentFailed: legacyDocumentState === 'failed',
+    documentsError,
+  });
   const groups = groupRecentRecords(certified, new Date(), showAll ? limit : 3);
   const hasKnownMore = certified.length > limit;
   const canAdvance =
     !refreshing &&
+    !partial &&
     (hasKnownMore ||
       (Boolean(onOpenReport) && reportDemand.canAdvance) ||
       ((pagedAudio || pagedDocuments) && mediaDemand.canAdvance));
-  const legacyRecordingState = pagedAudio ? 'ready' : recordingState;
-  const legacyDocumentState = pagedDocuments ? 'ready' : documentsState;
 
   function showMore() {
     if (
@@ -180,7 +182,7 @@ export function useRecordsRecentFeed(props: RecordsRecentSourcesProps) {
       return;
     }
     for (const stream of streams) {
-      if (stream.state === 'failed') stream.loadMore();
+      if (recentStreamHasError(stream.state)) stream.loadMore();
     }
     if (legacyRecordingState === 'failed') onRetryRecordings();
     if (legacyDocumentState === 'failed') onRetryDocuments();
@@ -224,8 +226,9 @@ export function useRecordsRecentFeed(props: RecordsRecentSourcesProps) {
     openRecord,
     isCurrent: reports.isRouteCurrent,
     more:
-      hasKnownMore ||
-      streams.some(stream => stream.more && stream.rows.length > 0),
+      !partial &&
+      (hasKnownMore ||
+        streams.some(stream => stream.more && stream.rows.length > 0)),
     isLoading:
       legacyRecordingState === 'loading' ||
       legacyDocumentState === 'loading' ||
@@ -234,17 +237,6 @@ export function useRecordsRecentFeed(props: RecordsRecentSourcesProps) {
           stream.state === 'loading' || (active && stream.state === 'idle'),
       ),
     canAdvance,
-    loadErrors: [
-      reports.state === 'failed'
-        ? t('records.recent.savedMaterialLoadError')
-        : null,
-      media.state === 'failed' ? t('records.recent.loadError') : null,
-      legacyRecordingState === 'failed'
-        ? t('recording.library.loadError')
-        : null,
-      legacyDocumentState === 'failed'
-        ? (documentsError ?? t('medicalDocument.source.loadError'))
-        : null,
-    ].filter((message): message is string => message !== null),
+    loadErrors,
   };
 }
