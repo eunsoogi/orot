@@ -239,4 +239,8 @@ export const {
 } = versionedConversationA2UITasks(conversationTaskV20, allowsOrdinaryA2UI);
 
 export const conversationTaskV25 = withReplyPreferenceSpan(conversationTaskV24);
-export const ragConversationTask = withAuthoredMemorySpan(conversationTaskV25);
+export const conversationTaskV26 = withAuthoredMemorySpan(conversationTaskV25);
+export const ragConversationTask = withAuthoredMemorySpan(
+  conversationTaskV25,
+  true,
+);
