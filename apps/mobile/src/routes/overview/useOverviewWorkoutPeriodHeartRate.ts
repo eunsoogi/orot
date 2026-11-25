@@ -5,6 +5,10 @@ import { subscribeWorkoutImportCommitted } from '../../healthkit/workoutImportEv
 import { readOwnedWorkoutPeriod } from '../../healthkit/ownedWorkoutPeriodRead';
 import type { WorkoutPeriodResult } from '../../healthkit/workoutPeriodNativeRead';
 import {
+  canReacquireOverviewWorkoutSnapshot,
+  overviewWorkoutReadWindow,
+} from './overviewWorkoutSnapshotRecovery';
+import {
   subscribeLocalDataClear,
   subscribeLocalSourceDeletion,
 } from '../../storage/localDataClearEvents';
@@ -35,13 +39,6 @@ declare const require: (
   typeof import('../../storage/secureDatabase'),
   'openLocalAgentMemoryDatabase' | 'isCurrentLocalAgentMemoryDatabase'
 >;
-
-function workoutPeriod(now: Date) {
-  const from = new Date(now);
-  from.setHours(0, 0, 0, 0);
-  from.setDate(from.getDate() - 6);
-  return { fromInclusive: from.toISOString(), toExclusive: now.toISOString() };
-}
 
 /** Brief inactive transitions suspend publication, not an owned same-window read.
  * Background, lock, deletion, or a changed protected owner drops the snapshot.
@@ -95,12 +92,8 @@ export function useOverviewWorkoutPeriodHeartRate(active: boolean): State {
     async function start(canRecover = true, previousDatabase?: SqlDatabase) {
       if (!mounted || task || phase() !== 'active') return;
       const now = new Date();
-      const midnight = new Date(
-        now.getFullYear(),
-        now.getMonth(),
-        now.getDate() + 1,
-      );
-      const zone = Intl.DateTimeFormat().resolvedOptions().timeZone;
+      const { period, midnight, currentWindow } =
+        overviewWorkoutReadWindow(now);
       const target: ReadOwner = { abort: new AbortController() };
       task = target;
       clearTimeout(boundary);
@@ -109,7 +102,7 @@ export function useOverviewWorkoutPeriodHeartRate(active: boolean): State {
           retire();
           start();
         },
-        Math.max(1, midnight.getTime() - now.getTime()),
+        Math.max(1, midnight - now.getTime()),
       );
       setState(loading);
       try {
@@ -122,30 +115,31 @@ export function useOverviewWorkoutPeriodHeartRate(active: boolean): State {
         )
           return;
         target.epoch = acquireIndependentReadEpoch(database);
+        const awaitWriter = () =>
+          awaitIndependentReadSettlement(
+            database,
+            startupWriterBudgetMs,
+            target.abort.signal,
+          );
         // A known writer is not evidence of no associated heart rate. Wait once,
         // then acquire a fresh snapshot of the same still-authoritative owner.
         if (!target.epoch) {
           if (
-            !(await awaitIndependentReadSettlement(
-              database,
-              startupWriterBudgetMs,
-              target.abort.signal,
-            )) ||
+            !(await awaitWriter()) ||
             !(await confirm(target)) ||
             !storage.isCurrentLocalAgentMemoryDatabase(database)
           )
             return;
           target.epoch = acquireIndependentReadEpoch(database);
         }
-        const admitted = () =>
+        const scopeCurrent = () =>
           current(target) &&
-          Date.now() < midnight.getTime() &&
-          zone === Intl.DateTimeFormat().resolvedOptions().timeZone &&
-          storage.isCurrentLocalAgentMemoryDatabase(database) &&
-          target.epoch?.current() === true;
+          currentWindow() &&
+          storage.isCurrentLocalAgentMemoryDatabase(database);
+        const admitted = () =>
+          scopeCurrent() && target.epoch?.current() === true;
         target.usable = admitted;
         if (!admitted()) return;
-        const period = workoutPeriod(now);
         const { result } = await readOwnedWorkoutPeriod(period, {
           repository: createRecordRepository(database),
           signal: target.abort.signal,
@@ -157,23 +151,12 @@ export function useOverviewWorkoutPeriodHeartRate(active: boolean): State {
           // once only after the same guarded connection settles and is re-proved.
           if (
             canRecover &&
-            current(target) &&
-            phase() === 'active' &&
-            Date.now() < midnight.getTime() &&
-            zone === Intl.DateTimeFormat().resolvedOptions().timeZone &&
-            storage.isCurrentLocalAgentMemoryDatabase(database) &&
-            target.epoch?.current() === false &&
-            (await awaitIndependentReadSettlement(
-              database,
-              startupWriterBudgetMs,
-              target.abort.signal,
-            )) &&
-            (await confirm(target)) &&
-            current(target) &&
-            phase() === 'active' &&
-            Date.now() < midnight.getTime() &&
-            zone === Intl.DateTimeFormat().resolvedOptions().timeZone &&
-            storage.isCurrentLocalAgentMemoryDatabase(database)
+            (await canReacquireOverviewWorkoutSnapshot(
+              target.epoch?.current(),
+              () => scopeCurrent() && phase() === 'active',
+              awaitWriter,
+              () => confirm(target),
+            ))
           ) {
             dropTask(false);
             start(false, database);
