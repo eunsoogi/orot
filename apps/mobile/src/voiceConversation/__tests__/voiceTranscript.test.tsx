@@ -35,7 +35,7 @@ test('transcript keeps twenty bounded items, updates identity and clears without
 
 test('viewport scales three lines and its opaque fade does not receive touches or accessibility focus', async () => {
   jest
-    .spyOn(Native, 'useWindowDimensions')
+    .spyOn(require('react-native'), 'useWindowDimensions')
     .mockReturnValue({ width: 320, height: 500, scale: 2, fontScale: 2 });
   jest
     .spyOn(Native.AccessibilityInfo, 'isReduceTransparencyEnabled')
@@ -67,7 +67,7 @@ test('viewport scales three lines and its opaque fade does not receive touches o
 
 test('wide viewport fits four lines and protects both edge gutters', async () => {
   jest
-    .spyOn(Native, 'useWindowDimensions')
+    .spyOn(require('react-native'), 'useWindowDimensions')
     .mockReturnValue({ width: 760, height: 810, scale: 2, fontScale: 1 });
   await render(
     <VoiceTranscriptViewport
