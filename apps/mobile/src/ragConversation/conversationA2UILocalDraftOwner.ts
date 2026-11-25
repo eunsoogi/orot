@@ -26,7 +26,7 @@ export function useConversationA2UILocalDraftOwner(
         if (
           AppState.currentState !== 'active' ||
           ownsPresentation?.() === false ||
-          !store.current(sessionId)
+          !store.ownsActiveSession(sessionId)
         )
           return undefined;
         const session = store
@@ -34,6 +34,8 @@ export function useConversationA2UILocalDraftOwner(
           .sessions.find(item => item.id === sessionId);
         if (
           !session ||
+          session.quarantined ||
+          session.restoring ||
           session.busy ||
           session.pendingMessage ||
           session.leaseRefreshRequired
