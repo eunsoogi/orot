@@ -15,6 +15,7 @@ type Owner = Readonly<{
   signal: AbortSignal;
   current(): boolean;
   confirm(): Promise<boolean>;
+  observeReadCohort?(cohort: readonly PeriodWorkout[]): void;
   admitNativeCohort?(cohort: readonly PeriodWorkout[]): boolean;
 }>;
 const trace = workoutReadDiagnostics('shared');
@@ -36,6 +37,9 @@ export async function readOwnedWorkoutPeriod(
         current,
       );
       if (cohort?.length === 0) trace.report('cohort', 'empty');
+      // Preserve the exact cohort for one caller-owned local reacquisition.
+      // It is not native admission; protection and currentness still follow.
+      if (cohort && current()) owner.observeReadCohort?.(cohort);
       if (
         !cohort ||
         !current() ||

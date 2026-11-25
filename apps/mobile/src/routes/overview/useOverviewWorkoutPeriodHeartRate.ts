@@ -135,15 +135,19 @@ export function useOverviewWorkoutPeriodHeartRate(active: boolean): State {
           scopeCurrent() && target.epoch?.current() === true;
         target.usable = admitted;
         if (!admitted()) return trace.report('epoch', 'cancelled');
+        let observedCohort: Parameters<typeof cohortFence.admit>[0] | undefined;
         const { result } = await readOwnedWorkoutPeriod(period, {
           repository: createRecordRepository(database),
           signal: target.abort.signal,
           current: admitted,
           confirm: () => confirm(target),
+          observeReadCohort: cohort => {
+            observedCohort = cohort;
+          },
           admitNativeCohort: cohortFence.admit,
         });
         if (!admitted()) {
-          const cohort = cohortFence.dispatched();
+          const cohort = cohortFence.dispatched() ?? observedCohort;
           if (
             cohort &&
             canRecover &&
