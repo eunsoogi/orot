@@ -1,5 +1,8 @@
 import { createConversationA2UIInteractions } from './conversationA2UIInteractions';
 
+export const localA2UICheckLabel = '이 화면에서만 확인 표시';
+export const localA2UICheckPath = '/local/checked';
+
 export const localA2UIDraftFieldLabel = '이 화면에서만 쓰는 메모';
 export const localA2UIDraftResetLabel = '메모 지우기';
 export const localA2UIDraftPath = '/local/draft';
@@ -8,10 +11,9 @@ export const localA2UIDraftResetAction = 'orot:reset-local-draft';
 /** Only final verified, visible nodes may be supplied. The app chooses all
  * labels, the only editable path and the only handler; model strings do not
  * become native behavior or leave this mounted draft. */
-export interface ConversationA2UILocalDraft {
-  readonly fieldId: string;
-  readonly resetId: string;
-}
+export type ConversationA2UILocalDraft =
+  | Readonly<{ fieldId: string; resetId: string; kind?: never }>
+  | Readonly<{ fieldId: string; kind: 'checkbox' }>;
 
 export function mountConversationA2UILocalDraft(
   approved: ConversationA2UILocalDraft,
@@ -19,34 +21,38 @@ export function mountConversationA2UILocalDraft(
   isCurrent: () => boolean,
 ) {
   const owner = {};
-  const { fieldId, resetId } = approved;
+  const { fieldId } = approved;
+  const checkbox = approved.kind === 'checkbox';
+  const resetId = checkbox ? undefined : approved.resetId;
   const store = createConversationA2UIInteractions({
     owner,
     surfaceId,
-    renderedComponentIds: new Set([fieldId, resetId]),
-    allowedActionNames: new Set([localA2UIDraftResetAction]),
+    renderedComponentIds: new Set(resetId ? [fieldId, resetId] : [fieldId]),
+    allowedActionNames: new Set(resetId ? [localA2UIDraftResetAction] : []),
     fields: [
       {
         componentId: fieldId,
-        path: localA2UIDraftPath,
-        kind: 'text',
-        initial: '',
+        path: checkbox ? localA2UICheckPath : localA2UIDraftPath,
+        kind: checkbox ? 'boolean' : 'text',
+        initial: checkbox ? false : '',
       },
     ],
-    events: [
-      { componentId: resetId, name: localA2UIDraftResetAction, context: [] },
-    ],
+    events: resetId
+      ? [{ componentId: resetId, name: localA2UIDraftResetAction, context: [] }]
+      : [],
     isCurrent,
   });
   if (!store) return undefined;
   const field = { owner, surfaceId, componentId: fieldId };
-  const reset = { owner, surfaceId, componentId: resetId };
+  const reset = resetId
+    ? { owner, surfaceId, componentId: resetId }
+    : undefined;
   return {
-    change(componentId: string, value: string) {
+    change(componentId: string, value: string | boolean) {
       return componentId === fieldId && store.write(field, value);
     },
     reset(componentId: string) {
-      if (componentId !== resetId) return false;
+      if (!reset || componentId !== resetId) return false;
       const receipt = store.prepareAction(reset, localA2UIDraftResetAction);
       return Boolean(
         receipt && store.consumeAction(reset, receipt) && store.revert(field),
@@ -54,7 +60,9 @@ export function mountConversationA2UILocalDraft(
     },
     read(componentId: string) {
       const result = componentId === fieldId ? store.read(field) : undefined;
-      return typeof result === 'string' ? result : undefined;
+      return typeof result === 'string' || typeof result === 'boolean'
+        ? result
+        : undefined;
     },
     retire: store.retire,
   };

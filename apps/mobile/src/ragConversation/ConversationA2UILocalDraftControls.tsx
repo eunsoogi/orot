@@ -1,8 +1,9 @@
 import { useLayoutEffect, useRef, useState } from 'react';
-import { Pressable, StyleSheet, TextInput, View } from 'react-native';
+import { Pressable, StyleSheet, Switch, TextInput, View } from 'react-native';
 import { AppText } from '../layout/AppText';
 import { appColors } from '../layout/appColors';
 import {
+  localA2UICheckLabel,
   localA2UIDraftFieldLabel,
   localA2UIDraftResetLabel,
   mountConversationA2UILocalDraft,
@@ -29,7 +30,7 @@ export function ConversationA2UILocalDraftControls({
     readonly draft: Draft;
     readonly approved: ConversationA2UILocalDraft;
     readonly surfaceId: string;
-    readonly value: string;
+    readonly value: string | boolean;
   }>();
   useLayoutEffect(() => {
     const draft: Draft | undefined = mountConversationA2UILocalDraft(
@@ -38,8 +39,9 @@ export function ConversationA2UILocalDraftControls({
       () => current.current === draft && isCurrent(),
     );
     current.current = draft;
-    if (draft && draft.read(approved.fieldId) !== undefined)
-      setState({ draft, approved, surfaceId, value: '' });
+    const value = draft?.read(approved.fieldId);
+    if (draft && value !== undefined)
+      setState({ draft, approved, surfaceId, value });
     const stop = subscribe?.(() => {
       if (!isCurrent()) {
         draft?.retire();
@@ -61,6 +63,23 @@ export function ConversationA2UILocalDraftControls({
     if (next !== undefined && current.current === draft)
       setState({ draft, approved, surfaceId, value: next });
   }
+  if (approved.kind === 'checkbox') {
+    if (typeof value !== 'boolean') return null;
+    return (
+      <View style={styles.controls}>
+        <AppText allowFontScaling>{localA2UICheckLabel}</AppText>
+        <Switch
+          accessibilityLabel={localA2UICheckLabel}
+          value={value}
+          onValueChange={next => {
+            if (draft.change(approved.fieldId, next)) publish();
+          }}
+        />
+      </View>
+    );
+  }
+  if (typeof value !== 'string') return null;
+  const { resetId } = approved;
   return (
     <View style={styles.controls}>
       <AppText>{localA2UIDraftFieldLabel}</AppText>
@@ -81,7 +100,7 @@ export function ConversationA2UILocalDraftControls({
         accessibilityRole="button"
         style={styles.reset}
         onPress={() => {
-          if (draft.reset(approved.resetId)) publish();
+          if (draft.reset(resetId)) publish();
         }}
       >
         <AppText>{localA2UIDraftResetLabel}</AppText>

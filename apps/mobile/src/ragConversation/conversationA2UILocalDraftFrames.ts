@@ -100,6 +100,19 @@ export function bindLiveConversationA2UILocalDraft(
   if (
     root.component === 'Column' &&
     plan &&
+    has(plan, ['fieldId', 'kind']) &&
+    isId(plan.fieldId) &&
+    plan.kind === 'checkbox'
+  ) {
+    approvals.set(
+      root,
+      Object.freeze({ fieldId: plan.fieldId, kind: 'checkbox' }),
+    );
+    return root;
+  }
+  if (
+    root.component === 'Column' &&
+    plan &&
     has(plan, ['fieldId', 'resetId']) &&
     isId(plan.fieldId) &&
     isId(plan.resetId) &&
