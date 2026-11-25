@@ -237,7 +237,6 @@ test.each([false, true])(
   },
 );
 
-
 test('replaces a workout read retired by a same-owner SQLite write during the native reply', async () => {
   const lane = await setup();
   try {
