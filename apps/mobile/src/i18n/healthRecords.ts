@@ -16,7 +16,7 @@ export const healthRecordsKo = {
     '날짜별 운동 심박수를 확인할 수 없어요.',
   'healthRecords.workoutHeartRate.overviewTitle': '운동 심박수',
   'healthRecords.workoutHeartRate.periodLabel': '오늘 포함 최근 7일',
-  'healthRecords.workoutHeartRate.periodAverage': '평균 {mean}',
+  'healthRecords.workoutHeartRate.periodAverage': '{mean}',
   'healthRecords.workoutHeartRate.periodUnavailable':
     '이 기간에 운동과 연결된 심박수를 확인할 수 없어요.',
   'healthRecords.workoutHeartRate.check': '운동에 연결된 심박수 확인',
