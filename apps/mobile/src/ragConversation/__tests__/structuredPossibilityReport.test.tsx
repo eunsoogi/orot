@@ -49,17 +49,18 @@ test('app-owned routes get a structured contract; identical composer wording can
   const legacySchema = legacyTask.createResultSchema!(input);
   expect(ragConversationTask.createResultSchema!(ordinaryInput)).toEqual({
     ...legacySchema,
+    required: [...(legacySchema.required as readonly string[]), 'a2uiFrames'],
     properties: {
       ...(legacySchema.properties as JsonObject),
-      a2ui: {
-        type: 'string',
-        description: expect.stringContaining(
-          'Optional, for ordinary conversation only',
-        ),
+      a2uiFrames: {
+        type: 'array',
+        items: { type: 'string' },
+        maxItems: 12,
+        description: expect.stringContaining('A2UI 1.0'),
       },
     },
   });
-  expect(schema).not.toHaveProperty('properties.a2ui');
+  expect(schema).not.toHaveProperty('properties.a2uiFrames');
   const ordinaryMessage = ragConversationTask.createMessages(ordinaryInput)[0]!;
   if (ordinaryMessage.role !== 'user') throw new Error('Expected task input');
   expect(JSON.parse(ordinaryMessage.content as string)).not.toHaveProperty(

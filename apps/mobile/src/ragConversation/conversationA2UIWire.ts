@@ -118,8 +118,8 @@ function components(value: unknown, allowStaticCatalog: boolean): WireNode[] {
         node.tabs.length > 8
       )
         fail();
-      const tabs = node.tabs.map((item: unknown) => {
-        const tab = object(item);
+      const tabs = node.tabs.map((entry: unknown) => {
+        const tab = object(entry);
         keys(tab, ['title', 'child']);
         return { title: dataString(tab.title), child: id(tab.child) };
       });

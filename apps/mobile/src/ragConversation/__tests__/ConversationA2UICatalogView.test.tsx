@@ -20,7 +20,7 @@ jest.mock('react-native/Libraries/Utilities/useWindowDimensions', () => ({
   }),
 }));
 
-const label = (id: string, text: string): ConversationA2UINode => ({
+const textLeaf = (id: string, text: string): ConversationA2UINode => ({
   id,
   text,
   component: 'Text',
@@ -30,9 +30,9 @@ const row: ConversationA2UINode = {
   id: 'row',
   component: 'Row',
   children: [
-    label('a', '기간'),
+    textLeaf('a', '기간'),
     { id: 'divider', component: 'Divider', axis: 'vertical' },
-    label('b', '최근 일주일'),
+    textLeaf('b', '최근 일주일'),
   ],
 };
 const tabs = [
@@ -48,7 +48,7 @@ const tabs = [
           component: 'Column',
           children: [
             { id: 'symbol', component: 'Icon', name: 'calendarToday' },
-            label('detail', '선택한 기간의 세부 사항'),
+            textLeaf('detail', '선택한 기간의 세부 사항'),
           ],
         },
       ],

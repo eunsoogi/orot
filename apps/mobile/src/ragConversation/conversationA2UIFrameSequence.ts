@@ -66,9 +66,9 @@ export function acceptConversationA2UIFrameSequence(
     staged = next;
   }
   const root = staged?.root;
-  return root && matchesConversationA2UIProse(root, content, allowStaticCatalog)
-    ? root
-    : undefined;
+  if (!root || !matchesConversationA2UIProse(root, content, allowStaticCatalog))
+    return undefined;
+  return root;
 }
 
 /** The final validator remains the only publication authority, not the frame stream. */
@@ -83,7 +83,8 @@ export function withConversationA2UIFrameSequence(
     createResultSchema(input) {
       const schema = previous.createResultSchema!(input);
       if (!eligible(input) || !isObject(schema.properties)) return schema;
-      const { a2ui: _legacy, ...properties } = schema.properties;
+      const properties = { ...schema.properties };
+      delete properties.a2ui;
       return {
         ...schema,
         properties: {
@@ -102,7 +103,8 @@ export function withConversationA2UIFrameSequence(
     validateResult(value, input) {
       if (!isObject(value) || !('a2uiFrames' in value))
         return previous.validateResult(value, input);
-      const { a2uiFrames, a2ui: _legacy, ...prose } = value;
+      const { a2uiFrames, ...prose } = value;
+      delete prose.a2ui;
       const validated = previous.validateResult(prose, input);
       if (
         validated.status !== 'valid' ||
