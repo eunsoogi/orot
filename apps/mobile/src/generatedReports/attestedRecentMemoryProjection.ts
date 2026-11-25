@@ -7,6 +7,7 @@ import {
 import { recentMaterialTimestamp } from './recentMaterialTimestamp';
 import type { SqlExecutor, SqlValue } from '@orot/storage';
 import {
+  BoundReadRevisionChanged,
   BoundReadWitnessUnavailable,
   createBoundReadResultWitness,
   guardedBoundTransaction,
@@ -157,11 +158,15 @@ export function openAttestedMemoryProbe(
     close,
     witness: {
       isCurrent: sensor.current,
-      async verify() {
+      requireCurrent: sensor.requireCurrent,
+      async verify(rethrowRevision?: true) {
         try {
           await guardedBoundTransaction(database, sensor, async () => {});
-          return sensor.current();
-        } catch {
+          sensor.requireCurrent();
+          return true;
+        } catch (error) {
+          if (rethrowRevision && error instanceof BoundReadRevisionChanged)
+            throw error;
           return false;
         }
       },

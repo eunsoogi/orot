@@ -31,9 +31,13 @@ jest.mock('../recentSourceReader', () => ({
   readSelectedRecentRecording: jest.fn(),
 }));
 
-test.each(['settings Back', 'ordinary foreground'] as const)(
-  'reopens a fresh protected snapshot on a revision change after %s',
-  async journey => {
+test.each([
+  ['settings Back', 1],
+  ['ordinary foreground', 1],
+  ['first open before publication', 5],
+] as const)(
+  'reopens a fresh protected snapshot: %s',
+  async (journey, stamp) => {
     AppState.currentState = 'active';
     jest
       .mocked(conversationExecutionNative)
@@ -51,6 +55,7 @@ test.each(['settings Back', 'ordinary foreground'] as const)(
     }
     const f = openInterleavableRecentSourceDatabase();
     let armed = false;
+    let samples = 0;
     let conflicts = 0;
     const database = guardedNativeDatabase<SqlDatabase>({
       execute: (sql, binds) => f.database.execute(sql, binds),
@@ -60,7 +65,11 @@ test.each(['settings Back', 'ordinary foreground'] as const)(
             ...tx,
             async execute(sql, binds) {
               const result = await tx.execute(sql, binds);
-              if (armed && sql.startsWith('SELECT total_changes() AS local')) {
+              if (
+                armed &&
+                sql.startsWith('SELECT total_changes() AS local') &&
+                ++samples === stamp
+              ) {
                 armed = false;
                 conflicts++;
                 // An ordinary guarded write crosses the read witness without
@@ -106,6 +115,7 @@ test.each(['settings Back', 'ordinary foreground'] as const)(
         },
       });
       const controller = createNavigationController<AppNavigationRoute>('root');
+      armed = journey === 'first open before publication';
       const view = await renderRecords(
         controller,
         recentRouteProps(),
@@ -114,23 +124,25 @@ test.each(['settings Back', 'ordinary foreground'] as const)(
       );
       try {
         expect(await screen.findByTestId(row)).toBeTruthy();
-        if (journey === 'settings Back') {
-          await act(async () => {
-            controller.push('settings-provider');
-          });
-        } else {
-          await act(async () => phase('background'));
+        if (journey !== 'first open before publication') {
+          if (journey === 'settings Back') {
+            await act(async () => {
+              controller.push('settings-provider');
+            });
+          } else {
+            await act(async () => phase('background'));
+          }
+          expect(screen.queryByTestId(row)).toBeNull();
+          armed = true;
+          if (journey === 'settings Back') {
+            await act(async () => {
+              await controller.requestBack();
+            });
+          } else {
+            await act(async () => phase('active'));
+          }
+          expect(await screen.findByTestId(row)).toBeTruthy();
         }
-        expect(screen.queryByTestId(row)).toBeNull();
-        armed = true;
-        if (journey === 'settings Back') {
-          await act(async () => {
-            await controller.requestBack();
-          });
-        } else {
-          await act(async () => phase('active'));
-        }
-        expect(await screen.findByTestId(row)).toBeTruthy();
         expect(conflicts).toBe(1);
         expect(screen.queryByTestId('records-recent-sources-error')).toBeNull();
         expect(screen.queryByText('Synthetic private Memory text')).toBeNull();
