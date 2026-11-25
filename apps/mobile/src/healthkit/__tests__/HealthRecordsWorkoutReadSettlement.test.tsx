@@ -146,3 +146,40 @@ test.each(['unavailable', 'emptyVisible'] as const)(
     }
   },
 );
+
+test.each(['restored', 'unchanged', 'revoked'] as const)(
+  'an older negative protection reply cannot discard a newer restoration: %s',
+  async outcome => {
+    const prior = AppState.currentState;
+    AppState.currentState = 'active';
+    const lane = await setup();
+    const probe = lane.holdFirstProtectionProbe();
+    try {
+      const view = await openWorkoutFilter();
+      await probe.entered;
+      expect(lane.queryWorkoutPeriodHeartRate).not.toHaveBeenCalled();
+      await act(async () => {
+        if (outcome !== 'unchanged') lane.restoreProtection();
+        if (outcome === 'revoked') lane.revoke();
+        probe.release(false);
+      });
+      if (outcome === 'restored') {
+        await waitFor(() =>
+          expect(lane.queryWorkoutPeriodHeartRate).toHaveBeenCalledTimes(1),
+        );
+        await waitFor(() =>
+          expect(state()).not.toHaveTextContent(/불러오는 중|확인할 수 없어요/),
+        );
+        expect(probe.probes()).toBeGreaterThan(1);
+      } else {
+        expect(lane.queryWorkoutPeriodHeartRate).not.toHaveBeenCalled();
+        expect(probe.probes()).toBe(1);
+      }
+      expect(lane.requestReadAuthorizations).not.toHaveBeenCalled();
+      await view.unmount();
+    } finally {
+      lane.close();
+      AppState.currentState = prior;
+    }
+  },
+);

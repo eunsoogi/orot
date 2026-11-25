@@ -3,6 +3,7 @@ import { createRecordRepository } from '@orot/storage';
 import { conversationExecutionNative } from '../../ragConversation/conversationExecutionNative';
 import { subscribeWorkoutImportCommitted } from '../../healthkit/workoutImportEvents';
 import { workoutReadDiagnostics } from '../../healthkit/workoutReadDiagnostics';
+import { createWorkoutProtectionProbe } from '../../healthkit/workoutProtectionProbe';
 import { confirmOverviewWorkoutProtection } from './overviewWorkoutProtection';
 import { readOwnedWorkoutPeriod } from '../../healthkit/ownedWorkoutPeriodRead';
 import type { WorkoutPeriodResult } from '../../healthkit/workoutPeriodNativeRead';
@@ -79,8 +80,9 @@ export function useOverviewWorkoutPeriodHeartRate(active: boolean): State {
     }
     const current = (target: ReadOwner) =>
       mounted && task === target && !target.abort.signal.aborted;
-    const confirm = confirmOverviewWorkoutProtection(current, phase, () =>
-      protection.protectedDataAvailable(),
+    const probe = createWorkoutProtectionProbe();
+    const confirm = confirmOverviewWorkoutProtection(current, phase, target =>
+      probe.confirm(() => current(target), protection.protectedDataAvailable),
     );
     async function start(
       canRecover = true,
@@ -115,8 +117,6 @@ export function useOverviewWorkoutPeriodHeartRate(active: boolean): State {
             startupWriterBudgetMs,
             target.abort.signal,
           );
-        // A known writer is not evidence of no associated heart rate. Wait once,
-        // then acquire a fresh snapshot of the same still-authoritative owner.
         if (!target.epoch) {
           trace.report('epoch', 'started');
           if (
@@ -165,9 +165,7 @@ export function useOverviewWorkoutPeriodHeartRate(active: boolean): State {
         if (target.settled) {
           setState(result);
         } else if (canRecover && target.interrupted) {
-          // A brief interruption can cause the original native result to fail
-          // after the resume event has already coalesced with this task.
-          // Retry once with a fresh ownership/protection check before reading.
+          // Resume can coalesce with the pending native call.
           dropTask(false);
           start(false);
         }
@@ -212,8 +210,10 @@ export function useOverviewWorkoutPeriodHeartRate(active: boolean): State {
     }
     const unsubscribeProtection = protection.subscribe(event => {
       if (event.kind === 'protectedData' && !event.available) retire();
-      else if (event.kind === 'protectedData' || event.kind === 'foreground')
+      else if (event.kind === 'protectedData') {
+        probe.restored();
         foreground();
+      } else if (event.kind === 'foreground') foreground();
       else if (event.kind === 'phase') {
         if (phase() === 'inactive') {
           inactiveSince ??= Date.now();
