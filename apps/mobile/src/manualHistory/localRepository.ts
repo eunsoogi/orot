@@ -71,26 +71,9 @@ export async function openLocalManualHistoryRepository(): Promise<ManualHistoryS
       await rag.prepare();
       let deleted = false;
       await database.transaction(async transaction => {
-        let lineage: StoredManualHistoryEntry[];
-        try {
-          lineage = await repository.history(id, transaction);
-        } catch (error) {
-          if (
-            error instanceof Error &&
-            error.message === 'Manual history entry not found.'
-          )
-            return;
-          throw error;
-        }
-        deleted = await repository.delete(id, transaction);
-        if (deleted) {
-          // Remove indexed vectors in the same SQLCipher transaction as the complete correction lineage.
-          await rag.deleteChunks(
-            [],
-            lineage.map(entry => entry.id),
-            transaction,
-          );
-        }
+        deleted = await repository.delete(id, transaction, lineageIds =>
+          rag.deleteChunks([], lineageIds, transaction),
+        );
       });
       return deleted;
     },

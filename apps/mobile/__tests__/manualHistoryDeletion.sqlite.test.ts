@@ -21,6 +21,7 @@ jest.mock('../src/rag/localE5RagService', () => ({
 async function fixture() {
   const f = openSqliteTestDatabase(':memory:');
   let owned = false;
+  const lineageReads = jest.fn();
   // Real SQLite serializes global operations. Fail fast at the same self-wait boundary
   // instead of leaving an intentionally deadlocked transaction hanging in the runner.
   const database: SqlDatabase = {
@@ -33,7 +34,17 @@ async function fixture() {
       f.database.transaction(async tx => {
         owned = true;
         try {
-          await operation(tx);
+          await operation({
+            ...tx,
+            execute: (query, args) => {
+              if (
+                query.startsWith('SELECT ') &&
+                query.includes('FROM manual_history_entries WHERE')
+              )
+                lineageReads();
+              return tx.execute(query, args);
+            },
+          });
         } finally {
           owned = false;
         }
@@ -72,6 +83,7 @@ async function fixture() {
     history,
     original,
     corrected,
+    lineageReads,
     prepare,
     deleteChunks,
     repository: await openLocalManualHistoryRepository(),
@@ -80,8 +92,17 @@ async function fixture() {
 test('cold RAG schema prepares outside deletion while lineage and tombstones commit together', async () => {
   const f = await fixture();
   try {
+    const unrelated = await f.history.create({
+      kind: 'note',
+      title: 'Synthetic unrelated entry',
+      details: 'Synthetic',
+      effectiveDate: { status: 'unknown' },
+    });
+    f.lineageReads.mockClear();
     await expect(f.repository.delete(f.corrected.id)).resolves.toBe(true);
-    expect(await f.history.list()).toEqual([]);
+    // The older path traversed both versions twice (eight point reads).
+    expect(f.lineageReads).toHaveBeenCalledTimes(4);
+    expect(await f.history.list()).toEqual([unrelated]);
     const rows = await f.database.execute(
       'SELECT source_record_id FROM rag_embedding_removed_sources ORDER BY source_record_id',
     );
