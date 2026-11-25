@@ -9,13 +9,19 @@ test.each([8, 9, 145])(
     const recordingId = sourceId + ':canonical-' + count;
     const source = await fixture.repository().get('source_record', sourceId);
     if (!source) throw new Error('Fixture recording missing.');
-    await fixture
-      .repository()
-      .put('source_record', { ...source, id: recordingId });
     const [original] = await fixture
       .repository()
       .transcripts.listForRecording(sourceId);
     if (!original) throw new Error('Fixture transcript missing.');
+    const recordingDurationMs = Math.max(
+      original.recordingDurationMs,
+      2900 + count,
+    );
+    await fixture.repository().put('source_record', {
+      ...source,
+      id: recordingId,
+      recordingDurationMs,
+    });
     await fixture.repository().transcripts.append(
       Array.from({ length: count }, (_, index) => {
         const ordinal = index;
@@ -26,6 +32,7 @@ test.each([8, 9, 145])(
           id: transcriptId + ':r1',
           transcriptId,
           recordingSourceId: recordingId,
+          recordingDurationMs,
           provenance: {
             ...original.provenance,
             sourceRecordIds: [recordingId],
