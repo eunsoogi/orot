@@ -248,4 +248,3 @@ export function createRecordRepository(database: SqlDatabase): RecordRepository 
     },
   };
 }
-

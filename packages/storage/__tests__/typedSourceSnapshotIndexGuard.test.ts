@@ -11,18 +11,11 @@ import {
 } from '../src/sourceDeletionReferences';
 import type { SqlDatabase } from '../src/sql';
 import { openSqliteTestDatabase } from './sqliteTestDatabase';
-
-function readSourceDeletionSnapshot(
-  database: SqlDatabase,
-  id: string,
-  observe?: Parameters<typeof readOwnedSnapshot>[2],
-) {
-  return readOwnedSnapshot(database, id, observe, { useIndexedHealthCandidates: true });
-}
-
+const indexed = { useIndexedHealthCandidates: true } as const;
+const snapshot = ([db, id, observe]: Parameters<typeof readOwnedSnapshot>) =>
+  readOwnedSnapshot(db, id, observe, indexed);
 const root = 'root-recording';
 const from = '2026-11-15T00:00:00.000Z';
-
 async function fixture(rowless?: string) {
   const { database, close } = openSqliteTestDatabase(':memory:');
   for (const { table } of Object.values(STORAGE_TABLES)) {
@@ -109,14 +102,12 @@ test('source snapshot retains exactly ordered identity and legacy shapes for all
         await f.put(table, `${table}-${suffix}`, { provenance: { sourceRecordIds: value } });
       await f.attachIndexes(table);
     }
-
     const stock = await listTypedSourceDeletionReferences(f.database, root);
     const calls: string[] = [];
     const legacyCalls: string[] = [];
     expect(await readOwnedSnapshot(f.observed(legacyCalls), root)).toEqual(stock);
-    expect(legacyCalls.some((sql) => sql.includes('sqlite_master'))).toBe(false);
-    expect(legacyCalls.some((sql) => sql.includes('INDEXED BY'))).toBe(false);
-    const optimized = await readSourceDeletionSnapshot(f.observed(calls), root);
+    expect(legacyCalls.filter((sql) => /sqlite_master|INDEXED BY/.test(sql))).toEqual([]);
+    const optimized = await snapshot([f.observed(calls), root]);
     expect(calls.filter((sql) => sql.includes('sqlite_master'))).toHaveLength(1);
     expect(optimized).toEqual(stock);
     expect(optimized.slice(0, 5)).toEqual([
@@ -146,7 +137,7 @@ test('absent, stale, wrong-owner and WITHOUT ROWID families return the unchanged
     const stock = await listTypedSourceDeletionReferences(f.database, root);
     const print = async (expected: readonly string[]) => {
       const calls: string[] = [];
-      expect(await readSourceDeletionSnapshot(f.observed(calls), root)).toEqual(stock);
+      expect(await snapshot([f.observed(calls), root])).toEqual(stock);
       const indexed = calls.filter((sql) => sql.includes('ORDER BY position'));
       expect(indexed).toHaveLength(expected.length);
       for (const table of expected)
@@ -186,7 +177,7 @@ test('malformed legacy row and failed owner settlement cannot return partial sco
       ['malformed', '{broken', from],
     );
     await expect(listTypedSourceDeletionReferences(f.database, root)).rejects.toThrow();
-    await expect(readSourceDeletionSnapshot(f.database, root)).rejects.toThrow();
+    await expect(snapshot([f.database, root])).rejects.toThrow();
     await f.database.execute('DELETE FROM health_observations');
     await f.attachIndexes('health_observations');
     await f.put('health_observations', 'matched', { provenance: { sourceRecordIds: [root] } });
@@ -201,7 +192,7 @@ test('malformed legacy row and failed owner settlement cannot return partial sco
     };
     const phases: string[] = [];
     await expect(
-      readSourceDeletionSnapshot(failed, root, (stage, event) => phases.push(stage + ':' + event)),
+      snapshot([failed, root, (stage, event) => phases.push(stage + ':' + event)]),
     ).rejects.toBe(cause);
     expect(phases).toEqual([
       'admission:begin',
@@ -211,7 +202,7 @@ test('malformed legacy row and failed owner settlement cannot return partial sco
       'settlement:begin',
       'settlement:failure',
     ]);
-    expect(await readSourceDeletionSnapshot(f.database, root)).toContainEqual({
+    expect(await snapshot([f.database, root])).toContainEqual({
       kind: 'health_observation',
       id: 'matched',
     });
@@ -242,7 +233,7 @@ test('a queued source read proves the current owner schema after an earlier comm
     });
     await entered;
     const calls: string[] = [];
-    const reading = readSourceDeletionSnapshot(f.observed(calls), root);
+    const reading = snapshot([f.observed(calls), root]);
     try {
       expect(calls).toEqual([]);
       release();
