@@ -101,7 +101,10 @@ test('keeps preview line measurements opt-in and adjustable', async () => {
   await fireEvent.press(
     screen.getByTestId('health-record-chart-values-steps-details'),
   );
-  expect(screen.getByText(/ · count$/u)).toBeOnTheScreen();
+  expect(screen.queryByText(/ · count$/u)).toBeNull();
+  expect(screen.getByTestId(selectedId).props.accessibilityLabel).toContain(
+    '72',
+  );
   expect(screen.getByTestId(selectedId).props.accessibilityRole).toBe(
     'adjustable',
   );

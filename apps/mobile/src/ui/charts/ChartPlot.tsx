@@ -26,6 +26,8 @@ type Props = {
   hideDetails?: boolean;
   /** Omit raw legend units; keep source in the selected mark when needed. */
   legendLabelsOnly?: boolean;
+  /** Omit a redundant series legend without changing point selection or chart accessibility. */
+  hideSeriesLegend?: boolean;
   /** Preserve the chart image and summary before the user requests details. */
   accessibleCollapsedPlot?: boolean;
   /** Opt-in selection without restoring the removed details disclosure. */
@@ -52,6 +54,7 @@ export function ChartPlot({
   compact = false,
   hideDetails = false,
   legendLabelsOnly = false,
+  hideSeriesLegend = false,
   accessibleCollapsedPlot = false,
   barTooltip = false,
 }: Props) {
@@ -71,6 +74,7 @@ export function ChartPlot({
   const measuredSeries =
     visible?.series.filter(series => series.points.length > 0) ?? [];
   const showLegend =
+    !hideSeriesLegend &&
     (showDetails || (hideDetails && measuredSeries.length > 1)) &&
     (!legendLabelsOnly ||
       new Set(measuredSeries.map(series => series.label)).size > 1);

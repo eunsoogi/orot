@@ -61,20 +61,24 @@ export function HealthRecordsWorkoutMonthHeartRate({
   const [width, setWidth] = useState(0);
   const state = useRecordsWorkoutMonthHeartRate(window);
   const title = t('healthRecords.workoutHeartRate.overviewTitle');
+  // The month source and aggregate remain announced without adding prose above the chart.
+  const accessibleTitle = [
+    title,
+    t('healthRecords.workoutHeartRate.recordsSource'),
+    state.status === 'available' ? formatHeartRateBpm(state.mean) : null,
+  ]
+    .filter(Boolean)
+    .join(', ');
   return (
     <View
       testID="health-records-workout-month-heart-rate"
       onLayout={event => setWidth(event.nativeEvent.layout.width)}
     >
-      <Text accessibilityRole="header">{title}</Text>
-      <Text>{t('healthRecords.workoutHeartRate.recordsSource')}</Text>
+      <Text accessibilityRole="header" accessibilityLabel={accessibleTitle}>
+        {title}
+      </Text>
       {state.status === 'available' ? (
         <>
-          <Text accessibilityRole="status">
-            {t('healthRecords.workoutHeartRate.periodAverage', {
-              mean: formatHeartRateBpm(state.mean),
-            })}
-          </Text>
           {state.days ? (
             <ChartPlot
               data={dataFor(state.days)}
