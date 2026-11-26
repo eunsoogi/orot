@@ -1,3 +1,4 @@
+import { reportHistoricalMemoryDenial } from '../memory/savedMemoryReadDiagnostics';
 import { projectDefaultSavedMemory } from '@orot/agent-memory';
 import type { SqlDatabase, SqlExecutor } from '@orot/storage';
 import {
@@ -86,7 +87,11 @@ export async function readHistoricalSavedMemory(
     let originalBytes: string | undefined;
     for (let attempt = 0; attempt < 2; attempt++) {
       try {
-        const original = await readOwnerSnapshotInTransaction(database, id);
+        const original = await readOwnerSnapshotInTransaction(
+          database,
+          id,
+          current,
+        );
         if (
           !original ||
           (originalBytes !== undefined && originalBytes !== original.bytes) ||
@@ -117,26 +122,33 @@ export async function readHistoricalSavedMemory(
 async function readOwnerSnapshotInTransaction(
   database: SqlDatabase,
   id: string,
+  current: () => boolean,
 ) {
   const read: { result: Awaited<ReturnType<typeof readOwnerSnapshot>> } = {
     result: null,
   };
   await database.transaction(async tx => {
-    read.result = await readOwnerSnapshot(tx, id);
+    read.result = await readOwnerSnapshot(tx, id, current);
   });
   return read.result;
 }
 
-async function readOwnerSnapshot(tx: SqlExecutor, id: string) {
+async function readOwnerSnapshot(
+  tx: SqlExecutor,
+  id: string,
+  current: () => boolean,
+) {
+  const deny = (stage: Parameters<typeof reportHistoricalMemoryDenial>[0]) =>
+    current() ? reportHistoricalMemoryDenial(stage) : null;
   const row = (
     await tx.execute(
       'SELECT m.record_json, q.revision FROM agent_memory_records m JOIN memory_parent_quarantine q ON q.memory_id=m.id WHERE m.id=?',
       [id],
     )
   ).rows;
-  if (!row.length) return null;
+  if (!row.length) return deny('saved_memory_historical_missing');
   const bytes = row[0]?.record_json;
-  if (typeof bytes !== 'string') return null;
+  if (typeof bytes !== 'string') return deny('saved_memory_historical_shape');
   const record = decodeAgentMemoryRecord(bytes);
   const snapshot = projectDefaultSavedMemory(record);
   const revision = reviewedMemoryRevision(record);
@@ -146,11 +158,14 @@ async function readOwnerSnapshot(tx: SqlExecutor, id: string) {
     snapshot.kind !== 'reviewed_interaction' ||
     snapshot.provenance.reviewState !== 'human_reviewed' ||
     !snapshot.provenance.sourceIds.length ||
-    snapshot.provenance.sourceIds.some(value => value !== value.trim()) ||
+    snapshot.provenance.sourceIds.some(value => value !== value.trim())
+  )
+    return deny('saved_memory_historical_shape');
+  if (
     !row.some(value => value.revision === revision) ||
     !(await ownsHistoricalVisitMemory(tx, snapshot, revision))
   )
-    return null;
+    return deny('saved_memory_historical_authority');
   const sources = [...snapshot.provenance.sourceIds];
   const superseded = await listSupersededTranscriptRevisionIds(tx);
   if (
@@ -159,7 +174,7 @@ async function readOwnerSnapshot(tx: SqlExecutor, id: string) {
     referencesDeletedSymptom(record, await deletedSymptomIds(tx)) ||
     (await hasHistoricalMemoryRevocation(tx, id, sources))
   )
-    return null;
+    return deny('saved_memory_historical_revoked');
   return {
     bytes,
     detail: { id, text: snapshot.text, createdAt: snapshot.createdAt },

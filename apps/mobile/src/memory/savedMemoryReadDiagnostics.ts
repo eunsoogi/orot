@@ -33,3 +33,18 @@ export async function observeSavedMemoryRead<T>(
     throw error;
   }
 }
+
+type HistoricalDenial = Extract<
+  import('../providers/diagnosticTypes').Stage,
+  `saved_memory_historical_${string}`
+>;
+
+/** Emit only a coarse denial for the selected protected read, never a row identity, kind, or source. */
+export function reportHistoricalMemoryDenial(stage: HistoricalDenial) {
+  try {
+    providerDiagnostic('storage', stage, 'failed');
+  } catch {
+    // A diagnostic failure must not alter the denial.
+  }
+  return null;
+}
