@@ -22,9 +22,8 @@ export function createQuestionCardStyles(
       flexDirection: 'row',
       alignItems: 'center',
       justifyContent: 'space-between',
-      // Remove the visual gap, not the controls' 44pt bounds. Avoid negative
-      // margins because native hit testing cannot extend beyond the parent.
-      gap: compact ? 0 : tokens.spacing.sm,
+      // The numbered badge has the same readable gutter in live and restored rows.
+      gap: tokens.spacing.sm,
     },
     heading: {
       color: colors.text,
@@ -33,12 +32,19 @@ export function createQuestionCardStyles(
       flexShrink: 1,
     },
     numberBadge: {
+      flexShrink: 0,
       width: 36,
       height: 36,
       borderRadius: 18,
       alignItems: 'center',
       justifyContent: 'center',
       backgroundColor: colors.accentSubtle,
+    },
+    reviewControls: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'flex-end',
+      gap: tokens.spacing.xs,
     },
     detailToggle: {
       alignItems: 'center',

@@ -74,7 +74,7 @@ export function InlineVisitQuestionCard<T extends NextVisitEvidenceReference>({
             key={id}
             compact
             priorityInDetails
-            selectionHeader={
+            selectionControl={
               <Pressable
                 accessibilityRole="checkbox"
                 accessibilityLabel={t('visitQuestions.inline.question.select', {
@@ -88,8 +88,10 @@ export function InlineVisitQuestionCard<T extends NextVisitEvidenceReference>({
                 onPress={() => onChange(inlineReviewToggle(state, id))}
                 style={[
                   styles.selectionRow,
-                  { gap: theme.tokens.spacing.sm },
-                  { minHeight: theme.tokens.minTouchTarget },
+                  {
+                    minWidth: theme.tokens.minTouchTarget,
+                    minHeight: theme.tokens.minTouchTarget,
+                  },
                 ]}
                 testID={`inline-visit-select-${index}`}
               >
@@ -152,5 +154,5 @@ export function InlineVisitQuestionCard<T extends NextVisitEvidenceReference>({
 }
 
 const styles = StyleSheet.create({
-  selectionRow: { flexDirection: 'row', alignItems: 'center' },
+  selectionRow: { alignItems: 'center', justifyContent: 'center' },
 });
