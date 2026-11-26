@@ -112,6 +112,7 @@ export function bindLiveCommonConversationStartup(input: {
       ),
   );
   return {
+    cancelCurrent: run.cancelCurrent,
     registration: startup.registration,
     async credentials(id: string) {
       const result = await input.credentials();

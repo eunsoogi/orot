@@ -1,7 +1,6 @@
-import {
-  nativeToolParameterSchema,
-  type LiveToolCall,
-} from '@orot/agent-runtime';
+import { AppState } from 'react-native';
+import type { LiveToolCall } from '@orot/agent-runtime';
+import { prepareOwnedConversationReadSelection } from '../conversationTools/ownedConversationReadSelection';
 import type { LanguageModelProvider } from '@orot/model-runtime';
 import { EVIDENCE_WORKFLOW_BUDGET } from '../agent/evidenceWorkflowBudget';
 import { evidenceConsentScope } from '../aiFeatures/integration/evidenceConsentScope';
@@ -12,6 +11,7 @@ import { stable } from '../aiFeatures/integration/stableEvidenceReference';
 import { ragConversationTask } from '../ragConversation/task';
 import { liveConversationToolsAuthorization } from '../voiceSettings/liveConversationToolsAuthorization';
 import type { LiveResponsesSettings } from '../voiceSettings/liveResponsesSettings';
+import { matchesOwnedLiveConversationDeclarations } from './ownedLiveConversationDeclarations';
 import { liveStockHealthCatalog } from './liveStockHealthDescriptor';
 import type { LiveCommonConversationPort } from './liveCommonConversationRun';
 import {
@@ -73,8 +73,17 @@ export function createLiveCommonHealthPort(input: {
   };
   let observed: LiveToolCall | undefined;
   let retained: CommonHealthSource | undefined;
+  const retired = new Set<string>();
+  const clear = () => {
+    if (observed) retired.add(observed.challengeId);
+    observed = undefined;
+    retained = undefined;
+  };
   const owns = (call: LiveToolCall) =>
-    current() && call === observed && native.challenge(call);
+    current() &&
+    AppState.currentState === 'active' &&
+    call === observed &&
+    native.challenge(call);
   const execution = (call: LiveToolCall) => ({
     operationRunId: call.responseId,
     providerId: registration.providerId,
@@ -93,6 +102,7 @@ export function createLiveCommonHealthPort(input: {
   return {
     commonToolsPolicy: 'common-tools-v3',
     current,
+    cancelCurrent: clear,
     protectedDataAvailable: input.protectedDataAvailable,
     subscribe(callId, accept) {
       const detach = native.subscribe(
@@ -101,7 +111,14 @@ export function createLiveCommonHealthPort(input: {
         liveStockHealthCatalog.acceptsArguments,
         batch => {
           const call = batch.calls[0];
-          if (!call || !current() || (observed && owns(observed))) return;
+          if (
+            !call ||
+            !current() ||
+            AppState.currentState !== 'active' ||
+            retired.has(call.challengeId) ||
+            (observed && owns(observed))
+          )
+            return;
           observed = call;
           retained = undefined;
           const connect = async () => {
@@ -114,38 +131,40 @@ export function createLiveCommonHealthPort(input: {
             const data = await input.openData();
             if (!owns(call)) return;
             const registry = new LocalEvidenceReferenceRegistry();
-            // Native registration is an allowlist, not authority to activate every
-            // stock Chat tool (some nominal reads also maintain persistent indexes).
+            const scope = execution(call);
+            const declaration = registration.tools.find(
+              candidate => candidate.name === call.name,
+            );
+            const selection =
+              declaration &&
+              prepareOwnedConversationReadSelection({
+                declaration,
+                operationRunId: scope.operationRunId,
+                allowedScope: scope.allowedScope,
+                admittedArguments: call.args,
+                current: () => owns(call),
+                protectedDataAvailable: input.protectedDataAvailable,
+              });
+            if (!selection) return;
             const tools = bindOwnedLiveConversationInvocation({
               data,
               registry,
               current: () => owns(call),
-              permits(tool) {
-                return (
-                  tool.sourceKind === 'personal_record' &&
-                  registration.tools.some(
-                    item =>
-                      item.name === tool.id &&
-                      stable(item.parameters) ===
-                        stable(nativeToolParameterSchema(tool.inputSchema)),
-                  )
-                );
-              },
-              async beforeRead(signal) {
-                return (
-                  !signal.aborted &&
-                  owns(call) &&
-                  (await input.protectedDataAvailable()) === true &&
-                  !signal.aborted &&
-                  owns(call)
-                );
-              },
+              ...selection,
               didRead(id, result) {
                 if (id === call.name && owns(call))
                   retained = { call, data, batch: result, registry };
               },
             });
-            if (!tools?.length || !owns(call)) return;
+            if (
+              !tools ||
+              !matchesOwnedLiveConversationDeclarations(
+                tools,
+                registration.tools,
+              ) ||
+              !owns(call)
+            )
+              return;
             accept({
               owner: batch.owner,
               queuedCurrent: () => owns(call),
@@ -159,7 +178,7 @@ export function createLiveCommonHealthPort(input: {
                   : undefined;
               },
               workflow: {
-                execution: execution(call),
+                execution: scope,
                 initialEvidence: { items: [], coverage: [], conflicts: [] },
                 provider,
                 task: ragConversationTask,
