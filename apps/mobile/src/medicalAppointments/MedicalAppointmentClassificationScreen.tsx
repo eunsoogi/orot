@@ -159,8 +159,7 @@ export default function MedicalAppointmentClassificationScreen({
       setCandidates([...result.candidates]);
       // Classification settles before import; unfinished and uncertain rows stay excluded.
       const medical = result.candidates.filter(isConfidentMedical);
-      let imported = 0;
-      let preserved = 0;
+      const totals = { saved: 0, unchanged: 0, preserved: 0 };
       let saveFailure = '';
       for (const candidate of medical) {
         if (!isCurrent()) return;
@@ -173,22 +172,20 @@ export default function MedicalAppointmentClassificationScreen({
             controller.signal,
           );
           if (!isCurrent()) return;
+          if (outcome !== 'stale' && outcome !== 'cancelled')
+            totals[outcome] += 1;
           if (outcome === 'saved') {
-            imported += 1;
             setSavedIds(previous =>
               new Set(previous).add(candidate.candidateId),
             );
           } else if (outcome === 'stale') saveFailure = copy.stale;
-          else if (outcome === 'preserved') preserved += 1;
         } catch {
           saveFailure = copy.saveError;
         }
       }
       if (!isCurrent()) return;
       const summary = medical.length
-        ? [copy.imported(imported), preserved ? copy.preserved(preserved) : '']
-            .filter(Boolean)
-            .join(' ')
+        ? copy.importSummary(totals)
         : result.candidates.some(
               candidate => candidate.unresolvedCalendarIdentity,
             )
