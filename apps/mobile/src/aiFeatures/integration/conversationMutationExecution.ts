@@ -40,14 +40,17 @@ export function conversationMutationExecution(input: {
   const admittedQuestions = history.priorTurns.map(turn => turn.question);
   const localModel =
     selected.provider.id === APPLE_PROVIDER_ID && !selected.remoteProcessing;
-  const authoredMemory =
-    localModel &&
-    conversationAuthoredMemoryAction({ data, observer, question });
   const reportBookmark =
     localModel && conversationHealthSummaryBookmarkAction(observer);
   const remoteOwner = input.remoteAnswerMemory
     ? conversationAnswerMemoryProviderOwner(selected, observer)
     : undefined;
+  const runId = baseExecution.execution.operationRunId;
+  const terminal =
+    remoteOwner && runId ? { owner: remoteOwner, runId } : undefined;
+  const authoredMemory =
+    (localModel || terminal) &&
+    conversationAuthoredMemoryAction({ data, observer, question, terminal });
   const answerMemory =
     (localModel || remoteOwner) &&
     conversationAnswerMemoryAction({
@@ -66,10 +69,22 @@ export function conversationMutationExecution(input: {
         }),
       ]),
     });
+  const confirmAuthored = authoredMemory && authoredMemory.confirmTerminal;
+  const confirmAnswer = answerMemory && answerMemory.confirmTerminal;
+  type TerminalOffer = Parameters<
+    NonNullable<
+      ReturnType<typeof conversationAuthoredMemoryAction>['confirmTerminal']
+    >
+  >[0];
   const execution = {
     ...baseExecution,
-    ...(answerMemory && answerMemory.confirmTerminal
-      ? { confirmTerminalLocalAction: answerMemory.confirmTerminal }
+    ...(confirmAuthored || confirmAnswer
+      ? {
+          confirmTerminalLocalAction: async (offer: TerminalOffer) =>
+            offer.toolId === 'remember-current-user-statement'
+              ? confirmAuthored?.(offer)
+              : confirmAnswer?.(offer),
+        }
       : {}),
     actions: [
       ...conversationHistoryAction({
