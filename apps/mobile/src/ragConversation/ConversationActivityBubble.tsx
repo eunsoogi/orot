@@ -9,7 +9,8 @@ const DOT_CYCLE_MS = 1_560;
 /** One native-driven timeline animates decorative dots without rerendering the transcript. */
 export function ConversationActivityBubble({
   entranceKey,
-}: { readonly entranceKey?: string } = {}) {
+  centered = false,
+}: { readonly entranceKey?: string; readonly centered?: boolean } = {}) {
   const [reduceMotion, setReduceMotion] = useState(true);
   const reduceMotionRef = useRef(true);
   const phase = useRef(new Animated.Value(0)).current;
@@ -90,7 +91,7 @@ export function ConversationActivityBubble({
       accessible={false}
       accessibilityElementsHidden
       importantForAccessibility="no-hide-descendants"
-      style={styles.bubble}
+      style={[styles.bubble, centered && styles.centered]}
       testID="rag-conversation-activity-bubble"
     >
       {DOT_OFFSETS.map((offset, index) => (
