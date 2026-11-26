@@ -89,7 +89,7 @@ export function useOverviewWorkoutPeriodHeartRate(
       mounted && task === target && !target.abort.signal.aborted;
     const probe = createWorkoutProtectionProbe();
     const confirm = confirmProtection(current, phase, probe, protection);
-    async function start(recheck = true, previous?: OverviewWorkoutRecovery) {
+    async function start(rechecks = 2, previous?: OverviewWorkoutRecovery) {
       if (!mounted || task || phase() !== 'active' || !admission.mayStart())
         return;
       const startup = admission.startup();
@@ -139,12 +139,11 @@ export function useOverviewWorkoutPeriodHeartRate(
             return trace.report('epoch', 'failed');
           target.epoch = acquireIndependentReadEpoch(database);
         }
-        const scopeCurrent = () =>
+        const ownsScope = () =>
           current(target) &&
           currentWindow() &&
           storage.isCurrentLocalAgentMemoryDatabase(database);
-        const admitted = () =>
-          scopeCurrent() && target.epoch?.current() === true;
+        const admitted = () => ownsScope() && target.epoch?.current() === true;
         target.usable = admitted;
         if (!admitted()) return trace.report('epoch', 'cancelled');
         let observedCohort: Parameters<typeof cohortFence.admit>[0] | undefined;
@@ -164,19 +163,20 @@ export function useOverviewWorkoutPeriodHeartRate(
         );
         target.staleStartup = stale || (!!startup && !admitted());
         target.recover = async () => {
-          const cohort = cohortFence.dispatched() ?? observedCohort;
+          const dispatched = cohortFence.dispatched();
+          const cohort = dispatched ?? observedCohort;
           if (
             cohort &&
-            recheck &&
+            rechecks > (dispatched ? 1 : 0) &&
             (await canReacquireOverviewWorkoutSnapshot(
               target.epoch?.current(),
-              () => scopeCurrent() && phase() === 'active',
+              () => ownsScope() && phase() === 'active',
               awaitWriter,
               () => confirm(target),
             ))
           ) {
             dropTask(false);
-            start(false, { database, period, cohort });
+            start(dispatched ? 0 : rechecks - 1, { database, period, cohort });
           }
         };
         const usableResult = !!result && result.status !== 'unavailable';
@@ -192,15 +192,15 @@ export function useOverviewWorkoutPeriodHeartRate(
         target.settled = usableResult;
         if (target.settled) {
           setState(result);
-        } else if (recheck && target.interrupted) {
+        } else if (rechecks > 1 && target.interrupted) {
           dropTask(false);
-          start(false);
+          start(0);
         }
       } catch {
       } finally {
         if (current(target) && !target.settled) {
           dropTask(!target.staleStartup);
-          if (startup && admission.startup() !== startup) start(false);
+          if (startup && admission.startup() !== startup) start(0);
         }
       }
     }
