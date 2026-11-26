@@ -59,6 +59,7 @@ export function versionedConversationMemoryTasks(
     withConversationA2UIFormatString(conversationTaskV40);
   const conversationTaskV42 =
     withPairedConversationControls(conversationTaskV41);
+  const conversationTaskV43 = withConversationDraftPreview(conversationTaskV42);
   return {
     conversationTaskV25,
     conversationTaskV26,
@@ -85,7 +86,11 @@ export function versionedConversationMemoryTasks(
       v40: conversationTaskV40,
       v41: conversationTaskV41,
       v42: conversationTaskV42,
+      v43: conversationTaskV43,
     },
-    ragConversationTask: withConversationDraftPreview(conversationTaskV42),
+    ragConversationTask: withPairedConversationControls(
+      conversationTaskV43,
+      true,
+    ),
   };
 }

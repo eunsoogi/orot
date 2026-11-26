@@ -13,10 +13,11 @@ import { isObject } from './taskHistory';
  * owns the whole ordinary layout; no protocol action or persisted form state. */
 export function withPairedConversationControls(
   previous: TaskResponderContract<GroundedRagAnswer>,
+  composedLabels = false,
 ): TaskResponderContract<GroundedRagAnswer> {
   return {
     ...previous,
-    taskVersion: '42',
+    taskVersion: composedLabels ? '44' : '42',
     createResultSchema(input) {
       const schema =
         previous.createResultSchema?.(input) ?? previous.resultSchema;
@@ -33,7 +34,9 @@ export function withPairedConversationControls(
             ...frames,
             description:
               frames.description +
-              ' For a requested temporary acknowledgment and choice in the same reply, use one static createSurface whose root Column contains two distinct exact answer parts with no data model. Seed /local/checked with false and /local/choice with [] in two ordered updateDataModel frames. Then updateComponents with only the root, the CheckBox and the ChoicePicker using the same already documented labels/bindings/options. The root must retain its original children in order and append both exact control IDs in this order. Never give this form actions or prefill it.',
+              (composedLabels
+                ? ' When the user requests both a local checkbox and one choice, provide the actual native controls; do not describe pretend controls. For this paired form only, the following rules replace earlier label and two-part restrictions. Emit one static createSurface with a root Column and all exact answer parts in order, no initial data model. Then seed /local/checked with false, seed /local/choice with [], and updateComponents with only the root, one CheckBox, and one mutuallyExclusive ChoicePicker. Append these controls, in order, after the original children. Use the requested short plain visible labels, with two distinct option labels. For the option values use exactly first and second, not the labels. Bind the controls only to the two named paths. No actions, extra properties, or prefills.'
+                : ' For a requested temporary acknowledgment and choice in the same reply, use one static createSurface whose root Column contains two distinct exact answer parts with no data model. Seed /local/checked with false and /local/choice with [] in two ordered updateDataModel frames. Then updateComponents with only the root, the CheckBox and the ChoicePicker using the same already documented labels/bindings/options. The root must retain its original children in order and append both exact control IDs in this order. Never give this form actions or prefill it.'),
           },
         },
       };
@@ -41,7 +44,10 @@ export function withPairedConversationControls(
     validateResult(value, input) {
       if (!allowsOrdinaryA2UI(input) || !isObject(value))
         return previous.validateResult(value, input);
-      const projected = projectConversationLocalForm(value.a2uiFrames);
+      const projected = projectConversationLocalForm(
+        value.a2uiFrames,
+        composedLabels,
+      );
       if (!projected) return previous.validateResult(value, input);
       const accepted = previous.validateResult(
         { ...value, a2uiFrames: projected.frames },
@@ -55,8 +61,8 @@ export function withPairedConversationControls(
         root?.component !== 'Column' ||
         a2uiLocalDraft ||
         countLocalControlNodes(root) > 62 ||
-        parts?.length !== 2 ||
-        parts[0] === parts[1]
+        !parts ||
+        (!composedLabels && (parts.length !== 2 || parts[0] === parts[1]))
       )
         return previous.validateResult({ ...value, a2uiFrames: [] }, input);
       bindLiveConversationA2UILocalDraft(root, projected.plan);

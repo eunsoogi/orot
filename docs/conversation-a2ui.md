@@ -223,3 +223,12 @@ Only the exact completed, foreground conversation owner may edit or render
 the scratch preview. Leaving the owner or reopening an archive never
 restores its input. Other paths, initial values, model-generated text in
 the preview, and new actions remain unsupported.
+
+## Composed labels for paired controls
+
+Fresh task v44 keeps the same local paths, empty seeds and two app-owned
+choice values. For a paired form only, the model can compose short, plain
+display labels for its checkbox, radio group, and two distinct options.
+The full accepted prose may have more than two parts, but a surface still
+cannot change, omit or reorder any part. No action, storage, or external
+request is added. Replies using v42 or v43 keep their original rules.
