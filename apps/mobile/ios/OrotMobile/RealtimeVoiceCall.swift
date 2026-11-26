@@ -112,10 +112,13 @@ final class RealtimeVoiceCall {
             systemCallOwner = systemOwner
             do {
                 try systemCall.start(owner: systemOwner, prepare: { [weak self] in
-                    guard let self, id == current, lifecycleEpoch == lifecycle else { throw Failure.stopped }
+                    guard let self, id == current, lifecycleEpoch == lifecycle, systemCallOwner == systemOwner,
+                          systemCallPending, foreground() else { throw Failure.stopped }
                     try ownership.prepareSystemCall(token)
                 }, activated: { [weak self] in
-                    guard let self, id == current, lifecycleEpoch == lifecycle, !paused else { return }
+                    guard let self, id == current, lifecycleEpoch == lifecycle, systemCallOwner == systemOwner,
+                          systemCallPending, !paused else { return }
+                    guard foreground() else { fail(); return } // Pending activation cannot start inactive audio.
                     systemCallPending = false; systemCallActive = true
                     emit("VoiceRealtimeSystemCall", ["callId": current, "active": true])
                     beginAudio()
