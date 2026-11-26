@@ -17,30 +17,29 @@ export async function findIdentifiersInTable(
   if (!Object.hasOwn(STORAGE_TABLES, kind))
     throw new Error('Invalid evidence kind.');
   const table = STORAGE_TABLES[kind].table;
-  const count = await database.execute(
-    `SELECT count(*) AS total FROM ${table}`,
-  );
-  const total = count.rows[0]?.total;
-  if (typeof total !== 'number' || !Number.isSafeInteger(total) || total < 0)
-    throw new Error('The identifier catalog could not be read.');
-  if (total === 0) return { rows: [] };
-  if (total <= 1024) {
-    return database.execute(`SELECT id FROM ${table} WHERE instr(?, id) > 0`, [
-      text,
-    ]);
-  }
+  // One SQLite statement pins branch selection to the same snapshot as the
+  // actual lookup and avoids a second bridge hop for each populated table.
+  // Scalar gates keep the unused scan/search arm empty.
   return database.execute(
-    `SELECT DISTINCT id FROM (
-      WITH RECURSIVE positions(position) AS (
-        SELECT 1 UNION ALL SELECT position + 1 FROM positions WHERE position < length(CAST(? AS BLOB))
+    `SELECT id FROM (
+      WITH RECURSIVE cardinality(total) AS MATERIALIZED (
+        SELECT count(*) FROM ${table}
+      ), positions(position) AS (
+        SELECT 1 FROM cardinality WHERE total > 1024
+        UNION ALL SELECT position + 1 FROM positions WHERE position < length(CAST(? AS BLOB))
       ), lengths AS MATERIALIZED (
-        SELECT DISTINCT length(CAST(id AS BLOB)) AS size FROM ${table}
-        WHERE length(CAST(id AS BLOB)) > 0 AND length(CAST(id AS BLOB)) <= length(CAST(? AS BLOB))
+        SELECT DISTINCT length(CAST(id AS BLOB)) AS size
+        FROM cardinality CROSS JOIN ${table}
+        WHERE total > 1024 AND length(CAST(id AS BLOB)) > 0
+          AND length(CAST(id AS BLOB)) <= length(CAST(? AS BLOB))
       )
-      SELECT r.id FROM lengths CROSS JOIN positions CROSS JOIN ${table} r
+      SELECT id FROM cardinality CROSS JOIN ${table}
+      WHERE total BETWEEN 1 AND 1024 AND instr(?, id) > 0
+      UNION ALL
+      SELECT DISTINCT r.id FROM lengths CROSS JOIN positions CROSS JOIN ${table} r
         ON r.id = CAST(substr(CAST(? AS BLOB), positions.position, lengths.size) AS TEXT)
       WHERE positions.position + lengths.size - 1 <= length(CAST(? AS BLOB))
-    )`,
-    [text, text, text, text],
+    ) AS exact_identifier_candidates`,
+    [text, text, text, text, text],
   );
 }
