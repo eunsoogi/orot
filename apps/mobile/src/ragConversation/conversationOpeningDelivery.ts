@@ -55,8 +55,10 @@ export function conversationOpeningDelivery(input: {
       if (!eligible() || signal.aborted || !validOpening(value)) return false;
       input.receipt();
       try {
-        await input.retained?.persistReviewedOpening?.(value, signal, () =>
-          Boolean(eligible()),
+        await input.retained?.persistReviewedOpening?.(
+          value,
+          signal,
+          () => !signal.aborted && Boolean(eligible()),
         );
       } catch {
         // Optional opening storage failure cannot turn a final reply into an interruption.
