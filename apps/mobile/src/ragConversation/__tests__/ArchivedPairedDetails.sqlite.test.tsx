@@ -26,12 +26,12 @@ const title2 = '비교 방법 보기';
 const detail1 = '첫 번째 예시 문장';
 const detail2 = '두 번째 예시 문장';
 const answer = ['요약', title1, detail1, title2, detail2].join('\n');
-const id = 'archive-row';
+const artifactId = 'archive-row';
 const sessionId = 'archive-session';
 const createdAt = '2026-11-26T02:00:00.000Z';
 
 function archivedShape() {
-  const text = (id: string, text: string) => ({ id, component: 'Text', text });
+  const node = (id: string, text: string) => ({ id, component: 'Text', text });
   const result = ragConversationTask.validateResult(
     {
       answer,
@@ -48,7 +48,7 @@ function archivedShape() {
                 component: 'Column',
                 children: ['intro', 'first', 'second'],
               },
-              text('intro', '요약'),
+              node('intro', '요약'),
               {
                 id: 'first',
                 component: 'Modal',
@@ -61,10 +61,10 @@ function archivedShape() {
                 trigger: 'title2',
                 content: 'content2',
               },
-              text('title1', title1),
-              text('content1', detail1),
-              text('title2', title2),
-              text('content2', detail2),
+              node('title1', title1),
+              node('content1', detail1),
+              node('title2', title2),
+              node('content2', detail2),
             ],
           },
         }),
@@ -132,7 +132,7 @@ test.each([
       );
       await storage.createSession(sessionId, await storage.currentGeneration());
       const original = {
-        id,
+        id: artifactId,
         sessionId,
         createdAt,
         question: '예시를 보여 줘.',
@@ -173,12 +173,12 @@ test.each([
         ownsActiveSession: () => true,
       } as unknown as ConversationSessions;
       const Harness = ({ archived = root }: { archived?: typeof root }) => {
-        const owner = useConversationA2UILocalDraftOwner(store, 1, [
+        const sheetOwner = useConversationA2UILocalDraftOwner(store, 1, [
           ownsRoute,
           ownsRoute,
         ]);
         return (
-          <ConversationA2UILocalDraftOwner.Provider value={owner}>
+          <ConversationA2UILocalDraftOwner.Provider value={sheetOwner}>
             <ArchivedPairedDetailsSurface root={archived} />
           </ConversationA2UILocalDraftOwner.Provider>
         );
@@ -190,7 +190,7 @@ test.each([
         if (mode === 'removed')
           await f.database.execute(
             'INSERT INTO conversation_deleted_artifacts (id) VALUES (?)',
-            [id],
+            [artifactId],
           );
         if (mode === 'stale facade')
           active = agentMemoryDatabaseFacade(guardedNativeDatabase(f.database));
@@ -223,7 +223,7 @@ test.each([
             await act(async () => {
               await guarded.execute(
                 'DELETE FROM conversation_artifacts WHERE id = ?',
-                [id],
+                [artifactId],
               );
             });
             expect(screen.queryByText(detail2)).toBeNull();

@@ -44,7 +44,7 @@ export function useConversationA2UILocalDraftOwner(
   [ownsPresentation, archiveVisibility]: readonly [
     (() => boolean) | undefined,
     ReportBookmarkVisibility | undefined,
-  ],
+  ] = [undefined, undefined],
 ) {
   return useMemo<Owner>(() => {
     const sheets = createConversationA2UIModalArbiter();
