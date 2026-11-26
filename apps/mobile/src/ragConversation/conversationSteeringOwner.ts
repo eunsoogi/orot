@@ -1,4 +1,7 @@
-import type { WorkflowOperationJournal } from '@orot/agent-runtime';
+import type {
+  WorkflowOperationJournal,
+  WorkflowSteeringAppliedReceipt,
+} from '@orot/agent-runtime';
 import type { ConversationSession } from './conversationSessionTypes';
 import {
   beginSteeringLatency,
@@ -66,9 +69,37 @@ export function createConversationSteeringOwner(
         responseId: find(id)?.pendingMessage?.id,
       };
       entries.set(id, entry);
-      const refresh = async () => {
+      let refreshSequence = 0;
+      const refresh = async (receipt?: WorkflowSteeringAppliedReceipt) => {
+        if (entries.get(id) !== entry || !current()) return;
+        const refreshId = ++refreshSequence;
+        const existing = find(id)?.steeringInstructions;
+        // Only update an already visible row from this exact request owner.
+        // The normal list still controls ordering, additions, and removal.
+        if (
+          receipt &&
+          existing?.some(
+            row =>
+              row.id === receipt.id &&
+              row.status !== 'applied' &&
+              row.status !== 'not_applied',
+          )
+        ) {
+          markSteeringLatency(receipt.id, 'steering_applied_observed');
+          update(id, {
+            steeringInstructions: existing.map(row =>
+              row.id === receipt.id
+                ? { ...row, status: 'applied', readAt: receipt.readAt }
+                : row,
+            ),
+          });
+        }
         const rows = await store.list();
-        if (entries.get(id) === entry && current()) {
+        if (
+          refreshId === refreshSequence &&
+          entries.get(id) === entry &&
+          current()
+        ) {
           const own =
             entry.submissionId && steeringLatencyTracked(entry.submissionId)
               ? rows.find(row => row.id === entry.submissionId)

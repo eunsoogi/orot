@@ -151,3 +151,42 @@ test('dropping the active queue does not clear committed receipts in the session
   expect(session.steeringInstructions).toEqual([]);
   expect(session.messages[0]?.steeringInstructions).toEqual([row]);
 });
+
+test('a committed live Read is not reverted by an older in-flight list, and retires with its owner', async () => {
+  const f = fixture();
+  const row = {
+    id: 's1',
+    text: 'Synthetic',
+    sequence: 1,
+    status: 'delivery_pending' as const,
+  };
+  const foreground = { current: true };
+  let notify!: Parameters<NonNullable<typeof f.store.subscribe>>[0];
+  f.store.subscribe = listener => {
+    notify = listener;
+    return () => {};
+  };
+  f.store.list = async () => [row];
+  f.owner.bind(1, f.store, () => foreground.current);
+  await Promise.resolve();
+  let stale!: (rows: Awaited<ReturnType<typeof f.store.list>>) => void;
+  f.store.list = () =>
+    new Promise(resolve => {
+      stale = resolve;
+    });
+  const earlier = notify();
+  const readAt = '2035-01-01T00:00:00.000Z';
+  f.store.list = async () => [{ ...row, readAt, status: 'applied' }];
+  const applied = notify({ id: row.id, readAt });
+  expect(f.session().steeringInstructions).toEqual([
+    { ...row, readAt, status: 'applied' },
+  ]);
+  await applied;
+  stale([row]);
+  await earlier;
+  expect(f.session().steeringInstructions?.[0]!.status).toBe('applied');
+  foreground.current = false;
+  f.owner.clear(1);
+  await notify({ id: row.id, readAt });
+  expect(f.session().steeringInstructions).toEqual([]);
+});

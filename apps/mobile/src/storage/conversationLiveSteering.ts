@@ -1,3 +1,5 @@
+import type { WorkflowSteeringAppliedReceipt } from '@orot/agent-runtime';
+import { steeringReceiptTimes } from './conversationSteeringReceiptTimes';
 import type { SqlDatabase, SqlExecutor } from '@orot/storage';
 
 /** Persist delivery uncertainty before socket send, so a cold replay never resubmits it. */
@@ -5,7 +7,7 @@ export function createLiveSteering(input: {
   database: SqlDatabase;
   keys: string[];
   live(sql: SqlExecutor): Promise<boolean>;
-  emit(): Promise<unknown>;
+  emit(receipt?: WorkflowSteeringAppliedReceipt): Promise<unknown>;
 }) {
   const { database, keys, live, emit } = input;
   return {
@@ -52,11 +54,15 @@ export function createLiveSteering(input: {
     ): Promise<boolean> {
       const observedAt = new Date().toISOString();
       let changed = false;
+      let receipt: WorkflowSteeringAppliedReceipt | undefined;
       await database.transaction(async sql => {
         if (!(await live(sql))) return;
         const row = (
           await sql.execute(
-            'SELECT status FROM conversation_live_steering WHERE request_id=? AND run_id=? AND id=? AND operation_id=?',
+            `SELECT l.status, r.read_at FROM conversation_live_steering l
+             LEFT JOIN conversation_steering_receipt_times r
+             ON r.request_id=l.request_id AND r.run_id=l.run_id AND r.id=l.id
+             WHERE l.request_id=? AND l.run_id=? AND l.id=? AND l.operation_id=?`,
             [...keys, id, operationId],
           )
         ).rows[0];
@@ -88,9 +94,17 @@ export function createLiveSteering(input: {
             [...keys, id, observedAt],
           );
         }
+        if (status === 'applied') {
+          // The upsert preserves an existing timestamp, so publish the same value.
+          const readAt = steeringReceiptTimes({
+            read_at: row.read_at ?? observedAt,
+          }).readAt;
+          if (readAt) receipt = { id, readAt };
+        }
         changed = true;
       });
-      if (changed) await emit();
+      // A failed or rolled-back transaction cannot publish a Read receipt.
+      if (changed) await emit(receipt);
       return changed;
     },
   };
