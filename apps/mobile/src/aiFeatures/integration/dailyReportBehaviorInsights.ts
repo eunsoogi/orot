@@ -97,8 +97,7 @@ export function dailyReportBehaviorInsights(
   }
   const activity = history.filter(isRecordedWorkout);
   if (activity.length) {
-    const current = today.filter(isRecordedWorkout);
-    // Preserve urgent blood-pressure priority; never add exercise encouragement next to a severe reading.
+    // A genuine urgent pressure finding remains relevant alongside historical activity.
     const severe = today.filter(
       item =>
         item.kind === 'health_observation' &&
@@ -117,16 +116,9 @@ export function dailyReportBehaviorInsights(
       t('dailyReport.history.activity', {
         days: new Set(activity.map(day)).size,
       }),
-      t(
-        current.length
-          ? 'dailyReport.history.activityToday'
-          : 'dailyReport.history.activityNoRecord',
-      ),
-      severe.length
-        ? t('dailyReport.history.urgentFirst')
-        : t('dailyReport.history.activityAction'),
+      ...(severe.length ? [t('dailyReport.history.urgentFirst')] : []),
     ].join(' ');
-    facts.push(claim(text, [...activity, ...current, ...severe]));
+    facts.push(claim(text, [...activity, ...severe]));
   }
   return facts;
 }

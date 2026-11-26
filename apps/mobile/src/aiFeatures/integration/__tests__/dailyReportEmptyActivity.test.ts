@@ -22,6 +22,15 @@ test.each(['empty', 'recorded', 'restricted', 'failed'] as const)(
       await runMigrations(database);
       const repo = createRecordRepository(database);
       await repo.put('health_observation', calendarTestObservation);
+      await repo.put(
+        'health_observation',
+        HealthObservationSchema.parse({
+          ...calendarTestObservation,
+          id: 'synthetic-steps',
+          concept: 'step_count',
+          value: { kind: 'quantity', amount: 80, unit: 'count' },
+        }),
+      );
       if (state === 'recorded')
         await repo.put(
           'health_observation',
@@ -62,6 +71,10 @@ test.each(['empty', 'recorded', 'restricted', 'failed'] as const)(
       expect(wire).not.toContain('local_workout_records');
       expect(wire).not.toContain('local_sleep_records');
       expect(wire).not.toContain('source_sync_unknown');
+      expect(wire).not.toContain(
+        '권한·동기화·기록 범위에 따라 빠질 수 있어요.',
+      );
+      expect(wire).not.toContain('오늘 아직 활동하지 않았고');
       expect(wire).toContain('do not inspect gaps in records');
       expect(
         result.report.coverage.some(
@@ -80,6 +93,10 @@ test.each(['empty', 'recorded', 'restricted', 'failed'] as const)(
       if (saved.status !== 'saved') throw new Error(saved.status);
       const text = conversationDailyReportText(saved);
       expect(text.includes('기록된 운동: 0회')).toBe(state === 'empty');
+      expect(text.includes('기록된 운동: 1회')).toBe(state === 'recorded');
+      expect(text).not.toContain(
+        '권한·동기화·기록 범위에 따라 빠질 수 있어요.',
+      );
       expect(text.includes('수면 기록이 없어요.')).toBe(state !== 'restricted');
       expect(text).not.toContain('않았다는 뜻');
       expect(text).not.toContain('완전한 기록이나 정상 범위');
