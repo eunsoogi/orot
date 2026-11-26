@@ -27,9 +27,13 @@ export function prepareConversationRequest(
     return null;
 
   const copy = getRagConversationCopy();
-  const userMessageId =
-    confirmedQuickChoiceId(session, explicitQuestion, question, hasPhoto) ??
-    nextId();
+  const confirmedChoice = confirmedQuickChoiceId(
+    session,
+    explicitQuestion,
+    question,
+    hasPhoto,
+  );
+  const userMessageId = confirmedChoice ?? nextId();
   const responseId = nextId();
   const request: PendingTurn = {
     question,
@@ -75,5 +79,9 @@ export function prepareConversationRequest(
       activity: copy.loading,
     },
   };
-  return { request, responseId, change, copy };
+  const memoryMode =
+    confirmedChoice === undefined
+      ? restorePromptToComposer && !hasPhoto
+      : ('quick-choice' as const);
+  return { request, responseId, change, copy, memoryMode };
 }

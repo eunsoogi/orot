@@ -47,10 +47,17 @@ export function createConversationOrdinaryMemoryOwner(
       id: number,
       question: string,
       admissionSignal: AbortSignal,
-      ordinary: boolean,
+      ordinary: boolean | 'quick-choice',
     ) {
       // A new send replaces only an undisplayed proposal. The previous
       // displayed completion still owns its existing detached settlement.
+      if (ordinary === 'quick-choice') {
+        // The proven same-session choice cannot nominate or borrow a grant.
+        // Only the older displayed completion may settle using its own proof.
+        retire(id, draft);
+        retire(id, awaitingGrant);
+        return;
+      }
       if (!ordinary) {
         discard(id);
         return;
