@@ -86,7 +86,7 @@ export function conversationMutationExecution(input: {
       ]),
     });
   const confirmAuthored = authoredMemory && authoredMemory.confirmTerminal;
-  const confirmAnswer = answerMemory && answerMemory.confirmTerminal;
+  const confirmAnswer = answerMemory ? answerMemory.confirmTerminal : undefined;
   type TerminalOffer = Parameters<
     NonNullable<
       ReturnType<typeof conversationAuthoredMemoryAction>['confirmTerminal']
