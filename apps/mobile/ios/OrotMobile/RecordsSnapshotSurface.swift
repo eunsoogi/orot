@@ -10,6 +10,7 @@ final class RecordsSnapshotSurface: RCTView {
             publishCoveredGeneration()
         }
     }
+
     @objc var presentationGeneration: NSNumber? {
         didSet { setNeedsLayout() }
     }
@@ -25,7 +26,9 @@ final class RecordsSnapshotSurface: RCTView {
         stopObserving()
         if attachedWindow !== window {
             shield?.ownerDetached(self)
-            if let boundGeneration { onRecordsCoverage?(["kind": "detached", "generation": boundGeneration]) }
+            if let boundGeneration {
+                onRecordsCoverage?(["kind": "detached", "generation": boundGeneration])
+            }
             shield = nil
             attachedWindow = nil
             lastCoverage = nil
@@ -60,7 +63,9 @@ final class RecordsSnapshotSurface: RCTView {
     }
 
     override func hitTest(_ point: CGPoint, with event: UIEvent?) -> UIView? {
-        if !isHidden, bounds.contains(point), shield?.hasLocalCover(for: self) == true { return self }
+        if !isHidden, bounds.contains(point), shield?.hasLocalCover(for: self) == true {
+            return self
+        }
         return super.hitTest(point, with: event)
     }
 
@@ -94,7 +99,9 @@ final class RecordsSnapshotSurface: RCTView {
     }
 
     private func publishBound() {
-        if let boundGeneration { onRecordsCoverage?(["kind": "bound", "generation": boundGeneration]) }
+        if let boundGeneration {
+            onRecordsCoverage?(["kind": "bound", "generation": boundGeneration])
+        }
     }
 
     private func publish(_ generation: Int, local: Bool) {
@@ -102,18 +109,27 @@ final class RecordsSnapshotSurface: RCTView {
         let stamp = "\(kind):\(generation)"
         guard stamp != lastCoverage, let onRecordsCoverage else { return }
         lastCoverage = stamp
-        if !local { presentationGeneration = nil }
+        if !local {
+            presentationGeneration = nil
+        }
         onRecordsCoverage(["kind": kind, "generation": generation])
     }
 
     private func stopObserving() {
-        if let activeObserver { NotificationCenter.default.removeObserver(activeObserver) }
+        if let activeObserver {
+            NotificationCenter.default.removeObserver(activeObserver)
+        }
         activeObserver = nil
     }
 }
 
 @objc(RecordsSnapshotSurfaceManager)
 final class RecordsSnapshotSurfaceManager: RCTViewManager {
-    override static func requiresMainQueueSetup() -> Bool { true }
-    override func view() -> UIView! { RecordsSnapshotSurface() }
+    override static func requiresMainQueueSetup() -> Bool {
+        true
+    }
+
+    override func view() -> UIView! {
+        RecordsSnapshotSurface()
+    }
 }

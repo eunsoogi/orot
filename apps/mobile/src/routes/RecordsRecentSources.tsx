@@ -70,7 +70,10 @@ export function RecordsRecentSources(props: RecordsRecentSourcesProps) {
     presentationRevision,
     canAdvance,
     loadErrors,
-  } = useRecordsRecentFeed(props, hasRecordsNativeSnapshotSurface, shieldBound);
+  } = useRecordsRecentFeed(props, {
+    available: hasRecordsNativeSnapshotSurface,
+    bound: shieldBound,
+  });
   useLayoutEffect(() => {
     suspension.update(
       (isFresh && !isLoading) || warmPaint,

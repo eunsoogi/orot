@@ -11,15 +11,19 @@ export function RecordsSnapshotSurface(
     terminal: boolean;
   },
 ) {
-  const {
-    active,
-    onBound,
-    neutral: _neutral,
-    terminal: _terminal,
-    ...view
-  } = props;
+  const { active, onBound, ...view } = props;
   useLayoutEffect(() => {
     onBound(active);
   }, [active, onBound]);
-  return <View {...view} />;
+  return (
+    <View
+      testID={view.testID}
+      style={view.style}
+      pointerEvents={view.pointerEvents}
+      accessibilityElementsHidden={view.accessibilityElementsHidden}
+      importantForAccessibility={view.importantForAccessibility}
+    >
+      {view.children}
+    </View>
+  );
 }
