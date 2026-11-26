@@ -22,6 +22,10 @@ type BookmarkInput = {
   readonly lease: Lease;
   readonly current: () => boolean;
   readonly savedAt?: string;
+  readonly archive?: {
+    revision: string;
+    confirmProtected: () => Promise<boolean>;
+  };
 };
 
 export async function setupSavedHealthSummaryReferences(tx: SqlExecutor) {
@@ -120,17 +124,8 @@ export function createSavedHealthSummaryReferences(
     };
   };
   return {
-    readBookmarkedHistoricalHealthSummary: (
-      id: string,
-      current: () => boolean,
-      confirmProtected: () => Promise<boolean>,
-    ) =>
-      readBookmarkedHistoricalHealthSummary(
-        database,
-        id,
-        current,
-        confirmProtected,
-      ),
+    readBookmarkedHistoricalHealthSummary:
+      readBookmarkedHistoricalHealthSummary.bind(null, database),
     async bookmarkHealthSummary(input: BookmarkInput): Promise<boolean> {
       if (!input.current()) return false;
       await ensure();
@@ -152,7 +147,12 @@ export function createSavedHealthSummaryReferences(
           input.artifactId,
           input.lease.id,
         );
-        if (!result || !input.current()) return;
+        if (
+          !result ||
+          !input.current() ||
+          (input.archive && input.archive.revision !== result.revision)
+        )
+          return;
         await tx.execute(
           'INSERT INTO saved_health_summary_refs VALUES (?, ?, ?, ?) ON CONFLICT(summary_id) DO NOTHING',
           [
@@ -174,7 +174,11 @@ export function createSavedHealthSummaryReferences(
         )
           return;
         // No await between the final UI-owner fence and the synchronous commit.
-        if (!input.current()) throw new Error('Summary bookmark owner moved.');
+        if (
+          (input.archive && !(await input.archive.confirmProtected())) ||
+          !input.current()
+        )
+          throw new Error('Summary bookmark owner moved.');
         tx.commit();
         saved = true;
       });
