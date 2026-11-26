@@ -56,7 +56,11 @@ final class RecordsSnapshotShield {
     func sceneSuspended(in window: UIWindow, scene: UIWindowScene) {
         guard self.window === window, self.scene === scene else { return }
         suspended = true
-        conceal(in: window, scene: scene)
+        // Ordinary multitasking should snapshot the same mounted screen. A real
+        // or already-pending protection cover must still follow the window.
+        if locked || !UIApplication.shared.isProtectedDataAvailable || cover != nil {
+            conceal(in: window, scene: scene)
+        }
     }
 
     func sceneResumed(in window: UIWindow, scene: UIWindowScene) {

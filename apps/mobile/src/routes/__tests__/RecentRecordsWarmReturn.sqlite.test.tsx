@@ -26,6 +26,10 @@ import {
   recentTestExecution,
   renderRecords,
 } from '../testSupport/recentRecordsRouteTestSupport';
+import {
+  expectRetainedPaint,
+  fixture,
+} from '../testSupport/recentRecordsRetainedPaintTestSupport';
 jest.mock('../RecordsSnapshotSurface');
 jest.mock(
   'react-native-safe-area-context',
@@ -42,12 +46,7 @@ jest.mock('../recentSourceReader', () => ({
   readSelectedRecentRecording: jest.fn(),
 }));
 
-const mediaId = 'synthetic-warm-file';
-const memoryId = 'synthetic-warm-memory';
-const file = 'Synthetic warm file';
-const memory = 'records-recent-source-memory:agent:' + memoryId;
-const error = 'records-recent-sources-error';
-const retry = 'records-recent-sources-retry';
+const { mediaId, memoryId, file, memory, error, retry } = fixture;
 
 test.each([
   'Voice Model Back',
@@ -195,6 +194,7 @@ test.each([
             expect(
               screen.getByText(file, { includeHiddenElements: true }),
             ).toBe(paintedFile);
+            expectRetainedPaint();
             expect(grants).toBe(warmGrants);
           }
         }
@@ -216,10 +216,7 @@ test.each([
               screen.getByTestId(memory, { includeHiddenElements: true }),
             ).toBeTruthy();
           });
-          const retained = screen.getByTestId('records-recent-sources', {
-            includeHiddenElements: true,
-          });
-          expect(retained.props.pointerEvents).toBe('none');
+          const retained = expectRetainedPaint();
           expect(retained.props.accessibilityElementsHidden).toBe(true);
         } else if (journey !== 'Voice Model Back') {
           expect(screen.queryByText(file)).toBeNull();
