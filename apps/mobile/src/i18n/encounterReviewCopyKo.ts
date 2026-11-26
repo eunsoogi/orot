@@ -15,6 +15,7 @@ export const encounterReviewCopyKo = {
   'encounterReview.dosage': '약물 언급 설명',
   'encounterReview.idle': '후보 찾기를 누르면 선택한 녹음의 전사만 처리해요.',
   'encounterReview.loading': '저장된 검토를 확인하고 있어요.',
+  'encounterReview.completedBatches': '전사 묶음 {count}개를 처리했어요.',
   'encounterReview.running': '선택한 전사를 처리하고 있어요.',
   'encounterReview.saving': '검토한 내용을 저장하고 있어요.',
   'encounterReview.pending':
