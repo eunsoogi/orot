@@ -35,12 +35,13 @@ export async function commitConversationRequest(
       'SELECT id FROM conversation_request_identities WHERE id = ?',
       [value.id],
     );
-    if (identity.rows.length)
+    if (value.possibilityOriginal || identity.rows.length)
       throw new Error('Conversation request is no longer active.');
     return;
   }
   if (
     row.local_outcome_json != null ||
+    (value.possibilityOriginal && !alreadyStored && row.status !== 'active') ||
     row.session_id !== value.sessionId ||
     row.session_version !== version ||
     row.question !== value.question ||

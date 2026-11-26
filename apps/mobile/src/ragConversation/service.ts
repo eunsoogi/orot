@@ -1,3 +1,4 @@
+import { armPossibilityAttempt } from './possibilityOriginalReceipt';
 import { reportConversationException } from '../providers/conversationFailureDiagnostic';
 import { conversationInitialEvidence } from './conversationInitialEvidence';
 import { runContinuableConversationWorkflow } from './conversationWorkflowContinuation';
@@ -108,6 +109,11 @@ export async function runRagConversationTurn(
     // The task/runtime still require a lookup and citations for substantive factual claims.
     stage = 'workflow';
     providerDiagnostic('rag', 'workflow', 'started');
+    const context = conversationWorkflowContext(options);
+    const possibilityAttempt =
+      options.entryIntent === 'possibilities' && !validPhoto
+        ? armPossibilityAttempt(context, question)
+        : undefined;
     const result = await runContinuableConversationWorkflow(
       {
         ...options.workflow,
@@ -120,7 +126,7 @@ export async function runRagConversationTurn(
           providerDiagnostic('rag', 'validation', code);
         },
         request: question,
-        context: conversationWorkflowContext(options),
+        context,
         task: ragConversationTask,
         initialEvidence,
         revalidateEvidence: (references, signal) =>
@@ -135,7 +141,12 @@ export async function runRagConversationTurn(
       options.continuation,
       invocation.backgroundStatusForLease,
     );
-    return conversationWorkflowOutcome(result, options, invocation.signal);
+    return conversationWorkflowOutcome(
+      result,
+      options,
+      invocation.signal,
+      possibilityAttempt,
+    );
   } catch (error) {
     reportConversationException('conversation_run', error);
     if (

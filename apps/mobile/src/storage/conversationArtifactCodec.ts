@@ -1,3 +1,4 @@
+import { validPossibilityOriginalArtifact } from '../ragConversation/possibilityOriginalReceipt';
 import { recoverArchiveLayout } from './conversationArchiveA2UI';
 import { validHistoricalDialogueParents } from './conversationHistoricalDialogue';
 import { parseConversationMessageDelivery } from '../ragConversation/conversationMessageDelivery';
@@ -80,6 +81,7 @@ export function decodeConversationArtifact(
         ))
     )
       return null;
+    if (!validPossibilityOriginalArtifact(value)) return null;
     if (!validConversationArtifactInput(value)) return null;
     for (const source of value.sources) {
       if (!object(source) || !object(source.reference)) return null;

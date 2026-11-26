@@ -1,3 +1,4 @@
+import { storePossibilityOriginal } from '../../ragConversation/possibilityOriginalReceipt';
 import { storePairedDetails } from '../../ragConversation/archivedPairedDetailsLayout';
 import { storeConversationA2UILayout } from '../../ragConversation/conversationA2UIArchive';
 import type { HistoricalDialogueParent } from '../../ragConversation/conversationRetention';
@@ -134,8 +135,22 @@ export function createConversationRetentionBridge(input: {
               !input.entryContext.appointmentId &&
               !input.entryContext.dailyReport &&
               !input.entryContext.reportRequest));
+        const possibilityOriginal =
+          !outcome.completion &&
+          !input.submittedInput &&
+          input.entryContext?.intent === 'possibilities' &&
+          captured.sources.length > 0 &&
+          captured.sources.every(
+            source => source.reference.sourceKind === 'personal_record',
+          ) &&
+          citations.every(
+            reference => reference.sourceKind === 'personal_record',
+          )
+            ? storePossibilityOriginal(outcome, input.question.trim())
+            : undefined;
         return {
           question: input.question,
+          ...(possibilityOriginal ? { possibilityOriginal } : {}),
           ...(archivedA2UILayout ? { archivedA2UILayout } : {}),
           ...(input.submittedInput
             ? { submittedInput: input.submittedInput }

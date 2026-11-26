@@ -1,3 +1,7 @@
+import {
+  forwardPossibilityCreation,
+  type PossibilityAttempt,
+} from './possibilityOriginalReceipt';
 import type { MultiAgentRunResult } from '@orot/agent-runtime';
 import type { GroundedRagAnswer } from './task';
 import type { RagConversationRunOptions } from './service';
@@ -29,6 +33,7 @@ export async function conversationWorkflowOutcome(
   result: MultiAgentRunResult<GroundedRagAnswer>,
   options: ConversationOutcomeOptions,
   signal?: AbortSignal,
+  possibilityAttempt?: PossibilityAttempt,
 ): Promise<RagConversationOutcome> {
   options.onInitialSearchStatus?.(result.checkpoint.initialSearchStatus);
   reportWorkflowOutcome(
@@ -109,8 +114,8 @@ export async function conversationWorkflowOutcome(
       result.citations,
       Boolean(result.value.localReferences?.length),
     );
-    return accepted({
-      status: 'answer',
+    const candidate = {
+      status: 'answer' as const,
       // Label source-relative time even when the model omits that qualifier in its prose.
       answer: presentation.mixed
         ? `${result.value.answer}\n\n${t('ragConversation.mixed.recordComparisonUnavailable')}`
@@ -139,7 +144,19 @@ export async function conversationWorkflowOutcome(
       ...(result.value.proactiveMemory === true
         ? { proactiveMemory: true as const }
         : {}),
-    });
+    };
+    return accepted(
+      possibilityAttempt &&
+        !signal?.aborted &&
+        result.value.answerKind === 'grounded' &&
+        result.citations.every(ref => ref.sourceKind === 'personal_record')
+        ? forwardPossibilityCreation(
+            candidate,
+            result.value,
+            possibilityAttempt,
+          )
+        : candidate,
+    );
   }
   return failureFromWorkflow(result);
 }

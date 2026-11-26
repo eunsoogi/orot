@@ -1,3 +1,4 @@
+import type { StoredPossibilityOriginal } from './possibilityOriginalReceipt';
 import type { ArchivedPairedDetailsLayout } from './archivedPairedDetailsLayout';
 import type { ArchivedA2UILayout } from './conversationA2UIArchive';
 import type { ConversationEntryContext } from '../aiFeatures/integration/conversationIntent';
@@ -16,6 +17,7 @@ export interface ConversationRetentionCandidate {
   readonly question: string;
   readonly submittedInput?: import('./conversationSubmittedInput').ConversationSubmittedInput;
   readonly answer: string;
+  readonly possibilityOriginal?: StoredPossibilityOriginal;
   /** Local layout only; not provider history or authority. */
   readonly archivedA2UILayout?:
     ArchivedA2UILayout | ArchivedPairedDetailsLayout;
