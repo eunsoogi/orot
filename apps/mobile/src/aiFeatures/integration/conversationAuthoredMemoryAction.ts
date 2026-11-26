@@ -1,6 +1,19 @@
 import { APPLE_PROVIDER_ID } from '@orot/provider-apple';
 import { observeAnswerMemoryProviderOwner } from './conversationAnswerMemoryProviderOwner';
-import type { LocalActionTool } from '@orot/agent-runtime';
+import type {
+  LocalActionTool,
+  MultiAgentWorkflowOptions,
+} from '@orot/agent-runtime';
+import type { GroundedRagAnswer } from '../../ragConversation/task';
+import type { ConversationHistorySave } from '../../storage/conversationHealthHistory';
+import type { ConversationActionIdentity } from '../../storage/conversationActionReceipt';
+import { t } from '../../i18n';
+
+type ConfirmTerminal = NonNullable<
+  MultiAgentWorkflowOptions<GroundedRagAnswer>['confirmTerminalLocalAction']
+>;
+const actionId = 'remember-current-user-statement';
+const actionVersion = '1';
 import type { RagConversationObserver } from '../../ragConversation/service';
 import { exactAuthoredMemorySentence } from '../../storage/authoredMemorySelection';
 import type { AiFeatureLocalData } from './localData';
@@ -9,8 +22,12 @@ export function conversationAuthoredMemoryAction(input: {
   data: AiFeatureLocalData;
   observer?: RagConversationObserver;
   question: string;
+  terminal?: {
+    owner: NonNullable<RagConversationObserver['templateProposalOwner']>;
+    runId: string;
+  };
 }) {
-  const { data, observer, question } = input;
+  const { data, observer, question, terminal } = input;
   const owner = observer?.retentionSession;
   const requestId = observer?.retentionRequestId;
   const confirm = observer?.confirmHistorySave;
@@ -26,11 +43,17 @@ export function conversationAuthoredMemoryAction(input: {
   let approved:
     | {
         statement: string;
+        operation?: ConversationActionIdentity;
         signal: AbortSignal;
         guard?: ReturnType<typeof observeAnswerMemoryProviderOwner>;
       }
     | undefined;
+  let pending:
+    | { input: ConversationHistorySave; grant: NonNullable<typeof approved> }
+    | undefined;
   const dispose = () => {
+    pending?.grant.guard?.dispose();
+    pending = undefined;
     approved?.guard?.dispose();
     approved = undefined;
   };
@@ -39,6 +62,7 @@ export function conversationAuthoredMemoryAction(input: {
     actions: [] as LocalActionTool[],
     receipt: () => receipt,
     dispose,
+    confirmTerminal: undefined as ConfirmTerminal | undefined,
   };
   if (
     observer?.inputOrigin !== 'composer' ||
@@ -47,7 +71,9 @@ export function conversationAuthoredMemoryAction(input: {
     !requestId ||
     !owner ||
     !confirm ||
-    (!model?.isCurrent && !onDeviceOwner?.current()) ||
+    (terminal
+      ? !terminal.owner.current() || !data.confirmAuthoredMemoryTerminal
+      : !model?.isCurrent && !onDeviceOwner?.current()) ||
     !data.saveConversationHistory
   )
     return result;
@@ -68,9 +94,49 @@ export function conversationAuthoredMemoryAction(input: {
   ) =>
     !signal.aborted &&
     (guard ? guard.isCurrent() : model?.isCurrent?.() === true);
+  if (terminal) {
+    result.confirmTerminal = async offer => {
+      const prepared = pending;
+      if (
+        !prepared ||
+        prepared.grant.signal !== offer.signal ||
+        prepared.grant.operation?.operationRunId !== offer.operationRunId ||
+        prepared.grant.operation?.operationKey !== offer.operationKey ||
+        offer.toolId !== actionId ||
+        offer.toolVersion !== actionVersion ||
+        parse(offer.input)?.statement !== prepared.grant.statement
+      )
+        return;
+      pending = undefined;
+      const guard = prepared.grant.guard;
+      try {
+        if (
+          !guard ||
+          !(await guard.recheck()) ||
+          !(await data.confirmAuthoredMemoryTerminal?.(
+            prepared.input,
+            offer.signal,
+          )) ||
+          !guard.isCurrent()
+        )
+          return;
+        receipt = 'saved';
+        return {
+          committed: true,
+          value: {
+            answer: t('historyDisplay.savedConversationMemory'),
+            answerKind: 'conversation',
+          },
+        };
+      } finally {
+        guard?.dispose();
+      }
+    };
+  }
   result.actions.push({
-    id: 'remember-current-user-statement',
-    version: '1',
+    id: actionId,
+    version: actionVersion,
+    ...(terminal ? { completion: 'host_terminal' as const } : {}),
     description:
       'Use only when the current user explicitly asks to remember a fact, plan, practice, project, goal or preference they directly state in this same message. Copy exactly one complete factual sentence from the current user message; never copy the request to save, filler, prior replies, quoted text, questions, guesses or credentials. The app displays the exact sentence for local approval. Never claim it was saved without a successful tool result.',
     inputSchema: {
@@ -82,14 +148,20 @@ export function conversationAuthoredMemoryAction(input: {
       additionalProperties: false,
     },
     parseInput: parse,
-    async authorize(value, signal) {
+    async authorize(value, signal, operation) {
+      if (
+        receipt !== 'not_attempted' ||
+        signal.aborted ||
+        (terminal && operation?.operationRunId !== terminal.runId)
+      )
+        return false;
       dispose();
-      if (receipt !== 'not_attempted' || signal.aborted) return false;
       receipt = 'not_saved';
       const parsed = parse(value);
       if (!parsed) return false;
-      const guard = onDeviceOwner
-        ? observeAnswerMemoryProviderOwner(onDeviceOwner, signal)
+      const authority = terminal?.owner ?? onDeviceOwner;
+      const guard = authority
+        ? observeAnswerMemoryProviderOwner(authority, signal)
         : undefined;
       let keep = false;
       try {
@@ -101,14 +173,19 @@ export function conversationAuthoredMemoryAction(input: {
           (guard && !(await guard.recheck()))
         )
           return false;
-        approved = { ...parsed, signal, guard };
+        approved = {
+          ...parsed,
+          signal,
+          guard,
+          operation: terminal ? operation : undefined,
+        };
         keep = true;
         return true;
       } finally {
         if (!keep) guard?.dispose();
       }
     },
-    async execute({ input: value, signal }) {
+    async execute({ input: value, signal, operationRunId, operationKey }) {
       const grant = approved;
       approved = undefined;
       try {
@@ -116,29 +193,32 @@ export function conversationAuthoredMemoryAction(input: {
           !grant ||
           grant.signal !== signal ||
           !current(signal, grant.guard) ||
+          (terminal &&
+            (grant.operation?.operationRunId !== operationRunId ||
+              grant.operation?.operationKey !== operationKey)) ||
           (grant.guard && !(await grant.guard.recheck())) ||
           parse(value)?.statement !== grant.statement
         )
           throw new Error('A fresh authored memory approval is required.');
-        const id = await data.saveConversationHistory?.(
-          {
-            requestId,
-            sessionId: owner.id,
-            sessionVersion: owner.version,
-            question,
-            localOnly: true,
-            approvedCurrentSentence: {
-              statement: grant.statement,
-              current: () => current(signal, grant.guard),
-            },
+        const save: ConversationHistorySave = {
+          requestId,
+          sessionId: owner.id,
+          sessionVersion: owner.version,
+          question,
+          localOnly: true,
+          approvedCurrentSentence: {
+            statement: grant.statement,
+            current: () => current(signal, grant.guard),
           },
-          signal,
-        );
+          ...(grant.operation && { authoredTerminal: grant.operation }),
+        };
+        const id = await data.saveConversationHistory?.(save, signal);
         if (!id) throw new Error('The approved memory could not be saved.');
-        receipt = 'saved';
+        if (terminal) pending = { input: save, grant };
+        else receipt = 'saved';
         return { items: [], coverage: [], conflicts: [] };
       } finally {
-        grant?.guard?.dispose();
+        if (!pending) grant?.guard?.dispose();
       }
     },
   });

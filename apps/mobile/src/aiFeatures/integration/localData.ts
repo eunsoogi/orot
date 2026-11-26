@@ -31,6 +31,10 @@ export interface AiFeatureLocalData extends LocalEvidenceData {
     typeof createLiveHealthProofLease
   >;
   /** Local mutation capability, deliberately absent from read-only evidence tools. */
+  confirmAuthoredMemoryTerminal?(
+    input: import('../../storage/conversationHealthHistory').ConversationHistorySave,
+    signal: AbortSignal,
+  ): Promise<boolean>;
   saveConversationHistory?(
     input: import('../../storage/conversationHealthHistory').ConversationHistorySave,
     signal: AbortSignal,
@@ -119,6 +123,14 @@ async function openDefault(): Promise<AiFeatureLocalData> {
       isCurrentLocalAgentMemoryDatabase,
     ),
     repository,
+    async confirmAuthoredMemoryTerminal(input, signal) {
+      const { confirmAuthoredMemoryTerminal } =
+        await import('../../storage/conversationAuthoredMemoryTerminal');
+      return (
+        isCurrentLocalAgentMemoryDatabase(database) &&
+        confirmAuthoredMemoryTerminal(database, input, signal)
+      );
+    },
     async saveConversationHistory(input, signal) {
       const { saveConversationHealthHistory } =
         await import('../../storage/conversationHealthHistory');

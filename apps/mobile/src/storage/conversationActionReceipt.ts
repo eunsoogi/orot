@@ -1,4 +1,4 @@
-import type { SqlTransaction } from '@orot/storage';
+import type { SqlExecutor, SqlTransaction } from '@orot/storage';
 
 /** Execution identity is supplied by the workflow, never by model output. */
 export interface ConversationActionIdentity {
@@ -17,6 +17,7 @@ export async function bindConversationActionReceipt(
     readonly sessionId: string;
     readonly sessionVersion: number;
     readonly sourceRequestId: string;
+    readonly authoredTerminal?: true;
   },
   existing: boolean,
 ): Promise<void> {
@@ -31,12 +32,18 @@ export async function bindConversationActionReceipt(
   );
   // Do not duplicate health prose into a tombstone that outlives history deletion.
   // Current source and domain entry content are checked separately in the transaction.
-  const identity = JSON.stringify([
-    input.operationRunId,
-    input.operationKey,
-    input.sessionVersion,
-    input.sourceRequestId,
-  ]);
+  const identity = input.authoredTerminal
+    ? authoredTerminalIdentity(
+        input,
+        input.sessionVersion,
+        input.sourceRequestId,
+      )
+    : JSON.stringify([
+        input.operationRunId,
+        input.operationKey,
+        input.sessionVersion,
+        input.sourceRequestId,
+      ]);
   const rows = await tx.execute(
     'SELECT session_id, identity_json FROM conversation_action_receipts WHERE request_id = ?',
     [input.requestId],
@@ -57,4 +64,37 @@ export async function bindConversationActionReceipt(
     'INSERT INTO conversation_action_receipts VALUES (?, ?, ?)',
     [input.requestId, input.sessionId, identity],
   );
+}
+
+/** Distinct from ordinary history and previous-answer operation receipts. The
+ * nested tag cannot be interpreted as a legacy run ID. */
+export function authoredTerminalIdentity(
+  operation: ConversationActionIdentity,
+  version: number,
+  requestId: string,
+): string {
+  return JSON.stringify([
+    ['remember-current-user-statement', '1', operation.operationRunId],
+    operation.operationKey,
+    version,
+    requestId,
+  ]);
+}
+
+export async function readConversationActionIdentity(
+  sql: SqlExecutor,
+  requestId: string,
+  sessionId: string,
+): Promise<string | undefined> {
+  const exists = await sql.execute(
+    "SELECT name FROM sqlite_master WHERE type = 'table' AND name = 'conversation_action_receipts'",
+  );
+  if (!exists.rows.length) return;
+  const row = (
+    await sql.execute(
+      'SELECT identity_json FROM conversation_action_receipts WHERE request_id = ? AND session_id = ?',
+      [requestId, sessionId],
+    )
+  ).rows[0];
+  return typeof row?.identity_json === 'string' ? row.identity_json : undefined;
 }

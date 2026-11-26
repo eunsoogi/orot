@@ -5,9 +5,11 @@ import {
   insertHistoryOperationReceipt,
 } from './conversationHistoryOperationReceipt';
 import { commitConversationActionRecovery } from './commitConversationActionRecovery';
+import { validAuthoredMemoryTerminal } from './conversationAuthoredMemoryTerminal';
 import { validateConversationHistorySource } from './conversationHistorySource';
 import {
   bindConversationActionReceipt,
+  readConversationActionIdentity,
   type ConversationActionIdentity,
 } from './conversationActionReceipt';
 import { createManualHistoryEntry } from '@orot/domain';
@@ -32,6 +34,7 @@ export interface ConversationHistorySave {
   /** Only the local composer command can opt into this non-evidence lane. */
   readonly localOnly?: true;
   readonly operation?: ConversationActionIdentity;
+  readonly authoredTerminal?: ConversationActionIdentity;
   readonly approvedCurrentSentence?: {
     readonly statement: string;
     readonly current: () => boolean;
@@ -58,6 +61,11 @@ export async function saveConversationHealthHistory(
       ? conversationHistoryIntent(input.question)
       : legacyConversationHistoryIntent(input.question));
   if (
+    (input.authoredTerminal &&
+      (!input.localOnly ||
+        !input.approvedCurrentSentence ||
+        input.operation ||
+        !validAuthoredMemoryTerminal(input.authoredTerminal))) ||
     (input.localOnly && (input.approvedSource || input.operation)) ||
     (input.approvedCurrentSentence &&
       (!input.localOnly ||
@@ -87,6 +95,20 @@ export async function saveConversationHealthHistory(
           'SELECT entry_id FROM conversation_history_receipts WHERE request_id = ? AND session_id = ?',
           [input.requestId, input.sessionId],
         );
+    if (input.authoredTerminal) {
+      await bindConversationActionReceipt(
+        tx,
+        {
+          ...input.authoredTerminal,
+          requestId: input.requestId,
+          sessionId: input.sessionId,
+          sessionVersion: input.sessionVersion,
+          sourceRequestId: input.requestId,
+          authoredTerminal: true,
+        },
+        receipt.rows.length > 0,
+      );
+    }
     if (input.operation && !additional) {
       await bindConversationActionReceipt(
         tx,
@@ -101,6 +123,20 @@ export async function saveConversationHealthHistory(
       );
     }
     if (receipt.rows.length) {
+      if (
+        input.localOnly &&
+        !input.authoredTerminal &&
+        (
+          await readConversationActionIdentity(
+            tx,
+            input.requestId,
+            input.sessionId,
+          )
+        )?.startsWith('[[')
+      )
+        throw new Error(
+          'Previously saved memory belongs to another operation.',
+        );
       const id = String(receipt.rows[0].entry_id);
       if (Boolean(input.localOnly) !== isLocalConversationMemoryId(id))
         throw new Error('Previously saved memory belongs to another boundary.');
@@ -114,6 +150,12 @@ export async function saveConversationHealthHistory(
       );
       if (newer.rows.length)
         throw new Error('Previously saved history was corrected.');
+      if (input.authoredTerminal) {
+        await validateConversationHistorySource(tx, input, details);
+        if (signal.aborted || !input.approvedCurrentSentence?.current())
+          throw new Error('History save cancelled.');
+        tx.commit();
+      }
       result = id;
       return;
     }
