@@ -11,9 +11,13 @@ import { conversationExecutionNative } from '../ragConversation/conversationExec
 import { subscribeConversationVisibility } from '../storage/conversationVisibilityEvents';
 
 import type { RecordsTabAuthority } from './useAppRootTab';
+import {
+  openRecentSavedRow,
+  type RecentRowSelection,
+} from './openRecentSavedRow';
+import type { SettledRecentReceipt } from './recentSavedMaterialPageTypes';
 import type { RecentPageRefresh } from './recentPageRefresh';
 import {
-  isProtectedDataReadable,
   requestRecentSavedMaterialPage,
   type LoadRecentPage,
   type RecentPageRow,
@@ -35,6 +39,10 @@ export function useRecentSavedMaterial<Row extends RecentPageRow>(
     current: () => boolean,
     invalidate: () => void,
   ) => () => void,
+  warm?: Readonly<{
+    blocked: boolean;
+    publish(receipt?: SettledRecentReceipt): void;
+  }>,
 ) {
   const route = useRef({ active, ownership });
   route.current = { active, ownership };
@@ -87,7 +95,7 @@ export function useRecentSavedMaterial<Row extends RecentPageRow>(
         : previous,
     );
   }, []);
-  const invalidate = useCallback(() => {
+  const reset = useCallback(() => {
     visibilityRevision.current++;
     abort();
     published.current = [];
@@ -97,6 +105,11 @@ export function useRecentSavedMaterial<Row extends RecentPageRow>(
     setState('idle');
     setPageEpoch(version => version + 1);
   }, [abort, forgetWitnesses]);
+  const warmPublish = warm?.publish;
+  const invalidate = useCallback(() => {
+    warmPublish?.();
+    reset();
+  }, [reset, warmPublish]);
   const refuse = useCallback(() => {
     invalidate();
     setState('refused');
@@ -107,6 +120,7 @@ export function useRecentSavedMaterial<Row extends RecentPageRow>(
     invalidate,
     abort,
     keepPages,
+    warmPublish ? reset : undefined,
   );
   const previousScopedLoader = useRef(subscribeOwnedChanges ? load : undefined);
   useLayoutEffect(() => {
@@ -156,6 +170,7 @@ export function useRecentSavedMaterial<Row extends RecentPageRow>(
     (before?: Row, epoch?: RecentPageRefresh) =>
       requestRecentSavedMaterialPage(
         {
+          publishSettled: warmPublish,
           captureCurrent,
           canAccess,
           requireBridge,
@@ -173,54 +188,40 @@ export function useRecentSavedMaterial<Row extends RecentPageRow>(
         before,
         epoch,
       ),
-    [canAccess, captureCurrent, forgetWitnesses, load, refuse, requireBridge],
+    [
+      canAccess,
+      captureCurrent,
+      forgetWitnesses,
+      load,
+      refuse,
+      requireBridge,
+      warmPublish,
+    ],
   );
   useEffect(() => {
-    if (active && enabled && state === 'idle') request();
-  }, [accessVersion, active, enabled, pageEpoch, request, state]);
+    if (active && enabled && !warm?.blocked && state === 'idle') request();
+  }, [
+    accessVersion,
+    active,
+    enabled,
+    pageEpoch,
+    request,
+    state,
+    warm?.blocked,
+  ]);
 
-  /** A press already queued before a deletion or native lock cannot open its old selection. */
-  async function open(
-    row: Row,
-    select: (
-      value: Row,
-      revalidate: () => Promise<boolean>,
-      current: () => boolean,
-    ) => void | Promise<void>,
-  ) {
+  async function open(row: Row, select: RecentRowSelection<Row>) {
     const initial = generation.current;
     const current = () =>
       generation.current === initial && isRouteCurrent() && canAccess();
     if (!current() || !published.current.includes(row)) return;
-    const protection = conversationExecutionNative();
-    const revalidate = async () => {
-      if (!current()) return false;
-      const admitted = Boolean(
-        protection?.bridgeAvailable &&
-        (await isProtectedDataReadable(protection)),
-      );
-      if (!current()) return false;
-      if (!admitted) {
-        refuse();
-        return false;
-      }
-      const witness = witnesses.current.get(row);
-      if (!witness) return true;
-      let owned = false;
-      try {
-        owned = witness.isCurrent() && (await witness.verify());
-      } catch {
-        // Fail closed if the source's exact revision cannot be revalidated.
-      }
-      if (!current()) return false;
-      if (!owned || !witness.isCurrent()) {
-        refuse();
-        return false;
-      }
-      return true;
-    };
-    if ((await revalidate()) && current())
-      await select(row, revalidate, current);
+    return openRecentSavedRow(
+      row,
+      select,
+      current,
+      () => witnesses.current.get(row),
+      refuse,
+    );
   }
   const pageGeneration = generation.current;
   const tail = rows[rows.length - 1];

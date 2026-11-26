@@ -1,3 +1,4 @@
+import { createRecentPublicationStage } from './recentPublicationStage';
 import {
   reportRecentReadStage,
   reportRecentReadCompletion,
@@ -10,6 +11,7 @@ import {
   type RecentPageRow,
   type RecentPageState,
   type RecentPageWitness,
+  type SettledRecentReceipt,
   type Ref,
 } from './recentSavedMaterialPageTypes';
 export type {
@@ -21,7 +23,8 @@ export type {
 } from './recentSavedMaterialPageTypes';
 import type { Dispatch, SetStateAction } from 'react';
 import { conversationExecutionNative } from '../ragConversation/conversationExecutionNative';
-import type { ConversationExecutionAdapter } from '../ragConversation/conversationExecutionLease';
+import { isProtectedDataReadable } from './recentDataProtection';
+export { isProtectedDataReadable } from './recentDataProtection';
 import { BoundReadRevisionChanged } from '../storage/boundReadResultWitness';
 import { recentPageSize } from './RecordsRecentTimeline';
 import { linkRecentRefresh, type RecentPageRefresh } from './recentPageRefresh';
@@ -29,18 +32,9 @@ import { linkRecentRefresh, type RecentPageRefresh } from './recentPageRefresh';
 // A warm return can race more than one short, unrelated committed write.
 const maxFirstPageRevisionRestarts = 2;
 
-export async function isProtectedDataReadable(
-  protection: ConversationExecutionAdapter,
-) {
-  try {
-    return (await protection.protectedDataAvailable()) === true;
-  } catch {
-    return false;
-  }
-}
-
 export async function requestRecentSavedMaterialPage<Row extends RecentPageRow>(
   ports: {
+    readonly publishSettled?: (receipt?: SettledRecentReceipt) => void;
     readonly captureCurrent: () => () => boolean;
     readonly canAccess: () => boolean;
     readonly requireBridge: boolean;
@@ -59,6 +53,7 @@ export async function requestRecentSavedMaterialPage<Row extends RecentPageRow>(
   epoch?: RecentPageRefresh,
 ) {
   const {
+    publishSettled,
     captureCurrent,
     canAccess,
     requireBridge,
@@ -86,8 +81,14 @@ export async function requestRecentSavedMaterialPage<Row extends RecentPageRow>(
   let retained = false;
   let publishedWitness = false;
   let witness: RecentPageWitness | undefined;
+  const settlement = createRecentPublicationStage(
+    !before && !epoch,
+    inTab,
+    publishSettled,
+  );
   const release = () => {
     unlink?.();
+    settlement.reset();
     if (!publishedWitness) witness?.dispose?.();
     if (pending.current !== operation) return;
     pending.current = null;
@@ -122,6 +123,7 @@ export async function requestRecentSavedMaterialPage<Row extends RecentPageRow>(
           signal: operation.signal,
           canRetry: verify,
           isCurrent: current,
+          ...settlement.options,
         }),
       );
     const checkWitness = async (restart?: true) => {
@@ -169,6 +171,7 @@ export async function requestRecentSavedMaterialPage<Row extends RecentPageRow>(
           }
           step = next;
         }
+        settlement.capture(step.settle);
         rows = step.rows;
         more = step.more;
       } else {
@@ -195,6 +198,7 @@ export async function requestRecentSavedMaterialPage<Row extends RecentPageRow>(
         restarts++;
         witness?.dispose?.();
         witness = undefined;
+        settlement.reset();
         if (!(await verify()) || !current()) throw error;
         return readWithRevisionRecovery();
       }
@@ -214,6 +218,7 @@ export async function requestRecentSavedMaterialPage<Row extends RecentPageRow>(
         for (const row of rows) witnesses.current.set(row, witness);
         publishedWitness = true;
       }
+      settlement.publish();
       published.current = before ? [...published.current, ...rows] : rows;
       setRows(published.current);
       setMore(hasMore);

@@ -1,4 +1,4 @@
-import { useMemo, useRef, useState } from 'react';
+import { useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { loadRecentMaterial } from '../generatedReports/recentMaterialReader';
 import { readProtectedRecentMaterialPage } from '../generatedReports/certifiedRecentMaterialPage';
 import { subscribeAgentMemoryVisibility } from '../storage/agentMemoryVisibilityEvents';
@@ -11,10 +11,9 @@ import {
   recentPageSize,
   type RecentRecordEntry,
 } from './RecordsRecentTimeline';
-import {
-  loadRecentSourceMaterial,
-  readSelectedRecentRecording,
-} from './recentSourceReader';
+import { loadRecentSourceMaterial } from './recentSourceReader';
+import { openRecentRecord } from './openRecentRecord';
+import { useSettledRecentPaint } from './useSettledRecentPaint';
 import { useRecentPageDemand } from './useRecentPageDemand';
 import { useRecentSavedMaterial } from './useRecentSavedMaterial';
 import { refreshRecentPages } from './recentPageRefresh';
@@ -41,11 +40,16 @@ export function useRecordsRecentFeed(props: RecordsRecentSourcesProps) {
     onRetryRecordings,
     onRetryDocuments,
     onOpenReport,
-    onOpenMemory,
-    onOpenMedicalDocument,
-    onOpenRecording,
-    onOpenSavedRecordings,
   } = props;
+  const warmEligible =
+    active &&
+    pagedAudio &&
+    pagedDocuments &&
+    Boolean(onOpenReport && recentMaterialReadyLease);
+  const painted = useSettledRecentPaint<{
+    records: readonly RecentRecordEntry[];
+    groups: ReturnType<typeof groupRecentRecords>;
+  }>(warmEligible, ownership, tabAuthority);
   const scopedMaterial = useMemo(() => {
     if (!recentMaterialReadyLease) return undefined;
     const lease = recentMaterialReadyLease;
@@ -78,6 +82,9 @@ export function useRecordsRecentFeed(props: RecordsRecentSourcesProps) {
     undefined,
     Boolean(scopedMaterial),
     scopedMaterial?.subscribe,
+    warmEligible
+      ? { blocked: painted.blocked, publish: painted.publishMaterial }
+      : undefined,
   );
   const media = useRecentSavedMaterial(
     active,
@@ -88,6 +95,10 @@ export function useRecordsRecentFeed(props: RecordsRecentSourcesProps) {
     tabAuthority,
     subscribeRecentSourceSaved,
     true,
+    undefined,
+    warmEligible
+      ? { blocked: painted.blocked, publish: painted.publishMedia }
+      : undefined,
   );
   const [limit, setLimit] = useState(recentPageSize);
   const requestedDepth = useRef(recentPageSize);
@@ -189,44 +200,28 @@ export function useRecordsRecentFeed(props: RecordsRecentSourcesProps) {
     if (legacyDocumentState === 'failed') onRetryDocuments();
   }
 
-  function openRecord(record: RecentRecordEntry) {
-    if (!reports.isRouteCurrent()) return;
-    if (record.source) {
-      media.open(record.source, async (row, revalidate, current) => {
-        if (row.kind === 'medical_document') {
-          onOpenMedicalDocument(row.id);
-          return;
-        }
-        // Only one user-selected recording re-enters the exact existing detail owner.
-        try {
-          const source = await readSelectedRecentRecording(row.id);
-          if (source && (await revalidate()) && current())
-            onOpenRecording?.(source);
-        } catch {
-          // A failed local read must not open another recording or trigger playback.
-        }
-      });
-    } else if (record.material) {
-      reports.open(record.material, item => {
-        if (item.origin === 'memory') onOpenMemory?.(item.id);
-        else onOpenReport?.(item);
-      });
-    } else if (record.kind === 'medical_document') {
-      onOpenMedicalDocument(record.id);
-    } else {
-      const source = recordings.find(row => row.id === record.id);
-      if (source && onOpenRecording) onOpenRecording(source);
-      else onOpenSavedRecordings();
-    }
-  }
+  const isFresh =
+    streams.length > 0 && streams.every(stream => stream.state === 'ready');
+  const warm = loadErrors.length === 0 ? painted.warm : undefined;
+  useLayoutEffect(() => {
+    if (!warm && painted.warm) painted.rejectWarm();
+    if (isFresh && !refreshing && loadErrors.length === 0)
+      painted.recordPaint(
+        { records: certified, groups },
+        limit === recentPageSize,
+        media.rows,
+        reports.rows,
+      );
+  });
   return {
-    records: certified,
-    isFresh:
-      streams.length > 0 && streams.every(stream => stream.state === 'ready'),
-    groups,
+    records: warm?.records ?? certified,
+    isFresh,
+    warmPaint: Boolean(warm),
+    groups: warm?.groups ?? groups,
     showMore,
     retrySources,
-    openRecord,
+    openRecord: (record: RecentRecordEntry) =>
+      openRecentRecord(record, props, reports, media),
     isCurrent: reports.isRouteCurrent,
     more:
       !partial &&

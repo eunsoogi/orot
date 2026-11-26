@@ -1,3 +1,9 @@
+import type { settleRecentPublication } from '../storage/settledRecentPublication';
+
+export type SettledRecentReceipt = NonNullable<
+  ReturnType<typeof settleRecentPublication>
+>;
+
 export type RecentPageRow = {
   readonly key: string;
   readonly createdAt: string;
@@ -22,6 +28,7 @@ type WitnessedRecentPage<Row> =
       readonly witness: RecentPageWitness;
       readonly rows: readonly Row[];
       readonly more: boolean;
+      readonly settle?: () => SettledRecentReceipt | undefined;
     };
 
 export type RecentPage<Row> = readonly Row[] | WitnessedRecentPage<Row>;
@@ -41,5 +48,7 @@ export type LoadRecentPage<Row> = ((
     signal: AbortSignal;
     canRetry: () => Promise<boolean>;
     isCurrent: () => boolean;
+    settledOwner?: () => boolean;
+    registerSettled?: (receipt: SettledRecentReceipt) => void;
   },
 ) => Promise<RecentPage<Row>>) & { readonly sourceIsCurrent?: () => boolean };

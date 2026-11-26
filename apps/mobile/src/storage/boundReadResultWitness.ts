@@ -36,12 +36,31 @@ export function createBoundReadResultWitness(
   owner: SqlDatabase,
   stillOwned: () => boolean,
   options?: { readonly requireSettledOwner: boolean },
-) {
+): BoundReadWitness | undefined {
+  return createWitness(owner, stillOwned, options);
+}
+
+type BoundReadWitness = {
+  current(): boolean;
+  requireCurrent(): void;
+  sample(tx: SqlExecutor): Promise<void>;
+  wrap(tx: SqlExecutor): SqlExecutor;
+  forkSettled(stillOwned: () => boolean): BoundReadWitness | undefined;
+  beforeRetire(retire: () => void): (() => void) | undefined;
+  dispose(): void;
+};
+
+function createWitness(
+  owner: SqlDatabase,
+  stillOwned: () => boolean,
+  options?: { readonly requireSettledOwner: boolean },
+  settledVersion?: string,
+): BoundReadWitness | undefined {
   const epoch = options?.requireSettledOwner
     ? acquireIndependentReadEpoch(owner)
     : acquireProtectedReadEpoch(owner);
   if (!epoch) return;
-  let version: string | undefined;
+  let version = settledVersion;
   const current = () => epoch.current() && stillOwned();
   const requireCurrent = () => {
     if (!stillOwned()) throw new BoundReadWitnessUnavailable();
@@ -74,6 +93,12 @@ export function createBoundReadResultWitness(
         },
       };
     },
+    forkSettled(stillSettledOwner) {
+      if (!current() || !options?.requireSettledOwner || version === undefined)
+        return;
+      return createWitness(owner, stillSettledOwner, options, version);
+    },
+    beforeRetire: epoch.beforeDispatch,
     dispose: epoch.dispose,
   };
 }

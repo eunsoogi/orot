@@ -58,12 +58,13 @@ export function RecordsRecentSources(props: RecordsRecentSourcesProps) {
     more,
     isLoading,
     isFresh,
+    warmPaint,
     canAdvance,
     loadErrors,
   } = useRecordsRecentFeed(props);
   useLayoutEffect(() => {
     suspension.update(
-      isFresh && !isLoading,
+      (isFresh && !isLoading) || warmPaint,
       loadErrors.length > 0,
       records.length > 0,
     );
@@ -88,7 +89,13 @@ export function RecordsRecentSources(props: RecordsRecentSourcesProps) {
   );
 
   return (
-    <View style={styles.container} testID="records-recent-sources">
+    <View
+      pointerEvents={warmPaint ? 'none' : 'auto'}
+      accessibilityElementsHidden={warmPaint}
+      importantForAccessibility={warmPaint ? 'no-hide-descendants' : 'auto'}
+      style={styles.container}
+      testID="records-recent-sources"
+    >
       <View style={styles.headingRow}>
         <Text accessibilityRole="header" style={styles.heading}>
           {t('overview.recentRecord')}
@@ -96,7 +103,7 @@ export function RecordsRecentSources(props: RecordsRecentSourcesProps) {
         {!showAll && records.length > 0 && onViewAll ? (
           <AppButton
             accessibilityLabel={t('records.recent.viewAll')}
-            onPress={() => isCurrent() && onViewAll()}
+            onPress={() => !warmPaint && isCurrent() && onViewAll()}
             size="compact"
             testID="records-recent-view-all"
             title={t('records.recent.viewAll') + '  ›'}
@@ -104,7 +111,7 @@ export function RecordsRecentSources(props: RecordsRecentSourcesProps) {
           />
         ) : null}
       </View>
-      {!statusAtTail ? status : null}
+      {!warmPaint && !statusAtTail ? status : null}
       {!isLoading && loadErrors.length === 0 && records.length === 0 ? (
         <RecordsRecentSourceState
           state="empty"
@@ -134,7 +141,9 @@ export function RecordsRecentSources(props: RecordsRecentSourcesProps) {
                     documentIndex={record.documentIndex}
                     documentsOpening={documentsOpening}
                     groupLabel={group.label}
-                    onOpen={() => openRecord(record)}
+                    onOpen={() => {
+                      if (!warmPaint) openRecord(record);
+                    }}
                     record={record}
                   />
                 ))}
@@ -147,11 +156,13 @@ export function RecordsRecentSources(props: RecordsRecentSourcesProps) {
         <AppButton
           testID="records-recent-show-more"
           title={t('records.recent.showMore')}
-          disabled={!canAdvance}
-          onPress={showMore}
+          disabled={warmPaint || !canAdvance}
+          onPress={() => {
+            if (!warmPaint) showMore();
+          }}
         />
       ) : null}
-      {statusAtTail ? status : null}
+      {!warmPaint && statusAtTail ? status : null}
       {documentsOpening ? (
         <Text accessibilityLiveRegion="polite">
           {t('medicalDocument.source.opening')}

@@ -15,7 +15,11 @@ import { openInterleavableRecentSourceDatabase } from '../../storage/testSupport
 import type { RecentMaterialReadyLease } from '../../generatedReports/certifiedRecentMaterialPage';
 import type { AppNavigationRoute } from '../appNavigationRoute';
 import { RecentMaterialReadinessContext } from '../RecentMaterialReadinessContext';
-import { loadRecentSourceMaterial } from '../recentSourceReader';
+import type { LoadRecentPage } from '../recentSavedMaterialPageTypes';
+import {
+  loadRecentSourceMaterial,
+  type RecentMediaRow,
+} from '../recentSourceReader';
 import {
   holdRecentTestPage,
   recentRouteProps,
@@ -49,6 +53,7 @@ test.each([
   'Voice Model Back',
   'native foreground',
   'inactive compact',
+  'inactive app default',
   'inactive full',
   'background full',
 ] as const)(
@@ -119,9 +124,13 @@ test.each([
           provenance: { sourceIds: [], reviewState: 'user_confirmed' },
         },
       });
+      const defaultRoute = journey === 'inactive app default';
       jest
         .mocked(loadRecentSourceMaterial)
-        .mockImplementation(async (before, options) => {
+        .mockImplementation(async (before, supplied) => {
+          const options = supplied as Parameters<
+            LoadRecentPage<RecentMediaRow>
+          >[1];
           if (readAgain) {
             readAgain = false;
             entered.resolve();
@@ -132,6 +141,12 @@ test.each([
             before && { id: before.key, createdAt: before.createdAt },
             options?.signal,
             options?.canRetry,
+            defaultRoute && options?.settledOwner && options.registerSettled
+              ? {
+                  owner: options.settledOwner,
+                  onSettled: options.registerSettled,
+                }
+              : undefined,
           );
           return rows.map(row => ({ ...row, key: row.id }));
         });
@@ -139,7 +154,7 @@ test.each([
       const view = await renderRecords(
         controller,
         { ...recentRouteProps(), documentImportService: undefined },
-        true,
+        defaultRoute ? 'app-default' : true,
         Readiness,
       );
       try {
@@ -181,8 +196,23 @@ test.each([
         expect(controller.getSnapshot().currentRoute.name).toBe(
           full ? 'recent-records' : 'root',
         );
-        if (journey !== 'Voice Model Back')
+        if (defaultRoute) {
+          await waitFor(() => {
+            expect(
+              screen.getByText(file, { includeHiddenElements: true }),
+            ).toBeTruthy();
+            expect(
+              screen.getByTestId(memory, { includeHiddenElements: true }),
+            ).toBeTruthy();
+          });
+          const retained = screen.getByTestId('records-recent-sources', {
+            includeHiddenElements: true,
+          });
+          expect(retained.props.pointerEvents).toBe('none');
+          expect(retained.props.accessibilityElementsHidden).toBe(true);
+        } else if (journey !== 'Voice Model Back') {
           expect(screen.queryByText(file)).toBeNull();
+        }
         expect(screen.queryByTestId(error)).toBeNull();
         expect(screen.queryByTestId(retry)).toBeNull();
         expect(grants).toBeGreaterThan(warmGrants);

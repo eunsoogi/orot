@@ -12,6 +12,8 @@ import type { AppRouteContentProps } from '../AppProps';
 import { appContentLayoutOwner } from '../../navigation/appContentLayoutPolicy';
 import { NavigationRouteAdapter } from '../../navigation/NavigationRouteAdapter';
 import type { createNavigationController } from '../../navigation/navigationController';
+import { AppOverviewDataBoundary } from '../AppOverviewDataBoundary';
+import { loadRecordingSummaries } from '../../recording/loadRecordingSummaries';
 import { RecordsSourcePaging } from '../RecordsSourcePagingContext';
 import type { AppNavigationRoute } from '../appNavigationRoute';
 
@@ -78,34 +80,50 @@ export function recentRouteProps(): Omit<AppRouteContentProps, 'actions'> {
 export function renderRecords(
   controller: ReturnType<typeof createNavigationController<AppNavigationRoute>>,
   props: ReturnType<typeof recentRouteProps>,
-  indexed = false,
+  indexed: boolean | 'app-default' = false,
   wrapper?: ComponentType<PropsWithChildren>,
 ) {
-  return render(
-    <RecordsSourcePaging.Provider value={indexed}>
-      <RecordSourceNavigationProvider>
-        <NavigationRouteAdapter
-          controller={controller}
-          contentLayoutOwner={appContentLayoutOwner}
-          scrollable={route => route.name !== 'root'}
-          rootTabs={route =>
-            route.name === 'root'
-              ? { activeTab: 'records', onSelect: jest.fn() }
-              : undefined
-          }
-        >
-          {actions =>
-            actions.route.name === 'root' ? (
-              <RecordsHubSection selected="records">
-                <AppRouteContent {...props} actions={actions} />
-              </RecordsHubSection>
-            ) : (
+  const routes = (
+    <RecordSourceNavigationProvider>
+      <NavigationRouteAdapter
+        controller={controller}
+        contentLayoutOwner={appContentLayoutOwner}
+        scrollable={route => route.name !== 'root'}
+        rootTabs={route =>
+          route.name === 'root'
+            ? { activeTab: 'records', onSelect: jest.fn() }
+            : undefined
+        }
+      >
+        {actions =>
+          actions.route.name === 'root' ? (
+            <RecordsHubSection selected="records">
               <AppRouteContent {...props} actions={actions} />
-            )
-          }
-        </NavigationRouteAdapter>
-      </RecordSourceNavigationProvider>
-    </RecordsSourcePaging.Provider>,
+            </RecordsHubSection>
+          ) : (
+            <AppRouteContent {...props} actions={actions} />
+          )
+        }
+      </NavigationRouteAdapter>
+    </RecordSourceNavigationProvider>
+  );
+  return render(
+    indexed === 'app-default' ? (
+      <AppOverviewDataBoundary
+        activeTab="records"
+        controller={controller}
+        loadAppointments={async () => {
+          throw new Error('Inactive fixture appointments');
+        }}
+        loadRecordings={loadRecordingSummaries}
+      >
+        {routes}
+      </AppOverviewDataBoundary>
+    ) : (
+      <RecordsSourcePaging.Provider value={indexed}>
+        {routes}
+      </RecordsSourcePaging.Provider>
+    ),
     { wrapper },
   );
 }
