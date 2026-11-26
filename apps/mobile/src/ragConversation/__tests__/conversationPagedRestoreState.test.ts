@@ -1,4 +1,5 @@
 import { createConversationPagedRestoreState } from '../conversationPagedRestoreState';
+import type { RetainedConversationTask } from '../conversationTaskState';
 import { createEmptyConversation } from '../conversationEmptySession';
 import type {
   ConversationHistoryPage,
@@ -18,6 +19,14 @@ const cursor = {
   kind: 'turn' as const,
   version: 0,
 };
+const voiceReceipt: RetainedConversationTask = {
+  id: 'voice-end:synthetic',
+  createdAt: cursor.createdAt,
+  revision: 1,
+  task: { kind: 'voice_end', durationSeconds: 42 },
+};
+const currentVoiceReceipt = { ...voiceReceipt, liveAfterMessageId: null };
+
 function setup(read: ReadConversationHistoryPage) {
   let session = createEmptyConversation(1);
   const state = createConversationPagedRestoreState({
@@ -33,6 +42,7 @@ function setup(read: ReadConversationHistoryPage) {
     append: () => {
       session = {
         ...session,
+        taskCards: [currentVoiceReceipt],
         messages: [
           ...session.messages,
           { id: 100, role: 'user', content: 'new live input' },
@@ -70,7 +80,7 @@ test('fetches one page, deduplicates in-flight requests, preserves visible ids a
   f.append();
   resolve({
     turns: [turn('older'), turn('new')],
-    taskCards: [],
+    taskCards: [voiceReceipt],
     nextCursor: null,
   });
   await one;
@@ -88,6 +98,9 @@ test('fetches one page, deduplicates in-flight requests, preserves visible ids a
       .map(message => message.id),
   ).toEqual(visibleIds);
   expect(new Set(f.get().messages.map(message => message.id)).size).toBe(5);
+  // Paging sees the committed copy but must not duplicate it or replace its
+  // transient current-side witness until the Conversation is reopened.
+  expect(f.get().taskCards).toEqual([currentVoiceReceipt]);
   await f.state.loadOlder(1);
   expect(read).toHaveBeenCalledTimes(2);
 });

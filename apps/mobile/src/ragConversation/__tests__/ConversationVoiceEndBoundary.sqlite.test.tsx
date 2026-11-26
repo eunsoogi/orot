@@ -104,7 +104,7 @@ const openConversation = (path: string) => {
   };
 };
 
-test('same-owner completed voice duration belongs above the choices before and after a real storage reopen', async () => {
+test('same-owner voice receipt is current until a real storage reopen places it at its saved time', async () => {
   const directory = mkdtempSync(join(tmpdir(), 'orot-voice-history-'));
   const path = join(directory, 'conversation.sqlite');
   const first = openConversation(path);
@@ -130,6 +130,7 @@ test('same-owner completed voice duration belongs above the choices before and a
       expect(ui.getByLabelText('음성 대화 종료, 2분 14초')).toBeTruthy();
       expect(first.needsNoStrictRestore).not.toHaveBeenCalled();
       const [receipt] = await first.storage.readTaskCards(durableId, 0);
+      expect(receipt).not.toHaveProperty('liveAfterMessageId');
       expect(receipt?.task).toEqual({
         kind: 'voice_end',
         durationSeconds: 134,
@@ -143,8 +144,8 @@ test('same-owner completed voice duration belongs above the choices before and a
       assertOrder(
         JSON.stringify(ui.toJSON()),
         'Synthetic earlier chat answer',
-        'conversation-voice-end-marker',
         'conversation-choices-divider',
+        'conversation-voice-end-marker',
       );
       await first.append(
         'later',

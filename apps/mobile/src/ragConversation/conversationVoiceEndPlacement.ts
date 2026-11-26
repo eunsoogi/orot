@@ -4,6 +4,7 @@ import type { VoiceEndTaskCard } from '../storage/conversationTaskCardCodec';
 
 type Marker = VoiceMarkerPresentation & { readonly task: VoiceEndTaskCard };
 type Key = { readonly createdAt: string; readonly id: string };
+type MarkerGroup = { restored: Marker[]; current: Marker[] };
 
 function marker(card: VoiceMarkerPresentation): card is Marker {
   return card.task.kind === 'voice_end';
@@ -35,28 +36,36 @@ export function conversationVoiceEndPlacement(
   const positions = new Map<number, number>();
   const restored: { id: number; key: Key }[] = [];
   const live: number[] = [];
-  messages.forEach((message, index) => {
-    positions.set(message.id, index);
-    if (!message.restoredHistory) live.push(message.id);
-    else if (message.voiceTimelineOrder)
+  for (const message of messages) {
+    if (!message.restoredHistory) {
+      positions.set(message.id, live.length);
+      live.push(message.id);
+    } else if (message.voiceTimelineOrder)
       restored.push({ id: message.id, key: message.voiceTimelineOrder });
-  });
-  const before = new Map<number | null, Marker[]>();
+  }
+  const before = new Map<number | null, MarkerGroup>();
   for (const card of markers) {
     const anchor = card.liveAfterMessageId;
-    const followed = anchor == null ? undefined : positions.get(anchor);
-    // No captured live anchor is not an empty transcript: restored rows still
-    // precede or follow this receipt by durable timeline key.
+    // A missing witness comes from storage; null (or an earlier restored
+    // message) still belongs to a call captured by this live Conversation.
+    const current = anchor !== undefined;
+    const followed =
+      anchor != null && anchor > 0 ? positions.get(anchor) : undefined;
     const at =
-      (followed !== undefined
-        ? messages[followed + 1]?.id
-        : anchor != null && anchor > 0
-          ? firstMatch(live, id => id > anchor)
-          : (firstMatch(restored, row => compare(card, row.key) <= 0)?.id ??
-            live[0])) ?? null;
-    const group = before.get(at);
-    if (group) group.push(card);
-    else before.set(at, [card]);
+      (!current
+        ? (firstMatch(restored, row => compare(card, row.key) <= 0)?.id ??
+          live[0])
+        : followed !== undefined
+          ? live[followed + 1]
+          : anchor !== null && anchor > 0
+            ? firstMatch(live, id => id > anchor)
+            : live[0]) ?? null;
+    let group = before.get(at);
+    if (!group) {
+      group = { restored: [], current: [] };
+      before.set(at, group);
+    }
+    group[current ? 'current' : 'restored'].push(card);
   }
   return before;
 }
