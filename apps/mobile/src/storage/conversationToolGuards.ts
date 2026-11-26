@@ -139,12 +139,19 @@ export async function setupConversationToolGuards(tx: SqlExecutor) {
     await tx.execute(
       `CREATE TRIGGER IF NOT EXISTS tool_source_stale_${event.toLowerCase()} AFTER ${event} ON transcript_artifact_staleness BEGIN ${erase('conversation_tool_dependencies', 'p.record_kind = NEW.artifact_kind AND p.record_id = NEW.artifact_id')} END`,
     );
+  // Parent invalidation can repeat for every retired artifact. The covering
+  // source index finds the affected calls once instead of scanning the log.
   for (const [table, kind] of [
     ['conversation_invalid_parents', 'generated_conversation'],
     ['conversation_invalid_summaries', 'generated_summary'],
   ] as const)
-    await tx.execute(
-      `CREATE TRIGGER IF NOT EXISTS tool_parent_${kind} AFTER INSERT ON ${table} BEGIN ${erase('conversation_tool_dependencies', `p.record_kind = '${kind}' AND p.record_id = NEW.id`)} END`,
+    await replaceHealthPeriodTrigger(
+      tx,
+      `CREATE TRIGGER tool_parent_${kind} AFTER INSERT ON ${table} BEGIN
+      DELETE FROM conversation_tool_events WHERE (session_id, run_id, call_id) IN (
+        SELECT session_id, run_id, call_id FROM conversation_tool_dependencies
+        WHERE record_kind = '${kind}' AND record_id = NEW.id
+      ); END`,
     );
   await tx.execute(
     `CREATE TRIGGER IF NOT EXISTS tool_summary_changed AFTER UPDATE ON symptom_summary_runs WHEN OLD.result_json IS NOT NEW.result_json OR OLD.id IS NOT NEW.id BEGIN ${erase('conversation_tool_dependencies', "p.record_kind = 'generated_summary' AND p.record_id = OLD.id")} END`,
