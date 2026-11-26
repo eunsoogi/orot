@@ -91,6 +91,7 @@ export function acceptConversationA2UIFrameSequence(
   allowRowWeight = false,
   allowListDirection: boolean | 'vertical_align' = false,
   readProse = conversationA2UIFrameProse,
+  allowStructuralRetirement = false,
 ): ConversationA2UINode | undefined {
   if (!Array.isArray(raw) || !raw.length || raw.length > maxFinalFrames)
     return undefined;
@@ -111,6 +112,7 @@ export function acceptConversationA2UIFrameSequence(
       allowAlignment,
       allowRowWeight,
       allowListDirection,
+      allowStructuralRetirement,
     );
     // An ignored foreign frame makes the whole submitted sequence unsuitable.
     if (!next || next === staged || next.status === 'invalid') return undefined;

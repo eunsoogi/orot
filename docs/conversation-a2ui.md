@@ -271,3 +271,12 @@ and accepted prose line in reading order. Caption hints do not add content,
 bindings, controls, or actions. The existing archive keeps the accepted text
 and layout but renders those lines as body Text. Earlier task policies and
 incremental layout remain unchanged.
+
+Fresh ordinary task v49 supports a same-surface atomic component update that
+replaces a ready layout while preserving every accepted answer line. An
+unchanged Card, Column, Row or List wrapper made unreachable by that update
+is retired and cannot be reused. Dropped text, new orphans, unresolved
+retired references and foreign frames still fall back to ordinary prose.
+Owned streaming previews can show the resulting neutral geometry but never the
+unvalidated text, and deletion still clears the preview. No change to
+archive formats, actions or previous task policies.

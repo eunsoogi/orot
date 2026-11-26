@@ -71,17 +71,14 @@ test.each([
   ['complete', 1, rowSkeleton, linearSkeleton, true],
   ['Stop', 1, rowSkeleton, linearSkeleton, true],
   ['leave and return', 1, rowSkeleton, null, true],
+  ['complete', 1, linearSkeleton, rowSkeleton, 'replacement'],
+  ['Stop', 1, linearSkeleton, rowSkeleton, 'replacement'],
+  ['leave and return', 1, linearSkeleton, null, 'replacement'],
 ] as const)(
   'owning streamed Conversation renders neutral layout before %s at scale %d',
-  async (
-    ending,
-    fontScale,
-    firstLayout,
-    expectedLayout,
-    usesRepeatedChildren,
-  ) => {
-    const { envelope, firstPart, secondPart } =
-      streamedAnswer(usesRepeatedChildren);
+  async (ending, fontScale, firstLayout, expectedLayout, mode) => {
+    const usesRepeatedChildren = mode === true;
+    const { envelope, firstPart, secondPart } = streamedAnswer(mode);
     const initialHint = {
       kind: usesRepeatedChildren ? 'row' : 'stack',
       slots: 2,

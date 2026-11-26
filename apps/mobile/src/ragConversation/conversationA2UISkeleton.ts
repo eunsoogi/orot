@@ -19,6 +19,7 @@ function container(node: ConversationA2UINode): ConversationA2UINode {
 export function projectConversationA2UISkeleton(
   raw: string,
   allowRepeatedChildren = false,
+  allowStructuralRetirement = false,
 ): ConversationLayoutSkeleton | undefined {
   const streamed = completeConversationSkeletonFrames(raw);
   if (
@@ -42,7 +43,16 @@ export function projectConversationA2UISkeleton(
       used > 2 * conversationA2UIFrameLimit
     )
       return undefined;
-    const next = applyConversationA2UIFrame(surface, frame, draftA2UISurfaceId);
+    const next = applyConversationA2UIFrame(
+      surface,
+      frame,
+      draftA2UISurfaceId,
+      false,
+      false,
+      false,
+      false,
+      allowStructuralRetirement,
+    );
     if (!next || next === surface || next.status === 'invalid')
       return undefined;
     surface = next;

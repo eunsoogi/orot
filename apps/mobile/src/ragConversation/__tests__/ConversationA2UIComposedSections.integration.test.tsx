@@ -81,7 +81,14 @@ test('keeps v37 final and streamed projection isolated from the composed draft',
     taskVersion: '37',
   });
   expect(historical?.taskVersion).toBe('37');
+  const beforeReplacement = restoreConversationTask({
+    taskType: ragConversationTask.taskType,
+    taskVersion: '48',
+  });
   expect(historical?.projectStreamedLayout).toBe(
+    beforeReplacement?.projectStreamedLayout,
+  );
+  expect(historical?.projectStreamedLayout).not.toBe(
     ragConversationTask.projectStreamedLayout,
   );
 });

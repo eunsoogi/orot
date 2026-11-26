@@ -1,3 +1,7 @@
+import {
+  childIds,
+  retireConversationA2UIWrappers,
+} from './conversationA2UIStructuralRetirement';
 import { resolve, updateData } from './conversationA2UIDataTree';
 import type { ConversationA2UIAlignment } from './conversationA2UIAlignment';
 import type { ConversationA2UIStaticLeaf } from './conversationA2UIStaticCatalog';
@@ -67,14 +71,8 @@ export type ConversationA2UIState =
       readonly data: Data;
       readonly frameCount: number;
       readonly frameUnits: number;
+      readonly retired?: ReadonlySet<string>;
     };
-
-/** Every reference, including hidden tab panels, participates in one graph. */
-function childIds(component: WireNode): readonly string[] {
-  if (component.component === 'Tabs')
-    return component.tabs.map(tab => tab.child);
-  return 'children' in component ? component.children : [];
-}
 
 function buildTree(
   componentsById: ReadonlyMap<string, WireNode>,
@@ -170,6 +168,7 @@ export function applyConversationA2UIFrame(
   allowAlignment = false,
   allowRowWeight = false,
   allowListDirection: boolean | 'vertical_align' = false,
+  allowStructuralRetirement = false,
 ): ConversationA2UIState | null {
   if (
     previous &&
@@ -206,7 +205,17 @@ export function applyConversationA2UIFrame(
     const nextComponents = new Map(previous?.components);
     if (frame.kind !== 'data')
       for (const node of frame.components) nextComponents.set(node.id, node);
-    if (nextComponents.size > maxNodes) fail();
+    const priorRetired = previous?.retired;
+    const retired =
+      allowStructuralRetirement && frame.kind === 'components'
+        ? retireConversationA2UIWrappers(
+            nextComponents,
+            frame.components,
+            previous?.status === 'ready' ? previous.components : undefined,
+            priorRetired,
+          )
+        : priorRetired;
+    if (nextComponents.size + (retired?.size ?? 0) > maxNodes) fail();
     const data =
       frame.kind === 'create'
         ? frame.data
@@ -220,6 +229,7 @@ export function applyConversationA2UIFrame(
     // Path increments cannot bypass the aggregate data/depth checks.
     const checkedData = recordData(data);
     const root = buildTree(nextComponents, checkedData);
+    if (retired !== priorRetired && !root) fail();
     return {
       status: root ? 'ready' : 'pending',
       surfaceId: expectedSurfaceId,
@@ -228,6 +238,7 @@ export function applyConversationA2UIFrame(
       data: checkedData,
       frameCount,
       frameUnits,
+      ...(retired ? { retired } : {}),
     };
   } catch {
     return invalid;
