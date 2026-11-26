@@ -103,20 +103,48 @@ test.each([
   },
 );
 
-test.each([
-  'selection committed',
-  'source revoked',
-  'locked',
-  'selection lost',
-  'owner replaced',
-] as const)(
-  'an in-flight confirmation only reopens the same owned exact Visit memory: %s',
-  async scenario => {
+const overlapCases = ['during confirmation', 'before confirmation'].flatMap(
+  phase =>
+    (
+      [
+        'selection committed',
+        'source revoked',
+        'locked',
+        'selection lost',
+        'owner replaced',
+      ] as const
+    ).map(scenario => ({ phase, scenario })),
+);
+
+test.each(overlapCases)(
+  'session replacement $phase only reopens the same owned exact Visit memory: $scenario',
+  async ({ phase, scenario }) => {
     const f = await historicalMemoryFixture(true);
     let release = () => {};
     try {
       await f.storage.listUnavailableMetadata();
-      const artifacts = createConversationArtifactStorage(f.guarded);
+      let entered = () => {};
+      const boundary = new Promise<void>(resolve => (entered = resolve));
+      const held = new Promise<boolean>(
+        resolve => (release = () => resolve(true)),
+      );
+      let holdSnapshot = false;
+      const database = guardedNativeDatabase<SqlDatabase>({
+        execute: f.db.execute.bind(f.db),
+        async transaction(operation) {
+          const pause = holdSnapshot;
+          if (pause) holdSnapshot = false;
+          await f.db.transaction(operation);
+          if (pause) {
+            // SQLite released the original read transaction. Hold its delivery
+            // to let the stock session writer commit on the same guarded owner.
+            entered();
+            await held;
+          }
+        },
+      });
+      jest.mocked(openLocalAgentMemoryDatabase).mockResolvedValue(database);
+      const artifacts = createConversationArtifactStorage(database);
       const now = '2026-11-26T00:00:00.000Z';
       const signal = new AbortController().signal;
       const select = (modelId: string) =>
@@ -127,23 +155,24 @@ test.each([
           signal,
         );
       expect((await select('original')).id).toBe('original');
-      let entered = () => {};
-      const confirmed = new Promise<void>(resolve => (entered = resolve));
-      const held = new Promise<boolean>(
-        resolve => (release = () => resolve(true)),
-      );
-      checkProtection.mockResolvedValueOnce(true).mockImplementationOnce(() => {
-        entered();
-        return held;
-      });
+      if (phase === 'before confirmation') {
+        holdSnapshot = true;
+      } else {
+        checkProtection
+          .mockResolvedValueOnce(true)
+          .mockImplementationOnce(() => {
+            entered();
+            return held;
+          });
+      }
       let selected = true;
       const read = readHistoricalSavedMemory(f.id, () => selected);
       try {
-        await confirmed;
+        await boundary;
         expect((await select('replacement')).id).toBe('replacement');
         expect(await artifacts.activeSessionVersion('original')).toBe(0);
         if (scenario === 'source revoked')
-          await f.guarded.execute(
+          await database.execute(
             'INSERT INTO source_deletion_tombstones(source_id) VALUES (?)',
             [f.sourceId],
           );
