@@ -31,16 +31,16 @@ enum AppleNativeToolTrace {
         switch status {
         case "disabled", "modelNotReady", "unsupportedDevice", "unsupportedLanguage",
              "unsupportedOS", "entitlementRequired", "quotaExceeded", "unavailable":
-            return status
-        default: return "other"
+            status
+        default: "other"
         }
     }
 
     static func closedRoute(_ request: NSDictionary) -> String {
         switch request["modelRoute"] as? String {
-        case nil, "on-device": return "on_device"
-        case "private-cloud-compute": return "pcc"
-        default: return "unknown"
+        case nil, "on-device": "on_device"
+        case "private-cloud-compute": "pcc"
+        default: "unknown"
         }
     }
 
