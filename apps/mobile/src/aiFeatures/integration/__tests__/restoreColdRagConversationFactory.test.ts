@@ -73,10 +73,10 @@ test.each(['6', '7', '8', '12'])(
   'current factory refuses a version %s descriptor before consent or dispatch',
   async version => {
     const f = await fixture();
-    expect(ragConversationTask.taskVersion).toBe('40');
     const input = f.descriptor.reconstruction.invocation as {
       task: { taskVersion: string };
     };
+    expect(input.task.taskVersion).toBe(ragConversationTask.taskVersion);
     input.task.taskVersion = version;
     await expect(
       restoreColdRagConversationFactory({
