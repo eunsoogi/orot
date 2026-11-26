@@ -10,6 +10,7 @@ import {
   prepareConversationPhoto,
 } from './conversationPhotoService';
 import type { executionOptions } from './featureServiceExecution';
+import type { ConversationEntryContext } from './conversationIntent';
 import type { FreshConversationHistory } from './freshConversationDialogue';
 import type { RagConversationObserver } from '../../ragConversation/service';
 
@@ -25,6 +26,7 @@ export function conversationMutationExecution(input: {
   question: string;
   history: FreshConversationHistory;
   remoteAnswerMemory?: boolean;
+  remoteMemory?: boolean | ConversationEntryContext;
 }) {
   const {
     baseExecution,
@@ -42,9 +44,23 @@ export function conversationMutationExecution(input: {
     selected.provider.id === APPLE_PROVIDER_ID && !selected.remoteProcessing;
   const reportBookmark =
     localModel && conversationHealthSummaryBookmarkAction(observer);
-  const remoteOwner = input.remoteAnswerMemory
-    ? conversationAnswerMemoryProviderOwner(selected, observer)
-    : undefined;
+  const allowRemoteAnswer =
+    input.remoteAnswerMemory || input.remoteMemory === true;
+  const entry =
+    typeof input.remoteMemory === 'object' ? input.remoteMemory : undefined;
+  // A consumed shortcut can leave plain Conversation entry metadata behind.
+  // It grants neither a report target nor permission to change the recipient.
+  const plainAuthoredEntry =
+    entry?.intent === 'conversation' &&
+    !entry.appointmentId &&
+    !entry.reportRequest &&
+    !entry.dailyReport &&
+    !entry.directDailyReportRequest &&
+    !entry.typedPossibilityReport;
+  const remoteOwner =
+    allowRemoteAnswer || plainAuthoredEntry
+      ? conversationAnswerMemoryProviderOwner(selected, observer)
+      : undefined;
   const runId = baseExecution.execution.operationRunId;
   const terminal =
     remoteOwner && runId ? { owner: remoteOwner, runId } : undefined;
@@ -52,7 +68,7 @@ export function conversationMutationExecution(input: {
     (localModel || terminal) &&
     conversationAuthoredMemoryAction({ data, observer, question, terminal });
   const answerMemory =
-    (localModel || remoteOwner) &&
+    (localModel || (allowRemoteAnswer && remoteOwner)) &&
     conversationAnswerMemoryAction({
       data,
       observer,
@@ -70,7 +86,7 @@ export function conversationMutationExecution(input: {
       ]),
     });
   const confirmAuthored = authoredMemory && authoredMemory.confirmTerminal;
-  const confirmAnswer = answerMemory && answerMemory.confirmTerminal;
+  const confirmAnswer = answerMemory ? answerMemory.confirmTerminal : undefined;
   type TerminalOffer = Parameters<
     NonNullable<
       ReturnType<typeof conversationAuthoredMemoryAction>['confirmTerminal']
