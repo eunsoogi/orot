@@ -1,7 +1,7 @@
 import type { EvidenceSearchRequest } from '@orot/agent-runtime';
 import type { AiFeatureLocalData } from '../localData';
 import { LocalEvidenceReferenceRegistry } from '../evidenceRegistry';
-import { createSummaryArtifactTool } from '../summaryArtifactTool';
+import { createSummaryArtifactTool } from '../../../conversationTools/summaryArtifactTool';
 
 /** All matching artifacts must remain reachable when one response cannot hold them. */
 export async function assertArtifactPayloadPaging(

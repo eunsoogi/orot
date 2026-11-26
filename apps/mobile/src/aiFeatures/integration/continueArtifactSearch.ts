@@ -7,7 +7,7 @@ import {
 } from '../../ragConversation/historicalArtifactAnswer';
 import type { AiFeatureLocalData } from './localData';
 import type { LocalEvidenceReferenceRegistry } from './evidenceRegistry';
-import { createSummaryArtifactTool } from './summaryArtifactTool';
+import { createSummaryArtifactTool } from '../../conversationTools/summaryArtifactTool';
 import { createConversationArtifactTool } from './conversationArtifactTool';
 import { referenceOnly } from '../../diseaseHypotheses/resultValidation';
 

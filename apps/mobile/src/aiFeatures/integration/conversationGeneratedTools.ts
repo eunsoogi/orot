@@ -10,7 +10,7 @@ import type { RagConversationOutcome } from '../../ragConversation/service';
 import type { ArtifactContinuation } from '../../ragConversation/artifactContinuation';
 import type { AiFeatureLocalData } from './localData';
 import type { LocalEvidenceReferenceRegistry } from './evidenceRegistry';
-import { createSummaryArtifactTool } from './summaryArtifactTool';
+import { createSummaryArtifactTool } from '../../conversationTools/summaryArtifactTool';
 import { createConversationArtifactTool } from './conversationArtifactTool';
 import { createArtifactSourceTool } from './artifactSourceTool';
 import { createResearchArtifactTool } from './researchArtifactTool';

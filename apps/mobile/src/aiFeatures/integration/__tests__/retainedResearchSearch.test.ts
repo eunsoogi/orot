@@ -6,7 +6,7 @@ import { createConversationArtifactDiscovery } from '../conversationArtifactDisc
 import { createSummaryArtifactDiscovery } from '../summaryArtifactDiscovery';
 import { LocalEvidenceReferenceRegistry } from '../evidenceRegistry';
 import { localData } from '../featureServiceFixtures';
-import { createSummaryArtifactTool } from '../summaryArtifactTool';
+import { createSummaryArtifactTool } from '../../../conversationTools/summaryArtifactTool';
 import { createConversationArtifactTool } from '../conversationArtifactTool';
 import {
   retainedResearchMetadata,

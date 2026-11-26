@@ -1,20 +1,20 @@
 import type { EvidenceSearchTool } from '@orot/agent-runtime';
-import type { RagConversationObserver } from '../../ragConversation/conversationObserver';
-import type { AiFeatureLocalData } from './localData';
-import type { LocalEvidenceReferenceRegistry } from './evidenceRegistry';
-import { createLocalEvidenceSearchTool } from './evidenceSearchTool';
-import { createLocalEvidenceSnapshot } from './evidenceSnapshot';
-import { indexChangedFeatureEvidence } from './featureEvidenceSnapshot';
+import type { AiFeatureLocalData } from '../aiFeatures/integration/localData';
+import type { LocalEvidenceReferenceRegistry } from '../aiFeatures/integration/evidenceRegistry';
+import { createLocalEvidenceSearchTool } from '../aiFeatures/integration/evidenceSearchTool';
+import { createLocalEvidenceSnapshot } from '../aiFeatures/integration/evidenceSnapshot';
+import { indexChangedFeatureEvidence } from '../aiFeatures/integration/featureEvidenceSnapshot';
 
-type Selection = NonNullable<
-  RagConversationObserver['selectedRecordingTranscript']
->;
+type SelectedRecording = Readonly<{
+  sourceId: string;
+  isCurrent: () => boolean;
+}>;
 
 /** Exactly one app-selected saved recording; raw source IDs are never model parameters. */
 export function createSelectedRecordingTranscriptTool(
   data: AiFeatureLocalData,
   registry: LocalEvidenceReferenceRegistry,
-  selected: Pick<Selection, 'sourceId' | 'isCurrent'>,
+  selected: SelectedRecording,
   protectedCurrent: () => Promise<boolean> = async () => selected.isCurrent(),
 ): EvidenceSearchTool {
   const { sourceId, isCurrent } = selected;

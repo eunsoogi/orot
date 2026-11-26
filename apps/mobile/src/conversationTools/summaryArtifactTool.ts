@@ -4,14 +4,14 @@ import type {
   EvidenceSearchTool,
 } from '@orot/agent-runtime';
 import type { JsonObject } from '@orot/model-runtime';
-import type { AiFeatureLocalData } from './localData';
-import type { LocalEvidenceReferenceRegistry } from './evidenceRegistry';
-import { jsonByteLength } from './evidenceUtils';
-import { registerArtifactSource } from './artifactLineage';
-import { artifactExcerpt } from './artifactExcerpt';
-import { summaryArtifactCoverage } from './summaryArtifactCoverage';
+import type { AiFeatureLocalData } from '../aiFeatures/integration/localData';
+import type { LocalEvidenceReferenceRegistry } from '../aiFeatures/integration/evidenceRegistry';
+import { jsonByteLength } from '../aiFeatures/integration/evidenceUtils';
+import { registerArtifactSource } from '../aiFeatures/integration/artifactLineage';
+import { artifactExcerpt } from '../aiFeatures/integration/artifactExcerpt';
+import { summaryArtifactCoverage } from '../aiFeatures/integration/summaryArtifactCoverage';
 
-import { artifactCursorState } from './artifactCursorState';
+import { artifactCursorState } from '../aiFeatures/integration/artifactCursorState';
 
 function parseInput(value: unknown): JsonObject | undefined {
   if (!value || typeof value !== 'object' || Array.isArray(value))

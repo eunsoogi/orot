@@ -12,7 +12,7 @@ import { createDailyReportCalendarWindow } from '../../../healthEvidence/healthC
 import { createDailyReportContext } from '../../../healthEvidence/healthContext/dailyReportContext';
 import { readHealthContextGeneration } from '../../../healthEvidence/healthContext/generation';
 import { createSummaryArtifactDiscovery } from '../summaryArtifactDiscovery';
-import { createSummaryArtifactTool } from '../summaryArtifactTool';
+import { createSummaryArtifactTool } from '../../../conversationTools/summaryArtifactTool';
 import { captureConversationSources } from '../captureConversationSources';
 import { LocalEvidenceReferenceRegistry } from '../evidenceRegistry';
 import { fingerprint } from '../evidenceUtils';
