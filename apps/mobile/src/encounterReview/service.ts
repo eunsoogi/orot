@@ -24,6 +24,7 @@ import {
 } from '../agent/encounter/transcript';
 import type { EncounterReviewService, ReviewResult } from './controller';
 import type { ReviewDiagnostics, ReviewDiagnosticAttempt } from './diagnostics';
+import { createEncounterStartDiagnostics } from './startDiagnostics';
 import { createEncounterStartAdmission } from './startAdmission';
 import { runWithEncounterNativeAdmission } from './runNativeAdmission';
 import { createProtectedEncounterRestore } from './protectedEncounterRestore';
@@ -147,7 +148,8 @@ export function createEncounterReviewService(
       );
     },
     async start(sourceId, consent, signal, lifetime, step) {
-      const diagnostics = observations?.current();
+      const production = createEncounterStartDiagnostics();
+      const diagnostics = observations?.current() ?? production;
       diagnostics?.stage('source_lookup');
       const repo = await openLocalStorage();
       const source = await repo.get('source_record', sourceId);
@@ -240,6 +242,7 @@ export function createEncounterReviewService(
             return { status: 'unavailable' };
           return admission.denied() ? { status: 'consent-denied' } : result;
         },
+        () => production.unavailable('native_admission'),
       );
     },
   };

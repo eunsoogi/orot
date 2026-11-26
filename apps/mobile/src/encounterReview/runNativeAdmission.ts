@@ -13,17 +13,22 @@ export async function runWithEncounterNativeAdmission(
   signal: AbortSignal,
   selectionCurrent: () => boolean,
   run: GuardedOperation,
+  onUnavailable?: () => void,
 ) {
   if (signal.aborted) return { status: 'cancelled' as const };
   if (!enabled) return run(signal, async () => true);
   const bridge = conversationExecutionNative();
   const lease = watchEncounterNativeAdmission(bridge, signal, selectionCurrent);
-  if (!lease) return { status: 'unavailable' as const };
+  const confirm = async () => {
+    const admitted = (await lease?.confirm()) === true;
+    if (!admitted && !signal.aborted) onUnavailable?.();
+    return admitted;
+  };
   try {
-    if (!(await lease.confirm()))
+    if (!(await confirm()) || !lease)
       return { status: signal.aborted ? 'cancelled' : 'unavailable' } as const;
-    return await run(lease.signal, lease.confirm);
+    return await run(lease.signal, confirm);
   } finally {
-    lease.dispose();
+    lease?.dispose();
   }
 }
