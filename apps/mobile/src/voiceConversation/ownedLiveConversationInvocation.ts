@@ -1,13 +1,17 @@
-import type { EvidenceBatch, EvidenceSearchTool } from '@orot/agent-runtime';
+import type {
+  EvidenceBatch,
+  EvidenceSearchRequest,
+  EvidenceSearchTool,
+} from '@orot/agent-runtime';
+import type {
+  CurrentConversationRead,
+  OwnedConversationReadTool,
+} from '../conversationTools/ownedConversationReadSelection';
 import { createConversationToolBundle } from '../conversationTools/conversationToolBundle';
 import type { LocalEvidenceReferenceRegistry } from '../aiFeatures/integration/evidenceRegistry';
 import type { AiFeatureLocalData } from '../aiFeatures/integration/localData';
 import { createResearchInputTracker } from '../aiFeatures/integration/researchInputTracker';
 import type { RagConversationObserver } from '../ragConversation/conversationObserver';
-
-type LocalToolDefinition = Readonly<
-  Pick<EvidenceSearchTool, 'id' | 'sourceKind' | 'inputSchema'>
->;
 
 /** Bind the stock text Conversation read catalog to an already-owned Live graph.
  * 'local_read_only' is a runtime class, not proof of admission: a catalog tool
@@ -19,8 +23,12 @@ export function bindOwnedLiveConversationInvocation(input: {
   readonly registry: LocalEvidenceReferenceRegistry;
   readonly observer?: RagConversationObserver;
   readonly current: () => boolean;
-  readonly permits: (tool: LocalToolDefinition) => boolean;
-  readonly beforeRead: (signal: AbortSignal) => Promise<boolean>;
+  readonly permits: (tool: OwnedConversationReadTool) => boolean;
+  readonly beforeRead: (
+    signal: AbortSignal,
+    request: EvidenceSearchRequest,
+    tool: OwnedConversationReadTool,
+  ) => Promise<boolean | CurrentConversationRead>;
   readonly didRead?: (id: string, result: EvidenceBatch) => void;
 }): readonly EvidenceSearchTool[] | undefined {
   if (input.current() !== true) return;
@@ -41,7 +49,12 @@ export function bindOwnedLiveConversationInvocation(input: {
 
   const selected = tools.flatMap(tool => {
     const { id, sourceKind, inputSchema } = tool;
-    const definition = { id, sourceKind, inputSchema };
+    const definition = {
+      id,
+      sourceKind,
+      inputSchema,
+      parseInput: (value: unknown) => tool.parseInput(value),
+    };
     const current = () =>
       input.current() === true && input.permits(definition) === true;
     if (
@@ -58,14 +71,14 @@ export function bindOwnedLiveConversationInvocation(input: {
         // The graph uses the stock schema/binder and its ordinary authorization
         // first. This second owner/source fence covers the last awaited handoff.
         async search(...args: Parameters<EvidenceSearchTool['search']>) {
-          const { signal } = args[0];
-          const mayRead = () => !signal.aborted && current();
-          if (
-            !mayRead() ||
-            (await input.beforeRead(signal)) !== true ||
-            !mayRead()
-          )
-            return { status: 'consent_required' as const };
+          const request = args[0];
+          const { signal } = request;
+          const owns = () => !signal.aborted && current();
+          if (!owns()) return { status: 'consent_required' as const };
+          const proof = await input.beforeRead(signal, request, definition);
+          const mayRead = () =>
+            owns() && (proof === true || (proof !== false && proof.current()));
+          if (!mayRead()) return { status: 'consent_required' as const };
           const result = await tool.search(...args);
           if (!mayRead()) return { status: 'consent_required' as const };
           if (!('status' in result)) input.didRead?.(id, result);
