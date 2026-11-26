@@ -45,10 +45,15 @@ function eventToggleId() {
   return `rag-tool-event-${event.operationRunId}-${event.callId}-toggle`;
 }
 
-test('opens a local source only after resolving it with the durable session and call scope', async () => {
-  const resolveToolSource: ResolveConversationToolSource = jest.fn(
-    async () => localReference,
-  );
+test('coalesces local presses before React commits and opens only after durable proof', async () => {
+  let release!: (reference: EvidenceReference) => void;
+  const held = new Promise<EvidenceReference>(resolve => {
+    release = resolve;
+  });
+  const resolveToolSource = jest.fn<
+    ReturnType<ResolveConversationToolSource>,
+    Parameters<ResolveConversationToolSource>
+  >(() => held);
   const onOpenSource = jest.fn();
   await render(
     <ConversationMessage
@@ -67,10 +72,16 @@ test('opens a local source only after resolving it with the durable session and 
   );
 
   await fireEvent.press(screen.getByTestId(eventToggleId()));
-  fireEvent.press(screen.getByRole('button', { name: /원문 출처 확인/u }));
-  await waitFor(() =>
-    expect(onOpenSource).toHaveBeenCalledWith(localReference),
-  );
+  const source = screen.getByRole('button', { name: /원문 출처 확인/u });
+  await act(async () => {
+    source.props.onClick({ nativeEvent: {} });
+    source.props.onClick({ nativeEvent: {} });
+  });
+  expect(resolveToolSource).toHaveBeenCalledTimes(1);
+  expect(onOpenSource).not.toHaveBeenCalled();
+  await act(async () => release(localReference));
+  expect(onOpenSource).toHaveBeenCalledTimes(1);
+  expect(onOpenSource).toHaveBeenCalledWith(localReference);
   expect(resolveToolSource).toHaveBeenCalledWith(
     event.sources[0],
     expect.any(AbortSignal),
@@ -117,11 +128,13 @@ test('re-resolves each selected public source before opening its URL', async () 
   );
 
   await fireEvent.press(screen.getByTestId(eventToggleId()));
-  fireEvent.press(screen.getByRole('button', { name: /원문 출처 확인/u }));
+  await fireEvent.press(
+    screen.getByRole('button', { name: /원문 출처 확인/u }),
+  );
   const firstLink = await screen.findByRole('link', {
     name: '웹 출처 열기 · First article',
   });
-  fireEvent.press(firstLink);
+  await fireEvent.press(firstLink);
   await waitFor(() =>
     expect(openURL).toHaveBeenCalledWith('https://example.org/first'),
   );
