@@ -34,6 +34,7 @@ function toScreenRecord(
 
 export async function openLocalManualHistoryRepository(
   trace?: SavedMemoryDeletionTrace,
+  requireCurrentDeletionTarget = false,
 ): Promise<ManualHistoryScreenRepository> {
   const [storage, database] = await Promise.all([
     openLocalStorage(),
@@ -81,6 +82,13 @@ export async function openLocalManualHistoryRepository(
           trace?.('saved_memory_delete_queue', 'completed');
           phase = 'lineage';
           trace?.('saved_memory_delete_lineage', 'started');
+          // Settings confirms the exact selected revision, not a future
+          // successor. Check the tip in the writer that also deletes it.
+          if (requireCurrentDeletionTarget) {
+            const versions = await repository.history(id, transaction);
+            if (versions[versions.length - 1]?.id !== id)
+              throw new Error('Selected history is no longer current.');
+          }
           deleted = await repository.delete(
             id,
             trace

@@ -63,6 +63,10 @@ export function HistoryMemoryDetail({
         if (!current()) return;
         const versions = await repo.history(record.id);
         if (!current()) return;
+        // The list and detail read can straddle a correction. Only the exact
+        // selected tip owns the current body and whole-lineage delete action.
+        if (versions[versions.length - 1]?.id !== record.id)
+          throw new Error('Selected history is no longer current.');
         setRepository(repo);
         setHistory(versions);
       } catch {
@@ -178,7 +182,7 @@ export function HistoryMemoryDetail({
 async function openHistoryRepository() {
   const { openLocalManualHistoryRepository } =
     require('../manualHistory/localRepository') as typeof import('../manualHistory/localRepository');
-  return openLocalManualHistoryRepository(traceSavedMemoryDeletion);
+  return openLocalManualHistoryRepository(traceSavedMemoryDeletion, true);
 }
 
 const styles = StyleSheet.create({
