@@ -8,6 +8,7 @@ export type DirectPhotoPresentation = Readonly<{
   submittedAt: string;
   prompt: string;
   preview: string;
+  previews?: readonly string[];
   pending: boolean;
 }>;
 
@@ -23,15 +24,19 @@ function createDirectPhotoPresentation(
   sessionId: number,
   requestId: string,
   prompt: string,
-  image: string,
+  image: string | readonly string[],
 ): DirectPhotoPresentation {
+  const previews = (typeof image === 'string' ? [image] : image).map(
+    photo => 'data:image/jpeg;base64,' + photo,
+  );
   return {
     sessionId,
     requestId,
     displayId: nextDisplayId--,
     submittedAt: new Date().toISOString(),
     prompt,
-    preview: 'data:image/jpeg;base64,' + image,
+    preview: previews[0]!,
+    ...(previews.length > 1 ? { previews: Object.freeze(previews) } : {}),
     pending: true,
   };
 }
@@ -48,7 +53,10 @@ function presentDirectPhoto(
       message.photoAttached &&
       message.voiceTimelineOrder?.id === photo.requestId,
   );
-  const preview = { directPhotoPreviewData: photo.preview };
+  const preview = {
+    directPhotoPreviewData: photo.preview,
+    ...(photo.previews ? { directPhotoPreviewGroup: photo.previews } : {}),
+  };
   if (user)
     return messages.map(message =>
       message === user
@@ -77,7 +85,7 @@ export function beginDirectPhotoPresentation(
   sessionId: number,
   requestId: string,
   prompt: string,
-  image: string,
+  image: string | readonly string[],
 ) {
   if (!publish || signal.aborted) return;
   const photo = createDirectPhotoPresentation(
@@ -117,9 +125,12 @@ export function updateDirectPhotoPresentations(
     ...prior.filter(item => item.requestId !== event.requestId),
     event,
   ];
-  let units = next.reduce((sum, item) => sum + item.preview.length, 0);
+  const unitsFor = (item: DirectPhotoPresentation) =>
+    item.previews?.reduce((sum, uri) => sum + uri.length, 0) ??
+    item.preview.length;
+  let units = next.reduce((sum, item) => sum + unitsFor(item), 0);
   while (next.length > 1 && units > maxMountedDirectPhotoPreviewUnits)
-    units -= next.shift()!.preview.length;
+    units -= unitsFor(next.shift()!);
   return next;
 }
 

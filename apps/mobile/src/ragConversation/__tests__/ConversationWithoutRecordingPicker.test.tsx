@@ -10,13 +10,20 @@ import type { ConversationScreenProps } from '../ConversationScreenProps';
 const mockStartVoice = jest.fn();
 const mockPickImage = jest.fn();
 
-jest.mock('../useConversationDirectPhoto', () => ({
-  useConversationDirectPhoto: () => ({
-    available: true,
-    state: {},
-    pick: mockPickImage,
-  }),
-}));
+jest.mock('../useConversationDirectPhoto', () => {
+  const { createConversationPhotoConsentController } = jest.requireActual<
+    typeof import('../conversationPhotoConsentController')
+  >('../conversationPhotoConsentController');
+  const groupReview = createConversationPhotoConsentController();
+  return {
+    useConversationDirectPhoto: () => ({
+      available: true,
+      state: {},
+      pick: mockPickImage,
+      groupReview,
+    }),
+  };
+});
 
 jest.mock('../../voiceConversation/ConversationVoiceEntry', () => {
   const React = require('react');

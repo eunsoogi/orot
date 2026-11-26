@@ -32,6 +32,7 @@ export interface DisplayMessage extends RagConversationMessage {
   readonly photoAttached?: boolean;
   /** Mounted presentation only. Never enter canonical context or saved history. */
   readonly directPhotoPreviewData?: string;
+  readonly directPhotoPreviewGroup?: readonly string[];
   readonly id: number;
   readonly dailyReport?: NonNullable<
     import('../aiFeatures/integration/conversationIntent').ConversationEntryContext['dailyReport']

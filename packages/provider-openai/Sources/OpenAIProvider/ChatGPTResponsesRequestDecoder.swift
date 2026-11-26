@@ -7,6 +7,15 @@ public enum ChatGPTResponsesRequestDecoder {
         ["gpt-6.2-sol", "gpt-6.2-astra"].contains(model)
     }
 
+    /// Limit encoded input before allocating decoded data; the builder also validates JPEG framing.
+    private static func decodePhoto(_ base64: String) throws -> Data {
+        guard base64.utf8.count <= 4 * ((2 * 1024 * 1024 + 2) / 3),
+              let jpeg = Data(base64Encoded: base64),
+              jpeg.count <= 2 * 1024 * 1024
+        else { throw ResponsesRequestValidationDiagnostics.failure(.messageShape) }
+        return jpeg
+    }
+
     public static func decode(_ payload: NSDictionary, allowDirectPhoto: Bool = false) throws -> ChatGPTResponsesRequest {
         guard let value = payload as? [String: Any],
               let model = value["model"] as? String else { throw ResponsesRequestValidationDiagnostics.failure(.decoderEnvelope) }
@@ -14,14 +23,19 @@ public enum ChatGPTResponsesRequestDecoder {
         // ordinary text/steering/public-search entry never accepts that field.
         if allowDirectPhoto {
             guard supportsDirectPhotoModel(model), Set(value.keys) == ["model", "directPhoto"],
-                  let photo = value["directPhoto"] as? [String: String],
-                  Set(photo.keys) == ["text", "jpegBase64"],
-                  let question = photo["text"], question.utf16.count <= 4000,
-                  let base64 = photo["jpegBase64"],
-                  base64.utf8.count <= 4 * ((2 * 1024 * 1024 + 2) / 3),
-                  let jpeg = Data(base64Encoded: base64)
+                  let photo = value["directPhoto"] as? [String: Any],
+                  let question = photo["text"] as? String, question.utf16.count <= 4000
             else { throw ResponsesRequestValidationDiagnostics.failure(.messageShape) }
-            return ChatGPTResponsesRequest(model: model, messages: [.userPhoto(text: question, normalizedJPEG: jpeg)])
+            if Set(photo.keys) == ["text", "jpegBase64"], let base64 = photo["jpegBase64"] as? String {
+                return try ChatGPTResponsesRequest(model: model, messages: [.userPhoto(text: question, normalizedJPEG: decodePhoto(base64))])
+            }
+            guard Set(photo.keys) == ["text", "jpegBase64s"],
+                  let encoded = photo["jpegBase64s"] as? [String], (2 ... 3).contains(encoded.count)
+            else { throw ResponsesRequestValidationDiagnostics.failure(.messageShape) }
+            let images = try encoded.map(decodePhoto)
+            guard images.reduce(0, { $0 + $1.count }) <= 4 * 1024 * 1024
+            else { throw ResponsesRequestValidationDiagnostics.failure(.messageShape) }
+            return ChatGPTResponsesRequest(model: model, messages: [.userPhotoGroup(text: question, normalizedJPEGs: images)])
         }
         guard value["directPhoto"] == nil else { throw ResponsesRequestValidationDiagnostics.failure(.messageShape) }
         // Public searches have no conversation/history channel, even if a caller adds one.

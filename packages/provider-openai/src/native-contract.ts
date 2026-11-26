@@ -51,7 +51,9 @@ export interface ChatGPTPlanRequest {
 /** One private image request. There is deliberately no tool, history, URL or shared transport field. */
 export interface ChatGPTPlanDirectPhotoRequest {
   readonly model: string;
-  readonly directPhoto: Readonly<{ text: string; jpegBase64: string }>;
+  readonly directPhoto: Readonly<
+    { text: string } & ({ jpegBase64: string } | { jpegBase64s: readonly string[] })
+  >;
 }
 
 /** Public queries have no message/history or function-tool channel. */

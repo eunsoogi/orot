@@ -1,6 +1,8 @@
 import {
   directPhotoPermission,
   directPhotoScopePayload,
+  legacyDirectPhotoConsentScope,
+  legacyDirectPhotoScopePayload,
   isDirectPhotoPlanPair,
   isDirectPhotoConsentScope,
   isExactDirectPhotoPermission,
@@ -164,13 +166,20 @@ export function settingsGrantCoversRequest(
     return false;
   if (scope.purpose === directPhotoPermission.purpose)
     return (
-      request.payload === directPhotoScopePayload &&
+      request.payload ===
+        (scope.policyVersion === legacyDirectPhotoConsentScope.policyVersion
+          ? legacyDirectPhotoScopePayload
+          : directPhotoScopePayload) &&
       isDirectPhotoPlanPair(identity.providerId, identity.modelId) &&
       isExactDirectPhotoPermission({
         ...scope,
         sourceKinds: request.allowedScope.sourceKinds,
       }) &&
-      parsed.permissions.some(isExactDirectPhotoPermission)
+      parsed.permissions.some(
+        permission =>
+          permission.policyVersion === scope.policyVersion &&
+          isExactDirectPhotoPermission(permission),
+      )
     );
   if (
     scope.purpose === 'public_web_search' &&

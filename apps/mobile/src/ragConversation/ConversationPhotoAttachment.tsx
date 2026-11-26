@@ -16,10 +16,32 @@ export function conversationPhotoTrayHeight(compact: boolean) {
   return (compact ? compactThumbnailSize : defaultThumbnailSize) + 14;
 }
 
+export interface ConversationPhotoAttachmentProps {
+  readonly status: 'empty' | 'preparing' | 'ready' | 'transferring' | 'error';
+  readonly previewData?: string;
+  readonly previewGroup?: readonly string[];
+  readonly onRemoveAt?: (index: number) => void;
+  readonly deliveryReady?: boolean;
+  readonly deliveryMode?: 'ocr' | 'image';
+  readonly hasPhoto?: boolean;
+  readonly errorReason?: PhotoDraftFailure;
+  readonly cleanupPending?: boolean;
+  readonly onRetryCleanup?: () => void;
+  readonly disabled?: boolean;
+  readonly compact?: boolean;
+  readonly pickerDisabled?: boolean;
+  readonly groupedPicker?: boolean;
+  readonly onSelect: () => void;
+  readonly onRemove: () => void;
+  readonly children?: ReactNode;
+}
+
 /** Renders only draft controls; selecting a photo never triggers a conversation send. */
 export function ConversationPhotoAttachment({
   status,
   previewData,
+  previewGroup,
+  onRemoveAt,
   deliveryReady = false,
   deliveryMode,
   hasPhoto = status === 'ready' ||
@@ -31,32 +53,19 @@ export function ConversationPhotoAttachment({
   disabled = false,
   compact = false,
   pickerDisabled = false,
+  groupedPicker = false,
   onSelect,
   onRemove,
   children,
-}: {
-  readonly status: 'empty' | 'preparing' | 'ready' | 'transferring' | 'error';
-  readonly previewData?: string;
-  readonly deliveryReady?: boolean;
-  readonly deliveryMode?: 'ocr' | 'image';
-  readonly hasPhoto?: boolean;
-  readonly errorReason?: PhotoDraftFailure;
-  readonly cleanupPending?: boolean;
-  readonly onRetryCleanup?: () => void;
-  readonly disabled?: boolean;
-  readonly compact?: boolean;
-  readonly pickerDisabled?: boolean;
-  readonly onSelect: () => void;
-  readonly onRemove: () => void;
-  readonly children?: ReactNode;
-}) {
+}: ConversationPhotoAttachmentProps) {
   const viewableURI =
     hasPhoto && status === 'ready' && deliveryMode === 'image' && !disabled
       ? previewData
       : undefined;
+  const previews = previewGroup ?? [previewData];
   const [openedURI, setOpenedURI] = useState<string>();
   // Removal, replacement or a retired composer closes the in-memory viewer.
-  useLayoutEffect(() => setOpenedURI(undefined), [viewableURI]);
+  useLayoutEffect(() => setOpenedURI(undefined), [viewableURI, previewGroup]);
   const closeViewer = () => setOpenedURI(undefined);
   const selectDisabled =
     disabled ||
@@ -71,47 +80,53 @@ export function ConversationPhotoAttachment({
   } as const;
   return (
     <View>
-      {viewableURI && openedURI === viewableURI ? (
-        <ConversationPhotoViewer photoURI={viewableURI} onClose={closeViewer} />
+      {viewableURI && openedURI && previews.includes(openedURI) ? (
+        <ConversationPhotoViewer photoURI={openedURI} onClose={closeViewer} />
       ) : null}
       {hasPhoto ? (
         <View style={styles.previewRow} testID="conversation-photo-tray">
-          <View
-            style={[styles.previewFrame, compact && styles.compactPreviewFrame]}
-          >
-            {previewData ? (
-              <Pressable
-                accessible={Boolean(viewableURI)}
-                accessibilityRole="button"
-                accessibilityLabel={t('ragConversation.photo.openFullScreen')}
-                disabled={!viewableURI}
-                onPress={() => setOpenedURI(viewableURI)}
-                style={styles.preview}
-              >
-                <Image
-                  accessibilityLabel={t('ragConversation.photo.preview')}
-                  resizeMode="cover"
-                  source={{ uri: previewData }}
-                  style={styles.preview}
-                  testID="conversation-photo-preview"
-                />
-              </Pressable>
-            ) : (
-              <AppSymbol name="photo" color={appColors.secondary} />
-            )}
-            <Pressable
-              accessibilityRole="button"
-              accessibilityLabel={t('ragConversation.photo.remove')}
-              disabled={disabled}
-              accessibilityState={{ disabled }}
-              onPress={onRemove}
-              style={styles.removeTarget}
+          {previews.map((uri, index) => (
+            <View
+              key={index}
+              style={[
+                styles.previewFrame,
+                compact && styles.compactPreviewFrame,
+              ]}
             >
-              <View pointerEvents="none" style={styles.removeIcon}>
-                <AppSymbol name="xmark" color={appColors.text} size={13} />
-              </View>
-            </Pressable>
-          </View>
+              {uri ? (
+                <Pressable
+                  accessible={Boolean(viewableURI)}
+                  accessibilityRole="button"
+                  accessibilityLabel={t('ragConversation.photo.openFullScreen')}
+                  disabled={!viewableURI}
+                  onPress={() => setOpenedURI(uri)}
+                  style={styles.preview}
+                >
+                  <Image
+                    accessibilityLabel={t('ragConversation.photo.preview')}
+                    resizeMode="cover"
+                    source={{ uri }}
+                    style={styles.preview}
+                    testID="conversation-photo-preview"
+                  />
+                </Pressable>
+              ) : (
+                <AppSymbol name="photo" color={appColors.secondary} />
+              )}
+              <Pressable
+                accessibilityRole="button"
+                accessibilityLabel={t('ragConversation.photo.remove')}
+                disabled={disabled}
+                accessibilityState={{ disabled }}
+                onPress={onRemoveAt ? () => onRemoveAt(index) : onRemove}
+                style={styles.removeTarget}
+              >
+                <View pointerEvents="none" style={styles.removeIcon}>
+                  <AppSymbol name="xmark" color={appColors.text} size={13} />
+                </View>
+              </Pressable>
+            </View>
+          ))}
         </View>
       ) : null}
       {/* Preparation still locks the controls; image transfer disclosure stays in settings consent. */}
@@ -157,7 +172,11 @@ export function ConversationPhotoAttachment({
         <ComposerInlineAction
           accessibilityRole="button"
           accessibilityLabel={t('ragConversation.photo.select')}
-          accessibilityHint={t('ragConversation.photo.selectHint')}
+          accessibilityHint={t(
+            groupedPicker
+              ? 'ragConversation.photo.groupSelectHint'
+              : 'ragConversation.photo.selectHint',
+          )}
           accessibilityState={{ disabled: selectDisabled }}
           disabled={selectDisabled}
           onPress={onSelect}
@@ -171,7 +190,13 @@ export function ConversationPhotoAttachment({
 }
 
 const styles = StyleSheet.create({
-  previewRow: { paddingTop: 10, paddingHorizontal: 12, paddingBottom: 4 },
+  previewRow: {
+    flexDirection: 'row',
+    gap: 8,
+    paddingTop: 10,
+    paddingHorizontal: 12,
+    paddingBottom: 4,
+  },
   previewFrame: {
     width: defaultThumbnailSize,
     height: defaultThumbnailSize,

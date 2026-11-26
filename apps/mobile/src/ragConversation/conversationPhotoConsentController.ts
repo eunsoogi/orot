@@ -3,6 +3,8 @@ export interface ConversationPhotoConsentDetails {
   readonly modelId: string;
   readonly recipient: string;
   readonly remoteProcessing: boolean;
+  readonly reviewedImageGroup?: readonly string[];
+  readonly includesPrompt?: boolean;
 }
 
 /** One app-owned prompt waits for an explicit decision and ends immediately on cancellation. */

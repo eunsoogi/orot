@@ -1,5 +1,5 @@
 import { NavigationModal } from '../navigation/NavigationModal';
-import { ScrollView, StyleSheet, View } from 'react-native';
+import { Image, ScrollView, StyleSheet, View } from 'react-native';
 import { AppButton } from '../layout/AppButton';
 import { AppText } from '../layout/AppText';
 import { appColors } from '../layout/appColors';
@@ -12,6 +12,8 @@ export function ConversationPhotoConsent({
   modelId,
   recipient,
   remoteProcessing,
+  reviewedImageGroup,
+  includesPrompt,
   onApprove,
   onCancel,
 }: {
@@ -20,6 +22,8 @@ export function ConversationPhotoConsent({
   readonly modelId: string;
   readonly recipient: string;
   readonly remoteProcessing: boolean;
+  readonly reviewedImageGroup?: readonly string[];
+  readonly includesPrompt?: boolean;
   readonly onApprove: () => void;
   readonly onCancel: () => void;
 }) {
@@ -33,7 +37,13 @@ export function ConversationPhotoConsent({
     >
       <ScrollView contentContainerStyle={styles.content}>
         <AppText style={styles.title}>
-          {t('ragConversation.photo.consentTitle', { provider: providerName })}
+          {reviewedImageGroup
+            ? t('ragConversation.photo.groupConsentTitle', {
+                provider: providerName,
+              })
+            : t('ragConversation.photo.consentTitle', {
+                provider: providerName,
+              })}
         </AppText>
         <AppText>
           {t('ragConversation.photo.consentDestination', {
@@ -41,13 +51,36 @@ export function ConversationPhotoConsent({
             recipient,
           })}
         </AppText>
-        <AppText>
-          {t(
-            remoteProcessing
-              ? 'ragConversation.photo.consentRemote'
-              : 'ragConversation.photo.consentLocal',
-          )}
-        </AppText>
+        {reviewedImageGroup ? (
+          <>
+            <AppText>
+              {t(
+                includesPrompt
+                  ? 'ragConversation.photo.groupConsentPrompt'
+                  : 'ragConversation.photo.groupConsentOnly',
+                { count: String(reviewedImageGroup.length) },
+              )}
+            </AppText>
+            <View style={styles.actions}>
+              {reviewedImageGroup.map((uri, index) => (
+                <Image
+                  key={index}
+                  accessibilityLabel={t('ragConversation.photo.preview')}
+                  source={{ uri }}
+                  style={styles.reviewImage}
+                />
+              ))}
+            </View>
+          </>
+        ) : (
+          <AppText>
+            {t(
+              remoteProcessing
+                ? 'ragConversation.photo.consentRemote'
+                : 'ragConversation.photo.consentLocal',
+            )}
+          </AppText>
+        )}
         <View style={styles.actions}>
           <AppButton
             title={t('ragConversation.photo.consentApprove')}
@@ -73,4 +106,5 @@ const styles = StyleSheet.create({
   },
   title: { fontSize: 22, fontWeight: '700', color: appColors.text },
   actions: { gap: 8 },
+  reviewImage: { width: 112, height: 84, borderRadius: 12 },
 });

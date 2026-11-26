@@ -17,8 +17,8 @@ import { ConversationGlassAction } from './ConversationGlassAction';
 import {
   ConversationPhotoAttachment,
   conversationPhotoTrayHeight,
+  type ConversationPhotoAttachmentProps,
 } from './ConversationPhotoAttachment';
-import type { PhotoDraftFailure } from './conversationPhotoTypes';
 import { styles } from './ConversationScreen.styles';
 import { getRagConversationCopy } from './copy';
 
@@ -60,20 +60,10 @@ export function ConversationComposer({
   readonly trailingAction?: ReactNode;
   readonly status?: string;
   readonly preflightError?: string;
-  readonly photo?: {
-    readonly status: 'empty' | 'preparing' | 'ready' | 'transferring' | 'error';
-    readonly previewData?: string;
-    readonly hasPhoto?: boolean;
-    readonly errorReason?: PhotoDraftFailure;
-    readonly cleanupPending?: boolean;
-    readonly pickerDisabled?: boolean;
-    readonly onRetryCleanup?: () => void;
-    /** The session owner has bound the selected attachment to its actual sender. */
-    readonly deliveryReady?: boolean;
-    readonly deliveryMode?: 'ocr' | 'image';
-    readonly onSelect: () => void;
-    readonly onRemove: () => void;
-  };
+  readonly photo?: Omit<
+    ConversationPhotoAttachmentProps,
+    'compact' | 'disabled' | 'children'
+  >;
 }) {
   // The hook still preserves every authoritative navigation and system reservation.
   const navigationInset = useNavigationContentInset(compact ? 0 : 4);

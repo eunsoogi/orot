@@ -5,6 +5,7 @@ public enum ChatGPTResponsesMessage: Equatable, Sendable {
     case system(String)
     case user(String)
     case userPhoto(text: String, normalizedJPEG: Data)
+    case userPhotoGroup(text: String, normalizedJPEGs: [Data])
     case assistant(String)
     case functionCall(callID: String, name: String, argumentsJSON: String)
     case functionCallOutput(callID: String, output: String)
@@ -45,10 +46,10 @@ public struct ChatGPTResponsesRequest: Equatable, Sendable {
     public let publicWebQuery: String?
     var containsDirectPhoto: Bool {
         messages.contains {
-            if case .userPhoto = $0 {
-                return true
+            switch $0 {
+            case .userPhoto, .userPhotoGroup: true
+            default: false
             }
-            return false
         }
     }
 

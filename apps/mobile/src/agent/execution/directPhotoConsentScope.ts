@@ -4,24 +4,37 @@ import type { ProviderSelectionOption } from '../../providers/selection/types';
 import type { SettingsConsentPermission } from './settingsConsentGrant';
 
 /** Raw photo pixels are neither OCR, model history, nor general record evidence. */
+const legacyPolicyVersion = 'selected-inline-image-with-local-reply-v2';
+
 export const directPhotoConsentScope = Object.freeze({
   purpose: 'conversation_direct_photo',
-  policyVersion: 'selected-inline-image-with-local-reply-v2',
+  policyVersion: 'selected-inline-photo-group-with-local-reply-v3',
   dataCategories: Object.freeze([
     'selected_photo_image',
     'selected_photo_question',
   ]),
 });
 
-/** Internal metadata-only authority descriptor, never the native request body. */
-export const directPhotoScopePayload = Object.freeze({
-  messages: Object.freeze([
-    Object.freeze({
-      role: 'user' as const,
-      content: directPhotoConsentScope.policyVersion,
-    }),
-  ]),
+export const legacyDirectPhotoConsentScope = Object.freeze({
+  ...directPhotoConsentScope,
+  policyVersion: legacyPolicyVersion,
 });
+
+/** Internal metadata-only authority descriptors, never the native request body. */
+const scopePayload = (policyVersion: string) =>
+  Object.freeze({
+    messages: Object.freeze([
+      Object.freeze({
+        role: 'user' as const,
+        content: policyVersion,
+      }),
+    ]),
+  });
+
+export const directPhotoScopePayload = scopePayload(
+  directPhotoConsentScope.policyVersion,
+);
+export const legacyDirectPhotoScopePayload = scopePayload(legacyPolicyVersion);
 
 export function isDirectPhotoPlanPair(providerId: string, modelId: string) {
   return (
@@ -39,7 +52,8 @@ export const directPhotoPermission: SettingsConsentPermission = Object.freeze({
 export function isDirectPhotoConsentScope(purpose: unknown, policy: unknown) {
   return (
     purpose === directPhotoConsentScope.purpose &&
-    policy === directPhotoConsentScope.policyVersion
+    (policy === directPhotoConsentScope.policyVersion ||
+      policy === legacyPolicyVersion)
   );
 }
 

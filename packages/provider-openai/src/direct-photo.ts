@@ -1,3 +1,5 @@
+import { captureDirectPhotoGroup } from './direct-photo-group';
+export { isBoundedInlineJPEG } from './direct-photo-jpeg';
 import type { LanguageModelProvider } from '@orot/model-runtime';
 import { CompletedContinuationCache } from './completed-continuation';
 import { cancellableStream } from './cancellable-stream';
@@ -6,7 +8,8 @@ import { createChatGPTPlanStream } from './stream';
 
 export type ApprovedPhoto = Readonly<{
   text: string;
-  jpegBase64: string;
+  jpegBase64?: string;
+  jpegBase64s?: readonly string[];
   signal: AbortSignal;
   /** Synchronous exact request/selection/credential fence at native admission. */
   isCurrent: () => boolean;
@@ -18,24 +21,6 @@ const senders = new WeakMap<
   LanguageModelProvider,
   Readonly<{ model: string; send: DirectPhotoSender }>
 >();
-const maxPhotoBytes = 2 * 1024 * 1024;
-const maxBase64 = 4 * Math.ceil(maxPhotoBytes / 3);
-
-/** Only accept bounded inline JPEG strings. ImageIO and the native decoder check the actual bytes. */
-export function isBoundedInlineJPEG(value: string): boolean {
-  if (
-    typeof value !== 'string' ||
-    value.length < 8 ||
-    value.length > maxBase64 ||
-    value.length % 4 !== 0 ||
-    !value.startsWith('/9j/')
-  )
-    return false;
-  const padding = value.endsWith('==') ? 2 : value.endsWith('=') ? 1 : 0;
-  const data = padding ? value.slice(0, -padding) : value;
-  return 3 * (value.length / 4) - padding <= maxPhotoBytes && !/[^A-Za-z0-9+/]/.test(data);
-}
-
 /** An ordinary language-model provider (or shallow copy) has no image dispatch port. */
 export function chatGPTPlanDirectPhoto(provider: LanguageModelProvider) {
   return senders.get(provider);
@@ -53,11 +38,20 @@ export function registerChatGPTPlanDirectPhoto(
   const model = options.model.slug;
   // Reuse cancellation and stream validation, not the generic text/tools transport.
   // The real bridge receives only one photo envelope, never a placeholder prompt.
-  const send: DirectPhotoSender = async ({ text, jpegBase64, signal, isCurrent }) => {
-    if (signal.aborted || !isCurrent() || text.length > 4000 || !isBoundedInlineJPEG(jpegBase64))
+  const send: DirectPhotoSender = async ({ text, jpegBase64, jpegBase64s, signal, isCurrent }) => {
+    const photos = captureDirectPhotoGroup(jpegBase64s ?? [jpegBase64]);
+    if (
+      signal.aborted ||
+      !isCurrent() ||
+      text.length > 4000 ||
+      !photos ||
+      (jpegBase64s && jpegBase64 !== undefined)
+    )
       return null;
     const current = () => !signal.aborted && isCurrent();
-    const photo = Object.freeze({ text, jpegBase64 });
+    const photo = Object.freeze(
+      photos.length === 1 ? { text, jpegBase64: photos[0]! } : { text, jpegBase64s: photos },
+    );
     const transport = {
       startResponse(id: string) {
         if (!current()) return Promise.reject(new Error('Photo owner changed.'));

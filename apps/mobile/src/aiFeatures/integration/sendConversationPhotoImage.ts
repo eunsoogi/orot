@@ -1,6 +1,6 @@
 import {
   chatGPTPlanDirectPhoto,
-  isBoundedInlineJPEG,
+  captureDirectPhotoGroup,
 } from '@orot/provider-openai';
 import { t } from '../../i18n';
 import type { SelectedAiResolution } from './provider';
@@ -23,7 +23,8 @@ type Outcome =
 /** One caller-owned prepared image and one explicit approval. No OCR fallback, retention, tools or history. */
 export function createConversationPhotoImageSend(input: {
   readonly selected: PhotoSelection;
-  readonly jpegBase64: string;
+  readonly jpegBase64?: string;
+  readonly jpegBase64s?: readonly string[];
   readonly prompt: string;
   readonly signal: AbortSignal;
   /** Must combine attachment generation, ownership, live credential and exact selection. */
@@ -42,7 +43,10 @@ export function createConversationPhotoImageSend(input: {
     confirm,
     subscribeInvalidation,
   } = input;
-  let photo: string | undefined = input.jpegBase64;
+  let photo =
+    input.jpegBase64 !== undefined && input.jpegBase64s !== undefined
+      ? undefined
+      : captureDirectPhotoGroup(input.jpegBase64s ?? [input.jpegBase64]);
   const prompt = input.prompt.trim();
   const { provider, modelId, recipient } = selected;
   const sender = chatGPTPlanDirectPhoto(provider);
@@ -87,12 +91,7 @@ export function createConversationPhotoImageSend(input: {
       if (!eligible || !sender) return { status: 'unsupported' };
       unsubscribe = subscribeInvalidation(stop);
       if (!current()) return { status: 'cancelled' };
-      if (
-        !jpegBase64 ||
-        prompt.length > 4000 ||
-        !isBoundedInlineJPEG(jpegBase64)
-      )
-        return { status: 'invalid' };
+      if (!jpegBase64 || prompt.length > 4000) return { status: 'invalid' };
       let cancel!: () => void;
       const cancelled = new Promise<false>(resolve => {
         cancel = () => resolve(false);
@@ -112,7 +111,9 @@ export function createConversationPhotoImageSend(input: {
       if (!approved) return { status: 'refused' };
       const text = await sender.send({
         text: prompt,
-        jpegBase64,
+        ...(jpegBase64.length === 1
+          ? { jpegBase64: jpegBase64[0]! }
+          : { jpegBase64s: jpegBase64 }),
         signal,
         isCurrent: current,
       });

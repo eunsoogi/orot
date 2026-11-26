@@ -1,4 +1,5 @@
 export { createChatGPTPlanProvider, listChatGPTPlanModels } from './provider';
+export { captureDirectPhotoGroup } from './direct-photo-group';
 export { chatGPTPlanDirectPhoto, isBoundedInlineJPEG } from './direct-photo';
 export type { ChatGPTPlanModel, ChatGPTPlanProviderOptions } from './provider';
 export type {
