@@ -101,6 +101,8 @@ final class LiveResponsesMailbox {
 enum LiveManagedToolLatency: String {
     case delegationToToolTerminal = "delegation_to_tool_terminal"
     case settleToSocketSubmission = "settle_to_socket_submission"
+    case authorizationQueue = "authorization_queue"
+    case terminalToOwnedTool = "terminal_to_owned_tool"
 
     private static let enabled = ProcessInfo.processInfo.arguments.contains("-OROT_PROVIDER_DIAGNOSTICS")
 
@@ -108,12 +110,40 @@ enum LiveManagedToolLatency: String {
         enabled ? .now() : nil
     }
 
-    static func finish(_ stage: Self, since start: DispatchTime?) {
+    struct ApprovalTiming {
+        let terminal: DispatchTime?
+        let queued: DispatchTime?
+        let observe: ((LiveManagedToolLatency, UInt64) -> Void)?
+
+        func finish() {
+            LiveManagedToolLatency.finish(.authorizationQueue, since: queued, observe: observe)
+            LiveManagedToolLatency.finish(.terminalToOwnedTool, since: terminal, observe: observe)
+        }
+    }
+
+    /// Preserve the existing main-queue hop and its cancellation ordering.
+    /// The caller emits only after re-proving the same accepted request.
+    static func queuedApproval(
+        _ observe: ((Self, UInt64) -> Void)?,
+        _ proceed: @escaping (Bool, ApprovalTiming) -> Void,
+    ) -> (Bool) -> Void {
+        let terminal = enabled || observe != nil ? DispatchTime.now() : nil
+        return { granted in
+            let queued = terminal.map { _ in DispatchTime.now() }
+            let timing = ApprovalTiming(terminal: terminal, queued: queued, observe: observe)
+            DispatchQueue.main.async { proceed(granted, timing) }
+        }
+    }
+
+    static func finish(_ stage: Self, since start: DispatchTime?, observe: ((Self, UInt64) -> Void)? = nil) {
         guard let start else { return }
         let now = DispatchTime.now().uptimeNanoseconds
         guard now >= start.uptimeNanoseconds else { return }
         let elapsed = (now - start.uptimeNanoseconds) / 1_000_000
         guard elapsed <= 300_000 else { return }
-        NSLog("OROT_PROVIDER_DIAGNOSTIC layer=app feature=live_health stage=%@ elapsed_ms=%d", stage.rawValue, Int(elapsed))
+        observe?(stage, elapsed)
+        if enabled {
+            NSLog("OROT_PROVIDER_DIAGNOSTIC layer=app feature=live_health stage=%@ elapsed_ms=%d", stage.rawValue, Int(elapsed))
+        }
     }
 }

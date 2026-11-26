@@ -187,15 +187,13 @@ final class LiveResponsesToolBridge {
         spent = true
         LiveManagedToolLatency.finish(.delegationToToolTerminal, since: delegation.timestamp)
         guard pending.allSatisfy(admission.mayRun), current(), admission.backendAllowed() else { retire(); return }
-        cancel = admission.approve(pending) { [weak self] granted in
-            DispatchQueue.main.async { [weak self] in
-                guard let self, !retired, !approvalSettled else { return }
-                approvalSettled = true
-                cancel = nil
-                guard granted, current(), admission.backendAllowed() else { retire(); return }
-                runBatch([], current: current, send: send)
-            }
-        }
+        cancel = admission.approve(pending, LiveManagedToolLatency.queuedApproval(admission.observeTiming) { [weak self] granted, timing in
+            guard let self, !retired, !approvalSettled else { return }
+            approvalSettled = true
+            cancel = nil
+            guard granted, current(), admission.backendAllowed() else { retire(); return }
+            runBatch([], current: current, send: send, timing: timing)
+        })
     }
 
     private func toolRequest(_ item: [String: Any], owner: Owner, delegationID: String, responseID: String) -> Request? {
@@ -212,7 +210,8 @@ final class LiveResponsesToolBridge {
     }
 
     private func runBatch(_ results: [(Request, String)], current: @escaping () -> Bool,
-                          send: @escaping ([[String: Any]], @escaping () -> Bool, LiveNativeResultDispatchAuthority.Ticket?) -> Void)
+                          send: @escaping ([[String: Any]], @escaping () -> Bool, LiveNativeResultDispatchAuthority.Ticket?) -> Void,
+                          timing: LiveManagedToolLatency.ApprovalTiming? = nil)
     {
         guard !retired, current(), admission.backendAllowed() else { retire(); return }
         if results.count == pending.count {
@@ -235,6 +234,7 @@ final class LiveResponsesToolBridge {
         }
         let request = pending[results.count]
         guard admission.mayRun(request) else { retire(); return }
+        timing?.finish()
         cancel = admission.execute(request) { [weak self] result in
             DispatchQueue.main.async { [weak self] in
                 guard let self, !retired else { return }
