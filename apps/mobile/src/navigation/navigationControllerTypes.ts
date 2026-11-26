@@ -5,6 +5,11 @@ export interface NavigationRoute<Name extends string> {
   readonly name: Name;
 }
 
+export type OwnedNavigationRoute<Name extends string> = Readonly<{
+  route: NavigationRoute<Name>;
+  signal: AbortSignal;
+}>;
+
 export interface NavigationTransition<Name extends string> {
   readonly intent: NavigationIntent;
   readonly from: NavigationRoute<Name>;
@@ -29,6 +34,10 @@ export interface NavigationController<Name extends string> {
   subscribeEntryAvailability: (listener: () => void) => () => void;
   setLeaveStateAvailability: (routeKey: string, available: boolean) => void;
   push: (name: Name) => NavigationRoute<Name> | null;
+  pushOwned: (
+    originKey: string,
+    name: Name,
+  ) => OwnedNavigationRoute<Name> | null;
   replace: (name: Name) => NavigationRoute<Name> | null;
   registerLeaveGuard: (
     routeKey: string,

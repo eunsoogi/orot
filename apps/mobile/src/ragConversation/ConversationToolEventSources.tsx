@@ -1,3 +1,8 @@
+import {
+  tryOpenPersonalSource,
+  toolSourceScope,
+  PersonalToolSourceRoute,
+} from './personalToolSourceRoute';
 import { beginSourceOpenTiming } from '../providers/sourceOpenDiagnostic';
 import { waitForPublicSourcePresentation } from './publicSourcePresentation';
 import {
@@ -5,7 +10,7 @@ import {
   type PublicToolSourceChoice,
   type PublicToolSourceSheetState,
 } from './PublicToolSourceSheet';
-import { useEffect, useRef, useState } from 'react';
+import { useContext, useEffect, useRef, useState } from 'react';
 import { Linking, Pressable, View } from 'react-native';
 import type {
   ConversationToolEvent,
@@ -20,20 +25,13 @@ import { styles } from './ConversationScreen.styles';
 import {
   sourceKey,
   sourceKindLabel,
+  withoutSourceKey,
 } from './ConversationToolEventPresentation';
-
-function withoutSourceKey(current: ReadonlySet<string>, key: string) {
-  const next = new Set(current);
-  next.delete(key);
-  return next;
-}
-
 export type ResolveConversationToolSource = (
   reference: ToolSourceReference,
   signal: AbortSignal,
-  scope: ToolCallScope,
+  scope: ToolCallScope & { readonly durableMessageId?: string },
 ) => Promise<EvidenceReference | undefined>;
-
 /** Resolve persisted references at the user's action boundary before opening any source. */
 export function ConversationToolEventSources({
   event,
@@ -52,6 +50,7 @@ export function ConversationToolEventSources({
   readonly onLinkError: () => void;
   readonly allowSourceActions: boolean;
 }) {
+  const openPersonal = useContext(PersonalToolSourceRoute);
   const [resolving, setResolving] = useState<ReadonlySet<string>>(new Set());
   const [errors, setErrors] = useState<ReadonlySet<string>>(new Set());
   const [sheet, setSheet] = useState<PublicToolSourceSheetState | null>(null);
@@ -64,7 +63,6 @@ export function ConversationToolEventSources({
     setSheet(null);
   };
   const activeControllers = useRef(new Map<string, AbortController>());
-
   const sourceIdentity = JSON.stringify(event.sources);
   useEffect(() => {
     const controllers = activeControllers.current;
@@ -84,7 +82,6 @@ export function ConversationToolEventSources({
     durableMessageId,
     sourceIdentity,
   ]);
-
   const openSource = async (
     source: ToolSourceReference,
     selectedWebSource?: PublicToolSourceChoice,
@@ -95,6 +92,9 @@ export function ConversationToolEventSources({
       !durableMessageId ||
       !resolveToolSource
     )
+      return;
+    const scope = toolSourceScope(sessionId, durableMessageId, event, source);
+    if (tryOpenPersonalSource(openPersonal, resolveToolSource, source, scope))
       return;
     const key = sourceKey(source);
     const external = source.sourceKind === 'external_medical';
@@ -127,14 +127,13 @@ export function ConversationToolEventSources({
       // Let the empty public sheet commit before synchronous source validation.
       if (presentation && !(await presentation.ready)) return;
       if (controller.signal.aborted) return;
-      const verified = await resolveToolSource(source, controller.signal, {
-        sessionId,
-        operationRunId: event.operationRunId,
-        callId: event.callId,
-      });
+      const verified = await resolveToolSource(
+        source,
+        controller.signal,
+        scope,
+      );
       if (controller.signal.aborted) return;
       if (!verified) throw new Error('Source validation failed.');
-
       if (external) {
         const choices = verifiedPublicToolSourceChoices(verified);
         if (!choices?.length)
@@ -177,7 +176,6 @@ export function ConversationToolEventSources({
         setResolving(current => withoutSourceKey(current, key));
     }
   };
-
   return (
     <View style={styles.toolEventSection}>
       <Text style={styles.toolEventSectionLabel}>

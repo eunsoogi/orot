@@ -37,3 +37,9 @@ export function sourceKey(source: ToolSourceReference) {
     source.evidenceRevision,
   ].join(':');
 }
+
+export function withoutSourceKey(current: ReadonlySet<string>, key: string) {
+  const next = new Set(current);
+  next.delete(key);
+  return next;
+}

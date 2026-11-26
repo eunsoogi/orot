@@ -1,3 +1,4 @@
+import { createOwnedNavigationPush } from './navigationOwnedPush';
 import type {
   NavigationController,
   NavigationIntent,
@@ -6,7 +7,6 @@ import type {
   NavigationSnapshot,
 } from './navigationControllerTypes';
 export type * from './navigationControllerTypes';
-
 function createRoute<Name extends string>(name: Name, sequence: number) {
   return { key: 'route-' + sequence, name };
 }
@@ -29,6 +29,7 @@ function createSnapshot<Name extends string>(
 export function createNavigationController<Name extends string>(
   initialRoute: Name,
 ): NavigationController<Name> {
+  const ownedPush = createOwnedNavigationPush<Name>();
   const listeners = new Set<() => void>();
   const availabilityListeners = new Set<() => void>();
   const leaveStateAvailability = new Map<string, boolean>();
@@ -48,7 +49,6 @@ export function createNavigationController<Name extends string>(
   }
   let availabilityKey = '';
   let availabilityScheduled = false;
-
   // Coalesce React cleanup/register pairs and signal only newly available owners.
   function updateAvailability() {
     if (availabilityScheduled) return;
@@ -64,14 +64,17 @@ export function createNavigationController<Name extends string>(
       if (becameReady) availabilityListeners.forEach(listener => listener());
     });
   }
-
   function publish() {
     snapshot = createSnapshot(routes, isTransitioning);
+    ownedPush.observe(snapshot);
     listeners.forEach(listener => listener());
     updateAvailability();
   }
-
-  function addRoute(name: Name, replaceCurrent: boolean) {
+  function addRoute(
+    name: Name,
+    replaceCurrent: boolean,
+    onRoute?: (value: NavigationRoute<Name>) => void,
+  ) {
     if (isTransitioning) return null;
     invalidateApproval();
     sequence += 1;
@@ -83,18 +86,16 @@ export function createNavigationController<Name extends string>(
     routes = replaceCurrent
       ? [...routes.slice(0, -1), route]
       : [...routes, route];
+    onRoute?.(route);
     publish();
     return route;
   }
-
   async function requestLeave(intent: NavigationIntent): Promise<boolean> {
     if (isTransitioning || routes.length < 2) return false;
-
     const from = routes[routes.length - 1];
     const root = routes[0];
     const to = intent === 'home' ? root : routes[routes.length - 2];
     if (!from || !to) return false;
-
     invalidateApproval();
     isTransitioning = true;
     publish();
@@ -104,7 +105,6 @@ export function createNavigationController<Name extends string>(
       if (!guard) return false;
       const allowed = await guard({ intent, from, to });
       if (!allowed) return false;
-
       const removedRoutes = intent === 'home' ? routes.slice(1) : [from];
       routes = intent === 'home' ? [root] : routes.slice(0, -1);
       removedRoutes.forEach(route => leaveGuards.delete(route.key));
@@ -117,7 +117,6 @@ export function createNavigationController<Name extends string>(
       publish();
     }
   }
-
   async function requestTabSwitch(
     commitApprovedTab?: () => void,
   ): Promise<boolean> {
@@ -125,7 +124,6 @@ export function createNavigationController<Name extends string>(
     const from = routes[routes.length - 1];
     const root = routes[0];
     if (!from || !root) return false;
-
     invalidateApproval();
     isTransitioning = true;
     publish();
@@ -144,7 +142,6 @@ export function createNavigationController<Name extends string>(
       publish();
     }
   }
-
   /** Preserve an explicit cancel separately from an unavailable or stale guard. */
   async function requestTabSwitchDecision(): Promise<
     'approved' | 'declined' | 'unavailable' | 'busy'
@@ -175,7 +172,6 @@ export function createNavigationController<Name extends string>(
       publish();
     }
   }
-
   return {
     getSnapshot: () => snapshot,
     subscribe: listener => {
@@ -194,6 +190,10 @@ export function createNavigationController<Name extends string>(
       updateAvailability();
     },
     push: name => addRoute(name, false),
+    pushOwned: (key, name) =>
+      snapshot.currentRoute.key === key
+        ? ownedPush.push(adopt => addRoute(name, false, adopt))
+        : null,
     replace: name => addRoute(name, true),
     registerLeaveGuard: (routeKey, guard) => {
       if (!routes.some(route => route.key === routeKey)) return () => {};

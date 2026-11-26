@@ -87,6 +87,7 @@ test('coalesces local presses before React commits and opens only after durable 
     expect.any(AbortSignal),
     {
       sessionId: 'durable-session',
+      durableMessageId: 'durable-turn',
       operationRunId: event.operationRunId,
       callId: event.callId,
     },

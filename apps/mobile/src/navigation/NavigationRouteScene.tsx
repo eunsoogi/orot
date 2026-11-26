@@ -84,6 +84,7 @@ export function NavigationRouteScene<Name extends string>({
       onBack: controller.requestBack,
       onHome: controller.requestHome,
       push: controller.push,
+      pushOwned: name => controller.pushOwned(route.key, name),
       replace: controller.replace,
       registerLeaveState,
     }),
