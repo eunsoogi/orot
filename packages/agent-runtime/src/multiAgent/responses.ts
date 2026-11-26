@@ -40,7 +40,10 @@ export async function consumeResponderResponse<TResult>(
     stop(context, 'The task responder output exceeded the payload limit.', 'budget_exceeded');
     return completeState();
   }
-  const { output: decoded, reason } = await decodeTaskResponse<TResult>(response);
+  const { output: decoded, reason } = await decodeTaskResponse<TResult>(
+    response,
+    context.options.decodedPropertyProbe,
+  );
   if (!decoded) {
     if (!correctionAttempted) {
       try {

@@ -5,7 +5,7 @@ import {
   type ChatGPTPlanRequest,
 } from '@orot/provider-openai';
 import { act, render, screen, waitFor } from '@testing-library/react-native';
-import { AccessibilityInfo, AppState } from 'react-native';
+import { AccessibilityInfo, AppState, NativeModules } from 'react-native';
 import { NavigationMotionContext } from '../../navigation/NavigationMotionContext';
 import { ConversationTranscriptMessages } from '../ConversationTranscriptMessages';
 import {
@@ -99,6 +99,9 @@ test.each(cases)(
   'the real ChatGPT Plan adapter sends guidance and mounts $title safely',
   async ({ frames, valid }) => {
     const previousPhase = AppState.currentState;
+    const previousDiagnostics = NativeModules.OrotProviderDiagnostics;
+    const report = jest.fn();
+    NativeModules.OrotProviderDiagnostics = { enabled: true, report };
     AppState.currentState = 'active';
     const motion = jest
       .spyOn(AccessibilityInfo, 'isReduceMotionEnabled')
@@ -171,6 +174,16 @@ test.each(cases)(
         expect(model.generate).not.toHaveBeenCalled();
         expect(plan.provider.capabilities.structuredOutput).toBe(false);
         expect(plan.requests).toHaveLength(1);
+        const envelopeReceipts = report.mock.calls.filter(
+          call => call[1] === 'conversation_a2ui_plan_envelope',
+        );
+        expect(envelopeReceipts).toEqual([
+          [
+            'rag',
+            'conversation_a2ui_plan_envelope',
+            frames ? 'present' : 'absent',
+          ],
+        ]);
         const request = plan.requests[0]!;
         expect(request).not.toHaveProperty('responseFormat');
         const guide = JSON.stringify(inspectTaskGuide(request));
@@ -209,6 +222,7 @@ test.each(cases)(
       store.dispose();
       motion.mockRestore();
       AppState.currentState = previousPhase;
+      NativeModules.OrotProviderDiagnostics = previousDiagnostics;
     }
   },
 );

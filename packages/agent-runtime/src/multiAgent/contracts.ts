@@ -131,6 +131,8 @@ export interface MultiAgentWorkflowOptions<TResult = JsonValue>
   readonly onCoverageDiagnostic?: import('./coverageDiagnostics').CoverageDiagnosticObserver;
   /** Optional content-free timings; no request, response or identity is exposed. */
   readonly onModelStage?: import('./modelStageDiagnostics').ModelStageObserver;
+  /** Optional own-field presence only; never exposes decoded text or values. */
+  readonly decodedPropertyProbe?: import('./taskResponseDecoding').DecodedPropertyProbe;
   readonly onAcceptedSearch?: import('./runtimeContext').AcceptedSearchObserver;
   readonly request: string;
   readonly photoInput?: import('./evidenceContracts').PhotoModelInput;

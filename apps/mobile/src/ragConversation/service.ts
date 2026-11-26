@@ -29,6 +29,7 @@ import type { RagConversationOutcome } from './outcome';
 import type { ConversationIntent } from '../aiFeatures/integration/conversationIntent';
 import { bufferPossibilityStream } from './possibilityStreamBoundary';
 import { validConversationPhotoRun } from './conversationPhotoRunValidation';
+import { conversationA2UIPlanEnvelopeProbe } from './conversationA2UIFinalDiagnostic';
 
 export type {
   RagConversationFailureKind,
@@ -125,6 +126,10 @@ export async function runRagConversationTurn(
           }
           providerDiagnostic('rag', 'validation', code);
         },
+        decodedPropertyProbe: conversationA2UIPlanEnvelopeProbe(
+          options.workflow,
+          context,
+        ),
         request: question,
         context,
         task: ragConversationTask,

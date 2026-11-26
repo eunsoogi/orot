@@ -86,7 +86,9 @@ export function conversationA2UIFrameProse(answer: string) {
   return parts.every(part => conversationA2UIProse(part)) ? parts : undefined;
 }
 
-export function allowsOrdinaryA2UI({ context }: TaskResponderInput) {
+export function allowsOrdinaryA2UI({
+  context,
+}: Pick<TaskResponderInput, 'context'>) {
   if (Array.isArray(context)) return true;
   return (
     isObject(context) &&
