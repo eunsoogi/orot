@@ -1,4 +1,8 @@
 import { conversationA2UICatalog } from './conversationA2UI';
+import {
+  materializeRepeatedText,
+  readRepeatedText,
+} from './conversationA2UIRepeatedText';
 import { envelope, readReplacements } from './conversationA2UIRepeatedWire';
 import { conversationA2UIProse } from './conversationA2UIPresentation';
 import {
@@ -14,14 +18,19 @@ const maxItems = 12;
 const maxTemplateNodes = 8;
 const maxTemplateDepth = 4;
 const maxGraphNodes = 64;
-const relativeKey = /^[A-Za-z][A-Za-z0-9_-]{0,31}$/u;
 type Node = Record<string, unknown> & { id: string };
 
 /** Templates are closed, shallow owned trees. No nested repetition,
- * cross-tree refs, shared children, absolute bindings or callable functions. */
-function collectTemplate(nodes: ReadonlyMap<string, Node>, root: string) {
+ * cross-tree refs, shared children or absolute bindings. */
+function collectTemplate(
+  nodes: ReadonlyMap<string, Node>,
+  root: string,
+  formatted: boolean,
+) {
   const template = new Map<string, Node>();
   const fields = new Set<string>();
+  const bindings = new Map<string, ReturnType<typeof readRepeatedText>>();
+  let usesFormat = false;
   function visit(nodeId: string, depth: number) {
     const node = nodes.get(nodeId);
     if (
@@ -36,11 +45,8 @@ function collectTemplate(nodes: ReadonlyMap<string, Node>, root: string) {
     if (node.component === 'Text') {
       keys(node, ['id', 'component', 'variant', 'text']);
       if (node.variant !== undefined && node.variant !== 'body') fail();
-      const text = object(node.text);
-      keys(text, ['@path']);
-      const field = text['@path'];
-      if (typeof field !== 'string' || !relativeKey.test(field)) fail();
-      fields.add(id(field));
+      bindings.set(nodeId, readRepeatedText(node.text, formatted, fields));
+      usesFormat ||= Object.hasOwn(object(node.text), '@call');
       return;
     }
     if (node.component === 'Card') {
@@ -59,7 +65,7 @@ function collectTemplate(nodes: ReadonlyMap<string, Node>, root: string) {
     for (const child of node.children as unknown[]) visit(id(child), depth + 1);
   }
   visit(root, 1);
-  return { template, fields };
+  return { template, fields, bindings, usesFormat };
 }
 
 function readRows(raw: unknown, fields: ReadonlySet<string>) {
@@ -84,6 +90,7 @@ function materialize(
   template: ReadonlyMap<string, Node>,
   rows: readonly ReadonlyMap<string, string>[],
   declared: ReadonlyMap<string, Node>,
+  bindings: ReadonlyMap<string, ReturnType<typeof readRepeatedText>>,
 ) {
   return rows.flatMap((row, index) =>
     [...template.values()].map(node => {
@@ -94,8 +101,12 @@ function materialize(
       };
       const newId = scoped(node.id);
       if (node.component === 'Text') {
-        const field = id(object(node.text)['@path']);
-        return { ...node, id: newId, text: row.get(field) };
+        const binding = bindings.get(node.id) ?? fail();
+        return {
+          ...node,
+          id: newId,
+          text: materializeRepeatedText(binding, row),
+        };
       }
       if (node.component === 'Card')
         return { ...node, id: newId, child: scoped(node.child) };
@@ -127,6 +138,7 @@ function referencesTemplate(node: Node, ownedIds: ReadonlySet<string>) {
 export function lowerConversationRepeatedChildren(
   raw: unknown,
   composed = false,
+  formatted = false,
 ): readonly string[] | undefined {
   if (!Array.isArray(raw) || !raw.length || raw.length > (composed ? 3 : 2))
     return;
@@ -181,10 +193,13 @@ export function lowerConversationRepeatedChildren(
     const originals = new Set<string>();
     const derived = new Map<string, Node>();
     const childLists = new Map<string, string[]>();
+    let usesFormat = false;
     // Isolate both trees against all declarations and one another before
     // emitting anything that can reach the accepted prose validator.
     for (const [path, { node, root }] of sections) {
-      const { template, fields } = collectTemplate(nodes, root);
+      const selection = collectTemplate(nodes, root, formatted);
+      const { template, fields, bindings } = selection;
+      usesFormat ||= selection.usesFormat;
       for (const name of template.keys()) {
         if (originals.has(name)) fail();
         originals.add(name);
@@ -195,12 +210,16 @@ export function lowerConversationRepeatedChildren(
         node.id,
         rows.map((_, index) => `repeat-${index}-${root}`),
       );
-      for (const clone of materialize(template, rows, nodes)) {
+      for (const clone of materialize(template, rows, nodes, bindings)) {
         if (derived.has(clone.id) || derived.size >= maxGraphNodes) fail();
         derived.set(clone.id, clone);
       }
     }
-    if (nodes.size - originals.size + derived.size > maxGraphNodes) fail();
+    if (
+      (formatted && !usesFormat) ||
+      nodes.size - originals.size + derived.size > maxGraphNodes
+    )
+      fail();
     const isolated = new Set([...originals, ...derived.keys()]);
     const ordinary = [...nodes.values()].filter(
       node => !originals.has(node.id),

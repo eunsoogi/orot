@@ -1,3 +1,4 @@
+import { withConversationA2UIFormatString } from './conversationA2UIFormatTask';
 import { withConversationA2UIRichText } from './conversationA2UIRichText';
 import { withConversationA2UIModalPair } from './conversationA2UIModalPairTask';
 import {
@@ -51,6 +52,7 @@ export function versionedConversationMemoryTasks(
     withComposedConversationSections(conversationTaskV37);
   const conversationTaskV39 =
     withConversationA2UIModalPair(conversationTaskV38);
+  const conversationTaskV40 = withConversationA2UIRichText(conversationTaskV39);
   return {
     conversationTaskV25,
     conversationTaskV26,
@@ -74,7 +76,8 @@ export function versionedConversationMemoryTasks(
       v37: conversationTaskV37,
       v38: conversationTaskV38,
       v39: conversationTaskV39,
+      v40: conversationTaskV40,
     },
-    ragConversationTask: withConversationA2UIRichText(conversationTaskV39),
+    ragConversationTask: withConversationA2UIFormatString(conversationTaskV40),
   };
 }
