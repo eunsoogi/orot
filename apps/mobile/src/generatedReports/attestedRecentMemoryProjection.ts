@@ -162,6 +162,7 @@ export function openAttestedMemoryProbe(
   signal.addEventListener('abort', close, { once: true });
   return {
     close,
+    requestWitness: sensor,
     witness: {
       isCurrent: sensor.current,
       requireCurrent: sensor.requireCurrent,

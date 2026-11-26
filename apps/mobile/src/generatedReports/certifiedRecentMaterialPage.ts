@@ -6,6 +6,7 @@ import {
   type AgentProbeCursor,
 } from './attestedRecentMemoryProjection';
 import { recentMaterialTimestamp } from './recentMaterialTimestamp';
+import { settleRecentPublication } from '../storage/settledRecentPublication';
 import { BoundReadWitnessUnavailable } from '../storage/boundReadResultWitness';
 import { awaitIndependentReadSettlement } from '../storage/protectedReadEpoch';
 
@@ -101,6 +102,7 @@ export async function readProtectedRecentMaterialPage(
     readonly signal: AbortSignal;
     readonly isCurrent: () => boolean;
     readonly canRetry?: () => Promise<boolean>;
+    readonly settledOwner?: () => boolean;
   },
 ) {
   const current = () =>
@@ -158,6 +160,7 @@ export async function readProtectedRecentMaterialPage(
         witness: typeof witness;
         rows: readonly RecentMaterialRow[];
         more: boolean;
+        settle?: () => ReturnType<typeof settleRecentPublication>;
       };
   let state: State<RecentMaterialRow> = { held: [] };
   let cursor: AgentProbeCursor | undefined;
@@ -193,13 +196,28 @@ export async function readProtectedRecentMaterialPage(
         );
         throw error;
       }
-      if (result.kind === 'complete')
+      if (result.kind === 'complete') {
+        const more = result.rows.length > width;
+        const rows = result.rows.slice(0, width);
+        const settledOwner = options.settledOwner;
         return {
           kind: 'complete',
           witness,
-          rows: result.rows.slice(0, width),
-          more: result.rows.length > width,
+          rows,
+          more,
+          ...(settledOwner && {
+            settle: () =>
+              settleRecentPublication(
+                lease.database,
+                probe.requestWitness,
+                'material',
+                rows,
+                more,
+                () => lease.isCurrent() && settledOwner(),
+              ),
+          }),
         };
+      }
       state = result.state;
       cursor = slice.entries.at(-1)?.cursor;
       return { kind: 'pending', witness, advance };
