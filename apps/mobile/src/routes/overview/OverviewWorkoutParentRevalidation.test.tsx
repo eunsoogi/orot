@@ -75,7 +75,9 @@ test.each(['available', 'parent failure', 'native denial'] as const)(
           outcome === 'parent failure' ? 1 : 2,
         );
         if (outcome === 'parent failure')
-          expect(screen.getByText(t('overview.metricError'))).toBeTruthy();
+          expect(screen.getByRole('alert')).toHaveTextContent(
+            t('overview.metricError'),
+          );
         expect(lane.requestReadAuthorizations).not.toHaveBeenCalled();
       } finally {
         release?.();
