@@ -40,12 +40,6 @@ export function createQuestionCardStyles(
       justifyContent: 'center',
       backgroundColor: colors.accentSubtle,
     },
-    reviewControls: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      justifyContent: 'flex-end',
-      gap: tokens.spacing.xs,
-    },
     detailToggle: {
       alignItems: 'center',
       justifyContent: 'center',
@@ -65,6 +59,7 @@ export function createQuestionCardStyles(
     },
     questionInput: {
       flex: 1,
+      minWidth: 0,
       minHeight: tokens.minTouchTarget,
       padding: 0,
       color: colors.text,
@@ -83,6 +78,7 @@ export function createQuestionCardStyles(
     },
     questionText: {
       flex: 1,
+      minWidth: 0,
       color: colors.text,
       fontSize: tokens.typography.sizes.body,
       lineHeight: tokens.typography.sizes.body * 1.5,
