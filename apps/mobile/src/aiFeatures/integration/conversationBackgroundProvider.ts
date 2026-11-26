@@ -1,5 +1,6 @@
 import { createLinkedAbortController } from './linkedAbortController';
 import { observeExecutionDecision } from '../../agent/execution/executionDecisionObserver';
+import { isSettingsOnlyExecutionConsent } from '../../agent/execution/settingsOnlyExecutionConsent';
 import type { RagConversationObserver } from '../../ragConversation/conversationObserver';
 import type { LanguageModelProvider } from '@orot/model-runtime';
 
@@ -70,7 +71,10 @@ export function conversationConsentScope<
   observer?: RagConversationObserver,
 ) {
   // Preserve the original port when no background lifetime is being observed.
-  if (!observer?.onExecutionState) return port;
+  // The stock saved-only port cannot request an in-turn decision. Keeping the
+  // exact object avoids losing that capability through the observer wrapper.
+  if (!observer?.onExecutionState || isSettingsOnlyExecutionConsent(port))
+    return port;
   return {
     ...(port.subscribeAuthorizationInvalidation
       ? {

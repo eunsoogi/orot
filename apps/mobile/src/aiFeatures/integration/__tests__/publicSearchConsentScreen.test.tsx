@@ -3,6 +3,8 @@ import { Button } from 'react-native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { useInferenceConsent } from '../../../agent/execution/useInferenceConsent';
 import { createPublicWebEvidence } from '../publicWebEvidence';
+import { conversationConsentScope } from '../conversationBackgroundProvider';
+import { wrapEvidenceSearch } from '../wrapEvidenceSearch';
 import { runDefaultPublicSearch } from '../defaultPublicSearch';
 import { resolveSettingsConsentOwner } from '../../../agent/execution/settingsConsentOwner';
 import { settingsConsentRepository } from '../../../storage/settingsConsentRepository';
@@ -59,9 +61,12 @@ test.each(['missing', 'approved', 'wrong-recipient', 'revoked'] as const)(
     } as never);
     function Harness() {
       const { consent, disclosureSheet } = useInferenceConsent();
+      const scoped = conversationConsentScope(consent, {
+        onExecutionState: jest.fn(),
+      });
       const web = createPublicWebEvidence({
         selected: fixture.selected,
-        consent,
+        consent: scoped,
         beforeDispatch: async () => {
           if (state === 'revoked') live = false;
           return true;
@@ -69,8 +74,12 @@ test.each(['missing', 'approved', 'wrong-recipient', 'revoked'] as const)(
       });
       function start() {
         // Leave the screen interactive while its consent decision is pending.
+        const tool = wrapEvidenceSearch(web!.tool, (_, __, dispatch) =>
+          dispatch(),
+        );
+        expect(tool.approvalWait).toBe('checkpoint-only');
         runDefaultPublicSearch({
-          tool: web?.tool,
+          tool,
           operationRunId: 'public-search-screen',
           request: '김테스트 혈압 170/100',
           signal: fixture.controller.signal,
@@ -119,3 +128,14 @@ test.each(['missing', 'approved', 'wrong-recipient', 'revoked'] as const)(
     }
   },
 );
+
+test('an unknown consent adapter does not claim to be decision-free', () => {
+  const fixture = publicEvidenceFixture();
+  const tool = createPublicWebEvidence({
+    selected: fixture.selected,
+    consent: conversationConsentScope(fixture.consent, {
+      onExecutionState: jest.fn(),
+    }),
+  })!.tool;
+  expect(tool.approvalWait).toBeUndefined();
+});

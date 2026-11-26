@@ -192,3 +192,59 @@ test('denied preflight still permits a safe local-answer approval pause without 
   expect(f.authorize).toHaveBeenCalledTimes(1);
   expect(modelApprovals).toBe(2);
 });
+
+test.each(['saved-grant', 'saved-denial', 'human-decision'] as const)(
+  'an owned background search treats only actual interactive prep as a human decision: %s',
+  async (mode) => {
+    const f = fixture();
+    f.authorize.mockResolvedValue(mode === 'saved-denial' ? 'denied' : 'authorized');
+    if (mode !== 'human-decision')
+      f.options.tools = f.options.tools.map((tool) => ({
+        ...tool,
+        approvalWait: 'checkpoint-only' as const,
+      }));
+    const result = await runMultiAgentWorkflow(f.options, {
+      config: f.config,
+      pause: f.pause,
+      onApprovalWait(waiting, kind) {
+        if (waiting && kind !== 'checkpoint-only') f.pause.requestPause();
+      },
+      onModelApprovalWait: () => 'checkpoint-only',
+    });
+    if (mode === 'saved-grant') {
+      expect(result.status).toBe('result');
+      expect(result.checkpoint.initialSearchStatus).toBe('success');
+      expect(f.search).toHaveBeenCalledTimes(1);
+    } else {
+      expect(result.checkpoint.initialSearchStatus).toBe(
+        mode === 'saved-denial' ? 'consent_required' : 'pending',
+      );
+      expect(f.search).not.toHaveBeenCalled();
+      if (mode === 'human-decision') expect(result.status).toBe('paused');
+    }
+  },
+);
+
+test('a real OS pause during a saved-permission recheck stays resumable before dispatch', async () => {
+  const f = fixture();
+  f.options.tools = f.options.tools.map((tool) => ({
+    ...tool,
+    approvalWait: 'checkpoint-only' as const,
+  }));
+  const paused = await runMultiAgentWorkflow(f.options, {
+    config: f.config,
+    pause: f.pause,
+  });
+  expect(paused).toMatchObject({
+    status: 'paused',
+    pauseReason: 'background-paused',
+    checkpoint: { awaitingAuthorization: 'tool-1' },
+  });
+  expect(f.search).not.toHaveBeenCalled();
+  const end = await runMultiAgentWorkflow(f.options, {
+    config: f.config,
+    pause: createMultiAgentPauseController(),
+  });
+  expect(end.status).toBe('result');
+  expect(f.search).toHaveBeenCalledTimes(1);
+});

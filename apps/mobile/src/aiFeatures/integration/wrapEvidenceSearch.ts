@@ -24,6 +24,7 @@ export function wrapEvidenceSearch(
     id: tool.id,
     sourceKind: tool.sourceKind,
     execution: tool.execution,
+    approvalWait: tool.approvalWait,
     additionalModelCalls: tool.additionalModelCalls,
     description: tool.description,
     inputSchema: tool.inputSchema,
