@@ -165,10 +165,25 @@ export async function confirmTerminalAnswerBookmark(
     await database.transaction(async tx => {
       if (!(await admit(tx))) return;
       const found = await readTerminalAnswerBookmark(tx, input, op);
-      if (found && (await admit(tx))) matched = found;
+      if (!found || !(await admit(tx)) || !input.current()) return;
+      // This terminal acknowledgement is not an ordinary answer artifact.
+      // Close only the exact still-active request whose pin just revalidated.
+      const settled = await tx.execute(
+        `UPDATE conversation_requests
+         SET status = 'completed'
+         WHERE id = ? AND session_id = ? AND session_version = ?
+           AND status = 'active' AND input_json IS NULL
+           AND interruption_reason IS NULL AND local_outcome_json IS NULL`,
+        [input.currentRequestId, input.owner.id, input.owner.version],
+      );
+      if (settled.rowsAffected !== 1 || !input.current())
+        throw new Error('The answer bookmark request is no longer owned.');
+      tx.commit();
+      matched = found;
     });
     return input.current() ? matched : undefined;
   } catch {
-    return undefined;
+    // A settlement error after the synchronous commit cannot undo that commit.
+    return input.current() ? matched : undefined;
   }
 }
