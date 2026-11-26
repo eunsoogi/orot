@@ -1,3 +1,4 @@
+import { startLiveCommonHealthTiming } from './liveCommonHealthTiming';
 import { AppState } from 'react-native';
 import {
   liveCommonConversationRun,
@@ -78,6 +79,7 @@ export function liveCommonConversationStartup() {
         );
       };
       if (!(await available())) return;
+      const grantLookup = startLiveCommonHealthTiming('grant_lookup');
       const [selection, witness] = await Promise.all([
         loadLiveResponsesSettings(credentialEpoch, 'tool-reproof'),
         native.readWitness(),
@@ -96,6 +98,7 @@ export function liveCommonConversationStartup() {
         !selection.current()
       )
         return;
+      grantLookup();
       const registration = canonicalLiveCommonRegistration(witness);
       const current = () => owns() && selection.current();
       prepared = {

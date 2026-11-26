@@ -1,3 +1,4 @@
+import { startLiveCommonHealthTiming } from './liveCommonHealthTiming';
 import {
   authorizeModelCall,
   type EvidenceBatch,
@@ -62,6 +63,7 @@ async function prepare({
   )
     return;
   const { call } = source;
+  const resultProjection = startLiveCommonHealthTiming('result_projection');
   const payload = canonicalLiveHealthPayload(source.batch);
   if (
     !payload ||
@@ -73,12 +75,15 @@ async function prepare({
     return;
   const serialized = JSON.stringify(payload);
   if (!liveStockHealthCatalog.acceptsResult(call.name, serialized)) return;
+  resultProjection();
   const request: LanguageModelRequest = {
     messages: [{ role: 'tool', toolCallId: call.toolCallId, result: payload }],
   };
   const scope = execution(call);
+  const resultConfirmation = startLiveCommonHealthTiming('result_confirmation');
   const grant = await authorizeModelCall(request, scope, consent, signal);
   if (grant.status !== 'authorized' || signal.aborted || !owns(call)) return;
+  resultConfirmation();
   const remoteCurrent = () =>
     !signal.aborted && owns(call) && grant.isCurrent();
   return {
@@ -100,14 +105,16 @@ async function prepare({
           signal: stop.signal,
           current: () => remoteCurrent() && queuedCurrent(),
           async reproveSource() {
-            return (
+            const sourceReproof = startLiveCommonHealthTiming('source_reproof');
+            const reproved =
               (await protectedDataAvailable()) &&
               owns(call) &&
               (await source.registry.revalidateEvidence(
                 source.batch.items,
                 stop.signal,
-              ))
-            );
+              ));
+            if (reproved && !stop.signal.aborted) sourceReproof();
+            return reproved;
           },
         }).admit(async bytes => {
           if (!queuedCurrent() || !grant.consume(request, scope, signal))
@@ -122,8 +129,14 @@ async function prepare({
           };
           stop.signal.addEventListener('abort', retire, { once: true });
           try {
-            if (owns(call) && !stop.signal.aborted && proof.current())
+            if (owns(call) && !stop.signal.aborted && proof.current()) {
+              // The native implementation resolves only after its owned
+              // continuation send callback, not after provider/audio output.
+              const nativeHandoff =
+                startLiveCommonHealthTiming('native_handoff');
               delivered = await native.settle(call, bytes);
+              if (delivered && !stop.signal.aborted) nativeHandoff();
+            }
           } finally {
             stop.signal.removeEventListener('abort', retire);
             retire();

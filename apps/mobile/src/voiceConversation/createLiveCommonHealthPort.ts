@@ -1,3 +1,4 @@
+import { startLiveCommonHealthTiming } from './liveCommonHealthTiming';
 import type { LiveToolCall } from '@orot/agent-runtime';
 import { prepareOwnedConversationReadSelection } from '../conversationTools/ownedConversationReadSelection';
 import type { LanguageModelProvider } from '@orot/model-runtime';
@@ -128,8 +129,10 @@ export function createLiveCommonHealthPort(input: {
               !owns(call)
             )
               return;
+            const dataOpen = startLiveCommonHealthTiming('data_open');
             const data = await input.openData();
             if (!owns(call)) return;
+            dataOpen();
             const registry = new LocalEvidenceReferenceRegistry();
             const scope = execution(call);
             const declaration = registration.tools.find(
@@ -146,14 +149,22 @@ export function createLiveCommonHealthPort(input: {
                 protectedDataAvailable: input.protectedDataAvailable,
               });
             if (!selection) return;
+            let evidenceRead: (() => void) | undefined;
             const tools = bindOwnedLiveConversationInvocation({
               data,
               registry,
               current: () => owns(call),
               ...selection,
+              beforeRead(...args) {
+                evidenceRead = startLiveCommonHealthTiming('evidence_lookup');
+                return selection.beforeRead(...args);
+              },
               didRead(id, result) {
-                if (id === call.name && owns(call))
+                if (id === call.name && owns(call)) {
                   retained = { call, data, batch: result, registry };
+                  evidenceRead?.();
+                  evidenceRead = undefined;
+                }
               },
             });
             if (
