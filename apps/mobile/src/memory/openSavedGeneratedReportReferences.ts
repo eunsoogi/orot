@@ -7,7 +7,10 @@ export async function openSavedGeneratedReportReferences() {
     import('../storage/conversationArtifactStorage'),
   ]);
   const database = await openLocalAgentMemoryDatabase();
-  const storage = createConversationArtifactStorage(database);
+  const storage = createConversationArtifactStorage(
+    database,
+    isCurrentLocalAgentMemoryDatabase,
+  );
   // Cold previews cannot be carried to a replacement encrypted database,
   // even if it reports an identical session/turn ID after a restore.
   const owned = (current: () => boolean) => () =>
