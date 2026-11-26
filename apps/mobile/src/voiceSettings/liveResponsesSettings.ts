@@ -9,7 +9,8 @@ import { settingsConsentRepository } from '../storage/settingsConsentRepository'
 import {
   isLiveResponsesBackend,
   type LiveResponsesBackend,
-  liveResponsesPermissions,
+  liveResponsesAggregateV2Permissions,
+  liveResponsesPermissionVersion,
   liveResponsesProviderId,
   liveResponsesRecipient,
   liveResponsesSlot,
@@ -22,12 +23,20 @@ import {
   binding,
   readBinding,
   sameBinding,
-  writeBinding,
   type DeviceBinding,
   type NativeLiveResponsesGrant,
 } from './liveResponsesSettingsBinding';
 import { voiceSettingsStore } from './voiceSettingsStore';
-
+import {
+  liveAggregateDevicePolicy,
+  liveAggregateDeviceWitnessMatches,
+  stageLiveAggregateSettingsBinding,
+  liveAggregateSettingsBindingMatches,
+} from './liveAggregateDeviceWitness';
+import {
+  takeReviewedLiveResponsesAggregate,
+  type ReviewedLiveResponsesAggregate,
+} from './reviewLiveResponsesAggregate';
 const authority = () => settingsConsentAuthority(liveResponsesSlot);
 const audioAuthority = () => settingsConsentAuthority('voice');
 
@@ -42,13 +51,14 @@ function captureOwner() {
     canReuseConsent() &&
     consentRevision() === reset;
 }
-
 export type LiveResponsesSettings =
   | { readonly kind: 'off' | 'unavailable' }
   | {
       readonly kind: 'active';
       readonly nativeGrant: NativeLiveResponsesGrant;
       readonly credentialEpoch: string;
+      /** The v1 receipt is still displayable, but never authorizes headless health. */
+      readonly aggregatePolicy?: 'headless-v2';
       readonly current: () => boolean;
       readonly subscribe: (listener: () => void) => () => void;
     };
@@ -63,8 +73,7 @@ export async function loadLiveResponsesSettings(
   try {
     const owned = captureOwner();
     if (!owned()) return { kind: 'unavailable' };
-    // Only the current Live challenge overlaps these already-admitted local
-    // metadata reads. Their receipts still must match through final reproof.
+    // The current challenge may overlap metadata reads; both receipts still reprove.
     const loadPair = () => voiceSettingsStore.loadCommittedVoicePair?.();
     const readState = () => authority().reviewState();
     const [pair, state] =
@@ -114,6 +123,8 @@ export async function loadLiveResponsesSettings(
     const store = await settingsConsentRepository();
     const grant = await store.read(liveResponsesSlot);
     const current = () => owned() && state.current() && audioCurrent();
+    const permission =
+      grant && liveResponsesPermissionVersion(grant.permissions);
     if (
       !current() ||
       !sameBinding(expected, metadata) ||
@@ -124,8 +135,9 @@ export async function loadLiveResponsesSettings(
       grant.identity.recipient !== liveResponsesRecipient ||
       grant.identity.authorityGeneration !== expected.generation ||
       grant.identity.credentialEpoch !== credential ||
-      JSON.stringify(grant.permissions) !==
-        JSON.stringify(liveResponsesPermissions)
+      !permission ||
+      (permission === 'headless-v2' &&
+        !(await liveAggregateDeviceWitnessMatches(expected)))
     )
       return { kind: 'unavailable' };
     const after = await voiceSettingsStore.liveCredentials();
@@ -133,8 +145,12 @@ export async function loadLiveResponsesSettings(
       return { kind: 'unavailable' };
     return {
       kind: 'active',
+      ...(permission === 'headless-v2' ? { aggregatePolicy: permission } : {}),
       credentialEpoch: credential,
       nativeGrant: Object.freeze({
+        ...(permission === 'headless-v2'
+          ? { scope: liveAggregateDevicePolicy }
+          : {}),
         backendModel: expected.backendModel,
         grantID: expected.grantID,
         generation: expected.generation,
@@ -160,14 +176,23 @@ export async function loadLiveResponsesSettings(
  * legacy migration, secondary account, fallback or provider request is made. */
 export async function saveLiveResponsesSettings(input: {
   readonly backendModel: LiveResponsesBackend;
+  readonly reviewedAggregate: ReviewedLiveResponsesAggregate;
   readonly signal: AbortSignal;
   readonly isCurrent: () => boolean;
   readonly audioCurrent: () => boolean;
 }): Promise<void> {
   if (!isLiveResponsesBackend(input.backendModel))
     throw new Error('Unsupported backend');
+  const reviewed = takeReviewedLiveResponsesAggregate(
+    input.reviewedAggregate,
+    input.backendModel,
+    input.signal,
+  );
+  if (!reviewed)
+    throw new Error('Fresh Live aggregate settings review required');
   const owned = captureOwner();
   const current = () =>
+    reviewed() &&
     owned() &&
     !input.signal.aborted &&
     input.isCurrent() &&
@@ -197,18 +222,18 @@ export async function saveLiveResponsesSettings(input: {
           credentialEpoch: epoch,
           authorityGeneration: generation,
         },
-        permissions: liveResponsesPermissions,
+        permissions: liveResponsesAggregateV2Permissions,
       };
     },
     async saveSelection() {
       if (!selected || !current())
         throw new Error('Live Responses decision unavailable');
-      await writeBinding(selected);
+      await stageLiveAggregateSettingsBinding(selected);
       if (!current()) throw new Error('Live Responses binding unavailable');
     },
     isSelectionCurrent: async () =>
       selected !== null &&
-      sameBinding(selected, await readBinding()) &&
+      (await liveAggregateSettingsBindingMatches(selected)) &&
       current(),
     // A replacement may already have overwritten the device binding. Never
     // revive a previous generation from this decision's failed/cancelled write.
@@ -218,7 +243,6 @@ export async function saveLiveResponsesSettings(input: {
     signal: input.signal,
   });
 }
-
 /** Revoke synchronously in-process, then persist the device tombstone. A
  * failed durable write remains an error; it is never shown as successfully off. */
 export async function revokeLiveResponsesSettings(): Promise<void> {

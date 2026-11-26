@@ -83,8 +83,10 @@ test.each([
     expect(f.settle.mock.calls.every(([, , output]) => output === null)).toBe(
       true,
     );
-    if (scenario === 'denied') expect(f.read).not.toHaveBeenCalled();
-    else expect(f.read).toHaveBeenCalled();
+    if (scenario === 'denied') {
+      expect(f.read).not.toHaveBeenCalled();
+      expect(f.settle).toHaveBeenCalledTimes(1);
+    } else expect(f.read).toHaveBeenCalled();
     if (scenario === 'replaced' || scenario === 'stopped')
       expect(f.settle).not.toHaveBeenCalled();
   } finally {

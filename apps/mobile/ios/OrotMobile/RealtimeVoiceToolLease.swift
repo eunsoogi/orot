@@ -153,13 +153,17 @@ struct LiveResponsesSettingsGrant {
     let backendModel: String
     let grantID: String
     let generation: String
+    let requiresAggregateScope: Bool
 
     init?(_ payload: Any) {
-        guard let object = payload as? [String: String], object.count == 3,
+        guard let object = payload as? [String: String],
+              Set(object.keys) == ["backendModel", "generation", "grantID"] ||
+              (Set(object.keys) == ["backendModel", "generation", "grantID", "scope"] && object["scope"] == Self.aggregateScope),
               let model = object["backendModel"], ["gpt-6-luna", "gpt-6-sol"].contains(model),
               let generation = object["generation"], Self.valid(generation),
               let grantID = object["grantID"], grantID == generation + "-model" else { return nil }
         backendModel = model; self.grantID = grantID; self.generation = generation
+        requiresAggregateScope = object["scope"] != nil
     }
 
     func isCurrent(key: String, read: (String, String) -> [String: Any]? = LiveResponsesSettingsGrant.read) -> Bool {
@@ -174,7 +178,8 @@ struct LiveResponsesSettingsGrant {
         guard !key.isEmpty, active(responses, generation),
               let credential = read(credentialService, "voice-settings"),
               credential["apiKey"] as? String == key,
-              let owner = credential["credentialEpoch"] as? String, Self.valid(owner) else { return false }
+              let owner = credential["credentialEpoch"] as? String, Self.valid(owner),
+              aggregateScopeCurrent(owner: owner, read: read) else { return false }
         if credential["effectiveResponsesGeneration"] != nil {
             guard credential["effectiveResponsesGeneration"] as? String == generation,
                   let candidates = credential["pairCandidates"] as? [[String: Any]],
@@ -191,14 +196,27 @@ struct LiveResponsesSettingsGrant {
                   finalCredential["credentialEpoch"] as? String == owner,
                   finalCredential["apiKey"] as? String == key,
                   finalCredential["effectiveResponsesGeneration"] as? String == generation else { return false }
-            return active(responses, generation) && active(voice, audio)
+            return active(responses, generation) && active(voice, audio) && aggregateScopeCurrent(owner: owner, read: read)
         }
         guard let selection = read("com.orot.mobile.live-responses-settings.v1", "live-responses-settings"), selection.count == 5,
               selection["version"] as? Int == 1, selection["backendModel"] as? String == backendModel,
               selection["grantID"] as? String == grantID, selection["generation"] as? String == generation,
               selection["credentialEpoch"] as? String == owner,
               credential["mode"] as? String == "openai-api", credential["model"] as? String == "gpt-live-1.1" else { return false }
-        return active(responses, generation)
+        return active(responses, generation) && aggregateScopeCurrent(owner: owner, read: read)
+    }
+
+    private static let aggregateScope = "selected-live-heart-rate-aggregate-v2"
+
+    private func aggregateScopeCurrent(owner: String, read: (String, String) -> [String: Any]?) -> Bool {
+        guard requiresAggregateScope else { return true }
+        let service = "com.orot.mobile.live-aggregate-policy.v2." + generation
+        guard let marker = read(service, "live-aggregate-policy") as? [String: String] else { return false }
+        return marker == [
+            "scope": Self.aggregateScope, "providerId": "openai-live-responses",
+            "recipient": "OpenAI Responses (Live)", "backendModel": backendModel,
+            "credentialEpoch": owner, "generation": generation, "grantID": grantID,
+        ]
     }
 
     private static func valid(_ value: String) -> Bool {

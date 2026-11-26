@@ -10,6 +10,7 @@ import { View } from 'react-native';
 import { useInferenceConsent } from '../agent/execution/useInferenceConsent';
 import { useSettingsDisclosure } from '../agent/execution/useSettingsDisclosure';
 import { t } from '../i18n';
+import { reviewLiveResponsesAggregate } from './reviewLiveResponsesAggregate';
 import { AppButton } from '../layout/AppButton';
 import { AppText as Text } from '../layout/AppText';
 import { modelSettingsPageGap } from '../layout/providerSettingsPresentation';
@@ -23,11 +24,7 @@ import {
   revokeLiveResponsesSettings,
   saveLiveResponsesSettings,
 } from './liveResponsesSettings';
-import {
-  type LiveResponsesBackend,
-  liveResponsesProviderId,
-  liveResponsesRecipient,
-} from './liveResponsesSettingsIdentity';
+import { type LiveResponsesBackend } from './liveResponsesSettingsIdentity';
 
 /** An explicit, separately disclosed Settings action; choosing GPT-Live or
  * saving its voice options never turns on Responses delegation. */
@@ -137,23 +134,17 @@ export function LiveResponsesSettingsPanel({
           if (current() && availability.current.active) setFailed(true);
           return;
         }
-        const approved = await confirmDisclosure(
-          {
-            providerId: liveResponsesProviderId,
-            modelId: backend,
-            recipient: liveResponsesRecipient,
-            subtitle: t('modelSettings.liveResponsesConsentTitle'),
-            information: t('modelSettings.liveResponsesConsentScope', {
-              model: backend,
-            }),
-            notice: t('modelSettings.liveResponsesConsentNotice'),
-          },
-          owner.signal,
-        );
         const maySave = () => current() && selectable(backend);
-        if (!approved || !maySave() || !audio.current()) return;
+        const reviewedAggregate = await reviewLiveResponsesAggregate({
+          backend,
+          signal: owner.signal,
+          current: () => maySave() && audio.current(),
+          confirm: confirmDisclosure,
+        });
+        if (!reviewedAggregate || !maySave() || !audio.current()) return;
         await saveLiveResponsesSettings({
           backendModel: backend,
+          reviewedAggregate,
           signal: owner.signal,
           isCurrent: maySave,
           audioCurrent: audio.current,

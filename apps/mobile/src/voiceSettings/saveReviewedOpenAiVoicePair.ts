@@ -3,7 +3,11 @@ import {
   consentRevision,
 } from '../agent/execution/consentRevision';
 import { captureLegacyVoicePairRollback } from './captureLegacyVoicePairRollback';
-import { readBinding } from './liveResponsesSettingsBinding';
+import { binding, readBinding } from './liveResponsesSettingsBinding';
+import {
+  stageLiveAggregateDeviceWitness,
+  liveAggregateDeviceWitnessMatches,
+} from './liveAggregateDeviceWitness';
 import { settingsConsentCredential } from '../agent/execution/settingsConsentCredential';
 import {
   SETTINGS_CONSENT_CATALOG_VERSION,
@@ -18,7 +22,7 @@ import { settingsConsentRepository } from '../storage/settingsConsentRepository'
 import { commitReviewedVoicePair } from './commitReviewedVoicePair';
 import {
   isLiveResponsesBackend,
-  liveResponsesPermissions,
+  liveResponsesAggregateV2Permissions,
   liveResponsesProviderId,
   liveResponsesRecipient,
 } from './liveResponsesSettingsIdentity';
@@ -30,18 +34,31 @@ import {
 import { liveVoicePreferencesKeychain } from './liveVoicePreferencesKeychain';
 import type { OpenAiVoicePair } from './reviewOpenAiVoicePair';
 import { voiceSettingsStore } from './voiceSettingsStore';
+import {
+  takeReviewedLiveResponsesAggregate,
+  type ReviewedLiveResponsesAggregate,
+} from './reviewLiveResponsesAggregate';
 
 /** Called only after explicit review of the two exact destinations. Existing
  * account ownership continues to gate both independently scoped grants. */
 export async function saveReviewedOpenAiVoicePair(input: {
   pair: OpenAiVoicePair;
+  reviewedAggregate: ReviewedLiveResponsesAggregate;
   preferences?: Preferences;
   signal: AbortSignal;
   current: () => boolean;
 }) {
   const { pair, signal } = input;
+  const reviewed = takeReviewedLiveResponsesAggregate(
+    input.reviewedAggregate,
+    pair.backendModel,
+    signal,
+  );
+  if (!reviewed)
+    throw new Error('Fresh Live aggregate settings review required');
   const authorizationRevision = consentRevision();
   const account = () =>
+    reviewed() &&
     !signal.aborted &&
     input.current() &&
     voiceSettingsStore.accountRevisionMatches(pair.accountRevision);
@@ -75,6 +92,20 @@ export async function saveReviewedOpenAiVoicePair(input: {
   if (preferences.kind !== 'ready' || !current())
     throw new Error('Voice pair preferences unavailable');
   const store = await settingsConsentRepository();
+  const slots = ['voice', 'voice-responses'] as const;
+  const priorGrants = existing
+    ? await Promise.all(
+        slots.map(async slot => {
+          const grant = await store.read(slot);
+          return (
+            grant && {
+              generation: grant.identity.authorityGeneration,
+              exact: JSON.stringify(grant),
+            }
+          );
+        }),
+      )
+    : undefined;
   const legacyRollback = existing
     ? null
     : await captureLegacyVoicePairRollback({
@@ -102,7 +133,7 @@ export async function saveReviewedOpenAiVoicePair(input: {
         },
         permissions: audio
           ? settingsPermissionsForFeature('voice', liveVoiceProviderId)
-          : liveResponsesPermissions,
+          : liveResponsesAggregateV2Permissions,
       }),
     };
   };
@@ -113,6 +144,19 @@ export async function saveReviewedOpenAiVoicePair(input: {
       stageGrant: (slot, token, grant) => store.stage(slot, token, grant),
       cancelGrant: store.cancel,
       stagePair: async generations => {
+        const marker = binding(
+          generations['voice-responses'],
+          credential.epoch,
+          pair.backendModel,
+        );
+        if (!current()) return false;
+        await stageLiveAggregateDeviceWitness(marker);
+        if (!(
+          current() &&
+          (await liveAggregateDeviceWitnessMatches(marker)) &&
+          current()
+        ))
+          return false;
         await voiceSettingsStore.stageVoicePair(
           {
             pair: {
@@ -139,8 +183,12 @@ export async function saveReviewedOpenAiVoicePair(input: {
         const prior = await voiceSettingsStore
           .loadCommittedVoicePair()
           .catch(() => null);
+        const expected = priorGrants?.[slots.indexOf(slot)];
+        const actual = expected && (await store.read(slot));
         return (
           sameAccount() &&
+          expected?.generation === generation &&
+          JSON.stringify(actual) === expected.exact &&
           prior?.pair.credentialEpoch === existing.pair.credentialEpoch &&
           prior?.pair.voiceGeneration === existing.pair.voiceGeneration &&
           prior?.pair.responsesGeneration ===
@@ -152,6 +200,17 @@ export async function saveReviewedOpenAiVoicePair(input: {
         );
       },
       publishTogether: async (grants, generations, guards) => {
+        const marker = binding(
+          generations['voice-responses'],
+          credential.epoch,
+          pair.backendModel,
+        );
+        if (!(
+          guards() &&
+          (await liveAggregateDeviceWitnessMatches(marker)) &&
+          guards()
+        ))
+          throw new Error('Live aggregate scope witness unavailable');
         const selection = {
           version: 1 as const,
           credentialEpoch: credential.epoch,

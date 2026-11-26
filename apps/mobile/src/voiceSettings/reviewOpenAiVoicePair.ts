@@ -6,9 +6,11 @@ import {
 import type { SettingsDisclosureSummary } from '../agent/execution/settingsDisclosureSummary';
 import { t } from '../i18n';
 import {
+  reviewLiveResponsesAggregate,
+  type ReviewedLiveResponsesAggregate,
+} from './reviewLiveResponsesAggregate';
+import {
   isLiveResponsesBackend,
-  liveResponsesProviderId,
-  liveResponsesRecipient,
   type LiveResponsesBackend,
 } from './liveResponsesSettingsIdentity';
 
@@ -55,6 +57,7 @@ export async function reviewOpenAiVoicePair(input: {
   ) => Promise<boolean>;
   readonly commit: (ownership: {
     readonly pair: OpenAiVoicePair;
+    readonly reviewedAggregate: ReviewedLiveResponsesAggregate;
     readonly signal: AbortSignal;
     readonly current: () => boolean;
   }) => Promise<void>;
@@ -74,20 +77,13 @@ export async function reviewOpenAiVoicePair(input: {
     signal,
   );
   if (!speech || !current()) return false;
-  const tools = await review(
-    {
-      providerId: liveResponsesProviderId,
-      modelId: pair.backendModel,
-      recipient: liveResponsesRecipient,
-      subtitle: t('modelSettings.liveResponsesConsentTitle'),
-      information: t('modelSettings.liveResponsesConsentScope', {
-        model: pair.backendModel,
-      }),
-      notice: t('modelSettings.liveResponsesConsentNotice'),
-    },
+  const reviewedAggregate = await reviewLiveResponsesAggregate({
+    backend: pair.backendModel,
     signal,
-  );
-  if (!tools || !current()) return false;
-  await commit({ pair, signal, current });
+    current,
+    confirm: review,
+  });
+  if (!reviewedAggregate || !current()) return false;
+  await commit({ pair, reviewedAggregate, signal, current });
   return current();
 }
