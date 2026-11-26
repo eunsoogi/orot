@@ -1,4 +1,5 @@
 import type { TaskResponderContract } from '@orot/agent-runtime';
+import { checkboxControl } from './conversationA2UIOwnedControls';
 import {
   localA2UICheckLabel,
   localA2UICheckPath,
@@ -9,7 +10,6 @@ import { isObject } from './taskHistory';
 
 import {
   countLocalControlNodes,
-  exactlyLocalControl,
   projectFinalLocalControl,
 } from './conversationA2UIFinalLocalControl';
 
@@ -18,13 +18,7 @@ function projectCheckbox(raw: unknown) {
     raw,
     localA2UICheckPath,
     seed => seed === false,
-    control =>
-      exactlyLocalControl(control, ['id', 'component', 'label', 'value']) &&
-      control.component === 'CheckBox' &&
-      control.label === localA2UICheckLabel &&
-      isObject(control.value) &&
-      exactlyLocalControl(control.value, ['@path']) &&
-      control.value['@path'] === localA2UICheckPath,
+    checkboxControl,
   );
 }
 

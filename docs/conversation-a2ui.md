@@ -200,3 +200,18 @@ must match the already accepted answer exactly and stay under existing graph
 and text limits. The archive, if eligible, stores only the resolved display
 shape. Versions v37 through v40 accept precisely their prior graphs, and the
 streaming placeholder never acquires formatter values or user data.
+
+## Temporary confirmation and choice together
+
+Fresh ordinary task v42 can display an app-owned CheckBox and ChoicePicker
+in the same completed reply. The model composes them after two exact answer
+parts in their existing order, using their already supported labels and
+options. The form starts with `false` and `[]`, in that order, at the two
+distinct local paths. Other seeds, bound paths, actions and control layouts
+remain unsupported.
+
+Each control changes only its own field. Both share the exact active response
+owner and are retired together when that owner or mount changes. Reopening
+an archive does not restore either field or replay an action. Neither field
+is shared with the model or written to local storage. Prior single-control
+and final formatting contracts retain their original behavior.

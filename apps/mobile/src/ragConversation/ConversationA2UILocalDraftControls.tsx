@@ -32,6 +32,7 @@ export function ConversationA2UILocalDraftControls({
     readonly approved: ConversationA2UILocalDraft;
     readonly surfaceId: string;
     readonly value: string | boolean;
+    readonly alternate?: string;
   }>();
   useLayoutEffect(() => {
     const draft: Draft | undefined = mountConversationA2UILocalDraft(
@@ -42,7 +43,13 @@ export function ConversationA2UILocalDraftControls({
     current.current = draft;
     const value = draft?.read(approved.fieldId);
     if (draft && value !== undefined)
-      setState({ draft, approved, surfaceId, value });
+      setState({
+        draft,
+        approved,
+        surfaceId,
+        value,
+        alternate: choiceValue(approved, draft),
+      });
     const stop = subscribe?.(() => {
       if (!isCurrent()) {
         draft?.retire();
@@ -62,7 +69,13 @@ export function ConversationA2UILocalDraftControls({
   function publish() {
     const next = draft.read(approved.fieldId);
     if (next !== undefined && current.current === draft)
-      setState({ draft, approved, surfaceId, value: next });
+      setState({
+        draft,
+        approved,
+        surfaceId,
+        value: next,
+        alternate: choiceValue(approved, draft),
+      });
   }
   if (approved.kind === 'choice') {
     return typeof value === 'string' ? (
@@ -74,16 +87,24 @@ export function ConversationA2UILocalDraftControls({
       />
     ) : null;
   }
-  if (approved.kind === 'checkbox') {
+  if (approved.kind === 'checkbox' || approved.kind === 'paired') {
     if (typeof value !== 'boolean') return null;
+    const toggle = (
+      <LocalConfirmation
+        value={value}
+        onChange={next => {
+          if (draft.change(approved.fieldId, next)) publish();
+        }}
+      />
+    );
+    if (approved.kind === 'checkbox') return toggle;
     return (
-      <View style={styles.controls}>
-        <AppText allowFontScaling>{localA2UICheckLabel}</AppText>
-        <Switch
-          accessibilityLabel={localA2UICheckLabel}
-          value={value}
-          onValueChange={next => {
-            if (draft.change(approved.fieldId, next)) publish();
+      <View>
+        {toggle}
+        <ConversationA2UILocalChoice
+          value={state.alternate ?? ''}
+          onChange={next => {
+            if (draft.change(approved.choiceId, next)) publish();
           }}
         />
       </View>
@@ -116,6 +137,33 @@ export function ConversationA2UILocalDraftControls({
       >
         <AppText>{localA2UIDraftResetLabel}</AppText>
       </Pressable>
+    </View>
+  );
+}
+
+/** Both controls observe the same exact draft; replacement retires its two
+ * callbacks together and not just the most recently edited field. */
+function choiceValue(approved: ConversationA2UILocalDraft, draft: Draft) {
+  const next =
+    approved.kind === 'paired' ? draft.read(approved.choiceId) : undefined;
+  return typeof next === 'string' ? next : undefined;
+}
+
+function LocalConfirmation({
+  value,
+  onChange,
+}: {
+  readonly value: boolean;
+  readonly onChange: (next: boolean) => void;
+}) {
+  return (
+    <View style={styles.controls}>
+      <AppText allowFontScaling>{localA2UICheckLabel}</AppText>
+      <Switch
+        accessibilityLabel={localA2UICheckLabel}
+        value={value}
+        onValueChange={onChange}
+      />
     </View>
   );
 }

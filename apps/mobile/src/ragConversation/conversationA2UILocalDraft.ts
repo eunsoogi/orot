@@ -22,7 +22,8 @@ export const localA2UIDraftResetAction = 'orot:reset-local-draft';
 export type ConversationA2UILocalDraft =
   | Readonly<{ fieldId: string; resetId: string; kind?: never }>
   | Readonly<{ fieldId: string; kind: 'checkbox' }>
-  | Readonly<{ fieldId: string; kind: 'choice' }>;
+  | Readonly<{ fieldId: string; kind: 'choice' }>
+  | Readonly<{ fieldId: string; kind: 'paired'; choiceId: string }>;
 
 export function mountConversationA2UILocalDraft(
   approved: ConversationA2UILocalDraft,
@@ -31,13 +32,18 @@ export function mountConversationA2UILocalDraft(
 ) {
   const owner = {};
   const { fieldId } = approved;
-  const checkbox = approved.kind === 'checkbox';
+  const choiceId = approved.kind === 'paired' ? approved.choiceId : undefined;
+  const checkbox = approved.kind === 'checkbox' || !!choiceId;
   const choice = approved.kind === 'choice';
   const resetId = approved.kind === undefined ? approved.resetId : undefined;
   const store = createConversationA2UIInteractions({
     owner,
     surfaceId,
-    renderedComponentIds: new Set(resetId ? [fieldId, resetId] : [fieldId]),
+    renderedComponentIds: new Set([
+      fieldId,
+      ...(resetId ? [resetId] : []),
+      ...(choiceId ? [choiceId] : []),
+    ]),
     allowedActionNames: new Set(resetId ? [localA2UIDraftResetAction] : []),
     fields: [
       {
@@ -50,6 +56,16 @@ export function mountConversationA2UILocalDraft(
         kind: checkbox ? 'boolean' : 'text',
         initial: checkbox ? false : '',
       },
+      ...(choiceId
+        ? [
+            {
+              componentId: choiceId,
+              path: localA2UIChoicePath,
+              kind: 'text' as const,
+              initial: '',
+            },
+          ]
+        : []),
     ],
     events: resetId
       ? [{ componentId: resetId, name: localA2UIDraftResetAction, context: [] }]
@@ -58,6 +74,9 @@ export function mountConversationA2UILocalDraft(
   });
   if (!store) return undefined;
   const field = { owner, surfaceId, componentId: fieldId };
+  const alternative = choiceId
+    ? { owner, surfaceId, componentId: choiceId }
+    : undefined;
   const reset = resetId
     ? { owner, surfaceId, componentId: resetId }
     : undefined;
@@ -65,6 +84,12 @@ export function mountConversationA2UILocalDraft(
     change(componentId: string, value: string | boolean) {
       // Protocol [] or a single choice is projected into this scalar store.
       // No model string, arbitrary value, or user text can become a choice.
+      if (alternative && componentId === choiceId)
+        return (
+          (value === '' ||
+            localA2UIChoices.some(option => option.value === value)) &&
+          store.write(alternative, value)
+        );
       return (
         componentId === fieldId &&
         (!choice ||
@@ -81,7 +106,12 @@ export function mountConversationA2UILocalDraft(
       );
     },
     read(componentId: string) {
-      const result = componentId === fieldId ? store.read(field) : undefined;
+      const result =
+        componentId === fieldId
+          ? store.read(field)
+          : alternative && componentId === choiceId
+            ? store.read(alternative)
+            : undefined;
       return typeof result === 'string' || typeof result === 'boolean'
         ? result
         : undefined;

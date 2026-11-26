@@ -1,3 +1,4 @@
+import { readPairedConversationDraft } from './conversationA2UILocalFormFrames';
 import type { ConversationA2UINode } from './conversationA2UI';
 import { conversationA2UIFrameLimit } from './conversationA2UI';
 import {
@@ -97,6 +98,11 @@ export function bindLiveConversationA2UILocalDraft(
 ) {
   approvals.delete(root);
   const plan = record(candidate);
+  const paired = plan && readPairedConversationDraft(plan);
+  if (root.component === 'Column' && paired) {
+    approvals.set(root, paired);
+    return root;
+  }
   if (
     root.component === 'Column' &&
     plan &&
