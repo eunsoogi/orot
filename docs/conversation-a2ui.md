@@ -184,3 +184,19 @@ unchanged encrypted revision, active route and native protection before
 drawing. A protected-state change, stale row or mutation retires that mount.
 There are no extra SQLite queries, provider requests, or action endpoints.
 Tab and Modal labels and locally editable controls keep their current design.
+
+## Local string assembly inside repeated items
+
+Fresh ordinary task v41 supports a bounded Basic Catalog `formatString` in a
+final repeated body Text node. For example, `{"@call":"formatString","args":{"value":"Time: ${duration}"}}`
+renders a local item field with its label in the same native layout. Each
+expression may reference at most four simple relative string fields from that
+item, in either of the existing isolated repeated sections. It supports no
+nested functions, escaped expressions, absolute paths, network, arbitrary
+actions, or renderer-to-agent data model synchronization.
+
+Substitution is a final-only layout preparation step. All resulting lines
+must match the already accepted answer exactly and stay under existing graph
+and text limits. The archive, if eligible, stores only the resolved display
+shape. Versions v37 through v40 accept precisely their prior graphs, and the
+streaming placeholder never acquires formatter values or user data.
