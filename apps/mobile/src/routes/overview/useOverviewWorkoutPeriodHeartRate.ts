@@ -36,7 +36,7 @@ import {
 type State = WorkoutPeriodResult | { status: 'loading' };
 const unavailable = { status: 'unavailable' } as const;
 const loading = { status: 'loading' } as const;
-const startupWriterBudgetMs = 2_500;
+const writerBudgetMs = 2_500;
 const trace = workoutReadDiagnostics('overview');
 type ReadOwner = WorkoutForegroundOwner & {
   abort: AbortController;
@@ -120,12 +120,9 @@ export function useOverviewWorkoutPeriodHeartRate(
         if (!current(target) || (previous && database !== previous.database))
           return;
         target.epoch = acquireIndependentReadEpoch(database);
+        const { signal } = target.abort;
         const awaitWriter = () =>
-          awaitIndependentReadSettlement(
-            database,
-            startupWriterBudgetMs,
-            target.abort.signal,
-          );
+          awaitIndependentReadSettlement(database, writerBudgetMs, signal);
         if (!target.epoch) {
           if (
             !(await awaitWriter()) ||
@@ -148,7 +145,7 @@ export function useOverviewWorkoutPeriodHeartRate(
           period,
           {
             repository: createRecordRepository(database),
-            signal: target.abort.signal,
+            signal,
             current: admitted,
             confirm: () => confirm(target),
             readSavedSelection,
@@ -235,6 +232,7 @@ export function useOverviewWorkoutPeriodHeartRate(
       start();
     });
     if (phase() !== 'active') admission.pause();
+    if (phase() === 'inactive' || phase() === 'background') setState(loading);
     start();
     return () => {
       mounted = false;

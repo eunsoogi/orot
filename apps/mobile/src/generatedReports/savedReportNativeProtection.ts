@@ -7,6 +7,7 @@ export function watchSavedReportNativeProtection(
   signal: AbortSignal,
   onLost: () => void,
   workoutProbe?: ReturnType<typeof createWorkoutProtectionProbe>,
+  parkInactiveSnapshot?: () => boolean,
 ) {
   if (signal.aborted) return undefined;
   let native: ReturnType<typeof conversationExecutionNative>;
@@ -40,7 +41,10 @@ export function watchSavedReportNativeProtection(
   try {
     unsubscribe = native.subscribe(event => {
       if (
-        event.kind === 'phase' ||
+        (event.kind === 'phase' &&
+          !(
+            native.currentPhase?.() === 'inactive' && parkInactiveSnapshot?.()
+          )) ||
         (event.kind === 'protectedData' && !event.available)
       )
         revoke();
