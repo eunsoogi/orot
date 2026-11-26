@@ -17,9 +17,14 @@ import {
   useOwnedConversationA2UIStamp,
 } from './conversationA2UILocalDraftOwner';
 import type { ConversationA2UINode } from './conversationA2UI';
+import type { createConversationA2UIModalArbiter } from './conversationA2UIModalArbiter';
 
 export const ConversationA2UIModalRoot = createContext<
   ConversationA2UINode | undefined
+>(undefined);
+
+export const ConversationA2UIModalAdmission = createContext<
+  ReturnType<typeof createConversationA2UIModalArbiter> | undefined
 >(undefined);
 
 export function ConversationA2UIModal({
@@ -30,6 +35,7 @@ export function ConversationA2UIModal({
   readonly panel: ReactNode;
 }) {
   const root = useContext(ConversationA2UIModalRoot);
+  const admission = useContext(ConversationA2UIModalAdmission);
   const owner = useContext(ConversationA2UILocalDraftOwner);
   const stamp = useOwnedConversationA2UIStamp(owner, root, Boolean(root));
   const [open, setOpen] = useState<{
@@ -39,12 +45,19 @@ export function ConversationA2UIModal({
   }>();
   const attempt = useRef<AbortController>(undefined);
   const mounted = useRef(false);
-  const close = useCallback(() => {
-    const pending = attempt.current;
-    attempt.current = undefined;
-    pending?.abort();
-    if (mounted.current) setOpen(undefined);
-  }, []);
+  const close = useCallback(
+    (expected?: AbortController) => {
+      const pending = attempt.current;
+      if (expected && pending !== expected) return;
+      attempt.current = undefined;
+      if (pending) {
+        if (admission) admission.release(pending);
+        else pending.abort();
+      }
+      if (mounted.current) setOpen(undefined);
+    },
+    [admission],
+  );
   useLayoutEffect(() => {
     mounted.current = true;
     const stop = owner?.subscribe(() => {
@@ -66,12 +79,14 @@ export function ConversationA2UIModal({
   const start = async () => {
     if (attempt.current || !mounted.current || owner.surface(root) !== stamp)
       return;
-    const controller = new AbortController();
+    const controller = admission ? admission.acquire() : new AbortController();
+    if (!controller) return;
     attempt.current = controller;
     const current = () =>
       mounted.current &&
       attempt.current === controller &&
       !controller.signal.aborted &&
+      (!admission || admission.owns(controller)) &&
       owner.surface(root) === stamp;
     const lease = watchEncounterNativeAdmission(
       conversationExecutionNative(),
@@ -79,19 +94,19 @@ export function ConversationA2UIModal({
       current,
     );
     if (!lease) {
-      close();
+      close(controller);
       return;
     }
     lease.signal.addEventListener(
       'abort',
       () => {
-        if (attempt.current === controller) close();
+        close(controller);
       },
       { once: true },
     );
     if ((await lease.confirm()) && current())
       setOpen({ controller, root, stamp });
-    else if (attempt.current === controller) close();
+    else close(controller);
   };
   const visible =
     open?.root === root &&
@@ -110,14 +125,14 @@ export function ConversationA2UIModal({
       {visible ? (
         <Modal
           visible
-          onRequestClose={close}
+          onRequestClose={() => close(open.controller)}
           animationType="none"
           presentationStyle="pageSheet"
         >
           <View accessibilityViewIsModal style={styles.sheet}>
             <Pressable
               accessibilityRole="button"
-              onPress={close}
+              onPress={() => close(open.controller)}
               testID="conversation-a2ui-close-modal"
             >
               <AppText allowFontScaling>{t('savedMemory.close')}</AppText>

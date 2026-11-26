@@ -109,3 +109,36 @@ export function bindConversationA2UIModal(
   };
   return visit(root);
 }
+
+type PairedTarget = Readonly<{ id: string; trigger: string; content: string }>;
+
+/** Publish the pair atomically only after the terminal graph validator runs.
+ * Siblings must be real direct children and the entire tree must be unshared. */
+export function bindConversationA2UIModalPair(
+  root: ConversationA2UINode,
+  targets: readonly PairedTarget[],
+): boolean {
+  if (root.component !== 'Column' || targets.length !== 2) return false;
+  const visited = new Set<string>();
+  const unique = (node: ConversationA2UINode): boolean => {
+    if (visited.has(node.id)) return false;
+    visited.add(node.id);
+    if (node.component === 'Tabs')
+      return node.tabs.every(tab => unique(tab.child));
+    return !('children' in node) || node.children.every(unique);
+  };
+  if (!unique(root)) return false;
+  const nodes = targets.flatMap(target => {
+    const node = root.children.find(child => child.id === target.id);
+    return node?.component === 'Column' &&
+      node.children.length === 2 &&
+      node.children[0].id === target.trigger &&
+      node.children[0].component === 'Text' &&
+      node.children[1].id === target.content
+      ? [node]
+      : [];
+  });
+  if (nodes.length !== targets.length) return false;
+  for (const node of nodes) liveModals.add(node);
+  return true;
+}

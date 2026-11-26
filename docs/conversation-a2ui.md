@@ -133,3 +133,17 @@ The accepted answer order, the aggregate 64-node budget, and ordinary archive
 validation apply to the combined layout. v37 remains unchanged for restored
 requests and the existing provisional geometry path; no new layout or values
 are published provisionally for two-section replies.
+
+
+## Two independent detail sheets
+
+Fresh v39 ordinary replies may place two read-only Modal components directly
+under the root Column of one static final surface. Such a reply can show a
+summary inline, with separate evidence and method details. The exact accepted
+answer includes both triggers and all panel text in reading order.
+
+The reply owns just one pending native admission or open sheet. Starting both
+at once cannot open two native sheets, and losing the owning reply or protected
+data cancels the pending or visible sheet. An archive retains the text inline
+but not the live sheet behavior. Prior responder versions still admit at most
+one Modal; no new protocol action or external call is introduced.
