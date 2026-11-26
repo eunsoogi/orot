@@ -147,6 +147,7 @@ export function nativeLiveCommonConversation() {
     subscribe(
       callId: string,
       registration: LiveCommonRegistration,
+      acceptsArguments: (name: string, args: string) => boolean,
       accept: (batch: LiveToolBatch) => void,
       cancel: (challengeId: string) => void,
     ) {
@@ -191,9 +192,10 @@ export function nativeLiveCommonConversation() {
           entry.responseId !== responseId ||
           !identifier(entry.challengeId) ||
           !identifier(entry.toolCallId) ||
-          entry.name !== registration.tools[0]?.name ||
+          typeof entry.name !== 'string' ||
+          !registration.tools.some(tool => tool.name === entry.name) ||
           typeof entry.args !== 'string' ||
-          entry.args.length > 1024
+          !acceptsArguments(entry.name, entry.args)
         )
           return;
         const owner = Object.freeze({

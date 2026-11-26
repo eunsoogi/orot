@@ -11,6 +11,7 @@ import type { LocalEvidenceReferenceRegistry } from '../aiFeatures/integration/e
 import { stable } from '../aiFeatures/integration/stableEvidenceReference';
 import type { LiveCommonConversationPort } from './liveCommonConversationRun';
 import type { nativeLiveCommonConversation } from './nativeLiveCommonConversation';
+import { liveStockHealthCatalog } from './liveStockHealthDescriptor';
 import { canonicalLiveHealthPayload } from './canonicalLiveHealthRead';
 import { stageLiveResponsesResult } from './stageLiveResponsesResult';
 
@@ -70,6 +71,8 @@ async function prepare({
     )
   )
     return;
+  const serialized = JSON.stringify(payload);
+  if (!liveStockHealthCatalog.acceptsResult(call.name, serialized)) return;
   const request: LanguageModelRequest = {
     messages: [{ role: 'tool', toolCallId: call.toolCallId, result: payload }],
   };
@@ -92,7 +95,7 @@ async function prepare({
       try {
         await stageLiveResponsesResult({
           id: call.toolCallId,
-          output: JSON.stringify(payload),
+          output: serialized,
           proof,
           signal: stop.signal,
           current: () => remoteCurrent() && queuedCurrent(),

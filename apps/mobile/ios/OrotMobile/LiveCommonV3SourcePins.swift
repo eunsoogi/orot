@@ -78,7 +78,7 @@ extension RealtimeVoiceCall {
 extension LiveCanonicalContextV3Transport {
     /// Frozen stock Conversation definition (rag), compared by exact canonical JSON.
     /// Keep in sync with healthContextToolDefinition; no JS/server schema substitution.
-    static var stock: [String: Any] {
+    nonisolated static var stock: [String: Any] {
         let string = ["type": "string"]
         let integer = ["type": "integer"]
         let dose: [String: Any] = [
@@ -97,7 +97,7 @@ extension LiveCanonicalContextV3Transport {
             "detail": ["type": "string", "enum": ["summary", "weekly", "daily"]], "window": window,
         ]
         return [
-            "name": name,
+            "name": RealtimeVoiceCanonicalHealthAdmission.name,
             "description": "Read longitudinal health context across all available imported history by default. Specify positive calendar days or an explicit window only when the requested clinical period is narrower. For broad summaries choose topics and summary, weekly, or daily detail. Step sensor sums are separate, not merged totals. Measurements include heart-rate sample ranges grouped by time overlap with already imported workout intervals, not proof of exercise, rest or causation. No new HealthKit reads are performed." +
                 " Explicit windows are [fromInclusive, toExclusive) ISO instants in an IANA time zone. Convert calendar boundaries using the requested zone." +
                 " Medication doseHistory supports an exact medicationName and nonnegative page with pageSize 1-20. Follow hasMore. Registration and scheduled times are not intake; absent events are unknown.",
