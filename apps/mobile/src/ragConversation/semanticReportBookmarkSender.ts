@@ -4,7 +4,10 @@ import {
   captureReportBookmarkOwner,
   type ReportBookmarkVisibility,
 } from './reportBookmarkOwnership';
-import { visibleSavedHistoryDisplay } from './conversationSavedHistoryDisplay';
+import {
+  savedHistoryTranscript,
+  visibleSavedHistoryDisplay,
+} from './conversationSavedHistoryDisplay';
 import {
   allowWarmConversationSender,
   isWarmConversationSender,
@@ -31,22 +34,28 @@ export function latestReportArtifact(
     store.photoDrafts.get(sessionId).status !== 'empty'
   )
     return;
-  const last = session.messages.at(-1);
-  const row = visibleSavedHistoryDisplay(session)?.at(-1)?.row;
-  const candidate = last
-    ? last.role === 'assistant' &&
-      !last.streaming &&
-      !last.incomplete && {
+  const savedDisplay = visibleSavedHistoryDisplay(session);
+  if (session.savedHistoryDisplay && !savedDisplay) return;
+  // Use the same order as the displayed transcript: a newly saved local
+  // photo can follow a live report even though it resides in the archive list.
+  const last = savedHistoryTranscript(savedDisplay ?? [], session.messages).at(-1);
+  if (!last || last.role !== 'assistant' || last.streaming || last.incomplete)
+    return;
+  const saved = last.savedHistoryDisplayOnly
+    ? savedDisplay?.find(item => item.answerId === last.id)?.row
+    : undefined;
+  const candidate = last.savedHistoryDisplayOnly
+    ? saved?.kind === 'answer' && !saved.partial && !saved.directPhoto && saved
+    : {
         id: last.retainedTurnId,
         healthSummary: last.healthSummary,
         dailyReport: last.dailyReport,
-      }
-    : row?.kind === 'answer' && !row.partial && row;
+      };
   if (!candidate || !candidate.id) return;
   if (candidate.dailyReport)
     return { artifactId: candidate.id, kind: 'daily-report' as const };
-  const saved = candidate.healthSummary?.analysis.savedSummary;
-  if (saved?.status === 'saved' && !saved.sourceChanged)
+  const summary = candidate.healthSummary?.analysis.savedSummary;
+  if (summary?.status === 'saved' && !summary.sourceChanged)
     return { artifactId: candidate.id };
 }
 
