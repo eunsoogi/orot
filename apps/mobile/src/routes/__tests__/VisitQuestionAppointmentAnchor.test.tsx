@@ -1,5 +1,9 @@
 import { render } from '@testing-library/react-native';
-import { createRecordRepository, runMigrations } from '@orot/storage';
+import {
+  createAppointmentRepository,
+  createRecordRepository,
+  runMigrations,
+} from '@orot/storage';
 import type { Appointment } from '@orot/domain';
 import { openSqliteTestDatabase } from '../../../../../packages/storage/__tests__/sqliteTestDatabase';
 import {
@@ -13,6 +17,14 @@ import {
 } from '../../agent/visitQuestions/testing/persistenceFixtures';
 import { generateConversationVisitQuestions } from '../../aiFeatures/integration/conversationVisitQuestions';
 import type { SelectedAiResolution } from '../../aiFeatures/integration/provider';
+import {
+  event,
+  input,
+} from '../../medicalAppointments/classificationWorkflowTestFixtures';
+import {
+  isConfidentMedical,
+  saveCalendarCandidate,
+} from '../../medicalAppointments/saveCalendarCandidate';
 import { loadVisitQuestionAppointment } from '../../aiFeatures/integration/visitQuestionAppointment';
 import {
   defaultVisitQuestionRouteOperations as defaults,
@@ -90,7 +102,7 @@ async function fixture() {
 }
 
 test.each([
-  [undefined, dental.id, '다음 진료 질문을 만들어줘'],
+  [undefined, dental.id, '내 다음 일정에 물어볼 질문 좀 준비해줘'],
   [undefined, dental.id, '진료 질문 준비하기'],
   [later.id, later.id, '선택한 검사 질문을 준비해줘'],
 ] as const)(
@@ -140,6 +152,48 @@ test.each([
     }
   },
 );
+test('an earlier nonmedical calendar event is not a Visit Questions target', async () => {
+  const lane = await fixture();
+  try {
+    const nonmedical = {
+      ...event(1),
+      effectiveAt: '2035-06-06T00:10:00.000Z',
+      endsAt: '2035-06-06T00:40:00.000Z',
+    };
+    const candidate = {
+      candidateId: 'synthetic-lunch',
+      event: nonmedical,
+      status: 'classified' as const,
+      classification: 'non_medical' as const,
+      uncertainty: 'low' as const,
+      reason: 'Synthetic explicitly nonmedical event.',
+    };
+    const records = createRecordRepository(lane.database);
+    const repository = createAppointmentRepository(records, lane.database, {
+      createId: () => 'synthetic-lunch',
+    });
+    // Apply the same eligibility filter used by classification review before saving.
+    const findEvent = jest.fn(async () => ({
+      access: 'fullAccess' as const,
+      event: nonmedical,
+    }));
+    for (const selected of [candidate].filter(isConfidentMedical))
+      await saveCalendarCandidate(selected, repository, {
+        ...input([nonmedical]).bridge,
+        findEvent,
+      });
+    expect(findEvent).not.toHaveBeenCalled();
+    expect(await loadVisitQuestionAppointment(now)).toMatchObject({
+      id: dental.id,
+    });
+    // A request actually bound to the nonmedical occurrence must not fall back to dental or the later test.
+    expect(
+      await loadVisitQuestionAppointment(now, 'synthetic-lunch'),
+    ).toBeNull();
+  } finally {
+    lane.close();
+  }
+});
 
 test('the Overview preparation route saves to its selected visit even if a new earlier visit is present', async () => {
   jest.useFakeTimers();

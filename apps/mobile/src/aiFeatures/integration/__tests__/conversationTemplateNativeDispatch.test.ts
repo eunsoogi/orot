@@ -23,6 +23,7 @@ const intents = [
   'possibilities',
   'visit-questions',
   'ordinary',
+  'nonmedical',
   'unsupported-capability',
   'changed-owner',
 ] as const;
@@ -30,9 +31,9 @@ const typed = {
   'daily-report': '오늘 하루 건강 기록으로 오늘의 보고서를 만들어 줘.',
   'health-summary': '지금까지 내 건강 정보에서 중요한 부분을 요약해 줘.',
   possibilities: '내 기록에서 살펴볼 질병 가능성을 따로 보고서로 만들어 줘.',
-  'visit-questions':
-    '기록과 근거를 참고해서 다음 진료에서 물어볼 질문을 준비해 줘.',
-  ordinary: '다음 진료에서 검사 결과를 꼭 물어봐야 할까?',
+  'visit-questions': '내 다음 일정에 물어볼 질문 좀 준비해줘',
+  ordinary: '근데 내 다음 일정이 뭐지? 같이 알려줘',
+  nonmedical: '다음 팀 점심에서 물어볼 질문을 준비해줘.',
   'unsupported-capability': '내 건강 기록을 요약해서 보고서로 정리해 줘.',
   'changed-owner': '다음 진료에서 물어볼 질문을 준비해 줘.',
 } satisfies Record<(typeof intents)[number], string>;
@@ -46,7 +47,11 @@ test.each(cases)(
     let ownerCurrent = true;
     const native = syntheticTemplateTransport(
       adapter,
-      intent === 'changed-owner' ? 'visit-questions' : intent,
+      intent === 'changed-owner'
+        ? 'visit-questions'
+        : intent === 'nonmedical'
+          ? 'ordinary'
+          : intent,
       () => {
         if (intent === 'changed-owner') ownerCurrent = false;
       },
@@ -155,7 +160,7 @@ test.each(cases)(
     native.assertRequest(
       authored,
       intent === 'visit-questions'
-        ? 'Supporting context or focus for one requested deliverable is not a second task'
+        ? 'The user need not name the appointment or state its date'
         : undefined,
     );
     expect(authorize).toHaveBeenCalledTimes(Number(selected.remoteProcessing));
@@ -168,7 +173,11 @@ test.each(cases)(
       Number(intent === 'daily-report'),
       Number(intent === 'health-summary'),
       Number(intent === 'visit-questions'),
-      Number(intent === 'ordinary' || intent === 'possibilities'),
+      Number(
+        intent === 'ordinary' ||
+          intent === 'nonmedical' ||
+          intent === 'possibilities',
+      ),
     ]);
     if (intent === 'daily-report')
       expect(daily).toHaveBeenCalledWith(
