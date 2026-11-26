@@ -1,3 +1,4 @@
+import type { DisplayMessage } from './conversationDisplayMessage';
 import { fingerprint } from '../aiFeatures/integration/evidenceUtils';
 
 type Question = Readonly<{
@@ -23,4 +24,24 @@ export function visitQuestionsBookmarkTarget(
       q.priority,
     ]),
   ]);
+}
+/** The live button and typed command must describe the same visible original. */
+export function displayedVisitQuestionsBookmarkTarget(message: DisplayMessage) {
+  const visit = message.visitQuestions;
+  if (
+    message.role !== 'assistant' ||
+    message.incomplete ||
+    message.streaming ||
+    message.dailyReport ||
+    message.healthSummary ||
+    message.visitQuestionsUnavailable ||
+    !visit
+  )
+    return;
+  return visitQuestionsBookmarkTarget(
+    visit.appointment.id,
+    visit.review.items
+      .filter(item => item.origin === 'candidate')
+      .map(item => item.question),
+  );
 }

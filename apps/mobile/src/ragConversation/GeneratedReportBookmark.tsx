@@ -17,7 +17,7 @@ import { AppText } from '../layout/AppText';
 import { t } from '../i18n';
 import { useConversationSessions } from './ConversationSessionsContext';
 import type { DisplayMessage } from './conversationDisplayMessage';
-import { visitQuestionsBookmarkTarget } from './visitQuestionsBookmarkTarget';
+import { displayedVisitQuestionsBookmarkTarget } from './visitQuestionsBookmarkTarget';
 import type { DailyReportBookmarkTarget } from '../storage/dailyReportMemoryBookmark';
 export const GeneratedReportBookmarkContext = createContext<{
   readonly sessionId: number;
@@ -62,18 +62,7 @@ export function GeneratedReportBookmark({
       />
     );
   // The saved/reviewed rows can change. Only the original visible generated subset is targetable.
-  const visitTarget =
-    !daily &&
-    !message.healthSummary &&
-    visit &&
-    !message.visitQuestionsUnavailable
-      ? visitQuestionsBookmarkTarget(
-          visit.appointment.id,
-          visit.review.items
-            .filter(item => item.origin === 'candidate')
-            .map(item => item.question),
-        )
-      : undefined;
+  const visitTarget = displayedVisitQuestionsBookmarkTarget(message);
   const archivedSummaryRevision = message.savedHistoryDisplayOnly
     ? message.healthSummary?.archivedSummaryRevision
     : undefined;

@@ -3,6 +3,8 @@ export const savedMemoryKo = {
   'savedMemory.pickGeneratedReport':
     '보관할 원본 일일 보고서의 기억에 보관하기 버튼을 눌러 주세요.',
   'savedMemory.bookmarkDailyReport': '원본 일일 보고서를 기억에 보관하기',
+  'savedMemory.reviewArchivedVisitBookmark':
+    '만든 진료 질문 보기 버튼을 눌러 원본을 확인하고 기억에 보관해 주세요.',
   'savedMemory.previewArchivedVisitQuestions': '만든 진료 질문 보기',
   'savedMemory.bookmarkVisitQuestions': '원본 진료 질문을 기억에 보관하기',
   'savedMemory.generatedReportVisitQuestions': 'AI가 만든 진료 질문',
