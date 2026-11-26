@@ -99,7 +99,7 @@ export function handleExplicitVisitQuestionsBookmark(
     return !retired;
   };
   const unsubscribe = store.subscribe(current);
-  void (async () => {
+  (async () => {
     try {
       if (!current()) return;
       const storage = await openSavedGeneratedReportReferences();
