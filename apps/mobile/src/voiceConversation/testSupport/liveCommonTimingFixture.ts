@@ -26,6 +26,12 @@ export function liveCommonTimingFixture() {
   AppState.currentState = 'active';
   NativeModules.OrotProviderDiagnostics = { enabled: true, report };
   return {
+    holdQueue() {
+      expect(
+        report.mock.calls.some(([, stage]) => stage === 'admission_queue'),
+      ).toBe(false);
+      elapsed += 250;
+    },
     async verify(mode: string) {
       const samples = () =>
         report.mock.calls.filter(([feature]) => feature === 'live_health');
@@ -37,6 +43,19 @@ export function liveCommonTimingFixture() {
         expect(stages()).toEqual(expected.slice(0, -1));
       } else if (mode === 'source-denied' || mode === 'wrong-ack') {
         expect(stages()).not.toContain('native_handoff');
+      }
+      const queue = samples().filter(
+        ([, stage]) => stage === 'admission_queue',
+      );
+      expect(queue).toHaveLength(mode === 'successor-before-promise' ? 1 : 0);
+      if (mode === 'successor-before-promise') {
+        expect(Number(queue[0]?.[2])).toBe(260);
+        // Data open for both observations precedes promotion. The successful
+        // queue span finishes after prior handoff, before the second evidence read.
+        const order = stages();
+        const promoted = order.indexOf('admission_queue');
+        expect(promoted).toBeGreaterThan(order.indexOf('native_handoff'));
+        expect(promoted).toBeLessThan(order.lastIndexOf('evidence_lookup'));
       }
       for (const call of samples()) {
         expect(call).toHaveLength(3);
