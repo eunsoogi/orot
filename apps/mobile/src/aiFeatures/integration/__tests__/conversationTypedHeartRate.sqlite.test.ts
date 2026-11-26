@@ -11,7 +11,7 @@ import { createRagConversationService } from '../ragConversationService';
 import { LocalEvidenceReferenceRegistry } from '../evidenceRegistry';
 import { publicEvidenceFixture } from '../testSupport/publicWebEvidenceTestSupport';
 import type { RagConversationObserver } from '../../../ragConversation/conversationObserver';
-
+const mockBridgeAvailable = jest.fn(() => true);
 const mockProtection = jest.fn(async () => true);
 const mockLoadChoice = jest.fn();
 const mockSelectionWitness = jest.fn(() => () => true);
@@ -32,11 +32,10 @@ jest.mock('../../../providers/chatGPTConsentIdentity', () => ({
 }));
 jest.mock('../../../ragConversation/conversationExecutionNative', () => ({
   conversationExecutionNative: () => ({
-    bridgeAvailable: true,
+    bridgeAvailable: mockBridgeAvailable(),
     protectedDataAvailable: mockProtection,
   }),
 }));
-
 const operationRunId = 'synthetic-typed-heart-rate-turn';
 const typedTool = 'local-typed-heart-rate';
 test.each([
@@ -47,6 +46,7 @@ test.each([
   'shortcut',
   'wrong-owner',
   'locked',
+  'bridge-unavailable',
   'changed-after-read',
   'recipient-changed',
   'too-wide',
@@ -54,6 +54,7 @@ test.each([
   'ordinary send: %s never bypasses typed approval or exact source ownership',
   async mode => {
     mockProtection.mockReset().mockResolvedValue(true);
+    mockBridgeAvailable.mockReturnValue(mode !== 'bridge-unavailable');
     const { f, data } = await actualSendRetentionFixture('one');
     const guardedDatabase = guardedNativeDatabase(f.database);
     const protectedData = createLocalEvidenceData(guardedDatabase);
@@ -212,13 +213,13 @@ test.each([
         },
       );
       expect(externalSearch).not.toHaveBeenCalled();
-      const preflightRejected = [
-        'workout',
-        'shortcut',
-        'wrong-owner',
-        'too-wide',
-      ].includes(mode);
+      const preflightRejected =
+        /^(workout|shortcut|wrong-owner|bridge-unavailable|too-wide)$/.test(
+          mode,
+        );
       expect(confirm).toHaveBeenCalledTimes(preflightRejected ? 0 : 1);
+      if (mode === 'bridge-unavailable')
+        expect(mockProtection).not.toHaveBeenCalled();
       if (mode === 'approved') {
         expect(returned).toBe(true);
         expect(confirm.mock.calls[0]?.[0]).toMatchObject(scope);

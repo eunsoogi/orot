@@ -4,7 +4,10 @@ import {
   type ConversationToolPreparationOwner,
 } from './conversationTypedReadContribution';
 import type { requireSelectedAi } from '../aiFeatures/integration/provider';
-import type { ConversationToolContext } from './conversationToolContext';
+import type {
+  ConversationToolContext,
+  ProtectedConversationToolRead,
+} from './conversationToolContext';
 import type { AiFeatureLocalData } from '../aiFeatures/integration/localData';
 import type { LocalEvidenceReferenceRegistry } from '../aiFeatures/integration/evidenceRegistry';
 import type { createResearchInputTracker } from '../aiFeatures/integration/researchInputTracker';
@@ -45,6 +48,7 @@ export function createConversationToolBundle(input: {
   readonly literatureOnly?: boolean;
   readonly preparationOwner?: ConversationToolPreparationOwner;
   readonly selected?: ReturnType<typeof requireSelectedAi>;
+  readonly protectedDataAvailable?: ProtectedConversationToolRead;
   readonly artifactPaging?: unknown;
   readonly researchPaging?: { snapshot: unknown; operationRunId: string };
 }) {

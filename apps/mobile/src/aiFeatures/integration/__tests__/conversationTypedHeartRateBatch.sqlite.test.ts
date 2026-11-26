@@ -7,12 +7,6 @@ import { actualSendRetentionFixture } from '../testSupport/actualSendRetentionFi
 import { record, scope } from '../testSupport/typedHeartRateRetentionFixture';
 
 const mockProtection = jest.fn<Promise<boolean>, []>();
-jest.mock('../../../ragConversation/conversationExecutionNative', () => ({
-  conversationExecutionNative: () => ({
-    bridgeAvailable: true,
-    protectedDataAvailable: mockProtection,
-  }),
-}));
 
 it.each(['unchanged', 'sql-mutation', 'native-lock'] as const)(
   'only returns a typed local batch when final SQL and native protection remain current (%s)',
@@ -46,6 +40,7 @@ it.each(['unchanged', 'sql-mutation', 'native-lock'] as const)(
       });
       const tool = createConversationHeartRateTool({
         read,
+        protectedDataAvailable: mockProtection,
         acquireSourceEpoch: data.acquireHeartRateSourceEpoch!,
         registry,
         owner: { signal, operationRunId },

@@ -1,5 +1,8 @@
 import type { EvidenceSearchTool } from '@orot/agent-runtime';
-import type { ConversationToolContext } from './conversationToolContext';
+import type {
+  ConversationToolContext,
+  ProtectedConversationToolRead,
+} from './conversationToolContext';
 import { createConversationHeartRateTool } from '../aiFeatures/integration/conversationHeartRateTool';
 import { createTypedHeartRateModelOwner } from '../aiFeatures/integration/conversationHeartRateModelOwner';
 import type { LocalEvidenceReferenceRegistry } from '../aiFeatures/integration/evidenceRegistry';
@@ -21,11 +24,20 @@ export function conversationTypedReadContribution(input: {
   observer?: ConversationToolContext;
   selected?: ReturnType<typeof requireSelectedAi>;
   preparationOwner?: ConversationToolPreparationOwner;
+  protectedDataAvailable?: ProtectedConversationToolRead;
   literatureOnly?: boolean;
 }) {
-  const { data, registry, observer, preparationOwner, selected } = input;
+  const {
+    data,
+    registry,
+    observer,
+    preparationOwner,
+    selected,
+    protectedDataAvailable,
+  } = input;
   if (
     !preparationOwner ||
+    !protectedDataAvailable ||
     !selected ||
     input.literatureOnly ||
     !data.readHealthContext ||
@@ -42,6 +54,7 @@ export function conversationTypedReadContribution(input: {
   const tool = createConversationHeartRateTool({
     read: data.readHealthContext,
     acquireSourceEpoch: data.acquireHeartRateSourceEpoch,
+    protectedDataAvailable,
     registry,
     owner: preparationOwner,
     model,
