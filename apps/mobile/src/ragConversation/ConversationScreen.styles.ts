@@ -45,6 +45,7 @@ export const styles = StyleSheet.create({
   // Fabric interop offsets a legacy host's content frame by its padding.
   // Keep the inset on this existing standard View instead.
   userMessageBody: { padding: 14 },
+  userPhotoSequence: { gap: 6 },
   // Reserve the opposite lane proportionally, including on narrow content panels.
   assistantBubbleSequence: { gap: 12 },
   assistantMessage: { alignSelf: 'flex-start', maxWidth: '85%', gap: 8 },
