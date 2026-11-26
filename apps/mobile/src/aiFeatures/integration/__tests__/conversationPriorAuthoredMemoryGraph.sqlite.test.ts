@@ -24,7 +24,6 @@ import { createRagConversationService } from '../ragConversationService';
 import { LocalEvidenceReferenceRegistry } from '../evidenceRegistry';
 import { apple, localData } from '../featureServiceFixtures';
 import { healthContextFixture } from '../testSupport/healthContextPersistenceFixture';
-
 const question = '그래 그럼 기억해줘';
 const statement = '라일락 프로젝트의 데모는 금요일인 것 같아요.';
 const assistant = '합성 답변입니다.';
@@ -42,12 +41,10 @@ const request = {
   createdAt: '2026-11-26T00:00:01.000Z',
   question,
 };
-
-// Actual summary router, protected history reader, workflow, write and
-// terminal receipt. Only model output and native consent are synthetic.
 test.each([
   'saved',
   'saved after consumed Daily Report',
+  'saved after Possibilities shortcut',
   'declined',
   'deleted in approval',
   'retired in approval',
@@ -61,8 +58,10 @@ test.each([
     const sessions = createConversationSessions();
     try {
       const storage = createConversationArtifactStorage(f.database);
-      const generation = await storage.currentGeneration();
-      await storage.createSession(old.sessionId, generation);
+      await storage.createSession(
+        old.sessionId,
+        await storage.currentGeneration(),
+      );
       await storage.startRequest(old);
       await storage.append({
         ...old,
@@ -74,9 +73,17 @@ test.each([
       });
       const { activeId } = sessions.getSnapshot();
       const afterDaily = outcome === 'saved after consumed Daily Report';
-      const authoredQuestion = afterDaily
-        ? '앞으로도 전에 말한 내용을 기억해줄 수 있나요?'
-        : question;
+      const afterPossibilities =
+        outcome === 'saved after Possibilities shortcut';
+      const authoredQuestion =
+        afterDaily || afterPossibilities
+          ? '앞으로도 전에 말한 내용을 기억해줄 수 있나요?'
+          : question;
+      if (afterPossibilities)
+        setConversationEntryForSession(sessions, activeId, {
+          intent: 'possibilities',
+          entryKey: 'synthetic-retained-possibilities',
+        });
       if (afterDaily) {
         const reportRequest = createDailyReportIdentity('2026-11-26', 'UTC');
         setConversationEntryForSession(sessions, activeId, {
@@ -141,10 +148,7 @@ test.each([
       const registry = new LocalEvidenceReferenceRegistry();
       const consent = { authorize: jest.fn(async () => 'authorized' as const) };
       const externalSearch = jest.fn();
-      const writer = jest.fn(
-        (...args: Parameters<typeof saveConversationHealthHistory>) =>
-          saveConversationHealthHistory(...args),
-      );
+      const writer = jest.fn(saveConversationHealthHistory);
       const loadData = async () => ({
         ...localData([]).data,
         openConversationArtifactStorage: async () => storage,
@@ -214,19 +218,16 @@ test.each([
         },
         conversationEntryForSession(sessions, activeId),
       );
-      const notes = await createManualHistoryRepository(f.database).list();
-      if (outcome === 'saved' || afterDaily) {
+      const repository = createManualHistoryRepository(f.database);
+      const notes = await repository.list();
+      if (outcome === 'saved' || afterDaily || afterPossibilities) {
         expect(response).toMatchObject({
           status: 'answer',
           committedAnswerMemory: true,
         });
         expect(notes.map(note => note.details)).toEqual([statement]);
         expect(isLocalConversationMemoryId(notes[0]!.id)).toBe(true);
-        expect(
-          await createManualHistoryRepository(f.database).getEvidence(
-            notes[0]!.id,
-          ),
-        ).toBeNull();
+        expect(await repository.getEvidence(notes[0]!.id)).toBeNull();
         expect(confirmHistorySave).toHaveBeenCalledWith(
           statement,
           expect.anything(),
