@@ -249,3 +249,10 @@ run actions, or write local data. Reopening keeps the accepted prose
 rather than restoring this form. The model still cannot add remote
 catalogs, arbitrary links or actions, data uploads, or controls owned
 by another reply.
+
+Fresh ordinary task v46 also allows the Basic Catalog Slider within composed
+local controls. It accepts a literal label, distinct local value pointer,
+integer bounds between -1000 and 1000, and up to 100 equal divisions. The
+initial thumb is at the lower bound; provider values, actions, app bindings,
+and durable or transmitted slider state remain unsupported. Restoring v45
+uses the previous catalog unchanged. An invalid Slider retains exact prose.
