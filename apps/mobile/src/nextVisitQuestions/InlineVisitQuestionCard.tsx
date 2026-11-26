@@ -1,6 +1,7 @@
+import { VisitQuestionTemplate } from './VisitQuestionTemplate';
 import type { Appointment } from '@orot/domain';
 import { useRef } from 'react';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { Pressable, StyleSheet, Text } from 'react-native';
 import { CheckboxIndicator } from '../layout/CheckboxIndicator';
 import { QuestionCard } from './QuestionCard';
 import { ActionButton } from './NextVisitComponents';
@@ -62,17 +63,7 @@ export function InlineVisitQuestionCard<T extends NextVisitEvidenceReference>({
     }
   };
   return (
-    <View testID="inline-visit-review" style={{ gap: theme.tokens.spacing.sm }}>
-      <Text
-        accessibilityRole="header"
-        style={{
-          color: theme.colors.text,
-          fontSize: theme.tokens.typography.sizes.heading,
-          fontWeight: theme.tokens.typography.weights.bold,
-        }}
-      >
-        {t('visitQuestions.inline.title')}
-      </Text>
+    <VisitQuestionTemplate theme={theme}>
       {appointment ? (
         <VisitAppointmentCard appointment={appointment} theme={theme} />
       ) : null}
@@ -156,7 +147,7 @@ export function InlineVisitQuestionCard<T extends NextVisitEvidenceReference>({
         theme={theme}
         testID="inline-visit-save"
       />
-    </View>
+    </VisitQuestionTemplate>
   );
 }
 

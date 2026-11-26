@@ -75,7 +75,14 @@ export function ConversationMessage({
   const user = message.role === 'user';
   const copyMenus = conversationBubbleCopyMenus(copyScope, message);
   const visitQuestions =
-    !user && message.visitQuestions ? renderVisitQuestions?.(message) : null;
+    !user &&
+    (message.visitQuestions ||
+      (message.savedHistoryDisplayOnly &&
+        !message.incomplete &&
+        !message.directPhotoReply &&
+        message.archivedVisitBookmark))
+      ? renderVisitQuestions?.(message)
+      : null;
   const activity = <ConversationBubbleActivity message={message} />;
   const activityBeforeText = compact && message.streaming;
   return (
