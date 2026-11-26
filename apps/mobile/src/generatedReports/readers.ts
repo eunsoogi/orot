@@ -4,6 +4,7 @@ import { savedHistoricalReadAdmission } from './savedReportNativeProtection';
 import { readSavedHealthSummaryDetail } from './savedHealthSummaryDetail';
 import { projectGeneratedSummaryDetail } from './summaryDetail';
 import { readConversationReportEvidence } from './conversationReportEvidence';
+import type { SelectedPossibilityAdmission } from './selectedPossibilityAdmission';
 import { createArchivedCitationService } from '../aiFeatures/integration/archivedCitationService';
 import { createManualHistoryRepository, type SqlDatabase } from '@orot/storage';
 import { createConversationArtifactStorage } from '../storage/conversationArtifactStorage';
@@ -17,8 +18,6 @@ const openAiFeatureLocalData = async () =>
 import { loadSavedVisitQuestionState } from '../aiFeatures/integration/savedVisitQuestions';
 const openLocalStorage = async () =>
   (await import('../storage/secureDatabase')).openLocalStorage();
-const openLocalAgentMemoryDatabase = async () =>
-  (await import('../storage/secureDatabase')).openLocalAgentMemoryDatabase();
 import { createSymptomSummaryStorage } from '../storage/symptomSummaryStorage';
 import { listGeneratedReports } from './catalog';
 import type {
@@ -32,6 +31,7 @@ import { generatedReportCopy as copy } from './text';
 export function createGeneratedReportReader(
   database: SqlDatabase,
   dependencies = { data: openAiFeatureLocalData, records: openLocalStorage },
+  isCurrentDatabase?: SelectedPossibilityAdmission['isCurrentDatabase'],
 ): GeneratedReportReader & {
   readBookmarkedDiseasePossibilities(
     id: string,
@@ -91,6 +91,9 @@ export function createGeneratedReportReader(
           signal,
           dependencies,
           admission?.confirm,
+          isCurrentDatabase && onHistoricalProtectionLost
+            ? { isCurrentDatabase, retireSelection: onHistoricalProtectionLost }
+            : undefined,
         );
         displayed = !signal.aborted && result !== null;
         return displayed ? result : null;
@@ -109,9 +112,15 @@ async function readSelected(
     records: typeof openLocalStorage;
   },
   confirmHistorical?: () => Promise<boolean>,
+  possibilityAdmission?: SelectedPossibilityAdmission,
 ): Promise<GeneratedReportDetail | null> {
   if (row.origin === 'conversation') {
-    return readConversationReportEvidence(database, row, signal);
+    return readConversationReportEvidence(
+      database,
+      row,
+      signal,
+      possibilityAdmission,
+    );
   }
   if (row.kind === 'health_summary')
     return row.origin === 'summary'
@@ -220,5 +229,11 @@ function openSummaryReader(
 }
 /** Storage opens lazily when the Records browser is used, not during application import. */
 export async function openGeneratedReportReader() {
-  return createGeneratedReportReader(await openLocalAgentMemoryDatabase());
+  const { openLocalAgentMemoryDatabase, isCurrentLocalAgentMemoryDatabase } =
+    await import('../storage/secureDatabase');
+  return createGeneratedReportReader(
+    await openLocalAgentMemoryDatabase(),
+    undefined,
+    isCurrentLocalAgentMemoryDatabase,
+  );
 }

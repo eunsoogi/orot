@@ -55,6 +55,7 @@ export function watchSavedReportNativeProtection(
     return undefined;
   }
   return {
+    current,
     dispose,
     async confirm() {
       if (!current()) {

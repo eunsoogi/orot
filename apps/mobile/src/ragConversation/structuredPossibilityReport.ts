@@ -1,3 +1,4 @@
+import { acceptPossibilityCreation } from './possibilityOriginalReceipt';
 import { serializeSourceConversationReport } from './sourceConversationReportTemplate';
 import { renderMixedEvidenceAnswer } from './mixedEvidenceAnswer';
 import type { JsonObject, JsonValue } from '@orot/model-runtime';
@@ -51,7 +52,7 @@ export function requestsRoutedPossibilityReport(
   );
 }
 
-function serializeReport(value: JsonValue): string | undefined {
+function serializeReport(value: JsonValue) {
   if (
     !isObject(value) ||
     Object.keys(value).length !== fields.length ||
@@ -63,7 +64,16 @@ function serializeReport(value: JsonValue): string | undefined {
     return undefined;
   const template = possibilityReportTemplate();
   // Labels are application-owned. Bodies are retained verbatim and pass the same clinical/citation gates as prose.
-  return `# ${template.title}\n\n${fields.map((field, i) => `## ${template.sections[i]}\n${value[field]}`).join('\n\n')}`;
+  let answer = `# ${template.title}\n\n`;
+  const ranges = fields.map((field, i) => {
+    answer += `## ${template.sections[i]}\n`;
+    const start = answer.length;
+    answer += value[field];
+    const end = answer.length;
+    if (i < fields.length - 1) answer += '\n\n';
+    return [start, end] as const;
+  });
+  return { answer, ranges };
 }
 
 /** New task contracts require data fields rather than hoping the model writes exact Markdown.
@@ -166,13 +176,32 @@ export function withStructuredPossibilityReport(
           },
         };
       }
-      const answer = serializeReport(value.answer!);
-      if (!answer || !parseConversationReport(answer))
+      const report = serializeReport(value.answer!);
+      if (!report || !parseConversationReport(report.answer))
         return {
           status: 'invalid',
           reason: 'The requested possibility report was not structured.',
         };
-      return base.validateResult({ ...value, answer }, input);
+      const result = base.validateResult(
+        { ...value, answer: report.answer },
+        input,
+      );
+      if (
+        value.completion === 'partial' ||
+        result.status !== 'valid' ||
+        result.value.answer !== report.answer
+      )
+        return result;
+      return {
+        ...result,
+        value: acceptPossibilityCreation(
+          result.value,
+          input.context,
+          input.request,
+          report.answer,
+          report.ranges,
+        ),
+      };
     },
   };
 }

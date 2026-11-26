@@ -31,6 +31,7 @@ export function GeneratedReportContent({
     citation: SavedArchivedCitation,
   ) => void;
 }) {
+  if (detail.possibilityOriginalCurrent?.() === false) return null;
   const sources = detail.conversationSources;
   const report = detail.dailyReport ?? detail.conversationPossibility;
   const summary =
@@ -105,11 +106,13 @@ export function GeneratedReportContent({
           onLinkError={doNotOpenLiveSource}
           archived={{
             citations: sources.citations,
-            open: citation =>
-              onOpenCitation(
+            open: citation => {
+              if (detail.possibilityOriginalCurrent?.() === false) return;
+              return onOpenCitation(
                 { target: sources.target, ordinal: citation.ordinal },
                 citation,
-              ),
+              );
+            },
           }}
         />
       ) : null}

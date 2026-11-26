@@ -1,3 +1,4 @@
+import type { StoredPossibilityOriginal } from '../ragConversation/possibilityOriginalReceipt';
 import type { ArchivedPairedDetailsLayout } from '../ragConversation/archivedPairedDetailsLayout';
 import type { ArchivedA2UILayout } from '../ragConversation/conversationA2UIArchive';
 import type { ConversationEntryContext } from '../aiFeatures/integration/conversationIntent';
@@ -26,6 +27,7 @@ export interface ConversationArtifact {
   readonly question: string;
   readonly submittedInput?: ConversationSubmittedInput;
   readonly answer: string;
+  readonly possibilityOriginal?: StoredPossibilityOriginal;
   /** Local layout only; not provider history or authority. */
   readonly archivedA2UILayout?:
     ArchivedA2UILayout | ArchivedPairedDetailsLayout;

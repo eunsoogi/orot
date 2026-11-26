@@ -1,3 +1,4 @@
+import { createConversationPossibilityOriginalReader } from './readConversationPossibilityOriginal';
 import { createArchivedPairedDetailsOwner } from './archivedPairedDetailsOwner';
 import { createConversationAnswerMemory } from './conversationAnswerMemoryStore';
 import { createConversationArtifactAppend } from './conversationArtifactAppend';
@@ -43,6 +44,10 @@ export function createConversationArtifactStorage(
   const storage = {
     ...createSavedGeneratedReportReferences(database, ensure),
     ...createConversationAnswerMemory(database, ensure),
+    readPossibilityOriginal: createConversationPossibilityOriginalReader(
+      database,
+      isCurrentDatabase,
+    ),
     readMountedPairedDetails: createArchivedPairedDetailsOwner(
       database,
       isCurrentDatabase,
