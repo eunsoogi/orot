@@ -44,6 +44,7 @@ export function createHealthContextReader(
       cache: Map<string, HealthContextReport>,
       maxEntries?: number,
       calendar?: HealthContextCalendarScope,
+      returnCommittedSnapshot = false,
     ): HealthContextReader =>
     async (window, topics, signal, trace) => {
       trace?.('preparation', 'started');
@@ -149,13 +150,18 @@ export function createHealthContextReader(
       if (!sameGeneration(report, committed))
         throw new Error('Health context changed before publication.');
       cache.delete(key);
-      cache.set(key, immutableReportSnapshot(report));
+      const snapshot = immutableReportSnapshot(report);
+      cache.set(key, snapshot);
       if (maxEntries !== undefined && cache.size > maxEntries)
         cache.delete(cache.keys().next().value!);
-      return report;
+      return returnCommittedSnapshot ? snapshot : report;
     };
   const baseCache = new Map<string, HealthContextReport>();
   const reader = createRead(baseCache, HEALTH_CONTEXT_TOPICS.length);
+  committedReaders.set(
+    reader,
+    createRead(baseCache, HEALTH_CONTEXT_TOPICS.length, undefined, true),
+  );
   registerHealthContextReadOwner(reader, database, (cache, calendar) => {
     // Copy only committed bounded entries. Each scoped hit still checks live
     // generations and cancellation; scoped results never flow back to baseCache.
@@ -174,4 +180,19 @@ function sameGeneration(
     left.mutationGeneration === right.mutationGeneration &&
     left.deletionGeneration === right.deletionGeneration
   );
+}
+
+// Only the real reader factory can provide the already committed immutable
+// object. No generation check, transaction or cancellation is bypassed.
+const committedReaders = new WeakMap<
+  HealthContextReader,
+  HealthContextReader
+>();
+
+/** Alias-only consumers can reuse digest/projection work without changing the
+ * ordinary reader's fresh mutable return contract or trusting custom readers. */
+export function committedHealthContextSnapshotReader(
+  read: HealthContextReader,
+) {
+  return committedReaders.get(read) ?? read;
 }

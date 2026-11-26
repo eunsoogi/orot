@@ -1,7 +1,7 @@
 import { stageLiveResponsesResult } from './stageLiveResponsesResult';
 import type { AiFeatureLocalData } from '../aiFeatures/integration/localData';
 import { LocalEvidenceReferenceRegistry } from '../aiFeatures/integration/evidenceRegistry';
-import { bindHealthContextTool } from '../aiFeatures/integration/bindHealthContextTool';
+import { bindLiveAliasHealthContext } from './bindLiveAliasHealthContext';
 import { jsonByteLength } from '../aiFeatures/integration/evidenceUtils';
 import { liveHeartRateAggregate } from './liveHeartRateAggregate';
 import { parseLiveHealthRequestScope } from './liveHealthRequestScope';
@@ -164,7 +164,7 @@ export function createLiveResponsesHealthToolExecutor(input: {
       const data = await timed('data_open', () => input.openData());
       if (!current()) return;
       const registry = new LocalEvidenceReferenceRegistry();
-      const candidate = bindHealthContextTool(data, registry, 'rag');
+      const candidate = bindLiveAliasHealthContext(data, registry);
       const parsed = candidate?.parseInput({
         topics: [scope.topic],
         days: scope.days,
