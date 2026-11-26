@@ -120,13 +120,14 @@ export function SavedMemoryDetail({
           {t('manualHistory.notice.deleted')}
         </Text>
       )}
-      {row && isHistoryMemory(row) && (
+      {readyRead && row && isHistoryMemory(row) && (
         <HistoryMemoryDetail
-          key={row.id}
+          key={JSON.stringify([readyRead.request, row.id])}
           record={row.record}
+          isReadCurrent={readyRead.isCurrent}
           onDeleted={() => {
             // Route ownership can disappear before the child unmounts.
-            if (!readyRead?.isCurrent()) return;
+            if (!readyRead.isCurrent()) return;
             setDeletedTarget({
               routeId: memoryId,
               selectedId: row.id,
@@ -134,6 +135,7 @@ export function SavedMemoryDetail({
             });
           }}
           onChanged={id => {
+            if (!readyRead.isCurrent()) return;
             setCorrectionTarget({ original: memoryId, id });
             refresh();
           }}

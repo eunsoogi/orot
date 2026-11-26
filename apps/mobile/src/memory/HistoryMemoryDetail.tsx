@@ -1,5 +1,5 @@
 import { traceSavedMemoryDeletion } from './savedMemoryDeletionDiagnostics';
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useLayoutEffect, useRef, useState } from 'react';
 import { StyleSheet, View } from 'react-native';
 import { appColors } from '../layout/appColors';
 import { t } from '../i18n';
@@ -24,11 +24,13 @@ export function HistoryMemoryDetail({
   record,
   onChanged,
   onDeleted,
+  isReadCurrent,
   openRepository = openHistoryRepository,
 }: {
   readonly record: ManualHistoryScreenRecord;
   readonly onChanged: (id: string) => void;
   readonly onDeleted: () => void;
+  readonly isReadCurrent?: () => boolean;
   readonly openRepository?: () => Promise<ManualHistoryScreenRepository>;
 }) {
   const [repository, setRepository] =
@@ -49,31 +51,36 @@ export function HistoryMemoryDetail({
     },
     [key, record, recordDraft],
   );
-  useEffect(() => {
+  useLayoutEffect(() => {
     alive.current = true;
     setError('');
-    let current = true;
+    let mounted = true;
+    const current = () => mounted && (isReadCurrent?.() ?? true);
     async function load() {
+      if (!current()) return;
       try {
         const repo = await openRepository();
-        if (!current) return;
+        if (!current()) return;
         const versions = await repo.history(record.id);
-        if (!current) return;
+        if (!current()) return;
         setRepository(repo);
         setHistory(versions);
       } catch {
-        if (current) setError(t('manualHistory.error.history'));
+        if (current()) setError(t('manualHistory.error.history'));
       }
     }
     load();
     return () => {
-      current = false;
+      mounted = false;
       alive.current = false;
     };
-  }, [record.id, openRepository, revision]);
+  }, [record.id, openRepository, revision, isReadCurrent]);
 
   async function mutate(input?: ManualHistoryScreenDraft) {
-    if (!repository || busy.current || !alive.current) return;
+    // Native Back/lock can revoke the ready read before React removes this
+    // button or form. Never let its already queued callback edit an old row.
+    const current = () => alive.current && (isReadCurrent?.() ?? true);
+    if (!repository || busy.current || !current()) return;
     busy.current = true;
     setSaving(true);
     setError('');
@@ -81,7 +88,7 @@ export function HistoryMemoryDetail({
       // Reuse repository source/deletion fences; never recreate a missing original.
       if (input) {
         const saved = await repository.correct(record.id, input);
-        if (alive.current) {
+        if (current()) {
           clearDraft(key);
           setEditing(false);
           onChanged('manual-history:' + saved.id);
@@ -91,7 +98,7 @@ export function HistoryMemoryDetail({
         const removed = await repository.delete(record.id);
         if (!removed) throw new Error('Original unavailable');
         // Receipt marks publication to the owning detail, not a measured native frame.
-        if (alive.current) {
+        if (current()) {
           onDeleted();
           traceSavedMemoryDeletion('saved_memory_delete_receipt', 'completed');
         } else {
@@ -101,13 +108,13 @@ export function HistoryMemoryDetail({
     } catch {
       if (!input)
         traceSavedMemoryDeletion('saved_memory_delete_receipt', 'failed');
-      if (alive.current)
+      if (current())
         setError(
           t(input ? 'manualHistory.error.save' : 'manualHistory.error.delete'),
         );
     } finally {
       busy.current = false;
-      if (alive.current) setSaving(false);
+      if (current()) setSaving(false);
     }
   }
   return (
