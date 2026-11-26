@@ -1,7 +1,8 @@
 import { StyleSheet, Text, View } from 'react-native';
 import { SelectedModelControl } from '../layout/SelectedModelControl';
 import type { Appointment } from '@orot/domain';
-import { AppSymbol } from '../layout/AppSymbol';
+import Svg, { Path, Rect } from 'react-native-svg';
+import { COMPACT_APP_SYMBOL_POINT_SIZE } from '../layout/iconSizing';
 import { nextVisitQuestionsCopy as copy } from './copy';
 import { formatNextVisitTime } from './format';
 import type { NextVisitQuestionsTheme, ProviderViewState } from './types';
@@ -22,8 +23,27 @@ export function VisitAppointmentCard({
     copy.appointment.fallbackTitle;
   return (
     <View style={styles.card}>
-      <View style={styles.icon}>
-        <AppSymbol name="calendar" color={theme.colors.accentText} />
+      <View
+        style={styles.icon}
+        testID="next-visit-appointment-icon"
+        accessibilityElementsHidden
+        importantForAccessibility="no-hide-descendants"
+      >
+        {/* The glyph lives in the row's layout box, not a separately mounted
+            UIKit image that can paint outside the inline card. */}
+        <Svg
+          width={COMPACT_APP_SYMBOL_POINT_SIZE}
+          height={COMPACT_APP_SYMBOL_POINT_SIZE}
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke={theme.colors.accentText}
+          strokeWidth={2}
+          strokeLinecap="round"
+          testID="next-visit-appointment-calendar"
+        >
+          <Rect x={3} y={5} width={18} height={16} rx={2} />
+          <Path d="M7 3v4m10-4v4M3 10h18" />
+        </Svg>
       </View>
       <View style={styles.content}>
         <Text style={styles.title}>{title}</Text>
