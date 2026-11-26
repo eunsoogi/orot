@@ -141,6 +141,7 @@ test('native resource names and cleanup remain within the exact synthetic UUID',
       'authority-voice',
       'authority-voice-responses',
       'authority-voice-responses-health-context',
+      'canonical-synthetic-common-policy',
       'canonical-synthetic-health-binding',
       'canonical-synthetic-voice-settings',
       'selection-voice',
@@ -150,7 +151,7 @@ test('native resource names and cleanup remain within the exact synthetic UUID',
       .map(suffix => `com.orot.test.${id}.${suffix}`)
       .sort(),
   );
-  expect(resetGenericPassword).toHaveBeenCalledTimes(12);
+  expect(resetGenericPassword).toHaveBeenCalledTimes(13);
   expect(jest.mocked(open).mock.results[1].value.delete).toHaveBeenCalledTimes(
     1,
   );
