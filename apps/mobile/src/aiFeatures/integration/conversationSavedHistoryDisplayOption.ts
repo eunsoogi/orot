@@ -1,5 +1,5 @@
 import { bindArchivedRichText } from '../../ragConversation/archivedRichTextDisplayBinding';
-import { isRestoredRichText } from '../../ragConversation/archivedConversationRichTextLayout';
+import { isProtectedArchivedA2UILayout } from '../../ragConversation/archivedRichTextDisplayBinding';
 import { bindMountedPairedDetails } from '../../storage/archivedPairedDetailsOwner';
 import { bindArchivedPairedDetails } from '../../ragConversation/archivedPairedDetailsBinding';
 import { bindArchivedVisitBookmark } from '../../storage/archivedVisitBookmarkIdentity';
@@ -83,7 +83,7 @@ export function conversationSavedHistoryDisplayOption(
               },
             ];
           let surface = row.archivedA2UIPresentation;
-          if (surface && isRestoredRichText(surface)) {
+          if (surface && isProtectedArchivedA2UILayout(surface)) {
             if (revision?.current() === true)
               bindArchivedRichText(surface, {
                 revision,
