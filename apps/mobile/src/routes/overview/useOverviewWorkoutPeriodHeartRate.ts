@@ -179,14 +179,17 @@ export function useOverviewWorkoutPeriodHeartRate(
             start(false, { database, period, cohort });
           }
         };
+        const usableResult = !!result && result.status !== 'unavailable';
+        while (usableResult && phase() === 'inactive') {
+          if (!(await confirm(target))) return;
+        }
         if (!admitted()) return await target.recover();
         if (startup && !admission.holds(startup)) {
           target.staleStartup = true;
           return;
         }
         if (!result || phase() !== 'active') return;
-        target.settled =
-          result.status === 'available' || result.status === 'emptyVisible';
+        target.settled = usableResult;
         if (target.settled) {
           setState(result);
         } else if (recheck && target.interrupted) {
