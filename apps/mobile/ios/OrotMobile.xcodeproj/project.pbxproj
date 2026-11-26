@@ -178,6 +178,7 @@
 		A1011000A1011000A1011002 /* NavigationGlassViewManager.m in Sources */ = {isa = PBXBuildFile; fileRef = B1011000B1011000B1011002 /* NavigationGlassViewManager.m */; };
 		A1011000A1011000A1011003 /* AppSymbolView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B1011000B1011000B1011003 /* AppSymbolView.swift */; };
 		BD05DBD552E74175A662EBF9 /* NavigationGeometryView.swift in Sources */ = {isa = PBXBuildFile; fileRef = DCDAC1864F6B4D51B4E1BD57 /* NavigationGeometryView.swift */; };
+		85B2B813A2354189AB1E6C62 /* NavigationDockedKeyboard.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7F1FECA3375145879A1A4513 /* NavigationDockedKeyboard.swift */; };
 		F94600000000000000000001 /* MenuPresentationTestObservation.swift in Sources */ = {isa = PBXBuildFile; fileRef = F94600000000000000000002 /* MenuPresentationTestObservation.swift */; };
 		F26700000000000000000001 /* NavigationGeometryTestObservation.swift in Sources */ = {isa = PBXBuildFile; fileRef = F26700000000000000000003 /* NavigationGeometryTestObservation.swift */; };
 		758C6BC402C846F0B8531FF3 /* NavigationControlGeometryObservation.swift in Sources */ = {isa = PBXBuildFile; fileRef = 058E3261C8134B628E13FE14 /* NavigationControlGeometryObservation.swift */; };
@@ -646,6 +647,7 @@
 		B1011000B1011000B1011002 /* NavigationGlassViewManager.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = NavigationGlassViewManager.m; sourceTree = "<group>"; };
 		B1011000B1011000B1011003 /* AppSymbolView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppSymbolView.swift; sourceTree = "<group>"; };
 		DCDAC1864F6B4D51B4E1BD57 /* NavigationGeometryView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NavigationGeometryView.swift; sourceTree = "<group>"; };
+		7F1FECA3375145879A1A4513 /* NavigationDockedKeyboard.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NavigationDockedKeyboard.swift; sourceTree = "<group>"; };
 		F94600000000000000000002 /* MenuPresentationTestObservation.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = MenuPresentationTestObservation.swift; path = OrotMobile/MenuPresentationTestObservation.swift; sourceTree = "<group>"; };
 		F26700000000000000000003 /* NavigationGeometryTestObservation.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = NavigationGeometryTestObservation.swift; path = OrotMobile/NavigationGeometryTestObservation.swift; sourceTree = "<group>"; };
 		058E3261C8134B628E13FE14 /* NavigationControlGeometryObservation.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = NavigationControlGeometryObservation.swift; path = OrotMobile/NavigationControlGeometryObservation.swift; sourceTree = "<group>"; };
@@ -1276,6 +1278,7 @@
 			children = (
 				B1011000B1011000B1011001 /* NavigationGlassView.swift */,
 				DCDAC1864F6B4D51B4E1BD57 /* NavigationGeometryView.swift */,
+				7F1FECA3375145879A1A4513 /* NavigationDockedKeyboard.swift */,
 				096C35CA6C954504BBDBCD04 /* ConversationHistoryView.swift */,
 				B1810000B1810000B1810001 /* NavigationGlassComponents.swift */,
 				B63F4029A2004AA19F104D31 /* NavigationTextMetrics.swift */,
@@ -1738,6 +1741,7 @@
 				761780ED2CA45674006654EE /* AppDelegate.swift in Sources */,
 				A1011000A1011000A1011001 /* NavigationGlassView.swift in Sources */,
 				BD05DBD552E74175A662EBF9 /* NavigationGeometryView.swift in Sources */,
+				85B2B813A2354189AB1E6C62 /* NavigationDockedKeyboard.swift in Sources */,
 				F94600000000000000000001 /* MenuPresentationTestObservation.swift in Sources */,
 				F26700000000000000000001 /* NavigationGeometryTestObservation.swift in Sources */,
 				758C6BC402C846F0B8531FF3 /* NavigationControlGeometryObservation.swift in Sources */,

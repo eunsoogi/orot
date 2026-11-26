@@ -1,4 +1,5 @@
 import type { StoredPossibilityOriginal } from './possibilityOriginalReceipt';
+import type { ArchivedConversationWeightedCardsLayout } from './archivedConversationWeightedCards';
 import type { ArchivedConversationRichTextLayout } from './archivedConversationRichTextLayout';
 import type { ArchivedPairedDetailsLayout } from './archivedPairedDetailsLayout';
 import type { ArchivedA2UILayout } from './conversationA2UIArchive';
@@ -23,7 +24,8 @@ export interface ConversationRetentionCandidate {
   readonly archivedA2UILayout?:
     | ArchivedA2UILayout
     | ArchivedPairedDetailsLayout
-    | ArchivedConversationRichTextLayout;
+    | ArchivedConversationRichTextLayout
+    | ArchivedConversationWeightedCardsLayout;
   readonly proactiveMemory?: true;
   readonly replyPreferenceSpan?: string;
   readonly authoredRoutineSpan?: string;

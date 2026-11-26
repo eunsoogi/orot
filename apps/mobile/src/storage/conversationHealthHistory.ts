@@ -43,6 +43,11 @@ export interface ConversationHistorySave {
   readonly approvedSource?: {
     readonly requestId: string;
     readonly text: string;
+    /** A fresh app-only consent grant for one exact protected prior original. */
+    readonly protectedPrior?: {
+      readonly createdAt: string;
+      readonly current: () => boolean;
+    };
   };
 }
 
@@ -60,13 +65,20 @@ export async function saveConversationHealthHistory(
     (input.localOnly
       ? conversationHistoryIntent(input.question)
       : legacyConversationHistoryIntent(input.question));
+  const prior = input.approvedSource?.protectedPrior;
   if (
+    (prior &&
+      (!input.operation ||
+        !validAuthoredMemoryTerminal(input.operation) ||
+        !input.localOnly ||
+        input.requestId === input.approvedSource?.requestId ||
+        !prior.current())) ||
     (input.authoredTerminal &&
       (!input.localOnly ||
         !input.approvedCurrentSentence ||
         input.operation ||
         !validAuthoredMemoryTerminal(input.authoredTerminal))) ||
-    (input.localOnly && (input.approvedSource || input.operation)) ||
+    (input.localOnly && !prior && (input.approvedSource || input.operation)) ||
     (input.approvedCurrentSentence &&
       (!input.localOnly ||
         !input.approvedCurrentSentence.current() ||
@@ -88,7 +100,10 @@ export async function saveConversationHealthHistory(
     await tx.execute(
       'CREATE TRIGGER IF NOT EXISTS conversation_history_session_removed AFTER DELETE ON conversation_artifact_sessions BEGIN DELETE FROM conversation_history_receipts WHERE session_id = OLD.id; END',
     );
-    const additional = await additionalHistoryOperation(tx, input);
+    // New local-only prior notes use a single terminal operation, not a legacy continuation.
+    const additional = prior
+      ? undefined
+      : await additionalHistoryOperation(tx, input);
     const receipt = additional
       ? { rows: additional.existing ? [{ entry_id: additional.id }] : [] }
       : await tx.execute(
@@ -150,9 +165,12 @@ export async function saveConversationHealthHistory(
       );
       if (newer.rows.length)
         throw new Error('Previously saved history was corrected.');
-      if (input.authoredTerminal) {
+      if (input.authoredTerminal || prior) {
         await validateConversationHistorySource(tx, input, details);
-        if (signal.aborted || !input.approvedCurrentSentence?.current())
+        if (
+          signal.aborted ||
+          (prior ? !prior.current() : !input.approvedCurrentSentence?.current())
+        )
           throw new Error('History save cancelled.');
         tx.commit();
       }
@@ -187,14 +205,18 @@ export async function saveConversationHealthHistory(
           input.approvedSource?.requestId ?? input.requestId,
         ],
       );
-    await commitConversationActionRecovery(tx, input, id);
-    if (input.localOnly)
+    if (!prior) await commitConversationActionRecovery(tx, input, id);
+    if (input.localOnly || prior)
       await validateConversationHistorySource(tx, input, details);
-    if (signal.aborted || input.approvedCurrentSentence?.current() === false)
+    if (
+      signal.aborted ||
+      prior?.current() === false ||
+      input.approvedCurrentSentence?.current() === false
+    )
       throw new Error('History save cancelled.');
     // A protected local-only write neither publishes after cancellation nor leaves
     // a window between its final exact user-source validation and COMMIT.
-    if (input.localOnly) tx.commit();
+    if (input.localOnly || prior) tx.commit();
     result = id;
   });
   return result;

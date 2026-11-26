@@ -130,7 +130,11 @@ test('existing remote conversation offers only an opaque target and ends with a 
       consent,
       tools: [],
     });
-    const compose = (remoteAnswerMemory: boolean) =>
+    const compose = (
+      remoteMemory: Parameters<
+        typeof conversationMutationExecution
+      >[0]['remoteMemory'],
+    ) =>
       conversationMutationExecution({
         baseExecution,
         selected: selection,
@@ -140,7 +144,7 @@ test('existing remote conversation offers only an opaque target and ends with a 
         photo: undefined,
         photoEvidence: undefined,
         question: currentQuestion,
-        remoteAnswerMemory,
+        remoteMemory,
         history: {
           messages: [],
           reports: [],
@@ -159,7 +163,19 @@ test('existing remote conversation offers only an opaque target and ends with a 
     expect(
       actions(compose(false).execution).some(action => action.id === toolId),
     ).toBe(false);
-    const mutation = compose(true);
+    expect(
+      actions(
+        compose({
+          intent: 'conversation',
+          entryKey: 'typed',
+          appointmentId: 'other',
+        }).execution,
+      ).some(action => action.id === toolId),
+    ).toBe(false);
+    const mutation = compose({
+      intent: 'conversation',
+      entryKey: 'mounted-conversation',
+    });
     const action = actions(mutation.execution).find(
       offered => offered.id === toolId,
     );

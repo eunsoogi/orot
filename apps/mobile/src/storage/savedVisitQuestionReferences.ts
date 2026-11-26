@@ -1,4 +1,7 @@
-import { createArchivedVisitBookmarkAccess } from './archivedVisitBookmarkAccess';
+import {
+  createArchivedVisitBookmarkAccess,
+  type VisitBookmarkQuestion,
+} from './archivedVisitBookmarkAccess';
 import type { SqlDatabase, SqlExecutor } from '@orot/storage';
 import { fingerprint } from '../aiFeatures/integration/evidenceUtils';
 import { RetainedSourceInvalidError } from '../aiFeatures/integration/retainedSourceError';
@@ -95,10 +98,11 @@ export function createSavedVisitQuestionReferences(
           target,
           revision: fingerprint(artifact),
           questions: visit.candidates.map(
-            ({ identity, questionText, rationale }) => ({
+            ({ identity, questionText, rationale, priority }) => ({
               id: identity!.id,
               questionText,
               rationale,
+              priority,
             }),
           ),
         }
@@ -217,9 +221,7 @@ export function createSavedVisitQuestionReferences(
       current: Current,
     ) {
       if (!current() || !(await exists())) return null;
-      let result:
-        NonNullable<Awaited<ReturnType<typeof resolve>>>['questions'] | null =
-        null;
+      let result: readonly VisitBookmarkQuestion[] | null = null;
       await database.transaction(async tx => {
         if (!current()) return;
         const row = (
@@ -230,7 +232,13 @@ export function createSavedVisitQuestionReferences(
         ).rows[0];
         const resolved = await resolve(tx, row, artifactId, current);
         if (resolved && resolved.revision === row?.revision && current())
-          result = resolved.questions;
+          result = resolved.questions.map(
+            ({ id, questionText, rationale }) => ({
+              id,
+              questionText,
+              rationale,
+            }),
+          );
       });
       return current() ? result : null;
     },

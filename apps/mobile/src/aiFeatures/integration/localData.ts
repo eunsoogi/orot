@@ -134,7 +134,28 @@ async function openDefault(): Promise<AiFeatureLocalData> {
     async saveConversationHistory(input, signal) {
       const { saveConversationHealthHistory } =
         await import('../../storage/conversationHealthHistory');
-      const id = await saveConversationHealthHistory(database, input, signal);
+      const source = input.approvedSource;
+      const prior = source?.protectedPrior;
+      const scopedInput =
+        prior && source
+          ? {
+              ...input,
+              approvedSource: {
+                ...source,
+                protectedPrior: {
+                  ...prior,
+                  current: () =>
+                    isCurrentLocalAgentMemoryDatabase(database) &&
+                    prior.current(),
+                },
+              },
+            }
+          : input;
+      const id = await saveConversationHealthHistory(
+        database,
+        scopedInput,
+        signal,
+      );
       scheduleStatementMemory(database);
       return id;
     },
@@ -146,7 +167,20 @@ async function openDefault(): Promise<AiFeatureLocalData> {
     async recoverConversationHistoryResult(input, signal) {
       const { recoverConversationHealthHistoryResult } =
         await import('../../storage/recoverConversationHealthHistory');
-      return recoverConversationHealthHistoryResult(database, input, signal);
+      if (
+        input.approvedSource?.protectedPrior &&
+        !isCurrentLocalAgentMemoryDatabase(database)
+      )
+        return undefined;
+      const result = await recoverConversationHealthHistoryResult(
+        database,
+        input,
+        signal,
+      );
+      return !input.approvedSource?.protectedPrior ||
+        isCurrentLocalAgentMemoryDatabase(database)
+        ? result
+        : undefined;
     },
     rag,
     memoryStorage,

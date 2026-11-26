@@ -1,5 +1,6 @@
 /** Partial observed intervals are not a diagnosis, full-night total or a target. */
 export const dailyReportSleepKo = {
+  'dailyReport.activity.recordedWorkout': '기록된 운동: {count}회',
   'dailyReport.activity.emptyWorkout': '기록된 운동: 0회',
   'dailyReport.activity.emptySleep': '수면 기록이 없어요.',
   'dailyReport.sleep.shortInterval':

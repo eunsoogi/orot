@@ -1,3 +1,4 @@
+import { ArchivedConversationVisitQuestions } from '../../ragConversation/ArchivedConversationVisitQuestions';
 import { ResolveArchivedCitationContext } from '../../ragConversation/useArchivedCitationOpen';
 import { useAppointmentReminderRuntime } from '../../appointmentReminders/AppointmentReminderContext';
 import { DailyReportSourceResolverContext } from './DailyReportSourceLinks';
@@ -158,18 +159,29 @@ export function AiFeatureFlowScreen({
               })
           : undefined
       }
-      renderVisitQuestions={(message, sessionId, store, onRegenerate) => (
-        <ConversationVisitQuestionCard
-          message={message}
-          sessionId={sessionId}
-          store={store}
-          operations={defaultVisitQuestionRouteOperations}
-          services={services}
-          onOpenSource={onOpenSource}
-          theme={createNextVisitQuestionsTheme(colorScheme === 'dark')}
-          onRegenerate={onRegenerate}
-        />
-      )}
+      renderVisitQuestions={(message, sessionId, store, onRegenerate) =>
+        message.savedHistoryDisplayOnly && message.archivedVisitBookmark ? (
+          <ArchivedConversationVisitQuestions
+            key={message.archivedVisitBookmark.key}
+            message={message}
+            sessionId={sessionId}
+            store={store}
+            visible={isEntryCurrent}
+            theme={createNextVisitQuestionsTheme(colorScheme === 'dark')}
+          />
+        ) : (
+          <ConversationVisitQuestionCard
+            message={message}
+            sessionId={sessionId}
+            store={store}
+            operations={defaultVisitQuestionRouteOperations}
+            services={services}
+            onOpenSource={onOpenSource}
+            theme={createNextVisitQuestionsTheme(colorScheme === 'dark')}
+            onRegenerate={onRegenerate}
+          />
+        )
+      }
     />
   );
   const conversation = (

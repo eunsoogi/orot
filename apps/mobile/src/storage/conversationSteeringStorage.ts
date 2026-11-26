@@ -1,3 +1,4 @@
+import type { WorkflowSteeringAppliedReceipt } from '@orot/agent-runtime';
 import { createLiveSteering } from './conversationLiveSteering';
 import type { LanguageModelRequest } from '@orot/model-runtime';
 import type { SqlDatabase, SqlExecutor } from '@orot/storage';
@@ -35,9 +36,13 @@ export async function createConversationSteeringStorage(input: {
   await setupConversationSteering(database);
   const keys = [requestId, runId];
   let finalBoundaryClosed = false;
-  const listeners = new Set<() => Promise<void>>();
-  const emit = () =>
-    Promise.all([...listeners].map(listener => listener().catch(() => {})));
+  const listeners = new Set<
+    (receipt?: WorkflowSteeringAppliedReceipt) => Promise<void>
+  >();
+  const emit = (receipt?: WorkflowSteeringAppliedReceipt) =>
+    Promise.all(
+      [...listeners].map(listener => listener(receipt).catch(() => {})),
+    );
   async function live(sql: SqlExecutor) {
     const epoch = (
       await sql.execute(
@@ -71,7 +76,9 @@ export async function createConversationSteeringStorage(input: {
   }
   return {
     ...createLiveSteering({ database, keys, live, emit }),
-    subscribe(listener: () => Promise<void>) {
+    subscribe(
+      listener: (receipt?: WorkflowSteeringAppliedReceipt) => Promise<void>,
+    ) {
       listeners.add(listener);
       return () => {
         listeners.delete(listener);

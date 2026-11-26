@@ -14,6 +14,13 @@ extension RealtimeVoiceCall {
             finalSession.map { LiveObservedCaptionBuffer.Owner(call: identifier, session: $0, epoch: epoch) }
         }
         let caption = observedCaptions.take(captionOwner)
+        // Presence is a bounded bit, never a caption count or a source identity.
+        if observedClose != nil {
+            VoiceSystemCallLifecycle.report(finalSession == nil ? .captionCloseIneligible : .captionCloseEligible)
+            if finalSession != nil {
+                VoiceSystemCallLifecycle.report(caption == nil ? .captionBufferUnavailable : .captionBufferPresent)
+            }
+        }
         liveSessionID = nil
         ready = false; audioStarting = false; paused = false; liveSocketEpoch = nil; liveStartID = nil; liveUnmuteID = nil; liveExpiresAt = nil
         liveExpiryTimer?.invalidate(); liveExpiryTimer = nil; captureEpoch = UUID(); lifecycleEpoch = UUID(); pending = nil; timer?.invalidate(); timer = nil
@@ -43,7 +50,16 @@ extension RealtimeVoiceCall {
         if let finalSession {
             if let observedClose {
                 socket.finishObservedLive(sessionID: finalSession) { [weak self] acknowledged in
-                    observedClose(acknowledged && self?.foreground() == true ? caption : nil)
+                    let foregroundAcknowledged = acknowledged && self?.foreground() == true
+                    let outcome: VoiceSystemCallLifecycle.DiagnosticStage = if !acknowledged {
+                        .captionTerminalUnconfirmed
+                    } else if foregroundAcknowledged {
+                        .captionTerminalAcknowledged
+                    } else {
+                        .captionTerminalForegroundLost
+                    }
+                    VoiceSystemCallLifecycle.report(outcome)
+                    observedClose(foregroundAcknowledged ? caption : nil)
                 }
             } else {
                 socket.finishLive(sessionID: finalSession)

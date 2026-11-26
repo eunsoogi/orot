@@ -9,9 +9,9 @@ export const savedMemoryStyles = StyleSheet.create({
   detail: { paddingHorizontal: hubSpacing.horizontal },
   readingDetail: {
     width: '100%',
-    maxWidth: 800,
+    maxWidth: 736,
     alignSelf: 'center',
-    gap: 24,
+    gap: 20,
     paddingTop: hubSpacing.top,
     paddingBottom: hubSpacing.bottom,
   },
@@ -32,8 +32,8 @@ export const savedMemoryStyles = StyleSheet.create({
   title: { fontSize: 18, fontWeight: '700', color: appColors.text },
   detailTitle: {
     color: appColors.text,
-    fontSize: 25,
-    lineHeight: 33,
+    fontSize: 30,
+    lineHeight: 39,
     fontWeight: '700',
   },
   description: { fontSize: 14, lineHeight: 20, color: appColors.secondary },

@@ -76,11 +76,11 @@ test('completed, skipped and unknown historical days remain explicit and are not
   expect(text).not.toContain('오늘 누락');
 });
 
-test('workout days do not imply intensity or inactivity, and urgent readings suppress encouragement', () => {
+test('history reports only observed workout days and retains actual urgent guidance', () => {
   const history = [workout('w1', '2034-12-30'), workout('w2', '2034-12-30')];
   expect(summarize([], history)[0]?.text).toContain('중 1일');
-  expect(summarize([], history)[0]?.text).toContain(
-    '실제로 운동하지 않았다는 뜻은 아니',
+  expect(summarize([], history)[0]?.text).toBe(
+    '이전 28일 중 1일에 완료된 운동 구간 기록이 있어요.',
   );
   const severe: LocalHealthEvidenceRecord = {
     kind: 'health_observation',

@@ -1,4 +1,5 @@
 import { restoreArchivedConversationRichText } from '../ragConversation/archivedConversationRichTextLayout';
+import { restoreArchivedConversationWeightedCards } from '../ragConversation/archivedConversationWeightedCards';
 import { readPairedDetails } from '../ragConversation/archivedPairedDetailsLayout';
 import { restoreConversationA2UILayout } from '../ragConversation/conversationA2UIArchive';
 
@@ -27,10 +28,16 @@ export function recoverArchiveLayout(value: Record<string, unknown>) {
         value[field] === undefined ||
         (Array.isArray(value[field]) && value[field].length === 0),
     )
-      ? restoreArchivedConversationRichText(
+      ? (restoreArchivedConversationRichText(
           value.archivedA2UILayout,
           value.answer,
-        )
+        ) ??
+        (Array.isArray(value.citations)
+          ? restoreArchivedConversationWeightedCards(
+              value.archivedA2UILayout,
+              value.answer,
+            )
+          : undefined))
       : undefined) ??
     restoreConversationA2UILayout(value.archivedA2UILayout, value.answer)
   );

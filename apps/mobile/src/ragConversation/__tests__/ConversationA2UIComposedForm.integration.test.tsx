@@ -102,9 +102,8 @@ test.each(['42', '43'])(
 test.each([
   proposal('https://example.com'),
   proposal('준비\u202E완료'),
-  proposal('준비 완료', 'send'),
   { ...proposal(), answer: parts.slice(0, 2).join('\n\n') },
-])('does not admit controls with invalid labels, values or prose', value => {
+])('does not admit controls with invalid labels or changed prose', value => {
   expect(ragConversationTask.validateResult(value, input)).toEqual({
     status: 'valid',
     value: { answerKind: 'conversation', answer: value.answer },

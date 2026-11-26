@@ -11,6 +11,15 @@ const weights = new WeakMap<ConversationA2UINode, number>();
 export const conversationA2UICardWeight = (node: ConversationA2UINode) =>
   weights.get(node);
 
+// Archive restoration uses the same native style marker after proving its exact Row slot.
+export function markConversationA2UICardWeight(
+  node: ConversationA2UINode,
+  weight: number,
+) {
+  if (node.component === 'Card' && isConversationA2UIRowWeight(weight))
+    weights.set(node, weight);
+}
+
 /** Strip only the pinned Card weight before the previous exact graph and
  * prose verifier, then bind each weight to an accepted direct Row child. */
 function closedCardFrame(raw: unknown) {
