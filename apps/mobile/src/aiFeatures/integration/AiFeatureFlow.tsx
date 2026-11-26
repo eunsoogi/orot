@@ -1,3 +1,6 @@
+import { PersonalToolSourceRoute } from '../../ragConversation/personalToolSourceRoute';
+import { useOpenPendingPersonalSource } from './usePendingPersonalSource';
+import { PersonalSourceDetail } from './PersonalSourceDetail';
 import { useDailyReminderPrompt } from '../../appointmentReminders/useDailyReminderPrompt';
 import { conversationChoiceActions } from '../../ragConversation/selectConversationChoice';
 import { useCallback, useContext } from 'react';
@@ -7,7 +10,6 @@ import {
   resolveSelectedAiProvider as resolveSelectedAi,
   type ResolveConversationModelDisplay,
 } from './provider';
-import { EvidenceSourceDetailScreen } from './EvidenceSourceDetailScreen';
 import { AiFeatureFlowScreen } from './AiFeatureFlowScreen';
 import { styles } from './AiFeatureFlow.styles';
 import { useAiFeatureFlowNavigation } from './useAiFeatureFlowNavigation';
@@ -58,6 +60,10 @@ export function AiFeatureFlow({
     sourceDetailOpen,
     sourceReference,
   } = useAiFeatureFlowNavigation(navigation, onOpenArticle);
+  const openPersonalSource = useOpenPendingPersonalSource(
+    navigation,
+    isEntryCurrent ?? isRouteCurrent,
+  );
   const rootVisibility = useRootConversationVisibilitySubscription();
   const isConversationVisible = useConversationVisibility(
     isEntryCurrent ?? isRouteCurrent,
@@ -114,108 +120,109 @@ export function AiFeatureFlow({
                 : primaryActionHost
             }
           >
-            <AiFeatureFlowScreen
-              isEntryCurrent={isConversationVisible}
-              ownsConversationPresentation={ownsConversationPresentation}
-              route={screenRoute}
-              reportOwnsOperation={!sourceDetailOpen && !providerSelectionOpen}
-              onOpenSavedAnalysis={() => pushFeatureRoute('saved-analysis')}
-              onOpenSavedVisitQuestions={
-                renderVisitQuestions
-                  ? () => pushFeatureRoute('saved-visit-questions')
-                  : undefined
-              }
-              articleOpenError={articleOpenError}
-              navigationRouteKey={screenRouteKey ?? undefined}
-              onFeatureNavigationStateChange={reportFeatureNavigationState}
-              renderVisitQuestions={renderVisitQuestions}
-              onRouteStateChange={reportVisitQuestionsRouteState}
-              onBack={requestBack}
-              {...conversationChoiceActions(
-                conversationStore,
-                isConversationVisible,
-              )}
-              onOpenRagConversation={() => pushFeatureRoute('rag-conversation')}
-              onOpenDailyReportChat={target => {
-                if (
-                  (!isRouteCurrent && !isEntryCurrent) ||
-                  !isConversationVisible() ||
-                  !reminderRuntime
-                )
-                  return;
-                const route = pushFeatureRoute('rag-conversation');
-                if (route)
-                  reminderRuntime.dailyReportFollowUps.set(route.key, target);
-              }}
-              onOpenDailyReport={requestDailyReport}
-              onOpenConversationHistory={() =>
-                pushFeatureRoute('conversation-history')
-              }
-              onOpenSummaryHistory={() => {
-                setShared(current => ({
-                  ...current,
-                  summaryReturnRouteKey: screenRouteKey,
-                }));
-                pushFeatureRoute('summary-history');
-              }}
-              restoredSummary={
-                shared.summarySelection?.routeKey === screenRouteKey
-                  ? shared.summarySelection.value
-                  : undefined
-              }
-              onRestoreSummary={value => {
-                // Target the retained originating scene; selecting history never invokes generation.
-                const routeKey = shared.summaryReturnRouteKey;
-                if (!routeKey) return;
-                setShared(current => ({
-                  ...current,
-                  summarySelection: {
-                    routeKey,
-                    value,
-                  },
-                }));
-                requestBack();
-              }}
-              onOpenExternalEvidence={() =>
-                pushFeatureRoute('external-evidence')
-              }
-              onOpenProviderSelection={
-                screenRoute === 'rag-conversation' &&
-                onOpenConversationModelSettings
-                  ? onOpenConversationModelSettings
-                  : openProviderSelection
-              }
-              onOpenSource={openSource}
-              resolveSelectedAi={resolveSelectedAiForRoute}
-              consent={consent}
-              confirmConsent={async request =>
-                (await consent.authorize(request)) === 'authorized'
-              }
-              selectedAiRevision={selectedAiRevision}
-              services={services}
-              onOpenArticle={publication => {
-                handleOpenArticle(publication).then(
-                  () => undefined,
-                  () => undefined,
-                );
-              }}
-            />
+            <PersonalToolSourceRoute.Provider value={openPersonalSource}>
+              <AiFeatureFlowScreen
+                isEntryCurrent={isConversationVisible}
+                ownsConversationPresentation={ownsConversationPresentation}
+                route={screenRoute}
+                reportOwnsOperation={
+                  !sourceDetailOpen && !providerSelectionOpen
+                }
+                onOpenSavedAnalysis={() => pushFeatureRoute('saved-analysis')}
+                onOpenSavedVisitQuestions={
+                  renderVisitQuestions
+                    ? () => pushFeatureRoute('saved-visit-questions')
+                    : undefined
+                }
+                articleOpenError={articleOpenError}
+                navigationRouteKey={screenRouteKey ?? undefined}
+                onFeatureNavigationStateChange={reportFeatureNavigationState}
+                renderVisitQuestions={renderVisitQuestions}
+                onRouteStateChange={reportVisitQuestionsRouteState}
+                onBack={requestBack}
+                {...conversationChoiceActions(
+                  conversationStore,
+                  isConversationVisible,
+                )}
+                onOpenRagConversation={() =>
+                  pushFeatureRoute('rag-conversation')
+                }
+                onOpenDailyReportChat={target => {
+                  if (
+                    (!isRouteCurrent && !isEntryCurrent) ||
+                    !isConversationVisible() ||
+                    !reminderRuntime
+                  )
+                    return;
+                  const route = pushFeatureRoute('rag-conversation');
+                  if (route)
+                    reminderRuntime.dailyReportFollowUps.set(route.key, target);
+                }}
+                onOpenDailyReport={requestDailyReport}
+                onOpenConversationHistory={() =>
+                  pushFeatureRoute('conversation-history')
+                }
+                onOpenSummaryHistory={() => {
+                  setShared(current => ({
+                    ...current,
+                    summaryReturnRouteKey: screenRouteKey,
+                  }));
+                  pushFeatureRoute('summary-history');
+                }}
+                restoredSummary={
+                  shared.summarySelection?.routeKey === screenRouteKey
+                    ? shared.summarySelection.value
+                    : undefined
+                }
+                onRestoreSummary={value => {
+                  // Target the retained originating scene; selecting history never invokes generation.
+                  const routeKey = shared.summaryReturnRouteKey;
+                  if (!routeKey) return;
+                  setShared(current => ({
+                    ...current,
+                    summarySelection: {
+                      routeKey,
+                      value,
+                    },
+                  }));
+                  requestBack();
+                }}
+                onOpenExternalEvidence={() =>
+                  pushFeatureRoute('external-evidence')
+                }
+                onOpenProviderSelection={
+                  screenRoute === 'rag-conversation' &&
+                  onOpenConversationModelSettings
+                    ? onOpenConversationModelSettings
+                    : openProviderSelection
+                }
+                onOpenSource={openSource}
+                resolveSelectedAi={resolveSelectedAiForRoute}
+                consent={consent}
+                confirmConsent={async request =>
+                  (await consent.authorize(request)) === 'authorized'
+                }
+                selectedAiRevision={selectedAiRevision}
+                services={services}
+                onOpenArticle={publication => {
+                  handleOpenArticle(publication).then(
+                    () => undefined,
+                    () => undefined,
+                  );
+                }}
+              />
+            </PersonalToolSourceRoute.Provider>
           </NavigationPrimaryActionContext.Provider>
         </View>
-        {sourceDetailOpen && sourceReference ? (
-          <View style={styles.sourceOverlay}>
-            <EvidenceSourceDetailScreen
-              navigationRouteKey={navigation.route.key}
-              onNavigationStateChange={reportFeatureNavigationState}
-              onBack={requestBack}
-              readSource={services.readSource}
-              readColdSource={services.readColdConversationSource}
-              sourceOwner={shared.sourceOwner}
-              key={JSON.stringify([sourceReference, shared.sourceOwner])}
-              reference={sourceReference}
-            />
-          </View>
-        ) : null}
+        <PersonalSourceDetail
+          navigation={navigation}
+          onBack={requestBack}
+          onNavigationStateChange={reportFeatureNavigationState}
+          services={services}
+          shared={shared}
+          sourceDetailOpen={sourceDetailOpen}
+          sourceReference={sourceReference}
+        />
         {providerSelectionOpen ? (
           <View
             style={styles.sourceOverlay}

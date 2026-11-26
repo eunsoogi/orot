@@ -77,3 +77,9 @@ export function beginSourceOpenTiming(signal: AbortSignal, first: Stage) {
 export function sourceOpenTiming(signal: AbortSignal) {
   return tracked.get(signal);
 }
+
+/** A composed cancellation signal retains the same closed diagnostic spans. */
+export function forwardSourceOpenTiming(from: AbortSignal, to: AbortSignal) {
+  const timing = tracked.get(from);
+  if (timing) tracked.set(to, timing);
+}

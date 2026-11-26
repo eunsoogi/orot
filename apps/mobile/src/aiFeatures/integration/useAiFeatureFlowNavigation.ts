@@ -137,6 +137,7 @@ export function useAiFeatureFlowNavigation(
           : navigation.route.key;
       setState(current => ({
         ...current,
+        pendingPersonalSource: undefined,
         sourceReference: reference,
         sourceOwner: owner ? { ...owner } : undefined,
         sourceReturnRoute: returnRoute,

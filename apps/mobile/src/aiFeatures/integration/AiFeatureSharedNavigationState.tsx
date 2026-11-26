@@ -1,4 +1,12 @@
-import { createContext, useContext, useMemo, useState } from 'react';
+import {
+  createContext,
+  useCallback,
+  useContext,
+  useLayoutEffect,
+  useMemo,
+  useRef,
+  useState,
+} from 'react';
 import type { Dispatch, ReactNode, SetStateAction } from 'react';
 import type { EvidenceReference } from '@orot/agent-runtime';
 import type { FeatureScreenRoute } from './aiFeatureNavigation';
@@ -17,6 +25,7 @@ export interface AiFeatureSharedNavigationState {
     readonly value: DiseaseHypothesisAnalysis;
   } | null;
   readonly sourceOwner?: import('./coldConversationSourceResolvers').ColdConversationSourceOwner;
+  readonly pendingPersonalSource?: import('./usePendingPersonalSource').PendingPersonalSource;
   readonly sourceReference: EvidenceReference | null;
   readonly sourceReturnRoute: FeatureScreenRoute;
   readonly sourceReturnRouteKey: string | null;
@@ -28,6 +37,9 @@ export interface AiFeatureSharedNavigationState {
 
 interface AiFeatureSharedNavigationStateContextValue {
   readonly state: AiFeatureSharedNavigationState;
+  readonly ownPendingPersonalSource: (
+    dispose: () => void,
+  ) => (() => void) | null;
   readonly setState: Dispatch<SetStateAction<AiFeatureSharedNavigationState>>;
 }
 
@@ -57,7 +69,32 @@ export function AiFeatureSharedNavigationStateProvider({
   readonly subscribeRootConversationVisibility?: SubscribeRootConversationVisibility;
 }) {
   const [state, setState] = useState(initialState);
-  const value = useMemo(() => ({ state, setState }), [state]);
+  const mounted = useRef(true);
+  const ownedSource = useRef<(() => void) | null>(null);
+  const ownPendingPersonalSource = useCallback((dispose: () => void) => {
+    if (!mounted.current) {
+      dispose();
+      return null;
+    }
+    ownedSource.current?.();
+    ownedSource.current = dispose;
+    return () => {
+      if (ownedSource.current === dispose) ownedSource.current = null;
+    };
+  }, []);
+  useLayoutEffect(() => {
+    mounted.current = true;
+    return () => {
+      mounted.current = false;
+      const dispose = ownedSource.current;
+      ownedSource.current = null;
+      dispose?.();
+    };
+  }, []);
+  const value = useMemo(
+    () => ({ state, setState, ownPendingPersonalSource }),
+    [state, ownPendingPersonalSource],
+  );
   return (
     <AiFeatureSharedNavigationStateContext.Provider value={value}>
       <ConversationSessionsProvider

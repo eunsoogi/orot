@@ -1,4 +1,7 @@
-import type { NavigationRoute } from './navigationController';
+import type {
+  NavigationRoute,
+  OwnedNavigationRoute,
+} from './navigationController';
 import type { NavigationLeaveGuardOptions } from './navigationLeaveGuard';
 
 export interface NavigationRouteOwnership {
@@ -13,6 +16,7 @@ export interface NavigationRouteActions<Name extends string> {
   readonly onBack: () => Promise<boolean>;
   readonly onHome: () => Promise<boolean>;
   readonly push: (name: Name) => NavigationRoute<Name> | null;
+  readonly pushOwned?: (name: Name) => OwnedNavigationRoute<Name> | null;
   readonly replace: (name: Name) => NavigationRoute<Name> | null;
   readonly registerLeaveState: (
     source: NavigationLeaveStateSource<Name>,
