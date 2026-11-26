@@ -1,11 +1,6 @@
 import { installReceiptFixturePlatform } from '../testSupport/conversationReceiptFixturePlatform';
-import { act, fireEvent, render, screen } from '@testing-library/react-native';
-import { ConversationScreen } from '../../../ragConversation/ConversationScreen';
-import {
-  ConversationSessionsProvider,
-  useConversationSessions,
-} from '../../../ragConversation/ConversationSessionsContext';
-import { createConversationSessionRetention } from '../../../ragConversation/conversationSessionRetention';
+import { fireEvent, screen } from '@testing-library/react-native';
+import { mountVisibleAnswerReceiptFixture } from '../testSupport/mountVisibleAnswerReceiptFixture';
 import type { runRagConversationTurn } from '../../../ragConversation/service';
 import { createRagConversationService } from '../ragConversationService';
 import { apple, localData } from '../featureServiceFixtures';
@@ -214,56 +209,21 @@ test('a mounted composer renders only the selected local tool commit receipt', a
     ragRunner: runner,
   });
   const restorePlatform = installReceiptFixturePlatform(() => {});
-  const retention = createConversationSessionRetention({
-    openStorage: async () => f.storage,
-    createId: () => request.id,
-    now: () => request.createdAt,
+  const view = await mountVisibleAnswerReceiptFixture({
+    storage: f.storage,
+    previous,
+    request,
+    answer: text,
+    onSend: (question, history, signal, observer) =>
+      send(question, history, signal, {
+        ...observer,
+        inputOrigin: 'composer',
+        confirmHistorySave: f.confirm,
+        protectedLocalInput: true,
+        suppressContextualOpening: true,
+      }),
   });
-  let sessions: ReturnType<typeof useConversationSessions> | undefined;
-  function CaptureSessions() {
-    sessions = useConversationSessions();
-    return null;
-  }
-  const view = await render(
-    <ConversationSessionsProvider
-      options={{
-        retention,
-        // Use the same prior identity in visible history and protected SQLite.
-        restoreSession: async () => [
-          {
-            question: previous.question,
-            answer: text,
-            citations: [],
-            completion: 'complete',
-            toolMessageId: previous.id,
-          },
-        ],
-      }}
-    >
-      <CaptureSessions />
-      <ConversationScreen
-        onBack={jest.fn()}
-        onOpenSource={jest.fn()}
-        onSend={(question, history, signal, observer) =>
-          send(question, history, signal, {
-            ...observer,
-            inputOrigin: 'composer',
-            confirmHistorySave: f.confirm,
-            protectedLocalInput: true,
-            suppressContextualOpening: true,
-          })
-        }
-      />
-    </ConversationSessionsProvider>,
-  );
   try {
-    await act(async () => {
-      await sessions!.attachExisting(
-        previous.sessionId,
-        previous.sessionVersion,
-        previous.createdAt,
-      );
-    });
     expect(await screen.findByText(text)).toBeTruthy();
     await fireEvent.changeText(
       screen.getByTestId('rag-conversation-input'),
