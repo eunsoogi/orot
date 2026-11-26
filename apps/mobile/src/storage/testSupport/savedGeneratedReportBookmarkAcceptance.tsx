@@ -5,7 +5,7 @@ import {
   waitFor,
 } from '@testing-library/react-native';
 import { Alert, AppState } from 'react-native';
-import { conversationHealthSummaryBookmarkAction } from '../../aiFeatures/integration/conversationHealthSummaryBookmarkAction';
+import { runDailyReportBookmarkGraphFixture } from './runDailyReportBookmarkGraphFixture';
 import { ConversationScreen } from '../../ragConversation/ConversationScreen';
 import {
   ConversationSessionsProvider,
@@ -68,31 +68,9 @@ export async function expectReportBookmarkMounted(
     ReturnType<React.ComponentProps<typeof ConversationScreen>['onSend']>,
     Parameters<React.ComponentProps<typeof ConversationScreen>['onSend']>
   >(async (_question, _history, signal, observer) => {
-    const tool = conversationHealthSummaryBookmarkAction({
-      ...observer,
-      confirmHistorySave: confirm,
-    });
-    const action = tool.actions[0]!;
-    expect(action.id).toBe('remember-daily-report');
-    expect(observer?.reportBookmark?.artifactId).toBe(historical.id);
-    expect(
-      action.parseInput({ target: 'preceding_health_summary' }),
-    ).toBeUndefined();
-    expect(
-      action.parseInput({
-        target: 'preceding_daily_report',
-        artifactId: 'model-selected',
-      }),
-    ).toBeUndefined();
-    const input = action.parseInput({ target: 'preceding_daily_report' })!;
-    expect(await action.authorize(input, signal!)).toBe(true);
-    await action.execute({
-      input,
-      signal: signal!,
-      operationRunId: 'run',
-      operationKey: 'op',
-    });
-    expect(tool.committed()).toBe(true);
+    if (!observer || !signal) throw new Error('Owned Composer turn is missing');
+    expect(observer.reportBookmark?.artifactId).toBe(historical.id);
+    await runDailyReportBookmarkGraphFixture(observer, confirm, signal);
     return {
       status: 'answer',
       answer: 'Synthetic committed receipt',

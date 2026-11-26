@@ -43,8 +43,9 @@ export function conversationMutationExecution(input: {
   const admittedQuestions = history.priorTurns.map(turn => turn.question);
   const localModel =
     selected.provider.id === APPLE_PROVIDER_ID && !selected.remoteProcessing;
+  const runId = baseExecution.execution.operationRunId;
   const reportBookmark =
-    localModel && conversationHealthSummaryBookmarkAction(observer);
+    localModel && conversationHealthSummaryBookmarkAction(observer, runId);
   const entry =
     typeof input.remoteMemory === 'object' ? input.remoteMemory : undefined;
   // A consumed shortcut can leave plain Conversation entry metadata behind.
@@ -63,7 +64,6 @@ export function conversationMutationExecution(input: {
   const remoteOwner = allowRemoteAnswer
     ? conversationAnswerMemoryProviderOwner(selected, observer)
     : undefined;
-  const runId = baseExecution.execution.operationRunId;
   const terminal =
     remoteOwner && runId ? { owner: remoteOwner, runId } : undefined;
   const authoredMemory =
@@ -102,6 +102,9 @@ export function conversationMutationExecution(input: {
       : undefined;
   const confirmAuthored = authoredMemory && authoredMemory.confirmTerminal;
   const confirmAnswer = answerMemory ? answerMemory.confirmTerminal : undefined;
+  const confirmReport = reportBookmark
+    ? reportBookmark.confirmTerminal
+    : undefined;
   type TerminalOffer = Parameters<
     NonNullable<
       ReturnType<typeof conversationAuthoredMemoryAction>['confirmTerminal']
@@ -109,14 +112,16 @@ export function conversationMutationExecution(input: {
   >[0];
   const execution = {
     ...baseExecution,
-    ...(confirmAuthored || confirmAnswer || priorAuthored
+    ...(confirmAuthored || confirmAnswer || priorAuthored || confirmReport
       ? {
           confirmTerminalLocalAction: async (offer: TerminalOffer) =>
             offer.toolId === 'remember-current-user-statement'
               ? confirmAuthored?.(offer)
               : offer.toolId === priorAuthored?.action.id
                 ? priorAuthored.confirmTerminal(offer)
-                : confirmAnswer?.(offer),
+                : offer.toolId === 'remember-daily-report'
+                  ? confirmReport?.(offer)
+                  : confirmAnswer?.(offer),
         }
       : {}),
     actions: [
