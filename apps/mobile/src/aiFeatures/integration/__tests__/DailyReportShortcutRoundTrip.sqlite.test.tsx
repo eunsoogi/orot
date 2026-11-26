@@ -1,4 +1,4 @@
-import { fireEvent, screen, waitFor } from '@testing-library/react-native';
+import { act, fireEvent, screen, waitFor } from '@testing-library/react-native';
 import {
   createRecordRepository,
   createManualHistoryRepository,
@@ -13,6 +13,11 @@ import { dailyConversationReportHeadings } from '../../../ragConversation/dailyC
 import { createConversationArtifactStorage } from '../../../storage/conversationArtifactStorage';
 import { createSummaryArtifactDiscovery } from '../summaryArtifactDiscovery';
 import { createSymptomSummaryStorage } from '../../../storage/symptomSummaryStorage';
+import {
+  providerSuccess,
+  type LanguageModelExecutionOptions,
+  type LanguageModelRequest,
+} from '@orot/model-runtime';
 import type { AiFeatureLocalData } from '../localData';
 
 jest.mock(
@@ -21,11 +26,53 @@ jest.mock(
 );
 jest.mock('../openDailyReportDatabase');
 
-test('real Daily shortcut writes its protected report and reopens the same template without regeneration', async () => {
-  const generate = jest.fn().mockResolvedValue({
-    ok: true,
-    value: { text: '{"indexes":[0]}', toolCalls: [], finishReason: 'complete' },
+function held() {
+  let release!: () => void;
+  const done = new Promise<void>(resolve => {
+    release = resolve;
   });
+  return { done, release };
+}
+
+test('real Daily shortcut separates lookup, dispatch, verified receipt and visible Read before durable reopen', async () => {
+  const lookup = held();
+  const completion = held();
+  const milestones: { stage: string; elapsed: number }[] = [];
+  const started = performance.now();
+  const mark = (stage: string) =>
+    milestones.push({ stage, elapsed: performance.now() - started });
+  const stages = () => milestones.map(item => item.stage);
+  let acknowledge: (() => void) | undefined;
+  const generate = jest.fn(
+    async (
+      request: LanguageModelRequest,
+      options?: LanguageModelExecutionOptions,
+    ) => {
+      const message = request.messages.find(item => item.role === 'user');
+      let facts: unknown;
+      try {
+        if (typeof message?.content === 'string')
+          facts = JSON.parse(message.content).facts;
+      } catch {
+        /* The optional opening is plain text. */
+      }
+      if (!Array.isArray(facts))
+        return providerSuccess({
+          text: '',
+          toolCalls: [],
+          finishReason: 'complete' as const,
+        });
+      mark('provider-dispatch');
+      acknowledge = options?.onResponseStarted;
+      await completion.done;
+      mark('final-output');
+      return providerSuccess({
+        text: '{"indexes":[0]}',
+        toolCalls: [],
+        finishReason: 'complete' as const,
+      });
+    },
+  );
   const provider = { ...apple.provider, generate, stream: undefined };
   const consent = { authorize: jest.fn(async () => 'authorized' as const) };
   const feature = await createMountedShortcutRoundTrip(async database => {
@@ -73,7 +120,40 @@ test('real Daily shortcut writes its protected report and reopens the same templ
   try {
     await feature.mount();
 
+    const database = feature.database();
+    jest.mocked(openDailyReportDatabase).mockImplementationOnce(async () => {
+      mark('lookup-entered');
+      await lookup.done;
+      mark('lookup-unblocked');
+      return database;
+    });
+    mark('tap');
     await fireEvent.press(screen.getByTestId('daily-report-request'));
+    await waitFor(() => expect(stages()).toEqual(['tap', 'lookup-entered']));
+    const outgoing = () => screen.getByTestId('conversation-message-receipt');
+    expect(outgoing()).toHaveTextContent(/전송 중/);
+    expect(generate).not.toHaveBeenCalled();
+
+    await act(async () => lookup.release());
+    await waitFor(() => expect(acknowledge).toBeDefined());
+    expect(stages()).toEqual([
+      'tap',
+      'lookup-entered',
+      'lookup-unblocked',
+      'provider-dispatch',
+    ]);
+    expect(outgoing()).toHaveTextContent(/보냄/);
+    expect(outgoing()).not.toHaveTextContent(/읽음/);
+
+    await act(async () => {
+      mark('verified-response-start');
+      acknowledge!();
+    });
+    await waitFor(() => expect(outgoing()).toHaveTextContent(/읽음/));
+    mark('mounted-read');
+    expect(screen.queryByText('오늘 기록의 흐름')).toBeNull();
+    expect(stages()).not.toContain('final-output');
+    await act(async () => completion.release());
 
     const heading = '오늘 기록의 흐름';
     expect(await screen.findByText(heading)).toBeVisible();
@@ -99,7 +179,24 @@ test('real Daily shortcut writes its protected report and reopens the same templ
     for (const label of expectedHeadings)
       expect(screen.getByText(label)).toBeVisible();
     expect(generate).toHaveBeenCalledTimes(attempts);
+    expect(stages()).toEqual([
+      'tap',
+      'lookup-entered',
+      'lookup-unblocked',
+      'provider-dispatch',
+      'verified-response-start',
+      'mounted-read',
+      'final-output',
+    ]);
+    expect(
+      milestones.every(
+        (item, index) =>
+          index === 0 || item.elapsed >= milestones[index - 1]!.elapsed,
+      ),
+    ).toBe(true);
   } finally {
+    lookup.release();
+    completion.release();
     await feature.close();
   }
 });
