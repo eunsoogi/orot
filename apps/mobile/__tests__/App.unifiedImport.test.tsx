@@ -45,7 +45,7 @@ jest.mock(
 
 const appleOption = createAppleSelectionOption('available');
 
-test('keeps imported records in Records and reclassifies a saved appointment only after an explicit action', async () => {
+test('keeps imported records in Records and reuses saved classification on explicit reconfirmation', async () => {
   const opened = openSqliteTestDatabase(':memory:');
 
   try {
@@ -188,13 +188,13 @@ test('keeps imported records in Records and reclassifies a saved appointment onl
     expect(classify).not.toHaveBeenCalled();
 
     await fireEvent.press(view.getByTestId('medical-appointment-import'));
-    await waitFor(() => expect(classify).toHaveBeenCalledTimes(1));
     await waitFor(() =>
       expect(reconfirmCalendarEvent).toHaveBeenCalledWith(
         originalAppointment.id,
         event,
       ),
     );
+    expect(classify).not.toHaveBeenCalled();
 
     const finalAppointments = await appointments.list();
     expect(finalAppointments).toHaveLength(1);
