@@ -94,6 +94,11 @@ test('keeps one primary recording action and every existing Records destination'
   const rows = within(conversation).getAllByRole('button');
   expect(rows).toHaveLength(2);
   expect(within(rows[0]).getByText('기억')).toBeTruthy();
+  expect(
+    within(rows[0]).getByText(
+      '과거 건강 기록과 대화에서 저장한 기억을 확인해요.',
+    ),
+  ).toBeTruthy();
   expect(within(rows[1]).getByText('대화에서 생성한 자료')).toBeTruthy();
   expect(StyleSheet.flatten(rows[0].props.style)).toEqual(
     StyleSheet.flatten(
