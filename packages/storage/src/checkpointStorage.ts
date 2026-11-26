@@ -3,6 +3,7 @@ import { createSchema, readCheckpoint, readText, readWrite } from './checkpointS
 import {
   bindCheckpointSource,
   createSourceLinkedCheckpointIntegrity,
+  readSourceLinkedCheckpoint,
 } from './sourceLinkedCheckpoints';
 
 export interface StoredCheckpoint {
@@ -100,6 +101,18 @@ export function createLangGraphCheckpointStorage(
     };
   }
 
+  async function readWithOwner<T>(
+    threadId: string,
+    absent: T,
+    read: (executor: SqlExecutor) => Promise<T>,
+  ): Promise<T> {
+    if (options.sourceRecordId === undefined) {
+      await ensureSchema();
+      return read(database);
+    }
+    return readSourceLinkedCheckpoint(database, threadId, options.sourceRecordId, absent, read);
+  }
+
   return {
     ensureSchema,
 
@@ -168,51 +181,53 @@ export function createLangGraphCheckpointStorage(
     },
 
     async loadCheckpoint(threadId, namespace, checkpointId) {
-      await ensureSchema();
-      const byId = checkpointId !== undefined;
-      const rows = await database.execute(
-        `SELECT checkpoint_ns, checkpoint_id, parent_checkpoint_id, checkpoint_type,
+      return readWithOwner<CheckpointBundle | undefined>(threadId, undefined, async (executor) => {
+        const byId = checkpointId !== undefined;
+        const rows = await executor.execute(
+          `SELECT checkpoint_ns, checkpoint_id, parent_checkpoint_id, checkpoint_type,
                 checkpoint, metadata_type, metadata
          FROM langgraph_checkpoints
          WHERE thread_id = ? AND checkpoint_ns = ?
            ${byId ? 'AND checkpoint_id = ?' : ''}
          ORDER BY checkpoint_id DESC LIMIT 1`,
-        byId ? [threadId, namespace, checkpointId!] : [threadId, namespace],
-      );
-      const row = rows.rows[0];
-      return row ? readBundle(database, threadId, namespace, row) : undefined;
+          byId ? [threadId, namespace, checkpointId!] : [threadId, namespace],
+        );
+        const row = rows.rows[0];
+        return row ? readBundle(executor, threadId, namespace, row) : undefined;
+      });
     },
 
     async listCheckpoints(threadId, namespace, beforeCheckpointId, limit) {
-      await ensureSchema();
-      const clauses = ['thread_id = ?'];
-      const parameters: SqlValue[] = [threadId];
-      if (namespace !== undefined) {
-        clauses.push('checkpoint_ns = ?');
-        parameters.push(namespace);
-      }
-      if (beforeCheckpointId !== undefined) {
-        clauses.push('checkpoint_id < ?');
-        parameters.push(beforeCheckpointId);
-      }
-      const boundedLimit = limit === undefined ? undefined : Math.max(0, Math.floor(limit));
-      const limitSql = boundedLimit === undefined ? '' : ' LIMIT ?';
-      if (boundedLimit !== undefined) parameters.push(boundedLimit);
-      const result = await database.execute(
-        `SELECT checkpoint_ns, checkpoint_id, parent_checkpoint_id, checkpoint_type,
+      return readWithOwner<CheckpointBundle[]>(threadId, [], async (executor) => {
+        const clauses = ['thread_id = ?'];
+        const parameters: SqlValue[] = [threadId];
+        if (namespace !== undefined) {
+          clauses.push('checkpoint_ns = ?');
+          parameters.push(namespace);
+        }
+        if (beforeCheckpointId !== undefined) {
+          clauses.push('checkpoint_id < ?');
+          parameters.push(beforeCheckpointId);
+        }
+        const boundedLimit = limit === undefined ? undefined : Math.max(0, Math.floor(limit));
+        const limitSql = boundedLimit === undefined ? '' : ' LIMIT ?';
+        if (boundedLimit !== undefined) parameters.push(boundedLimit);
+        const result = await executor.execute(
+          `SELECT checkpoint_ns, checkpoint_id, parent_checkpoint_id, checkpoint_type,
                 checkpoint, metadata_type, metadata
          FROM langgraph_checkpoints
          WHERE ${clauses.join(' AND ')}
          ORDER BY checkpoint_id DESC${limitSql}`,
-        parameters,
-      );
-      const bundles: CheckpointBundle[] = [];
-      for (const value of result.rows) {
-        bundles.push(
-          await readBundle(database, threadId, readText(value, 'checkpoint_ns') ?? '', value),
+          parameters,
         );
-      }
-      return bundles;
+        const bundles: CheckpointBundle[] = [];
+        for (const value of result.rows) {
+          bundles.push(
+            await readBundle(executor, threadId, readText(value, 'checkpoint_ns') ?? '', value),
+          );
+        }
+        return bundles;
+      });
     },
 
     async deleteThread(threadId) {
