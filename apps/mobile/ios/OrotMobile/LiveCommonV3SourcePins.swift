@@ -105,3 +105,107 @@ extension LiveCanonicalContextV3Transport {
         ]
     }
 }
+
+/// Only exact native V3 delegation-created events enter this serial ledger.
+/// No per-call tool count: the parser independently bounds retained replay identities.
+struct LiveV3SerialTransitions {
+    enum Decision { case allow, replay, deny }
+    let reserve: (LiveResponsesAdmission.Owner, String, String, Int, Bool) -> Decision
+    let stale: (String) -> Bool
+    let allowsFreshSpeech: (Bool) -> Bool
+    let rememberFunction: (String) -> Bool
+}
+
+@MainActor
+final class LiveV3SerialLedger {
+    private var seen: [String: String] = [:]
+    private var responses = Set<String>()
+    private var functions = Set<String>()
+    private var active: (id: String, offset: Int)?
+
+    func reserve(_ id: String, response: String, offset: Int, mayReplace: () -> Bool) -> LiveV3SerialTransitions.Decision {
+        if let prior = seen[id] {
+            return prior == response ? .replay : .deny
+        }
+        guard !responses.contains(response) else { return .deny }
+        if let active, offset < active.offset || !mayReplace() {
+            return .deny
+        }
+        seen[id] = response
+        responses.insert(response)
+        active = (id, offset)
+        return .allow
+    }
+
+    func stale(_ id: String) -> Bool {
+        seen[id] != nil && active?.id != id
+    }
+
+    func rememberFunction(_ id: String) -> Bool {
+        functions.insert(id).inserted
+    }
+}
+
+/// Native transports only identifiers and a separately approved JS reply. It never reads
+/// health stores or interprets model arguments as a delegated action or user authorization.
+extension RealtimeVoiceCall {
+    func cancelTools(keepInput: Bool = false) {
+        if let tool = tools.invalidate(keepInput: keepInput), let id {
+            emit("VoiceRealtimeToolCancelled", ["callId": id, "toolCallId": tool])
+        }
+    }
+
+    func receiveTool(_ event: [String: Any]) {
+        guard !paused, ready, let responseID = event["response_id"] as? String,
+              responseID == response, !ignoredResponses.contains(responseID),
+              let toolCallID = event["call_id"] as? String, let name = event["name"] as? String,
+              let arguments = event["arguments"] as? String else { return }
+        tools.receive(responseID: responseID, toolCallID: toolCallID, name: name, arguments: arguments)
+    }
+
+    func completeTools(_ result: [String: Any]?) {
+        guard let result, let responseID = result["id"] as? String else { return }
+        let successful = result["status"] as? String == "completed" && !paused && ready
+        guard let request = tools.complete(responseID, successful: successful), let id else { return }
+        emit("VoiceRealtimeToolCall", ["callId": id, "responseId": request.responseID,
+                                       "toolCallId": request.toolCallID, "inputItemId": request.inputItemID])
+    }
+
+    /// The new tool port accepts only the exact current Live call, plus its separate native grant.
+    func enqueueManagedToolFrames(
+        _ frames: [[String: Any]], callID: String, sessionID: String, socketEpoch: UUID,
+        approvedCurrent: @escaping () -> Bool,
+        ticket: LiveNativeResultDispatchAuthority.Ticket? = nil,
+    ) -> Bool {
+        let owns = { [weak self] in
+            guard let self else { return false }
+            return id == callID && liveSessionID == sessionID && liveSocketEpoch == socketEpoch
+                && token != nil && ready && !paused && foreground() && liveIsCurrent()
+        }
+        let current = { owns() && approvedCurrent() && owns() }
+        if let ticket {
+            return socket.sendTicketedToolFrames(frames, current: current, ticket: ticket)
+        }
+        return socket.sendManagedToolFrames(frames, current: current)
+    }
+}
+
+extension LiveCanonicalContextV3Transport {
+    static func bounded(_ value: Any, depth: Int = 0) -> Bool {
+        guard depth <= 16 else { return false }
+        if let object = value as? [String: Any] {
+            return object.count <= 12 && object.allSatisfy { $0.key.utf8.count <= 64 && bounded($0.value, depth: depth + 1) }
+        }
+        if let list = value as? [Any] {
+            return list.count <= 5 && list.allSatisfy { bounded($0, depth: depth + 1) }
+        }
+        if let value = value as? String {
+            return value.utf8.count <= 2048
+        }
+        return value is NSNumber
+    }
+
+    static func json(_ value: [String: Any]) -> Data? {
+        try? JSONSerialization.data(withJSONObject: value, options: [.sortedKeys])
+    }
+}

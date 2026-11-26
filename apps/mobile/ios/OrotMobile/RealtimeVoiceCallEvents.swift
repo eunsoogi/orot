@@ -170,6 +170,7 @@ struct LiveResponsesAdmission {
     var observeTiming: ((LiveManagedToolLatency, UInt64) -> Void)?
     // Constructed by the separate native companion mailbox; no fallback schema.
     var canonicalConfiguration: (() -> [String: Any]?)?
+    var serialV3: LiveV3SerialTransitions?
 
     static func validAggregate(_ output: String, days: Int?) -> Bool {
         guard output.utf8.count <= 512,

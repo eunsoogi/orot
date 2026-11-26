@@ -23,6 +23,7 @@ final class LiveCanonicalContextV3Transport {
     private var pending: (request: Request, ticket: Ticket)?
     private var used = false
     private var settling = false
+    private var wireAcknowledged = false
     private var bridgeDelivery: ((String?) -> Void)?
     private weak var bridgePins: LiveCommonV3SourcePins?
     private var retired = false
@@ -151,6 +152,7 @@ final class LiveCanonicalContextV3Transport {
 
     func bridge(pins: LiveCommonV3SourcePins, emit: @escaping (String, [String: Any]) -> Void) -> LiveResponsesAdmission {
         bridgePins = pins
+        let ledger = LiveV3SerialLedger()
         let allowed = { [weak self] in
             guard let self else { return false }
             if let acknowledged {
@@ -175,13 +177,21 @@ final class LiveCanonicalContextV3Transport {
             mayDisclose: { [weak self] in self?.bridgeTicket($0, $1) != nil },
             dispatchTicket: { [weak self] in self?.bridgeTicket($0, $1) },
             retireDispatch: { [weak self] in
-                if let challenge = self?.pending?.ticket.challenge {
+                if self?.wireAcknowledged == false, let challenge = self?.pending?.ticket.challenge {
                     pins.retire(call: self?.call ?? "", challenge: challenge)
                     emit("VoiceRealtimeCommonToolCancelled", ["callId": self?.call ?? "", "challengeId": challenge])
                 }
                 self?.retire()
             },
             canonicalConfiguration: { [weak self] in self?.configurationForStartup() },
+            serialV3: LiveV3SerialTransitions(
+                reserve: { [weak self] owner, id, response, offset, empty in
+                    guard let self, acknowledged == owner, isCurrent(owner) else { return .deny }
+                    return ledger.reserve(id, response: response, offset: offset) { self.advance(empty: empty) }
+                },
+                stale: ledger.stale, allowsFreshSpeech: { [weak self] in self?.canAdvance(empty: $0) == true },
+                rememberFunction: ledger.rememberFunction,
+            ),
         )
     }
 
@@ -191,12 +201,28 @@ final class LiveCanonicalContextV3Transport {
         settling = true
         bridgeDelivery = nil
         guard let exact, RealtimeVoiceCanonicalHealthAdmission.validResult(exact), bridgeTicket(pending.request, exact) != nil,
-              pending.ticket.bind({ [weak pins = bridgePins] accepted in
+              pending.ticket.bind({ [weak self, weak pins = bridgePins] accepted in
+                  if accepted, let self, self.pending?.ticket.challenge == challenge {
+                      wireAcknowledged = true
+                  }
                   pins?.retire(call: callId, challenge: challenge)
                   completion(accepted)
               })
         else { retire(); deliver(nil); completion(false); return }
         deliver(exact)
+    }
+
+    private func canAdvance(empty: Bool) -> Bool {
+        wireAcknowledged || (empty && !used && pending == nil)
+    }
+
+    private func advance(empty: Bool) -> Bool {
+        guard canAdvance(empty: empty) else { return false }
+        pending = nil
+        used = false
+        settling = false
+        wireAcknowledged = false
+        return true
     }
 
     private func bridgeTicket(_ request: Request, _ exact: String) -> Ticket? {
@@ -211,23 +237,5 @@ final class LiveCanonicalContextV3Transport {
          "backendModel": value.backendModel, "grantID": value.grantID, "generation": value.generation,
          "credentialEpoch": value.credentialEpoch, "voiceGeneration": value.voiceGeneration,
          "manifestRevision": revision, "tools": [stock]]
-    }
-
-    private static func bounded(_ value: Any, depth: Int = 0) -> Bool {
-        guard depth <= 16 else { return false }
-        if let object = value as? [String: Any] {
-            return object.count <= 12 && object.allSatisfy { $0.key.utf8.count <= 64 && bounded($0.value, depth: depth + 1) }
-        }
-        if let list = value as? [Any] {
-            return list.count <= 5 && list.allSatisfy { bounded($0, depth: depth + 1) }
-        }
-        if let value = value as? String {
-            return value.utf8.count <= 2048
-        }
-        return value is NSNumber
-    }
-
-    private static func json(_ value: [String: Any]) -> Data? {
-        try? JSONSerialization.data(withJSONObject: value, options: [.sortedKeys])
     }
 }

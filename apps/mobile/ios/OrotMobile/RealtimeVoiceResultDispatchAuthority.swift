@@ -15,11 +15,12 @@ final class LiveNativeResultDispatchAuthority: @unchecked Sendable {
     }
 
     final class Ticket: @unchecked Sendable {
-        private enum Phase { case pending, claimed, output, finished, retired }
+        private enum Phase { case pending, claimed, output, awaitingWire, finished, retired }
         private let lock = NSLock()
         let call: String
         let challenge: String
         let resultKind: ResultKind
+        let requiresWireReceipt: Bool
         private var phase = Phase.pending
         private struct Resolver: @unchecked Sendable { let call: (Bool) -> Void }
         private var completion: Resolver?
@@ -27,10 +28,11 @@ final class LiveNativeResultDispatchAuthority: @unchecked Sendable {
         private var deadline: DispatchWorkItem?
         private var deadlineAt: DispatchTime?
 
-        fileprivate init(call: String, challenge: String, resultKind: ResultKind) {
+        fileprivate init(call: String, challenge: String, resultKind: ResultKind, requiresWireReceipt: Bool) {
             self.call = call
             self.challenge = challenge
             self.resultKind = resultKind
+            self.requiresWireReceipt = requiresWireReceipt
         }
 
         func claim() -> Bool {
@@ -76,10 +78,11 @@ final class LiveNativeResultDispatchAuthority: @unchecked Sendable {
                 return false
             }
             let last = phase == .output
-            phase = last ? .finished : .output
+            phase = last ? (requiresWireReceipt ? .awaitingWire : .finished) : .output
             send()
-            let callback = last ? completion : nil
-            if last {
+            let settled = last && !requiresWireReceipt
+            let callback = settled ? completion : nil
+            if settled {
                 completion = nil
                 queueRetirement = nil
                 deadline?.cancel()
@@ -91,12 +94,27 @@ final class LiveNativeResultDispatchAuthority: @unchecked Sendable {
             return true
         }
 
+        func acknowledgeWire() -> Bool {
+            lock.lock()
+            guard phase == .awaitingWire, let deadlineAt, DispatchTime.now() < deadlineAt else { lock.unlock(); return false }
+            phase = .finished
+            let callback = completion
+            completion = nil
+            queueRetirement = nil
+            deadline?.cancel()
+            deadline = nil
+            self.deadlineAt = nil
+            lock.unlock()
+            callback?.call(true)
+            return true
+        }
+
         func retire() {
             lock.lock()
             guard phase != .finished, phase != .retired else { lock.unlock(); return }
             let callback = completion
             let observer = queueRetirement
-            let partial = phase == .output
+            let partial = phase == .output || phase == .awaitingWire
             completion = nil
             queueRetirement = nil
             deadline?.cancel()
@@ -133,11 +151,11 @@ final class LiveNativeResultDispatchAuthority: @unchecked Sendable {
     /// Common V3 owns a separate authority instance and can mint only the stock canonical result ticket.
     func beginV3Canonical(call: String, challenge: String, current: () -> Bool) -> Ticket? {
         guard current() else { return nil }
-        return install(call: call, challenge: challenge, resultKind: .canonicalHealth)
+        return install(call: call, challenge: challenge, resultKind: .canonicalHealth, requiresWireReceipt: true)
     }
 
-    private func install(call: String, challenge: String, resultKind: ResultKind) -> Ticket {
-        let next = Ticket(call: call, challenge: challenge, resultKind: resultKind)
+    private func install(call: String, challenge: String, resultKind: ResultKind, requiresWireReceipt: Bool = false) -> Ticket {
+        let next = Ticket(call: call, challenge: challenge, resultKind: resultKind, requiresWireReceipt: requiresWireReceipt)
         lock.lock()
         let old = current
         current = next

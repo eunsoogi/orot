@@ -153,7 +153,7 @@ export function nativeLiveCommonConversation() {
       let sessionId: string | undefined;
       const stamp = stable(registration);
       const ready = subscribe('VoiceRealtimeCommonToolsReady', event => {
-        if (!record(event) || event.callId !== callId) return;
+        if (sessionId || !record(event) || event.callId !== callId) return;
         sessionId =
           identifier(event.sessionId) && stable(event.registration) === stamp
             ? event.sessionId

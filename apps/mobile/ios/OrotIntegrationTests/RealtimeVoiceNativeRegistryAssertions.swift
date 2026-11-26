@@ -110,7 +110,15 @@ enum RealtimeVoiceNativeRegistryAssertions {
                 if mode == "retired" {
                     factory.retire(callId: owner.callID, challenge: challenge)
                 }
-                task.writes.removeFirst()(nil)
+                if mode == "allowed" {
+                    let continuation = expectation(description: "held socket continuation")
+                    task.onContinuation = { continuation.fulfill() }
+                    task.writes.removeFirst()(nil)
+                    await fulfillment(of: [continuation], timeout: 1)
+                    task.writes.removeFirst()(nil)
+                } else {
+                    task.writes.removeFirst()(nil)
+                }
                 await fulfillment(of: [settled], timeout: 1)
                 XCTAssertEqual(task.types, mode == "allowed" ? ["response.item.create", "response.create"] : ["response.item.create"])
                 XCTAssertEqual(receipts, [mode == "allowed"])
@@ -121,10 +129,15 @@ enum RealtimeVoiceNativeRegistryAssertions {
     private final class CommonV3NetworklessSocketTask: RealtimeVoiceSocketTask {
         var writes: [@Sendable (Error?) -> Void] = []
         var types: [String] = []
+        var onContinuation: (() -> Void)?
         func resume() {}
         func send(_ message: URLSessionWebSocketTask.Message, completionHandler: @escaping @Sendable (Error?) -> Void) {
-            types.append(RealtimeVoiceSocket.decodeSocketEvent(message)?["type"] as? String ?? "")
+            let type = RealtimeVoiceSocket.decodeSocketEvent(message)?["type"] as? String ?? ""
+            types.append(type)
             writes.append(completionHandler)
+            if type == "response.create" {
+                onContinuation?()
+            }
         }
 
         func receive(completionHandler _: @escaping @Sendable (Result<URLSessionWebSocketTask.Message, Error>) -> Void) {}

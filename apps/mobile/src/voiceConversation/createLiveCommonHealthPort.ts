@@ -124,6 +124,7 @@ export function createLiveCommonHealthPort(input: {
             if (!tool || !owns(call)) return;
             accept({
               owner: batch.owner,
+              queuedCurrent: () => owns(call),
               utterance: { kind: 'context-free', current: () => owns(call) },
               nativeChallengeCurrent: candidate =>
                 stable(candidate) === stable(call) && owns(call),

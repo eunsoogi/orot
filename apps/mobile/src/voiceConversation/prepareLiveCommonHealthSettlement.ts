@@ -88,6 +88,7 @@ async function prepare({
       signal.addEventListener('abort', abort, { once: true });
       const revoke = grant.subscribeInvalidation(abort);
       if (signal.aborted) abort();
+      let delivered = false;
       try {
         await stageLiveResponsesResult({
           id: call.toolCallId,
@@ -119,7 +120,7 @@ async function prepare({
           stop.signal.addEventListener('abort', retire, { once: true });
           try {
             if (owns(call) && !stop.signal.aborted && proof.current())
-              await native.settle(call, bytes);
+              delivered = await native.settle(call, bytes);
           } finally {
             stop.signal.removeEventListener('abort', retire);
             retire();
@@ -129,6 +130,7 @@ async function prepare({
         revoke();
         signal.removeEventListener('abort', abort);
       }
+      return delivered;
     },
   };
 }
