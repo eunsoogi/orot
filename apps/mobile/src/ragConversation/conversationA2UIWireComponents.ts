@@ -48,7 +48,7 @@ export function parseComponents(
   allowStaticCatalog: boolean,
   allowAlignment: boolean,
   allowRowWeight = false,
-  allowListDirection: boolean | 'vertical_align' = false,
+  allowListDirection: boolean | 'vertical_align' | 'cross_align' = false,
 ): WireNode[] {
   if (!Array.isArray(value) || value.length === 0 || value.length > maxNodes)
     fail();
@@ -135,9 +135,10 @@ export function parseComponents(
     const supportsAlignment = allowAlignment && component !== 'List';
     const supportsDirection = allowListDirection && component === 'List';
     const supportsListAlign =
-      allowListDirection === 'vertical_align' &&
       component === 'List' &&
-      node.direction !== 'horizontal';
+      (allowListDirection === 'cross_align' ||
+        (allowListDirection === 'vertical_align' &&
+          node.direction !== 'horizontal'));
     keys(node, [
       'id',
       'component',

@@ -119,10 +119,15 @@ export function storeConversationA2UILayout(
     if (!children.every((child): child is Shape => child !== undefined)) return;
     if (hasAlignment) {
       const kind = value.component;
-      if (kind === 'Card' || horizontal) return;
+      if (kind === 'Card') return;
       const list = kind === 'List';
       const layout = readArchivedA2UIAlignment(value.alignment, list);
       if (!layout) return;
+      // Reopen the existing static strip. Its cross-axis hint is live-only.
+      if (horizontal) {
+        raise(6);
+        return ['HorizontalList', ...children];
+      }
       raise(list ? 7 : 4);
       return [
         'Aligned',

@@ -89,7 +89,7 @@ export function acceptConversationA2UIFrameSequence(
   allowStaticCatalog = false,
   allowAlignment = false,
   allowRowWeight = false,
-  allowListDirection: boolean | 'vertical_align' = false,
+  allowListDirection: boolean | 'vertical_align' | 'cross_align' = false,
   readProse = conversationA2UIFrameProse,
   allowStructuralRetirement = false,
 ): ConversationA2UINode | undefined {

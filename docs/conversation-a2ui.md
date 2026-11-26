@@ -291,3 +291,10 @@ surface can appear. This does not add actions, change opt-outs for scoped
 records or templates. Fresh v51 replies correct the required v1.0 frame version
 in JSON guidance. The owning ChatGPT Plan stream may project only neutral geometry from complete, delimited object frames before publication. Partial or
 invalid frames cannot publish answer text or controls.
+
+Fresh ordinary task v52 accepts literal Basic Catalog cross-axis alignment
+on a horizontal List: start, center, end, or stretch. The native strip uses
+the requested alignment across mixed-height cards, while compact widths and
+larger text keep the existing natural stack in answer order. Archive v6
+retains the existing read-only horizontal arrangement, not this live
+alignment hint. No change to earlier task acceptance or action permissions.

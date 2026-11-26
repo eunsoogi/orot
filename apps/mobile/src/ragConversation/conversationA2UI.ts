@@ -167,7 +167,7 @@ export function applyConversationA2UIFrame(
   allowStaticCatalog = false,
   allowAlignment = false,
   allowRowWeight = false,
-  allowListDirection: boolean | 'vertical_align' = false,
+  allowListDirection: boolean | 'vertical_align' | 'cross_align' = false,
   allowStructuralRetirement = false,
 ): ConversationA2UIState | null {
   if (
