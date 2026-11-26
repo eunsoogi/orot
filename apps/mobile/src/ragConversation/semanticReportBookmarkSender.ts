@@ -18,6 +18,8 @@ export interface BoundReportBookmark {
   readonly kind?: 'daily-report';
   readonly lease: Readonly<{ id: string; version: number }>;
   readonly current: () => boolean;
+  readonly displayedReport?: import('../storage/dailyReportMemoryBookmark').DailyReportBookmarkTarget;
+  readonly confirmProtection?: () => Promise<boolean>;
 }
 
 function latestReportCandidate(store: ConversationSessions, sessionId: number) {
@@ -83,8 +85,14 @@ export function latestReportArtifact(
 ) {
   const candidate = latestReportCandidate(store, sessionId);
   if (!candidate?.id) return;
-  if (candidate.dailyReport)
-    return { artifactId: candidate.id, kind: 'daily-report' as const };
+  if (candidate.dailyReport) {
+    const { identity, runId, revision } = candidate.dailyReport;
+    return {
+      artifactId: candidate.id,
+      kind: 'daily-report' as const,
+      displayedReport: { identityKey: identity.key, runId, revision },
+    };
+  }
   const summary = candidate.healthSummary?.analysis.savedSummary;
   if (summary?.status === 'saved' && !summary.sourceChanged)
     return { artifactId: candidate.id };

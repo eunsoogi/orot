@@ -157,18 +157,36 @@ export function conversationHealthSummaryBookmarkAction(
           current: () => current(signal),
         };
         const saved = daily
-          ? await storage.bookmarkDailyReport(parameters)
+          ? await storage.bookmarkDailyReport({
+              ...parameters,
+              ...(bookmark.confirmProtection && bookmark.displayedReport
+                ? {
+                    displayedReport: bookmark.displayedReport,
+                    confirmArchivedProtection: bookmark.confirmProtection,
+                  }
+                : {}),
+            })
           : await storage.bookmarkHealthSummary(parameters);
         if (!saved) throw new Error('The original report is unavailable.');
         if (grant.operation) {
           pending = {
             signal,
             operation: grant.operation,
-            readback: () =>
-              storage.readSavedGeneratedReportReference(
+            readback: async () => {
+              const original = await storage.readSavedGeneratedReportReference(
                 bookmark.artifactId,
                 parameters.current,
-              ),
+              );
+              const displayed =
+                bookmark.confirmProtection && bookmark.displayedReport;
+              return (
+                original &&
+                (!displayed ||
+                  (original.runId === displayed.runId &&
+                    original.revision === displayed.revision &&
+                    original.context.identity.key === displayed.identityKey))
+              );
+            },
           };
         } else {
           committed = true;

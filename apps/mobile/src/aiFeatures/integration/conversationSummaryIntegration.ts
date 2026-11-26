@@ -103,7 +103,9 @@ export function createConversationSummaryIntegration(input: {
       const protectedLocalInput =
         originalObserver?.inputOrigin === 'composer' &&
         !originalObserver.photoInput &&
-        hasConversationMemoryCommand(question);
+        ((originalObserver.protectedLocalInput === true &&
+          originalObserver.reportBookmark?.kind === 'daily-report') ||
+          hasConversationMemoryCommand(question));
       if (
         protectedLocalInput &&
         originalObserver?.expectedConversationModel?.providerId !==

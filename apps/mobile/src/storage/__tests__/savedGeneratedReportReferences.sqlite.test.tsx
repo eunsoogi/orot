@@ -2,6 +2,7 @@ import { dailyReportDeviceAuthorityFixture } from '../testSupport/dailyReportDev
 import { expectAutomaticReportReference } from '../testSupport/dailyReportAutomaticMemoryAcceptance';
 import { expectBookmarkSynchronousCommit } from '../testSupport/savedGeneratedReportCommitAcceptance';
 import { expectReportBookmarkMounted } from '../testSupport/savedGeneratedReportBookmarkAcceptance';
+import { prepareOwnedDailyBookmarkFixtureSession } from '../testSupport/dailyBookmarkDeviceSelectionFixture';
 import { HealthObservationSchema } from '@orot/domain';
 import { createRecordRepository, runMigrations } from '@orot/storage';
 import {
@@ -17,7 +18,6 @@ import { readHealthContextGeneration } from '../../healthEvidence/healthContext/
 import { fingerprint } from '../../aiFeatures/integration/evidenceUtils';
 import { createConversationArtifactStorage } from '../conversationArtifactStorage';
 import { createDailyReportStorage } from '../dailyReportStorage';
-
 jest.mock('react-native-keychain', () => ({
   ACCESSIBLE: { WHEN_UNLOCKED_THIS_DEVICE_ONLY: 'device-only' },
   getGenericPassword: jest.fn(),
@@ -29,12 +29,15 @@ jest.mock('../../agent/execution/consentGeneration', () => {
     createConsentGeneration: () => (++sequence).toString(16).padStart(64, '0'),
   };
 });
-
 jest.mock('../../memory/openSavedGeneratedReportReferences', () => ({
   openSavedGeneratedReportReferences: jest.fn(),
 }));
-
-test.each(['tap', 'explicit-local', 'semantic'] as const)(
+test.each([
+  'tap',
+  'explicit-local',
+  'semantic',
+  'semantic-exact-device',
+] as const)(
   'bookmarks the original daily report and sweeps deleted roots: %s',
   async mode => {
     const device = dailyReportDeviceAuthorityFixture();
@@ -120,13 +123,12 @@ test.each(['tap', 'explicit-local', 'semantic'] as const)(
           mode: { kind: 'initial' },
         }),
       ).toEqual({ status: 'saved' });
-
       const conversations = createConversationArtifactStorage(
         connection.database,
       );
-      await conversations.createSession(
-        'follow-up-session',
-        await conversations.currentGeneration(),
+      await prepareOwnedDailyBookmarkFixtureSession(
+        conversations,
+        mode === 'semantic-exact-device',
       );
       const historical = {
         id: 'already-committed',
@@ -141,7 +143,6 @@ test.each(['tap', 'explicit-local', 'semantic'] as const)(
         sources: [],
         citations: [],
       };
-
       await conversations.startRequest({
         id: historical.id,
         question: historical.question,
@@ -150,7 +151,6 @@ test.each(['tap', 'explicit-local', 'semantic'] as const)(
         createdAt: historical.createdAt,
       });
       await conversations.append(historical);
-
       const save = (version = 0, current = () => true) =>
         conversations.bookmarkDailyReport({
           artifactId: historical.id,

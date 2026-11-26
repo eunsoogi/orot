@@ -26,6 +26,51 @@ export function createConversationWarmAdmission(
   update: (id: number, change: Partial<ConversationSession>) => void,
 ) {
   return {
+    async prepareLocalReportModel(id: number, signal: AbortSignal) {
+      const started = epoch();
+      const lease = options.retention?.activeLease(id);
+      const native = options.execution;
+      if (
+        !lease ||
+        !options.prepareLocalReportModel ||
+        !native?.bridgeAvailable
+      )
+        return;
+      const current = () => {
+        const snapshot = store.getSnapshot();
+        const active = snapshot.sessions.find(session => session.id === id);
+        const latest = options.retention?.activeLease(id);
+        return (
+          !signal.aborted &&
+          native.currentPhase?.() === 'active' &&
+          snapshot.activeId === id &&
+          !!active &&
+          !active.quarantined &&
+          !active.leaseRefreshRequired &&
+          !active.modelSelectionPending &&
+          !active.modelSelectionFailed &&
+          !active.restoring &&
+          !active.restoreFailed &&
+          latest?.id === lease.id &&
+          latest.version === lease.version
+        );
+      };
+      if (started < 0 || !current() || !(await native.protectedDataAvailable()))
+        return;
+      const ownership = await options.prepareLocalReportModel(lease, signal);
+      if (
+        !ownership ||
+        epoch() !== started ||
+        !current() ||
+        !ownership.current() ||
+        !(await native.protectedDataAvailable()) ||
+        epoch() !== started ||
+        !current() ||
+        !ownership.current()
+      )
+        return;
+      return { ...ownership, current: () => current() && ownership.current() };
+    },
     async prepare(
       id: number,
       signal?: AbortSignal,
