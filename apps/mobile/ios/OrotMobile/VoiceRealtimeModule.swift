@@ -80,7 +80,7 @@ final class VoiceRealtimeModule: RCTEventEmitter {
                                 && call.liveSocketEpoch == request.epoch && call.ready && !call.paused
                                 && call.token != nil && call.foreground() && call.liveIsCurrent()
                         },
-                        emit: { [weak self] event, body in self?.emitCanonicalReviewEvent(event, body) }
+                        emit: { [weak self] event, body in self?.emitCanonicalReviewEvent(event, body) },
                     )
                     responsesMailbox = OwnedLiveResponsesMailbox(identifier: identifier, mode: .canonical(mailbox, grant))
                     admission = mailbox.bridge(backendModel: grant.backendModel, declaration: declaration)

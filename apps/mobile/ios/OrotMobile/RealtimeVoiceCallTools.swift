@@ -29,7 +29,7 @@ extension RealtimeVoiceCall {
     func enqueueManagedToolFrames(
         _ frames: [[String: Any]], callID: String, sessionID: String, socketEpoch: UUID,
         approvedCurrent: @escaping () -> Bool,
-        ticket: LiveNativeResultDispatchAuthority.Ticket? = nil
+        ticket: LiveNativeResultDispatchAuthority.Ticket? = nil,
     ) -> Bool {
         let owns = { [weak self] in
             guard let self else { return false }

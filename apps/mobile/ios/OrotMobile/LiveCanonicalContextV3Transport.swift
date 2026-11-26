@@ -181,7 +181,7 @@ final class LiveCanonicalContextV3Transport {
                 }
                 self?.retire()
             },
-            canonicalConfiguration: { [weak self] in self?.configurationForStartup() }
+            canonicalConfiguration: { [weak self] in self?.configurationForStartup() },
         )
     }
 

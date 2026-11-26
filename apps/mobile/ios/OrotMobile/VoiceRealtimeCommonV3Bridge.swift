@@ -35,7 +35,7 @@ extension VoiceRealtimeModule {
             },
             owns: { [weak self] owner in self?.ownsCommonV3(owner) == true },
             ownsRequest: { [weak self] request in self?.call.managedResponses?.ownsCompleted(request) == true },
-            sourceTicketCurrent: pins.matches
+            sourceTicketCurrent: pins.matches,
         ) else { return nil }
         commonV3 = transport
         return transport.bridge(pins: pins) { [weak self] event, body in self?.sendEvent(withName: event, body: body) }

@@ -44,15 +44,17 @@ RCT_EXTERN_METHOD(settingsConsentCanonicalQueueProbe : (NSString *)
                       identifier scenario : (NSString *)scenario resolver : (RCTPromiseResolveBlock)
                           resolve rejecter : (RCTPromiseRejectBlock)reject)
 #endif
-RCT_EXTERN_METHOD(readLiveCommonConversationToolsWitness : (RCTPromiseResolveBlock)resolve rejecter : (
-    RCTPromiseRejectBlock)reject)
-RCT_EXTERN__BLOCKING_SYNCHRONOUS_METHOD(claimLiveCommonConversationResult : (NSString *)call challengeId : (
-    NSString *)challenge exactOutput : (NSString *)output)
-RCT_EXTERN__BLOCKING_SYNCHRONOUS_METHOD(retireLiveCommonConversationResult : (NSString *)call challengeId : (
-    NSString *)challenge)
-RCT_EXTERN__BLOCKING_SYNCHRONOUS_METHOD(isLiveCommonConversationToolCurrent : (NSString *)call sessionId : (
-    NSString *)session delegationId : (NSString *)delegation responseId : (NSString *)response challengeId : (
-    NSString *)challenge toolCallId : (NSString *)function)
-RCT_EXTERN_METHOD(settleLiveCommonConversationResult : (NSString *)call challengeId : (NSString *)challenge output : (
-    NSString *)output resolver : (RCTPromiseResolveBlock)resolve rejecter : (RCTPromiseRejectBlock)reject)
+RCT_EXTERN_METHOD(readLiveCommonConversationToolsWitness : (RCTPromiseResolveBlock)
+                      resolve rejecter : (RCTPromiseRejectBlock)reject)
+RCT_EXTERN__BLOCKING_SYNCHRONOUS_METHOD(claimLiveCommonConversationResult : (
+    NSString *)call challengeId : (NSString *)challenge exactOutput : (NSString *)output)
+RCT_EXTERN__BLOCKING_SYNCHRONOUS_METHOD(retireLiveCommonConversationResult : (NSString *)
+                                            call challengeId : (NSString *)challenge)
+RCT_EXTERN__BLOCKING_SYNCHRONOUS_METHOD(
+    isLiveCommonConversationToolCurrent : (NSString *)call sessionId : (NSString *)
+        session delegationId : (NSString *)delegation responseId : (NSString *)
+            response challengeId : (NSString *)challenge toolCallId : (NSString *)function)
+RCT_EXTERN_METHOD(settleLiveCommonConversationResult : (NSString *)call challengeId : (NSString *)
+                      challenge output : (NSString *)output resolver : (RCTPromiseResolveBlock)
+                          resolve rejecter : (RCTPromiseRejectBlock)reject)
 @end

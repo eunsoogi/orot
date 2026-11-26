@@ -76,7 +76,7 @@ extension RealtimeVoiceLifecycleTests {
                     executed += 1
                     return {}
                 },
-                mayDisclose: { _, _ in false }
+                mayDisclose: { _, _ in false },
             )
             admission.observeTiming = { stage, duration in
                 observed.append(stage)
@@ -84,7 +84,7 @@ extension RealtimeVoiceLifecycleTests {
             }
             let bridge = try LiveResponsesToolBridge(
                 admission: admission, registry: XCTUnwrap(LiveNativeToolRegistry(admission: admission)),
-                discard: {}
+                discard: {},
             )
             let owner = LiveResponsesAdmission.Owner(callID: "fixture-call", sessionID: "fixture-session", epoch: UUID())
             for event in managedEvents() {
