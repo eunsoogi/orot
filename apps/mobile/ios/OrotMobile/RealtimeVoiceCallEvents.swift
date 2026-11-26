@@ -180,6 +180,7 @@ struct LiveResponsesAdmission {
     let mayDisclose: (Request, String) -> Bool
     var dispatchTicket: ((Request, String) -> LiveNativeResultDispatchAuthority.Ticket?)?
     var retireDispatch: (() -> Void)?
+    var observeTiming: ((LiveManagedToolLatency, UInt64) -> Void)?
     // Constructed by the separate native companion mailbox; no fallback schema.
     var canonicalConfiguration: (() -> [String: Any]?)?
 

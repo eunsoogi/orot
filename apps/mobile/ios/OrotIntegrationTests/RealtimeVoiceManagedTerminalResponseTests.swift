@@ -53,5 +53,59 @@ extension RealtimeVoiceLifecycleTests {
                 try call.stop("fixture-call")
             }
         }
+        try await assertOwnedAuthorizationQueueTiming()
+    }
+
+    /// The fake admission completes only when released. Keep the actual main
+    /// queue hop, then prove that retired, denied, and duplicate callbacks do not sample.
+    private func assertOwnedAuthorizationQueueTiming() async throws {
+        for mode in ["owned", "retired", "replaced", "denied"] {
+            var ownerCurrent = true
+            var approval: ((Bool) -> Void)?
+            var observed: [LiveManagedToolLatency] = []
+            var executed = 0
+            var frames = 0
+            var admission = LiveResponsesAdmission(
+                backendModel: "gpt-6-luna", functionName: "orot_reviewed_memory",
+                backendAllowed: { true }, mayRun: { $0.owner.callID == "fixture-call" },
+                approve: { _, complete in
+                    approval = complete
+                    return {}
+                },
+                execute: { _, _ in
+                    executed += 1
+                    return {}
+                },
+                mayDisclose: { _, _ in false },
+            )
+            admission.observeTiming = { stage, duration in
+                observed.append(stage)
+                XCTAssertLessThanOrEqual(duration, 300_000)
+            }
+            let bridge = try LiveResponsesToolBridge(
+                admission: admission, registry: XCTUnwrap(LiveNativeToolRegistry(admission: admission)),
+                discard: {},
+            )
+            let owner = LiveResponsesAdmission.Owner(callID: "fixture-call", sessionID: "fixture-session", epoch: UUID())
+            for event in managedEvents() {
+                bridge.receive(event, owner: owner, current: { ownerCurrent }) { _, _, _ in frames += 1 }
+            }
+            let callback = try XCTUnwrap(approval)
+            XCTAssertTrue(observed.isEmpty)
+            callback(mode != "denied")
+            callback(true)
+            if mode == "retired" {
+                bridge.retire()
+            } else if mode == "replaced" {
+                ownerCurrent = false
+            }
+            await withCheckedContinuation { (continuation: CheckedContinuation<Void, Never>) in
+                DispatchQueue.main.async { continuation.resume() }
+            }
+            XCTAssertEqual(executed, mode == "owned" ? 1 : 0)
+            XCTAssertEqual(observed, mode == "owned" ? [.authorizationQueue, .terminalToOwnedTool] : [])
+            XCTAssertEqual(frames, 0)
+            bridge.retire()
+        }
     }
 }
