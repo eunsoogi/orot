@@ -24,7 +24,7 @@ type Operation = NonNullable<Parameters<LocalActionTool['authorize']>[2]>;
 /** The model chooses whether to request a bookmark, not its identity or content. */
 export function conversationHealthSummaryBookmarkAction(
   observer?: RagConversationObserver,
-  operationRunId?: string,
+  expectedRunId?: string,
 ) {
   const bookmark = observer?.reportBookmark;
   const confirm = observer?.confirmHistorySave;
@@ -54,7 +54,7 @@ export function conversationHealthSummaryBookmarkAction(
     !signal.aborted &&
     bookmark.current() &&
     observer.expectedConversationModel?.isCurrent?.() !== false;
-  const terminal = daily && Boolean(operationRunId);
+  const terminal = daily && Boolean(expectedRunId);
   const toolId = daily ? 'remember-daily-report' : 'remember-health-summary';
   const version = terminal ? '2' : '1';
   let pending:
@@ -117,7 +117,7 @@ export function conversationHealthSummaryBookmarkAction(
           !current(signal) ||
           !exactTarget(value, target) ||
           (terminal &&
-            (!operation || operation.operationRunId !== operationRunId))
+            (!operation || operation.operationRunId !== expectedRunId))
         )
           return false;
         if (
