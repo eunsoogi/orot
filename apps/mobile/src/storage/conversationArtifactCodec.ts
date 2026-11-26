@@ -1,4 +1,4 @@
-import { validPossibilityOriginalArtifact } from '../ragConversation/possibilityOriginalReceipt';
+import { validPossibilityOriginalArtifact } from '../conversationTools/possibilityOriginalReceipt';
 import { recoverArchiveLayout } from './conversationArchiveA2UI';
 import { validHistoricalDialogueParents } from './conversationHistoricalDialogue';
 import { parseConversationMessageDelivery } from '../ragConversation/conversationMessageDelivery';
