@@ -29,7 +29,6 @@ const answer = ['요약', title1, detail1, title2, detail2].join('\n');
 const artifactId = 'archive-row';
 const sessionId = 'archive-session';
 const createdAt = '2026-11-26T02:00:00.000Z';
-
 function archivedShape() {
   const node = (id: string, text: string) => ({ id, component: 'Text', text });
   const result = ragConversationTask.validateResult(
@@ -72,6 +71,7 @@ function archivedShape() {
     },
     {
       request: '예시를 보여 줘.',
+      context: [],
       evidence: { items: [], coverage: [], conflicts: [] },
     } as TaskResponderInput,
   );
