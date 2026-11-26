@@ -69,6 +69,9 @@ export function versionedConversationMemoryTasks(
   const conversationTaskV45 = observeConversationA2UIFinalAdmission(
     withComposedConversationControls(conversationTaskV44),
   );
+  const conversationTaskV46 = observeConversationA2UIFinalAdmission(
+    withComposedConversationControls(conversationTaskV44, '46'),
+  );
   return {
     conversationTaskV25,
     conversationTaskV26,
@@ -98,9 +101,10 @@ export function versionedConversationMemoryTasks(
       v43: conversationTaskV43,
       v44: conversationTaskV44,
       v45: conversationTaskV45,
+      v46: conversationTaskV46,
     },
     ragConversationTask: observeConversationA2UIFinalAdmission(
-      withComposedConversationControls(conversationTaskV44, true),
+      withComposedConversationControls(conversationTaskV44, '47'),
     ),
   };
 }

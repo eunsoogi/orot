@@ -3,6 +3,7 @@ import { createContext, useContext, useState } from 'react';
 import { Pressable, StyleSheet, Switch, TextInput, View } from 'react-native';
 import { AppText } from '../layout/AppText';
 import { appColors } from '../layout/appColors';
+import { ConversationA2UITemporaryDate } from './ConversationA2UITemporaryDate';
 import type { ComposedControl } from './conversationA2UIComposedControlState';
 
 export const ConversationA2UIComposedOwner = createContext<
@@ -66,6 +67,8 @@ function MountedControl({
               setText(next.slice(0, 256));
           }}
         />
+      ) : control.kind === 'date' ? (
+        <ConversationA2UITemporaryDate {...control} current={current} />
       ) : control.kind === 'slider' ? (
         <Slider
           accessible

@@ -7,11 +7,13 @@ import type { GroundedRagAnswer } from './task';
 
 export function withComposedConversationControls(
   legacy: TaskResponderContract<GroundedRagAnswer>,
-  sliders = false,
+  version: '45' | '46' | '47' = '45',
 ): TaskResponderContract<GroundedRagAnswer> {
+  const sliders = version !== '45';
+  const dateControls = version === '47';
   return {
     ...legacy,
-    taskVersion: sliders ? '46' : '45',
+    taskVersion: version,
     createResultSchema(input) {
       const schema = legacy.createResultSchema?.(input) ?? legacy.resultSchema;
       if (!allowsOrdinaryA2UI(input) || !isObject(schema.properties))
@@ -32,6 +34,9 @@ export function withComposedConversationControls(
               'These pointers describe the bubble only; they are never app or account paths. Controls start empty, with no required seed, root layout, prose count, ordering, or pairing. All edits stay in this bubble. Omit actions, remote content, and sendDataModel, or set sendDataModel to false.' +
               (sliders
                 ? ' A Slider can be composed alongside those controls. Give a plain label, distinct local value pointer, integer min (defaults to 0) and max in [-1000, 1000] with max greater than min, and optionally 1–100 equal divisions in steps. It starts at min; do not seed its value or supply actions.'
+                : '') +
+              (dateControls
+                ? ' A temporary DateTimeInput may choose a date without scheduling it. Use a distinct local value pointer, plain label, enableDate:true, no enableTime, and literal ISO YYYY-MM-DD min/max between 1900-01-01 and 2100-12-31 with min before max. It starts empty; no seeds, actions, or calendar access.'
                 : ''),
           },
         },
@@ -50,6 +55,7 @@ export function withComposedConversationControls(
       const plan = projectConversationA2UIComposedControls(
         value.a2uiFrames,
         sliders,
+        dateControls,
       );
       if (!plan) return ordinary;
       const result = legacy.validateResult(
