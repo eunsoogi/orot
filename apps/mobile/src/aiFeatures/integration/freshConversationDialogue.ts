@@ -10,6 +10,10 @@ type Input = Parameters<typeof loadConversationHistory>[0];
 type LegacyHistory = Awaited<ReturnType<typeof loadConversationHistory>>;
 export type FreshConversationHistory = LegacyHistory & {
   historicalDialogueParents?: readonly HistoricalDialogueParent[];
+  /** Host-only originals; redaction changes disqualify a source from this tool. */
+  protectedAuthoredSources?: readonly (HistoricalDialogueParent & {
+    question: string;
+  })[];
   dialogueOwnerIsCurrent?: () => Promise<boolean>;
 };
 
@@ -70,6 +74,12 @@ export async function loadFreshConversationDialogue(
     references: [],
     sources: [],
     historicalDialogueParents: parents,
+    protectedAuthoredSources: turns.flatMap(
+      ({ id, createdAt, question }, index) =>
+        question === priorTurns[index]?.question
+          ? [{ id, createdAt, question }]
+          : [],
+    ),
     priorTurns,
     omitted: omit.length > 0,
     excludedQuestions: omit.map(turn => turn.question),

@@ -3,7 +3,11 @@ import {
   toManualHistoryEvidence,
   type ManualHistoryEvidence,
 } from '@orot/domain';
-import { readManualHistoryEntry, type SqlDatabase } from '@orot/storage';
+import {
+  isLocalConversationMemoryId,
+  readManualHistoryEntry,
+  type SqlDatabase,
+} from '@orot/storage';
 import type { ConversationHistorySave } from './conversationHealthHistory';
 import { validateConversationHistorySource } from './conversationHistorySource';
 import { conversationHistoryIntent } from '../manualHistory/conversationHistoryIntent';
@@ -57,6 +61,12 @@ export async function recoverConversationHealthHistoryResult(
     )
       return;
     const id = additionalId ?? String(row.entry_id);
+    // A protected terminal receipt cannot be exported by the old evidence replay.
+    if (
+      isLocalConversationMemoryId(id) &&
+      (!input.localOnly || !input.approvedSource?.protectedPrior)
+    )
+      return;
     const entry = await readManualHistoryEntry(tx, id);
     if (!entry || entry.details !== details) return;
     const corrections = await tx.execute(
@@ -66,7 +76,10 @@ export async function recoverConversationHealthHistoryResult(
     if (corrections.rows.length || signal.aborted) return;
     result = { id, evidence: toManualHistoryEvidence(entry) };
   });
-  return signal.aborted ? undefined : result;
+  return signal.aborted ||
+    input.approvedSource?.protectedPrior?.current() === false
+    ? undefined
+    : result;
 }
 
 /** Backward-compatible receipt ID reader used by already-checkpointed result recovery. */
