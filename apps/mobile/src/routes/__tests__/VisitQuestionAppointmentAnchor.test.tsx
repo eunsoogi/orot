@@ -160,7 +160,7 @@ test('an earlier nonmedical calendar event is not a Visit Questions target', asy
       effectiveAt: '2035-06-06T00:10:00.000Z',
       endsAt: '2035-06-06T00:40:00.000Z',
     };
-    const nonmedicalCandidate = {
+    const lunch = {
       candidateId: 'synthetic-lunch',
       event: nonmedical,
       status: 'classified' as const,
@@ -177,7 +177,7 @@ test('an earlier nonmedical calendar event is not a Visit Questions target', asy
       access: 'fullAccess' as const,
       event: nonmedical,
     }));
-    for (const selected of [nonmedicalCandidate].filter(isConfidentMedical))
+    for (const selected of [lunch].filter(isConfidentMedical))
       await saveCalendarCandidate(selected, repository, {
         ...input([nonmedical]).bridge,
         findEvent,
@@ -229,17 +229,17 @@ test('the Overview preparation route saves to its selected visit even if a new e
       newlyImported.id,
     );
     expect((await mockOperations!.loadAppointment(now))?.id).toBe(dental.id);
-    const saveInput = { appointment: loaded } as Parameters<
+    const args = { appointment: loaded } as Parameters<
       typeof defaults.save
     >[0];
-    await expect(mockOperations!.save(saveInput)).resolves.toBe(result);
-    expect(save).toHaveBeenCalledWith(saveInput);
+    await expect(mockOperations!.save(args)).resolves.toBe(result);
+    expect(save).toHaveBeenCalledWith(args);
     await lane.add({
       ...dental,
       status: 'rescheduled',
       effectiveAt: '2035-06-06T16:00:00+09:00',
     });
-    await expect(mockOperations!.save(saveInput)).rejects.toThrow('target changed');
+    await expect(mockOperations!.save(args)).rejects.toThrow('target changed');
     expect(save).toHaveBeenCalledTimes(1);
   } finally {
     await view.unmount();
