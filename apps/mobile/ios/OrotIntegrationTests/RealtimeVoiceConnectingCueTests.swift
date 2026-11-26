@@ -1,9 +1,37 @@
+import AVFoundation
 import Foundation
 @testable import Orot
 import XCTest
 
 extension RealtimeVoiceLifecycleTests {
+    private func assertReadyCueHasShortRisingContour() throws {
+        // Check the actual scheduled PCM without activating an output or microphone.
+        for rate in [24000.0, 48000.0] {
+            let format = try XCTUnwrap(AVAudioFormat(standardFormatWithSampleRate: rate, channels: 1))
+            let buffer = try XCTUnwrap(RealtimeVoiceConnectingCue.buffer(format: format))
+            let values = try XCTUnwrap(buffer.floatChannelData?[0])
+            let count = Int(buffer.frameLength)
+            XCTAssertEqual(Double(count) / rate, 0.113, accuracy: 0.001)
+            func frame(_ milliseconds: Int) -> Int {
+                Int(rate * Double(milliseconds) / 1000)
+            }
+            guard count > frame(100) else { continue }
+            func risingCrossings(_ start: Int, _ end: Int) -> Int {
+                (frame(start) ..< frame(end)).filter { values[$0 - 1] < 0 && values[$0] >= 0 }.count
+            }
+            XCTAssertTrue((16 ... 19).contains(risingCrossings(10, 32)))
+            XCTAssertTrue((24 ... 28).contains(risingCrossings(68, 90)))
+            XCTAssertTrue((frame(44) ..< frame(51)).allSatisfy { values[$0] == 0 })
+            let peak = (0 ..< count).reduce(Float.zero) { max($0, abs(values[$1])) }
+            XCTAssertGreaterThan(peak, 0.20)
+            XCTAssertLessThan(peak, 0.25)
+            XCTAssertEqual(values[0], 0, accuracy: 0.000001)
+            XCTAssertEqual(values[count - 1], 0, accuracy: 0.000001)
+        }
+    }
+
     func assertReadyCueWaitsForCaptureAndDoesNotRepeatOnResume() async throws {
+        try assertReadyCueHasShortRisingContour()
         let audio = HeldReadyCueAudio(), socket = Socket()
         let system = HeldReadyCueSystemCall()
         let call = readyCueFixture(audio, socket, system: system)
