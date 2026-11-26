@@ -19,14 +19,29 @@ export function incomparableDailyReportIndexes(
   return comparedDailyReportIndexes(values, true);
 }
 
+type Measurement = { index: number; value: string; at: string; unit: string };
+
+function matchedAtOneInstant(
+  items: readonly Measurement[],
+  incomparable: boolean,
+) {
+  const units = new Map<string, { firstValue: string; conflict: boolean }>();
+  for (const item of items) {
+    const unit = units.get(item.unit);
+    if (!unit)
+      units.set(item.unit, { firstValue: item.value, conflict: false });
+    else if (unit.firstValue !== item.value) unit.conflict = true;
+  }
+  return items.filter(item =>
+    incomparable ? units.size > 1 : units.get(item.unit)?.conflict,
+  );
+}
+
 function comparedDailyReportIndexes(
   values: readonly LocalHealthEvidenceRecord[],
   incomparable: boolean,
 ) {
-  const groups = new Map<
-    string,
-    { index: number; value: string; at: string; unit: string }[]
-  >();
+  const groups = new Map<string, Measurement[]>();
   values.forEach((item, index) => {
     if (
       item.kind !== 'health_observation' ||
@@ -55,19 +70,31 @@ function comparedDailyReportIndexes(
     });
     groups.set(key, group);
   });
-  return [...groups.values()].flatMap(group =>
-    group
-      .filter(item =>
-        group.some(
-          other =>
-            compareTimestamps(item.at, other.at) === 0 &&
-            (incomparable
-              ? item.unit !== other.unit
-              : item.unit === other.unit && item.value !== other.value),
-        ),
+  return [...groups.values()].flatMap(group => {
+    // Reuse the exact domain comparator (offsets and sub-millisecond time).
+    // Invalid instants never compare equal; keep them out of the ordered scan.
+    const ordered = group
+      .filter(item => Number.isFinite(Date.parse(item.at)))
+      .sort((left, right) => compareTimestamps(left.at, right.at));
+    const matched = new Set<number>();
+    for (let first = 0, end = 1; first < ordered.length; first = end, end++) {
+      while (
+        end < ordered.length &&
+        compareTimestamps(ordered[first]!.at, ordered[end]!.at) === 0
       )
-      .map(item => item.index),
-  );
+        end++;
+      if (end === first + 1) continue;
+      for (const item of matchedAtOneInstant(
+        ordered.slice(first, end),
+        incomparable,
+      ))
+        matched.add(item.index);
+    }
+    // Ordered by encounter order of the concept and then by source order, as before.
+    return group
+      .filter(item => matched.has(item.index))
+      .map(item => item.index);
+  });
 }
 
 /** Render only stored fields; the model may select facts but cannot author medical claims. */
