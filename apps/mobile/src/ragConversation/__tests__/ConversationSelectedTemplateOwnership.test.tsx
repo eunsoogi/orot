@@ -23,7 +23,8 @@ import { createAppleSelectionOption } from '../../providers/selection/options';
 jest.mock('../ConversationSavedRecaps', () => ({
   ConversationSavedRecaps: () => null,
 }));
-const prompt = '다음 진료에서 어떤 질문을 하면 좋을지 준비해 줘.';
+const requested = '내 다음 일정에 물어볼 질문 좀 준비해줘';
+const unrelated = '근데 내 다음 일정이 뭐지? 같이 알려줘';
 const answer = {
   status: 'answer' as const,
   answer: 'Synthetic final',
@@ -34,6 +35,7 @@ test.each([
   'visit-questions',
   'ordinary',
   'malformed',
+  'no-proposal',
   'changed-selection',
   'quick-return',
   'protected-data-lost',
@@ -41,6 +43,7 @@ test.each([
 ] as const)(
   'strict selected Apple composer uses the common router: %s',
   async mode => {
+    const prompt = mode === 'ordinary' ? unrelated : requested;
     const f = await setup();
     const listeners = new Set<
       Parameters<ConversationExecutionAdapter['subscribe']>[0]
@@ -190,7 +193,15 @@ test.each([
           phase = 'active';
           for (const listener of listeners) listener({ kind: 'foreground' });
         }
-        reply({ text: '', finishReason: 'tool_calls', toolCalls: [proposal] });
+        reply(
+          mode === 'no-proposal'
+            ? {
+                text: 'Synthetic clarification in the router.',
+                finishReason: 'complete',
+                toolCalls: [],
+              }
+            : { text: '', finishReason: 'tool_calls', toolCalls: [proposal] },
+        );
       });
       const retired =
         mode === 'changed-selection' ||
@@ -200,8 +211,11 @@ test.each([
       if (!retired) await screen.findByText(answer.answer);
       else await waitFor(() => expect(cancel).toHaveBeenCalledTimes(1));
       expect(generate).toHaveBeenCalledTimes(1);
-      expect(cancel).toHaveBeenCalledTimes(1);
-      expect(cancel).toHaveBeenCalledWith(generate.mock.calls[0]![1]);
+      if (mode === 'no-proposal') expect(cancel).not.toHaveBeenCalled();
+      else {
+        expect(cancel).toHaveBeenCalledTimes(1);
+        expect(cancel).toHaveBeenCalledWith(generate.mock.calls[0]![1]);
+      }
       expect(generate.mock.calls[0]![0]).toMatchObject({
         toolChoice: 'required',
       });
@@ -211,7 +225,9 @@ test.each([
       expect(authorize).not.toHaveBeenCalled();
       expect(visit).toHaveBeenCalledTimes(Number(mode === 'visit-questions'));
       expect(rag).toHaveBeenCalledTimes(
-        Number(mode === 'ordinary' || mode === 'malformed'),
+        Number(
+          mode === 'ordinary' || mode === 'malformed' || mode === 'no-proposal',
+        ),
       );
       const completed = await f.storage.listCompletionIdentities();
       expect(completed.map(row => row.requestId)).toEqual(
