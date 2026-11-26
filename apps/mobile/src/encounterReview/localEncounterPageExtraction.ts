@@ -13,6 +13,7 @@ export async function prepareLocalEncounterExtraction(input: {
   readonly selected: Extract<SelectedAiResolution, { status: 'ready' }>;
   readonly consent: ExecutionConsentPort;
   readonly executionId: string;
+  readonly progress?: (completed: number) => void;
 }): ReturnType<typeof extractLocalTranscriptPages> {
   const { read, selected } = input;
   const aborted = () => ({
@@ -61,6 +62,7 @@ export async function prepareLocalEncounterExtraction(input: {
       signal: read.signal,
       selectionCurrent: current,
       pages,
+      progress: input.progress,
       extract: encounterPageModel({
         sourceId: read.sourceId,
         executionId: input.executionId,

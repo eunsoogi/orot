@@ -45,6 +45,7 @@ export function createLongEncounterReview(
       consent: ExecutionConsentPort,
       signal: AbortSignal,
       lifetime: AbortSignal,
+      progress?: (completed: number) => void,
     ): Promise<ReviewResult> {
       const selectionCurrent = providerSelectionStore.liveWitness();
       const choice = await providerSelectionStore.load();
@@ -130,6 +131,7 @@ export function createLongEncounterReview(
               read,
               selected,
               consent,
+              progress,
               executionId: 'encounter-local-long-' + executionId,
             }));
         if (signal.aborted) return { status: 'cancelled' };

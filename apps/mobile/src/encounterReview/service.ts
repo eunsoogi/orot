@@ -146,11 +146,11 @@ export function createEncounterReviewService(
         resume(sourceId, signal, approval, observations?.current())
       );
     },
-    async start(sourceId, consent, signal, lifetime) {
+    async start(sourceId, consent, signal, lifetime, step) {
       const diagnostics = observations?.current();
       diagnostics?.stage('source_lookup');
-      const repository = await openLocalStorage();
-      const source = await repository.get('source_record', sourceId);
+      const repo = await openLocalStorage();
+      const source = await repo.get('source_record', sourceId);
       if (!source || source.sourceKind !== 'audio_recording') {
         diagnostics?.unavailable('source_lookup');
         return { status: 'unavailable' };
@@ -158,19 +158,17 @@ export function createEncounterReviewService(
       diagnostics?.stage('transcript_read');
       let expectedTranscript: EncounterTranscript;
       try {
-        expectedTranscript = await repository.transaction(
-          async (writer, sql) => {
-            if (!sql) throw new Error('Canonical storage required.');
-            return readEncounterTranscript(writer, sql, sourceId);
-          },
-        );
+        expectedTranscript = await repo.transaction(async (writer, sql) => {
+          if (!sql) throw new Error('Canonical storage required.');
+          return readEncounterTranscript(writer, sql, sourceId);
+        });
       } catch (error) {
         if (signal.aborted) return { status: 'cancelled' };
         if (error instanceof EncounterTranscriptEmpty)
           return { status: 'no-transcript' };
         if (!(error instanceof EncounterTranscriptTooLong)) throw error;
         if (lifetime && long)
-          return long.start(sourceId, repository, consent, signal, lifetime);
+          return long.start(sourceId, repo, consent, signal, lifetime, step);
         diagnostics?.unavailable('transcript_read');
         return { status: 'transcript-too-long' };
       }

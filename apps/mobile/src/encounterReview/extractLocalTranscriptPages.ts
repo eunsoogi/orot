@@ -15,6 +15,7 @@ type Options = {
   readonly signal: AbortSignal;
   readonly selectionCurrent: () => boolean;
   readonly pages: Pages;
+  readonly progress?: (completed: number) => void;
   readonly extract: (
     batch: EncounterTranscript,
     index: number,
@@ -115,6 +116,8 @@ export async function extractLocalTranscriptPages(
               id: 'candidate-' + candidates.size,
             });
         }
+        // Report only complete, validated batches, never outstanding work.
+        input.progress?.(batchIndex);
       }
       if (page.done && (await current()))
         return {

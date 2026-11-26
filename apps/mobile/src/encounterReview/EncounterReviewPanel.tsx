@@ -13,6 +13,7 @@ import {
 import type { EncounterReviewService, ReviewState } from './controller';
 import { localEncounterReviewService } from './localService';
 import { EncounterCandidatePages } from './EncounterCandidatePages';
+import { t } from '../i18n';
 import { reviewCopy as copy } from './strings';
 
 /** A source key, never geometry, owns this controller and its unsaved edits through route reflow. */
@@ -100,6 +101,16 @@ export function EncounterReviewPanel({
           ? copy.empty
           : copy[state.status]}
       </AppText>
+      {state.status === 'running' && state.completedBatches !== undefined ? (
+        <AppText
+          accessibilityLiveRegion="polite"
+          testID="encounter-batch-progress"
+        >
+          {t('encounterReview.completedBatches', {
+            count: state.completedBatches,
+          })}
+        </AppText>
+      ) : null}
       {pending && reviewable ? (
         <EncounterCandidatePages
           key={pending.threadId}
