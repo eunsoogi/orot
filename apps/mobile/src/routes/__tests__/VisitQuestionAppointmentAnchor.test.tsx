@@ -229,9 +229,7 @@ test('the Overview preparation route saves to its selected visit even if a new e
       newlyImported.id,
     );
     expect((await mockOperations!.loadAppointment(now))?.id).toBe(dental.id);
-    const args = { appointment: loaded } as Parameters<
-      typeof defaults.save
-    >[0];
+    const args = { appointment: loaded } as Parameters<typeof defaults.save>[0];
     await expect(mockOperations!.save(args)).resolves.toBe(result);
     expect(save).toHaveBeenCalledWith(args);
     await lane.add({
