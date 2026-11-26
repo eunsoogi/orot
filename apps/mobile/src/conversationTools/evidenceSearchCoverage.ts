@@ -1,16 +1,19 @@
-import type { EvidenceItem, EvidenceSearchRequest } from '@orot/agent-runtime';
-import type { LocalEvidenceSnapshot } from './evidenceSnapshot';
+import type {
+  EvidenceBatch,
+  EvidenceItem,
+  EvidenceSearchRequest,
+} from '@orot/agent-runtime';
 
 /** Coverage describes returned provider projections without claiming exhaustive raw retrieval. */
 export function resultCoverage(
-  snapshot: LocalEvidenceSnapshot,
+  coverage: EvidenceBatch['coverage'],
   request: EvidenceSearchRequest,
   sourceKind: EvidenceItem['sourceKind'],
   items: readonly EvidenceItem[],
   truncated: boolean,
   failure?: string,
 ) {
-  const base = snapshot.coverage.find(value => value.sourceKind === sourceKind);
+  const base = coverage.find(value => value.sourceKind === sourceKind);
   return {
     sourceKind,
     // Only the application snapshot can attest that ranked selection covered a complete local inventory.

@@ -1,5 +1,5 @@
 import { personalSearchTiming } from './personalSearchStageDiagnostic';
-import { resultCoverage } from './evidenceSearchCoverage';
+import { resultCoverage } from '../../conversationTools/evidenceSearchCoverage';
 import {
   providerObservationEvidence,
   selectedProviderRecordId,
@@ -15,7 +15,7 @@ import {
   querySchema,
   plainQuerySchema,
   queryInput,
-} from './evidenceSearchQuery';
+} from '../../conversationTools/evidenceSearchQuery';
 import { evidenceRagSearchQuery } from '../../healthEvidence/evidenceCandidateScope';
 import type { LocalE5RagService } from '../../rag/localE5RagService';
 import type { LocalEvidenceSnapshot } from './evidenceSnapshot';
@@ -111,7 +111,13 @@ export function createLocalEvidenceSearchTool(input: {
           return {
             items,
             coverage: [
-              resultCoverage(snapshot, request, input.sourceKind, items, false),
+              resultCoverage(
+                snapshot.coverage,
+                request,
+                input.sourceKind,
+                items,
+                false,
+              ),
             ],
             conflicts: [],
           } satisfies EvidenceBatch;
@@ -156,7 +162,7 @@ export function createLocalEvidenceSearchTool(input: {
           if (!item || seen.has(localEvidenceKey(item))) continue;
           const candidate = [...selected, item];
           const candidateCoverage = resultCoverage(
-            snapshot,
+            snapshot.coverage,
             request,
             input.sourceKind,
             candidate,
@@ -198,7 +204,7 @@ export function createLocalEvidenceSearchTool(input: {
           items: projected,
           coverage: [
             resultCoverage(
-              snapshot,
+              snapshot.coverage,
               request,
               input.sourceKind,
               projected,
@@ -218,7 +224,7 @@ export function createLocalEvidenceSearchTool(input: {
           items,
           coverage: [
             resultCoverage(
-              snapshot,
+              snapshot.coverage,
               request,
               input.sourceKind,
               items,
