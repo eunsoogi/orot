@@ -1,7 +1,7 @@
 import type { TaskResponderContract } from '@orot/agent-runtime';
+import { choiceControl } from './conversationA2UIOwnedControls';
 import {
   countLocalControlNodes,
-  exactlyLocalControl,
   projectFinalLocalControl,
 } from './conversationA2UIFinalLocalControl';
 import {
@@ -13,36 +13,6 @@ import { bindLiveConversationA2UILocalDraft } from './conversationA2UILocalDraft
 import { conversationA2UIFrameProse } from './conversationA2UIPresentation';
 import type { GroundedRagAnswer } from './task';
 import { isObject } from './taskHistory';
-
-function choiceControl(node: Record<string, unknown>) {
-  return (
-    exactlyLocalControl(node, [
-      'id',
-      'component',
-      'label',
-      'variant',
-      'options',
-      'value',
-    ]) &&
-    node.component === 'ChoicePicker' &&
-    node.label === localA2UIChoiceLabel &&
-    node.variant === 'mutuallyExclusive' &&
-    Array.isArray(node.options) &&
-    node.options.length === localA2UIChoices.length &&
-    localA2UIChoices.every((option, index) => {
-      const proposed: unknown = (node.options as unknown[])[index];
-      return (
-        isObject(proposed) &&
-        exactlyLocalControl(proposed, ['label', 'value']) &&
-        proposed.label === option.label &&
-        proposed.value === option.value
-      );
-    }) &&
-    isObject(node.value) &&
-    exactlyLocalControl(node.value, ['@path']) &&
-    node.value['@path'] === localA2UIChoicePath
-  );
-}
 
 /** Only app-owned indexes for two separately validated answer parts are ever
  * visible as local options. The protocol values remain exact literal enums. */
