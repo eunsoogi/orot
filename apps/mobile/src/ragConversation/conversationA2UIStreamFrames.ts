@@ -70,8 +70,11 @@ function ownFrameArray(raw: string, start: number): number | undefined {
   return undefined;
 }
 
-/** Complete delimited frame strings only; no values escape to presentation. */
-export function completeConversationSkeletonFrames(raw: string) {
+/** Complete delimited frames only; no values escape to presentation. */
+export function completeConversationSkeletonFrames(
+  raw: string,
+  allowObjectFrames = false,
+) {
   if (raw.length > maxBufferedUnits) return undefined;
   const prefix = envelope.exec(raw);
   if (!prefix) return undefined;
@@ -82,14 +85,19 @@ export function completeConversationSkeletonFrames(raw: string) {
     offset = skipSpace(raw, offset);
     if (offset === raw.length) return frames;
     if (raw[offset] === ']') return frames.length === 0 ? frames : undefined;
-    if (raw[offset] !== '"' || frames.length >= maxFrames) return undefined;
-    const end = stringEnd(raw, offset);
+    const objectFrame = allowObjectFrames && raw[offset] === '{';
+    if ((raw[offset] !== '"' && !objectFrame) || frames.length >= maxFrames)
+      return undefined;
+    const end = objectFrame ? valueEnd(raw, offset) : stringEnd(raw, offset);
     if (end === undefined) return frames;
     const delimiter = skipSpace(raw, end);
     if (delimiter === raw.length) return frames;
     if (raw[delimiter] !== ']' && raw[delimiter] !== ',') return undefined;
     try {
-      const frame: string = JSON.parse(raw.slice(offset, end));
+      const token = raw.slice(offset, end);
+      // Keep object bytes private and let the same downstream wire parser
+      // validate shape, scope and provenance for either representation.
+      const frame: string = objectFrame ? token : JSON.parse(token);
       frames.push(frame);
     } catch {
       return undefined;

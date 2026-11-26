@@ -155,3 +155,48 @@ test.each([
     );
   },
 );
+
+test('only complete, delimited owned object frames contribute neutral geometry', () => {
+  const project = (raw: string) =>
+    ragConversationTask.projectStreamedLayout?.(raw, input);
+  const raw = envelope([opening, replaced]).replace(
+    JSON.stringify(opening) + ',' + JSON.stringify(replaced),
+    opening + ',' + replaced,
+  );
+  const firstEnd = raw.indexOf(opening) + opening.length;
+  const nextEnd = raw.indexOf(replaced) + replaced.length;
+  expect(project(raw.slice(0, firstEnd))).toBeUndefined();
+  expect(project(raw.slice(0, firstEnd + 1))).toEqual({
+    kind: 'stack',
+    slots: 2,
+  });
+  expect(project(raw.slice(0, nextEnd))).toEqual({ kind: 'stack', slots: 2 });
+  expect(project(raw)).toEqual({ kind: 'row', slots: 2 });
+  expect(
+    project(raw.replace(replaced, '{"version":"1.0","upload":{}}')),
+  ).toBeUndefined();
+  expect(
+    ragConversationTask.projectStreamedLayout?.(raw, {
+      ...input,
+      context: { suppressA2UIPresentation: true },
+    }),
+  ).toBeUndefined();
+  const legacy = restoreConversationTask({
+    taskVersion: '49',
+    taskType: ragConversationTask.taskType,
+  });
+  const version50 = restoreConversationTask({
+    taskVersion: '50',
+    taskType: ragConversationTask.taskType,
+  });
+  expect(legacy?.projectStreamedLayout?.(raw, input)).toBeUndefined();
+  expect(version50?.projectStreamedLayout?.(raw, input)).toBeUndefined();
+  const objectValue = JSON.parse(raw).value;
+  expect(version50?.validateResult(objectValue, input)).toEqual(
+    ragConversationTask.validateResult(objectValue, input),
+  );
+  expect(legacy?.projectStreamedLayout?.(envelope([opening]), input)).toEqual({
+    kind: 'stack',
+    slots: 2,
+  });
+});

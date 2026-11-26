@@ -72,6 +72,9 @@ test.each([
   ['Stop', 1, rowSkeleton, linearSkeleton, true],
   ['leave and return', 1, rowSkeleton, null, true],
   ['complete', 1, linearSkeleton, rowSkeleton, 'replacement'],
+  ['complete', 1, linearSkeleton, rowSkeleton, 'object replacement'],
+  ['Stop', 1, linearSkeleton, rowSkeleton, 'object replacement'],
+  ['leave and return', 1, linearSkeleton, null, 'object replacement'],
   ['Stop', 1, linearSkeleton, rowSkeleton, 'replacement'],
   ['leave and return', 1, linearSkeleton, null, 'replacement'],
 ] as const)(

@@ -46,23 +46,34 @@ const repeatedUpdate = frame('updateDataModel', {
   value: repeatedAnswer.split('\n').map(title => ({ title })),
 });
 
-export function streamedAnswer(mode: boolean | 'replacement') {
+export function streamedAnswer(
+  mode: boolean | 'replacement' | 'object replacement',
+) {
   const usesRepeatedChildren = mode === true;
   const update =
-    mode === 'replacement'
+    mode === 'replacement' || mode === 'object replacement'
       ? replaceRoot
       : usesRepeatedChildren
         ? repeatedUpdate
         : row;
+  const frames = [usesRepeatedChildren ? repeated : create, update];
+  // Native Plan can produce the pinned JSON object representation directly.
+  const wireFrames: unknown[] =
+    mode === 'object replacement'
+      ? frames.map(encoded => JSON.parse(encoded) as unknown)
+      : frames;
   const envelope = JSON.stringify({
     type: 'result',
     value: {
       answerKind: 'conversation',
       answer: usesRepeatedChildren ? repeatedAnswer : answer,
-      a2uiFrames: [usesRepeatedChildren ? repeated : create, update],
+      a2uiFrames: wireFrames,
     },
     citations: [],
   });
-  const firstPart = envelope.slice(0, envelope.indexOf(JSON.stringify(update)));
+  const firstPart = envelope.slice(
+    0,
+    envelope.indexOf(JSON.stringify(wireFrames[1])),
+  );
   return { envelope, firstPart, secondPart: envelope.slice(firstPart.length) };
 }
