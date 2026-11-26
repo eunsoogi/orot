@@ -1,4 +1,4 @@
-import type { StoredPossibilityOriginal } from './possibilityOriginalReceipt';
+import type { StoredPossibilityOriginal } from '../conversationTools/possibilityOriginalReceipt';
 import type { ArchivedConversationWeightedCardsLayout } from './archivedConversationWeightedCards';
 import type { ArchivedConversationRichTextLayout } from './archivedConversationRichTextLayout';
 import type { ArchivedPairedDetailsLayout } from './archivedPairedDetailsLayout';

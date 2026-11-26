@@ -1,5 +1,5 @@
 import type { SqlDatabase, SqlExecutor } from '@orot/storage';
-import { readPossibilityOriginal } from '../ragConversation/possibilityOriginalReceipt';
+import { readPossibilityOriginal } from '../conversationTools/possibilityOriginalReceipt';
 import { assertConversationArtifactCurrent } from './conversationArtifactFreshness';
 import { decodeConversationArtifact } from './conversationArtifactCodec';
 import { acquireIndependentReadEpoch } from './protectedReadEpoch';

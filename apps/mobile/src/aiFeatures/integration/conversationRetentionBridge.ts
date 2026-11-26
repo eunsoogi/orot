@@ -1,4 +1,4 @@
-import { storePossibilityOriginal } from '../../ragConversation/possibilityOriginalReceipt';
+import { storePossibilityOriginal } from '../../conversationTools/possibilityOriginalReceipt';
 import { storeArchivedConversationRichText } from '../../ragConversation/archivedConversationRichTextLayout';
 import { storeArchivedConversationWeightedCards } from '../../ragConversation/archivedConversationWeightedCards';
 import { storePairedDetails } from '../../ragConversation/archivedPairedDetailsLayout';

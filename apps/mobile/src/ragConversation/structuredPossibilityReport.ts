@@ -1,4 +1,4 @@
-import { acceptPossibilityCreation } from './possibilityOriginalReceipt';
+import { acceptPossibilityCreation } from '../conversationTools/possibilityOriginalReceipt';
 import { serializeSourceConversationReport } from './sourceConversationReportTemplate';
 import { renderMixedEvidenceAnswer } from './mixedEvidenceAnswer';
 import type { JsonObject, JsonValue } from '@orot/model-runtime';
