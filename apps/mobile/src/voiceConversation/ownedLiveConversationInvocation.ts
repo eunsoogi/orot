@@ -1,9 +1,9 @@
 import type { EvidenceBatch, EvidenceSearchTool } from '@orot/agent-runtime';
-import { createConversationToolBundle } from './conversationToolBundle';
-import type { LocalEvidenceReferenceRegistry } from './evidenceRegistry';
-import type { AiFeatureLocalData } from './localData';
-import { createResearchInputTracker } from './researchInputTracker';
-import type { RagConversationObserver } from '../../ragConversation/conversationObserver';
+import { createConversationToolBundle } from '../conversationTools/conversationToolBundle';
+import type { LocalEvidenceReferenceRegistry } from '../aiFeatures/integration/evidenceRegistry';
+import type { AiFeatureLocalData } from '../aiFeatures/integration/localData';
+import { createResearchInputTracker } from '../aiFeatures/integration/researchInputTracker';
+import type { RagConversationObserver } from '../ragConversation/conversationObserver';
 
 type LocalToolDefinition = Readonly<
   Pick<EvidenceSearchTool, 'id' | 'sourceKind' | 'inputSchema'>
@@ -35,7 +35,6 @@ export function bindOwnedLiveConversationInvocation(input: {
       observer?.conversationScope,
     ),
     // External and extra-model preparation keep their existing separate owners.
-    external: { tools: [], publicWebTool: undefined },
     publicSearchSucceeded: false,
   });
   if (new Set(tools.map(tool => tool.id)).size !== tools.length) return;

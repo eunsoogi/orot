@@ -3,7 +3,7 @@ import { ragConversationTask } from '../../../ragConversation/task';
 import { fixture as ordinary } from '../../../ragConversation/testSupport/conversationEnvelopeFixtures';
 import { fixture as protectedFixture } from '../../../voiceConversation/testSupport/liveResponsesProtectedFixture';
 import { LocalEvidenceReferenceRegistry } from '../evidenceRegistry';
-import { bindOwnedLiveConversationInvocation } from '../ownedLiveConversationInvocation';
+import { bindOwnedLiveConversationInvocation } from '../../../voiceConversation/ownedLiveConversationInvocation';
 
 const owner = {
   callId: 'call',

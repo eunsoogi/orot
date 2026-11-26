@@ -5,7 +5,7 @@ import {
   type EvidenceBatch,
   type MultiAgentWorkflowOptions,
 } from '@orot/agent-runtime';
-import type { conversationExternalEvidence } from './conversationExternalEvidence';
+import type { conversationExternalEvidence } from '../../conversationTools/conversationExternalEvidence';
 import { referenceOnly } from '../../diseaseHypotheses/resultValidation';
 import { stableJson } from './evidenceUtils';
 

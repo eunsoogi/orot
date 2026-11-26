@@ -7,7 +7,7 @@ import {
 } from '../../healthEvidence/typedHeartRateWindow';
 import { parseHealthContextScope } from '../../healthEvidence/healthContext/scope';
 import { conversationExecutionNative } from '../../ragConversation/conversationExecutionNative';
-import type { RagConversationObserver } from '../../ragConversation/conversationObserver';
+import type { ConversationToolContext } from '../../conversationTools/conversationToolContext';
 import {
   admitConversationHeartRateRequest,
   conversationHeartRateCategories,
@@ -27,7 +27,10 @@ export function createConversationHeartRateTool(input: {
     readonly operationRunId: string;
     readonly signal: AbortSignal;
   };
-  readonly observer: RagConversationObserver;
+  readonly observer: Pick<
+    ConversationToolContext,
+    'onApprovalWait' | 'expectedConversationModel' | 'confirmTypedHeartRate'
+  >;
   readonly dispatch: TypedHeartRateDispatch;
   readonly model: NonNullable<
     ReturnType<typeof createTypedHeartRateModelOwner>

@@ -6,13 +6,13 @@ import { withNativeTools } from '../../../../../../packages/agent-runtime/src/mu
 import { initialState } from '../../../../../../packages/agent-runtime/src/multiAgent/workflowSupport';
 import { ragConversationTask } from '../../../ragConversation/task';
 import type { RagConversationObserver } from '../../../ragConversation/conversationObserver';
-import { conversationExternalEvidence } from '../conversationExternalEvidence';
-import { createConversationToolBundle } from '../conversationToolBundle';
+import { conversationExternalEvidence } from '../../../conversationTools/conversationExternalEvidence';
+import { createConversationToolBundle } from '../../../conversationTools/conversationToolBundle';
 import { conversationHistoryAction } from '../conversationHistoryAction';
 import { LocalEvidenceReferenceRegistry } from '../evidenceRegistry';
 import { executionOptions } from '../featureServiceExecution';
 import { localData } from '../featureServiceFixtures';
-import { bindOwnedLiveConversationInvocation } from '../ownedLiveConversationInvocation';
+import { bindOwnedLiveConversationInvocation } from '../../../voiceConversation/ownedLiveConversationInvocation';
 import { createResearchInputTracker } from '../researchInputTracker';
 import { publicEvidenceFixture } from '../testSupport/publicWebEvidenceTestSupport';
 
@@ -70,7 +70,7 @@ function fixture(selector: boolean) {
     registry,
     observer,
     researchInputs,
-    external,
+    externalTools: external.tools,
     publicSearchSucceeded: true,
   }).tools;
   const beforeRead = jest.fn(async () => true);

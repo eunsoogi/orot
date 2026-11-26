@@ -6,10 +6,9 @@ import { conversationMutationExecution } from './conversationMutationExecution';
 import type { RagConversationServiceDependencies } from './ragConversationServiceDependencies';
 import * as finish from './finishConversationWorkflow';
 import type { RagConversationMessage } from '../../ragConversation/task';
-import { executionOptions } from './featureServiceExecution';
 import * as background from './conversationBackgroundProvider';
 import { operationRunId } from './featureRunIdentity';
-import { createConversationToolBundle } from './conversationToolBundle';
+import { createConversationToolBundle } from '../../conversationTools/conversationToolBundle';
 import { isolateSelectedRecordingTurn } from './selectedRecordingConversation';
 import { withProviderStage } from '../../providers/diagnostics';
 import { ragConversationFailure } from './ragConversationFailure';
@@ -21,7 +20,7 @@ import { prepareConversationHistory } from './prepareConversationHistory';
 import * as voiceSelection from './conversationVoiceSelection';
 import { prepareConversationPhoto as preparePhoto } from './conversationPhotoService';
 import * as targets from './conversationEntryTargets';
-import { conversationExternalEvidence } from './conversationExternalEvidence';
+import { conversationExternalEvidence } from '../../conversationTools/conversationExternalEvidence';
 export function createRagConversationService(
   deps: RagConversationServiceDependencies,
 ) {
@@ -146,13 +145,14 @@ export function createRagConversationService(
         ),
       });
       if (searchPlan.eager.status === 'cancelled') return run.cancelled;
-      const { toolExecution, generated, localRetrievalFailed } =
+      const { prepareExecution, generated, localRetrievalFailed } =
         createConversationToolBundle({
           data,
           registry,
           observer,
           researchInputs,
-          external,
+          externalTools: external.tools,
+          selected,
           ...searchPlan.toolPolicy,
         });
       const retention = createConversationRetentionBridge({
@@ -166,13 +166,10 @@ export function createRagConversationService(
         ...run.conversationRetentionHistoryOptions(history),
         signal,
       });
-      const baseExecution = executionOptions({
-        consentPurpose: 'record_conversation',
+      const baseExecution = prepareExecution({
         selected,
         operationRunId: searchPlan.operationRunId,
         consent,
-        registry,
-        ...toolExecution,
         external,
       });
       const mutation = conversationMutationExecution({

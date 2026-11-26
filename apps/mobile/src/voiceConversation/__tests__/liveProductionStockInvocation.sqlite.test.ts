@@ -1,5 +1,5 @@
 import { waitFor } from '@testing-library/react-native';
-import * as stock from '../../aiFeatures/integration/ownedLiveConversationInvocation';
+import * as stock from '../ownedLiveConversationInvocation';
 import {
   canonicalLiveCommonRegistration,
   createLiveCommonHealthPort,

@@ -6,7 +6,7 @@ import type {
 import type { JsonObject } from '@orot/model-runtime';
 import type { LocalEvidenceReferenceRegistry } from './evidenceRegistry';
 import type { createResearchInputTracker } from './researchInputTracker';
-import type { conversationExternalEvidence } from './conversationExternalEvidence';
+import type { conversationExternalEvidence } from '../../conversationTools/conversationExternalEvidence';
 import { captureConversationSources } from './captureConversationSources';
 
 /** Bump when the allowlisted task/tool factory semantics change; no stored functions or grants. */

@@ -5,7 +5,7 @@ import {
 import type { LanguageModelProvider } from '@orot/model-runtime';
 import { EVIDENCE_WORKFLOW_BUDGET } from '../agent/evidenceWorkflowBudget';
 import { evidenceConsentScope } from '../aiFeatures/integration/evidenceConsentScope';
-import { bindOwnedLiveConversationInvocation } from '../aiFeatures/integration/ownedLiveConversationInvocation';
+import { bindOwnedLiveConversationInvocation } from './ownedLiveConversationInvocation';
 import { LocalEvidenceReferenceRegistry } from '../aiFeatures/integration/evidenceRegistry';
 import type { AiFeatureLocalData } from '../aiFeatures/integration/localData';
 import { stable } from '../aiFeatures/integration/stableEvidenceReference';

@@ -1,25 +1,25 @@
-import { createTypedHeartRateModelOwner } from './conversationHeartRateModelOwner';
-import type { RagConversationServiceDependencies } from './ragConversationServiceDependencies';
-import type { RagConversationObserver } from '../../ragConversation/service';
-import type { createResearchInputTracker } from './researchInputTracker';
+import type {
+  ExecutionConsentPort,
+  ExternalMedicalQueryConsentPort,
+} from '@orot/agent-runtime';
+import type { EuropePmcMedicalEvidenceService } from '../externalMedicalEvidence/europePmc';
+import type { requireSelectedAi } from '../aiFeatures/integration/provider';
+import type { AiFeatureLocalData } from '../aiFeatures/integration/localData';
+import type { ConversationToolContext } from './conversationToolContext';
+import type { createResearchInputTracker } from '../aiFeatures/integration/researchInputTracker';
 import {
   createSelectedExternalEvidence,
   type SelectedExternalEvidenceSnapshot,
-} from './selectedExternalEvidence';
-import { retainLiteratureResults } from './researchRetention';
-import { observeConversationTool } from '../../ragConversation/observeConversationTool';
-import { runDefaultPublicSearch } from './defaultPublicSearch';
-
+} from '../aiFeatures/integration/selectedExternalEvidence';
+import { retainLiteratureResults } from '../aiFeatures/integration/researchRetention';
 /** Share the conversation's consent and retention boundaries with literature tools. */
 export function conversationExternalEvidence(input: {
-  selected: Awaited<
-    ReturnType<RagConversationServiceDependencies['selectedAi']>
-  >;
-  consent: RagConversationServiceDependencies['consent'];
-  queryConsent: RagConversationServiceDependencies['queryConsent'];
-  externalEvidence: RagConversationServiceDependencies['externalEvidence'];
-  loadLocalData: RagConversationServiceDependencies['loadLocalData'];
-  observer?: RagConversationObserver;
+  selected: ReturnType<typeof requireSelectedAi>;
+  consent: ExecutionConsentPort;
+  queryConsent: ExternalMedicalQueryConsentPort;
+  externalEvidence: EuropePmcMedicalEvidenceService;
+  loadLocalData: () => Promise<AiFeatureLocalData>;
+  observer?: ConversationToolContext;
   researchInputs: ReturnType<typeof createResearchInputTracker>;
   restored?: SelectedExternalEvidenceSnapshot;
   owner?: () => Promise<boolean>;
@@ -86,34 +86,12 @@ export function conversationExternalEvidence(input: {
     validateResearchInputs: researchInputs.revalidate,
     onResearchRetained: researchInputs.recordResearch,
   });
-  if (observer?.protectedLocalInput)
-    return { ...external, tools: [], publicWebTool: undefined };
+  // The separate generated-report feature still uses its private preflight port.
+  // Conversation transports receive only the uniform declared capabilities.
   return {
-    ...external,
-    ...(observer?.confirmTypedHeartRate && !input.restored
-      ? {
-          createTypedHeartRateOwner: () =>
-            createTypedHeartRateModelOwner(selected),
-        }
-      : {}),
+    tools: observer?.protectedLocalInput ? [] : external.tools,
+    snapshot: external.snapshot,
+    validates: external.validates,
+    usesPublicWeb: external.usesPublicWeb,
   };
-}
-
-/** Keep public search observation and cancellation tied to the same turn. */
-export function conversationPublicSearch(input: {
-  external: ReturnType<typeof conversationExternalEvidence>;
-  observer?: RagConversationObserver;
-  runId: string;
-  question: string;
-  signal: AbortSignal;
-}) {
-  return runDefaultPublicSearch({
-    tool: observeConversationTool(
-      input.external.publicWebTool,
-      input.observer?.onToolEvent,
-    ),
-    operationRunId: input.runId,
-    request: input.question,
-    signal: input.signal,
-  });
 }
