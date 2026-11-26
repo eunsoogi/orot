@@ -129,16 +129,14 @@ test.each([
         ? 'chatgpt-plan:fixture'
         : APPLE_PROVIDER_ID;
   const confirmHistorySave = async () => true;
-  const select = (archivedAnswerMemoryTarget: typeof archive) =>
+  const offers = (archivedAnswerMemoryTarget: typeof archive) =>
     actionSelection(
       { archivedAnswerMemoryTarget, confirmHistorySave },
       data,
       provider,
       remote,
       mode !== 'missing native proof',
-    );
-  const offers = (target: typeof archive) =>
-    select(target).execution.actions.some(tool => tool.id === toolId);
+    ).execution.actions.some(tool => tool.id === toolId);
   expect(offers(archive)).toBe(false);
   if (mode === 'remote subscription') expect(offers(undefined)).toBe(true);
 });
@@ -158,7 +156,9 @@ test.each(['save', 'source reproof', 'lock during consent'] as const)(
       protectedDataAvailable: async () => true,
       subscribe(listener) {
         listeners.add(listener);
-        return () => void listeners.delete(listener);
+        return () => {
+          listeners.delete(listener);
+        };
       },
     });
     try {
