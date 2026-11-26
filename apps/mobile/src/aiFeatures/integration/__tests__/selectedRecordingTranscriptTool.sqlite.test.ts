@@ -7,7 +7,7 @@ import { createConversationRecordingDraft } from '../../../ragConversation/conve
 import { guardConversationHistoryProvider } from '../conversationHistoryProviderGuard';
 import type { LanguageModelProvider } from '@orot/model-runtime';
 import { LocalEvidenceReferenceRegistry } from '../evidenceRegistry';
-import { createSelectedRecordingTranscriptTool } from '../selectedRecordingTranscriptTool';
+import { createSelectedRecordingTranscriptTool } from '../../../conversationTools/selectedRecordingTranscriptTool';
 
 function request() {
   return {

@@ -1,4 +1,4 @@
-import { createHealthContextTool } from '../healthContextTool';
+import { createHealthContextTool } from '../../../conversationTools/healthContextTool';
 import { bindSummaryWindow } from '../summaryWindowTool';
 import { LocalEvidenceReferenceRegistry } from '../evidenceRegistry';
 import type { HealthContextReader } from '../../../healthEvidence/healthContext/reader';

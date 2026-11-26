@@ -9,7 +9,7 @@ const root = resolve(dirname(fileURLToPath(import.meta.url)), '../..');
 const nativeFile = 'apps/mobile/ios/OrotMobile/LiveStockHealthAttestation.swift';
 const start = '    // BEGIN GENERATED CHAT HEALTH DESCRIPTOR';
 const end = '    // END GENERATED CHAT HEALTH DESCRIPTOR';
-const stock = 'apps/mobile/src/aiFeatures/integration/healthContextToolDefinition.ts';
+const stock = 'apps/mobile/src/conversationTools/healthContextToolDefinition.ts';
 const topics = 'apps/mobile/src/healthEvidence/healthContext/types.ts';
 const guide = 'packages/agent-runtime/src/multiAgent/guidedSchema.ts';
 
@@ -39,7 +39,7 @@ function load(rootPath, file, dependencies = {}) {
 /** Use the stock Conversation declaration and the same parameter adapter as the JS native registration. */
 export function chatHealthDescriptorBytes(rootPath) {
   const definition = load(rootPath, stock, {
-    '../../healthEvidence/healthContext/types': load(rootPath, topics),
+    '../healthEvidence/healthContext/types': load(rootPath, topics),
   }).healthContextToolDefinition('rag');
   if (
     definition.id !== 'local-health-context' ||

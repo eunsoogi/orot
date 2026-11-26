@@ -1,6 +1,6 @@
 import type { ConversationTemplateProposal } from '@orot/agent-runtime';
-import type { RagConversationObserver } from '../../ragConversation/conversationObserver';
-import type { ConversationEntryContext } from './conversationIntent';
+import type { RagConversationObserver } from './conversationObserver';
+import type { ConversationEntryContext } from '../aiFeatures/integration/conversationIntent';
 
 /** A model cannot choose an appointment, date, provider, record, or consent grant. */
 export function conversationTemplateTarget(

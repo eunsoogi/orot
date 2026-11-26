@@ -16,7 +16,7 @@ import type { RagConversationServiceDependencies } from './ragConversationServic
 import { resolveConversationSelection } from './conversationVoiceSelection';
 import { createConversationRetentionBridge } from './conversationRetentionBridge';
 import { guardSelectedRecordingProvider } from './selectedRecordingProvider';
-import { createSelectedRecordingTranscriptTool } from './selectedRecordingTranscriptTool';
+import { createSelectedRecordingTranscriptTool } from '../../conversationTools/selectedRecordingTranscriptTool';
 import {
   conversationRunInvocation,
   observeConversationMain,

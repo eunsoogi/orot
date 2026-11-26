@@ -6,7 +6,10 @@ test('accepts only an explicit model-selected overview view while preserving ord
   ).toBeUndefined();
   expect(
     queryInput({ query: ' health records ', view: 'health_overview' }),
-  ).toEqual({ query: 'health records', view: 'health_overview' });
+  ).toEqual({
+    query: 'health records',
+    view: 'health_overview',
+  });
   expect(queryInput({ query: 'heart rate' })).toEqual({ query: 'heart rate' });
   expect(
     queryInput({ query: 'heart rate', view: 'unbounded' }),

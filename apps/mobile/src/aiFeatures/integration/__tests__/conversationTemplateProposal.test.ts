@@ -4,7 +4,7 @@ import type {
   LanguageModelResponse,
 } from '@orot/model-runtime';
 import type { RagConversationObserver } from '../../../ragConversation/conversationObserver';
-import { proposeConversationTemplate } from '../conversationTemplateProposal';
+import { proposeConversationTemplate } from '../../../ragConversation/conversationTemplateProposal';
 import {
   choice,
   fixture,

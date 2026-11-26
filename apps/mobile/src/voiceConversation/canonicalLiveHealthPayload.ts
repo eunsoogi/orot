@@ -1,5 +1,5 @@
 import type { EvidenceBatch } from '@orot/agent-runtime';
-import { healthContextToolDefinition } from '../aiFeatures/integration/healthContextToolDefinition';
+import { healthContextToolDefinition } from '../conversationTools/healthContextToolDefinition';
 import { jsonByteLength } from '../aiFeatures/integration/evidenceUtils';
 
 /** Existing canonical transfer body. No complete source row, native identity,

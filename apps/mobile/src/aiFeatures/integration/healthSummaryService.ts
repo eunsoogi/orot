@@ -18,7 +18,7 @@ import { parseHealthSummaryWindow } from '../../ragConversation/healthSummary';
 import type { AiFeatureLocalData } from './localData';
 import type { LocalEvidenceReferenceRegistry } from './evidenceRegistry';
 import type { requireSelectedAi } from './provider';
-import { createHealthContextTool } from './healthContextTool';
+import { createHealthContextTool } from '../../conversationTools/healthContextTool';
 import { bindSummaryWindow } from './summaryWindowTool';
 import { createSymptomSummaryPersistence } from './symptomSummaryPersistence';
 import { executionOptions } from './featureServiceExecution';

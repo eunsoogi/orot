@@ -8,7 +8,7 @@ import {
 import { Linking } from 'react-native';
 import type { SqlDatabase } from '@orot/storage';
 import { openOpSqliteFileQueue } from '../../../test-support/opSqliteFileQueueFixture';
-import { createHealthContextTool } from '../../aiFeatures/integration/healthContextTool';
+import { createHealthContextTool } from '../../conversationTools/healthContextTool';
 import { createHealthContextReader } from '../../healthEvidence/healthContext/reader';
 import { ConversationToolEvents } from '../../ragConversation/ConversationToolEvents';
 import {

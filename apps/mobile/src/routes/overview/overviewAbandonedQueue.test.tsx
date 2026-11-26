@@ -3,7 +3,7 @@ import { runMigrations, type SqlDatabase } from '@orot/storage';
 import { healthObservation } from '../../../../../packages/storage/__tests__/localQueryTestSupport';
 import { createLocalEvidenceData } from '../../healthEvidence/localEvidenceData';
 import { ensureHealthContextGeneration } from '../../healthEvidence/healthContext/generation';
-import { createHealthContextTool } from '../../aiFeatures/integration/healthContextTool';
+import { createHealthContextTool } from '../../conversationTools/healthContextTool';
 import { LocalEvidenceReferenceRegistry } from '../../aiFeatures/integration/evidenceRegistry';
 import { openOpSqliteWorker } from '../../../test-support/opSqliteWorkerFixture';
 import { useOverviewMetrics } from './useOverviewMetrics';

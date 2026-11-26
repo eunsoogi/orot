@@ -1,4 +1,4 @@
-import { createHealthContextTool } from '../../../aiFeatures/integration/healthContextTool';
+import { createHealthContextTool } from '../../../conversationTools/healthContextTool';
 import { LocalEvidenceReferenceRegistry } from '../../../aiFeatures/integration/evidenceRegistry';
 import { jsonByteLength } from '../../../aiFeatures/integration/evidenceUtils';
 import { healthContextDays } from '../window';

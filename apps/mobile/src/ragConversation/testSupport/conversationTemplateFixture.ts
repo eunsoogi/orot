@@ -1,5 +1,5 @@
 import type { ConversationTemplateProposal } from '@orot/agent-runtime';
-import { conversationTemplateTarget } from '../../aiFeatures/integration/conversationTemplateTarget';
+import { conversationTemplateTarget } from '../conversationTemplateTarget';
 import type { ConversationScreenProps } from '../ConversationScreenProps';
 
 /** Provider choices are scripted in tests. The app still owns dates, Visit dispatcher and markers. */

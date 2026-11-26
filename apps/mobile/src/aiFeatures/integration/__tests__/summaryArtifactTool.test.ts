@@ -3,7 +3,7 @@ import { openSqliteTestDatabase } from '../../../../../../packages/storage/__tes
 import { reference } from '../../../diseaseHypotheses/taskTestSupport';
 import { createSymptomSummaryStorage } from '../../../storage/symptomSummaryStorage';
 import { createSummaryArtifactDiscovery } from '../summaryArtifactDiscovery';
-import { createSummaryArtifactTool } from '../summaryArtifactTool';
+import { createSummaryArtifactTool } from '../../../conversationTools/summaryArtifactTool';
 import { createArtifactSourceTool } from '../artifactSourceTool';
 import { LocalEvidenceReferenceRegistry } from '../evidenceRegistry';
 import { fingerprint } from '../evidenceUtils';

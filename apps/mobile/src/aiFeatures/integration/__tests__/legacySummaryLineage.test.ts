@@ -4,7 +4,7 @@ import { createSymptomSummaryStorage } from '../../../storage/symptomSummaryStor
 import { reference } from '../../../diseaseHypotheses/taskTestSupport';
 import { LocalEvidenceReferenceRegistry } from '../evidenceRegistry';
 import { createSummaryArtifactDiscovery } from '../summaryArtifactDiscovery';
-import { createSummaryArtifactTool } from '../summaryArtifactTool';
+import { createSummaryArtifactTool } from '../../../conversationTools/summaryArtifactTool';
 import { fingerprint } from '../evidenceUtils';
 import type { AiFeatureLocalData } from '../localData';
 import { createSymptomSummaryPersistence } from '../symptomSummaryPersistence';

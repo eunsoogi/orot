@@ -1,5 +1,5 @@
 import { nativeToolParameterSchema } from '@orot/agent-runtime';
-import { healthContextToolDefinition } from '../../aiFeatures/integration/healthContextToolDefinition';
+import { healthContextToolDefinition } from '../../conversationTools/healthContextToolDefinition';
 import { liveStockHealthCatalog } from '../liveStockHealthDescriptor';
 
 const tool = healthContextToolDefinition('rag');
