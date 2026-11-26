@@ -1,4 +1,4 @@
-import { captureArchivedSummaryBookmarkProtection } from './archivedSummaryBookmarkProtection';
+import { captureArchivedReportBookmarkProtection } from './archivedReportBookmarkProtection';
 import { ArchivedVisitQuestionBookmark } from './ArchivedVisitQuestionBookmark';
 import { openSavedGeneratedReportReferences } from '../memory/openSavedGeneratedReportReferences';
 import {
@@ -99,19 +99,19 @@ export function GeneratedReportBookmark({
     revision: daily.revision,
     identityKey: daily.identity.key,
   };
+  const archive = archivedSummaryRevision
+    ? { summaryRevision: archivedSummaryRevision }
+    : message.savedHistoryDisplayOnly && daily
+      ? ('daily' as const)
+      : undefined;
   return (
     <BookmarkAction
-      key={JSON.stringify([
-        artifactId,
-        target,
-        visitTarget,
-        archivedSummaryRevision,
-      ])}
+      key={JSON.stringify([artifactId, target, visitTarget, archive])}
       artifactId={artifactId}
       owner={owner}
       daily={target}
       visit={visitTarget}
-      archivedSummaryRevision={archivedSummaryRevision}
+      archive={archive}
     />
   );
 }
@@ -121,12 +121,12 @@ function BookmarkAction({
   owner,
   daily,
   visit,
-  archivedSummaryRevision,
+  archive,
 }: {
   artifactId: string;
   daily?: DailyReportBookmarkTarget;
   visit?: string;
-  archivedSummaryRevision?: string;
+  archive?: 'daily' | { summaryRevision: string };
   owner: NonNullable<React.ContextType<typeof GeneratedReportBookmarkContext>>;
 }) {
   const store = useConversationSessions();
@@ -157,7 +157,7 @@ function BookmarkAction({
       allowDraftChanges: true,
     });
     let scope:
-      ReturnType<typeof captureArchivedSummaryBookmarkProtection> | undefined;
+      ReturnType<typeof captureArchivedReportBookmarkProtection> | undefined;
     const current = () => (scope?.current() ?? true) && lifetime.current();
     if (!lease || !current()) {
       lifetime.close();
@@ -166,20 +166,19 @@ function BookmarkAction({
     pressing.current = true;
     setStatus('saving');
     try {
-      scope = archivedSummaryRevision
-        ? captureArchivedSummaryBookmarkProtection()
-        : undefined;
+      scope = archive ? captureArchivedReportBookmarkProtection() : undefined;
       protectedTap.current = scope?.close ?? null;
       if (scope && (!(await scope.confirmProtected()) || !current()))
-        throw new Error('Archived summary owner moved.');
+        throw new Error('Archived report owner moved.');
       const storage = await openSavedGeneratedReportReferences();
-      if (scope && !current()) throw new Error('Archived summary owner moved.');
+      if (scope && !current()) throw new Error('Archived report owner moved.');
       const saved = daily
         ? await storage.bookmarkDailyReport({
             artifactId,
             lease,
             current,
             displayedReport: daily,
+            confirmArchivedProtection: scope?.confirmProtected,
           })
         : visit
           ? await storage.bookmarkVisitQuestions({
@@ -192,10 +191,10 @@ function BookmarkAction({
               artifactId,
               lease,
               current,
-              ...(archivedSummaryRevision && scope
+              ...(typeof archive === 'object' && scope
                 ? {
                     archive: {
-                      revision: archivedSummaryRevision,
+                      revision: archive.summaryRevision,
                       confirmProtected: scope.confirmProtected,
                     },
                   }

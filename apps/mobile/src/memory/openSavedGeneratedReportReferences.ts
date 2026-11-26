@@ -14,6 +14,15 @@ export async function openSavedGeneratedReportReferences() {
     isCurrentLocalAgentMemoryDatabase(database) && current();
   return {
     ...storage,
+    bookmarkDailyReport: (
+      input: Parameters<typeof storage.bookmarkDailyReport>[0],
+    ) =>
+      storage.bookmarkDailyReport({
+        ...input,
+        current: input.confirmArchivedProtection
+          ? owned(input.current)
+          : input.current,
+      }),
     bookmarkHealthSummary: (
       input: Parameters<typeof storage.bookmarkHealthSummary>[0],
     ) =>

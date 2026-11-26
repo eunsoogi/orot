@@ -15,6 +15,7 @@ import { createConversationSessionRetention } from '../../ragConversation/conver
 import { conversationSavedHistoryDisplayOption } from '../../aiFeatures/integration/conversationSavedHistoryDisplayOption';
 import { openSavedGeneratedReportReferences } from '../../memory/openSavedGeneratedReportReferences';
 import { SavedMemoryDetail } from '../../memory/SavedMemoryDetail';
+import { exerciseColdDailyReportBookmarkTap } from './coldDailyReportBookmarkTap';
 import type { ConversationArtifact } from '../conversationArtifactTypes';
 import type { createConversationArtifactStorage } from '../conversationArtifactStorage';
 
@@ -153,19 +154,10 @@ export async function expectReportBookmarkMounted(
     const alert = jest.spyOn(Alert, 'alert').mockImplementation(() => {});
     try {
       if (mode === 'tap') {
-        const button = await screen.findByTestId(
-          'conversation-bookmark-daily-report',
-        );
-        await fireEvent.press(button);
-        expect(bookmark).toHaveBeenCalledWith(
-          expect.objectContaining({
-            artifactId: historical.id,
-            displayedReport: {
-              runId: historical.dailyReport!.runId,
-              revision: historical.dailyReport!.revision,
-              identityKey: historical.dailyReport!.identity.key,
-            },
-          }),
+        await exerciseColdDailyReportBookmarkTap(
+          conversations,
+          historical,
+          bookmark,
         );
       } else {
         await fireEvent.changeText(
