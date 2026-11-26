@@ -14,6 +14,20 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
         }
     }
 
+    func applicationProtectedDataWillBecomeUnavailable(_: UIApplication) {
+        guard let window, let scene = window.windowScene,
+              let delegate = scene.delegate as? SceneDelegate
+        else { return }
+        delegate.recordsSnapshotShield.protectionWillLock(in: window, scene: scene)
+    }
+
+    func applicationProtectedDataDidBecomeAvailable(_: UIApplication) {
+        guard let window, let scene = window.windowScene,
+              let delegate = scene.delegate as? SceneDelegate
+        else { return }
+        delegate.recordsSnapshotShield.protectionDidUnlock(in: window, scene: scene)
+    }
+
     var reactNativeDelegate: ReactNativeDelegate?
     var reactNativeFactory: RCTReactNativeFactory?
     var launchOptions: [UIApplication.LaunchOptionsKey: Any]?
@@ -59,6 +73,7 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
 
 class SceneDelegate: UIResponder, UIWindowSceneDelegate {
     var window: UIWindow?
+    let recordsSnapshotShield = RecordsSnapshotShield()
 
     #if OROT_TESTS
         /// The test probe observes current scene geometry without changing production orientation policy.
@@ -69,8 +84,30 @@ class SceneDelegate: UIResponder, UIWindowSceneDelegate {
         }
     #endif
 
+    func sceneWillResignActive(_ scene: UIScene) {
+        concealRecords(in: scene)
+    }
+
+    func sceneDidEnterBackground(_ scene: UIScene) {
+        concealRecords(in: scene)
+    }
+
+    func sceneDidDisconnect(_ scene: UIScene) {
+        if let windowScene = scene as? UIWindowScene {
+            recordsSnapshotShield.disconnect(windowScene)
+        }
+    }
+
+    private func concealRecords(in scene: UIScene) {
+        guard let window, let windowScene = scene as? UIWindowScene else { return }
+        recordsSnapshotShield.sceneSuspended(in: window, scene: windowScene)
+    }
+
     /// Foreground reconciliation observes revoked permissions without prompting.
-    func sceneDidBecomeActive(_: UIScene) {
+    func sceneDidBecomeActive(_ scene: UIScene) {
+        if let window, let windowScene = scene as? UIWindowScene {
+            recordsSnapshotShield.sceneResumed(in: window, scene: windowScene)
+        }
         Task { _ = await DailyReminderNotifications.shared.reconcile() }
     }
 

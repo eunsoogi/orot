@@ -6,14 +6,18 @@ import { useNavigationRouteRefresh } from '../navigation/navigationRouteRefresh'
 import { subscribeRecentSourceSaved } from '../storage/recentSourceEvents';
 import type { RecordsRecentSourcesProps } from './RecordsRecentSources';
 import {
-  buildRecentRecordEntries,
   groupRecentRecords,
   recentPageSize,
   type RecentRecordEntry,
 } from './RecordsRecentTimeline';
 import { loadRecentSourceMaterial } from './recentSourceReader';
 import { openRecentRecord } from './openRecentRecord';
+import {
+  resolveMountedRecentPaint,
+  useMountedRecentRoutePaint,
+} from './useMountedRecentRoutePaint';
 import { useSettledRecentPaint } from './useSettledRecentPaint';
+import { useRecentRecordEntries } from './useRecentRecordEntries';
 import { useRecentPageDemand } from './useRecentPageDemand';
 import { useRecentSavedMaterial } from './useRecentSavedMaterial';
 import { refreshRecentPages } from './recentPageRefresh';
@@ -22,8 +26,10 @@ import {
   recentStreamHasError,
 } from './recentFeedPresentation';
 
-/** Independent cursor streams share one visible depth without blocking healthy sources. */
-export function useRecordsRecentFeed(props: RecordsRecentSourcesProps) {
+export function useRecordsRecentFeed(
+  props: RecordsRecentSourcesProps,
+  shield?: Readonly<{ available: boolean; bound: boolean }>,
+) {
   const {
     active = true,
     ownership,
@@ -32,8 +38,6 @@ export function useRecordsRecentFeed(props: RecordsRecentSourcesProps) {
     showAll = false,
     pagedAudio = false,
     pagedDocuments = false,
-    recordings,
-    documents,
     recordingState,
     documentsState,
     documentsError,
@@ -50,6 +54,10 @@ export function useRecordsRecentFeed(props: RecordsRecentSourcesProps) {
     records: readonly RecentRecordEntry[];
     groups: ReturnType<typeof groupRecentRecords>;
   }>(warmEligible, ownership, tabAuthority);
+  const mounted = useMountedRecentRoutePaint<{
+    records: readonly RecentRecordEntry[];
+    groups: ReturnType<typeof groupRecentRecords>;
+  }>(warmEligible && shield?.bound === true, ownership, tabAuthority);
   const scopedMaterial = useMemo(() => {
     if (!recentMaterialReadyLease) return undefined;
     const lease = recentMaterialReadyLease;
@@ -72,6 +80,8 @@ export function useRecordsRecentFeed(props: RecordsRecentSourcesProps) {
         ),
     };
   }, [recentMaterialReadyLease]);
+  const paintPort = (publish: typeof painted.publishMedia) =>
+    warmEligible ? { blocked: painted.blocked, publish } : undefined;
   const reports = useRecentSavedMaterial(
     active,
     ownership,
@@ -82,9 +92,7 @@ export function useRecordsRecentFeed(props: RecordsRecentSourcesProps) {
     undefined,
     Boolean(scopedMaterial),
     scopedMaterial?.subscribe,
-    warmEligible
-      ? { blocked: painted.blocked, publish: painted.publishMaterial }
-      : undefined,
+    paintPort(painted.publishMaterial),
   );
   const media = useRecentSavedMaterial(
     active,
@@ -96,36 +104,24 @@ export function useRecordsRecentFeed(props: RecordsRecentSourcesProps) {
     subscribeRecentSourceSaved,
     true,
     undefined,
-    warmEligible
-      ? { blocked: painted.blocked, publish: painted.publishMedia }
-      : undefined,
+    paintPort(painted.publishMedia),
   );
   const [limit, setLimit] = useState(recentPageSize);
   const requestedDepth = useRef(recentPageSize);
   const refreshInFlight = useRef(false);
   const [refreshing, setRefreshing] = useState(false);
   const retryRefresh = useRef(false);
-  const reportDemand = useRecentPageDemand(reports, recentPageSize);
-  const mediaDemand = useRecentPageDemand(media, recentPageSize);
-  const records = useMemo(
-    () =>
-      buildRecentRecordEntries(
-        pagedAudio ? [] : recordings,
-        pagedDocuments ? [] : documents,
-        reports.rows,
-        media.rows.filter(row =>
-          row.kind === 'audio_recording' ? pagedAudio : pagedDocuments,
-        ),
-      ),
-    [
-      documents,
-      media.rows,
-      pagedAudio,
-      pagedDocuments,
-      recordings,
-      reports.rows,
-    ],
+  const reportDemand = useRecentPageDemand(
+    reports,
+    recentPageSize,
+    mounted.retained?.depths.material,
   );
+  const mediaDemand = useRecentPageDemand(
+    media,
+    recentPageSize,
+    mounted.retained?.depths.media,
+  );
+  const records = useRecentRecordEntries(props, media.rows, reports.rows);
   const streams = [
     ...(onOpenReport ? [reports] : []),
     ...(pagedAudio || pagedDocuments ? [media] : []),
@@ -182,7 +178,6 @@ export function useRecordsRecentFeed(props: RecordsRecentSourcesProps) {
     const nextDepth = limit + recentPageSize;
     requestedDepth.current = nextDepth;
     setLimit(nextDepth);
-    // Optional reads may still be pending. Each cursor fulfills only its own demand.
     if (onOpenReport) reportDemand.requestMore();
     if (pagedAudio || pagedDocuments) mediaDemand.requestMore();
   }
@@ -202,8 +197,19 @@ export function useRecordsRecentFeed(props: RecordsRecentSourcesProps) {
 
   const isFresh =
     streams.length > 0 && streams.every(stream => stream.state === 'ready');
-  const warm = loadErrors.length === 0 ? painted.warm : undefined;
+  const { holding, snapshot, rebuilt, revision, warm } =
+    resolveMountedRecentPaint(
+      mounted.retained,
+      painted.warm,
+      isFresh,
+      loadErrors.length > 0,
+      media,
+      reports,
+    );
   useLayoutEffect(() => {
+    if (loadErrors.length) mounted.clear();
+    else if (rebuilt && !refreshing)
+      mounted.commit({ records: certified, groups }, media, reports);
     if (!warm && painted.warm) painted.rejectWarm();
     if (isFresh && !refreshing && loadErrors.length === 0)
       painted.recordPaint(
@@ -214,12 +220,16 @@ export function useRecordsRecentFeed(props: RecordsRecentSourcesProps) {
       );
   });
   return {
-    records: warm?.records ?? certified,
+    records: snapshot?.records ?? certified,
+    holdingMountedList: holding,
+    shieldRecords: warmEligible && shield?.available === true,
+    presentationRevision: revision,
     isFresh,
     warmPaint: Boolean(warm),
-    groups: warm?.groups ?? groups,
+    groups: snapshot?.groups ?? groups,
     showMore,
     retrySources,
+    retryProtectedPaint: () => refresh(),
     openRecord: (record: RecentRecordEntry) =>
       openRecentRecord(record, props, reports, media),
     isCurrent: reports.isRouteCurrent,
