@@ -2,7 +2,7 @@ import { historyHasDurableContext } from './freshConversationDialogue';
 import { startPreparedRagOpening as start } from './preparedOpeningConsent';
 import { conversationPublicSearchPlan as planSearch } from './conversationPublicSearchPlan';
 import { prepareLiveRagContinuation as continuationFor } from './liveRagConversationCapture';
-import { conversationMutationExecution } from './conversationMutationExecution';
+import { prepareConversationMutation } from './prepareConversationMutation';
 import type { RagConversationServiceDependencies } from './ragConversationServiceDependencies';
 import * as finish from './finishConversationWorkflow';
 import type { RagConversationMessage } from '../../ragConversation/task';
@@ -174,7 +174,10 @@ export function createRagConversationService(
         consent,
         external,
       });
-      const mutation = conversationMutationExecution({
+      stage = 'workflow';
+      if (!(await historyIsCurrent()))
+        return { status: 'failure', kind: 'retrieval_failed' };
+      const mutation = await prepareConversationMutation(signal, {
         baseExecution,
         photo,
         photoEvidence,
@@ -186,9 +189,6 @@ export function createRagConversationService(
         history,
         remoteMemory: !searchPlan.literatureOnly && (entryContext ?? true),
       });
-      stage = 'workflow';
-      if (!(await historyIsCurrent()))
-        return { status: 'failure', kind: 'retrieval_failed' };
       const main = run.observeConversationMain(deps.ragRunner);
       const outcome = await main(
         run.conversationRunRequest({

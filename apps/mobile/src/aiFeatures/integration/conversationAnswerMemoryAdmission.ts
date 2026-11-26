@@ -36,6 +36,24 @@ function canSelectAnswerMemoryArchive(
   );
 }
 
+type RemoteOwner = Parameters<typeof observeAnswerMemoryProviderOwner>[0];
+const remoteArchiveOwners = new WeakMap<
+  ArchivedConversationAnswerTarget,
+  RemoteOwner
+>();
+
+/** Only the native-protected preparation path may bind the existing visible
+ * target to an exact authorized remote owner. No target data leaves this map. */
+export function bindPreparedRemoteAnswerArchive(
+  target: ArchivedConversationAnswerTarget,
+  owner: RemoteOwner,
+  current: () => boolean,
+): ArchivedConversationAnswerTarget {
+  const bound = { ...target, current };
+  remoteArchiveOwners.set(bound, owner);
+  return bound;
+}
+
 export function answerMemorySelection(input: {
   observer?: RagConversationObserver;
   remoteOwner?: Parameters<typeof observeAnswerMemoryProviderOwner>[0];
@@ -47,19 +65,30 @@ export function answerMemorySelection(input: {
   const archived = observer?.archivedAnswerMemoryTarget;
   const target =
     archived === undefined ? observer?.retainedHistory?.at(-1) : archived;
-  const providerOwner = archived
+  const localOwner = archived
     ? archivedAnswerMemoryLocalOwner(observer)
-    : remoteOwner;
+    : undefined;
+  const remoteArchiveEligible = Boolean(
+    archived &&
+    terminalRunId &&
+    remoteOwner &&
+    remoteArchiveOwners.get(archived) === remoteOwner &&
+    remoteOwner.current() &&
+    archived.current(),
+  );
+  const providerOwner =
+    archived && !remoteArchiveEligible ? localOwner : remoteOwner;
   const eligible =
     target &&
     (archived
-      ? input.onDeviceArchiveEligible === true &&
-        canSelectAnswerMemoryArchive(
-          archived,
-          providerOwner,
-          remoteOwner,
-          terminalRunId,
-        )
+      ? remoteArchiveEligible ||
+        (input.onDeviceArchiveEligible === true &&
+          canSelectAnswerMemoryArchive(
+            archived,
+            localOwner,
+            remoteOwner,
+            terminalRunId,
+          ))
       : admittedAnswerIds.has(target.id));
   return { archived, target, providerOwner, eligible };
 }
