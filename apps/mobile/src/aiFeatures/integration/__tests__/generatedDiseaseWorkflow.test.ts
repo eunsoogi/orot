@@ -14,7 +14,12 @@ import {
   selectedOption,
 } from '../../../agent/visitQuestions/testing/workflowFixtures';
 
-test.each(['disease', 'disease-apple', 'summary'] as const)(
+test.each([
+  'disease',
+  'disease-apple',
+  'disease-apple-assets-lost',
+  'summary',
+] as const)(
   '%s workflow searches a prior answer and saves its actual generated lineage',
   async mode => {
     const connection = openSqliteTestDatabase(':memory:');
@@ -118,7 +123,7 @@ test.each(['disease', 'disease-apple', 'summary'] as const)(
         }),
       ];
       const { provider, requests } = makeProvider(outputs);
-      const isApple = mode === 'disease-apple';
+      const isApple = mode.startsWith('disease-apple');
       // The on-device path runs the real adapter and serializes every workflow
       // phase. Only the SDK's transport result and local records are synthetic.
       const apple = new AppleFoundationModelsProvider({
@@ -126,6 +131,11 @@ test.each(['disease', 'disease-apple', 'summary'] as const)(
         async generate(request) {
           const index = requests.push(request) - 1;
           serializeAppleRequest(request);
+          if (mode === 'disease-apple-assets-lost' && index === 2)
+            throw Object.assign(new Error('Synthetic private Apple detail.'), {
+              code: 'APPLE_MODEL_UNAVAILABLE',
+              userInfo: { status: 'unavailable' },
+            });
           return modelResponseFixture(outputs[index] ?? '');
         },
         async *stream() {
@@ -153,6 +163,18 @@ test.each(['disease', 'disease-apple', 'summary'] as const)(
         mode === 'summary'
           ? await services.summarizeSymptoms!()
           : await services.generateDiseaseHypotheses();
+      if (mode === 'disease-apple-assets-lost') {
+        expect(outcome).toMatchObject({
+          status: 'workflow',
+          result: {
+            status: 'unavailable',
+            providerErrorCode: 'provider_unavailable',
+          },
+        });
+        expect(requests).toHaveLength(3);
+        expect(await storage.list()).toEqual([]);
+        return;
+      }
       if (outcome.status === 'workflow' && outcome.result.status !== 'result')
         throw new Error(JSON.stringify(outcome.result));
       expect(outcome).toMatchObject({
