@@ -5,7 +5,7 @@ import type { AiFeatureLocalData } from './localData';
 import { restoreRetainedSources } from './restoreRetainedSources';
 import { treatmentPublicSourceUrl } from './treatmentPublicSourceUrl';
 import type { ResolveTreatmentSource } from '../../treatmentContext/treatmentSourceLinks';
-import { isConversationPhotoSource } from '../../ragConversation/conversationArtifactSources';
+import { isConversationPhotoSource } from '../../conversationTools/conversationArtifactSources';
 
 /** Reuse the existing source detail registry while keeping treatment lineage authoritative. */
 export function createTreatmentSourceResolver(input: {

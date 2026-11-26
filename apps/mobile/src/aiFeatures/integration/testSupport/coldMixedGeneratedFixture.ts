@@ -2,7 +2,7 @@ import { createConversationArtifactStorage } from '../../../storage/conversation
 import { coldResearchRegistryFixture } from './coldResearchRegistryFixture';
 import { fingerprint } from '../evidenceUtils';
 import type { SavedGeneratedConversationSource } from '../../../diseaseHypotheses/savedSummaries';
-import type { ConversationArtifactSource } from '../../../ragConversation/conversationArtifactSources';
+import type { ConversationArtifactSource } from '../../../conversationTools/conversationArtifactSources';
 /** Real SQLite mixed lineage; discovery must not rebuild aliases in an abandoned registry. */
 export async function coldMixedGeneratedFixture() {
   const f = await coldResearchRegistryFixture();

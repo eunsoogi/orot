@@ -3,7 +3,7 @@ import type {
   EvidenceReference,
   ExecutionConsentPort,
 } from '@orot/agent-runtime';
-import type { ConversationArtifactSource } from '../ragConversation/conversationArtifactSources';
+import type { ConversationArtifactSource } from '../conversationTools/conversationArtifactSources';
 import type { TreatmentContext } from './types';
 import type { TreatmentPublicEvidenceTool } from './retrieval';
 

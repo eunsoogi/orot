@@ -1,4 +1,4 @@
-import type { SavedGeneratedSummarySource } from '../../ragConversation/conversationArtifactSources';
+import type { SavedGeneratedSummarySource } from '../../conversationTools/conversationArtifactSources';
 import { referenceOnly } from '../../diseaseHypotheses/resultValidation';
 import type { LocalEvidenceReferenceRegistry } from './evidenceRegistry';
 import type { AiFeatureLocalData } from './localData';

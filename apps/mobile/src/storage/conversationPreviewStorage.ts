@@ -2,7 +2,7 @@ import { MAX_CONVERSATION_PREVIEW_LENGTH } from './conversationPreviewLimits';
 import { createConversationPreviewReader } from './conversationPreviewRead';
 import { eligibleConversationPreviewSources } from './conversationPreviewSources';
 import type { SqlDatabase, SqlExecutor } from '@orot/storage';
-import type { ConversationArtifactSource } from '../ragConversation/conversationArtifactSources';
+import type { ConversationArtifactSource } from '../conversationTools/conversationArtifactSources';
 import { decodeConversationArtifact } from './conversationArtifactCodec';
 import { assertConversationArtifactCurrent } from './conversationArtifactFreshness';
 import { createResearchArtifactStorage } from './researchArtifactStorage';

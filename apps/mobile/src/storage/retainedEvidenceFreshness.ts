@@ -16,7 +16,7 @@ import { decodeSavedSymptomSummary } from './symptomSummaryStorageCodec';
 import { decodeConversationArtifact } from './conversationArtifactCodec';
 import { readResearchArtifact } from './researchArtifactCodec';
 import { assertSymptomPeriodAvailable } from './symptomSummaryQuarantine';
-import { requireNonPhotoSources } from '../ragConversation/conversationArtifactSources';
+import { requireNonPhotoSources } from '../conversationTools/conversationArtifactSources';
 
 import type { ReadOnlyPeriodValidation } from './readOnlyPeriodValidation';
 

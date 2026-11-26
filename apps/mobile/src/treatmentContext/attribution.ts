@@ -6,7 +6,7 @@ import {
 import type { ManualHistoryRepository, SqlExecutor } from '@orot/storage';
 import { RetainedSourceInvalidError } from '../aiFeatures/integration/retainedSourceError';
 import type { TreatmentContext } from './types';
-import type { ConversationArtifactSource } from '../ragConversation/conversationArtifactSources';
+import type { ConversationArtifactSource } from '../conversationTools/conversationArtifactSources';
 import { stableJson } from '../aiFeatures/integration/evidenceUtils';
 
 /** Recheck record type and origin in the same snapshot as retention and freshness. */

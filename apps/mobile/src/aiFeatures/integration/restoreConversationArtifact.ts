@@ -16,7 +16,7 @@ import {
   isGeneratedResearchSource,
   isOriginalConversationSource,
   isConversationPhotoSource,
-} from '../../ragConversation/conversationArtifactSources';
+} from '../../conversationTools/conversationArtifactSources';
 import { restoreConversationSummarySource } from './restoreConversationSummarySource';
 import {
   restoreConversationParentSource,

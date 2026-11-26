@@ -17,7 +17,7 @@ import { fingerprint } from './evidenceUtils';
 import {
   isConversationPhotoSource,
   requireNonPhotoSources,
-} from '../../ragConversation/conversationArtifactSources';
+} from '../../conversationTools/conversationArtifactSources';
 import { retainedResearchSearchText } from './retainedResearchSearch';
 import {
   treatmentArtifactPredicate,

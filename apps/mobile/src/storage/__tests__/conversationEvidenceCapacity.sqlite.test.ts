@@ -2,7 +2,7 @@ import { healthContextFixture } from '../../aiFeatures/integration/testSupport/h
 import { createConversationArtifactStorage } from '../conversationArtifactStorage';
 import { fingerprint } from '../../aiFeatures/integration/evidenceUtils';
 import { reference } from '../../diseaseHypotheses/taskTestSupport';
-import type { ConversationArtifactSource } from '../../ragConversation/conversationArtifactSources';
+import type { ConversationArtifactSource } from '../../conversationTools/conversationArtifactSources';
 
 /** Real SQLite preserves all admitted references and still revokes every dependency. */
 test('persists more than 24 source citations and invalidates the final source on deletion', async () => {

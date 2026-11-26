@@ -10,7 +10,7 @@ import {
   createReadOnlyPeriodValidation,
   type ReadOnlyPeriodValidation,
 } from '../readOnlyPeriodValidation';
-import { isGeneratedConversationSource } from '../../ragConversation/conversationArtifactSources';
+import { isGeneratedConversationSource } from '../../conversationTools/conversationArtifactSources';
 
 function validate(
   tx: SqlExecutor,

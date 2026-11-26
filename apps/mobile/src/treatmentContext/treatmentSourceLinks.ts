@@ -1,7 +1,7 @@
 import type { SqlDatabase } from '@orot/storage';
 import type { EvidenceReference } from '@orot/agent-runtime';
 import { stableJson } from '../aiFeatures/integration/evidenceUtils';
-import type { ConversationArtifactSource } from '../ragConversation/conversationArtifactSources';
+import type { ConversationArtifactSource } from '../conversationTools/conversationArtifactSources';
 import type { TreatmentEvidenceRequest } from './interfaces';
 import type { TreatmentClaim } from './safety';
 import { createTreatmentClaimVerifier } from './treatmentClaimVerifier';

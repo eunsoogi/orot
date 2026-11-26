@@ -4,7 +4,7 @@ import type { ArchivedConversationWeightedCardsLayout } from '../ragConversation
 import type { ArchivedPairedDetailsLayout } from '../ragConversation/archivedPairedDetailsLayout';
 import type { ArchivedA2UILayout } from '../ragConversation/conversationA2UIArchive';
 import type { ConversationEntryContext } from '../aiFeatures/integration/conversationIntent';
-import type { ConversationArtifactSource } from '../ragConversation/conversationArtifactSources';
+import type { ConversationArtifactSource } from '../conversationTools/conversationArtifactSources';
 import type { EvidenceReference } from '@orot/agent-runtime';
 import type { HealthSummaryReference } from '../ragConversation/healthSummary';
 import type { ConversationVisitQuestionReference } from '../ragConversation/conversationVisitQuestionReference';

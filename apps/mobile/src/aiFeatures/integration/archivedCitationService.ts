@@ -4,7 +4,7 @@ import type {
   ArchivedCitationTarget,
   ResolveArchivedCitation,
 } from '../../ragConversation/useArchivedCitationOpen';
-import { isConversationPhotoSource } from '../../ragConversation/conversationArtifactSources';
+import { isConversationPhotoSource } from '../../conversationTools/conversationArtifactSources';
 import type { ColdConversationSourceOwner } from './coldConversationSourceResolvers';
 import { LocalEvidenceReferenceRegistry } from './evidenceRegistry';
 import type { AiFeatureLocalData } from './localData';
