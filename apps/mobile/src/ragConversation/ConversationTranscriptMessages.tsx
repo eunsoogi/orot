@@ -57,10 +57,10 @@ export function ConversationTranscriptMessages({
       : messages.find(message => message.id === pendingId);
   const firstLive = messages.findIndex(message => !message.restoredHistory);
   const placement = conversationVoiceEndPlacement(messages, voiceEndCards);
-  const markerRows = (before: number | null) =>
+  const markerRows = (before: number | null, side: 'restored' | 'current') =>
     placement
       ?.get(before)
-      ?.map(card => (
+      ?.[side].map(card => (
         <ConversationVoiceEndMarker
           key={card.id}
           task={card.task}
@@ -68,16 +68,16 @@ export function ConversationTranscriptMessages({
         />
       ));
   // Keep the same keyed choice block across first live append and older prepends.
-  // Markers preceding the first live turn belong on the history side of the divider.
+  // Restored and current markers may share a slot, but not a side of the divider.
   const choices =
     entryChoices == null ? null : (
       <Fragment key="conversation-entry-choices">{entryChoices}</Fragment>
     );
   const rows: ReactNode[] = [];
   messages.forEach((message, position) => {
-    const markers = markerRows(message.id);
-    if (markers) rows.push(...markers);
+    rows.push(...(markerRows(message.id, 'restored') ?? []));
     if (choices && position === firstLive) rows.push(choices);
+    rows.push(...(markerRows(message.id, 'current') ?? []));
     const ownInstructions =
       message === target ? instructions : message.steeringInstructions;
     const restored =
@@ -169,9 +169,9 @@ export function ConversationTranscriptMessages({
       </ReplyMessageContainer>,
     );
   });
-  const trailingMarkers = markerRows(null);
-  if (trailingMarkers) rows.push(...trailingMarkers);
+  rows.push(...(markerRows(null, 'restored') ?? []));
   if (choices && firstLive < 0) rows.push(choices);
+  rows.push(...(markerRows(null, 'current') ?? []));
   return (
     <ConversationTranscriptEntranceScope
       availableMessages={availableMessages}
