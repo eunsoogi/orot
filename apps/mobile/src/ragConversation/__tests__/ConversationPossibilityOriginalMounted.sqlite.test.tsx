@@ -1,4 +1,9 @@
-import { fireEvent, render, screen } from '@testing-library/react-native';
+import {
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+} from '@testing-library/react-native';
 import { AppState } from 'react-native';
 import { createConversationRetentionBridge } from '../../aiFeatures/integration/conversationRetentionBridge';
 import { healthContextFixture } from '../../aiFeatures/integration/testSupport/healthContextPersistenceFixture';
@@ -45,11 +50,10 @@ test('mounted typed Possibilities commits only the graph-admitted exact original
         citations: [f.item.evidenceId],
       }),
     );
-    const chunk = f.registry.toSearchChunk(
-      f.item,
-      'synthetic local evidence',
-      'unreviewed',
-    );
+    const chunk = f.registry.toSearchChunk(f.item, 'synthetic local evidence', {
+      status: 'unreviewed',
+    });
+    const observed = jest.fn();
     mounted = await render(
       <ConversationSessionsProvider
         options={{
@@ -76,8 +80,10 @@ test('mounted typed Possibilities commits only the graph-admitted exact original
           onBack={jest.fn()}
           onOpenSource={jest.fn()}
           onSend={async (question, _history, signal, observer) => {
-            if (!signal || !observer?.onRetentionCandidate)
+            if (!signal || !observer?.onRetentionCandidate) {
+              observed({ stage: 'mounted-owner-missing' });
               throw new Error('The mounted composer lost its retained owner.');
+            }
             const entry = {
               intent: 'possibilities',
               entryKey: 'synthetic-owned-possibility',
@@ -118,9 +124,13 @@ test('mounted typed Possibilities commits only the graph-admitted exact original
                 rag: {
                   search: jest.fn(async () => [{ chunk, score: 1 }] as never),
                 },
+                resolveLocalEvidenceIdentity: reference =>
+                  f.registry.resolve(reference),
                 onValidatedEvidence: bridge.onValidatedEvidence,
                 workflow: {
                   ...canonical.options.workflow,
+                  revalidateEvidence: (references, signal) =>
+                    f.registry.revalidateEvidence(references, signal),
                   execution: {
                     ...canonical.options.workflow.execution,
                     allowedScope: { sourceKinds: ['personal_record'] },
@@ -130,7 +140,12 @@ test('mounted typed Possibilities commits only the graph-admitted exact original
               { signal },
             );
             const result = await bridge.finish(finished);
-            expect(result.retained).toBe(true);
+            observed({
+              stage: 'finished',
+              status: finished.status,
+              ...(finished.status === 'failure' ? { kind: finished.kind } : {}),
+              retained: result.retained,
+            });
             return result.outcome;
           }}
         />
@@ -144,6 +159,12 @@ test('mounted typed Possibilities commits only the graph-admitted exact original
       screen.getByTestId('rag-conversation-send'),
       'composerPress',
     );
+    await waitFor(() => expect(observed).toHaveBeenCalledTimes(1));
+    expect(observed).toHaveBeenCalledWith({
+      stage: 'finished',
+      status: 'answer',
+      retained: true,
+    });
     expect(await screen.findByText(answer.observations)).toBeTruthy();
     expect(canonical.generate).toHaveBeenCalledTimes(1);
     expect(JSON.stringify(canonical.generate.mock.calls)).not.toMatch(
