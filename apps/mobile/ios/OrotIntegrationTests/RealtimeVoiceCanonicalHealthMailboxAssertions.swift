@@ -178,9 +178,9 @@ extension RealtimeVoiceLifecycleTests {
                 XCTAssertEqual(response, exact)
                 let ticket = try XCTUnwrap(mailbox.dispatchTicket(for: request, exact: exact))
                 let frames: [[String: Any]] = [
-                    ["type": "response.item.create", "event_id": "output",
+                    ["type": "response.item.create", "event_id": "00000000-0000-4000-8000-000000000001",
                      "item": ["type": "function_call_output", "call_id": request.function, "output": exact]],
-                    ["type": "response.create", "event_id": "continuation"],
+                    ["type": "response.create", "event_id": "00000000-0000-4000-8000-000000000002"],
                 ]
                 XCTAssertTrue(socket.sendTicketedToolFrames(frames, current: {
                     mailbox.dispatchTicket(for: request, exact: exact) === ticket
