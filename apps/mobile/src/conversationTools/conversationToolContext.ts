@@ -27,3 +27,6 @@ export type ConversationToolContext = Pick<
     signal: AbortSignal,
   ) => Promise<boolean>;
 };
+
+/** Positive current platform protection at the moment of each owned tool use. */
+export type ProtectedConversationToolRead = () => Promise<boolean>;

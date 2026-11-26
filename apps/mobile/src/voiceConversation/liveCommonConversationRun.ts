@@ -24,6 +24,7 @@ type SettlementResult = Result extends infer Owned
 export interface LiveCommonConversationPort {
   readonly commonToolsPolicy: 'common-tools-v3';
   current(): boolean;
+  cancelCurrent?(): void;
   protectedDataAvailable(): Promise<boolean>;
   subscribe(callId: string, accept: (turn: Turn) => void): () => void;
   prepareSettlement(
@@ -47,30 +48,39 @@ export function liveCommonConversationRun(
   let id: string | undefined;
   let active: object | undefined;
   let fromNative: (() => void) | undefined;
+  let subscribedPort: LiveCommonConversationPort | undefined;
   let task: AbortController | undefined;
   let waiting: AbortController | undefined;
   let pending: Turn | undefined;
   const admittedDelegations = new Set<string>();
+  const cancelCurrent = () => {
+    subscribedPort?.cancelCurrent?.();
+    const running = task;
+    task = undefined;
+    waiting = undefined;
+    pending = undefined;
+    running?.abort();
+  };
   const retire = () => {
     active = undefined;
     id = undefined;
     admittedDelegations.clear();
-    task?.abort();
-    task = undefined;
-    waiting = undefined;
-    pending = undefined;
+    cancelCurrent();
+    subscribedPort = undefined;
     const close = fromNative;
     fromNative = undefined;
     close?.();
   };
   return {
     retire,
+    cancelCurrent,
     attach(callId: string) {
       retire();
       const port = resolvePort();
       if (port?.commonToolsPolicy !== 'common-tools-v3' || !port.current())
         return;
       id = callId;
+      subscribedPort = port;
       const attachOwner = {};
       active = attachOwner;
       let sessionId: string | undefined;

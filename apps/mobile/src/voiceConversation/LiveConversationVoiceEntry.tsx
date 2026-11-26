@@ -122,6 +122,11 @@ export function LiveConversationVoiceEntry(
     };
     const settings = voiceSettingsStore.subscribe(revoke);
     const app = AppState.addEventListener('change', phase => {
+      if (phase === 'background' && session.isSystemCallActive()) {
+        // System-call audio stays up; the suspended protected tool receipt does not.
+        common.cancelCurrent();
+        return;
+      }
       if (
         !session.isSystemCallActive() &&
         (phase === 'background' ||
