@@ -29,7 +29,8 @@ export async function readOwnedWorkoutPeriod(
   requireVisiblePeriodMatch = false,
 ) {
   const scope = Object.freeze({ ...period });
-  const read = async (): Promise<WorkoutPeriodResult | undefined> => {
+  type OwnedRead = { result: WorkoutPeriodResult; cohortKey?: string };
+  const read = async (): Promise<OwnedRead | undefined> => {
     const current = () => !owner.signal.aborted && owner.current();
     try {
       const cohort = await trace.observe(
@@ -37,6 +38,10 @@ export async function readOwnedWorkoutPeriod(
         () => loadWorkoutPeriodCohort(owner.repository, scope, current),
         current,
       );
+      const cohortKey =
+        requireVisiblePeriodMatch && cohort
+          ? exactCohortKey(cohort)
+          : undefined;
       if (cohort?.length === 0) trace.report('cohort', 'empty');
       // Preserve the exact cohort for one caller-owned local reacquisition.
       // It is not native admission; protection and currentness still follow.
@@ -62,21 +67,33 @@ export async function readOwnedWorkoutPeriod(
           ? { requireVisiblePeriodMatch: true }
           : undefined,
       );
+      if (cohortKey !== undefined && result.status === 'available') {
+        // The native digest attests HealthKit participants; it cannot attest
+        // the original protected SQL membership across the native await.
+        if (!current()) return;
+        const settled = await loadWorkoutPeriodCohort(
+          owner.repository,
+          scope,
+          current,
+        );
+        if (!settled || exactCohortKey(settled) !== cohortKey) return;
+      }
       return current() && (await owner.confirm()) && current()
-        ? result
+        ? { result, cohortKey }
         : undefined;
     } catch {
       return undefined;
     }
   };
   const produced = await read();
-  const result = produced && Object.freeze(produced);
+  const result = produced && Object.freeze(produced.result);
   const reprove = async (): Promise<boolean> => {
     if (result?.status !== 'available') return false;
     const next = await read();
     return (
-      next?.status === 'available' &&
-      equalProof(result, next) &&
+      next?.result.status === 'available' &&
+      produced?.cohortKey === next.cohortKey &&
+      equalProof(result, next.result) &&
       !owner.signal.aborted &&
       owner.current()
     );
@@ -106,5 +123,20 @@ function equalProof(left: Available, right: Available): boolean {
     left.minimum === right.minimum &&
     left.mean === right.mean &&
     left.maximum === right.maximum
+  );
+}
+
+/** UUIDs are unique in a complete cohort; compare exact source/time bytes in
+ * stable UUID order, without converting to millisecond-rounded timestamps. */
+function exactCohortKey(cohort: readonly PeriodWorkout[]) {
+  return JSON.stringify(
+    [...cohort]
+      .sort((a, b) => (a.id < b.id ? -1 : a.id > b.id ? 1 : 0))
+      .map(({ id, start, end, sourceBundle }) => [
+        id,
+        start,
+        end,
+        sourceBundle,
+      ]),
   );
 }
