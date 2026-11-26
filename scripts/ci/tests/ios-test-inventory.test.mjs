@@ -5,6 +5,10 @@ import { existsSync, readFileSync, readdirSync } from 'node:fs';
 import { iosTestInventory } from '../ios-test-inventory.mjs';
 import { explicitIosDiagnosticSelectors } from './ios-test-explicit-diagnostics.mjs';
 import { swiftSuiteExtensions } from './swift-suite-extensions.mjs';
+import {
+  maskSwiftCommentsAndStrings,
+  swiftTestMethodsInDeclaration,
+} from './swift-test-declarations.mjs';
 function assertTestMethodDeclared(identifier) {
   const [target, suite, method] = identifier.split('/');
   const base = `apps/mobile/ios/${target}/${suite}`;
@@ -148,47 +152,6 @@ test('each profile declares unique existing cases and every test method is sched
   }
   assert.throws(() => iosTestInventory('unknown'));
 });
-function swiftTestMethodsInDeclaration(source, suite, kind, withPositions = false) {
-  const code = maskSwiftCommentsAndStrings(source);
-  const declaration =
-    /^\s*(?:(?:final|public|private|internal|open)\s+)?(class|extension)\s+([A-Za-z_]\w*)\b[^\n{]*\{/gm;
-  const suiteDeclaration = [...code.matchAll(declaration)].find(
-    (match) => match[1] === kind && match[2] === suite && swiftBraceDepth(code, match.index) === 0,
-  );
-  if (!suiteDeclaration) return [];
-  const openIndex = suiteDeclaration.index + suiteDeclaration[0].lastIndexOf('{');
-  const closeIndex = swiftClosingBrace(code, openIndex);
-  assert.notEqual(closeIndex, -1, `Unclosed Swift ${kind} ${suite}`);
-  const body = code.slice(openIndex + 1, closeIndex);
-  return [...body.matchAll(/\bfunc\s+(test\w+)\s*\(/g)]
-    .filter((match) => swiftBraceDepth(body, match.index) === 0)
-    .map((match) => (withPositions ? openIndex + 1 + match.index : match[1]));
-}
-function maskSwiftCommentsAndStrings(source) {
-  return source.replace(
-    /#"(?:\\.|[^"\\])*"#|"(?:\\.|[^"\\])*"|\/\*[\s\S]*?\*\/|\/\/[^\n]*/g,
-    (value) => value.replace(/[^\n]/g, ' '),
-  );
-}
-function swiftBraceDepth(source, end) {
-  let depth = 0;
-  for (let index = 0; index < end; index += 1) {
-    if (source[index] === '{') depth += 1;
-    else if (source[index] === '}') depth -= 1;
-  }
-  return depth;
-}
-
-function swiftClosingBrace(source, openIndex) {
-  let depth = 0;
-  for (let index = openIndex; index < source.length; index += 1) {
-    if (source[index] === '{') depth += 1;
-    else if (source[index] === '}') depth -= 1;
-    if (depth === 0) return index;
-  }
-  return -1;
-}
-
 function assertSwiftTestMethodsScheduled(target, file, suite, methods, seen, source) {
   if (source && swiftSuiteExtensions.has(`${target}/${file}`)) {
     const mappedPositions = new Set(
@@ -247,4 +210,21 @@ test('keeps extension methods scheduled and rejects unmapped same-named methods'
       ),
     /Unscheduled test RootSettingsNavigationUITests\.swift\/testUnregisteredSettingsExtensionMethod/,
   );
+});
+
+test('discovers each matching top-level Swift extension, including guarded simulator declarations', () => {
+  const source = `
+    extension RealtimeVoiceLifecycleTests {
+      func testFirst() {}
+    }
+    #if OROT_TESTS && targetEnvironment(simulator)
+      extension RealtimeVoiceLifecycleTests {
+        func testSecond() {}
+      }
+    #endif
+  `;
+  assert.deepEqual(swiftTestMethodsInDeclaration(source, 'RealtimeVoiceLifecycleTests', 'extension'), [
+    'testFirst',
+    'testSecond',
+  ]);
 });
