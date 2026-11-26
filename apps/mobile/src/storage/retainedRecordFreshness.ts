@@ -1,3 +1,4 @@
+import type { EvidenceReference } from '@orot/agent-runtime';
 import { memoryParentAvailable } from './agentMemoryParentQuarantine';
 import { type SqlExecutor, type ManualHistoryRepository } from '@orot/storage';
 import type { SavedRecordSummarySource } from '../diseaseHypotheses/savedSummaries';
@@ -13,6 +14,7 @@ import {
   retainedRecordKey,
 } from './retainedRecordRows';
 import { writeTypedFingerprint } from './writeTypedFingerprintScope';
+import { currentRetainedTranscriptAncestors } from './retainedTranscriptAncestors';
 
 type RetainedRow = { readonly serialized: string; readonly stale: boolean };
 
@@ -59,6 +61,7 @@ export async function assertRetainedRecordsCurrent(
   tx: SqlExecutor,
   records: SavedRecordSummarySource['records'],
   manualHistory: ManualHistoryRepository,
+  reference?: EvidenceReference,
 ) {
   const batch = await readRetainedRecordRows(tx, records);
   // Only symptoms and reviewed memories can reference the legacy symptom quarantine.
@@ -69,6 +72,10 @@ export async function assertRetainedRecordsCurrent(
   )
     ? await deletedSymptomIds(tx)
     : new Set<string>();
+  const transcriptAncestors = currentRetainedTranscriptAncestors(
+    batch,
+    reference,
+  );
   for (const record of batch.records) {
     if (record.kind === 'manual_history') {
       const current = await manualHistory.getEvidence(record.id, tx);
@@ -98,14 +105,13 @@ export async function assertRetainedRecordsCurrent(
       throw new RetainedSourceInvalidError(
         'The reviewed memory parent is unavailable.',
       );
+    const stale =
+      current!.stale ||
+      (current!.superseded === true &&
+        !transcriptAncestors(record.id, serialized));
     const digest = writeTypedFingerprint(tx, record, serialized);
     if (digest === undefined)
-      assertRetainedRecordRevision(
-        serialized,
-        record.revision,
-        current!.stale,
-        memory,
-      );
-    else assertRetainedDigest(digest, record.revision, current!.stale);
+      assertRetainedRecordRevision(serialized, record.revision, stale, memory);
+    else assertRetainedDigest(digest, record.revision, stale);
   }
 }

@@ -229,6 +229,11 @@ export async function assertRetainedEvidenceCurrent(
       }
       continue;
     }
-    await assertRetainedRecordsCurrent(tx, source.records, manualHistory);
+    await assertRetainedRecordsCurrent(
+      tx,
+      source.records,
+      manualHistory,
+      source.reference,
+    );
   }
 }

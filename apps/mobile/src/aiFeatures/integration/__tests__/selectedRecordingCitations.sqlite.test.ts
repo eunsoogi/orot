@@ -1,3 +1,7 @@
+import { createManualHistoryRepository } from '@orot/storage';
+import { createSelectedRecordingTranscriptTool } from '../../../conversationTools/selectedRecordingTranscriptTool';
+import { assertRetainedRecordsCurrent } from '../../../storage/retainedRecordFreshness';
+import { captureEvidenceSources } from '../captureEvidenceSources';
 import { createArchivedCitationService } from '../archivedCitationService';
 import { captureColdRagConversationState } from '../coldRagConversationState';
 import { createResearchInputTracker } from '../researchInputTracker';
@@ -136,4 +140,66 @@ it('retires live aliases without poisoning the next cold capture and only expose
     expect(
       await archive.read(opened.owner, opened.reference, controller.signal),
     ).toMatchObject({ status: 'unavailable' });
+  }));
+
+it('keeps immutable predecessors only under the exact cited current transcript and recording', () =>
+  withRecordings(async (data, correct, _storage, database) => {
+    const registry = new LocalEvidenceReferenceRegistry();
+    const signal = new AbortController().signal;
+    const tool = createSelectedRecordingTranscriptTool(data, registry, {
+      sourceId: chosen,
+      isCurrent: () => true,
+    });
+    const batch = await tool.search({
+      operationRunId: 'synthetic-transcript',
+      operationKey: 'synthetic-tool',
+      input: { query: 'Synthetic' },
+      allowedScope: { sourceKinds: ['personal_record'] },
+      resultLimit: 1,
+      maxPayloadBytes: 4096,
+      signal,
+    });
+    if ('status' in batch || batch.items.length !== 1)
+      throw new Error('expected one synthetic selected excerpt');
+    const { sources } = await captureEvidenceSources(
+      batch.items,
+      registry,
+      signal,
+    );
+    const source = sources[0];
+    if (!source || !('records' in source))
+      throw new Error('expected captured transcript storage identity');
+    const { reference, records } = source;
+    const predecessor = records.find(
+      row =>
+        row.kind === 'transcript_segment' && row.id !== reference.evidenceId,
+    );
+    if (!predecessor) throw new Error('expected exact immutable predecessor');
+    const verify = (candidate = reference) =>
+      database.transaction(tx =>
+        assertRetainedRecordsCurrent(
+          tx,
+          records,
+          createManualHistoryRepository(database),
+          candidate,
+        ),
+      );
+
+    await expect(verify()).resolves.toBeUndefined();
+    // A current row in the same batch cannot launder the cited historical one.
+    await expect(
+      verify({
+        ...reference,
+        evidenceId: predecessor.id,
+        evidenceRevision: predecessor.revision,
+      }),
+    ).rejects.toThrow('A cited source is stale.');
+    await expect(
+      verify({
+        ...reference,
+        sourceId: 'synthetic-foreign-recording',
+      }),
+    ).rejects.toThrow('A cited source is stale.');
+    await correct();
+    await expect(verify()).rejects.toThrow('A cited source is stale.');
   }));
