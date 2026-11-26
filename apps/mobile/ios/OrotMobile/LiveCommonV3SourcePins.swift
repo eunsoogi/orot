@@ -111,6 +111,7 @@ extension LiveCanonicalContextV3Transport {
 struct LiveV3SerialTransitions {
     enum Decision { case allow, replay, deny }
     let reserve: (LiveResponsesAdmission.Owner, String, String, Int, Bool) -> Decision
+    let resume: (LiveResponsesAdmission.Owner, String, String) -> Bool
     let stale: (String) -> Bool
     let allowsFreshSpeech: (Bool) -> Bool
     let rememberFunction: (String) -> Bool
@@ -135,6 +136,12 @@ final class LiveV3SerialLedger {
         responses.insert(response)
         active = (id, offset)
         return .allow
+    }
+
+    func resume(_ id: String, response: String, mayResume: () -> Bool) -> Bool {
+        guard active?.id == id, !responses.contains(response), mayResume() else { return false }
+        responses.insert(response)
+        return true
     }
 
     func stale(_ id: String) -> Bool {
@@ -207,5 +214,36 @@ extension LiveCanonicalContextV3Transport {
 
     static func json(_ value: [String: Any]) -> Data? {
         try? JSONSerialization.data(withJSONObject: value, options: [.sortedKeys])
+    }
+}
+
+/// Live optionally echoes the originating client command. Do not authorize any
+/// same-delegation response when the provider cannot positively associate it.
+extension LiveResponsesToolBridge {
+    static func foreignResponseCreated(_ envelope: [String: Any], _ delegation: String) -> Bool {
+        envelope["type"] as? String == "response.event" && envelope["delegation_id"] as? String != delegation && (envelope["event"] as? [String: Any])?["type"] as? String == "response.created"
+    }
+
+    static func successorResponse(_ envelope: [String: Any], _ delegation: String, _ previous: String) -> String? {
+        guard envelope["type"] as? String == "response.event", envelope["delegation_id"] as? String == delegation,
+              let event = envelope["event"] as? [String: Any], event["type"] as? String == "response.created",
+              let response = (event["response"] as? [String: Any])?["id"] as? String, response != previous
+        else { return nil }
+        return response
+    }
+
+    static func resultFrames(_ results: [(Request, String)], _ continuation: String) -> [[String: Any]] {
+        results.map { request, value in
+            ["type": "response.item.create", "event_id": UUID().uuidString,
+             "item": ["type": "function_call_output", "call_id": request.functionID, "output": value]]
+        } + [["type": "response.create", "event_id": continuation]]
+    }
+
+    static func matchesContinuation(_ envelope: [String: Any], _ delegation: String, _ continuation: String) -> Bool {
+        guard envelope["type"] as? String == "response.event",
+              let type = (envelope["event"] as? [String: Any])?["type"] as? String,
+              ["response.created", "response.output_item.done", "response.completed", "response.failed", "response.incomplete"].contains(type)
+        else { return true }
+        return envelope["delegation_id"] as? String == delegation && envelope["client_event_id"] as? String == continuation
     }
 }

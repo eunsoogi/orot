@@ -189,6 +189,10 @@ final class LiveCanonicalContextV3Transport {
                     guard let self, acknowledged == owner, isCurrent(owner) else { return .deny }
                     return ledger.reserve(id, response: response, offset: offset) { self.advance(empty: empty) }
                 },
+                resume: { [weak self] owner, id, response in
+                    guard let self, acknowledged == owner, isCurrent(owner) else { return false }
+                    return ledger.resume(id, response: response) { self.advance(empty: false) }
+                },
                 stale: ledger.stale, allowsFreshSpeech: { [weak self] in self?.canAdvance(empty: $0) == true },
                 rememberFunction: ledger.rememberFunction,
             ),
