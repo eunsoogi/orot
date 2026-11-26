@@ -263,3 +263,11 @@ pointer and ordered literal ISO calendar dates, not time, dynamic min/max,
 seeds, calendar access or scheduling. A date is not chosen until the user
 confirms it in that bubble. Earlier task contracts and render fallback remain
 unchanged; neither the chosen date nor its control is stored or sent.
+
+Fresh ordinary task v48 also supports up to four short literal Caption Text
+leaves in a single static layout, for example one under the content of each
+Tab or Card. The ordinary validator still checks every reference, tab title,
+and accepted prose line in reading order. Caption hints do not add content,
+bindings, controls, or actions. The existing archive keeps the accepted text
+and layout but renders those lines as body Text. Earlier task policies and
+incremental layout remain unchanged.
