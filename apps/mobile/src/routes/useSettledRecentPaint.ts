@@ -17,7 +17,10 @@ export function useSettledRecentPaint<T>(
   const latest = useRef<{ media?: ReceiptSlot; material?: ReceiptSlot }>({});
   const painted = useRef<Paint<T> | undefined>(undefined);
   const generation = useRef(0);
-  const routeIdentity = useMemo(() => ({}), [eligible, ownership, tab]);
+  const routeIdentity = useMemo(
+    () => ({ eligible, ownership, tab }),
+    [eligible, ownership, tab],
+  );
   const lastPhase = useRef(AppState.currentState);
   const [warm, setWarm] = useState<{ value: T; route: object }>();
   const [blocked, setBlocked] = useState(false);
@@ -131,7 +134,7 @@ export function useSettledRecentPaint<T>(
         (sameTab?.() ?? true);
       const media = exact.media.receipt;
       const material = exact.material.receipt;
-      void readmitSettledRecentPair(
+      readmitSettledRecentPair(
         {
           media: { receipt: media, frontier: media.frontier },
           material: { receipt: material, frontier: material.frontier },
