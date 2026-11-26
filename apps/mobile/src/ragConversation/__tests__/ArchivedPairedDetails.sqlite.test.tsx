@@ -1,4 +1,5 @@
 import { act, fireEvent, render, screen } from '@testing-library/react-native';
+import { AppState } from 'react-native';
 import type { TaskResponderInput } from '@orot/agent-runtime';
 import { healthContextFixture } from '../../aiFeatures/integration/testSupport/healthContextPersistenceFixture';
 import { conversationSavedHistoryDisplayOption } from '../../aiFeatures/integration/conversationSavedHistoryDisplayOption';
@@ -20,7 +21,6 @@ import { ragConversationTask } from '../task';
 jest.mock('../conversationExecutionNative', () => ({
   conversationExecutionNative: jest.fn(),
 }));
-
 const title1 = '근거 예시 보기';
 const title2 = '비교 방법 보기';
 const detail1 = '첫 번째 예시 문장';
@@ -81,7 +81,6 @@ function archivedShape() {
   if (!archived) throw new Error('Expected version 8 shape.');
   return archived;
 }
-
 test.each([
   'open',
   'removed',
@@ -94,9 +93,7 @@ test.each([
   async mode => {
     const f = await healthContextFixture();
     const stateListeners = new Set<() => void>();
-    const nativeListeners = new Set<
-      (event: ConversationExecutionEvent) => void
-    >();
+    const nativeListeners = new Set<(e: ConversationExecutionEvent) => void>();
     const nativeProbe = jest.fn(async () => true);
     jest.mocked(conversationExecutionNative).mockReturnValue({
       bridgeAvailable: true,
@@ -121,6 +118,8 @@ test.each([
     const ownsRoute = Object.assign(() => true, {
       route: { isCurrent: () => true, subscribe },
     });
+    const previousAppState = AppState.currentState;
+    AppState.currentState = 'active';
     try {
       const guarded = guardedNativeDatabase(f.database);
       const owner = agentMemoryDatabaseFacade(guarded);
@@ -244,6 +243,7 @@ test.each([
         expect(nativeListeners.size).toBe(0);
       }
     } finally {
+      AppState.currentState = previousAppState;
       await f.close();
     }
   },
