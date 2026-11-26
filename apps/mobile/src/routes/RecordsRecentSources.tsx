@@ -84,6 +84,9 @@ export function RecordsRecentSources(props: RecordsRecentSourcesProps) {
   if (suspension.hidden && !holdingMountedList) return null;
   const covered = suspension.hidden || holdingMountedList;
   const inert = covered || warmPaint;
+  // A retained, exactly bound native list remains painted for ordinary
+  // multitasking. The native shield still conceals real protected-data loss.
+  const hidePaint = covered && !(holdingMountedList && shieldBound);
   // A source failure must not add an error banner to records that are already usable.
   const hasRecords = records.length > 0;
   const statusAtTail = hasRecords && showAll;
@@ -122,7 +125,7 @@ export function RecordsRecentSources(props: RecordsRecentSourcesProps) {
       pointerEvents={inert ? 'none' : 'auto'}
       accessibilityElementsHidden={inert}
       importantForAccessibility={inert ? 'no-hide-descendants' : 'auto'}
-      style={[styles.container, covered && styles.covered]}
+      style={[styles.container, hidePaint && styles.covered]}
       testID="records-recent-sources"
     >
       <View style={styles.headingRow}>
