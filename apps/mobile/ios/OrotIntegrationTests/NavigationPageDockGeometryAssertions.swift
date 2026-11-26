@@ -66,6 +66,15 @@ func verifyWindowTopBack(in window: UIWindow, controller: UIViewController) thro
     XCTAssertEqual(frame.height, 48, accuracy: 0.5)
     XCTAssertEqual(frame.width, 48, accuracy: 0.5)
     XCTAssertTrue(window.hitTest(CGPoint(x: frame.midX, y: frame.midY), with: nil) === button)
+    XCTAssertEqual(surface.visibleBackPlacement(from: portal), "pinned")
+    button.transform = CGAffineTransform(translationX: 0, y: 5)
+    XCTAssertEqual(surface.visibleBackPlacement(from: portal), "pinned-frame-mismatch")
+    button.transform = .identity
+    surface.railBackTopInset = -1
+    portal.layoutIfNeeded()
+    XCTAssertEqual(surface.visibleBackPlacement(from: portal), "missing-top")
+    surface.railBackTopInset = safeTop
+    portal.layoutIfNeeded()
 
     let tabs: [[String: Any]] = ["conversation", "overview", "records", "settings"].map { tab in
         ["id": "tab-\(tab)", "label": tab, "accessibilityLabel": tab, "testID": "navigation-tab-\(tab)", "rootTab": true]
@@ -104,6 +113,30 @@ func verifyWindowTopBack(in window: UIWindow, controller: UIViewController) thro
     XCTAssertEqual(surface.contextualRailTop(hostHeight: 280, mountedToWindow: true), oldTop)
     surface.layoutMode = "left"
     XCTAssertEqual(surface.contextualRailTop(hostHeight: window.bounds.height, mountedToWindow: true), oldTop)
+
+    // The exact same Back commits to a real local surface and can recover to the portal.
+    surface.layoutMode = "bottom"
+    surface.frame = CGRect(x: 0, y: window.bounds.height - 60, width: window.bounds.width, height: 60)
+    surface.layoutIfNeeded()
+    XCTAssertEqual(surface.visibleBackPlacement(from: surface), "bottom-layout")
+    XCTAssertNil(surface.visibleBackPlacement(from: portal))
+    surface.isHidden = true
+    XCTAssertNil(surface.visibleBackPlacement(from: surface))
+    surface.isHidden = false
+    surface.frame = CGRect(x: controller.view.bounds.width - 60, y: 0, width: 60, height: controller.view.bounds.height)
+    surface.railTopInset = safeTop
+    surface.layoutMode = "right"
+    let fullFrame = controller.view.frame
+    controller.view.frame.size.width = fullFrame.width - 100
+    surface.setNeedsLayout()
+    surface.layoutIfNeeded()
+    XCTAssertEqual(surface.visibleBackPlacement(from: surface), "local-host")
+    XCTAssertNil(surface.visibleBackPlacement(from: portal))
+    controller.view.frame = fullFrame
+    surface.setNeedsLayout()
+    surface.layoutIfNeeded()
+    portal.layoutIfNeeded()
+    XCTAssertEqual(surface.visibleBackPlacement(from: portal), "pinned")
 }
 
 /// Compare the actual constraints after warm native resizing with the cold safe-top policy.
@@ -138,6 +171,7 @@ func verifyWarmWindowBackAfterPortalResize(in window: UIWindow, controller: UIVi
     let button = try XCTUnwrap(surface.innerActions.arrangedSubviews.compactMap { $0 as? UIButton }.first)
     XCTAssertEqual(portal.bounds.height, 260, accuracy: 0.5)
     XCTAssertEqual(button.convert(button.bounds, to: window).minY, legacyTop, accuracy: 0.5)
+    XCTAssertEqual(surface.visibleBackPlacement(from: portal), "insufficient-fit")
 
     // The shared overlay revision is the only bridge update; action, full height and safe top stay fixed.
     window.frame = originalFrame
