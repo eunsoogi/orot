@@ -298,3 +298,10 @@ the requested alignment across mixed-height cards, while compact widths and
 larger text keep the existing natural stack in answer order. Archive v6
 retains the existing read-only horizontal arrangement, not this live
 alignment hint. No change to earlier task acceptance or action permissions.
+
+Fresh ordinary task v53 lets a model compose proportionally sized groups by
+placing literal weight 1–3 on a Column directly owned by a Row in a single
+read-only createSurface without a data model. Wide layouts use the weights;
+compact or enlarged-text layouts use the existing natural stack and preserve
+all accepted prose. The existing archive keeps the grouping without this
+live weight. Earlier versions, actions, and data access are unchanged.

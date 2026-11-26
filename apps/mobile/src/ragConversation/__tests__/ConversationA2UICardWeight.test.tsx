@@ -14,7 +14,8 @@ import { withFinalConversationCardWeight } from '../conversationA2UICardWeightTa
 import { withFinalConversationCaption } from '../conversationA2UICaptionTask';
 import { withConversationA2UIFrameSequence } from '../conversationA2UIFrameSequence';
 import { withConversationA2UIModal } from '../conversationA2UIModalTask';
-import type { GroundedRagAnswer } from '../task';
+import { type GroundedRagAnswer, ragConversationTask } from '../task';
+import { restoreConversationTask } from '../conversationTaskVersions';
 
 let mockFontScale = 1;
 jest.mock('react-native/Libraries/Utilities/useWindowDimensions', () => ({
@@ -129,4 +130,94 @@ it('rejects invalid values, non-Row placement and incremental attempts', () => {
     expect(layout([frame(denied)])).toBeUndefined();
   expect(layout([frame(2, 'Column')])).toBeUndefined();
   expect(layout([frame(), frame()])).toBeUndefined();
+});
+
+it('sizes two model-authored grouped columns proportionally only when readable', async () => {
+  const prose = '요약\n핵심 한 줄\n세부 사항\n추가 설명';
+  const input = {
+    request: '요약과 세부 사항을 비교해서 보여 주세요.',
+    context: [],
+    evidence: { items: [], coverage: [], conflicts: [] },
+  } as TaskResponderInput;
+  const value = (weight: unknown = 2, parent = 'Row') => ({
+    answerKind: 'conversation',
+    answer: prose,
+    a2uiFrames: [
+      JSON.stringify({
+        version: '1.0',
+        createSurface: {
+          surfaceId: 'orot:response:draft',
+          catalogId: conversationA2UICatalog,
+          components: [
+            { id: 'root', component: parent, children: ['summary', 'details'] },
+            {
+              id: 'summary',
+              component: 'Column',
+              children: ['line0', 'line1'],
+              weight: 1,
+            },
+            {
+              id: 'details',
+              component: 'Column',
+              children: ['line2', 'line3'],
+              weight,
+            },
+            ...prose.split('\n').map((text, index) => ({
+              id: 'line' + index,
+              component: 'Text',
+              text,
+            })),
+          ],
+        },
+      }),
+    ],
+  });
+  const result = ragConversationTask.validateResult(value(), input);
+  if (result.status !== 'valid' || !result.value.a2uiPresentation)
+    throw new Error('Expected the pinned weighted Column layout');
+  const root = result.value.a2uiPresentation;
+  mockFontScale = 1;
+  const ui = await render(<ConversationA2UISurface root={root} />);
+  const row = () => screen.getByTestId('conversation-a2ui-row');
+  const width = (pixels: number) =>
+    fireEvent(row(), 'layout', {
+      nativeEvent: { layout: { width: pixels } },
+    });
+  const grow = () =>
+    row().children.map(child =>
+      typeof child === 'string'
+        ? undefined
+        : StyleSheet.flatten(child.props.style)?.flexGrow,
+    );
+  await width(580);
+  expect(grow()).toEqual([1, 2]);
+  await width(320);
+  expect(grow()).toEqual([undefined, undefined]);
+  await width(580);
+  mockFontScale = 1.5;
+  await ui.rerender(<ConversationA2UISurface root={root} />);
+  expect(grow()).toEqual([undefined, undefined]);
+  for (const line of prose.split('\n'))
+    expect(screen.getByText(line)).toBeVisible();
+  const archive = storeConversationA2UILayout(root, prose);
+  const restored = restoreConversationA2UILayout(archive, prose)!;
+  await ui.rerender(<ConversationA2UISurface root={restored} />);
+  for (const line of prose.split('\n'))
+    expect(screen.getByText(line)).toBeVisible();
+
+  const fallback = {
+    status: 'valid',
+    value: { answerKind: 'conversation', answer: prose },
+  };
+  const old = restoreConversationTask({
+    taskType: ragConversationTask.taskType,
+    taskVersion: '52',
+  });
+  expect(old?.validateResult(value(), input)).toEqual(fallback);
+  expect(ragConversationTask.validateResult(value(2, 'Column'), input)).toEqual(
+    fallback,
+  );
+  expect(
+    ragConversationTask.validateResult(value({ '@path': '/anything' }), input),
+  ).toEqual(fallback);
 });

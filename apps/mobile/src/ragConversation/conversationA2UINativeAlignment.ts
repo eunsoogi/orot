@@ -1,5 +1,8 @@
 import { a2uiSurfaceStyles } from './conversationA2UISurfaceStyles';
-import { conversationA2UICardWeight } from './conversationA2UICardWeightTask';
+import {
+  conversationA2UICardWeight,
+  conversationA2UIColumnWeight,
+} from './conversationA2UICardWeightTask';
 import type { ConversationA2UINode } from './conversationA2UI';
 import type { ViewStyle } from 'react-native';
 import type { ConversationA2UIAlignment } from './conversationA2UIAlignment';
@@ -77,5 +80,5 @@ export function a2uiChildRowWeight(node: ConversationA2UINode): number {
 function explicitRowWeight(node: ConversationA2UINode) {
   return node.component === 'Text'
     ? node.weight
-    : conversationA2UICardWeight(node);
+    : (conversationA2UICardWeight(node) ?? conversationA2UIColumnWeight(node));
 }
