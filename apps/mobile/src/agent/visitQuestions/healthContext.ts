@@ -2,7 +2,7 @@ import type { ResolveHealthContextWindow } from '../../healthEvidence/healthCont
 import { providerDiagnostic } from '../../providers/diagnostics';
 import type { EvidenceReference } from '@orot/agent-runtime';
 import type { VisitQuestionHealthContextSource } from '@orot/domain';
-import { createHealthContextTool } from '../../aiFeatures/integration/healthContextTool';
+import { createHealthContextTool } from '../../conversationTools/healthContextTool';
 import { LocalEvidenceReferenceRegistry } from '../../aiFeatures/integration/evidenceRegistry';
 import { registerHealthContextEvidence } from '../../aiFeatures/integration/healthContextEvidence';
 import { completeVisitHealthContextFacts } from './healthContextFacts';

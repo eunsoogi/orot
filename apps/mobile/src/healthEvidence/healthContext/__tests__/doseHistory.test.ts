@@ -6,7 +6,7 @@ import {
 import { createHealthEvidenceTestDatabase } from '../../localEvidenceTestSupport';
 import { createHealthContextReader } from '../reader';
 import { healthContextContent } from '../../../aiFeatures/integration/healthContextEvidence';
-import { createHealthContextTool } from '../../../aiFeatures/integration/healthContextTool';
+import { createHealthContextTool } from '../../../conversationTools/healthContextTool';
 import { LocalEvidenceReferenceRegistry } from '../../../aiFeatures/integration/evidenceRegistry';
 import { readDoseHistory } from '../doseHistoryQuery';
 

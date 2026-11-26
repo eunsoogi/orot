@@ -1,6 +1,6 @@
 import type { AiFeatureLocalData } from './localData';
 import type { LocalEvidenceReferenceRegistry } from './evidenceRegistry';
-import { createHealthContextTool } from './healthContextTool';
+import { createHealthContextTool } from '../../conversationTools/healthContextTool';
 
 /** Bind the canonical Conversation tool without constructing unrelated search and
  * memory tools. A transport may impose a narrower approval/scope, but not

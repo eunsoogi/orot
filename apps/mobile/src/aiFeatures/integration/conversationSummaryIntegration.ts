@@ -1,6 +1,6 @@
 import { hasConversationMemoryCommand } from '../../manualHistory/conversationHistoryIntent';
-import { conversationTemplateTarget } from './conversationTemplateTarget';
-import { proposeConversationTemplate } from './conversationTemplateProposal';
+import { conversationTemplateTarget } from '../../ragConversation/conversationTemplateTarget';
+import { proposeConversationTemplate } from '../../ragConversation/conversationTemplateProposal';
 import { APPLE_PROVIDER_ID } from '@orot/provider-apple';
 import { t } from '../../i18n';
 import { createConversationDailyReport } from './conversationDailyReport';

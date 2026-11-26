@@ -3,15 +3,15 @@ import {
   generateConversationTemplateProposal,
 } from '@orot/agent-runtime';
 import type { ExecutionConsentPort } from '@orot/agent-runtime';
-import type { RagConversationObserver } from '../../ragConversation/conversationObserver';
-import { requestsArtifactContinuation } from '../../ragConversation/artifactContinuation';
-import { isRagConversationAvailabilityQuestion } from '../../ragConversation/availabilityIntent';
-import { validateInitialConversationResponse } from '../../ragConversation/initialResponse';
-import { conversationReceiptSelection } from './conversationReceiptSelection';
-import { evidenceConsentScope } from './evidenceConsentScope';
-import { operationRunId } from './featureRunIdentity';
-import { createLinkedAbortController } from './linkedAbortController';
-import type { SelectedAiResolution } from './provider';
+import type { RagConversationObserver } from './conversationObserver';
+import { requestsArtifactContinuation } from './artifactContinuation';
+import { isRagConversationAvailabilityQuestion } from './availabilityIntent';
+import { validateInitialConversationResponse } from './initialResponse';
+import { conversationReceiptSelection } from '../aiFeatures/integration/conversationReceiptSelection';
+import { evidenceConsentScope } from '../aiFeatures/integration/evidenceConsentScope';
+import { operationRunId } from '../aiFeatures/integration/featureRunIdentity';
+import { createLinkedAbortController } from '../aiFeatures/integration/linkedAbortController';
+import type { SelectedAiResolution } from '../aiFeatures/integration/provider';
 
 /**
  * Replace the optional opening only for a live, owned composer turn.

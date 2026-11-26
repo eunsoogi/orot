@@ -1,7 +1,7 @@
 import { projectHealthContext } from '../projection';
 import { healthContextDays } from '../window';
 import type { HealthContextReport, HealthMedicationProfile } from '../types';
-import { createHealthContextTool } from '../../../aiFeatures/integration/healthContextTool';
+import { createHealthContextTool } from '../../../conversationTools/healthContextTool';
 import { registerHealthContextEvidence } from '../../../aiFeatures/integration/healthContextEvidence';
 import { LocalEvidenceReferenceRegistry } from '../../../aiFeatures/integration/evidenceRegistry';
 import { jsonByteLength } from '../../../aiFeatures/integration/evidenceUtils';

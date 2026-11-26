@@ -2,7 +2,7 @@ import { createRecordRepository, runMigrations } from '@orot/storage';
 import { healthObservation } from '../../../../../../packages/storage/__tests__/localQueryTestSupport';
 import { createHealthEvidenceTestDatabase } from '../../../healthEvidence/localEvidenceTestSupport';
 import { createHealthContextReader } from '../../../healthEvidence/healthContext/reader';
-import { createHealthContextTool } from '../healthContextTool';
+import { createHealthContextTool } from '../../../conversationTools/healthContextTool';
 import { LocalEvidenceReferenceRegistry } from '../evidenceRegistry';
 
 const window = {

@@ -1,19 +1,19 @@
-import type { ResolveHealthContextWindow } from '../../healthEvidence/healthContext/availableWindow';
+import type { ResolveHealthContextWindow } from '../healthEvidence/healthContext/availableWindow';
 import type { EvidenceBatch, EvidenceSearchTool } from '@orot/agent-runtime';
 import type { JsonObject } from '@orot/model-runtime';
-import type { HealthContextReader } from '../../healthEvidence/healthContext/reader';
+import type { HealthContextReader } from '../healthEvidence/healthContext/reader';
 import {
   HEALTH_CONTEXT_TOPICS,
   type HealthContextTopic,
-} from '../../healthEvidence/healthContext/types';
-import type { HealthContextDetail } from '../../healthEvidence/healthContext/projection';
-import { recentHealthContextWindow } from '../../healthEvidence/healthContext/window';
-import { parseHealthContextScope } from '../../healthEvidence/healthContext/scope';
-import type { LocalEvidenceReferenceRegistry } from './evidenceRegistry';
-import { providerDiagnostic } from '../../providers/diagnostics';
-import { registerHealthContextEvidence } from './healthContextEvidence';
-import { refreshHealthContextRead } from './refreshHealthContextRead';
-import { jsonByteLength } from './evidenceUtils';
+} from '../healthEvidence/healthContext/types';
+import type { HealthContextDetail } from '../healthEvidence/healthContext/projection';
+import { recentHealthContextWindow } from '../healthEvidence/healthContext/window';
+import { parseHealthContextScope } from '../healthEvidence/healthContext/scope';
+import type { LocalEvidenceReferenceRegistry } from '../aiFeatures/integration/evidenceRegistry';
+import { providerDiagnostic } from '../providers/diagnostics';
+import { registerHealthContextEvidence } from '../aiFeatures/integration/healthContextEvidence';
+import { refreshHealthContextRead } from '../aiFeatures/integration/refreshHealthContextRead';
+import { jsonByteLength } from '../aiFeatures/integration/evidenceUtils';
 import { healthContextToolDefinition } from './healthContextToolDefinition';
 
 /** A request can prove its exact canonical scope before asking for local access. */

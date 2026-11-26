@@ -1,4 +1,4 @@
-import { proposeConversationTemplate } from '../conversationTemplateProposal';
+import { proposeConversationTemplate } from '../../../ragConversation/conversationTemplateProposal';
 import {
   choice,
   fixture,

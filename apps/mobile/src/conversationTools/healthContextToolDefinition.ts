@@ -1,5 +1,5 @@
 import type { EvidenceSearchTool } from '@orot/agent-runtime';
-import { HEALTH_CONTEXT_TOPICS } from '../../healthEvidence/healthContext/types';
+import { HEALTH_CONTEXT_TOPICS } from '../healthEvidence/healthContext/types';
 
 export type HealthContextToolDefinition = Pick<
   EvidenceSearchTool,

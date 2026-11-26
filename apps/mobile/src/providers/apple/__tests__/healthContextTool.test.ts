@@ -1,5 +1,5 @@
 import { serializeAppleRequest } from '../serializeRequest';
-import { createHealthContextTool } from '../../../aiFeatures/integration/healthContextTool';
+import { createHealthContextTool } from '../../../conversationTools/healthContextTool';
 import { LocalEvidenceReferenceRegistry } from '../../../aiFeatures/integration/evidenceRegistry';
 
 test('serializes the actual longitudinal tool before selection on Apple native tool calling', () => {

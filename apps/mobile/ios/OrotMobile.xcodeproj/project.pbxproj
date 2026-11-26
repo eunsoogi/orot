@@ -1638,7 +1638,7 @@
 			inputPaths = (
 				"$(SRCROOT)/../../../scripts/ci/live-stock-health-attestation.mjs",
 				"$(SRCROOT)/../../../scripts/ci/verify-live-stock-health-attestation.sh",
-				"$(SRCROOT)/../src/aiFeatures/integration/healthContextToolDefinition.ts",
+				"$(SRCROOT)/../src/conversationTools/healthContextToolDefinition.ts",
 				"$(SRCROOT)/../src/healthEvidence/healthContext/types.ts",
 				"$(SRCROOT)/../../../packages/agent-runtime/src/multiAgent/guidedSchema.ts",
 				"$(SRCROOT)/OrotMobile/LiveStockHealthAttestation.swift",

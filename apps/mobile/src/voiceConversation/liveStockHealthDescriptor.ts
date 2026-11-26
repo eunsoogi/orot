@@ -1,6 +1,6 @@
 import { nativeToolParameterSchema } from '@orot/agent-runtime';
-import { healthContextToolDefinition } from '../aiFeatures/integration/healthContextToolDefinition';
-import { parseHealthContextToolInput } from '../aiFeatures/integration/healthContextTool';
+import { healthContextToolDefinition } from '../conversationTools/healthContextToolDefinition';
+import { parseHealthContextToolInput } from '../conversationTools/healthContextTool';
 import { jsonByteLength } from '../aiFeatures/integration/evidenceUtils';
 import { createStockLiveToolCatalog } from './stockLiveToolCatalog';
 

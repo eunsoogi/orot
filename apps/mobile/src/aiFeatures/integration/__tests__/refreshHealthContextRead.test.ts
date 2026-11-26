@@ -1,5 +1,5 @@
 import { refreshHealthContextRead } from '../refreshHealthContextRead';
-import { createHealthContextTool } from '../healthContextTool';
+import { createHealthContextTool } from '../../../conversationTools/healthContextTool';
 import { LocalEvidenceReferenceRegistry } from '../evidenceRegistry';
 import { healthContextDays } from '../../../healthEvidence/healthContext/window';
 import type { HealthContextReader } from '../../../healthEvidence/healthContext/reader';

@@ -10,7 +10,7 @@ import {
 } from '../live-stock-health-attestation.mjs';
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), '../../..');
-const stock = 'apps/mobile/src/aiFeatures/integration/healthContextToolDefinition.ts';
+const stock = 'apps/mobile/src/conversationTools/healthContextToolDefinition.ts';
 const topics = 'apps/mobile/src/healthEvidence/healthContext/types.ts';
 const guide = 'packages/agent-runtime/src/multiAgent/guidedSchema.ts';
 const native = 'apps/mobile/ios/OrotMobile/LiveStockHealthAttestation.swift';

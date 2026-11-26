@@ -5,7 +5,7 @@ import {
 } from '@orot/storage';
 import { healthObservation } from '../../../../../packages/storage/__tests__/localQueryTestSupport';
 import { openOpSqliteFileQueue } from '../../../test-support/opSqliteFileQueueFixture';
-import { createHealthContextTool } from '../../aiFeatures/integration/healthContextTool';
+import { createHealthContextTool } from '../../conversationTools/healthContextTool';
 import { LocalEvidenceReferenceRegistry } from '../../aiFeatures/integration/evidenceRegistry';
 import { createHealthContextReader } from '../../healthEvidence/healthContext/reader';
 import { loadOverviewMetrics } from './metricLoader';
