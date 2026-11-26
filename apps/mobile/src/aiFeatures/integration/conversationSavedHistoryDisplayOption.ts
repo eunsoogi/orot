@@ -1,3 +1,5 @@
+import { bindArchivedRichText } from '../../ragConversation/archivedRichTextDisplayBinding';
+import { isRestoredRichText } from '../../ragConversation/archivedConversationRichTextLayout';
 import { bindMountedPairedDetails } from '../../storage/archivedPairedDetailsOwner';
 import { bindArchivedPairedDetails } from '../../ragConversation/archivedPairedDetailsBinding';
 import { bindArchivedVisitBookmark } from '../../storage/archivedVisitBookmarkIdentity';
@@ -19,6 +21,7 @@ export function conversationSavedHistoryDisplayOption(
     const readDisplayTimeline = () =>
       storage.listTimeline(sessionId, version, cursor, undefined, true);
     const page = await readDisplayTimeline();
+    const revision = storage.captureRichTextDisplayRevision?.();
     assertCurrent();
     const taskIds = page.items
       .filter(item => item.kind === 'task')
@@ -79,7 +82,15 @@ export function conversationSavedHistoryDisplayOption(
                   : {}),
               },
             ];
-          const surface = row.archivedA2UIPresentation;
+          let surface = row.archivedA2UIPresentation;
+          if (surface && isRestoredRichText(surface)) {
+            if (revision?.current() === true)
+              bindArchivedRichText(surface, {
+                revision,
+                lease: { id: sessionId, version },
+              });
+            else surface = undefined;
+          }
           if (surface && storage.readMountedPairedDetails) {
             const lease = { id: sessionId, version };
             const bound = bindMountedPairedDetails(surface, lease);
@@ -97,9 +108,7 @@ export function conversationSavedHistoryDisplayOption(
               createdAt: row.createdAt,
               question: row.question,
               answer: row.answer,
-              ...(row.archivedA2UIPresentation
-                ? { archivedA2UIPresentation: row.archivedA2UIPresentation }
-                : {}),
+              ...(surface ? { archivedA2UIPresentation: surface } : {}),
               ...(row.directPhoto ? { directPhoto: true } : {}),
               ...(row.savedPossibilityNarrative
                 ? { savedPossibilityNarrative: true as const }

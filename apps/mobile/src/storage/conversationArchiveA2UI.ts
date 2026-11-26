@@ -1,3 +1,4 @@
+import { restoreArchivedConversationRichText } from '../ragConversation/archivedConversationRichTextLayout';
 import { readPairedDetails } from '../ragConversation/archivedPairedDetailsLayout';
 import { restoreConversationA2UILayout } from '../ragConversation/conversationA2UIArchive';
 
@@ -19,6 +20,18 @@ export function recoverArchiveLayout(value: Record<string, unknown>) {
     return undefined;
   return (
     readPairedDetails(value.archivedA2UILayout, value.answer)?.root ??
+    (Array.isArray(value.sources) &&
+    value.sources.length === 0 &&
+    ['historicalDialogueParents', 'priorDialogue', 'priorUserReports'].every(
+      field =>
+        value[field] === undefined ||
+        (Array.isArray(value[field]) && value[field].length === 0),
+    )
+      ? restoreArchivedConversationRichText(
+          value.archivedA2UILayout,
+          value.answer,
+        )
+      : undefined) ??
     restoreConversationA2UILayout(value.archivedA2UILayout, value.answer)
   );
 }

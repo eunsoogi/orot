@@ -85,8 +85,6 @@ export function guardedNativeDatabase<T extends SqlDatabase>(
     try {
       await native.transaction(async tx => {
         openTransactions.add(scope);
-        // The native BEGIN is synchronous; a tracked asynchronous direct
-        // dispatch may still be queued and execute inside this transaction.
         if (epoch.pending !== 0) markDirty(scope);
         try {
           await withOwnedMemoryDelete(
@@ -109,14 +107,10 @@ export function guardedNativeDatabase<T extends SqlDatabase>(
         }
       });
     } catch (error) {
-      // The pinned driver rethrows the callback error after successful automatic
-      // rollback. A different settlement failure gives no proof of autocommit.
       if (scope.dirty && (!callbackFailure || callbackFailure.error !== error))
         epoch.unsettledFailure = true;
       throw error;
     } finally {
-      // Keep the dirty interval through native automatic COMMIT/ROLLBACK,
-      // not merely until the JavaScript mutation statement settles.
       openTransactions.delete(scope);
       if (scope.dirty) epoch.dirtyTransactions--;
       notifySettlement();
@@ -167,6 +161,17 @@ export function aliasProtectedReadEpoch(
   const epoch = epochs.get(owner);
   if (epoch) epochs.set(facade, epoch);
 }
+export function independentReadMutation(owner: SqlDatabase) {
+  const e = epochs.get(owner);
+  if (
+    e &&
+    !e.detached &&
+    !e.unsettledFailure &&
+    !e.dirtyTransactions &&
+    !e.pending
+  )
+    return e.mutation;
+}
 export function acquireProtectedReadEpoch(owner: SqlDatabase) {
   return acquireEpoch(owner, false);
 }
@@ -198,7 +203,6 @@ function acquireEpoch(owner: SqlDatabase, independent: boolean) {
     beforeDispatch(retire: () => void) {
       if (!independent || !current()) return;
       const listeners = (epoch.preDispatchRetirements ??= new Set());
-      // Caller retains an explicit independently idempotent lifetime across queue awaits.
       listeners.add(retire);
       return () => {
         listeners.delete(retire);
@@ -210,8 +214,6 @@ function acquireEpoch(owner: SqlDatabase, independent: boolean) {
     },
   };
 }
-/** A rejected snapshot can re-enter only after that same known connection
- * settles. Missing/detached/unsettled owners are not retryable contention. */
 export function awaitIndependentReadSettlement(
   owner: SqlDatabase,
   timeoutMs: number,
@@ -241,7 +243,6 @@ function readSettlement<R>(
   if (!epoch) return Promise.resolve(result('owner_missing'));
   return settleKnownIndependentRead(epoch, timeoutMs, signal, result);
 }
-/** Identity only; aliases for one guarded connection share it, reopened connections do not. */
 export function protectedDatabaseOwnerIdentity(
   owner: SqlDatabase,
 ): object | undefined {

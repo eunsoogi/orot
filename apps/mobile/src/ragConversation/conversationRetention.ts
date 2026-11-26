@@ -1,4 +1,5 @@
 import type { StoredPossibilityOriginal } from './possibilityOriginalReceipt';
+import type { ArchivedConversationRichTextLayout } from './archivedConversationRichTextLayout';
 import type { ArchivedPairedDetailsLayout } from './archivedPairedDetailsLayout';
 import type { ArchivedA2UILayout } from './conversationA2UIArchive';
 import type { ConversationEntryContext } from '../aiFeatures/integration/conversationIntent';
@@ -20,7 +21,9 @@ export interface ConversationRetentionCandidate {
   readonly possibilityOriginal?: StoredPossibilityOriginal;
   /** Local layout only; not provider history or authority. */
   readonly archivedA2UILayout?:
-    ArchivedA2UILayout | ArchivedPairedDetailsLayout;
+    | ArchivedA2UILayout
+    | ArchivedPairedDetailsLayout
+    | ArchivedConversationRichTextLayout;
   readonly proactiveMemory?: true;
   readonly replyPreferenceSpan?: string;
   readonly authoredRoutineSpan?: string;

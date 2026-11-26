@@ -12,6 +12,7 @@ import { conversationTimelinePages } from './conversationTimelinePages';
 import { continuousConversationStorage } from './continuousConversationStorage';
 import { conversationSteeringHistory } from './conversationSteeringHistory';
 import { conversationWorkflowContinuationOpener } from './conversationWorkflowContinuationOpener';
+import { captureIndependentReadRevision } from './protectedReadRevision';
 import type { SqlDatabase } from '@orot/storage';
 import { setupConversationArtifactSchema } from './conversationArtifactSchema';
 import { createConversationArtifactReader } from './conversationArtifactRead';
@@ -48,6 +49,17 @@ export function createConversationArtifactStorage(
       database,
       isCurrentDatabase,
     ),
+    captureRichTextDisplayRevision() {
+      if (!isCurrentDatabase?.(database)) return;
+      const revision = captureIndependentReadRevision(database);
+      if (!revision) return;
+      const current = () => isCurrentDatabase(database) && revision.current();
+      return {
+        current,
+        watch: (lost: () => void) =>
+          current() ? revision.watch(lost) : undefined,
+      };
+    },
     readMountedPairedDetails: createArchivedPairedDetailsOwner(
       database,
       isCurrentDatabase,

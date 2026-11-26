@@ -1,4 +1,5 @@
 import type { StoredPossibilityOriginal } from '../ragConversation/possibilityOriginalReceipt';
+import type { ArchivedConversationRichTextLayout } from '../ragConversation/archivedConversationRichTextLayout';
 import type { ArchivedPairedDetailsLayout } from '../ragConversation/archivedPairedDetailsLayout';
 import type { ArchivedA2UILayout } from '../ragConversation/conversationA2UIArchive';
 import type { ConversationEntryContext } from '../aiFeatures/integration/conversationIntent';
@@ -30,7 +31,9 @@ export interface ConversationArtifact {
   readonly possibilityOriginal?: StoredPossibilityOriginal;
   /** Local layout only; not provider history or authority. */
   readonly archivedA2UILayout?:
-    ArchivedA2UILayout | ArchivedPairedDetailsLayout;
+    | ArchivedA2UILayout
+    | ArchivedPairedDetailsLayout
+    | ArchivedConversationRichTextLayout;
   readonly proactiveMemory?: true;
   /** Display metadata only; excluded from answer/evidence and provider history. */
   readonly delivery?: import('../ragConversation/conversationMessageDelivery').ConversationMessageDelivery;
