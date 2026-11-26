@@ -133,7 +133,8 @@ func verifyWindowTopBack(in window: UIWindow, controller: UIViewController) thro
     XCTAssertEqual(surface.visibleBackPlacement(from: surface), "local-host")
     XCTAssertNil(surface.visibleBackPlacement(from: portal))
     controller.view.frame = fullFrame
-    surface.setNeedsLayout()
+    // Model the updated native viewport receipt while React's measured overlay is unchanged.
+    surface.geometryLayoutRevision = "[[0,0,60,625],[0,0,\(fullFrame.width),\(fullFrame.height)],[0,0,\(fullFrame.width),\(fullFrame.height)]]"
     surface.layoutIfNeeded()
     portal.layoutIfNeeded()
     XCTAssertEqual(surface.visibleBackPlacement(from: portal), "pinned")

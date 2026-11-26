@@ -1,4 +1,6 @@
 import { useContext, useState, type ReactNode } from 'react';
+import { useNavigationGeometry } from './NavigationGeometryProvider';
+import type { NavigationGeometryRect } from './navigationGeometry';
 import { NavigationOverlayLayoutContext } from './navigationOverlayLayout';
 import {
   NAVIGATION_SURFACE_HEIGHT,
@@ -94,6 +96,13 @@ const NativeNavigationGlassSurface =
     ? requireNativeComponent<NavigationGlassNativeProps>('NavigationGlassView')
     : null;
 
+const coordinates = ({ x, y, width, height }: NavigationGeometryRect) => [
+  x,
+  y,
+  width,
+  height,
+];
+
 export function NavigationGlassSurface({
   actions = [],
   children,
@@ -112,9 +121,23 @@ export function NavigationGlassSurface({
   testID,
 }: NavigationGlassSurfaceProps) {
   const overlay = useContext(NavigationOverlayLayoutContext);
-  // Wait for the overlay's own layout event; a viewport event can precede its final position.
-  const geometryLayoutRevision = overlay
-    ? JSON.stringify([overlay.x, overlay.y, overlay.width, overlay.height])
+  const geometry = useNavigationGeometry();
+  // The overlay commits its own position before any measurement request. An
+  // admitted right rail also needs to retry native window containment when the
+  // physical viewport recovers but its local overlay hasn't moved. Exclude
+  // measured navigation frames so publishing a Back frame cannot self-invalidate.
+  const overlayFrame = overlay && coordinates(overlay);
+  const physicalFrames =
+    layoutMode === 'right' && geometry
+      ? [
+          coordinates(geometry.windowBounds),
+          coordinates(geometry.viewportBounds ?? geometry.windowBounds),
+        ]
+      : undefined;
+  const geometryLayoutRevision = overlayFrame
+    ? JSON.stringify(
+        physicalFrames ? [overlayFrame, ...physicalFrames] : overlayFrame,
+      )
     : undefined;
   const isDarkAppearance = useColorScheme() === 'dark';
   const hasRootTabs = actions.some(action => action.rootTab);
