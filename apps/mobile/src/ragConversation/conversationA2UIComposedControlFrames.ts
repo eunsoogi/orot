@@ -39,6 +39,31 @@ function controlFor(value: Record<string, unknown>): ComposedControl {
           ? {}
           : { placeholder: label(value.placeholder) }),
       };
+    case 'Slider': {
+      keys(value, [...base, 'min', 'max', 'steps']);
+      const min = value.min === undefined ? 0 : value.min;
+      const max = value.max;
+      if (
+        typeof min !== 'number' ||
+        !Number.isInteger(min) ||
+        min < -1000 ||
+        typeof max !== 'number' ||
+        !Number.isInteger(max) ||
+        max > 1000 ||
+        max <= min
+      )
+        fail();
+      const steps =
+        value.steps === undefined ? Math.min(max - min, 100) : value.steps;
+      if (
+        typeof steps !== 'number' ||
+        !Number.isInteger(steps) ||
+        steps < 1 ||
+        steps > 100
+      )
+        fail();
+      return { kind: 'slider', label: caption, min, max, steps };
+    }
     case 'ChoicePicker': {
       keys(value, [...base, 'variant', 'options']);
       if (
@@ -74,7 +99,10 @@ function controlFor(value: Record<string, unknown>): ComposedControl {
 /** Project bundled form controls to invisible validated-tree slots. The
  * ordinary A2UI reducer still owns the whole graph, frame order and prose.
  * Draft fields cannot participate in generic read-only data bindings. */
-export function projectConversationA2UIComposedControls(raw: unknown) {
+export function projectConversationA2UIComposedControls(
+  raw: unknown,
+  sliders = false,
+) {
   if (
     !Array.isArray(raw) ||
     raw.length === 0 ||
@@ -88,6 +116,7 @@ export function projectConversationA2UIComposedControls(raw: unknown) {
     return undefined;
   const fields = new Map<string, { path: string; control: ComposedControl }>();
   const seeds: { path: string; value: unknown; index: number }[] = [];
+  const initialData: Record<string, unknown>[] = [];
   try {
     const frames = raw.map((text, index) => {
       const envelope = object(JSON.parse(text) as unknown);
@@ -98,6 +127,8 @@ export function projectConversationA2UIComposedControls(raw: unknown) {
       const body = object(envelope[op]);
       if (body.surfaceId !== draftA2UISurfaceId) fail();
       if (op === 'deleteSurface') fields.clear();
+      if (sliders && op === 'createSurface' && body.dataModel !== undefined)
+        initialData.push(object(body.dataModel));
       if (op === 'updateDataModel' && typeof body.path === 'string') {
         keys(body, ['surfaceId', 'path', 'value']);
         seeds.push({ path: body.path, value: body.value, index });
@@ -111,7 +142,11 @@ export function projectConversationA2UIComposedControls(raw: unknown) {
       const components = body.components.map((rawNode: unknown) => {
         const node = object(rawNode);
         const componentId = id(node.id);
-        if (typeof node.component !== 'string' || !kinds.has(node.component)) {
+        if (
+          typeof node.component !== 'string' ||
+          (!kinds.has(node.component) &&
+            !(sliders && node.component === 'Slider'))
+        ) {
           fields.delete(componentId);
           return node;
         }
@@ -135,6 +170,23 @@ export function projectConversationA2UIComposedControls(raw: unknown) {
       )
         fail();
       used.set(path, control);
+    }
+    // A slider has its own numeric state, not a projection of any authored model data.
+    // Reject correlated seeds even when they address a parent or child pointer.
+    for (const [path, control] of used) {
+      if (control.kind !== 'slider') continue;
+      const namespace = binding(path)[0]!;
+      if (
+        initialData.some(data => Object.hasOwn(data, namespace)) ||
+        seeds.some(
+          seed =>
+            seed.path === path ||
+            seed.path.startsWith(path + '/') ||
+            path.startsWith(seed.path + '/') ||
+            seed.path === '',
+        )
+      )
+        fail();
     }
     const skipped = new Set<number>();
     for (const { path, value, index } of seeds) {

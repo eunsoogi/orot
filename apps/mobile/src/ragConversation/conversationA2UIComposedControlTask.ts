@@ -7,10 +7,11 @@ import type { GroundedRagAnswer } from './task';
 
 export function withComposedConversationControls(
   legacy: TaskResponderContract<GroundedRagAnswer>,
+  sliders = false,
 ): TaskResponderContract<GroundedRagAnswer> {
   return {
     ...legacy,
-    taskVersion: '45',
+    taskVersion: sliders ? '46' : '45',
     createResultSchema(input) {
       const schema = legacy.createResultSchema?.(input) ?? legacy.resultSchema;
       if (!allowsOrdinaryA2UI(input) || !isObject(schema.properties))
@@ -28,7 +29,10 @@ export function withComposedConversationControls(
               'For an ordinary reply, optionally compose a native A2UI 1.0 layout. Use an ordered array of JSON message strings and a root component with id "root". Start with createSurface on "orot:response:draft" and the bundled Basic catalog "https://a2ui.org/specification/v1_0/catalogs/basic/catalog.json". Use updateComponents or updateDataModel as needed; deleteSurface returns to prose. ' +
               'Arrange Text, Card, Column, Row, List, Divider, supported icons and Tabs as the answer needs. Text may use supported inline emphasis and literal supported alignment; Row text or cards may specify a supported size weight. Keep accepted answer lines once in reading order as the text fallback. ' +
               'Use any mix of CheckBox, shortText TextField, and mutuallyExclusive or multipleSelection ChoicePicker among the layout nodes. Put their definitions directly in createSurface or updateComponents and reference their IDs where they should appear. Compose natural labels, choose distinct option tokens within the bundled catalog budget, and give each control a distinct value binding such as {"@path":"/form/choice"}. ' +
-              'These pointers describe the bubble only; they are never app or account paths. Controls start empty, with no required seed, root layout, prose count, ordering, or pairing. All edits stay in this bubble. Omit actions, remote content, and sendDataModel, or set sendDataModel to false.',
+              'These pointers describe the bubble only; they are never app or account paths. Controls start empty, with no required seed, root layout, prose count, ordering, or pairing. All edits stay in this bubble. Omit actions, remote content, and sendDataModel, or set sendDataModel to false.' +
+              (sliders
+                ? ' A Slider can be composed alongside those controls. Give a plain label, distinct local value pointer, integer min (defaults to 0) and max in [-1000, 1000] with max greater than min, and optionally 1–100 equal divisions in steps. It starts at min; do not seed its value or supply actions.'
+                : ''),
           },
         },
       };
@@ -43,7 +47,10 @@ export function withComposedConversationControls(
         !isObject(value)
       )
         return ordinary;
-      const plan = projectConversationA2UIComposedControls(value.a2uiFrames);
+      const plan = projectConversationA2UIComposedControls(
+        value.a2uiFrames,
+        sliders,
+      );
       if (!plan) return ordinary;
       const result = legacy.validateResult(
         { ...value, a2uiFrames: plan.frames },

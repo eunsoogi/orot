@@ -3,6 +3,7 @@ import type { ConversationA2UINode } from './conversationA2UI';
 export type ComposedControl = Readonly<
   | { kind: 'check'; label: string }
   | { kind: 'text'; label: string; placeholder?: string }
+  | { kind: 'slider'; label: string; min: number; max: number; steps: number }
   | {
       kind: 'choice';
       label: string;

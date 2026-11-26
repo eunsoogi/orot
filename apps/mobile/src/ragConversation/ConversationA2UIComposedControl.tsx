@@ -1,3 +1,4 @@
+import Slider from '@react-native-community/slider';
 import { createContext, useContext, useState } from 'react';
 import { Pressable, StyleSheet, Switch, TextInput, View } from 'react-native';
 import { AppText } from '../layout/AppText';
@@ -34,6 +35,9 @@ function MountedControl({
 }) {
   const [checked, setChecked] = useState(false);
   const [text, setText] = useState('');
+  const [range, setRange] = useState(
+    control.kind === 'slider' ? control.min : 0,
+  );
   const [selected, setSelected] = useState<readonly string[]>([]);
   return (
     <View style={styles.control}>
@@ -60,6 +64,31 @@ function MountedControl({
           onChangeText={next => {
             if (current() && typeof next === 'string')
               setText(next.slice(0, 256));
+          }}
+        />
+      ) : control.kind === 'slider' ? (
+        <Slider
+          accessible
+          accessibilityRole="adjustable"
+          accessibilityLabel={control.label}
+          accessibilityValue={{
+            min: control.min,
+            max: control.max,
+            now: range,
+          }}
+          minimumValue={control.min}
+          maximumValue={control.max}
+          step={(control.max - control.min) / control.steps}
+          value={range}
+          style={styles.slider}
+          onValueChange={next => {
+            if (
+              current() &&
+              Number.isFinite(next) &&
+              next >= control.min &&
+              next <= control.max
+            )
+              setRange(next);
           }}
         />
       ) : (
@@ -106,6 +135,7 @@ const styles = StyleSheet.create({
     borderRadius: 8,
     backgroundColor: appColors.primarySoft,
   },
+  slider: { alignSelf: 'stretch', minHeight: 44 },
   option: { minHeight: 44, paddingHorizontal: 12, justifyContent: 'center' },
   chosen: { backgroundColor: appColors.primarySoft, borderRadius: 8 },
 });

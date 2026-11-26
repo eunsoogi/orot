@@ -66,6 +66,9 @@ export function versionedConversationMemoryTasks(
     conversationTaskV43,
     true,
   );
+  const conversationTaskV45 = observeConversationA2UIFinalAdmission(
+    withComposedConversationControls(conversationTaskV44),
+  );
   return {
     conversationTaskV25,
     conversationTaskV26,
@@ -94,9 +97,10 @@ export function versionedConversationMemoryTasks(
       v42: conversationTaskV42,
       v43: conversationTaskV43,
       v44: conversationTaskV44,
+      v45: conversationTaskV45,
     },
     ragConversationTask: observeConversationA2UIFinalAdmission(
-      withComposedConversationControls(conversationTaskV44),
+      withComposedConversationControls(conversationTaskV44, true),
     ),
   };
 }
