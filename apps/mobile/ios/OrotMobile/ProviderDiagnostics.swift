@@ -106,7 +106,7 @@ final class OrotProviderDiagnostics: NSObject {
                "artifact_report_calendar", "artifact_report_snapshot", "artifact_report_fingerprint", "artifact_period_transaction",
                "history_timeline", "history_turns", "history_artifacts", "history_tool_read",
                "history_tool_restore", "history_tasks",
-               "history_session_recheck_before_assembly", "history_session_recheck_after_assembly", "history_tool_recheck_before_assembly", "history_tool_recheck_final", "history_cold_previews", "history_recheck", "history_transcript_layout", "conversation_model_preflight", "conversation_history_preflight",
+               "history_session_recheck_before_assembly", "history_session_recheck_after_assembly", "history_tool_recheck_before_assembly", "history_tool_recheck_final", "history_cold_previews", "history_recheck", "history_display_admission", "history_display_open", "history_display_timeline", "history_display_presentation", "history_display_recheck", "history_transcript_layout", "conversation_model_preflight", "conversation_history_preflight",
                "conversation_quick_press", "conversation_send_preparing",
                "conversation_receipt_attempt", "conversation_receipt_main", "conversation_receipt_accepted", "conversation_receipt_response_started",
                "conversation_final_react_commit",

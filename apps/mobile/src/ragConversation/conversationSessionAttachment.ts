@@ -5,6 +5,7 @@ import type {
 } from './conversationSessionTypes';
 import type { createConversationSessionRestoreState } from './conversationSessionRestoreState';
 import type { ConversationInitialPageAdmission } from './conversationHistoryPage';
+import { observeOptInConversationHistory as observe } from '../providers/conversationHistoryDiagnostic';
 import { addConversation } from './conversationSessionTransitions';
 
 /** Attach an existing durable identity before exposing its freshly restored transcript. */
@@ -38,7 +39,12 @@ export function createConversationSessionAttachment(input: {
     if (!Number.isFinite(Date.parse(updatedAt)))
       throw new Error('Conversation session date is invalid.');
     const session = input.empty();
-    await input.retention.attachExisting(session.id, durableId, version, valid);
+    const retention = input.retention;
+    const attach = () =>
+      retention.attachExisting(session.id, durableId, version, valid);
+    if (input.canHoldSavedDisplay)
+      await observe('history_display_admission', attach, signal);
+    else await attach();
     if (!valid() || input.retention.activeIdentity(session.id) !== durableId) {
       input.retention.discardUnpublished?.(session.id, durableId, version);
       throw new Error('Conversation restoration was cancelled.');

@@ -6,6 +6,7 @@ import { bindArchivedVisitBookmark } from '../../storage/archivedVisitBookmarkId
 import type { ReadSavedHistoryDisplay } from '../../ragConversation/conversationSavedHistoryDisplay';
 import type { createConversationSessionStorage } from './conversationSessionStorage';
 import { fingerprint } from './evidenceUtils';
+import { observeOptInConversationHistory as observe } from '../../providers/conversationHistoryDiagnostic';
 
 /** Select owned retained text only. No evidence aliases, tool results or model input are constructed here. */
 export function conversationSavedHistoryDisplayOption(
@@ -17,10 +18,14 @@ export function conversationSavedHistoryDisplayOption(
         throw new Error('Conversation restoration was cancelled.');
     };
     assertCurrent();
-    const storage = await openStorage();
+    const storage = await observe('history_display_open', openStorage, signal);
     const readDisplayTimeline = () =>
       storage.listTimeline(sessionId, version, cursor, undefined, true);
-    const page = await readDisplayTimeline();
+    const page = await observe(
+      'history_display_timeline',
+      readDisplayTimeline,
+      signal,
+    );
     const revision = storage.captureRichTextDisplayRevision?.();
     assertCurrent();
     const taskIds = page.items
@@ -31,16 +36,23 @@ export function conversationSavedHistoryDisplayOption(
       : [];
     assertCurrent();
     const turns = page.items.filter(item => item.kind === 'turn');
-    const saved = await storage.readSessionPresentationMany(
-      sessionId,
-      version,
-      turns.map(item => item.id),
+    const saved = await observe(
+      'history_display_presentation',
+      () =>
+        storage.readSessionPresentationMany(
+          sessionId,
+          version,
+          turns.map(item => item.id),
+        ),
+      signal,
     );
     assertCurrent();
     // Fence deletes and pending lease changes between timeline selection and row reading.
     if (
       saved.length !== turns.length ||
-      fingerprint(await readDisplayTimeline()) !== fingerprint(page)
+      fingerprint(
+        await observe('history_display_recheck', readDisplayTimeline, signal),
+      ) !== fingerprint(page)
     )
       throw new Error('Conversation content changed during restoration.');
     assertCurrent();
