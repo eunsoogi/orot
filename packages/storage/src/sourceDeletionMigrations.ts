@@ -1,6 +1,6 @@
 import { STORAGE_TABLES } from './contracts';
 import type { RecordKind } from './contracts';
-import type { SqlExecutor } from './sql';
+import type { SqlDatabase, SqlExecutor } from './sql';
 import {
   removedRecordReferencePredicate,
   SOURCE_DELETION_TOMBSTONES_TABLE,
@@ -71,38 +71,7 @@ export async function createSourceDeletionIntegrity(transaction: SqlExecutor): P
     );
   }
 
-  for (const [kind, definition] of Object.entries(STORAGE_TABLES) as [
-    RecordKind,
-    (typeof STORAGE_TABLES)[RecordKind],
-  ][]) {
-    if (kind === 'source_record' || kind === 'evidence_span' || kind === 'transcript_segment')
-      continue;
-    const table = definition.table;
-    const dependencyPredicate = sourceDeletionDependencyPredicate(kind, table, 'OLD.id');
-    if (kind === 'visit_question') {
-      // Fence dependent official identities before deleting their prepared question.
-      await transaction.execute(
-        'DROP TRIGGER IF EXISTS source_records_delete_visit_questions_dependencies',
-      );
-    }
-    const fenceOfficial =
-      kind === 'visit_question'
-        ? `
-         INSERT OR IGNORE INTO ${SOURCE_DELETION_TOMBSTONES_TABLE} (source_id)
-         SELECT official.id FROM visit_question_records AS official
-         JOIN visit_questions ON visit_questions.id = json_extract(official.payload_json, '$.questionId')
-         WHERE ${dependencyPredicate};`
-        : '';
-    await transaction.execute(
-      `CREATE TRIGGER IF NOT EXISTS source_records_delete_${table}_dependencies
-       BEFORE DELETE ON source_records BEGIN
-         ${fenceOfficial}
-         INSERT OR IGNORE INTO ${SOURCE_DELETION_TOMBSTONES_TABLE} (source_id)
-         SELECT id FROM ${table} WHERE ${dependencyPredicate};
-         DELETE FROM ${table} WHERE ${dependencyPredicate};
-       END`,
-    );
-  }
+  await replaceSourceDeletionCascades(transaction);
 
   // Version eight used this name for a cascade that removed spans without preserving their IDs.
   await transaction.execute('DROP TRIGGER IF EXISTS source_records_delete_evidence_spans');
@@ -113,4 +82,72 @@ export async function createSourceDeletionIntegrity(transaction: SqlExecutor): P
        DELETE FROM evidence_spans WHERE json_extract(payload_json, '$.sourceRecordId') = OLD.id;
      END`,
   );
+}
+
+function sourceDeletionCascadeDefinitions() {
+  const definitions: { name: string; sql: string }[] = [];
+  for (const [kind, definition] of Object.entries(STORAGE_TABLES) as [
+    RecordKind,
+    (typeof STORAGE_TABLES)[RecordKind],
+  ][]) {
+    if (kind === 'source_record' || kind === 'evidence_span' || kind === 'transcript_segment')
+      continue;
+    const table = definition.table;
+    const trigger = `source_records_delete_${table}_dependencies`;
+    // Bind both alias domains once to the physical OLD recording, not once per candidate.
+    const dependencyPredicate = `${table}.id IN (
+      WITH target_transcripts AS MATERIALIZED (
+        SELECT id, json_extract(payload_json, '$.transcriptId') AS family
+        FROM transcript_segments
+        WHERE json_extract(payload_json, '$.recordingSourceId') = OLD.id
+      )
+      SELECT id FROM ${table} WHERE ${sourceDeletionDependencyPredicate(kind, table, 'OLD.id', true)}
+    )`;
+    const fenceOfficial =
+      kind === 'visit_question'
+        ? `
+         INSERT OR IGNORE INTO ${SOURCE_DELETION_TOMBSTONES_TABLE} (source_id)
+         SELECT official.id FROM visit_question_records AS official
+         JOIN visit_questions ON visit_questions.id = json_extract(official.payload_json, '$.questionId')
+         WHERE ${dependencyPredicate};`
+        : '';
+    definitions.push({
+      name: trigger,
+      sql: `CREATE TRIGGER ${trigger}
+       BEFORE DELETE ON source_records BEGIN
+         ${fenceOfficial}
+         INSERT OR IGNORE INTO ${SOURCE_DELETION_TOMBSTONES_TABLE} (source_id)
+         SELECT id FROM ${table} WHERE ${dependencyPredicate};
+         DELETE FROM ${table} WHERE ${dependencyPredicate};
+       END`,
+    });
+  }
+  return definitions;
+}
+
+export async function replaceSourceDeletionCascades(
+  transaction: SqlExecutor,
+  definitions = sourceDeletionCascadeDefinitions(),
+) {
+  for (const { name, sql } of definitions) {
+    await transaction.execute(`DROP TRIGGER IF EXISTS ${name}`);
+    await transaction.execute(sql);
+  }
+}
+
+/** These replacement triggers use the same v20 table and row contract. Avoid a
+ * write on ordinary opens; repair only stale owned definitions before use. */
+export async function ensureSourceDeletionCascades(database: SqlDatabase): Promise<void> {
+  const definitions = sourceDeletionCascadeDefinitions();
+  const isCurrent = async (executor: SqlExecutor) => {
+    const { rows } = await executor.execute(
+      "SELECT name, sql FROM sqlite_master WHERE type = 'trigger' AND tbl_name = 'source_records' AND name GLOB 'source_records_delete_*_dependencies'",
+    );
+    const installed = new Map(rows.map((row) => [row.name, row.sql]));
+    return definitions.every(({ name, sql }) => installed.get(name) === sql);
+  };
+  if (await isCurrent(database)) return;
+  await database.transaction(async (tx) => {
+    if (!(await isCurrent(tx))) await replaceSourceDeletionCascades(tx, definitions);
+  });
 }
