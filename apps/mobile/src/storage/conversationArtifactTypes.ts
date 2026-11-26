@@ -1,4 +1,4 @@
-import type { StoredPossibilityOriginal } from '../ragConversation/possibilityOriginalReceipt';
+import type { StoredPossibilityOriginal } from '../conversationTools/possibilityOriginalReceipt';
 import type { ArchivedConversationRichTextLayout } from '../ragConversation/archivedConversationRichTextLayout';
 import type { ArchivedConversationWeightedCardsLayout } from '../ragConversation/archivedConversationWeightedCards';
 import type { ArchivedPairedDetailsLayout } from '../ragConversation/archivedPairedDetailsLayout';

@@ -1,4 +1,4 @@
-import { armPossibilityAttempt } from './possibilityOriginalReceipt';
+import { armPossibilityAttempt } from '../conversationTools/possibilityOriginalReceipt';
 import { reportConversationException } from '../providers/conversationFailureDiagnostic';
 import { conversationInitialEvidence } from './conversationInitialEvidence';
 import { runContinuableConversationWorkflow } from './conversationWorkflowContinuation';
