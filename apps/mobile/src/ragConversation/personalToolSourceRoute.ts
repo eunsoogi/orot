@@ -4,7 +4,14 @@ import type {
 } from '@orot/agent-runtime';
 import { beginSourceOpenTiming } from '../providers/sourceOpenDiagnostic';
 import { createContext } from 'react';
-import type { ResolveConversationToolSource } from './ConversationToolEventSources';
+import type { EvidenceReference } from '@orot/agent-runtime';
+import type { ToolCallScope } from '../aiFeatures/integration/toolReferenceIndex';
+
+export type ResolveConversationToolSource = (
+  reference: ToolSourceReference,
+  signal: AbortSignal,
+  scope: ToolCallScope & { readonly durableMessageId?: string },
+) => Promise<EvidenceReference | undefined>;
 
 export type PersonalSourceLease = {
   readonly signal: AbortSignal;
@@ -59,10 +66,13 @@ export function toolSourceScope(
   durableMessageId: string,
   event: Pick<ConversationToolEvent, 'operationRunId' | 'callId'>,
   source: ToolSourceReference,
+  resolver: ResolveConversationToolSource,
 ) {
+  // Only the store-bound live resolver consumes a durable row locator.
   return {
     sessionId,
-    ...(source.sourceKind === 'personal_record' && { durableMessageId }),
+    ...(source.sourceKind === 'personal_record' &&
+      personalSourceCaptures.has(resolver) && { durableMessageId }),
     operationRunId: event.operationRunId,
     callId: event.callId,
   };

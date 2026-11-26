@@ -17,7 +17,7 @@ import type {
   EvidenceReference,
   ToolSourceReference,
 } from '@orot/agent-runtime';
-import type { ToolCallScope } from '../aiFeatures/integration/toolReferenceIndex';
+import type { ResolveConversationToolSource } from './personalToolSourceRoute';
 import { verifiedPublicToolSourceChoices } from './verifiedPublicToolSourceChoices';
 import { AppText as Text } from '../layout/AppText';
 import { t } from '../i18n';
@@ -27,11 +27,7 @@ import {
   sourceKindLabel,
   withoutSourceKey,
 } from './ConversationToolEventPresentation';
-export type ResolveConversationToolSource = (
-  reference: ToolSourceReference,
-  signal: AbortSignal,
-  scope: ToolCallScope & { readonly durableMessageId?: string },
-) => Promise<EvidenceReference | undefined>;
+export type { ResolveConversationToolSource } from './personalToolSourceRoute';
 /** Resolve persisted references at the user's action boundary before opening any source. */
 export function ConversationToolEventSources({
   event,
@@ -93,7 +89,13 @@ export function ConversationToolEventSources({
       !resolveToolSource
     )
       return;
-    const scope = toolSourceScope(sessionId, durableMessageId, event, source);
+    const scope = toolSourceScope(
+      sessionId,
+      durableMessageId,
+      event,
+      source,
+      resolveToolSource,
+    );
     if (tryOpenPersonalSource(openPersonal, resolveToolSource, source, scope))
       return;
     const key = sourceKey(source);

@@ -1,3 +1,4 @@
+import { createDailyReportIdentity } from '@orot/domain';
 import { APPLE_PROVIDER_ID } from '@orot/provider-apple';
 import {
   createManualHistoryRepository,
@@ -9,6 +10,12 @@ import {
   type LanguageModelResponse,
 } from '@orot/model-runtime';
 import { runRagConversationTurn } from '../../../ragConversation/service';
+import { createConversationSessions } from '../../../ragConversation/conversationSessions';
+import {
+  consumeConversationEntryForSession,
+  conversationEntryForSession,
+  setConversationEntryForSession,
+} from '../../../ragConversation/useConversationEntryIntent';
 import { createConversationArtifactStorage } from '../../../storage/conversationArtifactStorage';
 import { saveConversationHealthHistory } from '../../../storage/conversationHealthHistory';
 import { recoverConversationHealthHistoryResult } from '../../../storage/recoverConversationHealthHistory';
@@ -40,6 +47,7 @@ const request = {
 // terminal receipt. Only model output and native consent are synthetic.
 test.each([
   'saved',
+  'saved after consumed Daily Report',
   'declined',
   'deleted in approval',
   'retired in approval',
@@ -50,6 +58,7 @@ test.each([
   'the local model resolves a prior user statement without a filler fallback: %s',
   async outcome => {
     const f = await healthContextFixture();
+    const sessions = createConversationSessions();
     try {
       const storage = createConversationArtifactStorage(f.database);
       const generation = await storage.currentGeneration();
@@ -63,7 +72,25 @@ test.each([
         answer: assistant,
         sources: [],
       });
-      await storage.startRequest(request);
+      const { activeId } = sessions.getSnapshot();
+      const afterDaily = outcome === 'saved after consumed Daily Report';
+      const authoredQuestion = afterDaily
+        ? '앞으로도 전에 말한 내용을 기억해줄 수 있나요?'
+        : question;
+      if (afterDaily) {
+        const reportRequest = createDailyReportIdentity('2026-11-26', 'UTC');
+        setConversationEntryForSession(sessions, activeId, {
+          intent: 'daily-report',
+          entryKey: 'synthetic-consumed-report',
+          reportRequest,
+        });
+        consumeConversationEntryForSession(sessions, activeId);
+        expect(conversationEntryForSession(sessions, activeId)).toMatchObject({
+          intent: 'conversation',
+          reportRequest,
+        });
+      }
+      await storage.startRequest({ ...request, question: authoredQuestion });
       const generate = jest.fn(async (value: LanguageModelRequest) => {
         expect(
           value.tools?.some(
@@ -165,7 +192,7 @@ test.each([
         return outcome !== 'declined';
       });
       const response = await route.sendRagMessage(
-        question,
+        authoredQuestion,
         [],
         new AbortController().signal,
         {
@@ -185,9 +212,10 @@ test.each([
             },
           },
         },
+        conversationEntryForSession(sessions, activeId),
       );
       const notes = await createManualHistoryRepository(f.database).list();
-      if (outcome === 'saved') {
+      if (outcome === 'saved' || afterDaily) {
         expect(response).toMatchObject({
           status: 'answer',
           committedAnswerMemory: true,
@@ -213,6 +241,7 @@ test.each([
       expect(externalSearch).not.toHaveBeenCalled();
       if (outcome !== 'no call') expect(generate).toHaveBeenCalledTimes(1);
     } finally {
+      sessions.dispose();
       f.close();
     }
   },
