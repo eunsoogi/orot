@@ -48,6 +48,7 @@ final class RealtimeVoiceCall {
     var awaitingInputCommit = false
     var observers: [NSObjectProtocol] = []
     let emit: (String, [String: Any]) -> Void
+    var reportTermination = VoiceSystemCallLifecycle.report
 
     init(audio: RealtimeAudioPort = RealtimeVoiceAudio(), socket: RealtimeSocketPort = RealtimeVoiceSocket(),
          ownership: AudioSessionOwnership = .shared, systemCall: VoiceSystemCallPort? = nil,
@@ -72,11 +73,12 @@ final class RealtimeVoiceCall {
             observers.append(NotificationCenter.default.addObserver(forName: name, object: nil, queue: .main) { [weak self] note in
                 guard let self else { return }
                 if name == UIApplication.didEnterBackgroundNotification {
-                    let stage = VoiceSystemCallLifecycle.backgroundStage(systemCallActive: systemCallActive, managed: managedResponsesTransport)
+                    let stage = VoiceSystemCallLifecycle.backgroundStage(systemCallActive: systemCallActive,
+                                                                         managed: managedResponsesTransport, audioStarting: audioStarting)
                     if id != nil {
                         VoiceSystemCallLifecycle.report(stage)
                     }
-                    if stage == .backgroundContinued, !audioStarting {
+                    if stage == .backgroundContinued {
                         return
                     }
                 } else if name == AVAudioSession.routeChangeNotification {
@@ -153,7 +155,7 @@ final class RealtimeVoiceCall {
                 case .overflow:
                     DispatchQueue.main.async {
                         if self.id == current, self.captureEpoch == epoch {
-                            self.fail()
+                            self.fail(.liveInputOverflow)
                         }
                     }
                     return
@@ -167,7 +169,7 @@ final class RealtimeVoiceCall {
             }, failure: { [weak self] in
                 DispatchQueue.main.async {
                     if self?.id == current, self?.captureEpoch == epoch {
-                        self?.fail()
+                        self?.fail(.liveCaptureFailed)
                     }
                 }
             }, firstStart: firstStart, ready: { [weak self] in
@@ -209,12 +211,6 @@ final class RealtimeVoiceCall {
         if let id {
             emit("VoiceRealtimeState", ["callId": id, "phase": phase])
         }
-    }
-
-    func fail() {
-        guard let id else { socket.close(); return }
-        emit("VoiceRealtimeInterrupted", ["callId": id])
-        try? stop(id)
     }
 
     deinit {
