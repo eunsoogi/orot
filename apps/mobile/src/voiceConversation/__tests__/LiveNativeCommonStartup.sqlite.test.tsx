@@ -5,14 +5,10 @@ import {
   screen,
   waitFor,
 } from '@testing-library/react-native';
-import {
-  AppState,
-  DeviceEventEmitter,
-  NativeModules,
-  Platform,
-} from 'react-native';
+import { DeviceEventEmitter, NativeModules } from 'react-native';
 import { SettingsConsentReadServicesContext } from '../../agent/execution/SettingsConsentReadServices';
 import { liveVoiceModelId as mockLiveVoiceModelId } from '../../agent/execution/liveVoiceSettingsIdentity';
+import { liveCommonTimingFixture } from '../testSupport/liveCommonTimingFixture';
 import { openLiveAudioSettingsFixture } from '../testSupport/liveAudioSettingsFixture';
 import { fixture as protectedFixture } from '../testSupport/liveResponsesProtectedFixture';
 import { LiveConversationVoiceEntry } from '../LiveConversationVoiceEntry';
@@ -80,13 +76,7 @@ test.each([
   async mode => {
     const audio = openLiveAudioSettingsFixture();
     const storage = await protectedFixture();
-    const previous = [
-      AppState.currentState,
-      NativeModules.VoiceRealtimeModule,
-    ] as const;
-    const os = Object.getOwnPropertyDescriptor(Platform, 'OS')!;
-    Object.defineProperty(Platform, 'OS', { configurable: true, value: 'ios' });
-    AppState.currentState = 'active';
+    const timings = liveCommonTimingFixture();
     mockOpenData.mockReset().mockResolvedValue(await storage.openData());
     mockAuthorize.mockReset().mockImplementation(async () => {
       if (mode === 'source-denied') storage.revokeDbOwner();
@@ -228,6 +218,9 @@ test.each([
             native.settleLiveCommonConversationResult,
           ).not.toHaveBeenCalled();
         }
+        if (mode === 'valid' || mode === 'stop-in-queue')
+          expect(mockOpenData).toHaveBeenCalledTimes(1);
+        await timings.verify(mode);
         expect(onSend).not.toHaveBeenCalled();
         expect(
           screen.queryByTestId('live-tool-confirmation-inline'),
@@ -236,9 +229,7 @@ test.each([
         await result.unmount();
       }
     } finally {
-      Object.defineProperty(Platform, 'OS', os);
-      AppState.currentState = previous[0];
-      NativeModules.VoiceRealtimeModule = previous[1];
+      timings.restore();
       audio.close();
       storage.close();
     }
