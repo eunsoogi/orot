@@ -170,7 +170,7 @@ export function OverviewHeartPanel({
           unverifiedSelection={
             focused &&
             state === 'loading' &&
-            initialWorkoutChoicePending === true &&
+            (initialWorkoutChoicePending === true || !active) &&
             !startupWorkoutChoice
           }
         />
