@@ -42,6 +42,11 @@ func appleFoundationModelsNativeFailure(_ error: Error) -> NSError {
             @unknown default: break
             }
         }
+        if #available(iOS 27.0, *),
+           case .assetsUnavailable? = error as? SystemLanguageModel.Error
+        {
+            return appleModelAssetsUnavailable()
+        }
         if #available(iOS 27.0, *), let modelError = error as? LanguageModelError {
             switch modelError {
             case .refusal, .guardrailViolation:
@@ -53,6 +58,8 @@ func appleFoundationModelsNativeFailure(_ error: Error) -> NSError {
             switch modelError {
             case .refusal, .guardrailViolation:
                 return appleFoundationModelsFailure("SAFETY_REFUSAL", "The selected model declined this request.", nil)
+            case .assetsUnavailable:
+                return appleModelAssetsUnavailable()
             default: break
             }
         }
@@ -63,6 +70,14 @@ func appleFoundationModelsNativeFailure(_ error: Error) -> NSError {
     }
     return appleFoundationModelsFailure("GENERATION_FAILED", value.localizedDescription, nil)
 }
+
+#if canImport(FoundationModels) && !(OROT_TESTS && targetEnvironment(simulator))
+    /// Preflight is not durable: local assets can disappear during generation.
+    /// Do not guess whether this was a download, disablement or storage condition.
+    private func appleModelAssetsUnavailable() -> NSError {
+        appleFoundationModelsFailure("APPLE_MODEL_UNAVAILABLE", "Apple's on-device model assets are unavailable.", "unavailable")
+    }
+#endif
 
 /// Streaming and one-shot calls preserve the same safety, capability and availability decisions.
 func appleFoundationModelsErrorPacket(_ error: Error) -> NSDictionary {
