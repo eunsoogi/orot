@@ -40,6 +40,13 @@ export function createConversationRetentionBridge(input: {
       readonly outcome: RagConversationOutcome;
       readonly retained: boolean;
     }> {
+      // A verified local Memory receipt acknowledges the original answer's pin;
+      // it is not another model-generated answer to capture or retry saving.
+      if (
+        outcome.status === 'answer' &&
+        (outcome.committedAnswerMemory || outcome.alreadySavedAnswerMemory)
+      )
+        return { outcome, retained: false };
       const admitted = references;
       if (outcome.status === 'answer' && admitted) {
         // The admitted set also covers validated dialogue inherited from saved turns.
