@@ -79,7 +79,7 @@ export interface TaskResponderContract<TResult = JsonValue> extends InitialToolR
   readonly systemPrompt: string;
   readonly resultSchema: JsonObject;
   /** Generation guidance may bind opaque IDs to the current bounded batch; local validation remains authoritative. */
-  readonly createResultSchema?: (input: TaskResponderInput) => JsonObject;
+  readonly createResultSchema?: (input: TaskResponderInput, jsonPrompt?: true) => JsonObject;
   /** Projects only approved display text from partial structured JSON; omitted tasks never expose raw tokens. */
   projectStreamedText?(rawOutput: string, input: TaskResponderInput): string | undefined;
   projectStreamedLayout?(

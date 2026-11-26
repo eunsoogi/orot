@@ -88,8 +88,19 @@ const wrongPath = [
   seedChoice,
   final({ ...choice, value: { '@path': localA2UICheckPath } }),
 ];
+const objectFrames = accepted.map(value => JSON.parse(value) as unknown);
 const cases = [
   { title: 'paired frames', frames: accepted, valid: true },
+  {
+    title: 'object frames',
+    frames: objectFrames,
+    valid: true,
+  },
+  {
+    title: 'unrecognized object command',
+    frames: [...objectFrames, { upload: {} }],
+    valid: false,
+  },
   { title: 'omitted frames', frames: undefined, valid: false },
   { title: 'empty frames', frames: [], valid: false },
   { title: 'unowned binding', frames: wrongPath, valid: false },
@@ -188,6 +199,8 @@ test.each(cases)(
         expect(request).not.toHaveProperty('responseFormat');
         const guide = JSON.stringify(inspectTaskGuide(request));
         expect(guide).toContain('"a2uiFrames"');
+        expect(guide).toContain('do not quote or double-encode');
+        expect(guide).toContain('"required":["createSurface"]');
         expect(guide).not.toContain('/local/checked');
         expect(guide).toContain('/form/choice');
         expect(guide).toContain('multipleSelection');
