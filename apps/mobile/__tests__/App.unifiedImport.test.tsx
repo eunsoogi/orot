@@ -83,7 +83,7 @@ test('keeps imported records in Records and only reclassifies and reconfirms an 
       appointments,
       'reconfirmCalendarEvent',
     );
-    let currentEvent = event;
+    let currentEvent: CalendarEvent = event;
     const listeners = new Set<() => void>();
     const listUpcomingEvents = jest.fn(async () => ({
       access: 'fullAccess' as const,
