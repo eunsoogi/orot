@@ -7,6 +7,49 @@ import Foundation
 /// Never log prompts, arguments, results, credentials, or source content;
 /// lifecycle correlation IDs belong to the bridge, not the SDK.
 enum AppleNativeToolTrace {
+    enum FailureStage: String {
+        case availability, generate, stream
+        case generatePreflight = "generate_preflight"
+        case streamPreflight = "stream_preflight"
+    }
+
+    /// Classify a request without inspecting its instructions, evidence or raw schema.
+    static func requestLane(_ request: NSDictionary) -> String {
+        if !(request["nativeTools"] as? [Any] ?? []).isEmpty ||
+            !(request["nativeToolResults"] as? [Any] ?? []).isEmpty
+        {
+            return request["nativeToolChoice"] as? String == "required" ? "native_required" : "native_optional"
+        }
+        switch request["mode"] as? String {
+        case "text": return "text"
+        case "structured", "mixed", "tools": return "guided"
+        default: return "none"
+        }
+    }
+
+    static func closedAvailability(_ status: String) -> String {
+        switch status {
+        case "disabled", "modelNotReady", "unsupportedDevice", "unsupportedLanguage",
+             "unsupportedOS", "entitlementRequired", "quotaExceeded", "unavailable":
+            status
+        default: "other"
+        }
+    }
+
+    static func closedRoute(_ request: NSDictionary) -> String {
+        switch request["modelRoute"] as? String {
+        case nil, "on-device": "on_device"
+        case "private-cloud-compute": "pcc"
+        default: "unknown"
+        }
+    }
+
+    static func reportFailure(_ request: NSDictionary, stage: FailureStage, category: @autoclosure () -> String) {
+        guard ProcessInfo.processInfo.arguments.contains("-OROT_PROVIDER_DIAGNOSTICS") else { return }
+        NSLog("OROT_PROVIDER_DIAGNOSTIC provider=apple stage=%@ route=%@ lane=%@ category=%@",
+              stage.rawValue, closedRoute(request), requestLane(request), category())
+    }
+
     // Host lifecycle tests exercise injected producers, not SDK token measurement.
     #if canImport(FoundationModels) && !OROT_HOST_SWIFT_TESTS && !(OROT_TESTS && targetEnvironment(simulator))
         /// Opt-in numeric measurements distinguish input pressure from model execution.

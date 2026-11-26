@@ -19,14 +19,14 @@ public final class AppleFoundationModelsModule: RCTEventEmitter {
 
     @objc(getAvailability:rejecter:)
     public func getAvailability(_ resolve: @escaping RCTPromiseResolveBlock, rejecter _: @escaping RCTPromiseRejectBlock) {
-        resolve(availability())
+        resolve(observedAvailability([:], stage: .availability))
     }
 
     @objc(getPrivateCloudComputeAvailability:rejecter:)
     public func getPrivateCloudComputeAvailability(_ resolve: @escaping RCTPromiseResolveBlock,
                                                    rejecter _: @escaping RCTPromiseRejectBlock)
     {
-        resolve(availability(["modelRoute": "private-cloud-compute"]))
+        resolve(observedAvailability(["modelRoute": "private-cloud-compute"], stage: .availability))
     }
 
     @objc(generate:requestId:resolver:rejecter:)
@@ -35,7 +35,7 @@ public final class AppleFoundationModelsModule: RCTEventEmitter {
     {
         #if canImport(FoundationModels)
             guard #available(iOS 26.0, *) else { rejectApplePromise(reject, appleFoundationModelsFailure("APPLE_MODEL_UNAVAILABLE", "Foundation Models requires iOS 26.", "unsupportedDevice")); return }
-            let status = availability(payload)["status"] as? String ?? "unsupportedDevice"
+            let status = observedAvailability(payload, stage: .generatePreflight)["status"] as? String ?? "unsupportedDevice"
             guard status == "available" else { rejectApplePromise(reject, appleFoundationModelsFailure("APPLE_MODEL_UNAVAILABLE", "Apple Foundation Models is unavailable.", status)); return }
             let completion: (NSDictionary?, NSError?) -> Void = { value, error in
                 if let error {
@@ -56,6 +56,7 @@ public final class AppleFoundationModelsModule: RCTEventEmitter {
                     }
                 } catch {
                     if finish(slot) {
+                        AppleNativeToolTrace.reportFailure(payload, stage: .generate, category: appleFoundationModelsFailureCategory(error))
                         completion(nil, appleFoundationModelsNativeFailure(error))
                     }
                 }
@@ -75,7 +76,7 @@ public final class AppleFoundationModelsModule: RCTEventEmitter {
         }
         #if canImport(FoundationModels)
             guard #available(iOS 26.0, *) else { event(appleFoundationModelsPacket("error", "APPLE_MODEL_UNAVAILABLE", "Foundation Models requires iOS 26.", "unsupportedDevice")); return }
-            let status = availability(payload)["status"] as? String ?? "unsupportedDevice"
+            let status = observedAvailability(payload, stage: .streamPreflight)["status"] as? String ?? "unsupportedDevice"
             guard status == "available" else { event(appleFoundationModelsPacket("error", "APPLE_MODEL_UNAVAILABLE", "Apple Foundation Models is unavailable.", status)); return }
             guard let slot = register(requestId, nil, event) else { event(appleFoundationModelsPacket("error", "INVALID_REQUEST", "Duplicate request id.", nil)); return }
             let task = Task { [weak self] in
@@ -87,6 +88,7 @@ public final class AppleFoundationModelsModule: RCTEventEmitter {
                     }
                 } catch {
                     if finish(slot) {
+                        AppleNativeToolTrace.reportFailure(payload, stage: .stream, category: appleFoundationModelsFailureCategory(error))
                         event(appleFoundationModelsErrorPacket(error))
                     }
                 }
@@ -119,6 +121,14 @@ public final class AppleFoundationModelsModule: RCTEventEmitter {
             cancel(id)
         }
         super.invalidate()
+    }
+
+    private func observedAvailability(_ request: NSDictionary, stage: AppleNativeToolTrace.FailureStage) -> NSDictionary {
+        let result = availability(request)
+        if let status = result["status"] as? String, status != "available" {
+            AppleNativeToolTrace.reportFailure(request, stage: stage, category: AppleNativeToolTrace.closedAvailability(status))
+        }
+        return result
     }
 
     private func availability(_ request: NSDictionary = [:]) -> [String: Any] {
