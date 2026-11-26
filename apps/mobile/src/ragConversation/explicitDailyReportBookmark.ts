@@ -1,3 +1,4 @@
+import { handleExplicitVisitQuestionsBookmark } from './explicitVisitQuestionsBookmark';
 import {
   latestReportArtifact,
   semanticReportBookmarkSender,
@@ -196,7 +197,14 @@ export function composerSendWithReportBookmark(
 ) {
   return () => {
     if (current && !current()) return;
-    if (handleExplicitDailyReportBookmark({ store, id, current })) return;
+    const owner = { store, id, current };
+    if (
+      handleExplicitVisitQuestionsBookmark(owner, () =>
+        currentReportBookmarkOwner(owner),
+      ) ||
+      handleExplicitDailyReportBookmark(owner)
+    )
+      return;
     const bound = semanticReportBookmarkSender(store, id, current, send);
     return dispatchConversationMessage(
       store,
