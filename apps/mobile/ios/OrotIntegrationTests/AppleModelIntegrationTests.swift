@@ -25,7 +25,7 @@ final class AppleModelIntegrationTests: OrotFailFastTestCase {
         #endif
     }
 
-    func testClosedAppleFailureDiagnosticLanes() {
+    private func verifyClosedAppleFailureDiagnosticLanes() {
         XCTAssertEqual(AppleNativeToolTrace.closedRoute([:]), "on_device")
         XCTAssertEqual(AppleNativeToolTrace.closedRoute(["modelRoute": "private-cloud-compute"]), "pcc")
         XCTAssertEqual(AppleNativeToolTrace.closedRoute(["modelRoute": "synthetic arbitrary value"]), "unknown")
@@ -38,6 +38,7 @@ final class AppleModelIntegrationTests: OrotFailFastTestCase {
     }
 
     func testStreamingFailurePreservesKnownNativeDecisions() {
+        verifyClosedAppleFailureDiagnosticLanes()
         // These bridge-level synthetic errors do not claim real Apple model execution.
         for code in ["SAFETY_REFUSAL", "UNSUPPORTED_CAPABILITY", "INVALID_REQUEST"] {
             let packet = appleFoundationModelsErrorPacket(appleFoundationModelsFailure(code, "Synthetic failure", nil))
