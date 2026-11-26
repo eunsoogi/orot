@@ -5,6 +5,18 @@ import { createQuestionCardStyles } from '../questionCardStyles';
 import { createInlineVisitReview } from '../inlineVisitReview';
 import { questions, theme } from '../testSupport/fixtures';
 
+function expectHeadingOrder(expected: readonly string[]) {
+  const heading = screen.getByTestId('visit-question-heading-0');
+  const rendered = JSON.stringify(screen.toJSON());
+  const positions = expected.map(id => {
+    expect(heading).toContainElement(screen.getByTestId(id));
+    const position = rendered.indexOf(`"testID":"${id}"`);
+    expect(position).toBeGreaterThan(-1);
+    return position;
+  });
+  expect(positions).toEqual([...positions].sort((a, b) => a - b));
+}
+
 /** Component contracts prove spacing/controls, not UIKit geometry or Dynamic Type rendering. */
 test('removes nested inline padding while preserving full wording, touch targets and edit controls', async () => {
   let sequence = 0;
@@ -30,11 +42,13 @@ test('removes nested inline padding while preserving full wording, touch targets
   expect(screen.getByTestId('visit-rationale-preview-0')).toHaveTextContent(
     questions[0]!.rationale,
   );
-  const actions = screen.getByTestId('visit-review-controls-0');
-  expect(actions).toContainElement(screen.getByTestId('inline-visit-select-0'));
-  expect(actions).toContainElement(
-    screen.getByTestId('next-visit-question-details-0'),
-  );
+  const expectedOrder = [
+    'inline-visit-select-0',
+    'question-number-0',
+    'next-visit-question-text-0',
+    'next-visit-question-details-0',
+  ];
+  expectHeadingOrder(expectedOrder);
   expect(createQuestionCardStyles(theme, true).headingRow).toMatchObject({
     gap: 8,
   });
@@ -122,4 +136,29 @@ test('keeps long editable questions untruncated without a nested scroll owner', 
   expect(createQuestionCardStyles(theme).questionInput).not.toHaveProperty(
     'maxHeight',
   );
+});
+
+test('restored read-only questions keep the badge and wrapping text without invented actions', async () => {
+  const wording = '복원된 합성 질문 전체를 확인해요. '.repeat(25);
+  await render(
+    <QuestionCard
+      question={{ ...questions[0]!, questionText: wording }}
+      index={0}
+      count={1}
+      compact
+      readOnlyArchive
+      editable={false}
+      disabled={false}
+      theme={theme}
+      onUpdate={jest.fn()}
+      onMove={jest.fn()}
+      onRemove={jest.fn()}
+      onOpenSource={jest.fn()}
+    />,
+  );
+  const expected = ['question-number-0', 'next-visit-saved-question-text-0'];
+  expectHeadingOrder(expected);
+  expect(screen.getByTestId(expected[1]!).props.numberOfLines).toBeUndefined();
+  expect(screen.queryByTestId('inline-visit-select-0')).toBeNull();
+  expect(screen.queryByTestId('next-visit-question-details-0')).toBeNull();
 });
