@@ -17,9 +17,14 @@ export const localA2UIDraftResetLabel = '메모 지우기';
 export const localA2UIDraftPath = '/local/draft';
 export const localA2UIDraftResetAction = 'orot:reset-local-draft';
 
-/** Only final verified, visible nodes may be supplied. The app chooses all
- * labels, the only editable path and the only handler; model strings do not
- * become native behavior or leave this mounted draft. */
+export interface ConversationA2UIPairedLabels {
+  readonly check: string;
+  readonly choice: string;
+  readonly options: readonly [string, string];
+}
+
+/** Only final verified, visible nodes may be supplied. The app owns the editable
+ * paths and handlers; composed labels are display-only on this mounted draft. */
 export type ConversationA2UILocalDraft =
   | Readonly<{
       fieldId: string;
@@ -29,7 +34,12 @@ export type ConversationA2UILocalDraft =
     }>
   | Readonly<{ fieldId: string; kind: 'checkbox' }>
   | Readonly<{ fieldId: string; kind: 'choice' }>
-  | Readonly<{ fieldId: string; kind: 'paired'; choiceId: string }>;
+  | Readonly<{
+      fieldId: string;
+      kind: 'paired';
+      choiceId: string;
+      labels?: ConversationA2UIPairedLabels;
+    }>;
 
 export function mountConversationA2UILocalDraft(
   approved: ConversationA2UILocalDraft,

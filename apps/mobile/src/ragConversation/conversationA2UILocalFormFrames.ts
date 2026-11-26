@@ -2,6 +2,8 @@ import { conversationA2UIFrameLimit } from './conversationA2UI';
 import {
   checkboxControl,
   choiceControl,
+  composedPairedLabels,
+  readComposedPairedLabels,
 } from './conversationA2UIOwnedControls';
 import { exactlyLocalControl } from './conversationA2UIFinalLocalControl';
 import {
@@ -20,18 +22,26 @@ function validId(raw: unknown): raw is string {
   );
 }
 export function readPairedConversationDraft(value: Record<string, unknown>) {
+  const hasLabels = Object.hasOwn(value, 'labels');
+  const keys = hasLabels
+    ? ['kind', 'fieldId', 'choiceId', 'labels']
+    : ['kind', 'fieldId', 'choiceId'];
   if (
-    exactlyLocalControl(value, ['kind', 'fieldId', 'choiceId']) &&
-    value.kind === 'paired' &&
-    validId(value.fieldId) &&
-    validId(value.choiceId) &&
-    value.fieldId !== value.choiceId
+    !exactlyLocalControl(value, keys) ||
+    value.kind !== 'paired' ||
+    !validId(value.fieldId) ||
+    !validId(value.choiceId) ||
+    value.fieldId === value.choiceId
   )
-    return Object.freeze({
-      kind: 'paired' as const,
-      fieldId: value.fieldId,
-      choiceId: value.choiceId,
-    });
+    return;
+  const labels = hasLabels ? readComposedPairedLabels(value.labels) : undefined;
+  if (hasLabels && !labels) return;
+  return Object.freeze({
+    kind: 'paired' as const,
+    fieldId: value.fieldId,
+    choiceId: value.choiceId,
+    ...(labels ? { labels } : {}),
+  });
 }
 
 function operation(raw: unknown, key: string) {
@@ -64,7 +74,10 @@ function isSeed(
 
 /** A local form overlays one validated static graph, never another control family,
  * prose subtree, seed scope or response. Ordered seeds are both fixed empty state. */
-export function projectConversationLocalForm(raw: unknown) {
+export function projectConversationLocalForm(
+  raw: unknown,
+  composedLabels = false,
+) {
   if (!Array.isArray(raw) || raw.length !== 4) return;
   if (
     raw.some((frame: unknown) => typeof frame !== 'string') ||
@@ -101,8 +114,8 @@ export function projectConversationLocalForm(raw: unknown) {
       !isObject(last) ||
       !isObject(check) ||
       !isObject(choice) ||
-      !checkboxControl(check) ||
-      !choiceControl(choice) ||
+      !checkboxControl(check, composedLabels) ||
+      !choiceControl(choice, composedLabels) ||
       !exactlyLocalControl(first, ['id', 'component', 'children']) ||
       !exactlyLocalControl(last, ['id', 'component', 'children']) ||
       first.component !== 'Column' ||
@@ -134,7 +147,14 @@ export function projectConversationLocalForm(raw: unknown) {
       )
     )
       return;
-    return { plan, frames: [raw[0] as string] };
+    const labels = composedLabels
+      ? composedPairedLabels(check, choice)
+      : undefined;
+    if (composedLabels && !labels) return;
+    return {
+      plan: labels ? Object.freeze({ ...plan, labels }) : plan,
+      frames: [raw[0] as string],
+    };
   } catch {
     return undefined;
   }

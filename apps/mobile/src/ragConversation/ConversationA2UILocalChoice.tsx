@@ -11,29 +11,31 @@ import {
 export function ConversationA2UILocalChoice({
   value,
   onChange,
+  label = localA2UIChoiceLabel,
+  optionLabels,
 }: {
   readonly value: string;
   readonly onChange: (value: string) => void;
+  readonly label?: string;
+  readonly optionLabels?: readonly [string, string];
 }) {
   return (
     <View style={styles.group}>
-      <AppText allowFontScaling>{localA2UIChoiceLabel}</AppText>
-      <View
-        accessibilityRole="radiogroup"
-        accessibilityLabel={localA2UIChoiceLabel}
-      >
-        {localA2UIChoices.map(option => {
+      <AppText allowFontScaling>{label}</AppText>
+      <View accessibilityRole="radiogroup" accessibilityLabel={label}>
+        {localA2UIChoices.map((option, index) => {
+          const optionLabel = optionLabels?.[index] ?? option.label;
           const checked = option.value === value;
           return (
             <Pressable
               key={option.value}
               accessibilityRole="radio"
-              accessibilityLabel={option.label}
+              accessibilityLabel={optionLabel}
               accessibilityState={{ checked }}
               onPress={() => onChange(option.value)}
               style={checked ? [styles.option, styles.checked] : styles.option}
             >
-              <AppText allowFontScaling>{option.label}</AppText>
+              <AppText allowFontScaling>{optionLabel}</AppText>
             </Pressable>
           );
         })}

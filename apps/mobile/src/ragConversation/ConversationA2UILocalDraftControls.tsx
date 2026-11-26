@@ -90,9 +90,11 @@ export function ConversationA2UILocalDraftControls({
   }
   if (approved.kind === 'checkbox' || approved.kind === 'paired') {
     if (typeof value !== 'boolean') return null;
+    const labels = approved.kind === 'paired' ? approved.labels : undefined;
     const toggle = (
       <LocalConfirmation
         value={value}
+        label={labels?.check}
         onChange={next => {
           if (draft.change(approved.fieldId, next)) publish();
         }}
@@ -104,6 +106,8 @@ export function ConversationA2UILocalDraftControls({
         {toggle}
         <ConversationA2UILocalChoice
           value={state.alternate ?? ''}
+          label={labels?.choice}
+          optionLabels={labels?.options}
           onChange={next => {
             if (draft.change(approved.choiceId, next)) publish();
           }}
@@ -165,15 +169,17 @@ function choiceValue(approved: ConversationA2UILocalDraft, draft: Draft) {
 function LocalConfirmation({
   value,
   onChange,
+  label = localA2UICheckLabel,
 }: {
   readonly value: boolean;
   readonly onChange: (next: boolean) => void;
+  readonly label?: string;
 }) {
   return (
     <View style={styles.controls}>
-      <AppText allowFontScaling>{localA2UICheckLabel}</AppText>
+      <AppText allowFontScaling>{label}</AppText>
       <Switch
-        accessibilityLabel={localA2UICheckLabel}
+        accessibilityLabel={label}
         value={value}
         onValueChange={onChange}
       />
