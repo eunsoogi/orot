@@ -55,6 +55,7 @@ export function conversationMutationExecution(input: {
       observer,
       terminalRunId: baseExecution.execution.operationRunId,
       remoteOwner,
+      onDeviceArchiveEligible: localModel,
       admittedAnswerIds: new Set([
         ...(history.historicalDialogueParents ?? []).map(turn => turn.id),
         ...history.references.flatMap(reference => {

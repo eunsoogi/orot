@@ -132,6 +132,10 @@ export type RagConversationObserver = Pick<
     readonly providerId: string;
     readonly modelId: string;
   };
+  /** Local exact archived last answer; null explicitly denies older history fallback. */
+  readonly archivedAnswerMemoryTarget?:
+    | import('./archivedConversationAnswerTarget').ArchivedConversationAnswerTarget
+    | null;
   readonly retainedHistory?: readonly {
     readonly id: string;
     readonly question: string;

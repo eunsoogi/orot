@@ -1,3 +1,4 @@
+import { archivedConversationAnswerTarget } from './archivedConversationAnswerTarget';
 import { recordingClarificationForLiveTurn } from './conversationRecordingClarification';
 import { currentRecordingProtection } from './conversationRecordingPickerPage';
 import {
@@ -188,6 +189,13 @@ export function liveConversationObservers(
     onSteeringReady: store => owner.steering.bind(id, store, current),
     conversationScope: owner.conversationScope(id),
     ...(photoInput ? { photoInput } : {}),
+    archivedAnswerMemoryTarget: archivedConversationAnswerTarget({
+      session,
+      find: () => owner.find(id),
+      lease: () => owner.retention?.activeLease(id),
+      current: () => current() && ownsReportSelection(),
+      currentUserId: request.userMessageId,
+    }),
     retainedHistory: retainedHistoryTurns(session.messages, request.question),
     ...requestIdentityObserver(owner.retention, retained, id),
     artifactContinuation: session.artifactContinuation ?? null,
