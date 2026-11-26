@@ -30,6 +30,21 @@ extension RealtimeSocketPort {
 }
 
 extension RealtimeVoiceSocket {
+    static func decodeSocketEvent(_ message: URLSessionWebSocketTask.Message) -> [String: Any]? {
+        let data: Data
+        switch message {
+        case let .data(value): data = value
+        case let .string(value): data = Data(value.utf8)
+        @unknown default: return nil
+        }
+        return (try? JSONSerialization.jsonObject(with: data)) as? [String: Any]
+    }
+
+    /// The command is an app-generated UUID; neither server input nor user data enters JSON.
+    static func captionCloseMessage(command: String) -> URLSessionWebSocketTask.Message {
+        .string("{\"type\":\"session.close\",\"event_id\":\"\(command)\"}")
+    }
+
     static func retainingControl(_ writes: [RealtimeSocketWrite], sending: Bool) -> [RealtimeSocketWrite] {
         writes.enumerated().compactMap { index, write in
             (sending && index == 0) || !write.isInput ? write : nil
@@ -59,11 +74,19 @@ struct RealtimeSocketWrite {
     let text: String
     let isInput: Bool
     let permit: LiveQueuedToolPermit?
+    private let isFinalContinuation: Bool
 
-    init(text: String, isInput: Bool, permit: LiveQueuedToolPermit? = nil) {
+    init(text: String, isInput: Bool, permit: LiveQueuedToolPermit? = nil, isFinalContinuation: Bool = false) {
         self.text = text
         self.isInput = isInput
         self.permit = permit
+        self.isFinalContinuation = isFinalContinuation
+    }
+
+    /// Only the validated, ticketed final write can start a transport observation.
+    func continuationTiming(observed: Bool) -> (LiveQueuedToolPermit?, DispatchTime?) {
+        guard isFinalContinuation, let permit, permit.ticket != nil else { return (nil, nil) }
+        return (permit, observed ? .now() : LiveManagedToolLatency.start())
     }
 }
 
