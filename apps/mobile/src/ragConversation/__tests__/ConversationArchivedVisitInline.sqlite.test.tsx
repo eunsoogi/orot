@@ -139,6 +139,11 @@ test.each(['valid', 'locked', 'replaced'] as const)(
         expect(screen.getByTestId('next-visit-question-0')).toBeTruthy();
         expect(screen.getByText('Synthetic selected question')).toBeVisible();
         expect(screen.getByText('Synthetic retained reason')).toBeVisible();
+        expect(screen.getByTestId('question-number-0')).toHaveTextContent('1');
+        expect(
+          screen.getByTestId('visit-rationale-preview-0'),
+        ).toHaveTextContent('Synthetic retained reason');
+        expect(screen.queryByTestId('visit-review-controls-0')).toBeNull();
         await act(() => {
           for (const notify of [...listeners])
             notify({ kind: 'protectedData', available: false });

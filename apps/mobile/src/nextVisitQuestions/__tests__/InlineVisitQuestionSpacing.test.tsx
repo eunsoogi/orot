@@ -26,8 +26,17 @@ test('removes nested inline padding while preserving full wording, touch targets
     />,
   );
   expect(screen.getByTestId('inline-visit-review')).toHaveStyle({ gap: 8 });
+  expect(screen.getByTestId('question-number-0')).toHaveTextContent('1');
+  expect(screen.getByTestId('visit-rationale-preview-0')).toHaveTextContent(
+    questions[0]!.rationale,
+  );
+  const actions = screen.getByTestId('visit-review-controls-0');
+  expect(actions).toContainElement(screen.getByTestId('inline-visit-select-0'));
+  expect(actions).toContainElement(
+    screen.getByTestId('next-visit-question-details-0'),
+  );
   expect(createQuestionCardStyles(theme, true).headingRow).toMatchObject({
-    gap: 0,
+    gap: 8,
   });
   expect(createQuestionCardStyles(theme, true).headingRow).not.toHaveProperty(
     'marginHorizontal',

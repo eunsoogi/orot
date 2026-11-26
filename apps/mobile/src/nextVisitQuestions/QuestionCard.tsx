@@ -13,10 +13,9 @@ import type {
 } from './types';
 import { AutoGrowingQuestionInput } from './AutoGrowingQuestionInput';
 import { createQuestionCardStyles } from './questionCardStyles';
-
 interface QuestionCardProps<TReference extends NextVisitEvidenceReference> {
   readonly question: NextVisitQuestion<TReference>;
-  readonly selectionHeader?: ReactNode;
+  readonly selectionControl?: ReactNode;
   readonly priorityInDetails?: boolean;
   readonly compact?: boolean;
   readonly readOnlyArchive?: boolean;
@@ -37,11 +36,10 @@ interface QuestionCardProps<TReference extends NextVisitEvidenceReference> {
   readonly onRemove: () => void;
   readonly onOpenSource: (reference: TReference) => void;
 }
-
 /** Keeps evidence read-only while the person edits the question and its wording. */
 export function QuestionCard<TReference extends NextVisitEvidenceReference>({
   question,
-  selectionHeader,
+  selectionControl,
   priorityInDetails = false,
   compact = false,
   readOnlyArchive = false,
@@ -59,30 +57,39 @@ export function QuestionCard<TReference extends NextVisitEvidenceReference>({
   const number = index + 1;
   const archived = !editable && readOnlyArchive;
   const [detailsOpen, setDetailsOpen] = useState(false);
-
+  const editControl = editable ? (
+    <Pressable
+      accessibilityRole="button"
+      accessibilityLabel={t('visitCard.editDetails', { number })}
+      accessibilityState={{ expanded: detailsOpen, disabled }}
+      disabled={disabled}
+      onPress={() => setDetailsOpen(open => !open)}
+      style={styles.detailToggle}
+      testID={`next-visit-question-details-${index}`}
+    >
+      <AppSymbol name="pencil" size={18} color={theme.colors.textMuted} />
+    </Pressable>
+  ) : null;
   return (
     <View style={styles.card} testID={`next-visit-question-${index}`}>
       <View style={styles.headingRow}>
-        {selectionHeader}
-        {!selectionHeader ? (
-          <View style={styles.numberBadge}>
-            <Text style={styles.heading}>{number}</Text>
-          </View>
-        ) : null}
+        <View style={styles.numberBadge}>
+          <Text style={styles.heading} testID={`question-number-${index}`}>
+            {number}
+          </Text>
+        </View>
         {editable ? (
           <AutoGrowingQuestionInput
             // UIKit can retain attributed text colors across appearance changes; draft state stays in the controller.
             key={`question-${theme.colors.text}`}
             accessibilityLabel={copy.review.questionLabel(number)}
             editable={!disabled}
-            multiline
             onChangeText={questionText => onUpdate({ questionText })}
             style={styles.questionInput}
             testID={`next-visit-question-text-${index}`}
             value={question.questionText}
           />
         ) : (
-          // Preserve a stable native identity independently of the reviewed wording and keyboard windows.
           <Text
             style={styles.questionText}
             testID={`next-visit-saved-question-text-${index}`}
@@ -90,19 +97,7 @@ export function QuestionCard<TReference extends NextVisitEvidenceReference>({
             {question.questionText}
           </Text>
         )}
-        {editable ? (
-          <Pressable
-            accessibilityRole="button"
-            accessibilityLabel={t('visitCard.editDetails', { number })}
-            accessibilityState={{ expanded: detailsOpen, disabled }}
-            disabled={disabled}
-            onPress={() => setDetailsOpen(open => !open)}
-            style={styles.detailToggle}
-            testID={`next-visit-question-details-${index}`}
-          >
-            <AppSymbol name="pencil" size={18} color={theme.colors.textMuted} />
-          </Pressable>
-        ) : null}
+        {!compact && editControl}
         {editable && !priorityInDetails ? (
           <QuestionPriorityControl
             question={question}
@@ -113,6 +108,25 @@ export function QuestionCard<TReference extends NextVisitEvidenceReference>({
           />
         ) : null}
       </View>
+      {/* Conversation uses the archived question body first; review actions
+          do not squeeze the wording in narrow or split-screen conversations. */}
+      {question.rationale && (archived || (compact && !detailsOpen)) ? (
+        <Text
+          style={styles.rationale}
+          testID={`visit-rationale-preview-${index}`}
+        >
+          {question.rationale}
+        </Text>
+      ) : null}
+      {compact && editControl ? (
+        <View
+          style={styles.reviewControls}
+          testID={`visit-review-controls-${index}`}
+        >
+          {selectionControl}
+          {editControl}
+        </View>
+      ) : null}
       {editable && detailsOpen ? (
         <View style={styles.actions}>
           {priorityInDetails ? (
@@ -161,17 +175,12 @@ export function QuestionCard<TReference extends NextVisitEvidenceReference>({
             key={`rationale-${theme.colors.text}`}
             accessibilityLabel={copy.review.rationaleLabel(number)}
             editable={!disabled}
-            multiline
             onChangeText={rationale => onUpdate({ rationale })}
             style={styles.rationaleInput}
             testID={`next-visit-question-rationale-${index}`}
             value={question.rationale}
           />
         </View>
-      ) : null}
-      {/* The archive retains the rationale without creating live source or review controls. */}
-      {archived && question.rationale ? (
-        <Text style={styles.rationale}>{question.rationale}</Text>
       ) : null}
       {/* Inline review leads with wording; provenance remains available in details. */}
       {!archived && (!priorityInDetails || detailsOpen) ? (
