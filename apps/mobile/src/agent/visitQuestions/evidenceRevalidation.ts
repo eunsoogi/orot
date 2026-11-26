@@ -1,5 +1,5 @@
 import { observeVisitEvidencePhase } from './evidencePhaseDiagnostics';
-import { AppointmentSchema, compareTimestamps } from '@orot/domain';
+import { checkedUpcomingCalendarAppointment } from './appointmentFreshness';
 import type { Appointment } from '@orot/domain';
 import type { VisitQuestionHealthContextSource } from '@orot/domain';
 import { LOCAL_MEMORY_MAX_RESULTS } from '@orot/agent-runtime';
@@ -17,6 +17,7 @@ import {
 } from './evidence';
 import type { VisitQuestionEvidenceCollection } from './evidenceCollection';
 import type { VisitQuestionEvidenceItem } from './taskContract';
+import type { VisitQuestionEvidenceMetadata } from './evidence';
 
 export type VisitQuestionQueryPort = Pick<
   LocalRecordQueryService<unknown, unknown, unknown, unknown, unknown>,
@@ -44,6 +45,10 @@ export function createVisitQuestionEvidenceRevalidator(input: {
   readonly repository: VisitQuestionEvidenceRepository;
   readonly buildChunks: VisitQuestionChunkBuilder;
   readonly currentTime: () => string;
+  readonly validateGeneratedArtifact?: (
+    citation: VisitQuestionEvidenceItem,
+    metadata: VisitQuestionEvidenceMetadata,
+  ) => Promise<boolean>;
   readonly validateHealthContext?: (
     source: VisitQuestionHealthContextSource,
   ) => Promise<boolean>;
@@ -51,42 +56,33 @@ export function createVisitQuestionEvidenceRevalidator(input: {
   citations: readonly VisitQuestionEvidenceItem[],
   options?: { readonly allowEmpty: boolean },
 ) => Promise<boolean> {
+  // The caller's object is not a live authority. Capture exact revision once.
+  const revision = localEvidenceFingerprint(input.appointment);
+  const appointmentId = input.appointment.id;
+  const currentAppointment = async () => {
+    const now = input.currentTime();
+    if (!Number.isFinite(Date.parse(now))) return false;
+    const result = await observeVisitEvidencePhase('evidence_appointment', () =>
+      input.queryService.queryNextConfirmedCalendarAppointment(now),
+    );
+    if (result.status !== 'available' || result.appointment === null)
+      return false;
+    // Check against the answering clock too; the SELECT can wait in the queue.
+    const checked = checkedUpcomingCalendarAppointment(
+      result.appointment,
+      input.currentTime(),
+      appointmentId,
+    );
+    return (
+      checked.kind === 'available' &&
+      localEvidenceFingerprint(checked.appointment) === revision
+    );
+  };
   return async (citations, options) => {
     // Empty evidence is valid only for an explicitly source-free visit question.
     if (citations.length === 0 && !options?.allowEmpty) return false;
     try {
-      const currentNow = input.currentTime();
-      if (!Number.isFinite(Date.parse(currentNow))) return false;
-      const currentAppointment = await observeVisitEvidencePhase(
-        'evidence_appointment',
-        () =>
-          input.queryService.queryNextConfirmedCalendarAppointment(currentNow),
-      );
-      if (
-        currentAppointment.status !== 'available' ||
-        currentAppointment.appointment === null
-      ) {
-        return false;
-      }
-      const parsedCurrentAppointment = AppointmentSchema.safeParse(
-        currentAppointment.appointment,
-      );
-      if (
-        !parsedCurrentAppointment.success ||
-        parsedCurrentAppointment.data.id !== input.appointment.id ||
-        (parsedCurrentAppointment.data.status !== 'scheduled' &&
-          parsedCurrentAppointment.data.status !== 'rescheduled') ||
-        !parsedCurrentAppointment.data.calendarEventIdentifier ||
-        !parsedCurrentAppointment.data.calendarEventSnapshot ||
-        compareTimestamps(
-          parsedCurrentAppointment.data.effectiveAt,
-          currentNow,
-        ) < 0 ||
-        localEvidenceFingerprint(parsedCurrentAppointment.data) !==
-          localEvidenceFingerprint(input.appointment)
-      ) {
-        return false;
-      }
+      if (!(await currentAppointment())) return false;
 
       for (const citation of citations) {
         if (!input.metadataByCitation.has(visitQuestionCitationKey(citation)))
@@ -99,6 +95,7 @@ export function createVisitQuestionEvidenceRevalidator(input: {
             ?.healthContextSource,
       );
       for (const citation of citations) {
+        if (citation.sourceKind === 'generated_artifact') continue;
         const period = input.metadataByCitation.get(
           visitQuestionCitationKey(citation),
         )?.healthContextSource;
@@ -197,7 +194,20 @@ export function createVisitQuestionEvidenceRevalidator(input: {
           return false;
         }
       }
-      return true;
+      for (const citation of citations) {
+        if (citation.sourceKind !== 'generated_artifact') continue;
+        const metadata = input.metadataByCitation.get(
+          visitQuestionCitationKey(citation),
+        );
+        if (
+          !metadata?.generatedArtifactSource ||
+          !input.validateGeneratedArtifact ||
+          !(await input.validateGeneratedArtifact(citation, metadata))
+        )
+          return false;
+      }
+      // An edit/deletion may happen during any awaited citation check.
+      return citations.length ? await currentAppointment() : true;
     } catch {
       return false;
     }

@@ -1,5 +1,4 @@
-import { AppointmentSchema } from '@orot/domain';
-import { isUpcomingConfirmedCalendarAppointment } from './appointmentFreshness';
+import { checkedUpcomingCalendarAppointment } from './appointmentFreshness';
 import type {
   VisitQuestionEvidenceRepository,
   VisitQuestionQueryPort,
@@ -15,22 +14,19 @@ export function selectedVisitQuery(
   return {
     searchMemory: (...args) => query.searchMemory(...args),
     async queryNextConfirmedCalendarAppointment(now) {
-      const parsed = AppointmentSchema.safeParse(
+      const checked = checkedUpcomingCalendarAppointment(
         appointmentId.trim()
           ? await repository.get('appointment', appointmentId)
           : null,
+        now,
+        appointmentId,
       );
-      if (
-        !parsed.success ||
-        parsed.data.id !== appointmentId ||
-        parsed.data.provenance.origin !== 'user_reported' ||
-        !isUpcomingConfirmedCalendarAppointment(parsed.data, now)
-      )
+      if (checked.kind !== 'available')
         return {
           status: 'no_confirmed_upcoming_calendar_appointment',
           appointment: null,
         };
-      return { status: 'available', appointment: parsed.data };
+      return { status: 'available', appointment: checked.appointment };
     },
   };
 }
