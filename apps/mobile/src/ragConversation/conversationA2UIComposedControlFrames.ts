@@ -1,4 +1,5 @@
 import type { ComposedControl } from './conversationA2UIComposedControlState';
+import { canonicalConversationDraftDate } from './canonicalConversationDraftDate';
 import { draftA2UISurfaceId } from './conversationA2UIPresentation';
 import { conversationA2UIFrameLimit, maxNodes } from './conversationA2UIWire';
 import { binding, fail, id, keys, object } from './conversationA2UIWireValues';
@@ -64,6 +65,18 @@ function controlFor(value: Record<string, unknown>): ComposedControl {
         fail();
       return { kind: 'slider', label: caption, min, max, steps };
     }
+    case 'DateTimeInput': {
+      keys(value, [...base, 'enableDate', 'enableTime', 'min', 'max']);
+      if (
+        value.enableDate !== true ||
+        (value.enableTime !== undefined && value.enableTime !== false)
+      )
+        fail();
+      const min = canonicalConversationDraftDate(value.min);
+      const max = canonicalConversationDraftDate(value.max);
+      if (!min || !max || min >= max) fail();
+      return { kind: 'date', label: caption, min, max };
+    }
     case 'ChoicePicker': {
       keys(value, [...base, 'variant', 'options']);
       if (
@@ -102,6 +115,7 @@ function controlFor(value: Record<string, unknown>): ComposedControl {
 export function projectConversationA2UIComposedControls(
   raw: unknown,
   sliders = false,
+  dateControls = false,
 ) {
   if (
     !Array.isArray(raw) ||
@@ -145,7 +159,8 @@ export function projectConversationA2UIComposedControls(
         if (
           typeof node.component !== 'string' ||
           (!kinds.has(node.component) &&
-            !(sliders && node.component === 'Slider'))
+            !(sliders && node.component === 'Slider') &&
+            !(dateControls && node.component === 'DateTimeInput'))
         ) {
           fields.delete(componentId);
           return node;
@@ -171,10 +186,10 @@ export function projectConversationA2UIComposedControls(
         fail();
       used.set(path, control);
     }
-    // A slider has its own numeric state, not a projection of any authored model data.
+    // Numeric and date controls never project any authored model data.
     // Reject correlated seeds even when they address a parent or child pointer.
     for (const [path, control] of used) {
-      if (control.kind !== 'slider') continue;
+      if (control.kind !== 'slider' && control.kind !== 'date') continue;
       const namespace = binding(path)[0]!;
       if (
         initialData.some(data => Object.hasOwn(data, namespace)) ||

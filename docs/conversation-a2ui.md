@@ -256,3 +256,10 @@ integer bounds between -1000 and 1000, and up to 100 equal divisions. The
 initial thumb is at the lower bound; provider values, actions, app bindings,
 and durable or transmitted slider state remain unsupported. Restoring v45
 uses the previous catalog unchanged. An invalid Slider retains exact prose.
+
+Fresh ordinary task v47 supports the date-only part of Basic Catalog
+DateTimeInput in the same ephemeral controls. It accepts a labelled local
+pointer and ordered literal ISO calendar dates, not time, dynamic min/max,
+seeds, calendar access or scheduling. A date is not chosen until the user
+confirms it in that bubble. Earlier task contracts and render fallback remain
+unchanged; neither the chosen date nor its control is stored or sent.
