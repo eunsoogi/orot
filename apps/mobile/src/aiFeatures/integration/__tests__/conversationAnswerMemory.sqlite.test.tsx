@@ -1,7 +1,6 @@
 import { installReceiptFixturePlatform } from '../testSupport/conversationReceiptFixturePlatform';
-import { fireEvent, render, screen } from '@testing-library/react-native';
-import { ConversationScreen } from '../../../ragConversation/ConversationScreen';
-import { ConversationSessionsProvider } from '../../../ragConversation/ConversationSessionsContext';
+import { fireEvent, screen } from '@testing-library/react-native';
+import { mountVisibleAnswerReceiptFixture } from '../testSupport/mountVisibleAnswerReceiptFixture';
 import type { runRagConversationTurn } from '../../../ragConversation/service';
 import { createRagConversationService } from '../ragConversationService';
 import { apple, localData } from '../featureServiceFixtures';
@@ -29,7 +28,7 @@ const request = {
 const text = 'Synthetic answer from a previously validated record.';
 const toolInput = { target: 'previous_completed_answer' };
 
-async function setup() {
+async function setup(seedRequest = true) {
   const f = await healthContextFixture();
   const storage = createConversationArtifactStorage(f.database);
   try {
@@ -49,7 +48,7 @@ async function setup() {
       status: 'complete',
       sources: f.saved.sources,
     });
-    await storage.startRequest(request);
+    if (seedRequest) await storage.startRequest(request);
     let live = true;
     const confirm = jest.fn(async () => true);
     const action = conversationAnswerMemoryAction({
@@ -158,7 +157,7 @@ test.each(['original', 'owner'] as const)(
 );
 
 test('a mounted composer renders only the selected local tool commit receipt', async () => {
-  const f = await setup();
+  const f = await setup(false);
   const runner: typeof runRagConversationTurn = async options => {
     const action = options.workflow.actions?.find(
       item => item.id === 'remember-conversation-answer',
@@ -210,27 +209,22 @@ test('a mounted composer renders only the selected local tool commit receipt', a
     ragRunner: runner,
   });
   const restorePlatform = installReceiptFixturePlatform(() => {});
-  const view = await render(
-    <ConversationSessionsProvider>
-      <ConversationScreen
-        onBack={jest.fn()}
-        onOpenSource={jest.fn()}
-        onSend={(question, history, signal, observer) =>
-          send(question, history, signal, {
-            ...observer,
-            inputOrigin: 'composer',
-            retentionSession: { id: previous.sessionId, version: 0 },
-            retentionRequestId: request.id,
-            retainedHistory: [{ id: previous.id, question: previous.question }],
-            confirmHistorySave: f.confirm,
-            protectedLocalInput: true,
-            suppressContextualOpening: true,
-          })
-        }
-      />
-    </ConversationSessionsProvider>,
-  );
+  const view = await mountVisibleAnswerReceiptFixture({
+    storage: f.storage,
+    previous,
+    request,
+    answer: text,
+    onSend: (question, history, signal, observer) =>
+      send(question, history, signal, {
+        ...observer,
+        inputOrigin: 'composer',
+        confirmHistorySave: f.confirm,
+        protectedLocalInput: true,
+        suppressContextualOpening: true,
+      }),
+  });
   try {
+    expect(await screen.findByText(text)).toBeTruthy();
     await fireEvent.changeText(
       screen.getByTestId('rag-conversation-input'),
       '그래 그럼 기억해줘',

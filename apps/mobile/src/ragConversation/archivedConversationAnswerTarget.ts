@@ -1,3 +1,4 @@
+import type { DisplayMessage } from './ConversationMessage';
 import type { ConversationSession } from './conversationSessionTypes';
 import {
   savedHistoryTranscript,
@@ -10,6 +11,32 @@ export type ArchivedConversationAnswerTarget = Readonly<{
   matches: (protectedAnswer: string) => boolean;
 }>;
 
+function ownsOrdinaryPreviousAnswer(
+  tail: DisplayMessage | undefined,
+  retainedId: string | undefined,
+) {
+  return (
+    !!retainedId &&
+    tail?.role === 'assistant' &&
+    tail.retainedTurnId === retainedId &&
+    !tail.incomplete &&
+    !tail.streaming &&
+    tail.completion !== 'partial' &&
+    !tail.localClarification &&
+    !tail.historyUnavailable &&
+    !tail.dailyReport &&
+    !tail.healthSummary &&
+    !tail.visitQuestions &&
+    !tail.visitQuestionsUnavailable &&
+    !tail.submittedInput &&
+    !tail.directPhotoReply &&
+    !tail.savedPossibilityNarrative &&
+    !tail.archivedVisitBookmark &&
+    !tail.savedHistoryDisplayOnly &&
+    !tail.interruptionReason
+  );
+}
+
 /** Restore display rows are not send context. Capture only the latest exact
  * visible identity and a local comparison, never append their prose to history.
  * null blocks the action; undefined leaves an ordinary live target alone. */
@@ -19,28 +46,29 @@ export function archivedConversationAnswerTarget(input: {
   lease: () => { id: string; version: number } | null | undefined;
   current: () => boolean;
   currentUserId?: number;
+  priorRetainedAnswerId?: string;
 }): ArchivedConversationAnswerTarget | null | undefined {
   const { session } = input;
-  if (session.savedHistoryDisplay === undefined) return;
+  const previous = session.messages.filter(
+    message => message.id !== input.currentUserId,
+  );
+  // Do not let the retained-history collector skip over a newer visible row
+  // and lend the older answer's valid storage identity to this user request.
+  if (session.savedHistoryDisplay === undefined)
+    return ownsOrdinaryPreviousAnswer(
+      previous.at(-1),
+      input.priorRetainedAnswerId,
+    )
+      ? undefined
+      : null;
   const visible = visibleSavedHistoryDisplay(session);
   const lease = input.lease();
   if (!visible || !lease || !input.current()) return null;
-  const tail = savedHistoryTranscript(visible, session.messages).at(-1);
-  if (tail && !tail.savedHistoryDisplayOnly) {
-    // A newer locally published turn supersedes any archive target; never
-    // skip a newer ineligible message to save a much older archived answer.
-    return tail.role === 'assistant' &&
-      !tail.incomplete &&
-      !tail.localClarification &&
-      !tail.historyUnavailable &&
-      !tail.dailyReport &&
-      !tail.healthSummary &&
-      !tail.visitQuestions &&
-      !tail.submittedInput &&
-      Boolean(tail.retainedTurnId)
+  const tail = savedHistoryTranscript(visible, previous).at(-1);
+  if (tail && !tail.savedHistoryDisplayOnly)
+    return ownsOrdinaryPreviousAnswer(tail, input.priorRetainedAnswerId)
       ? undefined
       : null;
-  }
   const displayed = visible.find(item => item.answerId === tail?.id);
   if (!displayed) return null;
   const { row } = displayed;
