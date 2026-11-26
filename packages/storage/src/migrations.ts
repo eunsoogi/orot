@@ -5,7 +5,11 @@ import { isRecordKind, parseRecord, STORAGE_TABLES } from './contracts';
 import type { RecordKind, RecordMap } from './contracts';
 import type { SqlDatabase, SqlExecutor } from './sql';
 import { createTranscriptEvidenceIntegrity } from './transcriptEvidenceMigrations';
-import { createSourceDeletionIntegrity } from './sourceDeletionMigrations';
+import {
+  createSourceDeletionIntegrity,
+  ensureSourceDeletionCascades,
+  replaceSourceDeletionCascades,
+} from './sourceDeletionMigrations';
 import { localQueryTimestampKeyExpression } from './localQueryTimestamp';
 import { ensureSymptomDeletionFence } from './symptomDeletionFence';
 import { migrateSourceTimes } from './sourceTimeMigration';
@@ -192,7 +196,7 @@ export async function runMigrations(database: SqlDatabase): Promise<void> {
   if (currentVersion > CURRENT_SCHEMA_VERSION) {
     throw new Error('The database schema is newer than this application supports.');
   }
-  if (currentVersion === CURRENT_SCHEMA_VERSION) return;
+  if (currentVersion === CURRENT_SCHEMA_VERSION) return ensureSourceDeletionCascades(database);
   await database.transaction(async (transaction) => {
     // Version nine already has the other integrity and index structures.
     if (currentVersion < 9) {
@@ -231,6 +235,7 @@ export async function runMigrations(database: SqlDatabase): Promise<void> {
     if (currentVersion < 18) await createRecentSourcePageIndex(transaction);
     if (currentVersion < 19) await addAgentMemoryClockWitness(transaction);
     if (currentVersion < 20) await createCalendarClassificationCacheTable(transaction);
+    if (currentVersion >= 14) await replaceSourceDeletionCascades(transaction);
     await transaction.execute('PRAGMA user_version = 20');
   });
 }
