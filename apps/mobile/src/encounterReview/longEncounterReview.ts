@@ -13,10 +13,8 @@ import type { RecordRepository } from '@orot/storage';
 import { APPLE_PCC_PROVIDER_ID, APPLE_PROVIDER_ID } from '@orot/provider-apple';
 import type { resolveSelectedAiProvider } from '../aiFeatures/integration/provider';
 import { providerSelectionStore } from '../providers/selection/keychainSelectionStore';
-import {
-  openLocalAgentMemoryDatabase,
-  openLocalStorage,
-} from '../storage/secureDatabase';
+import { openLocalStorage } from '../storage/secureDatabase';
+import { openObservedEncounterPageDatabase } from './observedPageDatabase';
 import { acquireIndependentReadEpoch } from '../storage/protectedReadEpoch';
 import { conversationExecutionNative } from '../ragConversation/conversationExecutionNative';
 import { encounterConflicts } from '../agent/encounter/conflicts';
@@ -111,7 +109,10 @@ export function createLongEncounterReview(
         if (lease.signal.aborted) unsubscribeSelection();
         if (!(await lease.confirm()) || signal.aborted)
           return { status: 'unavailable' };
-        const database = await openLocalAgentMemoryDatabase();
+        const database = await openObservedEncounterPageDatabase(
+          sourceId,
+          lease,
+        );
         const executionId = Array.from(
           crypto.getRandomValues(new Uint8Array(16)),
           byte => byte.toString(16).padStart(2, '0'),
