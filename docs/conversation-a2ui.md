@@ -144,6 +144,21 @@ answer includes both triggers and all panel text in reading order.
 
 The reply owns just one pending native admission or open sheet. Starting both
 at once cannot open two native sheets, and losing the owning reply or protected
-data cancels the pending or visible sheet. An archive retains the text inline
-but not the live sheet behavior. Prior responder versions still admit at most
+data cancels the pending or visible sheet. Legacy archives retain the text
+inline, and eligible v8 archives use the separate restored path below.
+Prior responder versions still admit at most
 one Modal; no new protocol action or external call is introduced.
+
+## Restored detail panels
+
+Version 8 locally archives only the positions of two already accepted detail
+panels and their existing text layout, and only for complete ordinary replies
+with no citations, sources, or retained ancestry. Older layouts keep their
+inline presentation, and a v8 shape alone never grants an interactive sheet.
+
+An explicit tap in the active, mounted archive rechecks the exact protected
+completion row, version, revision, and empty source relations. It also rechecks
+native protected-data availability before presenting the selected panel. A
+missing or changed row, stale route, or unavailable device protection leaves
+the accepted content inline; an ownership change closes an open sheet.
+Nothing about the archived action is sent to a provider or written on a tap.

@@ -18,6 +18,7 @@ export function createConversationLocalAccess(
   database: SqlDatabase,
   getData: () => AiFeatureLocalData,
   modules = productionModules,
+  isCurrentDatabase?: (owner: SqlDatabase) => boolean,
 ) {
   let conversationStorage:
     Promise<ReturnType<typeof createConversationArtifactStorage>> | undefined;
@@ -38,7 +39,7 @@ export function createConversationLocalAccess(
         ]) =>
           createReplyNotificationStorage(
             withStatementMemory(
-              createConversationArtifactStorage(database),
+              createConversationArtifactStorage(database, isCurrentDatabase),
               database,
             ),
             database,

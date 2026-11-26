@@ -1,3 +1,4 @@
+import type { ArchivedPairedDetailsLayout } from '../ragConversation/archivedPairedDetailsLayout';
 import type { ArchivedA2UILayout } from '../ragConversation/conversationA2UIArchive';
 import type { ConversationEntryContext } from '../aiFeatures/integration/conversationIntent';
 import type { ConversationArtifactSource } from '../ragConversation/conversationArtifactSources';
@@ -26,7 +27,8 @@ export interface ConversationArtifact {
   readonly submittedInput?: ConversationSubmittedInput;
   readonly answer: string;
   /** Local layout only; not provider history or authority. */
-  readonly archivedA2UILayout?: ArchivedA2UILayout;
+  readonly archivedA2UILayout?:
+    ArchivedA2UILayout | ArchivedPairedDetailsLayout;
   readonly proactiveMemory?: true;
   /** Display metadata only; excluded from answer/evidence and provider history. */
   readonly delivery?: import('../ragConversation/conversationMessageDelivery').ConversationMessageDelivery;
