@@ -1,3 +1,8 @@
+import {
+  defaultPublicSearchInput,
+  runDefaultPublicSearch,
+} from './defaultPublicSearch';
+import type { ConversationEvidenceTool } from '../../conversationTools/conversationToolContribution';
 import type { ProtectedExternalReferences } from './protectedExternalReferences';
 import type {
   ExecutionConsentPort,
@@ -79,8 +84,22 @@ export function createSelectedExternalEvidence(input: {
           input.onResearchRetained,
         )
       : web?.tool;
+  const tools: ConversationEvidenceTool[] = [
+    { ...literature.tool, explicitRoute: 'medical-literature' },
+    ...(publicWebTool
+      ? [
+          {
+            ...publicWebTool,
+            initialLookup: {
+              input: defaultPublicSearchInput,
+              run: runDefaultPublicSearch,
+            },
+          },
+        ]
+      : []),
+  ];
   return {
-    tools: [literature.tool, ...(publicWebTool ? [publicWebTool] : [])],
+    tools,
     publicWebTool,
     usesPublicWeb: Boolean(web),
     snapshot: (): SelectedExternalEvidenceSnapshot => ({

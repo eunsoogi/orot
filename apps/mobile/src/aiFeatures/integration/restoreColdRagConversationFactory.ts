@@ -28,9 +28,8 @@ import type { ResearchInputTrackerSnapshot } from './researchInputTrackerSnapsho
 import type { ToolReferenceScopeSnapshot } from './toolReferenceScopeSnapshot';
 import type { SelectedExternalEvidenceSnapshot } from './selectedExternalEvidence';
 import { createResearchInputTracker } from './researchInputTracker';
-import { conversationExternalEvidence } from './conversationExternalEvidence';
-import { createConversationToolBundle } from './conversationToolBundle';
-import { executionOptions } from './featureServiceExecution';
+import { conversationExternalEvidence } from '../../conversationTools/conversationExternalEvidence';
+import { createConversationToolBundle } from '../../conversationTools/conversationToolBundle';
 import { guardHistory } from './conversationHistoryProviderGuard';
 import { revalidateWithLocalDeletionGuard } from './deletionAwareEvidence';
 import {
@@ -118,7 +117,7 @@ export async function restoreColdRagConversationFactory(input: {
     registry,
     observer: input.observer,
     researchInputs: tracker,
-    external,
+    externalTools: external.tools,
     artifactPaging: coldArtifactPaging(d, input.observer),
     publicSearchSucceeded: !publicSearch || publicSearch.status === 'success',
     literatureOnly: publicSearch?.literatureOnly,
@@ -130,14 +129,11 @@ export async function restoreColdRagConversationFactory(input: {
           }
         : undefined,
   });
-  const base = executionOptions({
+  const base = bundle.prepareExecution({
     selected,
     operationRunId: d.manifest.operationRunId,
     consent: deps.consent,
-    registry,
-    tools: bundle.tools,
     external,
-    consentPurpose: 'record_conversation',
   });
   const execution = photo
     ? await restoreColdPhotoExecution({

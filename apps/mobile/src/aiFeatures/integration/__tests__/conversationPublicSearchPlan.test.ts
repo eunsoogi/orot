@@ -1,3 +1,7 @@
+import {
+  defaultPublicSearchInput,
+  runDefaultPublicSearch,
+} from '../defaultPublicSearch';
 import { conversationPublicSearchPlan } from '../conversationPublicSearchPlan';
 import type { ConversationWorkflowContinuation } from '../../../ragConversation/conversationWorkflowContinuation';
 
@@ -13,11 +17,17 @@ function input() {
     prepareAuthorizedSearch,
     value: {
       external: {
-        publicWebTool: {
-          id: 'public-web-search',
-          search,
-          prepareAuthorizedSearch,
-        },
+        tools: [
+          {
+            id: 'public-web-search',
+            search,
+            prepareAuthorizedSearch,
+            initialLookup: {
+              input: defaultPublicSearchInput,
+              run: runDefaultPublicSearch,
+            },
+          },
+        ],
       },
       runId: 'synthetic-run',
       question: '수면에 관한 합성 질문',
@@ -60,4 +70,21 @@ test('nonretained calls preserve the existing one-shot eager lookup', async () =
     status: 'empty',
     charged: true,
   });
+});
+
+test('two startup contributions never run an ambiguous lookup', async () => {
+  const f = input();
+  const [existing] = f.value.external.tools;
+  const plan = await conversationPublicSearchPlan({
+    ...f.value,
+    external: {
+      ...f.value.external,
+      tools: [existing!, { ...existing!, id: 'alternative-lookup' }],
+    },
+  });
+  expect(plan.initialSearch).toBeUndefined();
+  expect(plan.chargeEagerSearch).toBe(false);
+  expect(plan.includeExternalTools).toBe(false);
+  expect(f.search).not.toHaveBeenCalled();
+  expect(f.prepareAuthorizedSearch).not.toHaveBeenCalled();
 });

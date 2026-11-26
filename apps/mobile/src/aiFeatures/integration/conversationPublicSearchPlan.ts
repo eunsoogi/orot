@@ -2,31 +2,49 @@ import { explicitConversationLiteratureRoute } from './explicitConversationLiter
 import type { ConversationIntent } from './conversationIntent';
 import type { MultiAgentCheckpointState } from '@orot/agent-runtime';
 import type { ConversationWorkflowContinuation } from '../../ragConversation/conversationWorkflowContinuation';
-import { conversationPublicSearch } from './conversationExternalEvidence';
-import {
-  defaultPublicSearchInput,
-  type DefaultPublicSearchResult,
-} from './defaultPublicSearch';
+import type { conversationExternalEvidence } from '../../conversationTools/conversationExternalEvidence';
+import type { DefaultPublicSearchResult } from './defaultPublicSearch';
+import { initialConversationLookup } from '../../conversationTools/conversationToolContribution';
+import type { RagConversationObserver } from '../../ragConversation/conversationObserver';
+import { observeConversationTool } from '../../ragConversation/observeConversationTool';
 
 /** Retained turns perform their first external lookup inside the durable graph, not before it. */
-export async function conversationPublicSearchPlan(
-  input: Parameters<typeof conversationPublicSearch>[0] & {
-    continuation?: ConversationWorkflowContinuation;
-    entryIntent?: ConversationIntent;
-  },
-) {
+export async function conversationPublicSearchPlan(input: {
+  external: ReturnType<typeof conversationExternalEvidence>;
+  observer?: RagConversationObserver;
+  runId: string;
+  question: string;
+  signal: AbortSignal;
+  continuation?: ConversationWorkflowContinuation;
+  entryIntent?: ConversationIntent;
+}) {
   const literatureOnly = explicitConversationLiteratureRoute(
     input.question,
     input.entryIntent,
   );
-  const tool = literatureOnly ? undefined : input.external.publicWebTool;
+  const lookup = literatureOnly
+    ? undefined
+    : initialConversationLookup(input.external.tools);
+  const tool = lookup?.tool;
   const deferred = Boolean(
     input.question && input.continuation && tool?.prepareAuthorizedSearch,
   );
   const eager: DefaultPublicSearchResult =
-    !literatureOnly && !deferred && input.question
-      ? await conversationPublicSearch(input)
-      : { status: 'unavailable' };
+    literatureOnly || deferred || !input.question
+      ? { status: 'unavailable' }
+      : input.signal.aborted
+        ? { status: 'cancelled' }
+        : lookup
+          ? await lookup.run({
+              tool: observeConversationTool(
+                lookup.tool,
+                input.observer?.onToolEvent,
+              )!,
+              operationRunId: input.runId,
+              request: input.question,
+              signal: input.signal,
+            })
+          : { status: 'unavailable' };
   let status = eager.status;
   return {
     continuation: input.continuation,
@@ -39,7 +57,7 @@ export async function conversationPublicSearchPlan(
       ...(!literatureOnly &&
       (!input.entryIntent || input.entryIntent === 'conversation')
         ? {
-            typedHeartRateOwner: {
+            preparationOwner: {
               operationRunId: input.runId,
               signal: input.signal,
             },
@@ -58,9 +76,10 @@ export async function conversationPublicSearchPlan(
           }
         : undefined,
     chargeEagerSearch: Boolean(!deferred && input.question && tool),
-    initialSearch: deferred
-      ? { toolId: tool!.id, input: defaultPublicSearchInput(input.question) }
-      : undefined,
+    initialSearch:
+      deferred && lookup
+        ? { toolId: lookup.tool.id, input: lookup.input(input.question) }
+        : undefined,
     get currentSearch() {
       return { status };
     },

@@ -1,12 +1,12 @@
+import { initialConversationLookup } from '../../../conversationTools/conversationToolContribution';
 import { budgetAfterPublicSearch } from '../defaultPublicSearch';
 import type { ColdConversationSearch } from '../coldConversationSearch';
 import { localData } from '../featureServiceFixtures';
 import { publicEvidenceFixture } from '../testSupport/publicWebEvidenceTestSupport';
 import { LocalEvidenceReferenceRegistry } from '../evidenceRegistry';
 import { createResearchInputTracker } from '../researchInputTracker';
-import { conversationExternalEvidence } from '../conversationExternalEvidence';
-import { createConversationToolBundle } from '../conversationToolBundle';
-import { executionOptions } from '../featureServiceExecution';
+import { conversationExternalEvidence } from '../../../conversationTools/conversationExternalEvidence';
+import { createConversationToolBundle } from '../../../conversationTools/conversationToolBundle';
 import { captureColdRagConversationState } from '../coldRagConversationState';
 import {
   continuationInput,
@@ -50,25 +50,22 @@ export async function coldRagFactoryFixture(
     observer: conversationScope ? { conversationScope } : undefined,
     registry,
     researchInputs: tracker,
-    external,
+    externalTools: external.tools,
     publicSearchSucceeded: !eager || eager.status === 'success',
   });
   const options = {
-    ...executionOptions({
+    ...bundle.prepareExecution({
       selected: f.selected,
       operationRunId: 'run',
       consent: dependencies.consent,
-      registry,
-      tools: bundle.tools,
       external,
-      consentPurpose: 'record_conversation',
     }),
     request: 'Synthetic greeting',
     context: { previousConversation: [] },
     initialEvidence: { items: [], coverage: [], conflicts: [] },
     task: ragConversationTask,
     initialSearch: {
-      toolId: external.publicWebTool!.id,
+      toolId: initialConversationLookup(external.tools)!.tool.id,
       input: { topics: ['sleep'] },
     },
   };

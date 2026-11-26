@@ -1,3 +1,7 @@
+import {
+  defaultPublicSearchInput,
+  runDefaultPublicSearch,
+} from '../defaultPublicSearch';
 import type { ConversationWorkflowContinuation } from '../../../ragConversation/conversationWorkflowContinuation';
 import { conversationIntentRequests } from '../conversationIntent';
 import { conversationPublicSearchPlan } from '../conversationPublicSearchPlan';
@@ -145,11 +149,17 @@ test('typed standalone literature skips even retained native preflight', async (
     runId: 'synthetic-retained',
     signal: f.controller.signal,
     external: {
-      publicWebTool: {
-        id: 'public-web-search',
-        search: lookup,
-        prepareAuthorizedSearch: prepare,
-      },
+      tools: [
+        {
+          id: 'public-web-search',
+          search: lookup,
+          prepareAuthorizedSearch: prepare,
+          initialLookup: {
+            input: defaultPublicSearchInput,
+            run: runDefaultPublicSearch,
+          },
+        },
+      ],
     } as unknown as Parameters<
       typeof conversationPublicSearchPlan
     >[0]['external'],
