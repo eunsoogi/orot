@@ -59,14 +59,19 @@ function normalizeObjectFrames(value: JsonValue): JsonValue {
  * surface. Previously supported contracts and action permissions stay intact. */
 export function withConversationA2UIReplacement(
   previous: TaskResponderContract<GroundedRagAnswer>,
-  version: '49' | '50' | '51' = '49',
+  version: '49' | '50' | '51' | '52' = '49',
 ): TaskResponderContract<GroundedRagAnswer> {
   return {
     ...previous,
     taskVersion: version,
     projectStreamedLayout(raw, input) {
       return allowsOrdinaryA2UI(input)
-        ? projectConversationA2UISkeleton(raw, true, true, version === '51')
+        ? projectConversationA2UISkeleton(
+            raw,
+            true,
+            true,
+            version === '51' || version === '52',
+          )
         : undefined;
     },
     createResultSchema(input, jsonPrompt) {
@@ -78,7 +83,7 @@ export function withConversationA2UIReplacement(
       if (!isObject(frames) || typeof frames.description !== 'string')
         return schema;
       const useObjectFrames = version !== '49' && jsonPrompt;
-      const includeVersion = version === '51';
+      const includeVersion = version === '51' || version === '52';
       const description = useObjectFrames
         ? frames.description.replace(
             'Use an ordered array of JSON message strings',
@@ -98,7 +103,10 @@ export function withConversationA2UIReplacement(
               : {}),
             description:
               description +
-              ' One atomic updateComponents may change a ready layout, such as replacing a Card and its Column wrapper with a Row of the same exact Text leaves. Detached structural wrappers must be unchanged, already owned by this surface, and never reused; no text, title, or controls may be detached. Keep every accepted answer line in reading order.',
+              ' One atomic updateComponents may change a ready layout, such as replacing a Card and its Column wrapper with a Row of the same exact Text leaves. Detached structural wrappers must be unchanged, already owned by this surface, and never reused; no text, title, or controls may be detached. Keep every accepted answer line in reading order.' +
+              (version === '52'
+                ? ' Read-only horizontal Lists accept literal cross-axis align: start, center, end, or stretch. No justify, style objects, binding or actions.'
+                : ''),
           },
         },
       };
@@ -121,7 +129,7 @@ export function withConversationA2UIReplacement(
         true,
         true,
         true,
-        'vertical_align',
+        version === '52' ? 'cross_align' : 'vertical_align',
         conversationA2UIFrameProse,
         true,
       );

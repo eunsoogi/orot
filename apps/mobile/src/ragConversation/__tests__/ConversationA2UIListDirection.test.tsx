@@ -1,3 +1,6 @@
+import { StyleSheet } from 'react-native';
+import { ragConversationTask } from '../task';
+import { restoreConversationTask } from '../conversationTaskVersions';
 import { fireEvent, render } from '@testing-library/react-native';
 import { ConversationA2UISurface } from '../ConversationA2UISurface';
 import { conversationA2UICatalog } from '../conversationA2UI';
@@ -19,7 +22,11 @@ jest.mock('react-native/Libraries/Utilities/useWindowDimensions', () => ({
 }));
 
 const answer = '요약\n세부 사항';
-const frames = (direction: unknown = 'horizontal', component = 'List') => [
+const frames = (
+  direction: unknown = 'horizontal',
+  component = 'List',
+  align?: unknown,
+) => [
   JSON.stringify({
     version: '1.0',
     createSurface: {
@@ -27,9 +34,18 @@ const frames = (direction: unknown = 'horizontal', component = 'List') => [
       catalogId: conversationA2UICatalog,
       components: [
         { id: 'root', component: 'Card', child: 'list' },
-        { id: 'list', component, direction, children: ['first', 'details'] },
+        {
+          id: 'list',
+          component,
+          direction,
+          ...(align !== undefined ? { align } : {}),
+          children: ['first', align === undefined ? 'details' : 'detail-card'],
+        },
         { id: 'first', component: 'Text', text: '요약' },
         { id: 'details', component: 'Text', text: '세부 사항' },
+        ...(align !== undefined
+          ? [{ id: 'detail-card', component: 'Card', child: 'details' }]
+          : []),
       ],
     },
   }),
@@ -94,4 +110,63 @@ test('direction remains literal, owned, and round-trips only a sanitized v6 arra
   expect(
     restoreConversationA2UILayout({ version: 5, tree: archive?.tree }, answer),
   ).toBeUndefined();
+});
+
+test('a model-authored horizontal List aligns mixed-height items without changing its compact reading order', async () => {
+  const input = {
+    request: '두 항목을 보기 좋게 보여 주세요.',
+    context: [],
+    evidence: { items: [], coverage: [], conflicts: [] },
+  } as Parameters<typeof ragConversationTask.validateResult>[1];
+  const evidenceFree = (align: unknown) => ({
+    answerKind: 'conversation',
+    answer,
+    a2uiFrames: frames('horizontal', 'List', align),
+  });
+  const accepted = ragConversationTask.validateResult(
+    evidenceFree('end'),
+    input,
+  );
+  if (accepted.status !== 'valid' || !accepted.value.a2uiPresentation)
+    throw new Error('Expected valid Basic Catalog horizontal alignment');
+  const root = accepted.value.a2uiPresentation;
+  mockFontScale = 1;
+  const ui = await render(<ConversationA2UISurface root={root} />);
+  await fireEvent(ui.getByTestId('conversation-a2ui-list-layout'), 'layout', {
+    nativeEvent: { layout: { width: 520 } },
+  });
+  expect(
+    StyleSheet.flatten(
+      ui.getByTestId('conversation-a2ui-list-strip').props
+        .contentContainerStyle,
+    ),
+  ).toMatchObject({ alignItems: 'flex-end' });
+  mockFontScale = 2;
+  await ui.rerender(<ConversationA2UISurface root={root} />);
+  expect(
+    StyleSheet.flatten(
+      ui.getByTestId('conversation-a2ui-list-stack').props
+        .contentContainerStyle,
+    ),
+  ).not.toHaveProperty('alignItems');
+  expect(
+    ui.getAllByText(/요약|세부 사항/u).map(node => node.props.children),
+  ).toEqual(['요약', '세부 사항']);
+  const legacy = restoreConversationTask({
+    taskVersion: '51',
+    taskType: ragConversationTask.taskType,
+  });
+  const fallback = {
+    status: 'valid',
+    value: { answerKind: 'conversation', answer },
+  };
+  expect(legacy?.validateResult(evidenceFree('end'), input)).toEqual(fallback);
+  for (const invalid of ['spaceAround', { '@path': '/alignment' }])
+    expect(
+      ragConversationTask.validateResult(evidenceFree(invalid), input),
+    ).toEqual(fallback);
+  expect(storeConversationA2UILayout(root, answer)).toEqual({
+    version: 6,
+    tree: ['Card', ['HorizontalList', 0, ['Card', 0]]],
+  });
 });

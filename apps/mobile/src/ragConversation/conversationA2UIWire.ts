@@ -74,7 +74,7 @@ export function parseConversationA2UIFrame(
   allowStaticCatalog = false,
   allowAlignment = false,
   allowRowWeight = false,
-  allowListDirection: boolean | 'vertical_align' = false,
+  allowListDirection: boolean | 'vertical_align' | 'cross_align' = false,
 ): Frame | 'foreign' | 'invalid' {
   if (typeof raw !== 'string' || raw.length > conversationA2UIFrameLimit)
     return 'invalid';

@@ -1,4 +1,6 @@
 import { useState, type ReactNode } from 'react';
+import { a2uiNativeAlignment } from './conversationA2UINativeAlignment';
+import type { ConversationA2UIAlignment } from './conversationA2UIAlignment';
 import { ScrollView, StyleSheet, View } from 'react-native';
 
 /** One horizontal viewport owned by this bubble. Each bounded-width card
@@ -6,9 +8,11 @@ import { ScrollView, StyleSheet, View } from 'react-native';
 export function ConversationA2UIHorizontalList({
   children,
   fontScale,
+  alignment,
 }: {
   readonly children: readonly { id: string; content: ReactNode }[];
   readonly fontScale: number;
+  readonly alignment?: ConversationA2UIAlignment;
 }) {
   const [width, setWidth] = useState(0);
   const horizontal = width >= 360 && fontScale <= 1.3;
@@ -21,7 +25,11 @@ export function ConversationA2UIHorizontalList({
         horizontal={horizontal}
         scrollEnabled={horizontal}
         showsHorizontalScrollIndicator={false}
-        contentContainerStyle={styles.items}
+        contentContainerStyle={
+          horizontal && alignment
+            ? [styles.items, a2uiNativeAlignment(alignment)]
+            : styles.items
+        }
         testID={
           horizontal
             ? 'conversation-a2ui-list-strip'

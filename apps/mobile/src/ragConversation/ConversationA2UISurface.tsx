@@ -154,6 +154,7 @@ function SurfaceNode({
     return (
       <ConversationA2UIHorizontalList
         fontScale={fontScale}
+        alignment={node.alignment}
         children={node.children.map(child => ({
           id: child.id,
           content: <SurfaceNode node={child} fontScale={fontScale} />,
