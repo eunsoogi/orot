@@ -30,7 +30,7 @@ const archiveRow = {
 };
 const operation = {
   operationRunId: 'archived-answer-fixture',
-  operationKey: 'selected-answer',
+  operationKey: 'tool-1',
 };
 function restored(newer?: { partial?: true; directPhoto?: true }) {
   const rows =
