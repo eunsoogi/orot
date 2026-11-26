@@ -5,7 +5,6 @@ import {
   type DB,
 } from '@op-engineering/op-sqlite';
 import type { SqlExecutor } from '@orot/storage';
-import { conversationExecutionNative } from '../ragConversation/conversationExecutionNative';
 import {
   readSelectedOverviewProjection,
   readOverviewPreferenceProof,
@@ -15,6 +14,7 @@ import {
   selectedWorkoutChoiceProof,
   type WorkoutChoiceReceipt,
 } from '../routes/overview/earlyWorkoutChoice';
+import { createNativeProtectedDataWitness } from './nativeProtectedData';
 import { acquireIndependentReadEpoch } from './protectedReadEpoch';
 import {
   readIndependentOverviewSnapshot,
@@ -31,31 +31,21 @@ async function readSecureOverviewProjection<T>(input: {
   signal: AbortSignal;
   publish: (value: T) => void;
 }): Promise<OverviewReadOutcome> {
-  const protection = conversationExecutionNative();
-  if (!protection?.bridgeAvailable) return 'unavailable';
+  const protection = createNativeProtectedDataWitness();
+  if (!protection) return 'unavailable';
   let epoch: ReturnType<typeof acquireIndependentReadEpoch>;
   let active = true;
   let unsubscribe: (() => void) | undefined;
   const current = () =>
     active &&
     !input.signal.aborted &&
-    protection.currentPhase?.() === 'active' &&
+    protection.isForeground() &&
     input.ownerIsCurrent() &&
     (epoch?.current() ?? true);
-  const confirm = async () => {
-    try {
-      return (await protection.protectedDataAvailable()) === true;
-    } catch {
-      return false;
-    }
-  };
+  const confirm = protection.confirmAvailable;
   try {
-    unsubscribe = protection.subscribe(event => {
-      if (
-        event.kind === 'phase' ||
-        (event.kind === 'protectedData' && !event.available)
-      )
-        active = false;
+    unsubscribe = protection.subscribeToLoss(() => {
+      active = false;
     });
     if (!current() || !(await confirm()) || !current()) return 'discarded';
     epoch = acquireIndependentReadEpoch(input.owner);

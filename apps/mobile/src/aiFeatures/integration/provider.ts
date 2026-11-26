@@ -17,12 +17,12 @@ import {
   createAppleSelectionOption,
   createChatGPTSelectionOptions,
   loadAppleSelectionOption,
-} from '../../providers/selection';
+} from '../../providers/selection/options';
 import type {
   ProviderSelection,
   ProviderSelectionOption,
   ProviderSelectionStore,
-} from '../../providers/selection';
+} from '../../providers/selection/types';
 import type { ChatGPTSelectionServices } from '../../providers/selection/chatGPTServices';
 import { nativeChatGPTSelectionServices } from '../../providers/selection/chatGPTServices';
 import { providerSelectionStore } from '../../providers/selection/keychainSelectionStore';
