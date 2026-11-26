@@ -40,6 +40,7 @@ final class VoiceSystemCallLifecycle: NSObject, VoiceSystemCallPort, CXProviderD
         case ended = "callkit_end_action"
         case muted = "callkit_mute_action"
         case backgroundContinued = "background_owned_audio_continues"
+        case backgroundAudioStartingStopped = "background_owned_audio_still_starting_stops"
         case backgroundManagedStopped = "background_foreground_only_delegation_stops"
         case backgroundUnownedStopped = "background_unowned_audio_stops"
         case protectedDataLost = "protected_data_unavailable"
@@ -47,6 +48,13 @@ final class VoiceSystemCallLifecycle: NSObject, VoiceSystemCallPort, CXProviderD
         case interruptionEnded = "audio_interruption_ended"
         case interruptionUnspecified = "audio_interruption_unspecified"
         case routeChanged = "audio_route_changed"
+        case liveTransportFailed = "live_transport_failed"
+        case liveServerError = "live_server_error"
+        case liveServerClosed = "live_server_closed"
+        case liveSessionExpired = "live_session_expired"
+        case liveCaptureFailed = "live_capture_failed"
+        case liveInputOverflow = "live_input_overflow"
+        case liveOutputFailed = "live_output_failed"
         case captionCloseIneligible = "caption_close_ineligible"
         case captionCloseEligible = "caption_close_eligible"
         case captionBufferPresent = "caption_buffer_present"
@@ -71,9 +79,11 @@ final class VoiceSystemCallLifecycle: NSObject, VoiceSystemCallPort, CXProviderD
         }
     }
 
-    static func backgroundStage(systemCallActive: Bool, managed: Bool) -> DiagnosticStage {
+    static func backgroundStage(systemCallActive: Bool, managed: Bool, audioStarting: Bool = false) -> DiagnosticStage {
         guard systemCallActive else { return .backgroundUnownedStopped }
-        return managed ? .backgroundManagedStopped : .backgroundContinued
+        guard !managed else { return .backgroundManagedStopped }
+        // The system activates before the graph becomes ready. That interval still stops on background.
+        return audioStarting ? .backgroundAudioStartingStopped : .backgroundContinued
     }
 
     private var provider: CXProvider

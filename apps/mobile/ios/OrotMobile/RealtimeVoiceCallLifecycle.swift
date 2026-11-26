@@ -3,6 +3,16 @@ import Foundation
 
 /// Mute releases the audio lease but preserves the authenticated server conversation.
 extension RealtimeVoiceCall {
+    /// Record the terminating boundary after its owner fence, without logging an error payload.
+    func fail(_ termination: VoiceSystemCallLifecycle.DiagnosticStage? = nil) {
+        guard let id else { socket.close(); return }
+        if let termination {
+            reportTermination(termination)
+        }
+        emit("VoiceRealtimeInterrupted", ["callId": id])
+        try? stop(id)
+    }
+
     /// Keep older supported systems on their existing permission API.
     static func requestPermission(_ completion: @escaping (Bool) -> Void) {
         if #available(iOS 17.0, *) {
@@ -41,7 +51,7 @@ extension RealtimeVoiceCall {
                     }
                     socket.failed = { [weak self] in
                         guard let self, liveSocketEpoch == epoch else { return }
-                        fail()
+                        fail(.liveTransportFailed)
                     }
                     var event = Self.configuration(model: model, language: language, voice: voice)
                     if let managedAdmission {
@@ -156,6 +166,21 @@ extension RealtimeVoiceCall {
             if self?.lifecycleEpoch == epoch {
                 self?.fail()
             }
+        }
+    }
+
+    /// Cancel local playback only. Live does not expose the legacy response/truncate commands.
+    func interrupt() {
+        guard id != nil else { return }
+        if audioStarting {
+            fail()
+            return
+        }
+        retireManagedResponses()
+        outputRenderStartedAt = nil
+        _ = audio.cancel()
+        if ready, !paused {
+            state("listening")
         }
     }
 }

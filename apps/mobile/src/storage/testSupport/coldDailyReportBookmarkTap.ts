@@ -1,3 +1,9 @@
+import type { useConversationSessions } from '../../ragConversation/ConversationSessionsContext';
+import { createElement } from 'react';
+import {
+  GeneratedReportBookmark,
+  GeneratedReportBookmarkContext,
+} from '../../ragConversation/GeneratedReportBookmark';
 import { fireEvent, screen, waitFor } from '@testing-library/react-native';
 import * as nativeExecution from '../../ragConversation/conversationExecutionNative';
 import type { createConversationArtifactStorage } from '../conversationArtifactStorage';
@@ -75,4 +81,48 @@ export async function exerciseColdDailyReportBookmarkTap(
   } finally {
     native.mockRestore();
   }
+}
+
+/** Isolate the archived tap adapter from the real, intentionally action-free transcript. */
+export function isolatedColdDailyBookmark(
+  sessionId: number,
+  historical: ConversationArtifact,
+) {
+  return createElement(
+    GeneratedReportBookmarkContext.Provider,
+    { value: { sessionId } },
+    createElement(GeneratedReportBookmark, {
+      message: {
+        id: -2,
+        role: 'assistant',
+        content: historical.answer,
+        retainedTurnId: historical.id,
+        savedHistoryDisplayOnly: true,
+        dailyReport: historical.dailyReport,
+      },
+    }),
+  );
+}
+
+/** Both existing composer routes run from the real visible cold report and active lease. */
+export function expectColdDailyReportOwner(
+  store: ReturnType<typeof useConversationSessions>,
+  sessionId: string,
+) {
+  const { sessions, activeId } = store.getSnapshot();
+  const active = sessions.find(row => row.id === activeId);
+  expect({
+    lease: store.savedReportLease(activeId),
+    archive: active?.savedHistoryDisplay?.map(
+      x => x.row.kind === 'answer' && Boolean(x.row.dailyReport),
+    ),
+    live: active?.messages.map(x => [
+      x.role,
+      Boolean(x.dailyReport),
+      Boolean(x.retainedTurnId),
+    ]),
+  }).toMatchObject({
+    lease: { id: sessionId, version: 0 },
+    archive: [true],
+  });
 }

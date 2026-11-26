@@ -165,7 +165,10 @@ test.each(['contextual', 'exact-local'] as const)(
         </ConversationSessionsProvider>,
       );
       try {
-        await screen.findByTestId('conversation-bookmark-generated-report');
+        await screen.findByTestId('health-summary-card');
+        expect(
+          screen.queryByTestId('conversation-bookmark-generated-report'),
+        ).toBeNull();
         await fireEvent.changeText(
           screen.getByTestId('rag-conversation-input'),
           mode === 'contextual'

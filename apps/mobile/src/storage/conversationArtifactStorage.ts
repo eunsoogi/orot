@@ -1,3 +1,4 @@
+import { createSavedConversationPossibilityReference } from './savedConversationPossibilityReference';
 import { createConversationPossibilityOriginalReader } from './readConversationPossibilityOriginal';
 import { createArchivedPairedDetailsOwner } from './archivedPairedDetailsOwner';
 import { createConversationAnswerMemory } from './conversationAnswerMemoryStore';
@@ -42,9 +43,30 @@ export function createConversationArtifactStorage(
       }));
   const tools = createConversationToolEventStorage(database, ensure);
   const listTimeline = conversationTimelinePages(database, ensure);
+  const generatedReferences = createSavedGeneratedReportReferences(
+    database,
+    ensure,
+  );
+  const possibilities = createSavedConversationPossibilityReference(
+    database,
+    ensure,
+    isCurrentDatabase,
+  );
   const storage = {
-    ...createSavedGeneratedReportReferences(database, ensure),
+    ...generatedReferences,
     ...createConversationAnswerMemory(database, ensure),
+    ...possibilities,
+    async listSavedGeneratedReportReferences() {
+      const [existing, conversation] = await Promise.all([
+        generatedReferences.listSavedGeneratedReportReferences(),
+        possibilities.listBookmarkedConversationPossibilities(),
+      ]);
+      return [...existing, ...conversation].sort(
+        (a, b) =>
+          b.savedAt.localeCompare(a.savedAt) ||
+          a.artifactId.localeCompare(b.artifactId),
+      );
+    },
     readPossibilityOriginal: createConversationPossibilityOriginalReader(
       database,
       isCurrentDatabase,

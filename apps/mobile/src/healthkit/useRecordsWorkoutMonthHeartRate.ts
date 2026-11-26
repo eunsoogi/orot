@@ -88,6 +88,7 @@ export function useRecordsWorkoutMonthHeartRate({
         abort.signal,
         () => owns() && retire(),
         createWorkoutProtectionProbe(),
+        () => accepted !== undefined,
       );
       if (!protection) {
         trace.report('protection', 'missing');
@@ -111,8 +112,6 @@ export function useRecordsWorkoutMonthHeartRate({
         );
         if (!current()) return;
         epoch = acquireIndependentReadEpoch(database);
-        // A known local writer blocks admission, not the underlying HealthKit data.
-        // Never adopt a new owner or keep an invalidated snapshot after waiting.
         if (!epoch) {
           trace.report('epoch', 'started');
           if (
@@ -199,7 +198,8 @@ export function useRecordsWorkoutMonthHeartRate({
     }
     const protectionRestored = watchRestoration();
     const visibility = AppState.addEventListener('change', phase => {
-      if (phase === 'active') read();
+      if (phase === 'active') refocus();
+      else if (phase === 'inactive' && accepted) setState({ status: 'idle' });
       else retire();
     });
     async function refocus() {
@@ -218,8 +218,7 @@ export function useRecordsWorkoutMonthHeartRate({
       }
       setState(snapshot.state);
     }
-    // A normal in-app blur hides data immediately. Only an already-owned, still
-    // current snapshot can be redisplayed, after rechecking native protection.
+    // Focus and a brief inactive phase both need a fresh proof before repaint.
     const focus = navigation?.addListener('focus', refocus);
     const blur = navigation?.addListener('blur', () => {
       if (accepted) setState({ status: 'idle' });

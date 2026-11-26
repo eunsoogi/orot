@@ -1,6 +1,8 @@
+import { watchSavedReportNativeProtection } from '../generatedReports/savedReportNativeProtection';
 import { handleExplicitVisitQuestionsBookmark } from './explicitVisitQuestionsBookmark';
 import {
   latestReportArtifact,
+  latestConversationPossibilityArtifact,
   semanticReportBookmarkSender,
 } from './semanticReportBookmarkSender';
 import { openSavedGeneratedReportReferences } from '../memory/openSavedGeneratedReportReferences';
@@ -96,6 +98,10 @@ export function handleExplicitDailyReportBookmark(owner: Owner): boolean {
   const lease = store.savedReportLease(id);
   const selected = namedDaily ? candidates(owner) : [];
   const adjacent = namedDaily ? undefined : latestReportArtifact(store, id);
+  const possibility =
+    !namedDaily &&
+    !adjacent &&
+    latestConversationPossibilityArtifact(store, id);
   const notice = (
     kind: 'generatedReportSaved' | 'generatedReportUnavailable',
   ) =>
@@ -113,7 +119,7 @@ export function handleExplicitDailyReportBookmark(owner: Owner): boolean {
   });
   const save = async (target: {
     readonly artifactId: string;
-    readonly kind?: 'daily-report';
+    readonly kind?: 'daily-report' | 'conversation-possibility';
     readonly runId?: string;
   }) => {
     const current = () => {
@@ -134,32 +140,55 @@ export function handleExplicitDailyReportBookmark(owner: Owner): boolean {
                 row.runId === target.runId &&
                 row.artifactId === target.artifactId,
             )
-          : matchesAdjacentReport(target, latestReportArtifact(store, id))),
+          : target.kind === 'conversation-possibility'
+            ? latestConversationPossibilityArtifact(store, id) ===
+              target.artifactId
+            : matchesAdjacentReport(
+                { artifactId: target.artifactId, kind: target.kind },
+                latestReportArtifact(store, id),
+              )),
       );
     };
     if (!lease || !current()) {
       capture.close();
       return;
     }
+    const abort = new AbortController();
+    const native =
+      target.kind === 'conversation-possibility'
+        ? watchSavedReportNativeProtection(abort.signal, () => {})
+        : undefined;
     try {
       const bookmarks = await openSavedGeneratedReportReferences();
       const parameters = { artifactId: target.artifactId, lease, current };
       const saved =
         target.kind === 'daily-report'
           ? await bookmarks.bookmarkDailyReport(parameters)
-          : await bookmarks.bookmarkHealthSummary(parameters);
+          : target.kind === 'conversation-possibility'
+            ? Boolean(
+                native &&
+                (await bookmarks.bookmarkConversationPossibility({
+                  ...parameters,
+                  current: () => current() && native.current(),
+                  confirmProtected: native.confirm,
+                })),
+              )
+            : await bookmarks.bookmarkHealthSummary(parameters);
       if (!current()) return;
       if (saved) store.setDraft(id, '');
       notice(saved ? 'generatedReportSaved' : 'generatedReportUnavailable');
     } catch {
       if (current()) notice('generatedReportUnavailable');
     } finally {
+      abort.abort();
       capture.close();
     }
   };
   const saveDaily = (target: DailyTarget) =>
     save({ ...target, kind: 'daily-report' });
   if (adjacent) save(adjacent);
+  else if (possibility)
+    save({ artifactId: possibility, kind: 'conversation-possibility' });
   else if (selected.length === 1 && selected[0]) saveDaily(selected[0]);
   else if (selected.length > 1 && selected.length <= 4)
     Alert.alert(

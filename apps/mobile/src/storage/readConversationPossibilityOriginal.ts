@@ -3,9 +3,12 @@ import { readPossibilityOriginal } from '../ragConversation/possibilityOriginalR
 import { assertConversationArtifactCurrent } from './conversationArtifactFreshness';
 import { decodeConversationArtifact } from './conversationArtifactCodec';
 import { acquireIndependentReadEpoch } from './protectedReadEpoch';
-import { createReadOnlyPeriodValidation } from './readOnlyPeriodValidation';
+import {
+  createReadOnlyPeriodValidation,
+  type ReadOnlyPeriodValidation,
+} from './readOnlyPeriodValidation';
 
-type Input = Readonly<{
+export type ConversationPossibilityOriginalInput = Readonly<{
   artifactId: string;
   createdAt: string;
   lease: Readonly<{ id: string; version: number }>;
@@ -26,11 +29,72 @@ const ownedRow = `SELECT a.result_json AS raw
     AND NOT EXISTS (SELECT 1 FROM conversation_deleted_artifacts x WHERE x.id=a.id)
     AND NOT EXISTS (SELECT 1 FROM conversation_invalid_parents x WHERE x.id=a.id)`;
 
+/** Shared exact SQL/content proof; callers provide their own read or write fence. */
+export async function selectConversationPossibilityOriginal(
+  tx: SqlExecutor,
+  database: SqlDatabase,
+  stamp: Pick<
+    ConversationPossibilityOriginalInput,
+    'artifactId' | 'createdAt' | 'lease'
+  >,
+  current: () => boolean,
+  validate: ReadOnlyPeriodValidation,
+) {
+  const {
+    artifactId,
+    createdAt,
+    lease: { id: sessionId, version },
+  } = stamp;
+  if (!current()) return null;
+  const { rows } = await tx.execute(ownedRow, [
+    artifactId,
+    sessionId,
+    version,
+    createdAt,
+  ]);
+  const raw = rows[0]?.raw;
+  if (!current() || rows.length !== 1 || typeof raw !== 'string') return null;
+  const original = decodeConversationArtifact(raw);
+  if (
+    original?.entryIntent !== 'possibilities' ||
+    original.status !== 'complete' ||
+    original.id !== artifactId ||
+    original.sessionId !== sessionId ||
+    original.createdAt !== createdAt ||
+    !original.sources.length ||
+    !original.citations?.length ||
+    original.sources.some(
+      source => source.reference.sourceKind !== 'personal_record',
+    ) ||
+    original.citations.some(
+      reference => reference.sourceKind !== 'personal_record',
+    )
+  )
+    return null;
+  const result = readPossibilityOriginal(
+    original.possibilityOriginal,
+    original.answer,
+  );
+  if (!result) return null;
+  await assertConversationArtifactCurrent(
+    tx,
+    database,
+    original,
+    false,
+    validate,
+  );
+  return current() ? { raw, result } : null;
+}
+
 export function createConversationPossibilityOriginalReader(
   database: SqlDatabase,
   isCurrentDatabase: (owner: SqlDatabase) => boolean = () => false,
+  requireReference?: (
+    tx: SqlExecutor,
+    input: ConversationPossibilityOriginalInput,
+  ) => Promise<boolean>,
 ) {
-  return async function read(input: Input) {
+  return async function read(input: ConversationPossibilityOriginalInput) {
     const {
       artifactId,
       createdAt,
@@ -42,54 +106,24 @@ export function createConversationPossibilityOriginalReader(
     if (!epoch) return null;
     const current = () =>
       callerCurrent() && isCurrentDatabase(database) && epoch.current();
-    const select = async (tx: SqlExecutor) => {
-      if (!current()) return null;
-      const { rows } = await tx.execute(ownedRow, [
-        artifactId,
-        sessionId,
-        version,
-        createdAt,
-      ]);
-      const raw = rows[0]?.raw;
-      if (!current() || rows.length !== 1 || typeof raw !== 'string')
-        return null;
-      const original = decodeConversationArtifact(raw);
-      if (
-        original?.entryIntent !== 'possibilities' ||
-        original.status !== 'complete' ||
-        original.id !== artifactId ||
-        original.sessionId !== sessionId ||
-        original.createdAt !== createdAt ||
-        !original.sources.length ||
-        !original.citations?.length ||
-        original.sources.some(
-          source => source.reference.sourceKind !== 'personal_record',
-        ) ||
-        original.citations.some(
-          reference => reference.sourceKind !== 'personal_record',
-        )
-      )
-        return null;
-      const result = readPossibilityOriginal(
-        original.possibilityOriginal,
-        original.answer,
-      );
-      if (!result) return null;
-      await assertConversationArtifactCurrent(
-        tx,
-        database,
-        original,
-        false,
-        createReadOnlyPeriodValidation(tx),
-      );
-      return current() ? { raw, result } : null;
-    };
     const selected = async () => {
-      const holder: { value: Awaited<ReturnType<typeof select>> } = {
+      const holder: {
+        value: Awaited<
+          ReturnType<typeof selectConversationPossibilityOriginal>
+        >;
+      } = {
         value: null,
       };
       await database.transaction(async tx => {
-        holder.value = await select(tx);
+        // For bookmarked reads, both protected selections recheck the identity link.
+        if (requireReference && !(await requireReference(tx, input))) return;
+        holder.value = await selectConversationPossibilityOriginal(
+          tx,
+          database,
+          { artifactId, createdAt, lease: { id: sessionId, version } },
+          current,
+          createReadOnlyPeriodValidation(tx),
+        );
       });
       return current() ? holder.value : null;
     };

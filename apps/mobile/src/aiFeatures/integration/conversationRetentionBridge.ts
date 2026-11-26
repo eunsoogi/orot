@@ -221,7 +221,12 @@ export function createConversationRetentionBridge(input: {
         attemptedWrite = true;
         await input.observer.onRetentionCandidate(candidate, input.signal);
         // A resolved callback means its atomic commit won the cancellation race.
-        return { outcome, retained: true };
+        return {
+          outcome: candidate.possibilityOriginal
+            ? { ...outcome, committedPossibilityOriginal: true }
+            : outcome,
+          retained: true,
+        };
       } catch (error) {
         if (!input.signal.aborted) {
           try {
