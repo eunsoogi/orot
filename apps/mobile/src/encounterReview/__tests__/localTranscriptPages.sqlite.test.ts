@@ -186,3 +186,47 @@ test('native unknown, owner replacement and Stop never return another page', asy
   await expect(current.next()).rejects.toThrow('no longer admissible');
   expect(listeners.size).toBe(0);
 });
+
+test('retires an issued page before a same-connection mutation reaches SQLite', async () => {
+  await seed(9);
+  const raw = fixture.database();
+  const mutation =
+    'UPDATE source_records SET payload_json = payload_json WHERE id = ?';
+  let abortedAtDispatch: boolean | undefined;
+  let readerSignal: AbortSignal | undefined;
+  const database = guardedNativeDatabase({
+    ...raw,
+    execute(sql, binds) {
+      if (sql === mutation) abortedAtDispatch = readerSignal?.aborted;
+      return raw.execute(sql, binds);
+    },
+  });
+  const { native, listeners } = nativeFixture();
+  const reader = await open(native, database);
+  readerSignal = reader.signal;
+  try {
+    const page = await reader.next();
+    expect(page?.segments[0]?.recordingSourceId).toBe(recordingId);
+    await database.execute('SELECT 1', []);
+    expect(reader.signal.aborted).toBe(false);
+    expect(listeners.size).toBe(1);
+
+    // Even an unchanged row must retire the issued page before dispatch,
+    // not just at the consumer's next epoch check.
+    await database.execute(mutation, [recordingId]);
+    expect(abortedAtDispatch).toBe(true);
+    expect(await reader.confirm()).toBe(false);
+    await expect(reader.next()).rejects.toThrow('no longer admissible');
+    expect(listeners.size).toBe(0);
+
+    const fresh = await open(native, database);
+    try {
+      expect(await fresh.next()).toEqual(page);
+    } finally {
+      fresh.dispose();
+    }
+    expect(listeners.size).toBe(0);
+  } finally {
+    reader.dispose();
+  }
+});
