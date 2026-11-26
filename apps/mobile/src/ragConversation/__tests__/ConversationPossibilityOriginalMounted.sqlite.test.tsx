@@ -129,8 +129,8 @@ test('mounted typed Possibilities commits only the graph-admitted exact original
                 onValidatedEvidence: bridge.onValidatedEvidence,
                 workflow: {
                   ...canonical.options.workflow,
-                  revalidateEvidence: (references, signal) =>
-                    f.registry.revalidateEvidence(references, signal),
+                  revalidateEvidence: (references, abortSignal) =>
+                    f.registry.revalidateEvidence(references, abortSignal),
                   execution: {
                     ...canonical.options.workflow.execution,
                     allowedScope: { sourceKinds: ['personal_record'] },
