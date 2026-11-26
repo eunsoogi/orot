@@ -14,9 +14,9 @@ jest.mock('../../../ragConversation/conversationExecutionNative', () => ({
   }),
 }));
 
-it.each([false, true])(
-  'only returns a typed local batch when the SQL owner survives the last native check (mutation=%s)',
-  async mutate => {
+it.each(['unchanged', 'sql-mutation', 'native-lock'] as const)(
+  'only returns a typed local batch when final SQL and native protection remain current (%s)',
+  async scenario => {
     const { f } = await actualSendRetentionFixture('one');
     try {
       await f.repository.put('health_observation', record);
@@ -27,6 +27,9 @@ it.each([false, true])(
       const registry = new LocalEvidenceReferenceRegistry();
       const signal = new AbortController().signal;
       const operationRunId = 'typed-heart-rate-batch';
+      const mutate = scenario === 'sql-mutation';
+      let lockedAfterReproof = false;
+      let finalModelCheck = false;
       let mutatedAfterReproof = false;
       mockProtection.mockReset().mockImplementation(async () => {
         if (mutate && read.mock.calls.length === 2 && !mutatedAfterReproof) {
@@ -38,7 +41,7 @@ it.each([false, true])(
           );
           mutatedAfterReproof = true;
         }
-        return true;
+        return !lockedAfterReproof;
       });
       const tool = createConversationHeartRateTool({
         read,
@@ -49,7 +52,14 @@ it.each([false, true])(
         dispatch,
         model: {
           current: () => true,
-          recheck: async () => true,
+          recheck: async () => {
+            if (read.mock.calls.length === 2) {
+              finalModelCheck = true;
+              await Promise.resolve();
+              lockedAfterReproof = scenario === 'native-lock';
+            }
+            return true;
+          },
           details: {
             providerId: 'synthetic-local',
             modelId: 'synthetic-model',
@@ -70,7 +80,9 @@ it.each([false, true])(
       });
       expect(read).toHaveBeenCalledTimes(2);
       expect(mutatedAfterReproof).toBe(mutate);
-      if (mutate) {
+      expect(finalModelCheck).toBe(true);
+      expect(lockedAfterReproof).toBe(scenario === 'native-lock');
+      if (scenario !== 'unchanged') {
         expect(result).toMatchObject({
           items: [],
           coverage: [{ gaps: ['typed_heart_rate_proof_unavailable'] }],

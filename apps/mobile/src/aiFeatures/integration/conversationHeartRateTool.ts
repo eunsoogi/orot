@@ -91,6 +91,19 @@ export function createConversationHeartRateTool(input: {
         !request.signal.aborted &&
         model.current() &&
         observer.expectedConversationModel?.isCurrent?.() !== false;
+      const confirmNativeProtection = async () => {
+        if (!current()) return false;
+        try {
+          const native = conversationExecutionNative();
+          return (
+            native?.bridgeAvailable === true &&
+            (await native.protectedDataAvailable()) === true &&
+            current()
+          );
+        } catch {
+          return false;
+        }
+      };
       const confirmedCurrent = async () => {
         if (!current()) return false;
         try {
@@ -195,6 +208,7 @@ export function createConversationHeartRateTool(input: {
             request.signal,
           )) ||
           !(await confirmedCurrent()) ||
+          !(await confirmNativeProtection()) ||
           !current() ||
           !witness.current()
         )
@@ -203,21 +217,7 @@ export function createConversationHeartRateTool(input: {
           acquire: input.acquireSourceEpoch,
           reprove: signal =>
             input.registry.revalidateEvidence([evidence], signal),
-          confirmDispatch: async () => {
-            if (!current()) return false;
-            // The durable recipient check can settle after the earlier native
-            // sample. Reconfirm protection at the final dispatch boundary.
-            try {
-              const native = conversationExecutionNative();
-              return (
-                native?.bridgeAvailable === true &&
-                (await native.protectedDataAvailable()) === true &&
-                current()
-              );
-            } catch {
-              return false;
-            }
-          },
+          confirmDispatch: confirmNativeProtection,
         });
         return batch([evidence], []);
       } finally {
