@@ -3,7 +3,10 @@ import type { JsonObject, JsonValue } from '@orot/model-runtime';
 import type { TaskResponderInput } from '@orot/agent-runtime';
 import { structuredSummaryFacts } from './summaryFactValidation';
 import { canPreviewDiseaseHypothesisSummary } from './resultValidation';
-import { computedTopicChoices } from './computedTopicChoices';
+import {
+  computedTopicChoices,
+  renderComputedSymptomSummary,
+} from './computedTopicChoices';
 import { computedSummaryLimitations } from './computedSummaryLimitations';
 import {
   renderStatisticChoices,
@@ -126,6 +129,26 @@ export function appleRecordSummarySchema(
   };
 }
 
+const maxSummaryCharacters = 1200;
+
+/** Selectors are checked before bounded presentation; a long quote cannot
+ * turn an otherwise valid app-rendered symptom section into a model failure. */
+function renderRecordTopic(
+  value: unknown,
+  topic: NonNullable<ReturnType<typeof appleRecordTopics>>[number],
+): string | undefined {
+  const rendered = renderStatisticChoices(value, topic.choices);
+  if (!rendered) return;
+  const period = statisticSourcePeriod(topic.source);
+  const available = maxSummaryCharacters - (period ? period.length + 1 : 0);
+  const text =
+    topic.source.topic === 'symptoms' && rendered.length > available
+      ? renderComputedSymptomSummary(topic.source, available)
+      : rendered;
+  if (!text || text.length > available) return;
+  return [period, text].filter(Boolean).join('\n');
+}
+
 /** This is the declared generated-selection contract, not a fallback for rejected prose.
  * Unknown/missing selections fail before any source-bound summary is persisted. */
 export function normalizeAppleRecordSummary(
@@ -151,12 +174,8 @@ export function normalizeAppleRecordSummary(
     return;
   const sections = [];
   for (const topic of topics) {
-    const rendered = renderStatisticChoices(summaries[topic.id], topic.choices);
-    if (!rendered) return;
-    const text = [statisticSourcePeriod(topic.source), rendered]
-      .filter(Boolean)
-      .join('\n');
-    if (text.length > 1200) return;
+    const text = renderRecordTopic(summaries[topic.id], topic);
+    if (!text) return;
     sections.push({
       title: topic.title,
       summary: text,
@@ -194,18 +213,16 @@ export function projectAppleRecordSummaries(
     if (!topics) return;
     const summaries = envelope.value.recordSummaries;
     const texts = topics.map(topic => {
-      const text = renderStatisticChoices(summaries[topic.id], topic.choices);
+      const text = renderRecordTopic(summaries[topic.id], topic);
       return text
-        ? [statisticSourcePeriod(topic.source), text, ...topic.limitations]
-            .filter(Boolean)
-            .join('\n')
+        ? [text, ...topic.limitations].filter(Boolean).join('\n')
         : undefined;
     });
     if (
       texts.some(
         text =>
           !text ||
-          text.length > 1200 ||
+          text.length > maxSummaryCharacters ||
           !canPreviewDiseaseHypothesisSummary(text),
       )
     )

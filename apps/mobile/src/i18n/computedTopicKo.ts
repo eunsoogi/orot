@@ -36,6 +36,8 @@ export const computedTopicKo = {
   'computedTopic.stageMinutes': '{stage} {minutes}분',
   'computedTopic.meanStages': '{mean} 전체 기간의 단계별 누적 시간: {stages}.',
   'computedTopic.symptomDays': ' · {days}일',
+  'computedTopic.additionalSymptomsInEvidence':
+    '요약에 담지 못한 기록은 근거에서 확인할 수 있어요.',
   'computedTopic.symptomEntries': '증상 기록 {count}건{coverage}.{entries}',
   'computedTopic.partialEvidence':
     '일부 자료를 확인하지 못해 제공된 기록만 요약했어요.',
