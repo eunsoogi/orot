@@ -36,9 +36,9 @@ async function fixture() {
     ...lane,
     database,
     turn,
-    read: (read = readOwnedWorkoutPeriod) =>
+    read: (read = readOwnedWorkoutPeriod, repository = lane.repository) =>
       read(period, {
-        repository: lane.repository,
+        repository,
         signal: turn.signal,
         current: () =>
           epoch.current() && isCurrentLocalAgentMemoryDatabase(database),
@@ -192,3 +192,59 @@ test('strict local Workout witness reproves fresh complete coverage, never subst
     lane.close();
   }
 });
+
+test.each(['during-native', 'before-reproof'] as const)(
+  'strict local proof rejects SQL membership replacement: %s',
+  async mode => {
+    const lane = await fixture();
+    try {
+      let changed = false;
+      const repository = {
+        ...lane.repository,
+        listHealthObservationPage: async (
+          ...args: Parameters<typeof lane.repository.listHealthObservationPage>
+        ) => {
+          const page = await lane.repository.listHealthObservationPage(...args);
+          return changed
+            ? {
+                ...page,
+                records: page.records.map(row =>
+                  row.id === lane.first.id && row.provenance.source
+                    ? {
+                        ...row,
+                        provenance: {
+                          ...row.provenance,
+                          source: {
+                            ...row.provenance.source,
+                            sourceIdentifier: 'synthetic-changed-source',
+                          },
+                        },
+                      }
+                    : row,
+                ),
+              }
+            : page;
+        },
+      };
+      lane.queryWorkoutPeriodHeartRate.mockImplementation(async request => {
+        if (mode === 'during-native') changed = true;
+        return {
+          ...resultFor(request),
+          workoutCohortPolicy: 'exact-visible-native-cohort',
+        };
+      });
+      const witness = await lane.read(
+        readLocalConversationWorkoutPeriod,
+        repository,
+      );
+      if (mode === 'during-native') expect(witness.result).toBeUndefined();
+      else {
+        expect(witness.result?.status).toBe('available');
+        changed = true;
+      }
+      expect(await witness.reprove()).toBe(false);
+    } finally {
+      lane.close();
+    }
+  },
+);
