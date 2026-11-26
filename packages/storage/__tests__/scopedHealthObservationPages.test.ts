@@ -174,10 +174,27 @@ test('upgrades version nine while preserving saved rows and avoiding destructive
           }),
         ),
     });
-    expect(statements.filter((sql) => /^\s*DROP\b/i.test(sql))).toEqual([
-      'DROP TRIGGER IF EXISTS source_records_delete_visit_questions_dependencies',
-      'DROP TRIGGER IF EXISTS source_records_delete_evidence_spans',
-    ]);
+    // Rebuilding owned integrity triggers is compatible; no other object may be dropped.
+    const replacedTriggers = [
+      'source_records_delete_encounters_dependencies',
+      'source_records_delete_health_observations_dependencies',
+      'source_records_delete_symptom_entries_dependencies',
+      'source_records_delete_medication_definitions_dependencies',
+      'source_records_delete_medication_assertions_dependencies',
+      'source_records_delete_dose_events_dependencies',
+      'source_records_delete_appointments_dependencies',
+      'source_records_delete_visit_questions_dependencies',
+      'source_records_delete_visit_question_records_dependencies',
+      'source_records_delete_visit_briefs_dependencies',
+      'source_records_delete_evidence_spans',
+    ];
+    expect(statements.filter((sql) => /^\s*DROP\b/i.test(sql))).toEqual(
+      replacedTriggers.map((name) => 'DROP TRIGGER IF EXISTS ' + name),
+    );
+    const triggers = await database.execute(
+      "SELECT name FROM sqlite_master WHERE type = 'trigger' AND tbl_name = 'source_records'",
+    );
+    expect(triggers.rows.map((row) => row.name)).toEqual(expect.arrayContaining(replacedTriggers));
     // The v19 schema adds only known metadata columns to the Memory table,
     // never rewriting saved observations or allowing other ALTER/UPDATE statements.
     expect(
