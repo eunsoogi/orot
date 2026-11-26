@@ -15,24 +15,22 @@ enum RealtimeVoiceNativeRegistryAssertions {
 
     static func assertExactOwnedRegistryMatchesWireAndRejectsUnknownOrRevokedAdmission() throws {
         for model in ["gpt-6-luna", "gpt-6-sol"] {
-            let owned = admission(model: model, functionName: "orot_health_context", allowed: true)
+            let owned = admission(model: model, functionName: "local-health-context", allowed: true)
             let registry = try XCTUnwrap(LiveNativeToolRegistry(admission: owned))
             let configuration = try XCTUnwrap(registry.configuration(for: owned))
             let responses = try XCTUnwrap(configuration["responses"] as? [String: Any])
             XCTAssertEqual(responses["model"] as? String, model)
             let tools = try XCTUnwrap(responses["tools"] as? [[String: Any]])
-            XCTAssertEqual(tools.compactMap { $0["name"] as? String }, ["orot_health_context"])
+            XCTAssertEqual(tools.compactMap { $0["name"] as? String }, ["local-health-context"])
             let parameters = try XCTUnwrap(tools.first?["parameters"] as? [String: Any])
-            XCTAssertEqual(parameters["required"] as? [String], ["topic", "days"])
             XCTAssertEqual(parameters["additionalProperties"] as? Bool, false)
-            XCTAssertTrue(registry.allows("orot_health_context"))
+            XCTAssertTrue(registry.allows("local-health-context"))
             XCTAssertFalse(registry.allows("orot_personal_records"))
             XCTAssertFalse(registry.allows("orot_reviewed_memory"))
-            XCTAssertNil(registry.configuration(for: admission(model: model, functionName: "orot_health_context", allowed: false)))
+            XCTAssertNil(registry.configuration(for: admission(model: model, functionName: "local-health-context", allowed: false)))
             XCTAssertNil(LiveNativeToolRegistry(admission: admission(model: model, functionName: "orot_personal_records", allowed: true)))
             let instruction = RealtimeVoiceCall.instructions(language: "en", tools: registry.eligible)
-            XCTAssertTrue(instruction.contains("one bounded ordinary heart-rate average"))
-            XCTAssertTrue(instruction.contains("do not claim other record access"))
+            XCTAssertTrue(instruction.contains("independently approved results"))
         }
     }
 
@@ -41,7 +39,15 @@ enum RealtimeVoiceNativeRegistryAssertions {
             backendModel: model, functionName: functionName, backendAllowed: { allowed },
             mayRun: { _ in false }, approve: { _, finish in finish(false); return {} },
             execute: { _, finish in finish(nil); return {} }, mayDisclose: { _, _ in false },
+            dispatchTicket: { _, _ in nil },
+            canonicalConfiguration: { stockConfiguration(model) },
         )
+    }
+
+    static func stockConfiguration(_ model: String) -> [String: Any] {
+        var tool = LiveCanonicalContextV3Transport.stock
+        tool["type"] = "function"; tool["strict"] = false
+        return ["type": "responses", "responses": ["model": model, "tools": [tool]]]
     }
 }
 

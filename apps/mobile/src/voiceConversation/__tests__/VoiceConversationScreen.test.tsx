@@ -43,21 +43,16 @@ test('Live call omits the pipeline row without replacing it with Apple copy', as
   await render(
     <RealtimeVoiceSurface
       visible
-      voiceVisible
-      suspended={false}
-      handoffBusy={false}
       state={{ phase: 'authorizing', identity: null }}
       status="연결 중"
       model="gpt-live-1.1"
       transcripts={[]}
-      toolConfirmation={null}
       disabled={false}
       statusExternallyRendered={false}
       start={action}
       stop={action}
       mute={action}
       resume={action}
-      returnToCall={action}
       onDismiss={action}
     />,
   );

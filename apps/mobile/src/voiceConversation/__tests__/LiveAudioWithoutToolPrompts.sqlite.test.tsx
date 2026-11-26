@@ -22,16 +22,12 @@ jest.mock(
   () => require('react-native-safe-area-context/jest/mock').default,
 );
 const mockManagedSettings = jest.fn();
-const mockCanonicalStartup = jest.fn();
 const mockCredentials = jest.fn();
 jest.mock('../../voiceSettings/liveVoicePreferencesKeychain', () => ({
   loadLiveCallSettings: () => mockCredentials(),
 }));
 jest.mock('../../voiceSettings/liveResponsesSettings', () => ({
   loadLiveResponsesSettings: () => mockManagedSettings(),
-}));
-jest.mock('../../voiceSettings/liveCanonicalHealthSettings', () => ({
-  readCanonicalLiveHealthStartup: () => mockCanonicalStartup(),
 }));
 jest.mock('../../ragConversation/conversationExecutionNative', () => ({
   conversationExecutionNative: () => ({
@@ -104,7 +100,6 @@ test.each([
       preferences: { schema: 1, language: 'auto', voice: 'default' },
     });
     const ready = mode.startsWith('exact audio');
-    const companion = mode === 'exact audio with old companion';
     const headless = mode === 'exact audio with v2';
     const v2 = { ...managed, scope: 'selected-live-heart-rate-aggregate-v2' };
     const store = {
@@ -129,26 +124,6 @@ test.each([
               subscribe: () => () => {},
             }
           : { kind: 'off' },
-      );
-      mockCanonicalStartup.mockResolvedValue(
-        companion
-          ? {
-              kind: 'active',
-              companion: {
-                binding: {
-                  backendModel: managed.backendModel,
-                  version: 2,
-                  capability: 'canonical-health-context-result-v2',
-                  generation: 'd'.repeat(64),
-                  grantID: 'd'.repeat(64) + '-model',
-                  legacyGeneration: managed.generation,
-                  credentialEpoch: epoch,
-                },
-                current: () => true,
-                subscribe: () => () => {},
-              },
-            }
-          : { kind: 'off', current: () => true },
       );
       const view = await render(
         <SettingsConsentReadServicesContext.Provider
@@ -191,7 +166,6 @@ test.each([
           {
             language: 'auto',
             voice: 'default',
-            ...(headless ? { responsesGrant: v2 } : {}),
           },
         );
         await act(async () => {

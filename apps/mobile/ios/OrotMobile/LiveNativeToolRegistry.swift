@@ -1,22 +1,14 @@
 import Foundation
 
-/// The current managed port has exactly one entitled native function. Synthetic
-/// owned fixtures may use reviewed memory, but the production mailbox cannot.
+/// Only the shared app-owned Conversation declaration can enter this registry.
 struct LiveNativeToolRegistry {
     enum Name: String {
         case canonicalHealthContext = "local-health-context"
-        case healthAggregate = "orot_health_context"
-        case reviewedMemory = "orot_reviewed_memory"
 
         var instruction: String {
             switch self {
-            case .healthAggregate:
-                "The enabled app tool can request one bounded ordinary heart-rate average. " +
-                    "Use only its approved result; do not claim other record access or actions."
             case .canonicalHealthContext:
                 "Request only the enabled local health context. Use only independently approved results."
-            case .reviewedMemory:
-                "Use only the enabled app tool and its approved result; do not claim other record access or actions."
             }
         }
     }

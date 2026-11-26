@@ -1,3 +1,4 @@
+import { canonicalLiveCommonRegistration } from '../createLiveCommonHealthPort';
 import { DeviceEventEmitter, NativeModules, Platform } from 'react-native';
 import { nativeLiveVoice } from '../nativeRealtimeVoice';
 import { createRealtimeVoiceSession } from '../realtimeVoiceSession';
@@ -128,10 +129,12 @@ it.each(['gpt-6-luna', 'gpt-6-sol'])(
     };
     try {
       const generation = 'a'.repeat(64);
-      const receipt = Object.freeze({
+      const receipt = canonicalLiveCommonRegistration({
         backendModel,
         generation,
         grantID: generation + '-model',
+        credentialEpoch: 'b'.repeat(64),
+        voiceGeneration: 'c'.repeat(64),
       });
       const selected = jest.fn(() => receipt);
       const adapter = nativeLiveVoice(undefined, selected)!;
@@ -149,7 +152,7 @@ it.each(['gpt-6-luna', 'gpt-6-sol'])(
         'approved',
         'gpt-live-1.1',
         'synthetic-key',
-        { language: 'auto', voice: 'noeul', responsesGrant: receipt },
+        { language: 'auto', voice: 'noeul', commonToolsRegistration: receipt },
       );
       selected.mockImplementation(() => {
         throw new Error('Revoked choice');

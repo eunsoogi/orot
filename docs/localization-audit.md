@@ -261,7 +261,6 @@
 - `apps/mobile/src/transcription/accuracyEvaluation.ts`: 2
 - `apps/mobile/src/treatmentContext/hypertensionEducation.ts`: 1
 - `apps/mobile/src/treatmentContext/treatmentSafetyBoundary.ts`: 1
-- `apps/mobile/src/voiceConversation/RealtimeConversationVoiceEntry.tsx`: 7
 - `apps/mobile/src/voiceConversation/VoiceConversationScreen.tsx`: 1
 - `apps/mobile/test-helpers/overviewGeneratorHarness.tsx`: 3
 

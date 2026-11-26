@@ -3,7 +3,7 @@ import {
   liveCommonConversationRun,
   type LiveCommonConversationPort,
 } from './liveCommonConversationRun';
-import type { promptlessLiveAggregateRun } from './promptlessLiveAggregateRun';
+import type { loadLiveCallSettings } from '../voiceSettings/liveVoicePreferencesKeychain';
 import type { VoiceState } from './voiceTurn';
 import { conversationExecutionNative } from '../ragConversation/conversationExecutionNative';
 import { loadLiveResponsesSettings } from '../voiceSettings/liveResponsesSettings';
@@ -99,9 +99,7 @@ export function bindLiveCommonConversationStartup(input: {
   readonly injected?: LiveCommonConversationPort;
   readonly readState: () => VoiceState | undefined;
   readonly current: () => boolean;
-  readonly credentials: ReturnType<
-    typeof promptlessLiveAggregateRun
-  >['credentials'];
+  readonly credentials: typeof loadLiveCallSettings;
 }) {
   const startup = liveCommonConversationStartup();
   const run = liveCommonConversationRun(
@@ -116,7 +114,7 @@ export function bindLiveCommonConversationStartup(input: {
   return {
     registration: startup.registration,
     async credentials(id: string) {
-      const result = await input.credentials(id);
+      const result = await input.credentials();
       const owns = () =>
         input.readState()?.identity?.turnId === id && input.current();
       if (id && owns()) {

@@ -181,3 +181,55 @@ final class LiveNativeResultDispatchAuthority: @unchecked Sendable {
         return true
     }
 }
+
+/// Keep content-free timings for the shared Live tool dispatch after retiring the old mailbox.
+enum LiveManagedToolLatency: String {
+    case delegationToToolTerminal = "delegation_to_tool_terminal"
+    case settleToSocketSubmission = "settle_to_socket_submission"
+    case authorizationQueue = "authorization_queue"
+    case continuationSendCallback = "continuation_send_callback"
+    case terminalToOwnedTool = "terminal_to_owned_tool"
+
+    private static let enabled = ProcessInfo.processInfo.arguments.contains("-OROT_PROVIDER_DIAGNOSTICS")
+
+    static func start() -> DispatchTime? {
+        enabled ? .now() : nil
+    }
+
+    struct ApprovalTiming {
+        let terminal: DispatchTime?
+        let queued: DispatchTime?
+        let observe: ((LiveManagedToolLatency, UInt64) -> Void)?
+
+        func finish() {
+            LiveManagedToolLatency.finish(.authorizationQueue, since: queued, observe: observe)
+            LiveManagedToolLatency.finish(.terminalToOwnedTool, since: terminal, observe: observe)
+        }
+    }
+
+    /// Preserve the existing main-queue hop and its cancellation ordering.
+    /// The caller emits only after re-proving the same accepted request.
+    static func queuedApproval(
+        _ observe: ((Self, UInt64) -> Void)?,
+        _ proceed: @escaping (Bool, ApprovalTiming) -> Void,
+    ) -> (Bool) -> Void {
+        let terminal = enabled || observe != nil ? DispatchTime.now() : nil
+        return { granted in
+            let queued = terminal.map { _ in DispatchTime.now() }
+            let timing = ApprovalTiming(terminal: terminal, queued: queued, observe: observe)
+            DispatchQueue.main.async { proceed(granted, timing) }
+        }
+    }
+
+    static func finish(_ stage: Self, since start: DispatchTime?, observe: ((Self, UInt64) -> Void)? = nil, at end: DispatchTime? = nil) {
+        guard let start else { return }
+        let now = (end ?? .now()).uptimeNanoseconds
+        guard now >= start.uptimeNanoseconds else { return }
+        let elapsed = (now - start.uptimeNanoseconds) / 1_000_000
+        guard elapsed <= 300_000 else { return }
+        observe?(stage, elapsed)
+        if enabled {
+            NSLog("OROT_PROVIDER_DIAGNOSTIC layer=app feature=live_health stage=%@ elapsed_ms=%d", stage.rawValue, Int(elapsed))
+        }
+    }
+}

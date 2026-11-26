@@ -48,11 +48,10 @@
             }
 
             func start(baseline: [String: String], companion: [String: Any]) {
-                let declaration: [String: Any] = [
-                    "name": "local-health-context", "description": "Synthetic queue fixture", "strict": false,
-                    "parameters": ["type": "object", "additionalProperties": false,
-                                   "properties": ["days": [:], "detail": [:], "topics": [:], "window": [:]]],
-                ]
+                // Exercise the same registry descriptor as the product instead
+                // of a permissive placeholder that the exact registry rejects.
+                var declaration = LiveCanonicalContextV3Transport.stock
+                declaration["strict"] = false
                 let result = SettingsConsentRealtimeFixture.canonicalQueueFixture(
                     identifier: identifier, baseline: baseline, companion: companion, declaration: declaration,
                     owns: { [weak self] request in

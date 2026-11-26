@@ -120,6 +120,17 @@ export async function openSettingsConsentNativeStore(
         effectiveResponsesGeneration: pair.responsesGeneration,
         pairCandidates: [{ pair }],
       });
+      if (!current()) return false;
+      await write('canonical-synthetic-common-policy', {
+        scope: 'selected-live-conversation-local-tools-v3',
+        providerId: 'openai-live-responses',
+        recipient: 'OpenAI Responses (Live)',
+        backendModel: pair.backendModel,
+        credentialEpoch: pair.credentialEpoch,
+        generation: pair.responsesGeneration,
+        grantID: pair.responsesGeneration + '-model',
+        voiceGeneration: pair.voiceGeneration,
+      });
       return current();
     },
     selection(slot: ConsentFixtureSlot): ProviderSelectionStore {
@@ -166,6 +177,7 @@ export async function openSettingsConsentNativeStore(
         'authority-voice-responses-health-context',
         'canonical-synthetic-health-binding',
         'canonical-synthetic-voice-settings',
+        'canonical-synthetic-common-policy',
       ])
         await resetGenericPassword({ service: service(suffix) });
       await resetGenericPassword({ service: service('recovery-credential') });

@@ -1,10 +1,8 @@
 import { bindLiveCommonConversationStartup } from './liveCommonConversationStartup';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { AppState } from 'react-native';
-import { promptlessLiveAggregateRun } from './promptlessLiveAggregateRun';
 import { liveModel } from '../voiceSettings/liveVoicePreferences';
 import { loadLiveCallSettings } from '../voiceSettings/liveVoicePreferencesKeychain';
-import { hasLiveCommonConversationRuntime } from './nativeLiveCommonConversation';
 import { voiceSettingsStore } from '../voiceSettings/voiceSettingsStore';
 import { useInferenceConsent } from '../agent/execution/useInferenceConsent';
 import type { ConversationVoiceProps } from './conversationVoiceDependencies';
@@ -25,9 +23,6 @@ export function LiveConversationVoiceEntry(
     readonly onStatusChange?: (value: string) => void;
   },
 ) {
-  const managedRun = useRef<ReturnType<
-    typeof promptlessLiveAggregateRun
-  > | null>(null);
   const commonRun = useRef<ReturnType<
     typeof bindLiveCommonConversationStartup
   > | null>(null);
@@ -73,25 +68,17 @@ export function LiveConversationVoiceEntry(
     setTranscripts([]);
     setVisible(false);
     setState(initialVoiceState);
-    const managed = promptlessLiveAggregateRun(
-      () => current() && permission.current(),
-      () => owner.current?.stop(),
-    );
-    const commonRuntime = hasLiveCommonConversationRuntime();
     const common = bindLiveCommonConversationStartup({
       injected: props.liveCommonTools,
       readState: () => owner.current?.getState(),
       current: () => current() && permission.current(),
-      credentials: commonRuntime ? loadLiveCallSettings : managed.credentials,
+      credentials: loadLiveCallSettings,
     });
     const native = nativeLiveVoice(
       id => props.store.captureVoiceEnd?.(props.sessionId, id),
-      commonRuntime ? undefined : managed.nativeGrant,
-      undefined,
       common.registration,
     );
     if (!native) {
-      managed.dispose();
       setAvailable(false);
       return;
     }
@@ -125,11 +112,9 @@ export function LiveConversationVoiceEntry(
       },
     });
     owner.current = session;
-    managedRun.current = managed;
     commonRun.current = common;
     const revoke = () => {
       permission.stop();
-      managed.retire();
       common.retire();
       session.stop();
       setVisible(false);
@@ -147,10 +132,8 @@ export function LiveConversationVoiceEntry(
     return () => {
       mounted = false;
       permission.stop();
-      managed.dispose();
       common.retire();
       commonRun.current = null;
-      managedRun.current = null;
       owner.current = null;
       session.dispose();
       settings();
@@ -194,7 +177,6 @@ export function LiveConversationVoiceEntry(
     }
   };
   const stop = (graceful: boolean) => {
-    managedRun.current?.retire();
     commonRun.current?.retire();
     if (graceful) owner.current?.stop(true);
     permission.stop();
@@ -214,9 +196,6 @@ export function LiveConversationVoiceEntry(
   return (
     <RealtimeVoiceSurface
       visible={visible}
-      voiceVisible={visible}
-      suspended={false}
-      handoffBusy={false}
       state={state}
       status={status}
       model={liveModel}
@@ -225,14 +204,12 @@ export function LiveConversationVoiceEntry(
           state.identity?.sessionId === props.sessionId &&
           item.callId === state.identity.turnId,
       )}
-      toolConfirmation={null}
       disabled={!available || props.busy || props.photoPending}
       statusExternallyRendered={Boolean(props.onStatusChange)}
       start={start}
       stop={() => stop(true)}
       mute={() => owner.current?.mute()}
       resume={() => resumeVoice(owner.current)}
-      returnToCall={() => {}}
       onDismiss={() => stop(false)}
     />
   );

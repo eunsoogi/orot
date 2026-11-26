@@ -5,22 +5,6 @@ import { localData } from '../../aiFeatures/integration/featureServiceFixtures';
 import { guardedNativeDatabase } from '../../storage/protectedReadEpoch';
 import { createLiveHealthProofLease } from '../../healthEvidence/healthContext/liveHealthProofLease';
 import { createHealthContextReader } from '../../healthEvidence/healthContext/reader';
-import {
-  type createLiveResponsesHealthToolExecutor,
-  type LiveManagedHealthCall,
-} from '../liveResponsesHealthToolExecutor';
-
-export const call: LiveManagedHealthCall = {
-  callId: 'current-call',
-  sessionId: 1,
-  challengeId: 'challenge',
-  toolCallId: 'tool-call',
-  responseId: 'response',
-  delegationId: 'delegation',
-  name: 'orot_health_context',
-  args: JSON.stringify({ topic: 'measurements', days: 7 }),
-};
-
 export async function fixture() {
   const db = openSqliteTestDatabase(':memory:');
   const database = guardedNativeDatabase(db.database);
@@ -45,75 +29,21 @@ export async function fixture() {
     });
   }
   const read = jest.fn(createHealthContextReader(database));
-  const controller = new AbortController();
-  let active = call;
   let ownsProtectedRead = true;
   const borrowLiveHealthProof = createLiveHealthProofLease(
     database,
     owner => owner === database && ownsProtectedRead,
   );
-  let protectedData = true;
-  let epoch = 'a'.repeat(64);
-  const settle = jest.fn(
-    async (_call: string, _challenge: string, _output: string | null) => true,
-  );
-  const input: Parameters<typeof createLiveResponsesHealthToolExecutor>[0] = {
-    isChallengeCurrent: observed =>
-      observed.callId === active.callId &&
-      observed.sessionId === active.sessionId &&
-      observed.challengeId === active.challengeId &&
-      observed.toolCallId === active.toolCallId &&
-      observed.responseId === active.responseId &&
-      observed.delegationId === active.delegationId &&
-      observed.name === active.name &&
-      observed.args === active.args,
-    resolveOwner: async () => {
-      const capturedEpoch = epoch;
-      return {
-        grantID: 'b'.repeat(64) + '-model',
-        generation: 'b'.repeat(64),
-        backend: 'openai-live-responses',
-        backendModel: 'gpt-6-sol',
-        recipient: 'OpenAI Responses (Live)',
-        resultKind: 'health_aggregate',
-        credentialEpoch: capturedEpoch,
-        current: () => epoch === capturedEpoch,
-      };
-    },
-    protectedDataAvailable: async () => protectedData,
-    protectedDataCurrent: () => protectedData,
-    confirm: async () => true,
-    authorizeResult: async () => () => true,
+  return {
     openData: async () => ({
       ...localData([]).data,
       readHealthContext: read,
       borrowLiveHealthProof,
     }),
-    settle,
-  };
-  return {
-    input,
-    controller,
     read,
-    settle,
     close: db.close,
     revokeDbOwner() {
       ownsProtectedRead = false;
-    },
-    setActive(next: LiveManagedHealthCall) {
-      active = next;
-    },
-    lock() {
-      protectedData = false;
-    },
-    rotate() {
-      epoch = 'c'.repeat(64);
-    },
-    async edit() {
-      await records.put('health_observation', {
-        ...observation,
-        value: { kind: 'quantity', amount: 145, unit: 'count/min' },
-      });
     },
   };
 }

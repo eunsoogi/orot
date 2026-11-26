@@ -21,7 +21,6 @@ export function VoiceConversationScreen({
   audioOwnerId,
   identity,
   pipeline,
-  toolConfirmation,
   transcript,
   onEnd,
   onDismiss,
@@ -38,7 +37,6 @@ export function VoiceConversationScreen({
   audioOwnerId?: string;
   identity?: ReactNode;
   pipeline?: string | null;
-  toolConfirmation?: ReactNode;
   transcript?: readonly VoiceTranscriptLine[];
   onEnd: () => void;
   onDismiss?: () => void;
@@ -111,7 +109,6 @@ export function VoiceConversationScreen({
           )}
           <VoiceTranscriptViewport lines={transcript ?? []} />
         </View>
-        {toolConfirmation}
         <View style={styles.actions}>
           {manualFinish &&
             phase === 'listening' &&

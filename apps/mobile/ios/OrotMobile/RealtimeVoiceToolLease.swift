@@ -10,7 +10,20 @@ final class RealtimeVoiceToolLease {
         let inputItemID: String
     }
 
+    private let expectedTool: String?
     var enabled = false
+
+    /// Production Live has no legacy tool name or authority to enable this lease.
+    init() {
+        expectedTool = nil
+    }
+
+    #if OROT_TESTS && targetEnvironment(simulator)
+        init(fixtureToolName: String) {
+            expectedTool = Self.validID(fixtureToolName) ? fixtureToolName : nil
+        }
+    #endif
+
     private var input: String?
     private var response: String?
     private var boundInput: String?
@@ -28,7 +41,7 @@ final class RealtimeVoiceToolLease {
 
     func reset(enabled: Bool) {
         _ = invalidate()
-        self.enabled = enabled
+        self.enabled = enabled && expectedTool != nil
         // Keep tombstones across reopen as well: a delayed bridge reply cannot match reused IDs.
     }
 
@@ -54,7 +67,7 @@ final class RealtimeVoiceToolLease {
 
     func receive(responseID: String, toolCallID: String, name: String, arguments: String) {
         guard enabled, responseID == response, let boundInput, candidate == nil, pending == nil,
-              name == "orot_conversation", arguments.utf8.count <= 1024,
+              let expectedTool, name == expectedTool, arguments.utf8.count <= 1024,
               let data = arguments.data(using: .utf8),
               let object = try? JSONSerialization.jsonObject(with: data) as? [String: Any], object.isEmpty,
               remember(toolCallID, in: &seenTools) else { return }

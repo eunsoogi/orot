@@ -18,9 +18,6 @@ export interface ConversationVoiceProps {
   readonly liveCommonTools?: import('./liveCommonConversationRun').LiveCommonConversationPort;
   readonly resolveSelectedAi: () => Promise<SelectedAiResolution>;
   readonly onSend: ConversationScreenProps['onSend'];
-  readonly confirmRealtimeResult?: (
-    request: import('@orot/agent-runtime').OutboundProcessingRequest,
-  ) => Promise<boolean>;
 }
 export type VoiceSelection = Extract<SelectedAiResolution, { status: 'ready' }>;
 export type SelectionBinding = {

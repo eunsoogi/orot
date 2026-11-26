@@ -25,17 +25,17 @@ final class VoiceRealtimeModule: RCTEventEmitter {
         }
     #endif
     private(set) var active: String?
-    private var responsesMailbox: OwnedLiveResponsesMailbox?
-    let resultAuthority = LiveNativeResultDispatchAuthority()
     let commonSourcePins = LiveCommonV3SourcePins()
     @MainActor var commonV3: LiveCanonicalContextV3Transport?
-    let canonicalCallReview = CanonicalLiveCallPresenter()
+    #if OROT_TESTS && targetEnvironment(simulator)
+        let canonicalCallReview = CanonicalLiveCallPresenter()
+    #endif
     override static func requiresMainQueueSetup() -> Bool {
         true
     }
 
     override func constantsToExport() -> [AnyHashable: Any]! {
-        ["supportsVoiceAudioLevels": true, "supportsLiveAggregateHeadlessV2": true, "supportsLiveCommonConversationToolsV3": true, "supportsCanonicalHealthContextV2": RealtimeVoiceCanonicalHealthAdmission.enabledForLiveBridge]
+        ["supportsVoiceAudioLevels": true, "supportsLiveCommonConversationToolsV3": true]
     }
 
     override func supportedEvents() -> [String]! {
@@ -48,52 +48,15 @@ final class VoiceRealtimeModule: RCTEventEmitter {
     {
         DispatchQueue.main.async { [self] in
             guard active == nil else { reject("VOICE_BUSY", "Voice is already active.", nil); return }
-            let read = Self.canonicalAuthority
-            guard RealtimeVoiceCanonicalHealthAdmission.permitsStartupOptions(options, enabled: Self.canonicalReviewEnabled(identifier)),
-                  Set(options.allKeys.compactMap { $0 as? String }).isSubset(of: ["language", "voice", "responsesGrant", "canonicalHealthGrant", "canonicalHealthDeclaration", "commonToolsRegistration"]),
+            // Native rejects retired bridge options instead of silently downgrading to audio-only.
+            let keys = options.allKeys.compactMap { $0 as? String }
+            guard keys.count == options.count,
+                  Set(keys).isSubset(of: ["language", "voice", "commonToolsRegistration"]),
                   let language = options["language"] as? String, let voice = options["voice"] as? String
-            else {
-                reject("VOICE_LIVE_FAILED", "Live voice is unavailable.", nil); return
-            }
-            let canonicalRequested = options["canonicalHealthGrant"] != nil || options["canonicalHealthDeclaration"] != nil
-            var admission: LiveResponsesAdmission?
-            if options["commonToolsRegistration"] != nil {
-                guard !canonicalRequested, let prepared = prepareCommonV3(identifier, model: model, key: apiKey, options: options)
-                else { reject("VOICE_LIVE_FAILED", "Live voice is unavailable.", nil); return }
-                admission = prepared
-            } else if let request = options["responsesGrant"] {
-                guard let grant = LiveResponsesSettingsGrant(request), grant.isCurrent(key: apiKey, read: read) else {
-                    reject("VOICE_LIVE_FAILED", "Live voice is unavailable.", nil); return
-                }
-                if canonicalRequested {
-                    guard !grant.requiresAggregateScope, let request = options["canonicalHealthGrant"],
-                          let companion = RealtimeVoiceCanonicalHealthAdmission(request),
-                          let declaration = options["canonicalHealthDeclaration"] as? [String: Any],
-                          companion.configuration(declaration, base: grant, key: apiKey, read: read) != nil,
-                          canonicalCallReview.consume(.init(call: identifier, capability: companion))
-                    else { reject("VOICE_LIVE_FAILED", "Live voice is unavailable.", nil); return }
-                    let mailbox = RealtimeVoiceCanonicalHealthMailbox(
-                        call: identifier, baseline: grant, capability: companion, authority: resultAuthority, key: apiKey, read: read,
-                        owns: { [weak self] request in
-                            guard let self else { return false }
-                            return active == request.call && call.id == request.call && call.liveSessionID == request.session
-                                && call.liveSocketEpoch == request.epoch && call.ready && !call.paused
-                                && call.token != nil && call.foreground() && call.liveIsCurrent()
-                        },
-                        emit: { [weak self] event, body in self?.emitCanonicalReviewEvent(event, body) },
-                    )
-                    responsesMailbox = OwnedLiveResponsesMailbox(identifier: identifier, mode: .canonical(mailbox, grant))
-                    admission = mailbox.bridge(backendModel: grant.backendModel, declaration: declaration)
-                } else {
-                    let mailbox = LiveResponsesMailbox(identifier: identifier, grant: grant, key: apiKey, authority: resultAuthority) { [weak self] event, body in
-                        self?.sendEvent(withName: event, body: body)
-                    }
-                    responsesMailbox = OwnedLiveResponsesMailbox(identifier: identifier, mode: .aggregate(mailbox))
-                    admission = mailbox.admission()
-                }
-            } else if canonicalRequested {
-                reject("VOICE_LIVE_FAILED", "Live voice is unavailable.", nil); return
-            }
+            else { reject("VOICE_LIVE_FAILED", "Live voice is unavailable.", nil); return }
+            let admission = prepareCommonV3(identifier, model: model, key: apiKey, options: options)
+            guard options["commonToolsRegistration"] == nil || admission != nil
+            else { reject("VOICE_LIVE_FAILED", "Live voice is unavailable.", nil); return }
             active = identifier
             call.open(identifier, model: model, key: apiKey, language: language, voice: voice, managedAdmission: admission) { result in
                 switch result {
@@ -110,23 +73,11 @@ final class VoiceRealtimeModule: RCTEventEmitter {
                 case .failure:
                     if self.call.id == nil, self.active == identifier {
                         self.retireCommonV3(identifier)
-                        self.responsesMailbox?.revoke()
-                        self.responsesMailbox = nil
                         self.active = nil
                     }
                     reject("VOICE_LIVE_FAILED", "Live voice is unavailable.", nil)
                 }
             }
-        }
-    }
-
-    @objc(settleLiveResponsesToolCall:challengeId:output:resolver:rejecter:)
-    func settleLiveResponsesToolCall(_ identifier: String, challengeId: String, output: String?,
-                                     resolver resolve: @escaping RCTPromiseResolveBlock, rejecter _: @escaping RCTPromiseRejectBlock)
-    {
-        DispatchQueue.main.async {
-            guard self.active == identifier, let mailbox = self.responsesMailbox else { resolve(false); return }
-            mailbox.settle(call: identifier, challenge: challengeId, output: output) { resolve($0) }
         }
     }
 
@@ -136,12 +87,6 @@ final class VoiceRealtimeModule: RCTEventEmitter {
     {
         DispatchQueue.main.async {
             self.revokeCommonV3(grantID: grantID, generation: generation)
-            if let mailbox = self.responsesMailbox, mailbox.grant.grantID == grantID,
-               mailbox.grant.generation == generation
-            {
-                mailbox.revoke()
-                self.call.fail()
-            }
             resolve(nil)
         }
     }
@@ -171,7 +116,9 @@ final class VoiceRealtimeModule: RCTEventEmitter {
 
     private func stop(_ identifier: String, graceful: Bool, resolve: @escaping RCTPromiseResolveBlock, reject: @escaping RCTPromiseRejectBlock) {
         DispatchQueue.main.async { [self] in
-            canonicalCallReview.retire(identifier)
+            #if OROT_TESTS && targetEnvironment(simulator)
+                canonicalCallReview.retire(identifier)
+            #endif
             do {
                 let waitsForClose = graceful && call.id == identifier
                 var pendingDuration: [String: Any]?
@@ -185,15 +132,9 @@ final class VoiceRealtimeModule: RCTEventEmitter {
                         }
                     }
                 } : nil
-                try call.stop(identifier, graceful: graceful, retireMailbox: { [self] in
-                    if active == identifier {
-                        responsesMailbox?.revoke()
-                    }
-                }, observedClose: capture)
+                try call.stop(identifier, graceful: graceful, observedClose: capture)
                 if active == identifier {
                     retireCommonV3(identifier)
-                    responsesMailbox?.revoke()
-                    responsesMailbox = nil
                     active = nil
                 }
                 pendingDuration = call.connectedDuration.take(identifier)
@@ -236,8 +177,6 @@ final class VoiceRealtimeModule: RCTEventEmitter {
 
     override func invalidate() {
         DispatchQueue.main.async {
-            self.responsesMailbox?.revoke()
-            self.responsesMailbox = nil
             if let id = self.active {
                 self.retireCommonV3(id)
                 try? self.call.stop(id)

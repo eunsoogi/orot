@@ -66,7 +66,7 @@ extension RealtimeVoiceLifecycleTests {
             var executed = 0
             var frames = 0
             var admission = LiveResponsesAdmission(
-                backendModel: "gpt-6-luna", functionName: "orot_reviewed_memory",
+                backendModel: "gpt-6-luna", functionName: "local-health-context",
                 backendAllowed: { true }, mayRun: { $0.owner.callID == "fixture-call" },
                 approve: { _, complete in
                     approval = complete
@@ -77,6 +77,7 @@ extension RealtimeVoiceLifecycleTests {
                     return {}
                 },
                 mayDisclose: { _, _ in false },
+                dispatchTicket: { _, _ in nil }, canonicalConfiguration: { RealtimeVoiceNativeRegistryAssertions.stockConfiguration("gpt-6-luna") },
             )
             admission.observeTiming = { stage, duration in
                 observed.append(stage)

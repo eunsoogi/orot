@@ -105,6 +105,13 @@ struct LiveConversationToolsSettingsWitness: Equatable {
         value.utf8.count == 64 && value.utf8.allSatisfy { (48 ... 57).contains($0) || (97 ... 102).contains($0) }
     }
 
+    #if OROT_TESTS && targetEnvironment(simulator)
+        /// Same protected Keychain decoder, but a disjoint UUID-owned fixture service.
+        static func fixturePolicy(_ namespace: String) -> [String: String]? {
+            readPolicy(namespace + ".canonical-synthetic-common-policy", "synthetic-settings-consent")
+        }
+    #endif
+
     private static func readPolicy(_ service: String, _ account: String) -> [String: String]? {
         let query: [String: Any] = [
             kSecClass as String: kSecClassGenericPassword,
