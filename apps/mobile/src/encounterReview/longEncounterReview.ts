@@ -1,7 +1,6 @@
 import { admitRemoteLongEncounter } from './remoteLongEncounterAdmission';
 import {
   encounterCanonical,
-  requireEncounterActive,
   validateEncounterApproval,
 } from '@orot/agent-runtime';
 import type {
@@ -17,14 +16,13 @@ import { openLocalStorage } from '../storage/secureDatabase';
 import { openObservedEncounterPageDatabase } from './observedPageDatabase';
 import { acquireIndependentReadEpoch } from '../storage/protectedReadEpoch';
 import { conversationExecutionNative } from '../ragConversation/conversationExecutionNative';
-import { encounterConflicts } from '../agent/encounter/conflicts';
-import { validateLongEncounterCandidates } from '../agent/encounter/validateLongEncounterCandidates';
 import { persistEncounterApproval } from '../agent/encounter/persistence';
 import { readLongTranscriptReview } from '../agent/encounter/longTranscriptReviewRead';
 import type { ReviewResult } from './controller';
 import { prepareLocalEncounterExtraction } from './localEncounterPageExtraction';
 import { watchEncounterNativeAdmission } from './nativeAdmission';
 import { openEncounterReviewSessions } from './openSessions';
+import { proveLongEncounterPending } from './proveLongEncounterPending';
 
 type Owner = {
   pending?: EncounterPending;
@@ -140,6 +138,13 @@ export function createLongEncounterReview(
               executionId: 'encounter-local-long-' + executionId,
             }));
         if (signal.aborted) return { status: 'cancelled' };
+        if (
+          !remote &&
+          result?.status === 'invalid-candidates' &&
+          !lease.signal.aborted &&
+          read.ownerCurrent()
+        )
+          return { status: 'invalid-candidates' };
         if (result?.status !== 'complete')
           return {
             status: remote?.denied() ? 'consent-denied' : 'unavailable',
@@ -157,28 +162,17 @@ export function createLongEncounterReview(
               ?.data_version;
           const version = await dataVersion();
           if (typeof version !== 'number') return { status: 'unavailable' };
-          pending = await repository.transaction(async (writer, sql) => {
-            if (!sql) throw new Error('Canonical storage required.');
-            const snapshot: EncounterPending = {
+          pending = await proveLongEncounterPending(
+            repository,
+            {
               threadId: session.threadId,
               sourceId,
               segments: result.segments,
               candidates: result.candidates,
               conflicts: [],
-            };
-            const transcript = await readLongTranscriptReview(
-              writer,
-              sql,
-              snapshot,
-              () => requireEncounterActive(lease.signal),
-            );
-            validateLongEncounterCandidates(snapshot.candidates, transcript);
-            snapshot.conflicts = await encounterConflicts(
-              writer,
-              snapshot.candidates,
-            );
-            return snapshot;
-          });
+            },
+            lease.signal,
+          );
           if (
             (await discovery.read())?.threadId !== pending.threadId ||
             !(await lease.confirm()) ||
