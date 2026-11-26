@@ -1,6 +1,7 @@
 import type { AgentMemoryService } from '@orot/agent-memory';
 import type {
   OwnedSqlPhase,
+  SourceDeletionTimingPhase,
   SqlDatabase,
   SqlTimingObserver,
 } from '@orot/storage';
@@ -74,6 +75,23 @@ export async function removeLocalSourceWithMemory(
       beginRecordingDeletionTiming(timingProbe, span[phase]);
     else endRecordingDeletionTiming(timingProbe, span[phase], event);
   };
+  const observeDelete: SqlTimingObserver<SourceDeletionTimingPhase> = (
+    phase,
+    event,
+  ) => {
+    const span = {
+      admission: 'source-delete-db-admission',
+      references: 'source-delete-reference-sql',
+      fences: 'source-delete-fence-sql',
+      vectors: 'source-delete-vector-sql',
+      cascade: 'source-delete-cascade-sql',
+      context: 'source-delete-context-sql',
+      settlement: 'source-delete-db-settlement',
+    } as const;
+    if (event === 'begin')
+      beginRecordingDeletionTiming(timingProbe, span[phase]);
+    else endRecordingDeletionTiming(timingProbe, span[phase], event);
+  };
   let derivedCleanupEnded = false;
   const endDerivedCleanup = (outcome: 'success' | 'failure') => {
     if (derivedCleanupEnded) return;
@@ -119,8 +137,11 @@ export async function removeLocalSourceWithMemory(
             timingProbe,
             'database-delete-commit',
             () =>
-              repository.sourceRecords.delete(normalizedSourceId, transaction =>
-                rag.deleteChunks([], [normalizedSourceId], transaction),
+              repository.sourceRecords.delete(
+                normalizedSourceId,
+                transaction =>
+                  rag.deleteChunks([], [normalizedSourceId], transaction),
+                ...(timingProbe ? [observeDelete] : []),
               ),
           );
         },

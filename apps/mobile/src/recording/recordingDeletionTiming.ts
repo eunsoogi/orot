@@ -34,6 +34,13 @@ export type RecordingDeletionTimingSpan =
   | 'memory-provenance-scan'
   | 'derived-data-cleanup'
   | 'database-delete-commit'
+  | 'source-delete-db-admission'
+  | 'source-delete-reference-sql'
+  | 'source-delete-fence-sql'
+  | 'source-delete-vector-sql'
+  | 'source-delete-cascade-sql'
+  | 'source-delete-context-sql'
+  | 'source-delete-db-settlement'
   | 'audio-cleanup'
   | 'list-summary-read';
 

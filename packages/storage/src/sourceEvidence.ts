@@ -19,8 +19,9 @@ import {
 } from './recordPersistence';
 import type { RecordMap } from './contracts';
 import type { SqlDatabase, SqlExecutor } from './sql';
-import { readOwnedDeletionReferences } from './sourceDeletionReferences';
-import { stageSourceDeletionFences } from './sourceDeletionFenceWrites';
+import { deleteSourceEvidence } from './sourceEvidenceDeletion';
+import type { SourceDeletionTimingPhase } from './sourceEvidenceDeletion';
+import type { SqlTimingObserver } from './ownedSqlTiming';
 import { sourceDeletionGroupReader } from './sourceDeletionMembership';
 
 export type HashedSourceRecord = SourceRecord & { contentHash: SourceContentHash };
@@ -35,6 +36,7 @@ export interface SourceRecordRepository {
   delete(
     id: string,
     withinDeletionTransaction?: (transaction: SqlExecutor) => Promise<void>,
+    observe?: SqlTimingObserver<SourceDeletionTimingPhase>,
   ): Promise<boolean>;
 }
 
@@ -139,27 +141,8 @@ export function createSourceEvidenceRepositories(database: SqlDatabase): {
         }
       });
     },
-    async delete(id, withinDeletionTransaction) {
-      let deleted = false;
-      await database.transaction(async (transaction) => {
-        const sourceId = RecordIdSchema.parse(id);
-        if (!(await readStoredRecord(transaction, 'source_record', sourceId))) return;
-        // Record kinds before the cascade inserts identity-only fences; retain unknown legacy fences.
-        await transaction.execute(
-          'CREATE TABLE IF NOT EXISTS typed_deletion_markers (marker_table TEXT NOT NULL, source_id TEXT NOT NULL, kind TEXT NOT NULL, PRIMARY KEY (marker_table, source_id, kind))',
-        );
-        await transaction.execute(
-          'CREATE TABLE IF NOT EXISTS typed_deletion_write_context (marker_table TEXT NOT NULL, source_id TEXT NOT NULL, PRIMARY KEY (marker_table, source_id))',
-        );
-        const references = await readOwnedDeletionReferences(transaction, sourceId);
-        const clearWriteContext = await stageSourceDeletionFences(transaction, references);
-        // Vector fences and source cascades commit together so a resumed graph cannot revive deleted evidence.
-        await withinDeletionTransaction?.(transaction);
-        deleted = await deleteStoredRecord(transaction, 'source_record', sourceId);
-        await clearWriteContext();
-      });
-      return deleted;
-    },
+    delete: (id, withinDeletionTransaction, observe) =>
+      deleteSourceEvidence(database, id, withinDeletionTransaction, observe),
   };
 
   const evidenceSpans: EvidenceSpanRepository = {
