@@ -1,3 +1,4 @@
+import { traceVoiceCaptionClose } from '../voiceConversation/voiceCaptionCloseDiagnostics';
 import {
   setupObservedVoiceCaptions,
   writeObservedVoiceCaptions,
@@ -79,9 +80,18 @@ export async function writeConversationVoiceEndMarker(
   try {
     await write(true);
   } catch (error) {
-    if (error !== captionRevoked) throw error;
+    if (error !== captionRevoked) {
+      if (input.observedVoiceCaptions !== undefined)
+        traceVoiceCaptionClose('sidecar', 'failed');
+      throw error;
+    }
     await write(false);
   }
+  if (input.observedVoiceCaptions !== undefined)
+    traceVoiceCaptionClose(
+      'sidecar',
+      didSaveCaptions ? 'committed' : 'authority_lost',
+    );
   return {
     id: input.id,
     createdAt,

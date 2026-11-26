@@ -47,6 +47,13 @@ final class VoiceSystemCallLifecycle: NSObject, VoiceSystemCallPort, CXProviderD
         case interruptionEnded = "audio_interruption_ended"
         case interruptionUnspecified = "audio_interruption_unspecified"
         case routeChanged = "audio_route_changed"
+        case captionCloseIneligible = "caption_close_ineligible"
+        case captionCloseEligible = "caption_close_eligible"
+        case captionBufferPresent = "caption_buffer_present"
+        case captionBufferUnavailable = "caption_buffer_unavailable"
+        case captionTerminalAcknowledged = "caption_terminal_acknowledged"
+        case captionTerminalUnconfirmed = "caption_terminal_unconfirmed"
+        case captionTerminalForegroundLost = "caption_terminal_foreground_lost"
     }
 
     static func report(_ stage: DiagnosticStage) {

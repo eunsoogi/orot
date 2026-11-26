@@ -104,7 +104,23 @@ final class ProcessDiagnosticWitness: @unchecked Sendable {
         return "OROT_PROVIDER_DIAGNOSTIC layer=app feature=rag stage=" + stage + " outcome=" + outcome
     }
 
+    /// Exact caption outcomes appear only in the opted-in process log, never the Settings ring.
+    static func voiceCaptionCloseLine(stage: String, outcome: String) -> String? {
+        let permitted: [String: Set<String>] = [
+            "bridge_packet": ["unavailable", "authorized", "authority_lost"],
+            "sidecar": ["committed", "authority_lost", "failed"],
+        ]
+        guard permitted[stage]?.contains(outcome) == true else { return nil }
+        return "OROT_PROVIDER_DIAGNOSTIC layer=app feature=voice_caption stage=" + stage + " outcome=" + outcome
+    }
+
     func acceptAndContinueJS(feature: String, stage: String, outcome: String) -> Bool {
+        if feature == "voice_caption" {
+            if let line = Self.voiceCaptionCloseLine(stage: stage, outcome: outcome) {
+                NSLog("%@", line)
+            }
+            return false
+        }
         if stage == "conversation_a2ui_plan_envelope" || stage == "conversation_a2ui_final_admission" ||
             stage == "conversation_a2ui_react_commit"
         {

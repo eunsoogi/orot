@@ -14,6 +14,7 @@ import {
   splitLiveVoiceClose,
 } from './observedVoiceCaptions';
 import type { VoicePhase } from './voiceTurn';
+import { traceVoiceCaptionClose } from './voiceCaptionCloseDiagnostics';
 import {
   hasLiveVoiceRuntime,
   hasRealtimeVoiceRuntime,
@@ -99,9 +100,19 @@ function nativeOwnedVoice(
         (result => {
           const close =
             live && graceful ? splitLiveVoiceClose(result, id) : undefined;
+          const authorized = previous.captionsCurrent();
+          if (live && graceful)
+            traceVoiceCaptionClose(
+              'bridge_packet',
+              !close?.captions
+                ? 'unavailable'
+                : authorized
+                  ? 'authorized'
+                  : 'authority_lost',
+            );
           return previous.receive?.(
             close?.duration ?? result,
-            previous.captionsCurrent() ? close?.captions : undefined,
+            authorized ? close?.captions : undefined,
             previous.captionsCurrent,
           );
         }),
