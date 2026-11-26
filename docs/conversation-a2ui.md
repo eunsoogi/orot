@@ -162,3 +162,18 @@ native protected-data availability before presenting the selected panel. A
 missing or changed row, stale route, or unavailable device protection leaves
 the accepted content inline; an ownership change closes an open sheet.
 Nothing about the archived action is sent to a provider or written on a tap.
+
+## Inline rich Text in live layouts
+
+Fresh v40 ordinary completed replies can render strong, emphasis and inline
+code inside accepted Basic Catalog Text prose. For example, a Card paragraph
+or a Tab panel may emphasize terms without flattening the surrounding layout.
+The full answer and all Text fields must still match exactly, including the
+Markdown markers. Copy uses the original answer. HTML, link and image syntax
+is not admitted in the structured rich-text path; no action, URL handling,
+or external transfer is introduced.
+
+This is a live renderer capability only. Reopening a rich reply uses the
+existing ordinary Markdown view of the saved answer, without the live layout.
+Prior responder versions and v7/v8 layout archives keep their existing behavior.
+Tab and Modal labels and locally editable controls keep their current design.

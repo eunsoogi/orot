@@ -12,7 +12,7 @@ const input = {
   evidence: { items: [], coverage: [], conflicts: [] },
 } as unknown as TaskResponderInput;
 test('new answer contract has no coverage completion classification', () => {
-  expect(ragConversationTask.taskVersion).toBe('39');
+  expect(ragConversationTask.taskVersion).toBe('40');
   for (const schema of [
     conversationResultSchema,
     literatureConversationResultSchema,

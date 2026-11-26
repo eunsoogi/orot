@@ -11,6 +11,7 @@ import { useCallback, useContext, useMemo, useState } from 'react';
 import { useWindowDimensions, View } from 'react-native';
 import { ConversationA2UIHorizontalList } from './ConversationA2UIHorizontalList';
 import { AppText } from '../layout/AppText';
+import { renderA2UIInlineRichText } from './ConversationA2UIInlineRichText';
 import { AppSymbol } from '../layout/AppSymbol';
 import { a2uiSurfaceStyles as styles } from './conversationA2UISurfaceStyles';
 import { appColors } from '../layout/appColors';
@@ -127,7 +128,7 @@ function SurfaceNode({
             : styles.body
         }
       >
-        {node.text}
+        {renderA2UIInlineRichText(node)}
       </AppText>
     );
   }
