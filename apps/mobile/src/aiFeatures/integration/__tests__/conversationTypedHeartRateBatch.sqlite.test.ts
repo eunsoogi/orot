@@ -25,6 +25,7 @@ it.each(['unchanged', 'sql-mutation', 'native-lock'] as const)(
       const read = jest.fn(data.readHealthContext!);
       const dispatch = createTypedHeartRateDispatch();
       const registry = new LocalEvidenceReferenceRegistry();
+      const before = registry.snapshot();
       const signal = new AbortController().signal;
       const operationRunId = 'typed-heart-rate-batch';
       const mutate = scenario === 'sql-mutation';
@@ -88,11 +89,13 @@ it.each(['unchanged', 'sql-mutation', 'native-lock'] as const)(
           coverage: [{ gaps: ['typed_heart_rate_proof_unavailable'] }],
         });
         expect(dispatch.active()).toBeUndefined();
+        expect(registry.snapshot()).toEqual(before);
       } else {
         expect(result).toMatchObject({
           items: [{ content: expect.stringContaining('"meanBpm":63') }],
         });
         expect(dispatch.active()).toBeDefined();
+        expect(registry.snapshot()).not.toEqual(before);
       }
     } finally {
       f.close();
