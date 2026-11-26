@@ -16,7 +16,7 @@ export async function prepareOwnedDailyBookmarkFixtureSession(
     await storage.continuousSession(
       model,
       'follow-up-session',
-      '2035-01-01T12:00:00Z',
+      '2035-01-01T12:00:00.000Z',
       new AbortController().signal,
     );
   } else {
