@@ -55,13 +55,15 @@ extension RealtimeVoiceCall {
             liveExpiresAt = Date(timeIntervalSince1970: seconds)
             liveExpiryTimer = Timer.scheduledTimer(withTimeInterval: max(0, seconds - Date().timeIntervalSince1970), repeats: false) { [weak self] _ in
                 guard let self, liveSocketEpoch == socketEpoch else { return }
-                fail()
+                fail(.liveSessionExpired)
             }
             beginAudio()
         case "session.delegation.created", "response.event", "session.input_transcript.delta":
             receiveManagedResponses(event)
-        case "error", "session.closed":
-            fail()
+        case "error":
+            fail(.liveServerError)
+        case "session.closed":
+            fail(.liveServerClosed)
         case "session.input_audio.unmuted":
             guard paused, let unmuteID = liveUnmuteID, liveIsCurrent(),
                   event["client_event_id"] as? String == unmuteID else { return }
@@ -79,25 +81,10 @@ extension RealtimeVoiceCall {
                     outputRenderStartedAt = start
                 }
                 state("speaking")
-            } catch { fail() }
+            } catch { fail(.liveOutputFailed) }
         default:
             // Caption collection remains independent of the managed response lease.
             break
-        }
-    }
-
-    /// Cancel local playback only. Live does not expose the legacy response/truncate commands.
-    func interrupt() {
-        guard id != nil else { return }
-        if audioStarting {
-            fail()
-            return
-        }
-        retireManagedResponses()
-        outputRenderStartedAt = nil
-        _ = audio.cancel()
-        if ready, !paused {
-            state("listening")
         }
     }
 }
