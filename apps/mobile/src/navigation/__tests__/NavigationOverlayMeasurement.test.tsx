@@ -5,6 +5,7 @@ import { NavigationGeometryProvider } from '../NavigationGeometryProvider';
 import { NavigationViewport } from '../NavigationViewport';
 import { NavigationGlassSurface } from '../NavigationGlassSurface';
 import { useNavigationContentFrame } from '../navigationContentFrame';
+import { openGeometry } from '../__fixtures__/navigationOpenGeometry';
 
 jest.mock(
   'react-native-safe-area-context',
@@ -123,4 +124,51 @@ test('invalidates native measurement only after overlay layout and preserves the
   await rerender(<Fixture />);
   expect(host().props.geometryLayoutRevision).toBe('[0,792,402,82]');
   expect(host()).toBe(originalHost);
+});
+
+test('a late native viewport recovery wakes the same admitted right rail without moving the local overlay', async () => {
+  const view = await render(<Fixture />);
+  try {
+    const sensor = screen.getByTestId('navigation-window-geometry-sensor');
+    const overlay = screen.getByTestId('navigation-action-bar-overlay');
+    const contracted = {
+      ...openGeometry,
+      safeAreaInsets: { ...openGeometry.safeAreaInsets, right: 86 },
+      viewportBounds: { ...openGeometry.windowBounds, width: 920 },
+    };
+    await fireEvent(sensor, 'geometryChange', { nativeEvent: contracted });
+    await fireEvent(overlay, 'layout', {
+      nativeEvent: { layout: { x: 0, y: 0, width: 920, height: 669 } },
+    });
+    const rail = screen.getByTestId('navigation-right-rail');
+    const previous = rail.props.geometryLayoutRevision;
+    const top = rail.props.railBackTopInset;
+    const right = rail.props.railRightInset;
+    const height = rail.props.railAvailableHeight;
+    expect(top).toBeGreaterThan(0);
+    // UIKit recovers full-root containment; the action overlay has not resized
+    // yet. Only this native sensor update reaches the presentation.
+    const expanded = {
+      ...contracted,
+      viewportBounds: openGeometry.windowBounds,
+    };
+    await fireEvent(sensor, 'geometryChange', { nativeEvent: expanded });
+    expect(screen.getByTestId('navigation-right-rail')).toBe(rail);
+    expect(rail.props.railBackTopInset).toBe(top);
+    expect(rail.props.railRightInset).toBe(right);
+    expect(rail.props.railAvailableHeight).toBe(height);
+    expect(rail.props.geometryLayoutRevision).not.toBe(previous);
+    const recovered = rail.props.geometryLayoutRevision;
+    await fireEvent(sensor, 'geometryChange', {
+      nativeEvent: {
+        ...expanded,
+        navigationSide: 'right',
+        navigationFrame: { x: 894, y: 192, width: 48, height: 48 },
+      },
+    });
+    // Publishing the native Back frame must not re-wake its own geometry.
+    expect(rail.props.geometryLayoutRevision).toBe(recovered);
+  } finally {
+    await view.unmount();
+  }
 });
