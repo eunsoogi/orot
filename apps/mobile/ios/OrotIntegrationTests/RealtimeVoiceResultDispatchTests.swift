@@ -178,6 +178,50 @@ extension RealtimeVoiceLifecycleTests {
             }
         }
 
+        @MainActor
+        func testOwnedBatchUsesExactNetworklessSocketFIFO() async throws {
+            for mode in ["allowed", "revoked", "replaced", "stopped", "socket-failed", "duplicate"] {
+                let owner = LiveNativeResultBatch.Owner(call: "call", session: "session", epoch: UUID(), delegation: "delegation", response: "response")
+                let task = HeldContinuationSocketTask(), next = HeldContinuationSocketTask()
+                let socket = RealtimeVoiceSocket(endpoint: RealtimeVoiceSocketEndpoint(networklessTask: { task.resumed ? next : task }))
+                defer { socket.close() }
+                socket.failed = { [weak socket] in socket?.close() }
+                socket.open(model: "gpt-live-1.1", key: "synthetic")
+                var source = true, retired = 0
+                let outputs = ["first", "second"].enumerated().map { i, function in
+                    LiveNativeResultBatch.ApprovedOutput(function: function, proof: i == 0 || mode == "duplicate" ? owner.epoch : UUID(),
+                                                         text: function, kind: .aggregate, sourceCurrent: { i != 0 || source },
+                                                         retire: { retired += 1 })
+                }
+                let candidate = LiveNativeResultBatch(owner: owner, functions: ["first", "second"], outputs: outputs, owns: { $0 == owner })
+                if mode == "duplicate" {
+                    XCTAssertNil(candidate); continue
+                }
+                let batch = try XCTUnwrap(candidate)
+                XCTAssertTrue(socket.sendTicketedToolBatch(batch) && !socket.sendTicketedToolBatch(batch))
+                XCTAssertEqual(task.frames, ["first"])
+                source = mode != "revoked"
+                if mode == "replaced" {
+                    socket.close(); socket.open(model: "gpt-live-1.1", key: "synthetic")
+                }
+                if mode == "stopped" {
+                    _ = socket.discardManagedToolFrames()
+                }
+                let first = task.completions.removeFirst()
+                first(mode == "socket-failed" ? URLError(.networkConnectionLost) : nil)
+                first(nil) // A stale duplicate cannot remove or advance the next FIFO frame.
+                await drainContinuationCallbacks()
+                XCTAssertEqual(task.frames, mode == "allowed" ? ["first", "second"] : ["first"])
+                if mode == "allowed" {
+                    task.completions.removeFirst()(nil); await drainContinuationCallbacks()
+                    XCTAssertEqual(task.frames, ["first", "second", "response.create"])
+                    task.completions.removeFirst()(nil); await drainContinuationCallbacks()
+                }
+                XCTAssertTrue(next.frames.isEmpty)
+                XCTAssertEqual(retired, 2)
+            }
+        }
+
         private func drainContinuationCallbacks() async {
             await withCheckedContinuation { (continuation: CheckedContinuation<Void, Never>) in
                 DispatchQueue.main.async { continuation.resume() }
@@ -187,13 +231,16 @@ extension RealtimeVoiceLifecycleTests {
 
     private final class HeldContinuationSocketTask: RealtimeVoiceSocketTask {
         var resumed = false
+        var frames: [String] = []
         var completions: [@Sendable (Error?) -> Void] = []
 
         func resume() {
             resumed = true
         }
 
-        func send(_: URLSessionWebSocketTask.Message, completionHandler: @escaping @Sendable (Error?) -> Void) {
+        func send(_ message: URLSessionWebSocketTask.Message, completionHandler: @escaping @Sendable (Error?) -> Void) {
+            let frame = RealtimeVoiceSocket.decodeSocketEvent(message)
+            frames.append((frame?["item"] as? [String: Any])?["call_id"] as? String ?? frame?["type"] as? String ?? "invalid")
             completions.append(completionHandler)
         }
 

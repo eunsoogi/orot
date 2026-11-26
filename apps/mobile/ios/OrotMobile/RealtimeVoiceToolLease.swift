@@ -92,61 +92,6 @@ final class RealtimeVoiceToolLease {
     }
 }
 
-/// An exact approved tool batch, retained only by its current socket queue.
-final class LiveQueuedToolPermit {
-    private let current: () -> Bool
-    let ticket: LiveNativeResultDispatchAuthority.Ticket?
-    private var retired = false
-    var issued = false
-    private(set) var continuationObservationRetired = false
-
-    /// A submitted write cannot be recalled; its late callback no longer samples retired work.
-    func retireQueueObservation() {
-        continuationObservationRetired = true
-        ticket?.retire()
-    }
-
-    init(current: @escaping () -> Bool, ticket: LiveNativeResultDispatchAuthority.Ticket? = nil) {
-        self.current = current
-        self.ticket = ticket
-    }
-
-    /// A failed check is permanent, even if settings later return to the same values.
-    func authorizeHandoff() -> Bool {
-        guard !retired, current() else { retired = true; return false }
-        return !retired
-    }
-
-    /// Permit only the Live Responses output envelope and a single final continuation.
-    /// This is not user approval; the native owner must separately approve these exact bytes.
-    func prepare(_ frames: [[String: Any]]) -> [RealtimeSocketWrite]? {
-        guard ticket == nil ? (2 ... 9).contains(frames.count) : frames.count == 2, authorizeHandoff() else { return nil }
-        var calls = Set<String>()
-        var events = Set<UUID>()
-        var writes: [RealtimeSocketWrite] = []
-        for (index, frame) in frames.enumerated() {
-            guard let type = frame["type"] as? String,
-                  let eventID = frame["event_id"] as? String, let command = UUID(uuidString: eventID),
-                  events.insert(command).inserted else { return nil }
-            if index == frames.count - 1 {
-                guard type == "response.create", frame.count == 2 else { return nil }
-            } else {
-                guard type == "response.item.create", frame.count == 3,
-                      let item = frame["item"] as? [String: Any], item.count == 3,
-                      item["type"] as? String == "function_call_output",
-                      let call = item["call_id"] as? String, RealtimeVoiceToolLease.validID(call),
-                      calls.insert(call).inserted,
-                      let value = item["output"] as? String, (ticket?.resultKind ?? .aggregate).allows(value)
-                else { return nil }
-            }
-            guard let data = try? JSONSerialization.data(withJSONObject: frame),
-                  let text = String(data: data, encoding: .utf8) else { return nil }
-            writes.append(RealtimeSocketWrite(text: text, isInput: false, permit: self, isFinalContinuation: index == frames.count - 1))
-        }
-        return writes
-    }
-}
-
 /// The bridge's options identify a grant but cannot establish one. Resolve ownership from
 /// all three device-bound stores; no missing, suspended, mismatched or old record can open.
 struct LiveResponsesSettingsGrant {
