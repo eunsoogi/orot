@@ -232,3 +232,20 @@ display labels for its checkbox, radio group, and two distinct options.
 The full accepted prose may have more than two parts, but a surface still
 cannot change, omit or reorder any part. No action, storage, or external
 request is added. Replies using v42 or v43 keep their original rules.
+
+## Model-composed local controls
+
+New ordinary replies on task v45 can place CheckBox, shortText TextField,
+and single- or multiple-selection ChoicePicker anywhere in an admitted
+layout. This removes fixed field names, form recipes, prose counts, and
+two-option requirements for new controls. Literal labels and option
+tokens are composed by the model, with one distinct local binding path
+per control. The existing safe read-only catalog and v44 and earlier
+contracts still work.
+
+These fields are visible only for the current completed bubble. They
+start empty, clear when ownership is lost, and never submit a value,
+run actions, or write local data. Reopening keeps the accepted prose
+rather than restoring this form. The model still cannot add remote
+catalogs, arbitrary links or actions, data uploads, or controls owned
+by another reply.

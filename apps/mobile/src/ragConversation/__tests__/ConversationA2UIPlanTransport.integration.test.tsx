@@ -188,8 +188,10 @@ test.each(cases)(
         expect(request).not.toHaveProperty('responseFormat');
         const guide = JSON.stringify(inspectTaskGuide(request));
         expect(guide).toContain('"a2uiFrames"');
-        expect(guide).toContain('/local/checked');
-        expect(guide).toContain('/local/choice');
+        expect(guide).not.toContain('/local/checked');
+        expect(guide).toContain('/form/choice');
+        expect(guide).toContain('multipleSelection');
+        expect(guide).not.toContain('Use exactly first and second');
 
         const last = store.getSnapshot().sessions[0]?.messages.at(-1);
         expect(last?.content).toBe(answer);
