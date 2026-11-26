@@ -39,16 +39,18 @@ extension VoiceRealtimeModule {
     private func ownsCommonV3(_ owner: LiveResponsesAdmission.Owner) -> Bool {
         active == owner.callID && call.id == owner.callID && call.liveSessionID == owner.sessionID &&
             call.liveSocketEpoch == owner.epoch && call.ready && !call.paused && call.token != nil &&
-            call.foreground() && call.liveIsCurrent()
+            call.managedExecutionAllowed() && call.liveIsCurrent()
     }
 
     /// The existing open completes only after the exact Live session.started and audio admission.
     @MainActor
     func acknowledgeCommonV3(_ identifier: String) -> Bool {
         guard let commonV3 else { return true }
-        guard let session = call.liveSessionID, let epoch = call.liveSocketEpoch,
-              let ack = commonV3.acknowledge(.init(callID: identifier, sessionID: session, epoch: epoch))
+        guard call.foreground(), let session = call.liveSessionID, let epoch = call.liveSocketEpoch
         else { retireCommonV3(identifier); return false }
+        let owner = LiveResponsesAdmission.Owner(callID: identifier, sessionID: session, epoch: epoch)
+        guard let ack = commonV3.acknowledge(owner) else { retireCommonV3(identifier); return false }
+        call.acknowledgeManagedBackgroundOwner(owner)
         sendEvent(withName: "VoiceRealtimeCommonToolsReady", body: ack)
         return true
     }

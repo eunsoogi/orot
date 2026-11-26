@@ -60,7 +60,7 @@ extension RealtimeVoiceCall {
                               var session = event["session"] as? [String: Any],
                               socket.admitResponsesTransport({ [weak self] in
                                   guard let self else { return false }
-                                  return id == identifier && liveSocketEpoch == epoch && foreground() && managedAdmission.backendAllowed()
+                                  return id == identifier && liveSocketEpoch == epoch && managedExecutionAllowed() && managedAdmission.backendAllowed() && managedExecutionAllowed()
                               }) else { fail(); return }
                         managedResponsesTransport = true
                         session["delegation"] = configuration

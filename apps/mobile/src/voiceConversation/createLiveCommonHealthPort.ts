@@ -1,4 +1,3 @@
-import { AppState } from 'react-native';
 import type { LiveToolCall } from '@orot/agent-runtime';
 import { prepareOwnedConversationReadSelection } from '../conversationTools/ownedConversationReadSelection';
 import type { LanguageModelProvider } from '@orot/model-runtime';
@@ -48,6 +47,7 @@ export function createLiveCommonHealthPort(input: {
   readonly registration: LiveCommonRegistration;
   readonly settings: Active;
   readonly current: () => boolean;
+  readonly toolOwnerCurrent: () => boolean;
   readonly protectedDataAvailable: () => Promise<boolean>;
   readonly openData: () => Promise<AiFeatureLocalData>;
 }): LiveCommonConversationPort {
@@ -81,7 +81,7 @@ export function createLiveCommonHealthPort(input: {
   };
   const owns = (call: LiveToolCall) =>
     current() &&
-    AppState.currentState === 'active' &&
+    input.toolOwnerCurrent() &&
     call === observed &&
     native.challenge(call);
   const execution = (call: LiveToolCall) => ({
@@ -114,7 +114,7 @@ export function createLiveCommonHealthPort(input: {
           if (
             !call ||
             !current() ||
-            AppState.currentState !== 'active' ||
+            !input.toolOwnerCurrent() ||
             retired.has(call.challengeId) ||
             (observed && owns(observed))
           )

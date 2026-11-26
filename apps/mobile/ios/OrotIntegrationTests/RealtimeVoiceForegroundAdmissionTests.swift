@@ -39,6 +39,7 @@ extension RealtimeVoiceLifecycleTests {
 
     func testBackgroundRequiresSystemActivationAndProtectedDataLossAlwaysStops() async throws {
         try await assertOwnedBackgroundContinuationDistinguishesTransportAndServerTermination()
+        try await assertManagedBackgroundRequiresAcknowledgedCurrentAudioOwner()
         let audio = Audio(), socket = Socket(), system = SystemCall()
         let ownership = AudioSessionOwnership(configure: { _, _, _ in }, setActive: { _ in })
         let call = RealtimeVoiceCall(audio: audio, socket: socket, ownership: ownership, systemCall: system,
@@ -94,6 +95,39 @@ extension RealtimeVoiceLifecycleTests {
         socket.failed?()
         XCTAssertEqual(diagnostics, [.liveServerClosed, .liveTransportFailed])
         XCTAssertNil(call.id)
+    }
+
+    @MainActor
+    private func assertManagedBackgroundRequiresAcknowledgedCurrentAudioOwner() async throws {
+        for mode in ["no-ack", "foreign-epoch", "exact"] {
+            let audio = Audio(), socket = Socket(), system = SystemCall()
+            let ownership = AudioSessionOwnership(configure: { _, _, _ in }, setActive: { _ in })
+            var foreground = true
+            let call = RealtimeVoiceCall(audio: audio, socket: socket, ownership: ownership, systemCall: system,
+                                         permission: { $0(true) }, foreground: { foreground }, emit: { _, _ in })
+            defer { try? call.stop("call") }
+            await opening(call, socket: socket)
+            call.managedResponsesTransport = true
+            socket.received?(started())
+            try system.prepare?()
+            system.activated?()
+            let owner = try LiveResponsesAdmission.Owner(callID: "call", sessionID: XCTUnwrap(call.liveSessionID),
+                                                         epoch: mode == "foreign-epoch" ? UUID() : XCTUnwrap(call.liveSocketEpoch))
+            if mode != "no-ack" {
+                call.acknowledgeManagedBackgroundOwner(owner)
+            }
+            foreground = false
+            XCTAssertEqual(call.managedExecutionAllowed(), mode == "exact", mode)
+            NotificationCenter.default.post(name: UIApplication.didEnterBackgroundNotification, object: nil)
+            XCTAssertEqual(call.id == "call", mode == "exact", mode)
+            if mode == "exact" {
+                socket.received?(["type": "session.output_audio.delta", "delta": "AAA="])
+                XCTAssertEqual(audio.appends, 1)
+                NotificationCenter.default.post(name: UIApplication.protectedDataWillBecomeUnavailableNotification, object: nil)
+                XCTAssertNil(call.id)
+                XCTAssertFalse(call.managedExecutionAllowed())
+            }
+        }
     }
 
     func testLifecycleDiagnosticsClassifyOnlyRecognizedStates() {
