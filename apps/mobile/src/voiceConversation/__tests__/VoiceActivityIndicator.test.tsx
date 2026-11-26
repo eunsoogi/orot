@@ -135,12 +135,16 @@ test('quiet current microphone samples visibly change bars', async () => {
   );
   const idle = bars(view);
   const latest = () => bars(view)[idle.length - 1] ?? 0;
-  expect(idle).toEqual(Array<number>(9).fill(3));
+  expect(idle).toEqual(Array<number>(19).fill(3));
   await act(() => emit(sample(0.03)));
   expect(bars(view)).toEqual(idle);
   await act(() => emit(sample(0.03, current, 'input')));
   const quiet = latest();
-  expect(quiet).toBeGreaterThan(7);
+  expect(quiet).toBeGreaterThan(10);
+  expect(view.getByTestId('voice-activity-waveform', hidden)).toHaveStyle({
+    width: 111,
+    height: 48,
+  });
   expect(bars(view).slice(0, -1)).toEqual(idle.slice(0, -1));
   await act(() => {
     jest.advanceTimersByTime(100);
@@ -148,7 +152,15 @@ test('quiet current microphone samples visibly change bars', async () => {
   });
   expect(latest()).toBeGreaterThan(quiet + 2);
   expect(bars(view)[idle.length - 2]).toBe(quiet);
-  expect(latest()).toBeLessThanOrEqual(36);
+  const moderate = latest();
+  await act(() => {
+    jest.advanceTimersByTime(100);
+    emit(sample(0.6, current, 'input'));
+  });
+  expect(latest()).toBeGreaterThan(moderate + 8);
+  expect(latest()).toBeLessThanOrEqual(48);
+  expect(bars(view).slice(-3, -1)).toEqual([quiet, moderate]);
+  expect(bars(view).slice(0, -3)).toEqual(idle.slice(0, -3));
   await act(() => {
     jest.advanceTimersByTime(241);
   });
@@ -168,7 +180,7 @@ test('reduced motion keeps a static mark and invalid or PCM-bearing input is nev
       subscribe={subscribe}
     />,
   );
-  expect(bars(view)).toEqual(Array<number>(9).fill(3));
+  expect(bars(view)).toEqual(Array<number>(19).fill(3));
   expect(subscribe).not.toHaveBeenCalled();
   for (const value of [NaN, Infinity, -1, 1.1])
     expect(parseVoiceAudioLevel(sample(value))).toBeUndefined();
