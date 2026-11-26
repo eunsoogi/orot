@@ -13,6 +13,13 @@ import {
 } from '../__fixtures__/sqliteReview';
 import { reviewCopy } from '../strings';
 
+jest.mock('../../storage/secureDatabase', () => ({
+  openLocalStorage: jest.fn(),
+  openLocalAgentMemoryDatabase: jest.fn(),
+}));
+jest.mock('../../aiFeatures/integration/provider', () => ({
+  resolveSelectedAiProvider: jest.fn(),
+}));
 jest.mock('../../ragConversation/conversationExecutionNative', () => ({
   conversationExecutionNative: jest.fn(),
 }));
