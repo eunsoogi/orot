@@ -1,3 +1,4 @@
+import { hasConversationA2UIComposedControls } from './conversationA2UIComposedControlState';
 import type { ConversationA2UINode } from './conversationA2UI';
 import { isConversationA2UIRowWeight } from './conversationA2UIRowWeight';
 import {
@@ -23,7 +24,8 @@ export function storeConversationA2UILayout(
   root: ConversationA2UINode,
   answer: string,
 ): ArchivedA2UILayout | undefined {
-  if (answer.length > 8_192) return undefined;
+  if (answer.length > 8_192 || hasConversationA2UIComposedControls(root))
+    return undefined;
   const legacy = conversationA2UIProse(answer);
   const paragraphs = legacy ?? conversationA2UIFrameProse(answer);
   if (!paragraphs) return undefined;

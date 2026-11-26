@@ -1,3 +1,12 @@
+import { ConversationA2UISurfaceRow } from './ConversationA2UISurfaceRow';
+import {
+  ConversationA2UIComposedControl,
+  ConversationA2UIComposedOwner,
+} from './ConversationA2UIComposedControl';
+import {
+  conversationA2UIComposedControl,
+  hasConversationA2UIComposedControls,
+} from './conversationA2UIComposedControlState';
 import { isFinalConversationCaption } from './conversationA2UICaptionTask';
 import { ConversationA2UITabs } from './ConversationA2UITabs';
 import {
@@ -7,7 +16,7 @@ import {
 } from './ConversationA2UIModal';
 import { createConversationA2UIModalArbiter } from './conversationA2UIModalArbiter';
 import { conversationA2UIModalFor } from './conversationA2UIModalWire';
-import { useCallback, useContext, useMemo, useState } from 'react';
+import { useCallback, useContext, useMemo } from 'react';
 import { useWindowDimensions, View } from 'react-native';
 import { ConversationA2UIHorizontalList } from './ConversationA2UIHorizontalList';
 import { AppText } from '../layout/AppText';
@@ -15,11 +24,7 @@ import { renderA2UIInlineRichText } from './ConversationA2UIInlineRichText';
 import { AppSymbol } from '../layout/AppSymbol';
 import { a2uiSurfaceStyles as styles } from './conversationA2UISurfaceStyles';
 import { appColors } from '../layout/appColors';
-import type { ConversationA2UIAlignment } from './conversationA2UIAlignment';
 import {
-  a2uiNaturalRowChildren,
-  a2uiWeightedRow,
-  a2uiChildRowWeight,
   a2uiNativeAlignment,
   a2uiStretchedColumnChild,
 } from './conversationA2UINativeAlignment';
@@ -45,7 +50,12 @@ export function ConversationA2UISurface({
   const modalAdmission = useMemo(createConversationA2UIModalArbiter, [root]);
   const owner = useContext(ConversationA2UILocalDraftOwner);
   const draft = conversationA2UILocalDraftFor(root);
-  const surface = useOwnedConversationA2UIStamp(owner, root, !!draft);
+  const composed = hasConversationA2UIComposedControls(root);
+  const surface = useOwnedConversationA2UIStamp(
+    owner,
+    root,
+    !!draft || composed,
+  );
   const isCurrent = useCallback(
     () => surface !== undefined && owner?.surface(root) === surface,
     [owner, root, surface],
@@ -54,7 +64,13 @@ export function ConversationA2UISurface({
     <View testID={testID} style={styles.surface}>
       <ConversationA2UIModalRoot.Provider value={root}>
         <ConversationA2UIModalAdmission.Provider value={modalAdmission}>
-          <SurfaceNode key={root.id} node={root} fontScale={fontScale} />
+          <ConversationA2UIComposedOwner.Provider
+            value={
+              composed && surface ? { surface, current: isCurrent } : undefined
+            }
+          >
+            <SurfaceNode key={root.id} node={root} fontScale={fontScale} />
+          </ConversationA2UIComposedOwner.Provider>
         </ConversationA2UIModalAdmission.Provider>
       </ConversationA2UIModalRoot.Provider>
       {draft && owner && surface ? (
@@ -78,6 +94,8 @@ function SurfaceNode({
   readonly node: ConversationA2UINode;
   readonly fontScale: number;
 }) {
+  const control = conversationA2UIComposedControl(node);
+  if (control) return <ConversationA2UIComposedControl control={control} />;
   const modal = conversationA2UIModalFor(node);
   if (modal)
     return (
@@ -144,10 +162,17 @@ function SurfaceNode({
     );
   if (node.component === 'Row')
     return (
-      <SurfaceRow
+      <ConversationA2UISurfaceRow
         nodes={node.children}
         fontScale={fontScale}
         alignment={node.alignment}
+        renderChild={(child, horizontal) => (
+          <SurfaceNode
+            node={child}
+            fontScale={fontScale}
+            horizontal={horizontal}
+          />
+        )}
       />
     );
   return (
@@ -170,75 +195,6 @@ function SurfaceNode({
           </View>
         ) : (
           <SurfaceNode key={child.id} node={child} fontScale={fontScale} />
-        ),
-      )}
-    </View>
-  );
-}
-
-function SurfaceRow({
-  nodes,
-  fontScale,
-  alignment,
-}: {
-  readonly alignment?: ConversationA2UIAlignment;
-  readonly nodes: readonly ConversationA2UINode[];
-  readonly fontScale: number;
-}) {
-  const [width, setWidth] = useState(0);
-  // Prefer readable stacked order before layout, at larger text sizes, or
-  // when nesting leaves too little width for two long, wrapping values.
-  const contentCount = nodes.filter(
-    node => node.component !== 'Divider',
-  ).length;
-  const weightedMinWidth = a2uiWeightedRow(nodes);
-  const columns =
-    contentCount >= 2 &&
-    fontScale < 1.4 &&
-    width >= (weightedMinWidth ?? contentCount * 120) &&
-    nodes.every(
-      node => node.component !== 'Divider' || node.axis === 'vertical',
-    );
-  return (
-    <View
-      testID="conversation-a2ui-row"
-      onLayout={event => setWidth(event.nativeEvent.layout.width)}
-      style={
-        columns
-          ? [styles.columns, a2uiNativeAlignment(alignment)]
-          : styles.stack
-      }
-    >
-      {nodes.map(node =>
-        columns && node.component === 'Divider' ? (
-          <SurfaceNode
-            key={node.id}
-            node={node}
-            fontScale={fontScale}
-            horizontal
-          />
-        ) : (
-          <View
-            key={node.id}
-            style={
-              columns
-                ? weightedMinWidth !== undefined
-                  ? [
-                      styles.surface,
-                      {
-                        flexBasis: 0,
-                        flexShrink: 1,
-                        flexGrow: a2uiChildRowWeight(node),
-                      },
-                    ]
-                  : a2uiNaturalRowChildren(alignment)
-                    ? styles.naturalColumn
-                    : styles.column
-                : styles.surface
-            }
-          >
-            <SurfaceNode node={node} fontScale={fontScale} />
-          </View>
         ),
       )}
     </View>
