@@ -199,7 +199,7 @@ test('keeps imported records in Records and only reclassifies and reconfirms an 
       await view.findByText(/기존 분류 1건 재사용 · 새로 분류 0건/),
     ).toBeTruthy();
     expect(
-      await view.findByText('이미 저장된 일정 1건은 변경하지 않았어요.'),
+      await view.findByText(/이미 저장된 일정 1건은 변경하지 않았어요\./),
     ).toBeTruthy();
     expect(classify).not.toHaveBeenCalled();
     expect(reconfirmCalendarEvent).not.toHaveBeenCalled();
