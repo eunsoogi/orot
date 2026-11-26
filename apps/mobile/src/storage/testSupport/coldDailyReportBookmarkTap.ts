@@ -66,8 +66,10 @@ export async function exerciseColdDailyReportBookmarkTap(
           revision: historical.dailyReport!.revision,
           identityKey: historical.dailyReport!.identity.key,
         },
-        confirmArchivedProtection: expect.any(Function),
       }),
+    );
+    expect(typeof bookmark.mock.calls[0]?.[0].confirmArchivedProtection).toBe(
+      'function',
     );
     await expect(bookmark.mock.results[0]?.value).resolves.toBe(true);
   } finally {
