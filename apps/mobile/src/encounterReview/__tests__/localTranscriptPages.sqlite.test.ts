@@ -207,7 +207,7 @@ test('retires an issued page before a same-connection mutation reaches SQLite', 
   try {
     const page = await reader.next();
     expect(page?.segments[0]?.recordingSourceId).toBe(recordingId);
-    await database.execute('SELECT 1');
+    await database.execute('SELECT 1', []);
     expect(reader.signal.aborted).toBe(false);
     expect(listeners.size).toBe(1);
 
