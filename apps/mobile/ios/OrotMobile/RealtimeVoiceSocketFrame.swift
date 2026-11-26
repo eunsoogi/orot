@@ -30,6 +30,33 @@ extension RealtimeSocketPort {
 }
 
 extension RealtimeVoiceSocket {
+    /// Queue acceptance is not a provider receipt. Never reconnect or use a fallback transport.
+    func sendManagedToolFrames(_ frames: [[String: Any]], current: @escaping () -> Bool) -> Bool {
+        enqueueManaged(frames, permit: LiveQueuedToolPermit(current: current))
+    }
+
+    func sendTicketedToolFrames(_ frames: [[String: Any]], current: @escaping () -> Bool,
+                                ticket: LiveNativeResultDispatchAuthority.Ticket) -> Bool
+    {
+        enqueueManaged(frames, permit: LiveQueuedToolPermit(current: current, ticket: ticket))
+    }
+
+    func close() {
+        close(confirmed: false)
+    }
+
+    @MainActor
+    func sendTicketedToolBatch(_ batch: LiveNativeResultBatch) -> Bool {
+        guard let frames = batch.reserveWireFrames() else { return false }
+        let permit = LiveQueuedToolPermit(current: { true }, batch: batch)
+        guard enqueueManaged(frames, permit: permit) else { batch.retire(); return false }
+        return true
+    }
+
+    func transportFailed() {
+        (canReportTransportFailure ? failed : close)?()
+    }
+
     static func decodeSocketEvent(_ message: URLSessionWebSocketTask.Message) -> [String: Any]? {
         let data: Data
         switch message {
@@ -105,7 +132,7 @@ struct LiveCaptionTerminalQueue {
         let retained = Array(writes.prefix(sending ? 1 : 0))
         let discarded = writes.dropFirst(retained.count)
         return .init(retained: retained, bytes: retained.reduce(0) { $0 + $1.text.utf8.count }) {
-            discarded.forEach { $0.permit?.ticket?.retire() }
+            discarded.forEach { $0.permit?.ticket?.retire(); $0.permit?.retireBatchIfPresent() }
         }
     }
 }

@@ -42,18 +42,7 @@ final class RealtimeVoiceSocket: RealtimeSocketPort {
         flush()
     }
 
-    /// Queue acceptance is not a provider receipt. Never reconnect or use a fallback transport.
-    func sendManagedToolFrames(_ frames: [[String: Any]], current: @escaping () -> Bool) -> Bool {
-        enqueueManaged(frames, permit: LiveQueuedToolPermit(current: current))
-    }
-
-    func sendTicketedToolFrames(_ frames: [[String: Any]], current: @escaping () -> Bool,
-                                ticket: LiveNativeResultDispatchAuthority.Ticket) -> Bool
-    {
-        enqueueManaged(frames, permit: LiveQueuedToolPermit(current: current, ticket: ticket))
-    }
-
-    private func enqueueManaged(_ frames: [[String: Any]], permit: LiveQueuedToolPermit) -> Bool {
+    func enqueueManaged(_ frames: [[String: Any]], permit: LiveQueuedToolPermit) -> Bool {
         guard closing == nil, captionTerminal.prepared == nil, let task = socket else { return false }
         let currentEpoch = epoch
         guard let writes = permit.prepare(frames), epoch == currentEpoch, socket === task, closing == nil, captionTerminal.prepared == nil,
@@ -88,24 +77,34 @@ final class RealtimeVoiceSocket: RealtimeSocketPort {
             guard epoch == current, socket === task, captionTerminal.prepared == nil, !sending, queue.first?.permit === permit else { return }
             guard allowed else { discardRejected(permit); return }
         }
-        let submit = { [self] in
+        let submit = { [self] (receipt: UUID?) -> Bool in
+            if receipt != nil, epoch != current || socket !== task || sending || queue.first?.text != message.text || closing != nil || captionTerminal.prepared != nil {
+                return false
+            }
             message.permit?.issued = true
             sending = true
             let (permit, stamp) = message.continuationTiming(observed: observeContinuationSend != nil)
-            task.send(.string(message.text)) { [weak self, weak permit] error in
+            task.send(.string(message.text)) { [weak self, weak permit, weak owner = message.permit, wireText = message.text] error in
                 let end = stamp.map { _ in DispatchTime.now() }
                 DispatchQueue.main.async {
                     guard let self, self.epoch == current, self.socket === task else { return }
+                    if let receipt {
+                        guard let owner, self.queue.first?.text == wireText else { return }
+                        let accepted = owner.settleBatch(receipt, result: error == nil)
+                        guard self.epoch == current, self.socket === task, self.queue.first?.text == wireText else { return }
+                        if !accepted {
+                            self.sending = false
+                            self.discardRejected(owner)
+                            return
+                        }
+                    }
                     self.sending = false
                     if error != nil {
                         self.transportFailed()
                         return
                     }
-                    let admitted = permit?.continuationObservationRetired == false
                     self.bytes -= self.queue.removeFirst().text.utf8.count
-                    if admitted, self.closing == nil, self.captionTerminal.prepared == nil {
-                        LiveManagedToolLatency.finish(.continuationSendCallback, since: stamp, observe: self.observeContinuationSend, at: end)
-                    }
+                    permit?.reportContinuation(if: self.canReportTransportFailure, since: stamp, end: end, observe: self.observeContinuationSend)
                     if self.closing != nil {
                         self.sendClose()
                     } else {
@@ -113,18 +112,20 @@ final class RealtimeVoiceSocket: RealtimeSocketPort {
                     }
                 }
             }
+            return true
         }
-        if let permit = message.permit, let ticket = permit.ticket {
-            if !ticket.submit(submit) {
+        if let permit = message.permit {
+            if !permit.submit(submit) {
                 discardRejected(permit)
             }
         } else {
-            submit()
+            _ = submit(nil)
         }
     }
 
     private func discardRejected(_ permit: LiveQueuedToolPermit) {
         permit.ticket?.retire()
+        permit.retireBatchIfPresent()
         queue.removeAll { $0.permit === permit }
         bytes = queue.reduce(0) { $0 + $1.text.utf8.count }
         // A partial batch cannot be replayed after losing its authority.
@@ -202,6 +203,7 @@ final class RealtimeVoiceSocket: RealtimeSocketPort {
         closing = (sessionID, UUID().uuidString, false)
         captionTerminal.prepared = nil
         // An already handed write cannot be retracted; do not queue any other normal event.
+        queue.forEach { $0.permit?.retireBatchIfPresent() }
         queue = sending ? Array(queue.prefix(1)) : []
         bytes = queue.reduce(0) { $0 + $1.text.utf8.count }
         let timeout = DispatchWorkItem { [weak self] in
@@ -227,22 +229,18 @@ final class RealtimeVoiceSocket: RealtimeSocketPort {
         }
     }
 
-    private func transportFailed() {
-        (closing == nil && captionTerminal.prepared == nil ? failed : close)?()
+    var canReportTransportFailure: Bool {
+        closing == nil && captionTerminal.prepared == nil
     }
 
-    func close() {
-        close(confirmed: false)
-    }
-
-    private func close(confirmed: Bool) {
+    func close(confirmed: Bool) {
         let observed = captionTerminal.retire()
         defer { observed?(confirmed) }
         epoch += 1
         closeDeadline?.cancel(); closeDeadline = nil; closing = nil
         socket?.cancel(with: .normalClosure, reason: nil)
         socket = nil; responsesTransportCurrent = nil
-        queue.forEach { $0.permit?.ticket?.retire() }
+        queue.forEach { $0.permit?.ticket?.retire(); $0.permit?.retireBatchIfPresent() }
         queue.removeAll(); bytes = 0; sending = false
     }
 
