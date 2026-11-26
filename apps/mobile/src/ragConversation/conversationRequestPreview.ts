@@ -1,7 +1,7 @@
 import { MAX_CONVERSATION_PREVIEW_LENGTH } from '../storage/conversationPreviewLimits';
 import { applyWorkflowStreamEvent } from '../agent/workflowActivity';
 import type { createConversationTurnRetention } from './conversationTurnRetention';
-import type { ConversationArtifactSource } from './conversationArtifactSources';
+import type { ConversationArtifactSource } from '../conversationTools/conversationArtifactSources';
 import type { MultiAgentResponderStreamEvent } from '@orot/agent-runtime';
 import type { RagConversationObserver } from './conversationObserver';
 import type { createConversationTurnActivity } from './conversationTurnActivity';

@@ -1,5 +1,5 @@
 import { parseTreatmentContext } from '../validation';
-import type { ConversationArtifactSource } from '../../ragConversation/conversationArtifactSources';
+import type { ConversationArtifactSource } from '../../conversationTools/conversationArtifactSources';
 
 const ref = (
   sourceKind: 'personal_record' | 'external_medical' | 'generated_artifact',

@@ -1,4 +1,4 @@
-import { requireNonPhotoSources } from '../../../ragConversation/conversationArtifactSources';
+import { requireNonPhotoSources } from '../../../conversationTools/conversationArtifactSources';
 import { createManualHistoryRepository } from '@orot/storage';
 import { coldResearchRegistryFixture as fixture } from '../testSupport/coldResearchRegistryFixture';
 import { LocalEvidenceReferenceRegistry } from '../evidenceRegistry';

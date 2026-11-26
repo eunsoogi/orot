@@ -6,7 +6,7 @@ import type {
 import type { ToolLineage } from '../../storage/conversationToolLineage';
 import type { createConversationArtifactStorage } from '../../storage/conversationArtifactStorage';
 import { isPeriodSummarySource } from '../../diseaseHypotheses/savedSummaries';
-import { isConversationPhotoSource } from '../../ragConversation/conversationArtifactSources';
+import { isConversationPhotoSource } from '../../conversationTools/conversationArtifactSources';
 import { captureConversationSources } from './captureConversationSources';
 import type { LocalEvidenceReferenceRegistry } from './evidenceRegistry';
 

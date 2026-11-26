@@ -7,7 +7,7 @@ import { withWritePeriodCalculations } from '../writePeriodCalculationScope';
 import { assertSummaryPeriodCurrent } from '../symptomSummaryPeriods';
 import { registerHealthContextEvidence } from '../../aiFeatures/integration/healthContextEvidence';
 import { captureConversationSources } from '../../aiFeatures/integration/captureConversationSources';
-import { isConversationPhotoSource } from '../../ragConversation/conversationArtifactSources';
+import { isConversationPhotoSource } from '../../conversationTools/conversationArtifactSources';
 import type { ReadOnlyPeriodValidation } from '../readOnlyPeriodValidation';
 
 test('same calculation still checks each revision and root generation requirement', async () => {

@@ -6,8 +6,8 @@ import {
   stableJson,
 } from '../aiFeatures/integration/evidenceUtils';
 import { savedManualHistorySource } from '../aiFeatures/integration/manualHistoryEvidence';
-import type { ConversationArtifactSource } from '../ragConversation/conversationArtifactSources';
-import { requireNonPhotoSources } from '../ragConversation/conversationArtifactSources';
+import type { ConversationArtifactSource } from '../conversationTools/conversationArtifactSources';
+import { requireNonPhotoSources } from '../conversationTools/conversationArtifactSources';
 import { assertRetainedEvidenceCurrent } from '../storage/retainedEvidenceFreshness';
 import { createSymptomSummaryStorage } from '../storage/symptomSummaryStorage';
 import { t } from '../i18n';

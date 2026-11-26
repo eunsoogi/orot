@@ -1,4 +1,4 @@
-import type { ConversationArtifactSource } from '../ragConversation/conversationArtifactSources';
+import type { ConversationArtifactSource } from '../conversationTools/conversationArtifactSources';
 
 /** External and generated sources lack a complete local mutation fence. */
 export function eligibleConversationPreviewSources(

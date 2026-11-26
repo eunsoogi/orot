@@ -6,7 +6,7 @@ import {
   isGeneratedConversationSource,
   isGeneratedResearchSource,
   isGeneratedSummarySource,
-} from '../ragConversation/conversationArtifactSources';
+} from '../conversationTools/conversationArtifactSources';
 import type { ConversationArtifact } from './conversationArtifactCodec';
 
 /** Insert every dependency in the owning transaction without a native bridge call per member.

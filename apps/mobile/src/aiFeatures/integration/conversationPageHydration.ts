@@ -4,7 +4,7 @@ import type { ConversationArtifact } from '../../storage/conversationArtifactCod
 import {
   isGeneratedConversationSource,
   isConversationPhotoSource,
-} from '../../ragConversation/conversationArtifactSources';
+} from '../../conversationTools/conversationArtifactSources';
 import {
   restoreConversationArtifact,
   restoreConversationArtifactSnapshot,

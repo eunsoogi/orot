@@ -1,6 +1,6 @@
 import type { ConversationSubmittedInput } from '../../ragConversation/conversationSubmittedInput';
 import { decodeConversationSubmittedInput } from '../../ragConversation/conversationSubmittedInput';
-import type { ConversationPhotoArtifactSource } from '../../ragConversation/conversationArtifactSources';
+import type { ConversationPhotoArtifactSource } from '../../conversationTools/conversationArtifactSources';
 import type { AiFeatureLocalData } from './localData';
 import { LocalEvidenceReferenceRegistry } from './evidenceRegistry';
 import { registerConversationPhotoEvidence } from './conversationPhotoEvidence';

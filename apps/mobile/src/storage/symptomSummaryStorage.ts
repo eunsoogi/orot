@@ -31,7 +31,7 @@ import {
   isGeneratedConversationSource,
   isGeneratedSummarySource,
   isGeneratedResearchSource,
-} from '../ragConversation/conversationArtifactSources';
+} from '../conversationTools/conversationArtifactSources';
 
 function assertSummaryNotCancelled(signal?: AbortSignal) {
   if (signal?.aborted) {

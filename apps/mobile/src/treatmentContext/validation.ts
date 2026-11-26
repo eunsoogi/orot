@@ -1,4 +1,4 @@
-import type { ConversationArtifactSource } from '../ragConversation/conversationArtifactSources';
+import type { ConversationArtifactSource } from '../conversationTools/conversationArtifactSources';
 import { stableJson } from '../aiFeatures/integration/evidenceUtils';
 import type { TreatmentContext } from './types';
 

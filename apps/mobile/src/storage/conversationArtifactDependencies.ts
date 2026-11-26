@@ -9,7 +9,7 @@ import {
   isGeneratedConversationSource,
   isGeneratedResearchSource,
   isConversationPhotoSource,
-} from '../ragConversation/conversationArtifactSources';
+} from '../conversationTools/conversationArtifactSources';
 
 /** Logical tombstones fence retained results even before a physical record is removed. */
 export async function assertConversationSourcesNotRemoved(

@@ -1,6 +1,6 @@
 import type { SqlDatabase } from '@orot/storage';
 import { stableJson } from '../aiFeatures/integration/evidenceUtils';
-import { isConversationPhotoSource } from '../ragConversation/conversationArtifactSources';
+import { isConversationPhotoSource } from '../conversationTools/conversationArtifactSources';
 import {
   possibilityReportTemplate,
   parsePossibilityConversationReport,

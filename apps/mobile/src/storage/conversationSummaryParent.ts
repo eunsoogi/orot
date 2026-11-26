@@ -5,7 +5,7 @@ import {
   type SqlDatabase,
   type SqlExecutor,
 } from '@orot/storage';
-import type { SavedGeneratedSummarySource } from '../ragConversation/conversationArtifactSources';
+import type { SavedGeneratedSummarySource } from '../conversationTools/conversationArtifactSources';
 import { fingerprint } from '../aiFeatures/integration/evidenceUtils';
 import { RetainedSourceInvalidError } from '../aiFeatures/integration/retainedSourceError';
 import { decodeSavedSymptomSummary } from './symptomSummaryStorageCodec';

@@ -164,7 +164,7 @@ export type RagConversationObserver = Pick<
     template: {
       providerId: string;
       modelId: string;
-      sources: readonly import('./conversationArtifactSources').ConversationArtifactSource[];
+      sources: readonly import('../conversationTools/conversationArtifactSources').ConversationArtifactSource[];
     },
   ) => Promise<void>;
 };

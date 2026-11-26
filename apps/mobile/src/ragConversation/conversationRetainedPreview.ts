@@ -1,5 +1,5 @@
 import type { createConversationArtifactStorage } from '../storage/conversationArtifactStorage';
-import type { ConversationArtifactSource } from './conversationArtifactSources';
+import type { ConversationArtifactSource } from '../conversationTools/conversationArtifactSources';
 
 /** Keep all raw preview operations bound to the retained turn and its session lease. */
 export function createConversationRetainedPreview(input: {

@@ -16,7 +16,7 @@ import { SqlCipherAgentMemoryStorage } from '../../../storage/agentMemoryStorage
 import { createConversationArtifactStorage } from '../../../storage/conversationArtifactStorage';
 import { reference } from '../../../diseaseHypotheses/taskTestSupport';
 import { createConversationTurnRetention } from '../../../ragConversation/conversationTurnRetention';
-import { isOriginalConversationSource } from '../../../ragConversation/conversationArtifactSources';
+import { isOriginalConversationSource } from '../../../conversationTools/conversationArtifactSources';
 
 test('a retention consumer can persist and invalidate a captured conversation through SQLite', async () => {
   const db = await healthContextFixture();
