@@ -1,6 +1,6 @@
 import Foundation
 
-/// Permit one independently approved local tool result per delegation. Do not
+/// Permit one independently approved local tool result per response. Do not
 /// continue an incomplete or ambiguous response; legacy Realtime cannot use this port.
 final class LiveResponsesToolBridge {
     typealias Owner = LiveResponsesAdmission.Owner
@@ -13,9 +13,11 @@ final class LiveResponsesToolBridge {
     private var delegation: (id: String, response: String, offset: Int, timestamp: DispatchTime?)?
     private var pending: [Request] = []
     private var received: [String: Bool] = [:]
+    private var skippedResponses = Set<String>()
     private var created = false, spent = false
     private var progress = 0
     private var cycle: UUID?
+    private var issuedContinuation: String?, incomingContinuation: String?
     private var emptyTerminal = false
     private var approvalSettled = false, retired = false
     private var cancel: (() -> Void)?
@@ -80,7 +82,7 @@ final class LiveResponsesToolBridge {
             guard let item = envelope["delegation"] as? [String: Any], item["type"] as? String == "delegation",
                   item["target"] as? String == "responses", let delegationID = item["id"] as? String,
                   let responseID = item["response_id"] as? String, RealtimeVoiceToolLease.validID(delegationID),
-                  RealtimeVoiceToolLease.validID(responseID), let offset = envelope["offset_ms"] as? Int,
+                  RealtimeVoiceToolLease.validID(responseID), !skippedResponses.contains(responseID), let offset = envelope["offset_ms"] as? Int,
                   offset >= 0 else { return }
             if let serial = admission.serialV3 {
                 switch serial.reserve(owner, delegationID, responseID, offset, emptyTerminal) {
@@ -88,9 +90,8 @@ final class LiveResponsesToolBridge {
                 case .deny: retire(); return
                 case .allow:
                     delegation = (delegationID, responseID, offset, LiveManagedToolLatency.start())
-                    pending.removeAll()
-                    cycle = UUID()
-                    created = false; spent = false; approvalSettled = false; emptyTerminal = false; progress = 0
+                    incomingContinuation = nil
+                    resetRound()
                     return
                 }
             }
@@ -111,10 +112,23 @@ final class LiveResponsesToolBridge {
         {
             retire(); return
         }
-        // Even an early creation event for a different delegation can make unscoped
-        // response.create unsafe; do not wait for a second event to retire this owner.
-        if envelope["type"] as? String == "response.event", envelope["delegation_id"] as? String != delegation.id,
-           (envelope["event"] as? [String: Any])?["type"] as? String == "response.created"
+        if Self.foreignResponseCreated(envelope, delegation.id) {
+            retire(); return
+        }
+        if spent, let serial = admission.serialV3, let response = Self.successorResponse(envelope, delegation.id, delegation.response) {
+            guard RealtimeVoiceToolLease.validID(response), !skippedResponses.contains(response) else { return }
+            guard let issuedContinuation, envelope["client_event_id"] as? String == issuedContinuation
+            else { skippedResponses.insert(response); serial.rejectUnlinked(retire); return }
+            guard serial.resume(owner, delegation.id, response)
+            else { retire(); return }
+            self.delegation = (delegation.id, response, delegation.offset, LiveManagedToolLatency.start())
+            incomingContinuation = issuedContinuation
+            resetRound()
+            created = true
+            return
+        }
+        if let incomingContinuation, !(spent && admission.serialV3?.allowsFreshSpeech(false) == true),
+           !Self.matchesContinuation(envelope, delegation.id, incomingContinuation)
         {
             retire(); return
         }
@@ -175,6 +189,12 @@ final class LiveResponsesToolBridge {
         })
     }
 
+    private func resetRound() {
+        pending.removeAll()
+        issuedContinuation = nil; cycle = UUID()
+        created = false; spent = false; approvalSettled = false; emptyTerminal = false; progress = 0
+    }
+
     private func toolRequest(_ item: [String: Any], owner: Owner, delegationID: String, responseID: String) -> Request? {
         guard item["type"] as? String == "function_call", let name = item["name"] as? String,
               registry.allows(name), let functionID = item["call_id"] as? String,
@@ -201,11 +221,11 @@ final class LiveResponsesToolBridge {
             guard permitted() else { retire(); return }
             // response.create names no delegation. Keep this batch owned at *every*
             // transport handoff; a replacement retires queued work, and nothing retries.
-            var frames: [[String: Any]] = results.map { request, value in
-                ["type": "response.item.create", "event_id": UUID().uuidString,
-                 "item": ["type": "function_call_output", "call_id": request.functionID, "output": value]]
+            let continuation = UUID().uuidString
+            if admission.serialV3 != nil {
+                issuedContinuation = continuation
             }
-            frames.append(["type": "response.create", "event_id": UUID().uuidString])
+            let frames = Self.resultFrames(results, continuation)
             let ticket = results.count == 1 ? admission.dispatchTicket?(results[0].0, results[0].1) : nil
             guard admission.dispatchTicket == nil || ticket != nil else { retire(); return }
             send(frames, permitted, ticket)

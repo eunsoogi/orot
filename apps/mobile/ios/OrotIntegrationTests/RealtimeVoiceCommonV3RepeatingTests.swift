@@ -70,6 +70,65 @@ import XCTest
                 XCTAssertEqual(f.task.frames, ["function-first", "response.create", "function-second", "response.create"])
             }
         }
+
+        @MainActor
+        func testCommonV3SameDelegationRequiresEachExactContinuationEcho() async throws {
+            for mode in ["matched", "missing-created", "foreign-item", "missing-terminal", "function-replay", "early", "stop", "ordinary-no-echo", "ordinary-wrong-echo"] {
+                let f = try CommonV3RepeatFixture()
+                defer { f.close() }
+                let first = expectation(description: "first tool admitted")
+                f.onRequest = { first.fulfill() }
+                f.delegate("first", offset: 5)
+                await fulfillment(of: [first], timeout: 1)
+                let firstChallenge = try XCTUnwrap(f.challenge)
+                let settled = expectation(description: "exact first socket receipt")
+                var accepted: Bool?
+                f.settle(firstChallenge) { accepted = $0; settled.fulfill() }
+                await f.drainMain()
+                f.task.completions.removeFirst()(nil)
+                await f.drainMain()
+                let command = try XCTUnwrap(f.task.continuation)
+                let acknowledge = f.task.completions.removeFirst()
+                if mode != "early" {
+                    acknowledge(nil)
+                    await fulfillment(of: [settled], timeout: 1)
+                    XCTAssertEqual(accepted, true)
+                }
+
+                let next = expectation(description: "only fully correlated same-delegation response is admitted")
+                next.isInverted = mode != "matched"
+                f.onRequest = { next.fulfill() }
+                if mode == "stop" {
+                    f.close()
+                }
+                f.continueFirst(command, mode)
+                if mode == "early" {
+                    acknowledge(nil)
+                    await fulfillment(of: [settled], timeout: 1)
+                    XCTAssertEqual(accepted, false)
+                }
+                await fulfillment(of: [next], timeout: mode == "matched" ? 1 : 0.1)
+                XCTAssertEqual(f.task.frames, ["function-first", "response.create"])
+                if mode.hasPrefix("ordinary-") {
+                    let later = expectation(description: "independent fresh delegation still admitted")
+                    f.onRequest = { later.fulfill() }
+                    f.delegate("later", offset: 15)
+                    await fulfillment(of: [later], timeout: 1)
+                }
+                if mode == "matched" {
+                    let nextChallenge = try XCTUnwrap(f.challenge)
+                    XCTAssertNotEqual(nextChallenge, firstChallenge)
+                    let second = expectation(description: "second exact wire receipt")
+                    f.settle(nextChallenge) { XCTAssertTrue($0); second.fulfill() }
+                    await f.drainMain()
+                    f.task.completions.removeFirst()(nil)
+                    await f.drainMain()
+                    f.task.completions.removeFirst()(nil)
+                    await fulfillment(of: [second], timeout: 1)
+                    XCTAssertEqual(f.task.frames, ["function-first", "response.create", "function-more", "response.create"])
+                }
+            }
+        }
     }
 
     @MainActor
@@ -123,6 +182,28 @@ import XCTest
             receive("-completed", ["type": "response.completed", "response": ["id": response, "status": "completed"]])
         }
 
+        func continueFirst(_ command: String, _ mode: String) {
+            func nested(_ suffix: String, _ event: [String: Any], echo: String?) {
+                var frame: [String: Any] = ["type": "response.event", "event_id": "more-" + suffix,
+                                            "delegation_id": "delegation-first", "event": event]
+                frame["client_event_id"] = echo
+                submit(frame)
+            }
+            let item: [String: Any] = ["type": "function_call", "call_id": mode == "function-replay" ? "function-first" : "function-more",
+                                       "name": "local-health-context", "arguments": "{}"]
+            nested("created", ["type": "response.created", "response": ["id": "response-more"]],
+                   echo: ["missing-created", "ordinary-no-echo"].contains(mode) ? nil : mode == "ordinary-wrong-echo" ? "foreign-command" : command)
+            if !mode.hasPrefix("ordinary-") {
+                nested("item", ["type": "response.output_item.done", "item": item],
+                       echo: mode == "foreign-item" ? "foreign-command" : command)
+            }
+            nested("done", ["type": "response.completed", "response": ["id": "response-more", "status": "completed"]],
+                   echo: mode == "missing-terminal" || mode.hasPrefix("ordinary-") ? nil : command)
+            if mode.hasPrefix("ordinary-") {
+                nested("relabel", ["type": "response.created", "response": ["id": "response-more"]], echo: command)
+            }
+        }
+
         private func submit(_ event: [String: Any]) {
             bridge?.receive(event, owner: owner, current: { true }) { [weak socket] frames, current, ticket in
                 guard let ticket else { XCTFail("Missing owned V3 ticket"); return }
@@ -152,9 +233,13 @@ import XCTest
     private final class CommonV3HeldSocketTask: RealtimeVoiceSocketTask {
         var completions: [@Sendable (Error?) -> Void] = []
         var frames: [String] = []
+        var continuation: String?
         func resume() {}
         func send(_ message: URLSessionWebSocketTask.Message, completionHandler: @escaping @Sendable (Error?) -> Void) {
             let frame = RealtimeVoiceSocket.decodeSocketEvent(message)
+            if frame?["type"] as? String == "response.create" {
+                continuation = frame?["event_id"] as? String
+            }
             frames.append((frame?["item"] as? [String: Any])?["call_id"] as? String ?? frame?["type"] as? String ?? "invalid")
             completions.append(completionHandler)
         }

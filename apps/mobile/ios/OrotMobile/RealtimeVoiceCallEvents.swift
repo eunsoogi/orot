@@ -236,3 +236,12 @@ extension LiveResponsesToolBridge {
         return ["query": query]
     }
 }
+
+extension LiveV3SerialTransitions {
+    /// Unlinked answers are ordinary after a proven wire receipt, not a new grant.
+    func rejectUnlinked(_ retire: () -> Void) {
+        if !allowsFreshSpeech(false) {
+            retire()
+        }
+    }
+}
