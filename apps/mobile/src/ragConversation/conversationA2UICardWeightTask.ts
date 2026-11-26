@@ -7,9 +7,13 @@ import { isConversationA2UIRowWeight } from './conversationA2UIRowWeight';
 import type { GroundedRagAnswer } from './task';
 import { isObject } from './taskHistory';
 
+type WeightOwner = 'Card' | 'Column';
+
 const weights = new WeakMap<ConversationA2UINode, number>();
 export const conversationA2UICardWeight = (node: ConversationA2UINode) =>
-  weights.get(node);
+  node.component === 'Card' ? weights.get(node) : undefined;
+export const conversationA2UIColumnWeight = (node: ConversationA2UINode) =>
+  node.component === 'Column' ? weights.get(node) : undefined;
 
 // Archive restoration uses the same native style marker after proving its exact Row slot.
 export function markConversationA2UICardWeight(
@@ -20,9 +24,9 @@ export function markConversationA2UICardWeight(
     weights.set(node, weight);
 }
 
-/** Strip only the pinned Card weight before the previous exact graph and
+/** Strip only the selected pinned container's weight before the previous exact graph and
  * prose verifier, then bind each weight to an accepted direct Row child. */
-function closedCardFrame(raw: unknown) {
+function closedWeightedFrame(raw: unknown, owner: WeightOwner) {
   if (!Array.isArray(raw) || raw.length !== 1) return;
   const frame: unknown = raw[0];
   if (typeof frame !== 'string' || frame.length > conversationA2UIFrameLimit)
@@ -31,12 +35,16 @@ function closedCardFrame(raw: unknown) {
     const message: unknown = JSON.parse(frame);
     if (!isObject(message) || !isObject(message.createSurface)) return;
     const surface = message.createSurface;
-    if (!Array.isArray(surface.components)) return;
+    if (
+      !Array.isArray(surface.components) ||
+      (owner === 'Column' && Object.hasOwn(surface, 'dataModel'))
+    )
+      return;
     const selected = new Map<string, number>();
     const components = (surface.components as unknown[]).map(node => {
       if (
         !isObject(node) ||
-        node.component !== 'Card' ||
+        node.component !== owner ||
         !Object.hasOwn(node, 'weight')
       )
         return node;
@@ -46,7 +54,7 @@ function closedCardFrame(raw: unknown) {
         selected.has(id) ||
         !isConversationA2UIRowWeight(weight)
       )
-        throw new Error('Unsupported Card weight.');
+        throw new Error('Unsupported container weight.');
       selected.set(id, weight);
       return { ...previous, id };
     });
@@ -65,10 +73,11 @@ function closedCardFrame(raw: unknown) {
 function bindWeights(
   root: ConversationA2UINode,
   selected: Map<string, number>,
+  owner: WeightOwner,
 ) {
   const admitted = new Map<ConversationA2UINode, number>();
   function visit(node: ConversationA2UINode, directRow = false) {
-    if (node.component === 'Card') {
+    if (node.component === owner) {
       const weight = selected.get(node.id);
       if (directRow && weight !== undefined) admitted.set(node, weight);
     }
@@ -112,7 +121,7 @@ export function withFinalConversationCardWeight(
     },
     validateResult(value, input) {
       if (!isObject(value)) return previous.validateResult(value, input);
-      const card = closedCardFrame(value.a2uiFrames);
+      const card = closedWeightedFrame(value.a2uiFrames, 'Card');
       if (!card) return previous.validateResult(value, input);
       const result = previous.validateResult(
         { ...value, a2uiFrames: [card.wire] },
@@ -123,10 +132,21 @@ export function withFinalConversationCardWeight(
       if (
         root &&
         !result.value.a2uiLocalDraft &&
-        bindWeights(root, card.selected)
+        bindWeights(root, card.selected, 'Card')
       )
         return result;
       return previous.validateResult({ ...value, a2uiFrames: [] }, input);
     },
   };
+}
+
+/** Width is a live-only native hint on the exact, accepted direct Row child. */
+export function acceptConversationA2UIColumnWeights(
+  frames: unknown,
+  validateLowered: (frames: unknown) => ConversationA2UINode | undefined,
+) {
+  const projected = closedWeightedFrame(frames, 'Column');
+  if (!projected) return;
+  const root = validateLowered([projected.wire]);
+  if (root && bindWeights(root, projected.selected, 'Column')) return root;
 }

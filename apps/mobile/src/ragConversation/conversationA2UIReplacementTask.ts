@@ -1,3 +1,4 @@
+import { acceptConversationA2UIColumnWeights } from './conversationA2UICardWeightTask';
 import type { JsonValue } from '@orot/model-runtime';
 import type { TaskResponderContract } from '@orot/agent-runtime';
 import { conversationA2UIFrameLimit } from './conversationA2UI';
@@ -59,7 +60,7 @@ function normalizeObjectFrames(value: JsonValue): JsonValue {
  * surface. Previously supported contracts and action permissions stay intact. */
 export function withConversationA2UIReplacement(
   previous: TaskResponderContract<GroundedRagAnswer>,
-  version: '49' | '50' | '51' | '52' = '49',
+  version: '49' | '50' | '51' | '52' | '53' = '49',
 ): TaskResponderContract<GroundedRagAnswer> {
   return {
     ...previous,
@@ -70,7 +71,7 @@ export function withConversationA2UIReplacement(
             raw,
             true,
             true,
-            version === '51' || version === '52',
+            version === '51' || version === '52' || version === '53',
           )
         : undefined;
     },
@@ -83,7 +84,8 @@ export function withConversationA2UIReplacement(
       if (!isObject(frames) || typeof frames.description !== 'string')
         return schema;
       const useObjectFrames = version !== '49' && jsonPrompt;
-      const includeVersion = version === '51' || version === '52';
+      const includeVersion =
+        version === '51' || version === '52' || version === '53';
       const description = useObjectFrames
         ? frames.description.replace(
             'Use an ordered array of JSON message strings',
@@ -104,8 +106,11 @@ export function withConversationA2UIReplacement(
             description:
               description +
               ' One atomic updateComponents may change a ready layout, such as replacing a Card and its Column wrapper with a Row of the same exact Text leaves. Detached structural wrappers must be unchanged, already owned by this surface, and never reused; no text, title, or controls may be detached. Keep every accepted answer line in reading order.' +
-              (version === '52'
+              (version === '52' || version === '53'
                 ? ' Read-only horizontal Lists accept literal cross-axis align: start, center, end, or stretch. No justify, style objects, binding or actions.'
+                : '') +
+              (version === '53'
+                ? ' For a read-only grouped comparison, each Column directly under a Row may use literal weight 1–3 in one static createSurface without a data model.'
                 : ''),
           },
         },
@@ -123,16 +128,27 @@ export function withConversationA2UIReplacement(
         !isObject(value)
       )
         return accepted;
-      const root = acceptConversationA2UIFrameSequence(
-        value.a2uiFrames,
-        accepted.value.answer,
-        true,
-        true,
-        true,
-        version === '52' ? 'cross_align' : 'vertical_align',
-        conversationA2UIFrameProse,
-        true,
-      );
+      const validateFrames = (frames: unknown) =>
+        acceptConversationA2UIFrameSequence(
+          frames,
+          accepted.value.answer,
+          true,
+          true,
+          true,
+          version === '52' || version === '53'
+            ? 'cross_align'
+            : 'vertical_align',
+          conversationA2UIFrameProse,
+          true,
+        );
+      const root =
+        validateFrames(value.a2uiFrames) ??
+        (version === '53'
+          ? acceptConversationA2UIColumnWeights(
+              value.a2uiFrames,
+              validateFrames,
+            )
+          : undefined);
       return root
         ? { ...accepted, value: { ...accepted.value, a2uiPresentation: root } }
         : accepted;
