@@ -73,7 +73,7 @@ extension RealtimeVoiceLifecycleTests {
     }
 
     private func assertAggregateV2ScopeWitness(
-        readBase: (String, String) -> [String: Any]?, generation: String, credential: String,
+        readBase: @escaping (String, String) -> [String: Any]?, generation: String, credential: String,
     ) throws {
         let scope = "selected-live-heart-rate-aggregate-v2"
         let input = ["backendModel": "gpt-6-sol", "generation": generation, "grantID": generation + "-model"]
