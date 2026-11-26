@@ -1,4 +1,9 @@
 import type { ConversationA2UINode } from './conversationA2UI';
+import { isRestoredWeightedCards } from './archivedConversationWeightedCards';
+import { isRestoredRichText } from './archivedConversationRichTextLayout';
+
+export const isProtectedArchivedA2UILayout = (root: ConversationA2UINode) =>
+  isRestoredRichText(root) || isRestoredWeightedCards(root);
 
 type Binding = Readonly<{
   lease: { id: string; version: number };

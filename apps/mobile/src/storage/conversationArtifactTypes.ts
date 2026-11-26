@@ -1,5 +1,6 @@
 import type { StoredPossibilityOriginal } from '../ragConversation/possibilityOriginalReceipt';
 import type { ArchivedConversationRichTextLayout } from '../ragConversation/archivedConversationRichTextLayout';
+import type { ArchivedConversationWeightedCardsLayout } from '../ragConversation/archivedConversationWeightedCards';
 import type { ArchivedPairedDetailsLayout } from '../ragConversation/archivedPairedDetailsLayout';
 import type { ArchivedA2UILayout } from '../ragConversation/conversationA2UIArchive';
 import type { ConversationEntryContext } from '../aiFeatures/integration/conversationIntent';
@@ -33,7 +34,8 @@ export interface ConversationArtifact {
   readonly archivedA2UILayout?:
     | ArchivedA2UILayout
     | ArchivedPairedDetailsLayout
-    | ArchivedConversationRichTextLayout;
+    | ArchivedConversationRichTextLayout
+    | ArchivedConversationWeightedCardsLayout;
   readonly proactiveMemory?: true;
   /** Display metadata only; excluded from answer/evidence and provider history. */
   readonly delivery?: import('../ragConversation/conversationMessageDelivery').ConversationMessageDelivery;
