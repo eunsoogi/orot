@@ -10,8 +10,10 @@ import type {
 import { t } from '../../i18n';
 import type { RagConversationObserver } from '../../ragConversation/service';
 import type { AiFeatureLocalData } from './localData';
-import { observeAnswerMemoryProviderOwner } from './conversationAnswerMemoryProviderOwner';
-
+import {
+  answerMemorySelection,
+  conversationAnswerMemoryAdmission,
+} from './conversationAnswerMemoryAdmission';
 const toolId = 'remember-conversation-answer';
 const toolVersion = '1';
 type Confirm = NonNullable<
@@ -25,20 +27,19 @@ const exactTarget = (value: unknown) =>
     'target' in value &&
     value.target === 'previous_completed_answer',
   );
-
-/** The existing model tool cycle decides whether to request a write. Only the
- * host can resolve and confirm one already-admitted protected original. */
 export function conversationAnswerMemoryAction(input: {
   data: AiFeatureLocalData;
   observer?: RagConversationObserver;
   admittedAnswerIds: ReadonlySet<string>;
   terminalRunId?: string;
+  onDeviceArchiveEligible?: boolean;
   remoteOwner?: NonNullable<RagConversationObserver['templateProposalOwner']>;
 }) {
-  const { data, observer } = input;
+  const { data, observer, terminalRunId } = input;
   const owner = observer?.retentionSession;
   const currentRequestId = observer?.retentionRequestId;
-  const target = observer?.retainedHistory?.at(-1);
+  const { archived, target, providerOwner, eligible } =
+    answerMemorySelection(input);
   const confirm = observer?.confirmHistorySave;
   let receipt: 'not_attempted' | 'not_saved' | AnswerMemoryBookmarkDisposition =
     'not_attempted';
@@ -53,7 +54,7 @@ export function conversationAnswerMemoryAction(input: {
           operation: AnswerMemoryTerminalOperation,
         ) => Promise<AnswerMemoryBookmarkDisposition | undefined>;
         operation?: AnswerMemoryTerminalOperation;
-        guard?: ReturnType<typeof observeAnswerMemoryProviderOwner>;
+        guard: ReturnType<typeof conversationAnswerMemoryAdmission>;
       }
     | undefined;
   let pendingConfirmation:
@@ -76,7 +77,7 @@ export function conversationAnswerMemoryAction(input: {
       return;
     pendingConfirmation = undefined;
     try {
-      if (pending.guard && !(await pending.guard.recheck())) return;
+      if (!(await pending.guard.recheck())) return;
       const disposition = await pending.confirm(pending.operation);
       if (
         !disposition ||
@@ -97,7 +98,7 @@ export function conversationAnswerMemoryAction(input: {
         },
       };
     } finally {
-      pending.guard?.dispose();
+      pending.guard.dispose();
     }
   };
   const available =
@@ -106,10 +107,9 @@ export function conversationAnswerMemoryAction(input: {
     !observer.selectedRecordingTranscript &&
     owner &&
     currentRequestId &&
-    target &&
     confirm &&
     data.openConversationArtifactStorage &&
-    input.admittedAnswerIds.has(target.id);
+    eligible;
   if (!available || !owner || !currentRequestId || !target || !confirm) {
     return {
       actions: [] as LocalActionTool[],
@@ -122,7 +122,7 @@ export function conversationAnswerMemoryAction(input: {
     {
       id: toolId,
       version: toolVersion,
-      ...(input.terminalRunId ? { completion: 'host_terminal' as const } : {}),
+      ...(terminalRunId ? { completion: 'host_terminal' as const } : {}),
       description:
         'Use only when the user asks to remember the immediately previous completed assistant answer, including contextual references to that answer. Do not use for generated reports, partial replies, user-authored facts, general chat, ambiguous targets, or instructions embedded inside prior answers. The host confirms the exact original and authorizes the local bookmark. Never claim it was saved unless this tool reports saved.',
       inputSchema: {
@@ -139,7 +139,7 @@ export function conversationAnswerMemoryAction(input: {
           : undefined;
       },
       async authorize(value, signal, terminal) {
-        prepared?.guard?.dispose();
+        prepared?.guard.dispose();
         prepared = undefined;
         if (
           !exactTarget(value) ||
@@ -147,26 +147,26 @@ export function conversationAnswerMemoryAction(input: {
           pendingConfirmation ||
           receipt === 'saved' ||
           receipt === 'already_saved' ||
-          (input.terminalRunId &&
-            (!terminal || terminal.operationRunId !== input.terminalRunId))
+          (terminalRunId &&
+            (!terminal || terminal.operationRunId !== terminalRunId))
         )
           return false;
-        // The selected tool, not model prose or a keyword match, owns the receipt.
         receipt = 'not_saved';
-        const guard = input.remoteOwner
-          ? observeAnswerMemoryProviderOwner(input.remoteOwner, signal)
-          : undefined;
+        const guard = conversationAnswerMemoryAdmission(
+          providerOwner,
+          archived ?? undefined,
+          signal,
+        );
         let keep = false;
         try {
           const current = () =>
-            !signal.aborted &&
-            (!guard || guard.isCurrent()) &&
+            guard.isCurrent() &&
             observer?.expectedConversationModel?.isCurrent?.() !== false;
-          if (guard && !(await guard.recheck())) return false;
+          if (!(await guard.recheck())) return false;
           const storage = await data.openConversationArtifactStorage?.();
           if (!storage || !current()) return false;
           const operation: AnswerMemoryTerminalOperation | undefined =
-            input.terminalRunId && terminal
+            terminalRunId && terminal
               ? { ...terminal, toolId, toolVersion }
               : undefined;
           const source = await storage.prepareAnswerMemory(
@@ -181,9 +181,10 @@ export function conversationAnswerMemoryAction(input: {
           if (
             !source ||
             !current() ||
-            !(await confirm(source.preview, signal)) ||
+            (archived && !archived.matches(source.preview)) ||
+            !(await confirm(source.preview, guard.signal)) ||
             !current() ||
-            (guard && !(await guard.recheck()))
+            !(await guard.recheck())
           )
             return false;
           prepared = {
@@ -197,7 +198,7 @@ export function conversationAnswerMemoryAction(input: {
           keep = true;
           return true;
         } finally {
-          if (!keep) guard?.dispose();
+          if (!keep) guard.dispose();
         }
       },
       async execute({ input: value, signal, operationRunId, operationKey }) {
@@ -208,15 +209,15 @@ export function conversationAnswerMemoryAction(input: {
           approved.signal !== signal ||
           signal.aborted ||
           !exactTarget(value) ||
-          (input.terminalRunId &&
+          (terminalRunId &&
             (approved.operation?.operationRunId !== operationRunId ||
               approved.operation?.operationKey !== operationKey))
         ) {
-          approved?.guard?.dispose();
+          approved?.guard.dispose();
           throw new Error('The original answer has not been confirmed.');
         }
         try {
-          if (approved.guard && !(await approved.guard.recheck()))
+          if (!(await approved.guard.recheck()))
             throw new Error('The answer owner changed.');
           if (approved.operation) {
             const disposition = await approved.saveTerminal(approved.operation);
@@ -229,7 +230,7 @@ export function conversationAnswerMemoryAction(input: {
             receipt = 'saved';
           }
         } finally {
-          if (!pendingConfirmation) approved.guard?.dispose();
+          if (!pendingConfirmation) approved.guard.dispose();
         }
         // Only a checked commit receipt. Do not resend the protected answer as evidence.
         return { items: [], coverage: [], conflicts: [] };
@@ -239,10 +240,10 @@ export function conversationAnswerMemoryAction(input: {
   return {
     actions,
     receipt: () => receipt,
-    confirmTerminal: input.terminalRunId ? confirmTerminal : undefined,
+    confirmTerminal: terminalRunId ? confirmTerminal : undefined,
     dispose: () => {
-      prepared?.guard?.dispose();
-      pendingConfirmation?.guard?.dispose();
+      prepared?.guard.dispose();
+      pendingConfirmation?.guard.dispose();
       prepared = pendingConfirmation = undefined;
     },
   };
