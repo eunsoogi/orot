@@ -4,7 +4,10 @@ import { ensureHealthContextGeneration } from '../healthEvidence/healthContext/g
 import { healthPeriodDeletionGuards } from './healthPeriodDependencies';
 import { ensureConversationPeriodCutoff } from './conversationPeriodCutoff';
 import { setupConversationPeriodGuards } from './conversationPeriodGuards';
-import { periodRowReferences } from './conversationPeriodRemoval';
+import {
+  indexedMarkerPeriodTables,
+  markerPeriodContributorMatches,
+} from './markerPeriodContributors';
 import {
   jsonValueChangedPredicate,
   memoryContentChangedPredicate,
@@ -175,6 +178,7 @@ export async function setupConversationArtifactSchema(tx: SqlExecutor) {
   await tx.execute(`CREATE TRIGGER IF NOT EXISTS conversation_memory_changed AFTER UPDATE ON agent_memory_records
     WHEN ${memoryContentChangedPredicate()} BEGIN
     DELETE FROM conversation_artifacts WHERE id IN (SELECT artifact_id FROM conversation_artifact_sources WHERE record_kind = 'reviewed_memory' AND record_id = OLD.id); END`);
+  const indexedPeriods = await indexedMarkerPeriodTables(tx);
   for (const table of [
     'source_deletion_tombstones',
     'agent_memory_removed_sources',
@@ -187,16 +191,22 @@ export async function setupConversationArtifactSchema(tx: SqlExecutor) {
       dose_events: 'dose_event',
       symptom_entries: 'symptom_entry',
     };
+    const matches = (name: string, contributor: string) =>
+      markerPeriodContributorMatches(
+        name,
+        'NEW.source_id',
+        table,
+        kinds[name],
+        contributor,
+        indexedPeriods.has(name),
+      );
     const affectedRows = Object.keys(guards)
-      .map(
-        name =>
-          `EXISTS (SELECT 1 FROM ${name} h WHERE ${periodRowReferences('NEW.source_id', table, kinds[name])})`,
-      )
+      .map(name => matches(name, '1'))
       .join(' OR ');
     const affectedPeriods = Object.entries(guards)
       .map(
         ([name, guard]) =>
-          `DELETE FROM conversation_artifacts WHERE id IN (SELECT p.artifact_id FROM conversation_artifact_periods p WHERE EXISTS (SELECT 1 FROM ${name} h WHERE ${periodRowReferences('NEW.source_id', table, kinds[name])} AND (${guard.replaceAll('OLD.', 'h.')})));`,
+          `DELETE FROM conversation_artifacts WHERE id IN (SELECT p.artifact_id FROM conversation_artifact_periods p WHERE ${matches(name, guard.replaceAll('OLD.', 'h.'))});`,
       )
       .join('\n');
     await tx.execute(
