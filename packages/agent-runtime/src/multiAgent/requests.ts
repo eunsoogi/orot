@@ -78,7 +78,7 @@ export async function buildTaskRequest<TResult>(
                   (nativeResearch
                     ? 'Use native tools for permitted evidence requests.'
                     : 'Use request_evidence only when the response schema and research scope permit it.'),
-                responseSchema: taskResponseSchema(contract, effectiveInput, nativeResearch),
+                responseSchema: taskResponseSchema(contract, effectiveInput, nativeResearch, true),
               }),
             },
           ]

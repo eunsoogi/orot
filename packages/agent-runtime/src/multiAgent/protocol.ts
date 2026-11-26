@@ -52,6 +52,7 @@ export function taskResponseSchema<TResult>(
   contract: TaskResponderContract<TResult>,
   input?: TaskResponderInput,
   nativeResearch = false,
+  jsonPrompt?: true,
 ): JsonObject {
   const ids = input?.evidence.items.map((item) => item.evidenceId) ?? [];
   const schema = {
@@ -88,7 +89,7 @@ export function taskResponseSchema<TResult>(
           type: { type: 'string', enum: ['result'] },
           value: guidedSchema(
             input && contract.createResultSchema
-              ? contract.createResultSchema(input)
+              ? contract.createResultSchema(input, jsonPrompt)
               : contract.resultSchema,
           ),
           citations: taskCitationSchema(

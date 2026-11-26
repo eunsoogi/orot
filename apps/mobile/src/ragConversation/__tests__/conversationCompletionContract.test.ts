@@ -12,7 +12,7 @@ const input = {
   evidence: { items: [], coverage: [], conflicts: [] },
 } as unknown as TaskResponderInput;
 test('new answer contract has no coverage completion classification', () => {
-  expect(ragConversationTask.taskVersion).toBe('49');
+  expect(ragConversationTask.taskVersion).toBe('50');
   for (const schema of [
     conversationResultSchema,
     literatureConversationResultSchema,
@@ -102,4 +102,23 @@ test('legacy response contracts keep full native receipts while new turns avoid 
   expect(ragConversationTask.resultSchema).not.toHaveProperty(
     'properties.answer.maxLength',
   );
+});
+
+test('object A2UI frames are advertised only in current JSON guidance for ordinary Conversation', () => {
+  const legacy = restoreConversationTask({
+    taskType: ragConversationTask.taskType,
+    taskVersion: '49',
+  });
+  const ordinary = { ...input, context: [] };
+  const guided = ragConversationTask.createResultSchema?.(ordinary);
+  const historic = legacy?.createResultSchema?.(ordinary, true);
+  const prompt = ragConversationTask.createResultSchema?.(ordinary, true);
+  const selectedRecording = ragConversationTask.createResultSchema?.(
+    { ...input, context: { history: [], suppressA2UIPresentation: true } },
+    true,
+  );
+  expect(historic).toEqual(guided);
+  expect(guided?.properties).toHaveProperty('a2uiFrames.items.type', 'string');
+  expect(prompt?.properties).toHaveProperty('a2uiFrames.items.anyOf');
+  expect(selectedRecording?.properties).not.toHaveProperty('a2uiFrames');
 });

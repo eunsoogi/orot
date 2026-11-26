@@ -280,3 +280,12 @@ retired references and foreign frames still fall back to ordinary prose.
 Owned streaming previews can show the resulting neutral geometry but never the
 unvalidated text, and deletion still clears the preview. No change to
 archive formats, actions or previous task policies.
+
+Fresh ordinary task v50 lets models using JSON prompt guidance emit A2UI
+messages as native JSON objects in `a2uiFrames`, without double-escaping each
+frame as a string. Older string frames still work. Apple native guided schema
+generation keeps its string representation; existing historical task
+contracts retain their previous grammar. Both representations pass through the
+same bounded frame validation and exact answer ownership before a final
+surface can appear. This does not add actions, change opt-outs for scoped
+records or templates, or add streaming previews for object frames.
