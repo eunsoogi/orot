@@ -1,4 +1,5 @@
-import { useEffect, useMemo, useState } from 'react';
+import type { NavigationRouteOwnership } from '../navigation/navigationRouteContracts';
+import { useEffect, useLayoutEffect, useMemo, useState } from 'react';
 import { StyleSheet, View } from 'react-native';
 import { AppText } from '../layout/AppText';
 import { EncounterReviewActions } from './EncounterReviewActions';
@@ -19,10 +20,12 @@ export function EncounterReviewPanel({
   sourceId,
   disabled,
   onInteractionChange,
+  routeOwner,
   service = localEncounterReviewService,
 }: {
   sourceId: string;
   disabled: boolean;
+  routeOwner?: NavigationRouteOwnership;
   onInteractionChange: (state: { busy: boolean; dirty: boolean }) => void;
   service?: EncounterReviewService;
 }) {
@@ -33,19 +36,46 @@ export function EncounterReviewPanel({
   });
   const controller = useMemo(
     () => new EncounterReviewController(sourceId, service, setState),
-    [sourceId, service],
+    [sourceId, service, routeOwner],
   );
   const { consent, disclosureSheet } = useInferenceConsent();
   const busy = ['loading', 'running', 'saving'].includes(state.status);
   const reviewable = hasPendingEncounterCandidates(state);
-  useEffect(() => {
-    controller.activate();
-    controller.restore();
-    return () => controller.dispose();
-  }, [controller]);
+  const [activeController, setActiveController] =
+    useState<EncounterReviewController>();
+  useLayoutEffect(() => {
+    let admitted = false;
+    let retired = false;
+    // The navigation owner broadcasts before the next React commit. Abort the
+    // controller there so a held selection cannot dispatch from a retired route.
+    const update = () => {
+      if (retired) return;
+      if (routeOwner && !routeOwner.isCurrent()) {
+        if (!admitted) return;
+        retired = true;
+        controller.dispose();
+        setActiveController(undefined);
+        setState({ status: 'unavailable', candidates: [], selected: [] });
+        return;
+      }
+      if (admitted) return;
+      admitted = true;
+      controller.activate();
+      controller.restore();
+      setActiveController(controller);
+    };
+    const unsubscribe = routeOwner?.subscribe(update);
+    update();
+    return () => {
+      retired = true;
+      unsubscribe?.();
+      controller.dispose();
+    };
+  }, [controller, routeOwner]);
   useEffect(() => {
     onInteractionChange({ busy, dirty: reviewable });
   }, [busy, reviewable, onInteractionChange]);
+  if (activeController !== controller) return null;
   const pending = state.status === 'pending' ? state.pending : undefined;
   return (
     <View style={styles.panel} testID="encounter-review-panel">

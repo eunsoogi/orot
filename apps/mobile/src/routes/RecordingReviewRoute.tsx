@@ -167,6 +167,7 @@ export function RecordingReviewRoute({
                   sourceId={source.id}
                   disabled={interaction.busy || interaction.dirty || exportBusy}
                   onInteractionChange={setReview}
+                  routeOwner={routeOwner}
                   service={reviewService}
                 />
                 <View
