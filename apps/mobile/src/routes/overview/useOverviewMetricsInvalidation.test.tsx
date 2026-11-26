@@ -1,6 +1,7 @@
 import { act, renderHook, waitFor } from '@testing-library/react-native';
 import { useIsFocused } from '@react-navigation/native';
 import { AppState, type AppStateStatus } from 'react-native';
+import { notifyWorkoutImportCommitted } from '../../healthkit/workoutImportEvents';
 import {
   notifyLocalDataCleared,
   notifyLocalSourceDeleted,
@@ -145,4 +146,69 @@ test('clears metrics on return while Home is unfocused and waits for focus to re
 
   await hook.unmount();
   appStateSubscription.mockRestore();
+});
+
+test('committed workouts refresh focused Overview and coalesce while its read is held', async () => {
+  const previous = AppState.currentState;
+  AppState.currentState = 'active';
+  const subscription = jest
+    .spyOn(AppState, 'addEventListener')
+    .mockImplementation(() => ({ remove: jest.fn() }));
+  const workout = (day: string) => ({
+    metrics: {
+      workouts: {
+        ...metric,
+        metric: 'workouts' as const,
+        latest: { date: day, value: 42 },
+        unit: 'min',
+      },
+    },
+    quantityTruncated: false,
+  });
+  let settle!: (value: LoadResult) => void;
+  const held = new Promise<LoadResult>(resolve => {
+    settle = resolve;
+  });
+  jest
+    .mocked(loadOverviewMetrics)
+    .mockReset()
+    .mockResolvedValueOnce(workout('2026-10-14'))
+    .mockReturnValueOnce(held)
+    .mockResolvedValueOnce(workout('2026-10-16'));
+  const hook = await renderHook(() => useOverviewMetrics());
+  try {
+    await waitFor(() => expect(hook.result.current.state).toBe('ready'));
+    await act(async () => notifyWorkoutImportCommitted());
+    await waitFor(() => expect(loadOverviewMetrics).toHaveBeenCalledTimes(2));
+    await act(async () => {
+      notifyWorkoutImportCommitted();
+      notifyWorkoutImportCommitted();
+    });
+    expect(loadOverviewMetrics).toHaveBeenCalledTimes(2);
+    expect(hook.result.current.metrics.workouts?.latest.date).toBe(
+      '2026-10-14',
+    );
+
+    await act(async () => settle(workout('2026-10-15')));
+    await waitFor(() =>
+      expect(hook.result.current.metrics.workouts?.latest.date).toBe(
+        '2026-10-16',
+      ),
+    );
+    expect(loadOverviewMetrics).toHaveBeenCalledTimes(3);
+
+    AppState.currentState = 'background';
+    await act(async () => notifyWorkoutImportCommitted());
+    expect(loadOverviewMetrics).toHaveBeenCalledTimes(3);
+    AppState.currentState = 'active';
+    mockedUseIsFocused.mockReturnValue(false);
+    await hook.rerender(undefined);
+    await act(async () => notifyWorkoutImportCommitted());
+    expect(loadOverviewMetrics).toHaveBeenCalledTimes(3);
+  } finally {
+    settle(workout('2026-10-15'));
+    await hook.unmount();
+    AppState.currentState = previous;
+    subscription.mockRestore();
+  }
 });

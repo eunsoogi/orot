@@ -1,6 +1,7 @@
 import type { OverviewSleepEpisode } from './overviewSleepEpisode';
 import type { OverviewChartHealthContext } from '../../healthEvidence/healthContext/healthContextReport';
 import type { ChartRange } from '../../ui/charts/types';
+import { compareHealthKitTimestamps } from '../../healthkit/commonObservations/time';
 import { isOverviewHeartRate, type OverviewMetric } from './metricSelection';
 
 export interface OverviewMetricDay {
@@ -26,6 +27,33 @@ export interface OverviewMetricProjection {
     readonly previousDates: readonly string[];
     readonly recentDates: readonly string[];
   } | null;
+}
+
+/** Keep every tile and its source label bound to the same quantity series. */
+export function selectOverviewQuantitySeries(
+  report: OverviewChartHealthContext,
+  metric: OverviewMetric,
+  concept: string,
+  unit: string,
+) {
+  const matches = report.quantities.filter(
+    item => item.concept === concept && item.unit === unit,
+  );
+  if (metric !== 'workouts') return matches[0];
+
+  // The most frequently used tracker is not necessarily the last workout's
+  // source. Use the newest actual sample without pooling overlapping sources.
+  return matches.reduce<(typeof matches)[number] | undefined>(
+    (chosen, item) => {
+      const newest = item.days.at(-1)?.lastAt;
+      const previous = chosen?.days.at(-1)?.lastAt;
+      return newest &&
+        (!previous || compareHealthKitTimestamps(newest, previous) > 0)
+        ? item
+        : chosen;
+    },
+    undefined,
+  );
 }
 
 /** Uses one sensor series throughout; absent dates remain gaps and partial today is excluded from comparison. */
@@ -55,9 +83,11 @@ export function projectOverviewMetric(
   const series =
     metric === 'sleep'
       ? undefined
-      : report.quantities.find(
-          item =>
-            item.concept === concept[metric] && item.unit === unit[metric],
+      : selectOverviewQuantitySeries(
+          report,
+          metric,
+          concept[metric],
+          unit[metric],
         );
   if (metric !== 'sleep' && !series) return null;
   const values = new Map<string, number>();

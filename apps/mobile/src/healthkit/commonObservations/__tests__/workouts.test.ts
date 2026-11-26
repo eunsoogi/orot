@@ -1,3 +1,5 @@
+import { createRecordRepository, runMigrations } from '@orot/storage';
+import { openSqliteTestDatabase } from '../../../../../../packages/storage/__tests__/sqliteTestDatabase';
 import { chunkStructuredRecord } from '@orot/rag';
 import {
   mapCommonObservationSample,
@@ -106,4 +108,123 @@ it('imports, replays idempotently and deletes only the matching workout with its
   expect(
     await repository.getSyncCheckpoint('healthkit:workouts:workouts'),
   ).toMatchObject({ value: 'c' });
+});
+
+it('imports, replays and deletes distinct Apple and third-party workout UUIDs through the same SQLite anchor', async () => {
+  const fixture = openSqliteTestDatabase(':memory:');
+  try {
+    await runMigrations(fixture.database);
+    const repository = createRecordRepository(fixture.database);
+    const apple = {
+      ...sample(),
+      id: '11111111-1111-4111-8111-111111111111',
+      sourceIdentifier: 'com.apple.Health',
+      sourceName: 'Synthetic Apple source',
+    };
+    const partner = {
+      ...sample(),
+      id: '22222222-2222-4222-8222-222222222222',
+      sourceIdentifier: 'example.synthetic.strength',
+      sourceName: 'Synthetic strength source',
+      device: undefined,
+      sourceProductType: undefined,
+      startDate: '2026-10-04T14:00:00.000Z',
+      endDate: '2026-10-04T15:02:00.000Z',
+      value: 42,
+      workoutActivityType: 50,
+      workoutActivityName: 'strength',
+    };
+    const health = healthKit([
+      page({ addedSamples: [apple], cursor: 'apple-anchor' }),
+      page({ addedSamples: [partner], cursor: 'partner-anchor' }),
+      page({ addedSamples: [partner, apple], cursor: 'replay-anchor' }),
+      page({ deletedSampleIds: [apple.id], cursor: 'delete-first-anchor' }),
+      page({ deletedSampleIds: [partner.id], cursor: 'delete-both-anchor' }),
+    ]);
+    const options = {
+      feature: 'workouts' as const,
+      permissionPreviouslyRequested: true,
+      healthKit: health,
+      repository,
+      now: () => observedAt,
+    };
+    const sync = () => syncCommonObservationChanges(options);
+    expect(await sync()).toMatchObject({
+      status: 'complete',
+      upserted: 1,
+      skipped: 0,
+    });
+    expect(await sync()).toMatchObject({
+      status: 'complete',
+      upserted: 1,
+      skipped: 0,
+    });
+    expect(await sync()).toMatchObject({
+      status: 'empty',
+      upserted: 0,
+      skipped: 0,
+    });
+    const expected = (workout: typeof apple) => ({
+      id: 'healthkit:workouts:' + workout.id,
+      effectiveAt: workout.startDate,
+      endedAt: workout.endDate,
+      value: expect.objectContaining({ amount: workout.value, unit: 'min' }),
+      workout: {
+        activityType: workout.workoutActivityType,
+        activityName: workout.workoutActivityName,
+      },
+      provenance: expect.objectContaining({
+        sourceRecordIds: [workout.id],
+        source: expect.objectContaining({
+          sourceIdentifier: workout.sourceIdentifier,
+          sourceName: workout.sourceName,
+        }),
+      }),
+    });
+    expect(await repository.list('health_observation')).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining(expected(apple)),
+        expect.objectContaining(expected(partner)),
+      ]),
+    );
+    expect(await repository.list('health_observation')).toHaveLength(2);
+    expect(await sync()).toMatchObject({ status: 'complete', deleted: 1 });
+    expect(await repository.list('health_observation')).toEqual([
+      expect.objectContaining(expected(partner)),
+    ]);
+    expect(await sync()).toMatchObject({ status: 'complete', deleted: 1 });
+    expect(await repository.list('health_observation')).toEqual([]);
+    expect(
+      await repository.getSyncCheckpoint('healthkit:workouts:workouts'),
+    ).toMatchObject({ value: 'delete-both-anchor' });
+    expect(health.requestReadAuthorization).not.toHaveBeenCalled();
+    const optionsForCursor = (cursor: string | null) => ({
+      feature: 'workouts',
+      sampleKind: 'workouts',
+      limit: 200,
+      cursor,
+    });
+    expect(health.querySampleChanges).toHaveBeenNthCalledWith(
+      1,
+      optionsForCursor(null),
+    );
+    expect(health.querySampleChanges).toHaveBeenNthCalledWith(
+      2,
+      optionsForCursor('apple-anchor'),
+    );
+    expect(health.querySampleChanges).toHaveBeenNthCalledWith(
+      3,
+      optionsForCursor('partner-anchor'),
+    );
+    expect(health.querySampleChanges).toHaveBeenNthCalledWith(
+      4,
+      optionsForCursor('replay-anchor'),
+    );
+    expect(health.querySampleChanges).toHaveBeenNthCalledWith(
+      5,
+      optionsForCursor('delete-first-anchor'),
+    );
+  } finally {
+    fixture.close();
+  }
 });

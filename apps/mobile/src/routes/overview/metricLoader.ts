@@ -16,6 +16,7 @@ import {
 import { projectOverviewDerivedHeartRate } from './overviewDerivedHeartRate';
 import {
   projectOverviewMetric,
+  selectOverviewQuantitySeries,
   type OverviewMetricProjection,
 } from './metricProjection';
 
@@ -176,9 +177,7 @@ export async function projectOverviewMetricSnapshot(
       steps: 'count',
       workouts: 'min',
     }[metric];
-    const series = report.quantities.find(
-      item => item.concept === concept && item.unit === unit,
-    );
+    const series = selectOverviewQuantitySeries(report, metric, concept, unit);
     const matching = names.rows.filter(row =>
       metric === 'sleep'
         ? row.concept === 'sleep' ||

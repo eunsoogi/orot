@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useIsFocused } from '@react-navigation/native';
 import { AppState } from 'react-native';
+import { subscribeWorkoutImportCommitted } from '../../healthkit/workoutImportEvents';
 import {
   subscribeLocalDataClear,
   subscribeLocalSourceDeletion,
@@ -20,6 +21,7 @@ declare const require: (
   path: '../../storage/secureDatabase',
 ) => typeof import('../../storage/secureDatabase');
 const discardedReadRetryDelays = [100, 300] as const;
+const isForeground = () => AppState.currentState === 'active';
 /** Reads encrypted local data on entry; selecting metrics never invokes permission or synchronization flows. */
 export function useOverviewMetrics() {
   const focused = useIsFocused();
@@ -37,6 +39,9 @@ export function useOverviewMetrics() {
   const selectionGeneration = useRef(0);
   const loadGeneration = useRef(0);
   const hasSnapshot = useRef(false);
+  const reads = useRef(0);
+  const workoutRefreshPending = useRef(false);
+  const workoutFocus = useRef(false);
   const retry = useCallback(() => {
     loadGeneration.current += 1;
     setAttempt(value => value + 1);
@@ -67,6 +72,24 @@ export function useOverviewMetrics() {
     });
     return () => subscription.remove();
   }, [invalidateSnapshot]);
+  useEffect(() => {
+    if (!focused) return;
+    workoutFocus.current = true;
+    const unsubscribe = subscribeWorkoutImportCommitted(() => {
+      if (!isForeground() || workoutRefreshPending.current) return;
+      // A read already in flight cannot present pre-import rows as current.
+      // Let it settle before requesting one successor for coalesced imports.
+      if (reads.current > 0) {
+        workoutRefreshPending.current = true;
+        loadGeneration.current++;
+      } else retry();
+    });
+    return () => {
+      workoutFocus.current = false;
+      workoutRefreshPending.current = false;
+      unsubscribe();
+    };
+  }, [focused, retry]);
   useEffect(() => {
     if (!focused) return;
     const now = new Date();
@@ -107,6 +130,7 @@ export function useOverviewMetrics() {
       active && currentLoadGeneration === loadGeneration.current;
     const load = async (discardRetries: number) => {
       if (!isCurrent()) return;
+      reads.current++;
       try {
         const storage = require('../../storage/secureDatabase');
         const now = new Date();
@@ -150,6 +174,12 @@ export function useOverviewMetrics() {
         if (isCurrent()) {
           setState(hasSnapshot.current ? 'stale' : 'failed');
         }
+      } finally {
+        reads.current--;
+        if (reads.current === 0 && workoutRefreshPending.current) {
+          workoutRefreshPending.current = false;
+          if (workoutFocus.current && isForeground()) retry();
+        }
       }
     };
     Promise.resolve().then(() => load(0));
@@ -159,7 +189,7 @@ export function useOverviewMetrics() {
       // Discard queued work and stop only this read at safe SQL boundaries.
       controller.abort();
     };
-  }, [focused, attempt]);
+  }, [focused, attempt, retry]);
   const save = useCallback(async (next: readonly OverviewMetricChoice[]) => {
     const storage = require('../../storage/secureDatabase');
     await saveOverviewMetricSelection(await storage.openLocalStorage(), next);
