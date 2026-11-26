@@ -8,7 +8,10 @@ import { createDirectPhotoSettingsAuthorization } from '../../../ragConversation
 import { createConversationPhotoImageSend } from '../../../aiFeatures/integration/sendConversationPhotoImage';
 import { syntheticDirectJPEG } from '../../../aiFeatures/integration/testSupport/directPhotoSendFixture';
 import { publicEvidenceFixture } from '../../../aiFeatures/integration/testSupport/publicWebEvidenceTestSupport';
-import { directPhotoPermission } from '../../../agent/execution/directPhotoConsentScope';
+import {
+  directPhotoPermission,
+  legacyDirectPhotoConsentScope,
+} from '../../../agent/execution/directPhotoConsentScope';
 import { resolveSettingsConsentOwner } from '../../../agent/execution/settingsConsentOwner';
 import { saveModelSettingsConsent } from '../../../agent/execution/saveModelSettingsConsent';
 import { calendarModelStore } from '../../../calendarModelSettings/calendarModelStore';
@@ -106,7 +109,7 @@ test.each(['Settings', 'joint Calendar', 'non-Settings picker'] as const)(
         }
         const details = await view.findByTestId('inference-disclosure-scope');
         expect(details).toHaveTextContent(
-          /선택한 사진 한 장과 입력한 질문만[\s\S]+다른 대화나 건강 기록을 자동으로 첨부하지 않습니다/,
+          /선택한 사진 최대 세 장과 입력한 질문만[\s\S]+다른 대화나 건강 기록을 자동으로 첨부하지 않습니다/,
         );
         expect(details).toHaveTextContent(/Europe PMC/);
         expect(details).toHaveTextContent(/사진 원본은 저장하지 않습니다/);
@@ -146,6 +149,29 @@ test.each(['Settings', 'joint Calendar', 'non-Settings picker'] as const)(
             approved,
           );
         }
+        const legacyOnly = createDirectPhotoSettingsAuthorization({
+          resolveOwner: resolveSettingsConsentOwner,
+          async readGrant(slot, domain) {
+            const grant = await reloaded.read(slot, domain);
+            return (
+              grant && {
+                ...grant,
+                permissions: grant.permissions.map(permission =>
+                  permission.purpose === directPhotoPermission.purpose
+                    ? {
+                        ...permission,
+                        policyVersion:
+                          legacyDirectPhotoConsentScope.policyVersion,
+                      }
+                    : permission,
+                ),
+              }
+            );
+          },
+        });
+        expect((await legacyOnly(current, signal))?.current()).toBe(true);
+        await expect(legacyOnly(current, signal, 2)).resolves.toBeNull();
+        expect((await authorize(current, signal, 2))?.current()).toBe(true);
         const proof = await authorize(current, signal);
         expect(proof?.current()).toBe(true);
         await expect(

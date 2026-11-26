@@ -4,7 +4,7 @@ import {
   consentRevision,
 } from '../agent/execution/consentRevision';
 import { NativeModules } from 'react-native';
-import { isBoundedInlineJPEG } from '@orot/provider-openai';
+import { captureDirectPhotoGroup } from '@orot/provider-openai';
 import { resolveSelectedAiProvider } from '../aiFeatures/integration/provider';
 import { providerSelectionStore } from '../providers/selection/keychainSelectionStore';
 import { readChatGPTConsentCredential } from '../providers/chatGPTConsentIdentity';
@@ -24,15 +24,19 @@ export const conversationDirectPhotoPorts = {
       throw new Error('Image picker unavailable.');
     const value = await module.pickConversationImage();
     if (value === null) return null;
-    if (
-      !value ||
-      typeof value !== 'object' ||
-      !('jpegBase64' in value) ||
-      typeof value.jpegBase64 !== 'string' ||
-      !isBoundedInlineJPEG(value.jpegBase64)
-    )
+    if (typeof value !== 'object' || !value || Array.isArray(value))
       throw new Error('Invalid picker image.');
-    return value.jpegBase64;
+    const raw = value as Record<string, unknown>;
+    const keys = Object.keys(raw);
+    const group = captureDirectPhotoGroup(
+      keys.length === 1 && keys[0] === 'jpegBase64'
+        ? [raw.jpegBase64]
+        : keys.length === 1 && keys[0] === 'jpegBase64s'
+          ? raw.jpegBase64s
+          : undefined,
+    );
+    if (!group) throw new Error('Invalid picker image.');
+    return group.length === 1 ? group[0]! : group;
   },
   grant: createDirectPhotoSettingsAuthorization(),
   async authorization() {

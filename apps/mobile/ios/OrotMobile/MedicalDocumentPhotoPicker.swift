@@ -97,7 +97,10 @@ final class MedicalDocumentPhotoPicker: NSObject, PHPickerViewControllerDelegate
         self.mode = mode
         var configuration = PHPickerConfiguration()
         configuration.filter = .images
-        configuration.selectionLimit = 1
+        configuration.selectionLimit = mode == .transientJPEG ? 3 : 1
+        if mode == .transientJPEG {
+            configuration.selection = .ordered
+        }
         configuration.preferredAssetRepresentationMode = .current
         let picker = PHPickerViewController(configuration: configuration)
         picker.delegate = self
@@ -125,7 +128,14 @@ final class MedicalDocumentPhotoPicker: NSObject, PHPickerViewControllerDelegate
             requests.resolved(id, .success(nil))
             return
         }
-        let mode = mode
+        if mode == .transientJPEG {
+            guard results.count <= 3 else {
+                requests.resolved(id, .failure(MedicalDocumentExtractionFailure.unsupportedDocument))
+                return
+            }
+            normalizeSelection(results, id: id)
+            return
+        }
         // The provider URL is temporary and valid only during its callback; never retain it.
         result.itemProvider.loadFileRepresentation(forTypeIdentifier: UTType.image.identifier) { [weak self] url, error in
             do {
@@ -134,15 +144,34 @@ final class MedicalDocumentPhotoPicker: NSObject, PHPickerViewControllerDelegate
                     throw error
                 }
                 guard let url else { throw CocoaError(.fileReadUnknown) }
-                let document: [String: Any]
-                switch mode {
-                case .document: document = try extractAndStore(Data(contentsOf: url))
-                case .transientJPEG:
-                    // Image mode needs neither Vision text nor a protected original on disk.
-                    let jpeg = try ConversationPhotoNormalizer.normalize(pickerURL: url)
-                    document = ["jpegBase64": jpeg.base64EncodedString()]
-                }
+                let document = try extractAndStore(Data(contentsOf: url))
                 DispatchQueue.main.async { self.requests.resolved(id, .success(document)) }
+            } catch {
+                DispatchQueue.main.async { self?.requests.resolved(id, .failure(error)) }
+            }
+        }
+    }
+
+    /// Read each transient URL inside its callback and in selection order. A
+    /// later failure rejects the whole group; no selected item is sent alone.
+    private func normalizeSelection(_ results: [PHPickerResult], id: UUID, images: [String] = [], bytes: Int = 0) {
+        guard activeID == id else { return }
+        guard images.count < results.count else {
+            let payload: [String: Any] = images.count == 1 ? ["jpegBase64": images[0]] : ["jpegBase64s": images]
+            requests.resolved(id, .success(payload))
+            return
+        }
+        results[images.count].itemProvider.loadFileRepresentation(forTypeIdentifier: UTType.image.identifier) { [weak self] url, error in
+            do {
+                if let error {
+                    throw error
+                }
+                guard let url else { throw CocoaError(.fileReadUnknown) }
+                let jpeg = try ConversationPhotoNormalizer.normalize(pickerURL: url)
+                guard bytes + jpeg.count <= 4 * 1024 * 1024
+                else { throw MedicalDocumentExtractionFailure.unsupportedDocument }
+                let next = images + [jpeg.base64EncodedString()]
+                DispatchQueue.main.async { self?.normalizeSelection(results, id: id, images: next, bytes: bytes + jpeg.count) }
             } catch {
                 DispatchQueue.main.async { self?.requests.resolved(id, .failure(error)) }
             }

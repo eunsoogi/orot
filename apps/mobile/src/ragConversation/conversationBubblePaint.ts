@@ -12,9 +12,14 @@ export function hasSentPhoto(message: DisplayMessage) {
 /** The restored marker alone never authorizes a file, network URI or image. */
 export function sentPhotoPreview(message: DisplayMessage) {
   const uri = message.directPhotoPreviewData;
-  return hasSentPhoto(message) && uri?.startsWith('data:image/jpeg;base64,')
-    ? uri
-    : undefined;
+  const isPreview = (value: string) =>
+    value.startsWith('data:image/jpeg;base64,');
+  if (!hasSentPhoto(message) || !uri || !isPreview(uri)) return undefined;
+  const group = message.directPhotoPreviewGroup;
+  // The route-owned exact group may contain no non-inline URI or handoff gap.
+  return group?.[0] === uri && group.length <= 3 && group.every(isPreview)
+    ? group
+    : uri;
 }
 
 export type ConversationBubblePresentation = {

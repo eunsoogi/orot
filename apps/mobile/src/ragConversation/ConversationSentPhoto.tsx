@@ -5,7 +5,23 @@ import { ConversationPhotoViewer } from './ConversationPhotoViewer';
 import { styles as screen } from './ConversationScreen.styles';
 
 /** Pixels have already been bound to this row by the mounted route. */
-export function ConversationSentPhoto({ uri }: { readonly uri: string }) {
+export function ConversationSentPhoto({
+  uri,
+}: {
+  readonly uri: string | readonly string[];
+}) {
+  return typeof uri === 'string' ? (
+    <SentThumbnail uri={uri} />
+  ) : (
+    <>
+      {uri.map((photo, index) => (
+        <SentThumbnail key={index} uri={photo} />
+      ))}
+    </>
+  );
+}
+
+function SentThumbnail({ uri }: { readonly uri: string }) {
   const [opened, setOpened] = useState(false);
   return (
     <>

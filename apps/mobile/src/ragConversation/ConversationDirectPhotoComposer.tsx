@@ -1,4 +1,5 @@
-import type { ComponentProps } from 'react';
+import { useMemo, type ComponentProps } from 'react';
+import { ConversationPhotoConsentSurface } from './ConversationPhotoConsentSurface';
 import { ConversationComposer } from './ConversationComposer';
 import { useConversationDirectPhoto } from './useConversationDirectPhoto';
 import type {
@@ -27,7 +28,12 @@ export function ConversationDirectPhotoComposer({
 }) {
   const direct = useConversationDirectPhoto(session, store, isEntryCurrent);
   const { photo } = composer;
-  const { image, picking, sending, message } = direct.state;
+  const { images, picking, sending, message } = direct.state;
+  const previews = useMemo(
+    () => images?.map(value => 'data:image/jpeg;base64,' + value),
+    [images],
+  );
+  const image = images?.[0];
   if (!photo)
     return (
       <ConversationComposer
@@ -45,6 +51,7 @@ export function ConversationDirectPhotoComposer({
       if (direct.available && !photo.pickerDisabled) direct.pick();
     },
     deliveryReady: false,
+    groupedPicker: true,
     ...(selected
       ? {
           // During a mounted Send, history owns the preview, not the composer.
@@ -56,6 +63,8 @@ export function ConversationDirectPhotoComposer({
                 ? 'preparing'
                 : 'error',
           previewData: image ? 'data:image/jpeg;base64,' + image : undefined,
+          previewGroup: previews,
+          onRemoveAt: direct.removeAt,
           deliveryReady: Boolean(image),
           deliveryMode: 'image',
           hasPhoto: Boolean(image || message),
@@ -64,17 +73,20 @@ export function ConversationDirectPhotoComposer({
       : {}),
   };
   return (
-    <ConversationComposer
-      {...composer}
-      photo={photoOverride}
-      trailingAction={
-        renderTrailingAction?.(selected) ?? composer.trailingAction
-      }
-      busy={composer.busy || Boolean(sending)}
-      onSteer={sending ? undefined : composer.onSteer}
-      onCancel={sending ? direct.remove : composer.onCancel}
-      onSend={selected ? direct.send : composer.onSend}
-      preflightError={message ?? composer.preflightError}
-    />
+    <>
+      <ConversationComposer
+        {...composer}
+        photo={photoOverride}
+        trailingAction={
+          renderTrailingAction?.(selected) ?? composer.trailingAction
+        }
+        busy={composer.busy || Boolean(sending)}
+        onSteer={sending ? undefined : composer.onSteer}
+        onCancel={sending ? direct.remove : composer.onCancel}
+        onSend={selected ? direct.send : composer.onSend}
+        preflightError={message ?? composer.preflightError}
+      />
+      <ConversationPhotoConsentSurface controller={direct.groupReview} />
+    </>
   );
 }

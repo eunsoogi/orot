@@ -1,7 +1,9 @@
+import { pickDirectPhotoGroup } from './pickDirectPhotoGroup';
 import { useCallback, useRef, useState } from 'react';
-import { createConversationPhotoImageSend } from '../aiFeatures/integration/sendConversationPhotoImage';
+import { sendReviewedDirectPhotoGroup } from './sendReviewedDirectPhotoGroup';
 import { chatGPTPlanDirectPhoto } from '@orot/provider-openai';
 import { t } from '../i18n';
+import { createConversationPhotoConsentController } from './conversationPhotoConsentController';
 import { beginDirectPhotoPresentation } from './directPhotoPresentation';
 import { conversationDirectPhotoPorts as native } from './conversationDirectPhotoPorts';
 import { useDirectPhotoDraftLifecycle } from './useDirectPhotoDraftLifecycle';
@@ -10,9 +12,8 @@ import type {
   ConversationSession,
   ConversationSessions,
 } from './conversationSessionTypes';
-
 type State = {
-  image?: string;
+  images?: readonly string[];
   picking?: true;
   sending?: true;
   message?: string;
@@ -25,11 +26,12 @@ export function useConversationDirectPhoto(
   ports = native,
 ) {
   const publish = useDirectPhotoPublisher();
+  const [groupReview] = useState(createConversationPhotoConsentController);
   const [state, setState] = useState<State>({});
   const active = useRef<AbortController | null>(null);
   const owner = useRef(isEntryCurrent);
   owner.current = isEntryCurrent;
-  const sessionId = session.id;
+  const { id: sessionId } = session;
   const ownsDraftRoute = isEntryCurrent?.routeOwnsDraft ?? isEntryCurrent;
   const clear = useCallback(() => {
     active.current?.abort();
@@ -53,10 +55,9 @@ export function useConversationDirectPhoto(
     ownsDraft: () =>
       (ownsDraftRoute?.() ?? true) &&
       store.getSnapshot().activeId === sessionId,
-    settledImage: () => (active.current ? undefined : state.image),
-    restore: image => setState({ image }),
+    settledImage: () => (active.current ? undefined : state.images),
+    restore: images => setState({ images }),
   });
-
   const current = () => {
     const snapshot = store.getSnapshot();
     const live = snapshot.sessions.find(item => item.id === sessionId);
@@ -88,23 +89,27 @@ export function useConversationDirectPhoto(
   const pick = async () => {
     const action = begin();
     if (!action) return;
+    const previous = state.images;
     setState({ picking: true });
     try {
-      const image = await ports.pick();
-      if (action.owns()) setState(image ? { image } : {});
+      const images = await pickDirectPhotoGroup(ports.pick, previous);
+      if (action.owns()) setState({ images });
     } catch {
       if (action.owns())
-        setState({ message: t('ragConversation.photo.imageInvalid') });
+        setState({
+          images: previous,
+          message: t('ragConversation.photo.imageInvalid'),
+        });
     } finally {
       if (active.current === action.controller) active.current = null;
     }
   };
   const send = async () => {
-    if (!state.image) return;
+    if (!state.images) return;
     const action = begin();
     if (!action) return;
     const { controller, owns } = action;
-    const image = state.image;
+    const images = state.images;
     const currentPrompt = () =>
       store.getSnapshot().sessions.find(item => item.id === sessionId)?.draft ??
       '';
@@ -113,19 +118,23 @@ export function useConversationDirectPhoto(
     const retain = store.retainDirectPhoto(sessionId);
     if (!retain) {
       active.current = null;
-      setState({ image, message: unavailable });
+      setState({ images, message: unavailable });
       return;
     }
     const ownsPrompt = () => owns() && currentPrompt() === prompt;
-    setState(publish ? { sending: true } : { image, sending: true });
-    const presentation = beginDirectPhotoPresentation(
-      publish,
-      controller.signal,
-      sessionId,
-      retain.id,
-      prompt,
-      image,
-    );
+    setState(publish ? { sending: true } : { images, sending: true });
+    let presentation: ReturnType<typeof beginDirectPhotoPresentation>;
+    const revealPending = () => {
+      presentation ??= beginDirectPhotoPresentation(
+        publish,
+        controller.signal,
+        sessionId,
+        retain.id,
+        prompt,
+        images,
+      );
+    };
+    if (images.length === 1) revealPending();
     const stop = () => {
       if (!ownsPrompt()) controller.abort();
     };
@@ -138,7 +147,7 @@ export function useConversationDirectPhoto(
         !chatGPTPlanDirectPhoto(authorization.selected.provider)
       ) {
         setState({
-          image,
+          images,
           message: t('ragConversation.photo.imageUnsupported'),
         });
         return;
@@ -146,6 +155,7 @@ export function useConversationDirectPhoto(
       const grant = await ports.grant(
         authorization.selected,
         controller.signal,
+        images.length,
       );
       if (!ownsPrompt() || !authorization.current()) {
         controller.abort();
@@ -153,7 +163,7 @@ export function useConversationDirectPhoto(
       }
       if (!grant || !grant.current()) {
         setState({
-          image,
+          images,
           message: t('ragConversation.photo.imageSettingsRequired'),
         });
         return;
@@ -163,27 +173,16 @@ export function useConversationDirectPhoto(
         retain.current() &&
         authorization.current() &&
         grant.current();
-      const result = await createConversationPhotoImageSend({
-        selected: authorization.selected,
-        jpegBase64: image,
+      const result = await sendReviewedDirectPhotoGroup({
+        authorization,
+        grant,
+        images,
         prompt,
-        signal: controller.signal,
-        isCurrent: admitted,
-        subscribeInvalidation(listener) {
-          const revoke = () => {
-            controller.abort();
-            listener();
-          };
-          const stopOwner = authorization.subscribe(revoke);
-          const stopGrant = grant.subscribe(revoke);
-          return () => {
-            stopOwner();
-            stopGrant();
-          };
-        },
-        // This is a recheck of the exact Settings grant, not a second prompt.
-        confirm: async () => grant.current(),
-      })();
+        controller,
+        groupReview,
+        admitted,
+        approved: revealPending,
+      });
       if (!admitted()) {
         controller.abort();
         return;
@@ -192,7 +191,7 @@ export function useConversationDirectPhoto(
         let saved = false;
         try {
           // A generated textual quotation is allowed, never the transport bytes.
-          if (!result.text.includes(image))
+          if (!images.some(image => result.text.includes(image)))
             saved = await retain.commit(result.text, admitted);
         } catch {
           // An ambiguous local write is never retried and never resends the image.
@@ -211,14 +210,14 @@ export function useConversationDirectPhoto(
         if (saved && currentPrompt() === prompt) store.setDraft(sessionId, '');
       } else {
         setState({
-          image,
+          images,
           ...(result.status === 'unsupported' || result.status === 'unavailable'
             ? { message: unavailable }
             : {}),
         });
       }
     } catch {
-      if (owns()) setState({ image, message: unavailable });
+      if (owns()) setState({ images, message: unavailable });
     } finally {
       unsubscribeOwner();
       presentation?.dispose(active.current === controller);
@@ -231,13 +230,15 @@ export function useConversationDirectPhoto(
     }
   };
   return {
+    groupReview,
     available: ports.hasPicker(),
     state: (ownsDraftRoute?.() ?? true) && !paused.current ? state : {},
-    pick: () => {
-      pick().catch(() => {});
-    },
-    send: () => {
-      send().catch(() => {});
+    pick: () => pick().catch(() => {}),
+    send: () => send().catch(() => {}),
+    removeAt(index: number) {
+      if (active.current || !current() || !state.images?.[index]) return;
+      const images = state.images.filter((_, item) => item !== index);
+      setState({ images: images.length ? Object.freeze(images) : undefined });
     },
     remove() {
       discard();
