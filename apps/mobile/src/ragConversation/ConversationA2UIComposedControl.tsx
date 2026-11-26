@@ -1,5 +1,11 @@
 import Slider from '@react-native-community/slider';
-import { createContext, useContext, useState } from 'react';
+import {
+  createContext,
+  useContext,
+  useLayoutEffect,
+  useRef,
+  useState,
+} from 'react';
 import { Pressable, StyleSheet, Switch, TextInput, View } from 'react-native';
 import { AppText } from '../layout/AppText';
 import { appColors } from '../layout/appColors';
@@ -7,7 +13,13 @@ import { ConversationA2UITemporaryDate } from './ConversationA2UITemporaryDate';
 import type { ComposedControl } from './conversationA2UIComposedControlState';
 
 export const ConversationA2UIComposedOwner = createContext<
-  { surface: string; current: () => boolean } | undefined
+  | {
+      surface: string;
+      current: () => boolean;
+      revision?: number;
+      reset?: () => void;
+    }
+  | undefined
 >(undefined);
 
 /** The model only supplies checked display metadata. Native interactions may
@@ -20,11 +32,37 @@ export function ConversationA2UIComposedControl({
   const owner = useContext(ConversationA2UIComposedOwner);
   return owner?.current() ? (
     <MountedControl
-      key={owner.surface}
+      key={owner.surface + ':' + (owner.revision ?? 0)}
       control={control}
       current={owner.current}
     />
   ) : null;
+}
+
+export function ConversationA2UIComposedReset({ label }: { label: string }) {
+  const owner = useContext(ConversationA2UIComposedOwner);
+  const mountedOwner = useRef(owner);
+  useLayoutEffect(() => {
+    mountedOwner.current = owner;
+    return () => {
+      mountedOwner.current = undefined;
+    };
+  }, [owner]);
+  if (!owner?.current() || !owner.reset)
+    return <AppText allowFontScaling>{label}</AppText>;
+  return (
+    <Pressable
+      accessibilityRole="button"
+      accessibilityLabel={label}
+      style={[styles.option, styles.chosen]}
+      onPress={() => {
+        // A queued native press must not reinstate a retired form mount.
+        if (mountedOwner.current === owner && owner.current()) owner.reset?.();
+      }}
+    >
+      <AppText allowFontScaling>{label}</AppText>
+    </Pressable>
+  );
 }
 
 function MountedControl({

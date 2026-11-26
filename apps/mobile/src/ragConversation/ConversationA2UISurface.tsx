@@ -1,6 +1,7 @@
 import { ConversationA2UISurfaceRow } from './ConversationA2UISurfaceRow';
 import {
   ConversationA2UIComposedControl,
+  ConversationA2UIComposedReset,
   ConversationA2UIComposedOwner,
 } from './ConversationA2UIComposedControl';
 import {
@@ -16,7 +17,8 @@ import {
 } from './ConversationA2UIModal';
 import { createConversationA2UIModalArbiter } from './conversationA2UIModalArbiter';
 import { conversationA2UIModalFor } from './conversationA2UIModalWire';
-import { useCallback, useContext, useMemo } from 'react';
+import { conversationA2UIComposedResetLabel } from './conversationA2UIComposedReset';
+import { useCallback, useContext, useMemo, useState } from 'react';
 import { useWindowDimensions, View } from 'react-native';
 import { ConversationA2UIHorizontalList } from './ConversationA2UIHorizontalList';
 import { AppText } from '../layout/AppText';
@@ -60,13 +62,20 @@ export function ConversationA2UISurface({
     () => surface !== undefined && owner?.surface(root) === surface,
     [owner, root, surface],
   );
+  const [revision, setRevision] = useState(0);
+  const reset = useCallback(() => {
+    if (isCurrent())
+      setRevision(previous => (isCurrent() ? previous + 1 : previous));
+  }, [isCurrent]);
   return (
     <View testID={testID} style={styles.surface}>
       <ConversationA2UIModalRoot.Provider value={root}>
         <ConversationA2UIModalAdmission.Provider value={modalAdmission}>
           <ConversationA2UIComposedOwner.Provider
             value={
-              composed && surface ? { surface, current: isCurrent } : undefined
+              composed && surface
+                ? { surface, current: isCurrent, revision, reset }
+                : undefined
             }
           >
             <SurfaceNode key={root.id} node={root} fontScale={fontScale} />
@@ -94,6 +103,8 @@ function SurfaceNode({
   readonly node: ConversationA2UINode;
   readonly fontScale: number;
 }) {
+  const resetLabel = conversationA2UIComposedResetLabel(node);
+  if (resetLabel) return <ConversationA2UIComposedReset label={resetLabel} />;
   const control = conversationA2UIComposedControl(node);
   if (control) return <ConversationA2UIComposedControl control={control} />;
   const modal = conversationA2UIModalFor(node);

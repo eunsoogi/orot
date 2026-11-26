@@ -2,6 +2,7 @@ import { act, fireEvent, render, screen } from '@testing-library/react-native';
 import { AccessibilityInfo, AppState } from 'react-native';
 import { NavigationMotionContext } from '../../navigation/NavigationMotionContext';
 import { ConversationTranscriptMessages } from '../ConversationTranscriptMessages';
+import { projectConversationA2UIComposedReset } from '../conversationA2UIComposedReset';
 import { conversationA2UICatalog } from '../conversationA2UI';
 import {
   localA2UICheckPath,
@@ -20,6 +21,7 @@ import {
   seedCheck,
   seedChoice,
 } from '../testSupport/a2uiLocalFormFixtures';
+import { resetLabel, resetProposal } from '../testSupport/composedResetFixture';
 import { fixture, response } from '../testSupport/conversationEnvelopeFixtures';
 import { useConversationPresentationSnapshot } from '../useConversationPresentationSnapshot';
 
@@ -110,78 +112,135 @@ test.each([
   });
 });
 
-test('the ordinary request mounts both requested local controls even with a third prose part', async () => {
-  const oldState = AppState.currentState;
-  AppState.currentState = 'active';
-  const motion = jest
-    .spyOn(AccessibilityInfo, 'isReduceMotionEnabled')
-    .mockResolvedValue(true);
-  const model = fixture();
-  const store = createConversationSessions();
-  model.generate.mockReset().mockResolvedValueOnce(
-    response({
-      type: 'result',
-      value: proposal(),
-      citations: [],
-    }),
-  );
-  function Scene() {
-    const snapshot = useConversationPresentationSnapshot(store);
-    const session = snapshot.sessions.find(
-      item => item.id === snapshot.activeId,
-    )!;
-    const owner = useConversationA2UILocalDraftOwner(store, session.id);
-    return (
-      <ConversationA2UILocalDraftOwner.Provider value={owner}>
-        <ConversationTranscriptMessages
-          messages={session.messages}
-          instructions={undefined}
-          replyFocus={undefined}
-          onLayout={jest.fn()}
-          messageProps={{ onOpenSource: jest.fn(), onLinkError: jest.fn() }}
-        />
-      </ConversationA2UILocalDraftOwner.Provider>
+test.each([false, true])(
+  'the ordinary reply mounts both local controls; reset=%s',
+  async reset => {
+    const oldState = AppState.currentState;
+    AppState.currentState = 'active';
+    const motion = jest
+      .spyOn(AccessibilityInfo, 'isReduceMotionEnabled')
+      .mockResolvedValue(true);
+    const model = fixture();
+    const store = createConversationSessions();
+    model.generate.mockReset().mockResolvedValueOnce(
+      response({
+        type: 'result',
+        value: reset ? resetProposal(proposal()) : proposal(),
+        citations: [],
+      }),
     );
-  }
-  try {
-    const ui = await render(
-      <NavigationMotionContext.Provider value>
-        <Scene />
-      </NavigationMotionContext.Provider>,
-    );
-    try {
-      await act(async () => {
-        store.setDraft(1, prompt);
-        await store.send(1, (question, previousMessages, signal) =>
-          runRagConversationTurn(
-            {
-              ...model.options,
-              question,
-              previousMessages,
-              loadCurrentEvidence: async () => ({
-                batch: { items: [], coverage: [], conflicts: [] },
-                chunks: [],
-              }),
-            },
-            { signal },
-          ),
-        );
-      });
-      const toggle = () => screen.getByLabelText('준비 완료');
-      const tea = () => screen.getByRole('radio', { name: '차' });
-      expect(screen.getByText('마실 것')).toBeVisible();
-      await fireEvent.press(tea());
-      await fireEvent(toggle(), 'valueChange', true);
-      expect(toggle()).toHaveProp('value', true);
-      expect(tea()).toHaveProp('accessibilityState', { checked: true });
-      for (const text of parts) expect(screen.getByText(text)).toBeVisible();
-      expect(model.generate).toHaveBeenCalledTimes(1);
-    } finally {
-      await ui.unmount();
+    function Scene() {
+      const snapshot = useConversationPresentationSnapshot(store);
+      const session = snapshot.sessions.find(
+        item => item.id === snapshot.activeId,
+      )!;
+      const owner = useConversationA2UILocalDraftOwner(store, session.id);
+      return (
+        <ConversationA2UILocalDraftOwner.Provider value={owner}>
+          <ConversationTranscriptMessages
+            messages={session.messages}
+            instructions={undefined}
+            replyFocus={undefined}
+            onLayout={jest.fn()}
+            messageProps={{ onOpenSource: jest.fn(), onLinkError: jest.fn() }}
+          />
+        </ConversationA2UILocalDraftOwner.Provider>
+      );
     }
-  } finally {
-    store.dispose();
-    motion.mockRestore();
-    AppState.currentState = oldState;
-  }
+    try {
+      const ui = await render(
+        <NavigationMotionContext.Provider value>
+          <Scene />
+        </NavigationMotionContext.Provider>,
+      );
+      try {
+        await act(async () => {
+          store.setDraft(1, prompt);
+          await store.send(1, (question, previousMessages, signal) =>
+            runRagConversationTurn(
+              {
+                ...model.options,
+                question,
+                previousMessages,
+                loadCurrentEvidence: async () => ({
+                  batch: { items: [], coverage: [], conflicts: [] },
+                  chunks: [],
+                }),
+              },
+              { signal },
+            ),
+          );
+        });
+        const toggle = () => screen.getByLabelText('준비 완료');
+        const tea = () => screen.getByRole('radio', { name: '차' });
+        expect(screen.getByText('마실 것')).toBeVisible();
+        await fireEvent.press(tea());
+        await fireEvent(toggle(), 'valueChange', true);
+        expect(toggle()).toHaveProp('value', true);
+        expect(tea()).toHaveProp('accessibilityState', { checked: true });
+        if (reset) {
+          const button = screen.getByRole('button', { name: resetLabel });
+          AppState.currentState = 'background';
+          await fireEvent.press(button);
+          expect(toggle()).toHaveProp('value', true);
+          AppState.currentState = 'active';
+          await fireEvent.press(button);
+          expect(toggle()).toHaveProp('value', false);
+          expect(tea()).toHaveProp('accessibilityState', { checked: false });
+          await fireEvent.press(tea());
+          expect(tea()).toHaveProp('accessibilityState', { checked: true });
+          await act(() => {
+            store.create();
+          });
+          expect(screen.queryByRole('button', { name: resetLabel })).toBeNull();
+          await act(() => {
+            store.select(1);
+          });
+          expect(toggle()).toHaveProp('value', false);
+          expect(tea()).toHaveProp('accessibilityState', { checked: false });
+        }
+        for (const text of parts) expect(screen.getByText(text)).toBeVisible();
+        expect(model.generate).toHaveBeenCalledTimes(1);
+      } finally {
+        await ui.unmount();
+      }
+    } finally {
+      store.dispose();
+      motion.mockRestore();
+      AppState.currentState = oldState;
+    }
+  },
+);
+
+test.each([0x0007, 0x202e])(
+  'rejects invisible reset label character %s',
+  code => {
+    const label = '다시' + String.fromCodePoint(code) + ' 시작';
+    expect(
+      projectConversationA2UIComposedReset(
+        resetProposal(proposal(), {}, label).a2uiFrames,
+      ),
+    ).toBeUndefined();
+  },
+);
+
+test('historic task and an unrecognized reset context stay plain', () => {
+  const old = restoreConversationTask({
+    taskType: ragConversationTask.taskType,
+    taskVersion: '53',
+  });
+  for (const result of [
+    old?.validateResult(resetProposal(proposal()), input),
+    ragConversationTask.validateResult(
+      resetProposal(proposal(), { scope: 'another-bubble' }),
+      input,
+    ),
+  ])
+    expect(result).toEqual({
+      status: 'valid',
+      value: {
+        answerKind: 'conversation',
+        answer: resetProposal(proposal()).answer,
+      },
+    });
 });
