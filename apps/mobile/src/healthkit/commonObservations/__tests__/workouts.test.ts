@@ -164,20 +164,20 @@ it('imports, replays and deletes distinct Apple and third-party workout UUIDs th
       upserted: 0,
       skipped: 0,
     });
-    const expected = (sample: typeof apple) => ({
-      id: 'healthkit:workouts:' + sample.id,
-      effectiveAt: sample.startDate,
-      endedAt: sample.endDate,
-      value: expect.objectContaining({ amount: sample.value, unit: 'min' }),
+    const expected = (workout: typeof apple) => ({
+      id: 'healthkit:workouts:' + workout.id,
+      effectiveAt: workout.startDate,
+      endedAt: workout.endDate,
+      value: expect.objectContaining({ amount: workout.value, unit: 'min' }),
       workout: {
-        activityType: sample.workoutActivityType,
-        activityName: sample.workoutActivityName,
+        activityType: workout.workoutActivityType,
+        activityName: workout.workoutActivityName,
       },
       provenance: expect.objectContaining({
-        sourceRecordIds: [sample.id],
+        sourceRecordIds: [workout.id],
         source: expect.objectContaining({
-          sourceIdentifier: sample.sourceIdentifier,
-          sourceName: sample.sourceName,
+          sourceIdentifier: workout.sourceIdentifier,
+          sourceName: workout.sourceName,
         }),
       }),
     });
