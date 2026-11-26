@@ -37,16 +37,35 @@ export async function openLocalTranscriptPages(input: {
     unavailable();
   }
 
+  let disposed = false;
+  let stopBeforeDispatch: (() => void) | undefined;
   const dispose = () => {
+    if (disposed) return;
+    disposed = true;
+    stopBeforeDispatch?.();
     lease.signal.removeEventListener('abort', dispose);
-    lease.dispose();
-    epoch.dispose();
+    try {
+      lease.dispose();
+    } finally {
+      epoch.dispose();
+    }
   };
   lease.signal.addEventListener('abort', dispose, { once: true });
   const dataVersion = async () =>
     (await database.execute('PRAGMA data_version')).rows[0]?.data_version;
   let initialVersion: number;
   try {
+    // Retire already-issued pages before dispatching a same-owner mutation,
+    // rather than waiting for the consumer to poll the epoch again.
+    stopBeforeDispatch = epoch.beforeDispatch(() => {
+      try {
+        dispose();
+      } catch {
+        // The lease is already aborted and the epoch released even if a
+        // native unsubscribe fails. Do not block the unrelated mutation.
+      }
+    });
+    if (!stopBeforeDispatch) unavailable();
     if (!(await lease.confirm())) unavailable();
     const version = await dataVersion();
     if (typeof version !== 'number' || !(await lease.confirm())) unavailable();
