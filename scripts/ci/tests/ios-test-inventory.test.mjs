@@ -212,7 +212,7 @@ test('keeps extension methods scheduled and rejects unmapped same-named methods'
   );
 });
 
-test('discovers each matching top-level Swift extension, including guarded simulator declarations', () => {
+test('discovers all extensions, including guarded simulator declarations', () => {
   const source = `
     extension RealtimeVoiceLifecycleTests {
       func testFirst() {}
@@ -223,8 +223,8 @@ test('discovers each matching top-level Swift extension, including guarded simul
       }
     #endif
   `;
-  assert.deepEqual(swiftTestMethodsInDeclaration(source, 'RealtimeVoiceLifecycleTests', 'extension'), [
-    'testFirst',
-    'testSecond',
-  ]);
+  assert.deepEqual(
+    swiftTestMethodsInDeclaration(source, 'RealtimeVoiceLifecycleTests', 'extension'),
+    ['testFirst', 'testSecond'],
+  );
 });
