@@ -64,14 +64,38 @@ export async function requireLiveCheckpointSource(
   sql: SqlExecutor,
   sourceId: string,
 ): Promise<void> {
-  const present = await sql.execute('SELECT id FROM source_records WHERE id = ?', [
-    RecordIdSchema.parse(sourceId),
-  ]);
-  if (!present.rows.length) throw new Error('Checkpoint source was removed.');
+  if (!(await isLiveCheckpointSource(sql, RecordIdSchema.parse(sourceId))))
+    throw new Error('Checkpoint source was removed.');
+}
+
+async function isLiveCheckpointSource(sql: SqlExecutor, sourceId: string): Promise<boolean> {
+  const present = await sql.execute('SELECT id FROM source_records WHERE id = ?', [sourceId]);
+  if (!present.rows.length) return false;
   for (const table of await existingMarkers(sql)) {
     const removed = await sql.execute(`SELECT source_id FROM ${table} WHERE source_id = ?`, [
       sourceId,
     ]);
-    if (removed.rows.length) throw new Error('Checkpoint source was removed.');
+    if (removed.rows.length) return false;
   }
+  return true;
+}
+
+/** A scoped read may only reopen an existing live binding, never initialize one. */
+export async function canReadSourceLinkedCheckpoint(
+  sql: SqlExecutor,
+  threadId: string,
+  sourceRecordId: string,
+): Promise<boolean> {
+  const sourceId = RecordIdSchema.parse(sourceRecordId);
+  const tables = await sql.execute(
+    "SELECT name FROM sqlite_master WHERE type = 'table' AND name IN ('langgraph_checkpoint_sources', 'langgraph_checkpoints', 'langgraph_checkpoint_writes', 'source_records')",
+  );
+  if (tables.rows.length !== 4) return false;
+  const bound = await sql.execute(
+    'SELECT source_record_id FROM langgraph_checkpoint_sources WHERE thread_id = ?',
+    [threadId],
+  );
+  return (
+    bound.rows[0]?.source_record_id === sourceId && (await isLiveCheckpointSource(sql, sourceId))
+  );
 }
