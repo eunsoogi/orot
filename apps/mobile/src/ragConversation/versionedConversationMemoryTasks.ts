@@ -1,3 +1,4 @@
+import { withConversationA2UIRichText } from './conversationA2UIRichText';
 import { withConversationA2UIModalPair } from './conversationA2UIModalPairTask';
 import {
   withComposedConversationSections,
@@ -48,6 +49,8 @@ export function versionedConversationMemoryTasks(
   );
   const conversationTaskV38 =
     withComposedConversationSections(conversationTaskV37);
+  const conversationTaskV39 =
+    withConversationA2UIModalPair(conversationTaskV38);
   return {
     conversationTaskV25,
     conversationTaskV26,
@@ -70,7 +73,8 @@ export function versionedConversationMemoryTasks(
       v36: conversationTaskV36,
       v37: conversationTaskV37,
       v38: conversationTaskV38,
+      v39: conversationTaskV39,
     },
-    ragConversationTask: withConversationA2UIModalPair(conversationTaskV38),
+    ragConversationTask: withConversationA2UIRichText(conversationTaskV39),
   };
 }

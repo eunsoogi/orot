@@ -41,6 +41,8 @@ export function restoreConversationTask(
 ): typeof ragConversationTask | undefined {
   if (identity.taskType !== ragConversationTask.taskType) return undefined;
   if (identity.taskVersion === currentTask.taskVersion) return currentTask;
+  if (identity.taskVersion === conversationTaskSavedLayouts.v39.taskVersion)
+    return conversationTaskSavedLayouts.v39;
   if (identity.taskVersion === conversationTaskSavedLayouts.v38.taskVersion)
     return conversationTaskSavedLayouts.v38;
   if (identity.taskVersion === conversationTaskSavedLayouts.v37.taskVersion)

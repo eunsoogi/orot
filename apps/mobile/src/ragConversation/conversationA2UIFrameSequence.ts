@@ -90,10 +90,11 @@ export function acceptConversationA2UIFrameSequence(
   allowAlignment = false,
   allowRowWeight = false,
   allowListDirection: boolean | 'vertical_align' = false,
+  readProse = conversationA2UIFrameProse,
 ): ConversationA2UINode | undefined {
   if (!Array.isArray(raw) || !raw.length || raw.length > maxFinalFrames)
     return undefined;
-  const content = conversationA2UIFrameProse(answer);
+  const content = readProse(answer);
   if (!content) return undefined;
   let staged: ConversationA2UIState | null = null;
   let units = 0;
