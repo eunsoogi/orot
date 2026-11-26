@@ -1,3 +1,4 @@
+import { conversationPriorAuthoredMemoryAction } from './conversationPriorAuthoredMemoryAction';
 import { settleConversationMemoryReceipt } from './conversationMemoryReceipts';
 import { conversationAuthoredMemoryAction } from './conversationAuthoredMemoryAction';
 import { conversationHealthSummaryBookmarkAction } from './conversationHealthSummaryBookmarkAction';
@@ -44,8 +45,6 @@ export function conversationMutationExecution(input: {
     selected.provider.id === APPLE_PROVIDER_ID && !selected.remoteProcessing;
   const reportBookmark =
     localModel && conversationHealthSummaryBookmarkAction(observer);
-  const allowRemoteAnswer =
-    input.remoteAnswerMemory || input.remoteMemory === true;
   const entry =
     typeof input.remoteMemory === 'object' ? input.remoteMemory : undefined;
   // A consumed shortcut can leave plain Conversation entry metadata behind.
@@ -57,10 +56,13 @@ export function conversationMutationExecution(input: {
     !entry.dailyReport &&
     !entry.directDailyReportRequest &&
     !entry.typedPossibilityReport;
-  const remoteOwner =
-    allowRemoteAnswer || plainAuthoredEntry
-      ? conversationAnswerMemoryProviderOwner(selected, observer)
-      : undefined;
+  const allowRemoteAnswer =
+    input.remoteAnswerMemory ||
+    input.remoteMemory === true ||
+    plainAuthoredEntry;
+  const remoteOwner = allowRemoteAnswer
+    ? conversationAnswerMemoryProviderOwner(selected, observer)
+    : undefined;
   const runId = baseExecution.execution.operationRunId;
   const terminal =
     remoteOwner && runId ? { owner: remoteOwner, runId } : undefined;
@@ -85,6 +87,16 @@ export function conversationMutationExecution(input: {
         }),
       ]),
     });
+  const priorAuthored =
+    localModel && observer && runId && (!entry || plainAuthoredEntry)
+      ? conversationPriorAuthoredMemoryAction({
+          data,
+          observer,
+          question,
+          history,
+          runId,
+        })
+      : undefined;
   const confirmAuthored = authoredMemory && authoredMemory.confirmTerminal;
   const confirmAnswer = answerMemory ? answerMemory.confirmTerminal : undefined;
   type TerminalOffer = Parameters<
@@ -94,22 +106,27 @@ export function conversationMutationExecution(input: {
   >[0];
   const execution = {
     ...baseExecution,
-    ...(confirmAuthored || confirmAnswer
+    ...(confirmAuthored || confirmAnswer || priorAuthored
       ? {
           confirmTerminalLocalAction: async (offer: TerminalOffer) =>
             offer.toolId === 'remember-current-user-statement'
               ? confirmAuthored?.(offer)
-              : confirmAnswer?.(offer),
+              : offer.toolId === priorAuthored?.action.id
+                ? priorAuthored.confirmTerminal(offer)
+                : confirmAnswer?.(offer),
         }
       : {}),
     actions: [
-      ...conversationHistoryAction({
-        data,
-        registry,
-        observer,
-        question,
-        admittedQuestions,
-      }),
+      ...(!observer?.protectedLocalInput && !priorAuthored
+        ? conversationHistoryAction({
+            data,
+            registry,
+            observer,
+            question,
+            admittedQuestions,
+          })
+        : []),
+      ...(priorAuthored ? [priorAuthored.action] : []),
       ...(authoredMemory ? authoredMemory.actions : []),
       ...(answerMemory ? answerMemory.actions : []),
       ...(reportBookmark ? reportBookmark.actions : []),
@@ -128,12 +145,24 @@ export function conversationMutationExecution(input: {
     disposeAnswerMemory() {
       if (answerMemory) answerMemory.dispose?.();
       if (authoredMemory) authoredMemory.dispose();
+      if (priorAuthored) priorAuthored.dispose();
     },
-    memorySaved: () =>
-      settleConversationMemoryReceipt({
-        authored: authoredMemory ? authoredMemory.receipt() : undefined,
+    memorySaved() {
+      const receipt = settleConversationMemoryReceipt({
+        authored:
+          priorAuthored && priorAuthored.receipt() !== 'not_attempted'
+            ? priorAuthored.receipt()
+            : authoredMemory
+              ? authoredMemory.receipt()
+              : undefined,
         priorAnswer: answerMemory ? answerMemory.receipt() : undefined,
         reportCommitted: Boolean(reportBookmark && reportBookmark.committed()),
-      }),
+      });
+      // The old no-transfer boundary remains. A model answer on that
+      // explicitly reserved route is not proof of a local mutation.
+      return observer?.protectedLocalInput && receipt === 'not_attempted'
+        ? 'authored-not-saved'
+        : receipt;
+    },
   };
 }
