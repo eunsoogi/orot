@@ -20,8 +20,9 @@ export function projectConversationA2UISkeleton(
   raw: string,
   allowRepeatedChildren = false,
   allowStructuralRetirement = false,
+  allowObjectFrames = false,
 ): ConversationLayoutSkeleton | undefined {
-  const streamed = completeConversationSkeletonFrames(raw);
+  const streamed = completeConversationSkeletonFrames(raw, allowObjectFrames);
   if (
     !streamed?.length ||
     streamed.some(frame => frame.length > conversationA2UIFrameLimit) ||

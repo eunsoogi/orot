@@ -200,7 +200,7 @@ test.each(cases)(
         const guide = JSON.stringify(inspectTaskGuide(request));
         expect(guide).toContain('"a2uiFrames"');
         expect(guide).toContain('do not quote or double-encode');
-        expect(guide).toContain('"required":["createSurface"]');
+        expect(guide).toContain('"required":["version","createSurface"]');
         expect(guide).not.toContain('/local/checked');
         expect(guide).toContain('/form/choice');
         expect(guide).toContain('multipleSelection');

@@ -12,7 +12,7 @@ const input = {
   evidence: { items: [], coverage: [], conflicts: [] },
 } as unknown as TaskResponderInput;
 test('new answer contract has no coverage completion classification', () => {
-  expect(ragConversationTask.taskVersion).toBe('50');
+  expect(ragConversationTask.taskVersion).toBe('51');
   for (const schema of [
     conversationResultSchema,
     literatureConversationResultSchema,
@@ -120,5 +120,17 @@ test('object A2UI frames are advertised only in current JSON guidance for ordina
   expect(historic).toEqual(guided);
   expect(guided?.properties).toHaveProperty('a2uiFrames.items.type', 'string');
   expect(prompt?.properties).toHaveProperty('a2uiFrames.items.anyOf');
+  const previousPrompt = restoreConversationTask({
+    taskType: ragConversationTask.taskType,
+    taskVersion: '50',
+  })?.createResultSchema?.(ordinary, true);
+  expect(previousPrompt?.properties).toHaveProperty(
+    'a2uiFrames.items.anyOf.0.required',
+    ['createSurface'],
+  );
+  expect(prompt?.properties).toHaveProperty(
+    'a2uiFrames.items.anyOf.0.required',
+    ['version', 'createSurface'],
+  );
   expect(selectedRecording?.properties).not.toHaveProperty('a2uiFrames');
 });

@@ -288,4 +288,6 @@ generation keeps its string representation; existing historical task
 contracts retain their previous grammar. Both representations pass through the
 same bounded frame validation and exact answer ownership before a final
 surface can appear. This does not add actions, change opt-outs for scoped
-records or templates, or add streaming previews for object frames.
+records or templates. Fresh v51 replies correct the required v1.0 frame version
+in JSON guidance. The owning ChatGPT Plan stream may project only neutral geometry from complete, delimited object frames before publication. Partial or
+invalid frames cannot publish answer text or controls.
