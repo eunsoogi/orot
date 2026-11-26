@@ -11,6 +11,7 @@ import { AppButton } from '../layout/AppButton';
 import { AppText as Text } from '../layout/AppText';
 import { ConversationMessageText } from './ConversationMessageText';
 import { ConversationSentPhoto } from './ConversationSentPhoto';
+import { sentPhotoPreview } from './conversationBubblePaint';
 import { ConversationPreviousOutputs } from './ConversationPreviousOutputs';
 import { ConversationInitialResponse } from './ConversationInitialResponse';
 import { ConversationBubbleEntrance } from './ConversationBubbleEntrance';
@@ -72,6 +73,7 @@ export function ConversationMessage({
       onLinkError,
     });
   const markdownLinkError = useConversationMarkdownLinkError(onLinkError);
+  const photo = sentPhotoPreview(message);
   const user = message.role === 'user';
   const copyMenus = conversationBubbleCopyMenus(copyScope, message);
   const visitQuestions =
@@ -83,6 +85,7 @@ export function ConversationMessage({
       message={message}
       openingCopyMenu={copyMenus?.opening}
       beforeAnswer={beforeAnswer}
+      photo={photo ? <ConversationSentPhoto uri={photo} /> : undefined}
       presentation={{
         showCitations,
         showToolActivity,
@@ -169,11 +172,6 @@ export function ConversationMessage({
                 sessionId={toolSourceSessionId}
               />
             </View>
-          ) : null}
-          {user && (message.photoAttached || message.submittedInput?.ocr) ? (
-            <ConversationSentPhoto
-              previewURI={message.directPhotoPreviewData}
-            />
           ) : null}
           {!user &&
           message.streaming &&
