@@ -185,7 +185,7 @@ export function createRagConversationService(
         observer,
         question: request,
         history,
-        remoteAnswerMemory: !entryContext && !searchPlan.literatureOnly,
+        remoteMemory: !searchPlan.literatureOnly && (entryContext ?? true),
       });
       stage = 'workflow';
       if (!(await historyIsCurrent()))
