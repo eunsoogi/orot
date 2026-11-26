@@ -13,6 +13,7 @@ type Epochs = Readonly<{ media: number; material: number }>;
 type Paint<T> = Readonly<{
   value: T;
   identity: object;
+  database: object;
   depths: Depths;
   epochs: Epochs;
 }>;
@@ -22,11 +23,13 @@ export function useMountedRecentRoutePaint<T>(
   enabled: boolean,
   ownership?: NavigationRouteOwnership,
   tab?: RecordsTabAuthority,
+  database?: object,
 ) {
   const identity = useMemo(
     () => ({ enabled, ownership, tab }),
     [enabled, ownership, tab],
   );
+  const locked = useRef(false);
   const committed = useRef<Paint<T> | undefined>(undefined);
   const [held, setHeld] = useState<Paint<T>>();
   const clear = useCallback(() => {
@@ -50,7 +53,9 @@ export function useMountedRecentRoutePaint<T>(
     const native = conversationExecutionNative();
     const protection = native?.bridgeAvailable
       ? native.subscribe(event => {
-          if (event.kind === 'protectedData' && !event.available) clear();
+          if (event.kind !== 'protectedData') return;
+          locked.current = !event.available;
+          if (locked.current) clear();
         })
       : undefined;
     const leaving = ownership?.subscribe(() => {
@@ -69,12 +74,28 @@ export function useMountedRecentRoutePaint<T>(
       deletionAll();
     };
   }, [enabled, ownership, tab, clear]);
+  useLayoutEffect(() => {
+    if (
+      database &&
+      committed.current &&
+      committed.current.database !== database
+    )
+      clear();
+  }, [clear, database]);
+  // The native phase can retire the read lease before RN emits its AppState
+  // event. Only the same attached route may keep the last protected paint.
   const snapshot =
     held ??
-    (AppState.currentState === 'inactive' ? committed.current : undefined);
+    (!database ||
+    AppState.currentState === 'inactive' ||
+    AppState.currentState === 'background'
+      ? committed.current
+      : undefined);
   const retained =
     enabled &&
+    !locked.current &&
     snapshot?.identity === identity &&
+    (!database || snapshot.database === database) &&
     (ownership?.isCurrent() ?? true)
       ? snapshot
       : undefined;
@@ -85,6 +106,8 @@ export function useMountedRecentRoutePaint<T>(
     commit(value: T, media: Stream, material: Stream) {
       if (
         !enabled ||
+        !database ||
+        locked.current ||
         AppState.currentState !== 'active' ||
         ownership?.isCurrent() === false
       )
@@ -92,6 +115,7 @@ export function useMountedRecentRoutePaint<T>(
       committed.current = {
         value,
         identity,
+        database,
         depths: { media: media.rows.length, material: material.rows.length },
         epochs: { media: media.pageEpoch, material: material.pageEpoch },
       };
@@ -119,6 +143,18 @@ export function resolveMountedRecentPaint<T>(
       (!stream.more || stream.rows.length >= retained.depths[role]));
   const rebuilt =
     isFresh && complete(media, 'media') && complete(material, 'material');
+  const suspended =
+    AppState.currentState === 'inactive' ||
+    AppState.currentState === 'background';
+  if (retained && suspended) {
+    return {
+      rebuilt: false,
+      holding: true,
+      revision: undefined,
+      warm: undefined,
+      snapshot: retained.value,
+    };
+  }
   const warm = loadFailed ? undefined : warmCandidate;
   const holding = Boolean(retained && !warm && !rebuilt && !loadFailed);
   const revision =
