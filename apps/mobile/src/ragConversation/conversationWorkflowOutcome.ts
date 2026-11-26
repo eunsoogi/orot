@@ -1,7 +1,7 @@
 import {
   forwardPossibilityCreation,
   type PossibilityAttempt,
-} from './possibilityOriginalReceipt';
+} from '../conversationTools/possibilityOriginalReceipt';
 import type { MultiAgentRunResult } from '@orot/agent-runtime';
 import type { GroundedRagAnswer } from './task';
 import type { RagConversationRunOptions } from './service';

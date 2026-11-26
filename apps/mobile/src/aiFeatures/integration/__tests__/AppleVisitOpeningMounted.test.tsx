@@ -37,7 +37,7 @@ const opening = '다음 진료에서 꺼낼 이야기를 살펴볼게요.';
 const openingId = 'conversation-assistant-opening-message';
 const question =
   '수면 패턴의 변화와 관련해 어떤 점을 관찰하고 기록하면 좋을까요?';
-test.each(['ready', 'model-not-ready', 'unsupported'] as const)(
+test.each(['ready', 'assets-lost', 'unsupported'] as const)(
   'Visit Questions shows its reviewed Apple opening before its actual main workflow: %s',
   async outcome => {
     const review = gate();
@@ -107,15 +107,11 @@ test.each(['ready', 'model-not-ready', 'unsupported'] as const)(
         yield { type: 'completed', response: modelResponseFixture('ALLOW') };
       } else if (phase === 3) {
         await main.wait;
-        if (outcome !== 'ready') {
-          const notReady = outcome === 'model-not-ready';
+        if (outcome === 'unsupported') {
           yield {
             type: 'error',
-            code: notReady
-              ? 'APPLE_MODEL_UNAVAILABLE'
-              : 'UNSUPPORTED_CAPABILITY',
+            code: 'UNSUPPORTED_CAPABILITY',
             message: 'Synthetic Apple failure.',
-            ...(notReady ? { status: 'modelNotReady' as const } : {}),
           };
           return;
         }
@@ -134,7 +130,14 @@ test.each(['ready', 'model-not-ready', 'unsupported'] as const)(
           },
         };
       } else if (phase === 4) {
-        yield { type: 'completed', response: modelResponseFixture(finalized) };
+        yield outcome === 'assets-lost'
+          ? {
+              type: 'error',
+              code: 'APPLE_MODEL_UNAVAILABLE',
+              status: 'unavailable',
+              message: 'Synthetic private Apple detail.',
+            }
+          : { type: 'completed', response: modelResponseFixture(finalized) };
       } else {
         throw new Error('Unexpected additional Apple Visit request');
       }
@@ -226,13 +229,13 @@ test.each(['ready', 'model-not-ready', 'unsupported'] as const)(
         expect(searchEvidence).toHaveBeenCalledTimes(1);
       } else {
         const key =
-          outcome === 'model-not-ready'
+          outcome === 'assets-lost'
             ? 'ragConversation.failureProviderUnavailable'
             : 'ragConversation.failureProviderConfiguration';
         expect(await screen.findByText(t(key))).toBeTruthy();
         expect(screen.queryByTestId('inline-visit-review')).toBeNull();
       }
-      expect(stream).toHaveBeenCalledTimes(outcome === 'ready' ? 4 : 3);
+      expect(stream).toHaveBeenCalledTimes(outcome === 'unsupported' ? 3 : 4);
       expect(screen.getByTestId(openingId)).toHaveTextContent(opening);
       expect(sendRagMessage).not.toHaveBeenCalled();
       expect(generate).not.toHaveBeenCalled();
