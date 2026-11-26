@@ -81,9 +81,9 @@ export async function readHistoricalSavedMemory(
       epoch = acquireIndependentReadEpoch(database);
       if (!epoch) return null;
     }
-    // A completed same-owner commit can retire the witness while UIKit
-    // confirms protection. Never reuse the first bytes: allow one fresh proof
-    // of the same revision, not a retry of missing or revoked content.
+    // A same-owner commit can retire the witness after the SQLite snapshot
+    // settles or during the UIKit check. Never return those first bytes:
+    // allow one fresh exact proof, not a retry of missing or revoked content.
     let originalBytes: string | undefined;
     for (let attempt = 0; attempt < 2; attempt++) {
       try {
@@ -96,7 +96,6 @@ export async function readHistoricalSavedMemory(
           !original ||
           (originalBytes !== undefined && originalBytes !== original.bytes) ||
           !current() ||
-          !epoch.current() ||
           !(await confirm()) ||
           !current()
         )
