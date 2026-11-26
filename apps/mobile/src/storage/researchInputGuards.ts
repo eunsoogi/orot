@@ -1,4 +1,7 @@
-import { periodRowReferences } from './conversationPeriodRemoval';
+import {
+  indexedMarkerPeriodTables,
+  markerPeriodContributorMatches,
+} from './markerPeriodContributors';
 import { STORAGE_TABLES, type SqlExecutor } from '@orot/storage';
 import {
   healthPeriodDeletionGuards,
@@ -58,6 +61,7 @@ export async function setupResearchInputGuards(tx: SqlExecutor) {
   if (present.has('manual_history_entries'))
     await tx.execute(`CREATE TRIGGER IF NOT EXISTS research_input_manual_corrected AFTER INSERT ON manual_history_entries WHEN NEW.supersedes_id IS NOT NULL BEGIN
       DELETE FROM research_artifacts WHERE id IN (SELECT artifact_id FROM research_artifact_sources WHERE record_kind = 'manual_history' AND record_id = NEW.supersedes_id); END`);
+  const indexedPeriods = await indexedMarkerPeriodTables(tx);
   for (const table of [
     'source_deletion_tombstones',
     'agent_memory_removed_sources',
@@ -67,7 +71,15 @@ export async function setupResearchInputGuards(tx: SqlExecutor) {
       .filter(([sourceTable]) => present.has(sourceTable))
       .map(([sourceTable, guard]) => {
         const kind = sources.find(([, name]) => name === sourceTable)![0];
-        return `DELETE FROM research_artifacts WHERE id IN (SELECT p.artifact_id FROM research_artifact_periods p WHERE EXISTS (SELECT 1 FROM ${sourceTable} h WHERE ${periodRowReferences('NEW.source_id', table, kind)} AND (${guard.replaceAll('OLD.', 'h.')})));`;
+        const matches = markerPeriodContributorMatches(
+          sourceTable,
+          'NEW.source_id',
+          table,
+          kind,
+          guard.replaceAll('OLD.', 'h.'),
+          indexedPeriods.has(sourceTable),
+        );
+        return `DELETE FROM research_artifacts WHERE id IN (SELECT p.artifact_id FROM research_artifact_periods p WHERE ${matches});`;
       })
       .join('\n');
     await tx.execute(`DROP TRIGGER IF EXISTS research_${table}_removed`);
