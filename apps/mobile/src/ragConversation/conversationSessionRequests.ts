@@ -112,7 +112,7 @@ export function createConversationSessionRequests(
         hasPhoto,
       );
       if (!start) return;
-      const { request, responseId, change, copy } = start;
+      const { request, responseId, change, copy, memoryMode } = start;
       const { question, userMessageId } = request;
       const fail = failureReporter(find, update, request, retainPartial, id);
       const history = conversationHistoryPayload(session.messages, question);
@@ -125,7 +125,7 @@ export function createConversationSessionRequests(
         id,
         question,
         controller.signal,
-        explicitQuestion === undefined && !hasPhoto,
+        memoryMode,
       );
       onOwner?.(bindRequestCancel(controllers, id, controller, cancel));
       update(id, { ...change, requestActivity: snapshot.getSnapshot() });
