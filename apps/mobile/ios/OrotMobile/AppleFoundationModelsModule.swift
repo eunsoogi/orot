@@ -128,7 +128,8 @@ public final class AppleFoundationModelsModule: RCTEventEmitter {
         if let status = result["status"] as? String, status != "available" {
             AppleNativeToolTrace.reportFailure(request, stage: stage, category: AppleNativeToolTrace.closedAvailability(status))
         }
-        return result
+        // Preserve the native bridge's Objective-C return contract.
+        return result as NSDictionary
     }
 
     private func availability(_ request: NSDictionary = [:]) -> [String: Any] {
