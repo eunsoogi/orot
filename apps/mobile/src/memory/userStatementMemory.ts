@@ -63,7 +63,7 @@ export function isProactiveMemoryStatement(request: string): boolean {
 }
 
 /** Keep direct no-retention wording separate from statements about unrelated past or personal behavior. */
-function declinesStatementRetention(text: string): boolean {
+export function declinesStatementRetention(text: string): boolean {
   return (
     /\b(?:never|not|don't)\s+(?:retain|preserve|memorize|archive|log)\b|(?:보관|간직|수집)\s*하지(?:는|도)?\s*(?:말|않|마)/iu.test(
       text,

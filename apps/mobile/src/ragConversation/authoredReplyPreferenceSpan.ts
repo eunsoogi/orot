@@ -4,7 +4,10 @@ import type {
 } from '@orot/agent-runtime';
 import { isEligibleConversationMemorySource } from '../manualHistory/conversationHistoryIntent';
 import { isAuthoredRoutineMemoryStatement } from '../memory/authoredRoutineMemory';
-import { isProactiveMemoryStatement } from '../memory/userStatementMemory';
+import {
+  declinesStatementRetention,
+  isProactiveMemoryStatement,
+} from '../memory/userStatementMemory';
 import { isObject } from './taskHistory';
 import type { GroundedRagAnswer } from './task';
 
@@ -14,6 +17,7 @@ function segments(value: string): readonly string[] {
   if (
     value.length > 900 ||
     !isEligibleConversationMemorySource(value) ||
+    declinesStatementRetention(value) ||
     /(?:^|\s)['‘’]|['‘’](?:$|\s)|\b(?:said|wrote|quoted|told)\b|(?:라고|라며)\s*(?:말|했|써)|(?:보관|보존|수집)\s*하지|\bdon’t\s+(?:retain|preserve|memorize|archive|log|record|store|remember|save)\b/iu.test(
       value,
     )
