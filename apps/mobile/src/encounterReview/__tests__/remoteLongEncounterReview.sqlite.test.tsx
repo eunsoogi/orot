@@ -8,6 +8,7 @@ import {
 } from '../__fixtures__/longReviewHarness';
 import { EncounterReviewPanel } from '../EncounterReviewPanel';
 import { reviewCopy } from '../strings';
+import { t } from '../../i18n';
 import {
   isSettingsOnlyExecutionConsent,
   useInferenceConsent,
@@ -37,7 +38,7 @@ jest.mock('../../ragConversation/conversationExecutionNative', () => ({
   conversationExecutionNative: jest.fn(),
 }));
 
-test.each(['save', 'revoked', 'denied', 'late-owner'] as const)(
+test.each(['save', 'revoked', 'denied', 'late-owner', 'stopped'] as const)(
   'mounted long remote review preserves exact separate authorization and %s',
   async mode => {
     const { choice, service, calls, repository } = await harness(9, 'pcc');
@@ -52,12 +53,24 @@ test.each(['save', 'revoked', 'denied', 'late-owner'] as const)(
     };
     const authorized = new WeakSet<OutboundProcessingRequest>();
     let grants = 0;
+    let enterPageTwo!: () => void;
+    let releasePageTwo!: () => void;
+    const pageTwoEntered = new Promise<void>(done => {
+      enterPageTwo = done;
+    });
+    const pageTwoReleased = new Promise<void>(done => {
+      releasePageTwo = done;
+    });
     const authorize = jest.fn(async (request: OutboundProcessingRequest) => {
       grants++;
       expect(request.providerId).toBe(choice.providerId);
       expect(request.modelId).toBe(choice.modelId);
       expect(request.allowedScope.sourceIds).toEqual([recordingId]);
       if (mode === 'denied' && grants === 2) return 'renewal_required' as const;
+      if (mode === 'stopped' && grants === 2) {
+        enterPageTwo();
+        await pageTwoReleased;
+      }
       authorized.add(request);
       return 'authorized' as const;
     });
@@ -133,6 +146,27 @@ test.each(['save', 'revoked', 'denied', 'late-owner'] as const)(
     );
     try {
       await fireEvent.press(screen.getByTestId('encounter-start'));
+      if (mode === 'stopped') {
+        // A completed first page can be counted while the second is still
+        // awaiting its own exact authorization. Stop must retire that work.
+        await pageTwoEntered;
+        expect(calls()).toBe(1);
+        expect(
+          await screen.findByTestId('encounter-batch-progress'),
+        ).toHaveTextContent(
+          t('encounterReview.completedBatches', { count: 1 }),
+        );
+        expect(screen.queryByTestId('encounter-save')).toBeNull();
+        await fireEvent.press(screen.getByTestId('encounter-cancel'));
+        await act(() => releasePageTwo());
+        await screen.findByText(reviewCopy.cancelled);
+        expect(screen.queryByTestId('encounter-batch-progress')).toBeNull();
+        expect(screen.queryByTestId('encounter-save')).toBeNull();
+        expect(await fixture.rows()).toHaveLength(0);
+        expect(calls()).toBe(1);
+        expect(authorize).toHaveBeenCalledTimes(2);
+        return;
+      }
       if (mode === 'denied')
         expect(
           await screen.findByText(reviewCopy['consent-denied']),
@@ -174,6 +208,7 @@ test.each(['save', 'revoked', 'denied', 'late-owner'] as const)(
       expect(calls()).toBe(mode === 'denied' ? 1 : 2);
       expect(authorize).toHaveBeenCalledTimes(2);
     } finally {
+      releasePageTwo();
       await ui.unmount();
     }
   },
