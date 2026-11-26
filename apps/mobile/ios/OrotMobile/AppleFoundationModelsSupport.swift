@@ -28,7 +28,6 @@ func appleFoundationModelsFailure(_ code: String, _ message: String, _ status: S
 }
 
 func appleFoundationModelsNativeFailure(_ error: Error) -> NSError {
-    logAppleModelFailureCategory(error)
     // Simulator tests use the mock call boundary, so classify SDK-specific refusals only in production.
     // Preserve native safety refusals separately from app input errors and missing records.
     #if canImport(FoundationModels) && !(OROT_TESTS && targetEnvironment(simulator))
@@ -123,12 +122,6 @@ func appleFoundationModelsFailureCategory(_ error: Error) -> String {
         }
     #endif
     return category
-}
-
-/// Device diagnostics contain closed categories only, never SDK messages or health content.
-private func logAppleModelFailureCategory(_ error: Error) {
-    guard ProcessInfo.processInfo.arguments.contains("-OROT_PROVIDER_DIAGNOSTICS") else { return }
-    NSLog("OROT_PROVIDER_DIAGNOSTIC provider=apple category=%@", appleFoundationModelsFailureCategory(error))
 }
 
 func rejectApplePromise(_ reject: RCTPromiseRejectBlock, _ error: NSError) {
