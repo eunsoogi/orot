@@ -46,13 +46,16 @@ test('same route still owns presentation in background without action authority'
     phase('background');
     expect(canPaint()).toBe(true);
     expect(canAct()).toBe(false);
+    expect(canAct.routeOwnsDraft()).toBe(true);
     owned = false;
+    expect(canAct.routeOwnsDraft()).toBe(false);
     expect(canPaint()).toBe(false);
     owned = true;
     phase('active');
     await view.rerender({ overlay: true });
     expect(canPaint()).toBe(false);
     expect(canAct()).toBe(false);
+    expect(canAct.routeOwnsDraft()).toBe(false);
   } finally {
     Object.defineProperty(AppState, 'currentState', prior);
   }

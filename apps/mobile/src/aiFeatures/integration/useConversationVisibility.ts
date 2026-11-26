@@ -22,19 +22,26 @@ export function useConversationVisibility(
     providerSelectionOpen,
     requireForeground,
   };
-  const current = useCallback(() => {
+  const routeOwnsDraft = useCallback(() => {
     const live = visibility.current;
     return (
-      (!live.requireForeground || AppState.currentState === 'active') &&
       (live.isEntryCurrent?.() ?? true) &&
       !live.sourceDetailOpen &&
       !live.providerSelectionOpen
     );
   }, []);
+  const current = useCallback(
+    () =>
+      (!visibility.current.requireForeground ||
+        AppState.currentState === 'active') &&
+      routeOwnsDraft(),
+    [routeOwnsDraft],
+  );
   const route = bookmarkOwnership?.route;
   const subscribeRoot = bookmarkOwnership?.subscribeRoot;
   return useMemo(
-    () => Object.assign(() => current(), { route, subscribeRoot }),
-    [current, route, subscribeRoot],
+    () =>
+      Object.assign(() => current(), { route, subscribeRoot, routeOwnsDraft }),
+    [current, route, routeOwnsDraft, subscribeRoot],
   );
 }

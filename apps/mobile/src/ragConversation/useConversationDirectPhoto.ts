@@ -1,10 +1,10 @@
-import { AppState } from 'react-native';
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useRef, useState } from 'react';
 import { createConversationPhotoImageSend } from '../aiFeatures/integration/sendConversationPhotoImage';
 import { chatGPTPlanDirectPhoto } from '@orot/provider-openai';
 import { t } from '../i18n';
 import { beginDirectPhotoPresentation } from './directPhotoPresentation';
 import { conversationDirectPhotoPorts as native } from './conversationDirectPhotoPorts';
+import { useDirectPhotoDraftLifecycle } from './useDirectPhotoDraftLifecycle';
 import { useDirectPhotoPublisher } from './DirectPhotoPresentationScope';
 import type {
   ConversationSession,
@@ -17,54 +17,52 @@ type State = {
   sending?: true;
   message?: string;
 };
-/** Pixels and outgoing text live only in one visible composer. The exact
- * attached lease may save final reply prose to a separate local display. */
+/** The composer owns transient pixels; only the attached lease may retain reply prose. */
 export function useConversationDirectPhoto(
   session: ConversationSession,
   store: ConversationSessions,
-  isEntryCurrent?: () => boolean,
+  isEntryCurrent?: (() => boolean) & { routeOwnsDraft?: () => boolean },
   ports = native,
 ) {
   const publish = useDirectPhotoPublisher();
   const [state, setState] = useState<State>({});
   const active = useRef<AbortController | null>(null);
-  const visible = useRef(false);
   const owner = useRef(isEntryCurrent);
   owner.current = isEntryCurrent;
   const sessionId = session.id;
-  const routeVisible = isEntryCurrent?.() ?? true;
+  const ownsDraftRoute = isEntryCurrent?.routeOwnsDraft ?? isEntryCurrent;
   const clear = useCallback(() => {
     active.current?.abort();
     active.current = null;
     publish?.(null);
   }, [publish]);
-  useEffect(() => {
-    visible.current = true;
-    const stateChange = AppState.addEventListener('change', value => {
-      if (value !== 'active') {
-        clear();
-        setState({});
-      }
-    });
-    return () => {
-      visible.current = false;
-      stateChange.remove();
-      clear();
-    };
-  }, [clear, store, sessionId]);
-
-  useEffect(() => {
-    if (!routeVisible) {
-      clear();
-      setState({});
-    }
-  }, [clear, routeVisible]);
+  const suspend = useCallback(() => {
+    clear();
+    setState({});
+  }, [clear]);
+  const {
+    mounted: visible,
+    paused,
+    discard,
+  } = useDirectPhotoDraftLifecycle({
+    ownerKey: store,
+    sessionId,
+    routeVisible: ownsDraftRoute?.() ?? true,
+    suspend,
+    release: clear,
+    ownsDraft: () =>
+      (ownsDraftRoute?.() ?? true) &&
+      store.getSnapshot().activeId === sessionId,
+    settledImage: () => (active.current ? undefined : state.image),
+    restore: image => setState({ image }),
+  });
 
   const current = () => {
     const snapshot = store.getSnapshot();
     const live = snapshot.sessions.find(item => item.id === sessionId);
     return (
       visible.current &&
+      !paused.current &&
       (!owner.current || owner.current()) &&
       snapshot.activeId === sessionId &&
       live?.id === sessionId &&
@@ -234,7 +232,7 @@ export function useConversationDirectPhoto(
   };
   return {
     available: ports.hasPicker(),
-    state,
+    state: (ownsDraftRoute?.() ?? true) && !paused.current ? state : {},
     pick: () => {
       pick().catch(() => {});
     },
@@ -242,6 +240,7 @@ export function useConversationDirectPhoto(
       send().catch(() => {});
     },
     remove() {
+      discard();
       active.current?.abort();
       active.current = null;
       setState({});
