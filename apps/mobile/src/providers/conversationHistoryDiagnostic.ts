@@ -38,6 +38,11 @@ export type ConversationHistoryStage =
   | 'history_cold_previews'
   | 'history_tasks'
   | 'history_recheck'
+  | 'history_display_admission'
+  | 'history_display_open'
+  | 'history_display_timeline'
+  | 'history_display_presentation'
+  | 'history_display_recheck'
   | 'history_transcript_layout';
 
 export function historyValidationCostEnabled() {
