@@ -236,6 +236,11 @@ test('a mounted composer renders only the selected local tool commit receipt', a
     expect(screen.queryByText(/Untrusted|저장하지 못했어요/u)).toBeNull();
     expect(externalSearch).not.toHaveBeenCalled();
     expect(await f.storage.listSavedConversationAnswers()).toHaveLength(1);
+    const reopened = createConversationArtifactStorage(f.database);
+    await reopened.interruptRecoveredRequests();
+    expect(
+      await reopened.listInterruptedRequests(previous.sessionId, 0),
+    ).toEqual([]);
   } finally {
     await view.unmount();
     restorePlatform();

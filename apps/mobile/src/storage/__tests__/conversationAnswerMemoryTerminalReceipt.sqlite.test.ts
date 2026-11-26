@@ -75,9 +75,12 @@ it('binds a new local bookmark to one exact operation and denies changed sources
     );
     expect(await prepared?.commit(op)).toBe(true);
     expect(await prepared?.confirmTerminalCommit(other)).toBeUndefined();
-    expect(await prepared?.confirmTerminalCommit(op)).toBe('saved');
+    // The receipt fence denies replay while the request is still active.
     const again = await f.storage.prepareAnswerMemory(f.input, op);
     expect(await again?.commit(op)).toBe(false);
+    expect(await prepared?.confirmTerminalCommit(op)).toBe('saved');
+    // Confirmation closes the exact request so it cannot prepare again.
+    expect(await f.storage.prepareAnswerMemory(f.input, op)).toBeUndefined();
     await f.repository.delete('health_observation', f.inside.id);
     await expect(prepared?.confirmTerminalCommit(op)).resolves.toBeUndefined();
     expect(await f.storage.listSavedConversationAnswers()).toEqual([]);
