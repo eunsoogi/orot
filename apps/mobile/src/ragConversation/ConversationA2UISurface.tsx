@@ -166,11 +166,11 @@ function SurfaceNode({
         nodes={node.children}
         fontScale={fontScale}
         alignment={node.alignment}
-        renderChild={(child, horizontal) => (
+        renderChild={(child, rowAxis) => (
           <SurfaceNode
             node={child}
             fontScale={fontScale}
-            horizontal={horizontal}
+            horizontal={rowAxis}
           />
         )}
       />
