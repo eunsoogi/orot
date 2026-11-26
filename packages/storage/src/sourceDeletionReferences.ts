@@ -156,6 +156,15 @@ export async function listTypedSourceDeletionReferences(
   return materializeTypedReferences(executor, RecordIdSchema.parse(sourceRecordId));
 }
 
+/** Re-read with a catalog proof on the exact committing owner; never reuse the preflight snapshot. */
+export async function readOwnedDeletionReferences(executor: SqlExecutor, sourceRecordId: string) {
+  return materializeTypedReferences(
+    executor,
+    RecordIdSchema.parse(sourceRecordId),
+    await readTrustedOrderedPeriodIndexes(executor),
+  );
+}
+
 async function materializeTypedReferences(
   executor: SqlExecutor,
   sourceId: string,
