@@ -1,9 +1,4 @@
 import { runMultiAgentWorkflow } from '@orot/agent-runtime';
-import {
-  providerSuccess,
-  type LanguageModelProvider,
-  type LanguageModelRequest,
-} from '@orot/model-runtime';
 import { createManualHistoryRepository, type SqlDatabase } from '@orot/storage';
 import type { GroundedRagAnswer } from '../../../ragConversation/task';
 import { createConversationArtifactStorage } from '../../../storage/conversationArtifactStorage';
@@ -13,13 +8,16 @@ import { healthContextFixture } from '../testSupport/healthContextPersistenceFix
 import { conversationMutationExecution } from '../conversationMutationExecution';
 import { LocalEvidenceReferenceRegistry } from '../evidenceRegistry';
 import { executionOptions } from '../featureServiceExecution';
+import {
+  authoredPlanModel,
+  syntheticAuthoredPlan,
+} from '../testSupport/syntheticAuthoredPlan';
 import type { AiFeatureLocalData } from '../localData';
 
 const runId = 'synthetic-authored-terminal-run';
 const sessionId = 'synthetic-authored-session';
 const requestId = 'synthetic-authored-request';
-const modelId = 'synthetic-model';
-const providerId = 'chatgpt-plan:synthetic';
+const modelId = authoredPlanModel;
 const toolId = 'remember-current-user-statement';
 const statement = 'The lilac project demo takes place each Friday.';
 const request = `${statement} Please remember this.`;
@@ -89,37 +87,11 @@ test.each(tests)(
           signal: AbortSignal,
         ) => confirmAuthoredMemoryTerminal(f.database, input, signal),
       );
-      const requests: LanguageModelRequest[] = [];
-      const provider: LanguageModelProvider = {
-        id: providerId,
-        kind: 'language-model',
-        displayName: 'Synthetic, no network',
-        capabilities: {
-          streaming: false,
-          toolCalling: true,
-          structuredOutput: false,
-          inputTypes: ['text'],
-        },
-        async generate(modelRequest) {
-          requests.push(modelRequest);
-          return providerSuccess({
-            text: 'The model cannot attest to a local write.',
-            finishReason: 'tool_calls' as const,
-            toolCalls: [
-              {
-                id: 'proposal',
-                name: toolId,
-                arguments: {
-                  statement:
-                    mode === 'wrong-text'
-                      ? 'A different invented sentence.'
-                      : statement,
-                },
-              },
-            ],
-          });
-        },
-      };
+      const { provider, requests } = syntheticAuthoredPlan(
+        toolId,
+        mode === 'wrong-text' ? 'A different invented sentence.' : statement,
+      );
+      const providerId = provider.id;
       type Mutation = Parameters<typeof conversationMutationExecution>[0];
       const selected = {
         status: 'ready',
@@ -169,7 +141,15 @@ test.each(tests)(
           },
         },
         question: request,
-        history: { priorTurns: [], references: [] } as Mutation['history'],
+        history: {
+          messages: [],
+          reports: [],
+          references: [],
+          sources: [],
+          priorTurns: [],
+          omitted: false,
+          excludedQuestions: [],
+        },
         remoteAnswerMemory: true,
       });
       const actions =
@@ -211,6 +191,14 @@ test.each(tests)(
       });
       expect(requests).toHaveLength(1);
       expect(opening).not.toHaveBeenCalled();
+      expect(
+        requests[0]?.messages.some(
+          message =>
+            'type' in message && message.type === 'function_call_output',
+        ),
+      ).toBe(false);
+      for (const marker of [requestId, sessionId, 'local-conversation-memory:'])
+        expect(JSON.stringify(requests[0])).not.toContain(marker);
       const notes = createManualHistoryRepository(f.database);
       if (mode === 'success') {
         expect(result).toMatchObject({
