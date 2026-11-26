@@ -11,7 +11,8 @@ import {
 } from './conversationReportTemplate';
 import { ConversationA2UISurface } from './ConversationA2UISurface';
 import type { ConversationA2UINode } from './conversationA2UI';
-import { memo } from 'react';
+import { memo, useLayoutEffect } from 'react';
+import { reportConversationA2UIReactCommit } from './conversationA2UIFinalDiagnostic';
 import { AppText } from '../layout/AppText';
 import { AiResponseText } from '../layout/AiResponseText';
 import { AssistantMarkdown } from './AssistantMarkdown';
@@ -46,6 +47,15 @@ export const ConversationMessageText = memo(
   }) {
     const report =
       !user && allowReport ? parseConversationReport(content) : undefined;
+    const parts =
+      !report && !user && allowReport && savedPossibilityNarrative
+        ? savedPossibilityNarrativeParts(content)
+        : undefined;
+    const committedRoot =
+      !report && !parts && !staticText && !user ? verifiedA2UI : undefined;
+    useLayoutEffect(() => {
+      if (committedRoot) reportConversationA2UIReactCommit();
+    }, [committedRoot]);
     if (report)
       return (
         <ConversationReportText
@@ -54,10 +64,6 @@ export const ConversationMessageText = memo(
           selectable={selectable}
         />
       );
-    const parts =
-      !user && allowReport && savedPossibilityNarrative
-        ? savedPossibilityNarrativeParts(content)
-        : undefined;
     if (parts)
       return (
         <SavedPossibilityNarrative
