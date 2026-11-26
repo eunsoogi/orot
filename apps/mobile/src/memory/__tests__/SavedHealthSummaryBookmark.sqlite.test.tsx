@@ -8,6 +8,7 @@ import {
 import { AppState } from 'react-native';
 import { conversationSavedHistoryDisplayOption } from '../../aiFeatures/integration/conversationSavedHistoryDisplayOption';
 import { window } from '../../aiFeatures/integration/testSupport/healthContextPersistenceFixture';
+import { conversationExecutionNative } from '../../ragConversation/conversationExecutionNative';
 import { ConversationScreen } from '../../ragConversation/ConversationScreen';
 import { ConversationSessionsProvider } from '../../ragConversation/ConversationSessionsContext';
 import { createConversationSessionRetention } from '../../ragConversation/conversationSessionRetention';
@@ -16,8 +17,14 @@ import { openSavedGeneratedReportReferences } from '../openSavedGeneratedReportR
 import { SavedMemoryDetail } from '../SavedMemoryDetail';
 
 jest.mock('../openSavedGeneratedReportReferences');
+jest.mock('../../ragConversation/conversationExecutionNative');
 
-test.each(['visible', 'tab-round-trip', 'route-round-trip'] as const)(
+test.each([
+  'visible',
+  'tab-round-trip',
+  'route-round-trip',
+  'native-lock-round-trip',
+] as const)(
   'a mounted summary writes only while its exact local owner remains current: %s',
   async scenario => {
     const f = await setup();
@@ -49,6 +56,20 @@ test.each(['visible', 'tab-round-trip', 'route-round-trip'] as const)(
           return () => rootListeners.delete(listener);
         },
       });
+      type Native = NonNullable<ReturnType<typeof conversationExecutionNative>>;
+      type Event = Parameters<Parameters<Native['subscribe']>[0]>[0];
+      const nativeListeners = new Set<(event: Event) => void>();
+      jest.mocked(conversationExecutionNative).mockReturnValue({
+        bridgeAvailable: true,
+        currentPhase: () => 'active',
+        protectedDataAvailable: async () => true,
+        subscribe(listener: (event: Event) => void) {
+          nativeListeners.add(listener);
+          return () => {
+            nativeListeners.delete(listener);
+          };
+        },
+      } as unknown as Native);
       let entered!: () => void;
       let release!: () => void;
       const started = new Promise<void>(resolve => {
@@ -112,7 +133,12 @@ test.each(['visible', 'tab-round-trip', 'route-round-trip'] as const)(
         );
         await fireEvent.press(action);
         await started;
-        if (scenario !== 'visible') {
+        if (scenario === 'native-lock-round-trip') {
+          expect(nativeListeners.size).toBeGreaterThan(0);
+          for (const available of [false, true])
+            for (const listener of [...nativeListeners])
+              listener({ kind: 'protectedData', available } as Event);
+        } else if (scenario !== 'visible') {
           for (const next of [false, true]) {
             visible = next;
             if (scenario === 'tab-round-trip')
