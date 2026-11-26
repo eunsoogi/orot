@@ -14,7 +14,7 @@ function plainLocalLabel(value: unknown): value is string {
     value.length >= 1 &&
     value.length <= 40 &&
     value.trim() === value &&
-    !/[<>\[\]#*`_~\\]|[\p{Cc}\p{Cf}]|(?:https?:|www\.)/iu.test(value)
+    !/[<>[\]#*`_~\\]|[\p{Cc}\p{Cf}]|(?:https?:|www\.)/iu.test(value)
   );
 }
 
