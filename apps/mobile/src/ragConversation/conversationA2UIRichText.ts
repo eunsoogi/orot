@@ -9,6 +9,9 @@ import { isObject } from './taskHistory';
 import { markdownRuns, type MarkdownRun } from './conversationMarkdownInline';
 import type { GroundedRagAnswer } from './task';
 
+const liveRoots = new WeakSet<ConversationA2UINode>();
+export const ownsLiveRichText = (root: ConversationA2UINode) =>
+  liveRoots.has(root);
 const layouts = new WeakMap<ConversationA2UINode, readonly MarkdownRun[]>();
 export const conversationA2UIRichText = (node: ConversationA2UINode) =>
   layouts.get(node);
@@ -21,7 +24,7 @@ function richRuns(text: string) {
   return runs;
 }
 
-function richProse(answer: string) {
+export function conversationRichArchiveProse(answer: string) {
   if (!answer || answer.length > 8_192) return;
   const lines = answer.split(/\n\n?/u);
   return lines.every(richRuns) ? lines : undefined;
@@ -44,6 +47,13 @@ function collectNativeProse(
   } else if ('children' in node) {
     return node.children.every(child => collectNativeProse(child, marked));
   }
+  return true;
+}
+
+export function markVerifiedRichText(root: ConversationA2UINode): boolean {
+  const marked = new Map<ConversationA2UINode, readonly MarkdownRun[]>();
+  if (!collectNativeProse(root, marked) || !marked.size) return false;
+  for (const [node, runs] of marked) layouts.set(node, runs);
   return true;
 }
 
@@ -118,12 +128,10 @@ export function withConversationA2UIRichText(
         false,
         false,
         false,
-        richProse,
+        conversationRichArchiveProse,
       );
-      const marked = new Map<ConversationA2UINode, readonly MarkdownRun[]>();
-      if (!root || !collectNativeProse(root, marked) || !marked.size)
-        return result;
-      for (const [node, runs] of marked) layouts.set(node, runs);
+      if (!root || !markVerifiedRichText(root)) return result;
+      liveRoots.add(root);
       return { ...result, value: { ...result.value, a2uiPresentation: root } };
     },
   };

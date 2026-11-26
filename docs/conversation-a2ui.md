@@ -173,7 +173,14 @@ Markdown markers. Copy uses the original answer. HTML, link and image syntax
 is not admitted in the structured rich-text path; no action, URL handling,
 or external transfer is introduced.
 
-This is a live renderer capability only. Reopening a rich reply uses the
-existing ordinary Markdown view of the saved answer, without the live layout.
-Prior responder versions and v7/v8 layout archives keep their existing behavior.
+For eligible source/citation/ancestry-free completed v40 replies, local
+archive v9 retains only the static arrangement and which answer leaves were
+formatted. No prose, wire messages, markup fragments, IDs or destinations
+are added to the layout. A missing or unsupported layout uses the ordinary
+saved Markdown view. Prior responder versions and v7/v8 archives are unchanged.
+
+Reopening v9 uses the already authorized page read and confirms the same
+unchanged encrypted revision, active route and native protection before
+drawing. A protected-state change, stale row or mutation retires that mount.
+There are no extra SQLite queries, provider requests, or action endpoints.
 Tab and Modal labels and locally editable controls keep their current design.

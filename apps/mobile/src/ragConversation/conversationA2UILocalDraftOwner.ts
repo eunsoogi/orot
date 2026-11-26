@@ -127,9 +127,13 @@ export function useConversationA2UILocalDraftOwner(
       },
       subscribe(listener) {
         const stop = store.subscribe(listener);
+        const route = archiveVisibility?.route?.subscribe(listener);
+        const root = archiveVisibility?.subscribeRoot?.(listener);
         const appState = AppState.addEventListener('change', listener);
         return () => {
           stop();
+          route?.();
+          root?.();
           appState.remove();
         };
       },

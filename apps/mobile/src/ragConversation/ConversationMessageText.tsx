@@ -1,3 +1,5 @@
+import { ArchivedRichTextSurface } from './ArchivedRichTextSurface';
+import { isRestoredRichText } from './archivedConversationRichTextLayout';
 import { ArchivedPairedDetailsSurface } from './ArchivedPairedDetailsSurface';
 import { archivedPairedDetailsFor } from './archivedPairedDetailsBinding';
 import { SavedPossibilityNarrative } from './SavedPossibilityNarrative';
@@ -66,6 +68,8 @@ export const ConversationMessageText = memo(
       );
     // Explicit reports and retained narratives above keep their native design.
     // The surrounding bubble still owns any verified sources and copy menu.
+    if (verifiedA2UI && isRestoredRichText(verifiedA2UI))
+      return <ArchivedRichTextSurface root={verifiedA2UI} testID={testID} />;
     if (verifiedA2UI)
       return archivedPairedDetailsFor(verifiedA2UI) ? (
         <ArchivedPairedDetailsSurface root={verifiedA2UI} testID={testID} />

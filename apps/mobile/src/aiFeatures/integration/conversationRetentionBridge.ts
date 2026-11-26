@@ -1,4 +1,5 @@
 import { storePossibilityOriginal } from '../../ragConversation/possibilityOriginalReceipt';
+import { storeArchivedConversationRichText } from '../../ragConversation/archivedConversationRichTextLayout';
 import { storePairedDetails } from '../../ragConversation/archivedPairedDetailsLayout';
 import { storeConversationA2UILayout } from '../../ragConversation/conversationA2UIArchive';
 import type { HistoricalDialogueParent } from '../../ragConversation/conversationRetention';
@@ -116,7 +117,14 @@ export function createConversationRetentionBridge(input: {
               !input.historicalDialogueParents?.length &&
               !input.priorDialogue?.length &&
               !input.priorUserReports?.length
-                ? storePairedDetails(outcome.a2uiPresentation, outcome.answer)
+                ? (storePairedDetails(
+                    outcome.a2uiPresentation,
+                    outcome.answer,
+                  ) ??
+                  storeArchivedConversationRichText(
+                    outcome.a2uiPresentation,
+                    outcome.answer,
+                  ))
                 : undefined) ??
               storeConversationA2UILayout(
                 outcome.a2uiPresentation,
