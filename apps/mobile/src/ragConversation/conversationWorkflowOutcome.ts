@@ -17,6 +17,7 @@ import {
 } from './literatureCitationBinding';
 import { localClaimsMatch } from './localEvidenceClaims';
 import { failureFromWorkflow } from './outcome';
+import { reportConversationA2UIFinalAdmission } from './conversationA2UIFinalDiagnostic';
 
 export type ConversationOutcomeOptions = Pick<
   RagConversationRunOptions,
@@ -49,11 +50,15 @@ export async function conversationWorkflowOutcome(
       signal,
     );
     if (result.value.answerKind === 'conversation') {
+      const insufficient =
+        result.citations.length > 0 ||
+        result.coverage.some(
+          coverage => coverage.sourceKind === 'generated_artifact',
+        );
+      if (!insufficient && !signal?.aborted)
+        reportConversationA2UIFinalAdmission(result.value);
       return accepted(
-        result.citations.length ||
-          result.coverage.some(
-            coverage => coverage.sourceKind === 'generated_artifact',
-          )
+        insufficient
           ? { status: 'insufficient' }
           : {
               status: 'answer',

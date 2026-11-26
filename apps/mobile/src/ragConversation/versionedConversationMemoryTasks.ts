@@ -1,3 +1,4 @@
+import { observeConversationA2UIFinalAdmission } from './conversationA2UIFinalDiagnostic';
 import { withConversationDraftPreview } from './conversationA2UIDraftPreviewTask';
 import { withPairedConversationControls } from './conversationA2UILocalFormTask';
 import { withConversationA2UIFormatString } from './conversationA2UIFormatTask';
@@ -88,9 +89,8 @@ export function versionedConversationMemoryTasks(
       v42: conversationTaskV42,
       v43: conversationTaskV43,
     },
-    ragConversationTask: withPairedConversationControls(
-      conversationTaskV43,
-      true,
+    ragConversationTask: observeConversationA2UIFinalAdmission(
+      withPairedConversationControls(conversationTaskV43, true),
     ),
   };
 }

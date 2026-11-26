@@ -27,6 +27,8 @@ export type Stage =
   | 'conversation_receipt_attempt'
   | 'conversation_receipt_main'
   | 'conversation_final_react_commit'
+  | 'conversation_a2ui_final_admission'
+  | 'conversation_a2ui_react_commit'
   | 'conversation_receipt_accepted'
   | 'conversation_receipt_response_started'
   | 'tool_capture_personal'
