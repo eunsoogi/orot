@@ -193,9 +193,10 @@ extension RealtimeVoiceLifecycleTests {
                                                 sourceCurrent: { $0 == owner && $1 == function && $2 == Data(function.utf8) && (i != 0 || source) },
                                                 release: { retired += 1 })
                 }
-                let offered = mode == "duplicate" ? [outputs[0], outputs[0]] : outputs
-                let candidate = LiveNativeResultBatch(owner: owner, functions: ["first", "second"], outputs: offered, owns: { $0 == owner })
-                if mode == "duplicate" { XCTAssertNil(candidate); continue }
+                let candidate = LiveNativeResultBatch(owner: owner, functions: ["first", "second"], outputs: mode == "duplicate" ? [outputs[0], outputs[0]] : outputs, owns: { $0 == owner })
+                if mode == "duplicate" {
+                    XCTAssertNil(candidate); continue
+                }
                 let batch = try XCTUnwrap(candidate)
                 XCTAssertTrue(socket.sendTicketedToolBatch(batch) && !socket.sendTicketedToolBatch(batch))
                 XCTAssertEqual(task.frames, ["first"])
