@@ -1,5 +1,16 @@
 import { consent } from '../__fixtures__/sqliteReview';
-import { fixture, harness } from '../__fixtures__/longReviewHarness';
+import {
+  fixture,
+  harness,
+  recordingId,
+} from '../__fixtures__/longReviewHarness';
+
+import { openLocalAgentMemoryDatabase } from '../../storage/secureDatabase';
+import { guardedNativeDatabase } from '../../storage/protectedReadEpoch';
+import { SqlCipherAgentMemoryStorage } from '../../storage/agentMemoryStorage';
+import { createEncounterReviewService } from '../service';
+import { EncounterReviewController } from '../controller';
+import { openEncounterReviewSessions } from '../openSessions';
 
 jest.mock('../../storage/secureDatabase', () => ({
   openLocalStorage: jest.fn(),
@@ -79,3 +90,79 @@ test('reviews all 33 on-device candidates; explicitly saves only the terminal ev
     f.controller.dispose();
   }
 });
+
+test.each(['logical', 'physical'] as const)(
+  'long review cannot save or cold-restore after %s recording removal',
+  async mode => {
+    const f = await harness();
+    const cold = new EncounterReviewController(
+      recordingId,
+      createEncounterReviewService(),
+      jest.fn(),
+    );
+    try {
+      await f.controller.start(consent);
+      expect(f.controller.state.status).toBe('pending');
+      const thread = f.controller.state.pending?.threadId;
+      expect(thread).toBeDefined();
+      expect(f.calls()).toBe(2);
+      const consentChecks = consent.authorize.mock.calls.length;
+      const { discovery } = await openEncounterReviewSessions(recordingId);
+      expect((await discovery.read())?.threadId).toBe(thread);
+
+      if (mode === 'logical') {
+        await new SqlCipherAgentMemoryStorage(
+          fixture.database(),
+        ).markSourceRemoved(recordingId);
+        expect(await f.repository.sourceRecords.get(recordingId)).toMatchObject(
+          {
+            id: recordingId,
+            sourceKind: 'audio_recording',
+          },
+        );
+      } else {
+        expect(await f.repository.sourceRecords.delete(recordingId)).toBe(true);
+        expect(
+          await f.repository.transcripts.listForRecording(recordingId),
+        ).toEqual([]);
+      }
+      const binding = await fixture
+        .database()
+        .execute(
+          'SELECT thread_id FROM langgraph_checkpoint_sources WHERE source_record_id = ?',
+          [recordingId],
+        );
+      expect(binding.rows).toEqual([]);
+      expect(await discovery.read()).toBeNull();
+      await f.controller.decide('approve');
+      expect(f.controller.state.status).toBe('unavailable');
+      expect(await fixture.rows()).toEqual([]);
+
+      f.controller.dispose();
+      fixture.reopen();
+      jest
+        .mocked(openLocalAgentMemoryDatabase)
+        .mockResolvedValue(guardedNativeDatabase(fixture.database()));
+      await cold.restore();
+      expect(cold.state.status).toBe('unavailable');
+      expect(cold.state.pending).toBeUndefined();
+      expect(cold.state.candidates).toEqual([]);
+      expect(f.calls()).toBe(2);
+      expect(consent.authorize.mock.calls).toHaveLength(consentChecks);
+      expect(await fixture.rows()).toEqual([]);
+      expect(
+        (
+          await fixture
+            .database()
+            .execute(
+              "SELECT checkpoint_key FROM healthkit_sync_checkpoints WHERE checkpoint_key GLOB 'encounter-approval:*' AND json_extract(value, '$.sourceId') = ?",
+              [recordingId],
+            )
+        ).rows,
+      ).toEqual([]);
+    } finally {
+      f.controller.dispose();
+      cold.dispose();
+    }
+  },
+);
