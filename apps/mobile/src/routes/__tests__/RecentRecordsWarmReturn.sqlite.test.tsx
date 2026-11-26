@@ -6,7 +6,6 @@ import {
   type SqlDatabase,
 } from '@orot/storage';
 import { AppState, type AppStateStatus } from 'react-native';
-import type { PropsWithChildren } from 'react';
 import { createNavigationController } from '../../navigation/navigationController';
 import { conversationExecutionNative } from '../../ragConversation/conversationExecutionNative';
 import { SqlCipherAgentMemoryStorage } from '../../storage/agentMemoryStorage';
@@ -14,7 +13,6 @@ import { readCommittedRecentSourcePage } from '../../storage/committedRecentSour
 import { openInterleavableRecentSourceDatabase } from '../../storage/testSupport/interleavableRecentSourceDatabase';
 import type { RecentMaterialReadyLease } from '../../generatedReports/certifiedRecentMaterialPage';
 import type { AppNavigationRoute } from '../appNavigationRoute';
-import { RecentMaterialReadinessContext } from '../RecentMaterialReadinessContext';
 import type { LoadRecentPage } from '../recentSavedMaterialPageTypes';
 import {
   loadRecentSourceMaterial,
@@ -27,6 +25,7 @@ import {
   renderRecords,
 } from '../testSupport/recentRecordsRouteTestSupport';
 import {
+  captureRecentReadiness,
   expectRetainedPaint,
   fixture,
 } from '../testSupport/recentRecordsRetainedPaintTestSupport';
@@ -93,13 +92,7 @@ test.each([
         AppState.currentState === 'active' ? 'active' : 'background',
       protectedDataAvailable: proof,
     });
-    function Readiness({ children }: PropsWithChildren) {
-      return (
-        <RecentMaterialReadinessContext.Provider value={lease}>
-          {children}
-        </RecentMaterialReadinessContext.Provider>
-      );
-    }
+    const readiness = captureRecentReadiness(lease);
     try {
       await runMigrations(database);
       await createRecordRepository(database).put('source_record', {
@@ -158,7 +151,7 @@ test.each([
         controller,
         { ...recentRouteProps(), documentImportService: undefined },
         defaultRoute ? 'app-default' : true,
-        Readiness,
+        readiness.Wrapper,
       );
       try {
         const full = journey.endsWith(' full');
@@ -182,8 +175,10 @@ test.each([
             'settings-provider',
           );
         } else {
-          await act(async () =>
-            phase(journey.startsWith('inactive') ? 'inactive' : 'background'),
+          await readiness.suspend(
+            phase,
+            journey.startsWith('inactive'),
+            defaultRoute,
           );
           expect(
             screen.queryByTestId('records-recent-sources-loading'),
@@ -202,6 +197,7 @@ test.each([
         await act(async () => {
           if (journey === 'Voice Model Back') await controller.requestBack();
           else phase('active');
+          if (defaultRoute) readiness.set(lease);
         });
         await entered.promise;
         expect(controller.getSnapshot().currentRoute.name).toBe(

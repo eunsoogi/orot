@@ -1,7 +1,5 @@
-import { useLayoutEffect, useMemo, useRef, useState } from 'react';
+import { useLayoutEffect, useRef, useState } from 'react';
 import { loadRecentMaterial } from '../generatedReports/recentMaterialReader';
-import { readProtectedRecentMaterialPage } from '../generatedReports/certifiedRecentMaterialPage';
-import { subscribeAgentMemoryVisibility } from '../storage/agentMemoryVisibilityEvents';
 import { useNavigationRouteRefresh } from '../navigation/navigationRouteRefresh';
 import { subscribeRecentSourceSaved } from '../storage/recentSourceEvents';
 import type { RecordsRecentSourcesProps } from './RecordsRecentSources';
@@ -16,6 +14,10 @@ import {
   resolveMountedRecentPaint,
   useMountedRecentRoutePaint,
 } from './useMountedRecentRoutePaint';
+import {
+  useScopedRecentMaterial,
+  useScopedRecentReadActivity,
+} from './useScopedRecentMaterial';
 import { useSettledRecentPaint } from './useSettledRecentPaint';
 import { useRecentRecordEntries } from './useRecentRecordEntries';
 import { useRecentPageDemand } from './useRecentPageDemand';
@@ -26,6 +28,10 @@ import {
   recentStreamHasError,
 } from './recentFeedPresentation';
 
+type RecentPaint = {
+  records: readonly RecentRecordEntry[];
+  groups: ReturnType<typeof groupRecentRecords>;
+};
 export function useRecordsRecentFeed(
   props: RecordsRecentSourcesProps,
   shield?: Readonly<{ available: boolean; bound: boolean }>,
@@ -45,45 +51,31 @@ export function useRecordsRecentFeed(
     onRetryDocuments,
     onOpenReport,
   } = props;
-  const warmEligible =
-    active &&
-    pagedAudio &&
-    pagedDocuments &&
-    Boolean(onOpenReport && recentMaterialReadyLease);
-  const painted = useSettledRecentPaint<{
-    records: readonly RecentRecordEntry[];
-    groups: ReturnType<typeof groupRecentRecords>;
-  }>(warmEligible, ownership, tabAuthority);
-  const mounted = useMountedRecentRoutePaint<{
-    records: readonly RecentRecordEntry[];
-    groups: ReturnType<typeof groupRecentRecords>;
-  }>(warmEligible && shield?.bound === true, ownership, tabAuthority);
-  const scopedMaterial = useMemo(() => {
-    if (!recentMaterialReadyLease) return undefined;
-    const lease = recentMaterialReadyLease;
-    return {
-      load: Object.assign(
-        (
-          before?: Parameters<typeof loadRecentMaterial>[0],
-          options?: Parameters<typeof readProtectedRecentMaterialPage>[2],
-        ) => {
-          if (!options) throw new Error('Missing protected Records request.');
-          return readProtectedRecentMaterialPage(lease, before, options);
-        },
-        { sourceIsCurrent: () => lease.isCurrent() },
-      ),
-      subscribe: (current: () => boolean, invalidate: () => void) =>
-        subscribeAgentMemoryVisibility(
-          lease.database,
-          () => lease.isCurrent() && current(),
-          invalidate,
-        ),
-    };
-  }, [recentMaterialReadyLease]);
+  const presentationEligible =
+    active && pagedAudio && pagedDocuments && Boolean(onOpenReport);
+  // Read readiness retires on phase changes; the attached UIKit view does not.
+  const warmEligible = presentationEligible && !!recentMaterialReadyLease;
+  const painted = useSettledRecentPaint<RecentPaint>(
+    warmEligible,
+    ownership,
+    tabAuthority,
+  );
+  const mounted = useMountedRecentRoutePaint<RecentPaint>(
+    presentationEligible && shield?.bound === true,
+    ownership,
+    tabAuthority,
+    recentMaterialReadyLease?.database,
+  );
+  const scopedMaterial = useScopedRecentMaterial(recentMaterialReadyLease);
+  const { ownershipReady, readsActive } = useScopedRecentReadActivity(
+    active,
+    presentationEligible,
+    recentMaterialReadyLease,
+  );
   const paintPort = (publish: typeof painted.publishMedia) =>
     warmEligible ? { blocked: painted.blocked, publish } : undefined;
   const reports = useRecentSavedMaterial(
-    active,
+    readsActive,
     ownership,
     scopedMaterial?.load ?? loadRecentMaterial,
     showAll,
@@ -95,7 +87,7 @@ export function useRecordsRecentFeed(
     paintPort(painted.publishMaterial),
   );
   const media = useRecentSavedMaterial(
-    active,
+    readsActive,
     ownership,
     loadRecentSourceMaterial,
     showAll,
@@ -200,15 +192,22 @@ export function useRecordsRecentFeed(
   const { holding, snapshot, rebuilt, revision, warm } =
     resolveMountedRecentPaint(
       mounted.retained,
-      painted.warm,
-      isFresh,
-      loadErrors.length > 0,
+      warmEligible ? painted.warm : undefined,
+      ownershipReady && isFresh,
+      ownershipReady && loadErrors.length > 0,
       media,
       reports,
     );
   useLayoutEffect(() => {
-    if (loadErrors.length) mounted.clear();
-    else if (rebuilt && !refreshing)
+    if (loadErrors.length && ownershipReady && mounted.retained)
+      mounted.clear();
+    // Even when the other stream failed, a certified prefix can already be
+    // visible. Capture exactly that paint, not raw/unresolved source rows.
+    if (
+      ownershipReady &&
+      !refreshing &&
+      (rebuilt || (!snapshot && certified.length > 0))
+    )
       mounted.commit({ records: certified, groups }, media, reports);
     if (!warm && painted.warm) painted.rejectWarm();
     if (isFresh && !refreshing && loadErrors.length === 0)
@@ -222,7 +221,7 @@ export function useRecordsRecentFeed(
   return {
     records: snapshot?.records ?? certified,
     holdingMountedList: holding,
-    shieldRecords: warmEligible && shield?.available === true,
+    shieldRecords: presentationEligible && shield?.available === true,
     presentationRevision: revision,
     isFresh,
     warmPaint: Boolean(warm),

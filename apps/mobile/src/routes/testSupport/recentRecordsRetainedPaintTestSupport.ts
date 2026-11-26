@@ -1,4 +1,7 @@
-import { screen } from '@testing-library/react-native';
+import type { RecentMaterialReadyLease } from '../../generatedReports/certifiedRecentMaterialPage';
+import { createElement, useState, type PropsWithChildren } from 'react';
+import { RecentMaterialReadinessContext } from '../RecentMaterialReadinessContext';
+import { act, screen } from '@testing-library/react-native';
 import { StyleSheet } from 'react-native';
 
 const mediaId = 'synthetic-warm-file';
@@ -18,4 +21,37 @@ export function expectRetainedPaint() {
   expect(StyleSheet.flatten(retained.props.style)?.opacity).not.toBe(0);
   expect(retained.props.pointerEvents).toBe('none');
   return retained;
+}
+
+/** Model foreground read authority retiring independently of the Records view. */
+export function captureRecentReadiness(initial: RecentMaterialReadyLease) {
+  let update:
+    ((value: RecentMaterialReadyLease | undefined) => void) | undefined;
+  const set = (value: RecentMaterialReadyLease | undefined) => {
+    if (!update) throw new Error('Records readiness fixture not mounted.');
+    update(value);
+  };
+  return {
+    Wrapper({ children }: PropsWithChildren) {
+      const [ready, setReady] = useState<RecentMaterialReadyLease | undefined>(
+        initial,
+      );
+      update = setReady;
+      return createElement(
+        RecentMaterialReadinessContext.Provider,
+        { value: ready },
+        children,
+      );
+    },
+    set,
+    async suspend(
+      phase: (next: 'inactive' | 'background') => void,
+      inactive: boolean,
+      revoke: boolean,
+    ) {
+      if (revoke && inactive) await act(async () => set(undefined));
+      await act(async () => phase(inactive ? 'inactive' : 'background'));
+      if (revoke && !inactive) await act(async () => set(undefined));
+    },
+  };
 }

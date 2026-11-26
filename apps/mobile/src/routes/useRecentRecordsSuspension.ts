@@ -12,8 +12,8 @@ type HeldOffset = {
   readonly restore: (current: () => boolean) => void;
 };
 
-/** The only retained state of an inactive list is its scroll offset. Rows still
- * retire through existing Records guards, including on native lock. */
+/** Preserve the offset across ordinary inactive/background transitions. The
+ * protected feed separately owns rows and retires them on invalidation. */
 export function useRecentRecordsSuspension(
   active: boolean,
   ownership?: NavigationRouteOwnership,
@@ -41,7 +41,7 @@ export function useRecentRecordsSuspension(
       ticket.current++;
     };
     const onChange = (next: AppStateStatus) => {
-      if (next === 'inactive' && previous.current) {
+      if ((next === 'inactive' || next === 'background') && previous.current) {
         drop();
         if (owner() && published.current && position)
           held.current = {
@@ -49,7 +49,12 @@ export function useRecentRecordsSuspension(
             ticket: ticket.current,
             restore: position.capture(),
           };
-      } else if (next !== 'inactive' && next !== 'active') drop();
+      } else if (
+        next !== 'inactive' &&
+        next !== 'background' &&
+        next !== 'active'
+      )
+        drop();
       previous.current = next === 'active';
       setPhase(next);
     };
