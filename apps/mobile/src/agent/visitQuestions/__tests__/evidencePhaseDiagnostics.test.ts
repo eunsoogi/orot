@@ -82,6 +82,8 @@ test('separates appointment and memory rereads without emitting a search query o
     ['visit', 'evidence_appointment', 'completed'],
     ['visit', 'evidence_memory', 'started'],
     ['visit', 'evidence_memory', 'completed'],
+    ['visit', 'evidence_appointment', 'started'],
+    ['visit', 'evidence_appointment', 'completed'],
   ]);
 });
 

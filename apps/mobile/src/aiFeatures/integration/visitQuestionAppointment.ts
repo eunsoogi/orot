@@ -1,4 +1,4 @@
-import { AppointmentSchema } from '@orot/domain';
+import { checkedUpcomingCalendarAppointment } from '../../agent/visitQuestions/appointmentFreshness';
 import type { Appointment } from '@orot/domain';
 import { selectedVisitQuery } from '../../agent/visitQuestions/selectedVisitQuery';
 
@@ -27,7 +27,12 @@ export async function loadVisitQuestionAppointment(
     !result.appointment
   )
     return null;
-  const appointment = AppointmentSchema.safeParse(result.appointment);
-  if (!appointment.success) throw new Error('The next appointment is invalid.');
-  return appointment.data;
+  const checked = checkedUpcomingCalendarAppointment(
+    result.appointment,
+    now,
+    appointmentId,
+  );
+  if (checked.kind === 'invalid')
+    throw new Error('The next appointment is invalid.');
+  return checked.kind === 'available' ? checked.appointment : null;
 }

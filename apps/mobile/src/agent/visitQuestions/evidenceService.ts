@@ -1,7 +1,8 @@
 import { projectVisitSensorEvidence } from './providerSensorEvidence';
 import type { ResolveHealthContextWindow } from '../../healthEvidence/healthContext/availableWindow';
 import { buildVisitContext } from './visitContext';
-import { AppointmentSchema, type Appointment } from '@orot/domain';
+import type { Appointment } from '@orot/domain';
+import { checkedUpcomingCalendarAppointment } from './appointmentFreshness';
 import type { LocalE5RagService } from '../../rag/localE5RagService';
 import {
   createVisitQuestionEvidenceRevalidator,
@@ -109,21 +110,19 @@ export async function prepareVisitQuestionContext(input: {
   if (result.status !== 'available' || result.appointment === null) {
     return { status: 'no_confirmed_upcoming_appointment' };
   }
-  const parsedAppointment = AppointmentSchema.safeParse(result.appointment);
-  if (!parsedAppointment.success) {
+  const checked = checkedUpcomingCalendarAppointment(
+    result.appointment,
+    input.now,
+    input.appointmentId,
+  );
+  if (checked.kind === 'invalid') {
     throw new Error(
       'The confirmed Calendar appointment is no longer a valid local record.',
     );
   }
-  const appointment = parsedAppointment.data;
-  if (
-    (appointment.status !== 'scheduled' &&
-      appointment.status !== 'rescheduled') ||
-    !appointment.calendarEventIdentifier ||
-    !appointment.calendarEventSnapshot
-  ) {
+  if (checked.kind !== 'available')
     return { status: 'no_confirmed_upcoming_appointment' };
-  }
+  const appointment = checked.appointment;
   const { context, query } = buildVisitContext(appointment);
   const buildChunks = input.buildChunks;
   const initialEvidence: VisitQuestionEvidenceCollection = {
@@ -194,6 +193,7 @@ export async function prepareVisitQuestionContext(input: {
     buildChunks,
     currentTime: input.currentTime ?? (() => new Date().toISOString()),
     validateHealthContext: healthContext?.validate,
+    validateGeneratedArtifact: input.validateGeneratedArtifact,
   });
   return {
     status: 'ready',
@@ -221,30 +221,9 @@ export async function prepareVisitQuestionContext(input: {
       return mapped.item;
     },
     async revalidateEvidence(citations, options) {
-      const generated = citations.filter(
-        citation => citation.sourceKind === 'generated_artifact',
+      return (
+        (await revalidateEvidence(citations, options)) && !input.signal?.aborted
       );
-      const local = citations.filter(
-        citation => citation.sourceKind !== 'generated_artifact',
-      );
-      if (
-        !(await revalidateEvidence(local, {
-          allowEmpty: generated.length > 0 || Boolean(options?.allowEmpty),
-        }))
-      )
-        return false;
-      for (const citation of generated) {
-        const metadata = metadataByCitation.get(
-          visitQuestionCitationKey(citation),
-        );
-        if (
-          !metadata?.generatedArtifactSource ||
-          !input.validateGeneratedArtifact ||
-          !(await input.validateGeneratedArtifact(citation, metadata))
-        )
-          return false;
-      }
-      return !input.signal?.aborted;
     },
   };
 }
