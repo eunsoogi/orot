@@ -19,7 +19,8 @@ import {
 } from './recordPersistence';
 import type { RecordMap } from './contracts';
 import type { SqlDatabase, SqlExecutor } from './sql';
-import { listTypedSourceDeletionReferences } from './sourceDeletionReferences';
+import { readOwnedDeletionReferences } from './sourceDeletionReferences';
+import { stageSourceDeletionFences } from './sourceDeletionFenceWrites';
 import { sourceDeletionGroupReader } from './sourceDeletionMembership';
 
 export type HashedSourceRecord = SourceRecord & { contentHash: SourceContentHash };
@@ -150,45 +151,12 @@ export function createSourceEvidenceRepositories(database: SqlDatabase): {
         await transaction.execute(
           'CREATE TABLE IF NOT EXISTS typed_deletion_write_context (marker_table TEXT NOT NULL, source_id TEXT NOT NULL, PRIMARY KEY (marker_table, source_id))',
         );
-        const references = await listTypedSourceDeletionReferences(transaction, sourceId);
-        for (const reference of references) {
-          const existing = await transaction.execute(
-            'SELECT source_id FROM source_deletion_tombstones WHERE source_id = ?',
-            [reference.id],
-          );
-          const typed = await transaction.execute(
-            "SELECT kind FROM typed_deletion_markers WHERE marker_table = 'source_deletion_tombstones' AND source_id = ? LIMIT 1",
-            [reference.id],
-          );
-          if (existing.rows.length && !typed.rows.length) {
-            await transaction.execute(
-              "INSERT OR IGNORE INTO typed_deletion_markers VALUES ('source_deletion_tombstones', ?, '*')",
-              [reference.id],
-            );
-          }
-          await transaction.execute(
-            "INSERT OR IGNORE INTO typed_deletion_markers VALUES ('source_deletion_tombstones', ?, ?)",
-            [reference.id, reference.kind],
-          );
-          await transaction.execute(
-            "INSERT OR IGNORE INTO typed_deletion_write_context VALUES ('source_deletion_tombstones', ?)",
-            [reference.id],
-          );
-          // The cascade reinserts the fence so consumers see newly added kinds.
-          if (existing.rows.length)
-            await transaction.execute(
-              'DELETE FROM source_deletion_tombstones WHERE source_id = ?',
-              [reference.id],
-            );
-        }
+        const references = await readOwnedDeletionReferences(transaction, sourceId);
+        const clearWriteContext = await stageSourceDeletionFences(transaction, references);
         // Vector fences and source cascades commit together so a resumed graph cannot revive deleted evidence.
         await withinDeletionTransaction?.(transaction);
         deleted = await deleteStoredRecord(transaction, 'source_record', sourceId);
-        for (const reference of references)
-          await transaction.execute(
-            "DELETE FROM typed_deletion_write_context WHERE marker_table = 'source_deletion_tombstones' AND source_id = ?",
-            [reference.id],
-          );
+        await clearWriteContext();
       });
       return deleted;
     },
