@@ -22,6 +22,7 @@ export async function generateContextualInitialReply(input: {
   isCurrent?: () => Promise<boolean>;
   validate: (text: string, request: string) => string | undefined;
   onObservation?: InitialReplyObserver;
+  onApprovedProcessingBudget?: (remainingMs: number | null) => void;
   onApprovedPresentation?: (layout: 'card') => void;
 }): Promise<string | undefined> {
   const controller = new AbortController();
@@ -170,6 +171,7 @@ export async function generateContextualInitialReply(input: {
       controller.signal.aborted ? stopped() : allowed ? 'completed' : 'invalid_output',
     );
     if (!allowed) return undefined;
+    input.onApprovedProcessingBudget?.(deadline.remainingProcessingMs());
     if (proposed?.layout === 'card') input.onApprovedPresentation?.('card');
     return candidate;
   } catch {

@@ -7,6 +7,12 @@ export function createInitialReplyDeadline(abort: () => void, durationMs: number
   let timer: ReturnType<typeof setTimeout> | undefined =
     durationMs === null ? undefined : setTimeout(abort, remaining);
   return {
+    remainingProcessingMs() {
+      if (durationMs === null) return null;
+      return timer === undefined
+        ? remaining
+        : Math.max(0, remaining - Math.max(0, Date.now() - started));
+    },
     pause() {
       if (disposed || timer === undefined) return;
       clearTimeout(timer);

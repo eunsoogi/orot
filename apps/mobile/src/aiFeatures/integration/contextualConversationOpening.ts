@@ -46,7 +46,11 @@ export function startContextualConversationOpening(input: {
       return;
     }
     let presentation: 'card' | undefined;
+    let deliverBy = 0;
     const text = await generateContextualInitialReply({
+      onApprovedProcessingBudget(value) {
+        deliverBy = Date.now() + (value ?? 10_000);
+      },
       ...(input.allowA2UIPresentation && input.observer.onReviewedOpening
         ? {
             onApprovedPresentation: (layout: 'card') => {
@@ -77,16 +81,18 @@ export function startContextualConversationOpening(input: {
     });
     if (text && !controller.signal.aborted && (input.isCurrent?.() ?? true)) {
       const opening = { callId: id, text };
-      if (input.observer.onReviewedOpening) {
-        const published = await input.observer.onReviewedOpening(
-          { ...opening, ...(presentation ? { presentation } : {}) },
-          controller.signal,
+      const deliver = input.observer.onReviewedOpening;
+      if (deliver) {
+        const outcome = await deliverReviewedOpening(
+          controller,
+          deliverBy - Date.now(),
+          () =>
+            deliver(
+              { ...opening, ...(presentation ? { presentation } : {}) },
+              controller.signal,
+            ),
         );
-        reportOpening(
-          'opening_delivery',
-          published ? 'completed' : 'unavailable',
-          input.diagnosticFeature,
-        );
+        reportOpening('opening_delivery', outcome, input.diagnosticFeature);
       } else {
         input.observer.onTaskStreamEvent({
           type: 'initial_response',
@@ -111,6 +117,44 @@ export function startContextualConversationOpening(input: {
       input.signal.removeEventListener('abort', stop);
     },
   };
+}
+
+/** The optional opening journal must commit before display, but it cannot
+ * indefinitely delay the grounded answer. Expiry retires only this preview. */
+async function deliverReviewedOpening(
+  controller: AbortController,
+  remainingMs: number,
+  deliver: () => Promise<boolean>,
+) {
+  const { signal } = controller;
+  if (signal.aborted) return 'cancelled';
+  if (remainingMs <= 0) {
+    controller.abort();
+    return 'timeout';
+  }
+  let timedOut = false;
+  const deadline = setTimeout(() => {
+    timedOut = true;
+    controller.abort();
+  }, remainingMs);
+  let stop = () => {};
+  const cancelled = new Promise<false>(resolve => {
+    stop = () => resolve(false);
+    signal.addEventListener('abort', stop, { once: true });
+  });
+  try {
+    const published = await Promise.race([deliver(), cancelled]);
+    return signal.aborted
+      ? timedOut
+        ? 'timeout'
+        : 'cancelled'
+      : published
+        ? 'completed'
+        : 'unavailable';
+  } finally {
+    clearTimeout(deadline);
+    signal.removeEventListener('abort', stop);
+  }
 }
 
 /** Ordinary text sends retain the existing record-conversation disclosure. */
