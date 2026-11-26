@@ -51,13 +51,11 @@ test.each([
     ] as unknown as Messages;
     jest.spyOn(store, 'getSnapshot').mockReturnValue({
       ...snapshot,
-      sessions: snapshot.sessions.map(row => ({ ...row, messages })),
+      sessions: snapshot.sessions.map((row) => ({ ...row, messages })),
     });
     const bookmarkDailyReport = jest.fn(async () => true);
     const bookmarkHealthSummary = jest.fn(async () => true);
-    type Storage = Awaited<
-      ReturnType<typeof openSavedGeneratedReportReferences>
-    >;
+    type Storage = Awaited<ReturnType<typeof openSavedGeneratedReportReferences>>;
     const open = jest.mocked(openSavedGeneratedReportReferences);
     open.mockReset();
     open.mockResolvedValue({
@@ -68,21 +66,14 @@ test.each([
       expect(handleExplicitDailyReportBookmark({ store, id })).toBe(true);
       await Promise.resolve();
       await Promise.resolve();
-      expect(bookmarkDailyReport).toHaveBeenCalledTimes(
-        chosen === 'daily' ? 1 : 0,
-      );
-      expect(bookmarkHealthSummary).toHaveBeenCalledTimes(
-        chosen === 'summary' ? 1 : 0,
-      );
+      expect(bookmarkDailyReport).toHaveBeenCalledTimes(chosen === 'daily' ? 1 : 0);
+      expect(bookmarkHealthSummary).toHaveBeenCalledTimes(chosen === 'summary' ? 1 : 0);
       if (chosen === 'none') {
         expect(open).not.toHaveBeenCalled();
         expect(alert).toHaveBeenCalledTimes(1);
-        expect(alert).not.toHaveBeenCalledWith(
-          '보고서 링크를 기억에 보관했어요.',
-        );
+        expect(alert).not.toHaveBeenCalledWith('보고서 링크를 기억에 보관했어요.');
       } else {
-        const save =
-          chosen === 'daily' ? bookmarkDailyReport : bookmarkHealthSummary;
+        const save = chosen === 'daily' ? bookmarkDailyReport : bookmarkHealthSummary;
         expect(save).toHaveBeenCalledWith(
           expect.objectContaining({
             artifactId: chosen === 'daily' ? 'older-daily' : 'latest',
@@ -99,7 +90,7 @@ test.each([
 
 test.each([true, false])(
   'a local photo shown after the report blocks a generic typed bookmark: %s',
-  async photoAfterReport => {
+  async (photoAfterReport) => {
     const before = AppState.currentState;
     AppState.currentState = 'active';
     const alert = jest.spyOn(Alert, 'alert').mockImplementation(() => {});
@@ -112,33 +103,39 @@ test.each([true, false])(
     });
     const snapshot = store.getSnapshot();
     type Session = (typeof snapshot.sessions)[number];
-    const messages = [{
-      id: 10,
-      role: 'assistant',
-      content: 'Synthetic completed report.',
-      retainedTurnId: 'live-report',
-      dailyReport: {
-        runId: 'live-run',
-        identity: { localDate: '2035-01-01' },
+    const messages = [
+      {
+        id: 10,
+        role: 'assistant',
+        content: 'Synthetic completed report.',
+        retainedTurnId: 'live-report',
+        dailyReport: {
+          runId: 'live-run',
+          identity: { localDate: '2035-01-01' },
+        },
       },
-    }] as unknown as Session['messages'];
-    const savedHistoryDisplay: Session['savedHistoryDisplay'] = [{
-      afterLiveId: photoAfterReport ? 10 : 9,
-      questionId: 20,
-      answerId: 21,
-      row: {
-        id: 'synthetic-photo',
-        createdAt: '2035-01-01T00:00:00Z',
-        kind: 'answer',
-        directPhoto: true,
-        question: 'Synthetic image question.',
-        answer: 'Synthetic image answer.',
+    ] as unknown as Session['messages'];
+    const savedHistoryDisplay: Session['savedHistoryDisplay'] = [
+      {
+        afterLiveId: photoAfterReport ? 10 : 9,
+        questionId: 20,
+        answerId: 21,
+        row: {
+          id: 'synthetic-photo',
+          createdAt: '2035-01-01T00:00:00Z',
+          kind: 'answer',
+          directPhoto: true,
+          question: 'Synthetic image question.',
+          answer: 'Synthetic image answer.',
+        },
       },
-    }];
+    ];
     jest.spyOn(store, 'getSnapshot').mockReturnValue({
       ...snapshot,
-      sessions: snapshot.sessions.map(row => ({
-        ...row, messages, savedHistoryDisplay,
+      sessions: snapshot.sessions.map((row) => ({
+        ...row,
+        messages,
+        savedHistoryDisplay,
       })),
     });
     const save = jest.fn(async () => true);
@@ -155,9 +152,11 @@ test.each([true, false])(
         expect(open).not.toHaveBeenCalled();
         expect(alert).not.toHaveBeenCalledWith('보고서 링크를 기억에 보관했어요.');
       } else {
-        expect(save).toHaveBeenCalledWith(expect.objectContaining({
-          artifactId: 'live-report',
-        }));
+        expect(save).toHaveBeenCalledWith(
+          expect.objectContaining({
+            artifactId: 'live-report',
+          }),
+        );
       }
     } finally {
       store.dispose();

@@ -8,10 +8,7 @@ import {
   savedHistoryTranscript,
   visibleSavedHistoryDisplay,
 } from './conversationSavedHistoryDisplay';
-import {
-  allowWarmConversationSender,
-  isWarmConversationSender,
-} from './warmConversationSender';
+import { allowWarmConversationSender, isWarmConversationSender } from './warmConversationSender';
 
 export interface BoundReportBookmark {
   readonly artifactId: string;
@@ -20,13 +17,8 @@ export interface BoundReportBookmark {
   readonly current: () => boolean;
 }
 
-export function latestReportArtifact(
-  store: ConversationSessions,
-  sessionId: number,
-) {
-  const session = store
-    .getSnapshot()
-    .sessions.find(row => row.id === sessionId);
+export function latestReportArtifact(store: ConversationSessions, sessionId: number) {
+  const session = store.getSnapshot().sessions.find((row) => row.id === sessionId);
   if (
     !session ||
     session.busy ||
@@ -39,10 +31,9 @@ export function latestReportArtifact(
   // Use the same order as the displayed transcript: a newly saved local
   // photo can follow a live report even though it resides in the archive list.
   const last = savedHistoryTranscript(savedDisplay ?? [], session.messages).at(-1);
-  if (!last || last.role !== 'assistant' || last.streaming || last.incomplete)
-    return;
+  if (!last || last.role !== 'assistant' || last.streaming || last.incomplete) return;
   const saved = last.savedHistoryDisplayOnly
-    ? savedDisplay?.find(item => item.answerId === last.id)?.row
+    ? savedDisplay?.find((item) => item.answerId === last.id)?.row
     : undefined;
   const candidate = last.savedHistoryDisplayOnly
     ? saved?.kind === 'answer' && !saved.partial && !saved.directPhoto && saved
@@ -52,11 +43,9 @@ export function latestReportArtifact(
         dailyReport: last.dailyReport,
       };
   if (!candidate || !candidate.id) return;
-  if (candidate.dailyReport)
-    return { artifactId: candidate.id, kind: 'daily-report' as const };
+  if (candidate.dailyReport) return { artifactId: candidate.id, kind: 'daily-report' as const };
   const summary = candidate.healthSummary?.analysis.savedSummary;
-  if (summary?.status === 'saved' && !summary.sourceChanged)
-    return { artifactId: candidate.id };
+  if (summary?.status === 'saved' && !summary.sourceChanged) return { artifactId: candidate.id };
 }
 
 /** Bind a single already-displayed, completed artifact before ordinary dispatch.
@@ -102,9 +91,7 @@ export function semanticReportBookmarkSender(
       context,
     );
   return {
-    send: isWarmConversationSender(send)
-      ? allowWarmConversationSender(withTarget)
-      : withTarget,
+    send: isWarmConversationSender(send) ? allowWarmConversationSender(withTarget) : withTarget,
     close: owner.close,
   };
 }
