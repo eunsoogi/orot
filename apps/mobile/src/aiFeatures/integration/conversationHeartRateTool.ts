@@ -15,7 +15,7 @@ import {
 } from './conversationHeartRateRequest';
 import { registerHealthContextEvidence } from './healthContextEvidence';
 import type { createTypedHeartRateModelOwner } from './conversationHeartRateModelOwner';
-import type { LocalEvidenceReferenceRegistry } from './evidenceRegistry';
+import { LocalEvidenceReferenceRegistry } from './evidenceRegistry';
 
 /** Model input proposes a metric and period. Only the current composer can grant the protected read. */
 export function createConversationHeartRateTool(input: {
@@ -191,11 +191,11 @@ export function createConversationHeartRateTool(input: {
         !(await confirmedCurrent())
       )
         return empty('typed_heart_rate_proof_unavailable');
-      const evidence = registerHealthContextEvidence({
-        registry: input.registry,
-        read: input.read,
-        scope,
-        report,
+      const staged = new LocalEvidenceReferenceRegistry();
+      const candidate = { read: input.read, scope, report };
+      const proof = registerHealthContextEvidence({
+        ...candidate,
+        registry: staged,
       });
       // Protect the tool's local result as well as the later provider dispatch.
       // The final recipient/protection checks can suspend after SQL reproof.
@@ -203,16 +203,19 @@ export function createConversationHeartRateTool(input: {
       if (!witness) return empty('typed_heart_rate_proof_unavailable');
       try {
         if (
-          !(await input.registry.revalidateEvidence(
-            [evidence],
-            request.signal,
-          )) ||
+          !(await staged.revalidateEvidence([proof], request.signal)) ||
           !(await confirmedCurrent()) ||
           !(await confirmNativeProtection()) ||
           !current() ||
-          !witness.current()
+          !witness.current() ||
+          input.dispatch.active()
         )
           return empty('typed_heart_rate_proof_unavailable');
+        // Denied or stale proofs never enter the shared citation registry.
+        const evidence = registerHealthContextEvidence({
+          ...candidate,
+          registry: input.registry,
+        });
         input.dispatch.bind(evidence, current, confirmedCurrent, {
           acquire: input.acquireSourceEpoch,
           reprove: signal =>
