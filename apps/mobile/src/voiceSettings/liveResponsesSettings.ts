@@ -58,13 +58,21 @@ export type LiveResponsesSettings =
  * silently change processing path after an authority or account failure. */
 export async function loadLiveResponsesSettings(
   expectedCredentialEpoch?: string,
+  purpose?: 'tool-reproof',
 ): Promise<LiveResponsesSettings> {
   try {
     const owned = captureOwner();
     if (!owned()) return { kind: 'unavailable' };
-    const pair = await voiceSettingsStore.loadCommittedVoicePair?.();
-    const state = await authority().reviewState();
-    if (!owned() || !state) return { kind: 'unavailable' };
+    // Only the current Live challenge overlaps these already-admitted local
+    // metadata reads. Their receipts still must match through final reproof.
+    const loadPair = () => voiceSettingsStore.loadCommittedVoicePair?.();
+    const readState = () => authority().reviewState();
+    const [pair, state] =
+      purpose === 'tool-reproof'
+        ? await Promise.all([loadPair(), readState()])
+        : ([await loadPair(), await readState()] as const);
+    if (!owned() || !state || (purpose === 'tool-reproof' && !state.current()))
+      return { kind: 'unavailable' };
     if (state.kind === 'revoked')
       return !pair && state.current()
         ? { kind: 'off' }

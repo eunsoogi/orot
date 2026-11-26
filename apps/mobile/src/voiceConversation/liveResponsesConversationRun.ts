@@ -83,6 +83,7 @@ export function liveResponsesConversationRun(input: {
             if (!selected || !current() || callId !== call.callId) return null;
             const receipt = await loadLiveResponsesSettings(
               selected.credentialEpoch,
+              'tool-reproof',
             );
             if (
               receipt.kind !== 'active' ||
