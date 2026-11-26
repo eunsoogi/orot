@@ -15,7 +15,7 @@ import {
   isGeneratedConversationSource,
   isGeneratedSummarySource,
   isConversationPhotoSource,
-} from '../ragConversation/conversationArtifactSources';
+} from '../conversationTools/conversationArtifactSources';
 import { fingerprint } from '../aiFeatures/integration/evidenceUtils';
 import { RetainedSourceInvalidError } from '../aiFeatures/integration/retainedSourceError';
 import {

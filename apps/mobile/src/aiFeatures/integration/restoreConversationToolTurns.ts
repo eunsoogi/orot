@@ -3,12 +3,12 @@ import type { StoredConversationToolTurn } from '../../storage/conversationToolE
 import type { AiFeatureLocalData } from './localData';
 import type { LocalEvidenceReferenceRegistry } from './evidenceRegistry';
 import { restoreRetainedSources } from './restoreRetainedSources';
-import { requireNonPhotoSources } from '../../ragConversation/conversationArtifactSources';
+import { requireNonPhotoSources } from '../../conversationTools/conversationArtifactSources';
 import { stableJson } from './evidenceUtils';
 import type { createConversationArtifactStorage } from '../../storage/conversationArtifactStorage';
 import { bindConversationToolSource } from './bindConversationToolSource';
 import { restoreFilteredToolSource } from './restoreFilteredToolSource';
-import type { ConversationArtifactSource } from '../../ragConversation/conversationArtifactSources';
+import type { ConversationArtifactSource } from '../../conversationTools/conversationArtifactSources';
 import {
   isExternalToolResearch,
   sameToolSource,

@@ -3,7 +3,7 @@ import {
   readColdGeneratedSnapshot,
   type ColdLinkedSource,
 } from './coldGeneratedSnapshot';
-import type { ConversationArtifactSource } from '../../ragConversation/conversationArtifactSources';
+import type { ConversationArtifactSource } from '../../conversationTools/conversationArtifactSources';
 import type { EvidenceRegistrySnapshot } from './evidenceRegistrySnapshot';
 import type { AiFeatureLocalData } from './localData';
 import type {

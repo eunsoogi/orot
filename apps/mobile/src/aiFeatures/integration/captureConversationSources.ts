@@ -6,7 +6,7 @@ import {
 } from './evidenceCaptureBatch';
 import { stableEvidenceReference } from './stableEvidenceReference';
 import type { EvidenceReference } from '@orot/agent-runtime';
-import type { ConversationArtifactSource } from '../../ragConversation/conversationArtifactSources';
+import type { ConversationArtifactSource } from '../../conversationTools/conversationArtifactSources';
 import type { LocalEvidenceReferenceRegistry } from './evidenceRegistry';
 import { captureEvidenceSources } from './captureEvidenceSources';
 import { RetainedSourceInvalidError } from './retainedSourceError';

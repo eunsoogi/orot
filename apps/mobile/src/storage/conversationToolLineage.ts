@@ -5,7 +5,7 @@ import {
   type SqlDatabase,
   type SqlExecutor,
 } from '@orot/storage';
-import type { ConversationArtifactSource } from '../ragConversation/conversationArtifactSources';
+import type { ConversationArtifactSource } from '../conversationTools/conversationArtifactSources';
 import { isPeriodSummarySource } from '../diseaseHypotheses/savedSummaries';
 import { decodeConversationArtifact } from './conversationArtifactCodec';
 import {
@@ -13,7 +13,7 @@ import {
   isGeneratedResearchSource,
   isGeneratedSummarySource,
   isConversationPhotoSource,
-} from '../ragConversation/conversationArtifactSources';
+} from '../conversationTools/conversationArtifactSources';
 import type { FilteredToolPeriod } from './conversationToolFilteredPeriod';
 import { decodeFilteredToolPeriod } from './conversationToolFilteredPeriodCodec';
 import { readFilteredToolPeriod } from './conversationToolFilteredPeriod';

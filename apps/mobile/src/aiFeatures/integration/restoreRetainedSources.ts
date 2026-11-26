@@ -5,7 +5,7 @@ import {
   isGeneratedSummarySource,
   isGeneratedConversationSource,
   isGeneratedResearchSource,
-} from '../../ragConversation/conversationArtifactSources';
+} from '../../conversationTools/conversationArtifactSources';
 import { restoreConversationSummarySource } from './restoreConversationSummarySource';
 import { restoreConversationParentSource } from './restoreConversationParentSource';
 import { restoreResearchSource } from './restoreResearchSource';

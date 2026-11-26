@@ -213,9 +213,9 @@ test('the stock catalog rejects revised transcript lineage even when the selecte
         new LocalEvidenceReferenceRegistry(),
       );
       const admitted = await fresh.search(generatedRequest).then(
-        result =>
-          'items' in result &&
-          result.items.some(item =>
+        outcome =>
+          'items' in outcome &&
+          outcome.items.some(item =>
             item.content.includes('Synthetic retained interpretation'),
           ),
         (error: unknown) => {

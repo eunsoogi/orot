@@ -10,7 +10,7 @@ import {
 } from './hypertensionEducation';
 import { parseTreatmentContext } from './validation';
 import type { TreatmentClaimVerifier } from './safety';
-import { requireNonPhotoSources } from '../ragConversation/conversationArtifactSources';
+import { requireNonPhotoSources } from '../conversationTools/conversationArtifactSources';
 
 /** Closed claims do not infer the person's condition or an appropriate therapy. */
 export function createTreatmentClaimVerifier(

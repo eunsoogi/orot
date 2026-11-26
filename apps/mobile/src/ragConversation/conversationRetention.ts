@@ -5,7 +5,7 @@ import type { ArchivedPairedDetailsLayout } from './archivedPairedDetailsLayout'
 import type { ArchivedA2UILayout } from './conversationA2UIArchive';
 import type { ConversationEntryContext } from '../aiFeatures/integration/conversationIntent';
 import type { EvidenceReference } from '@orot/agent-runtime';
-import type { ConversationArtifactSource } from './conversationArtifactSources';
+import type { ConversationArtifactSource } from '../conversationTools/conversationArtifactSources';
 import type { HealthSummaryReference } from './healthSummary';
 
 /** Immutable same-session context identity; never a model-visible reference. */

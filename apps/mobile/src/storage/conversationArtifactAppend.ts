@@ -12,7 +12,7 @@ import { assertHistoricalDialogueParentsCurrent } from './conversationHistorical
 import { assertConversationNotCancelled } from './conversationArtifactCancellation';
 import { commitConversationRequest } from './conversationRequestStorage';
 import { createSymptomSummaryStorage } from './symptomSummaryStorage';
-import { isGeneratedSummarySource } from '../ragConversation/conversationArtifactSources';
+import { isGeneratedSummarySource } from '../conversationTools/conversationArtifactSources';
 import { withWritePeriodCalculations } from './writePeriodCalculationScope';
 import { beginConversationSave } from './conversationSaveDiagnostic';
 import { withWriteTypedFingerprints } from './writeTypedFingerprintScope';

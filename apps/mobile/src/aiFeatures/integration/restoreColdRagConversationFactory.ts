@@ -23,7 +23,7 @@ import type { RagConversationObserver } from '../../ragConversation/conversation
 import type { RagConversationServiceDependencies } from './ragConversationServiceDependencies';
 import { restoreColdConversationRegistry } from './restoreColdConversationRegistry';
 import type { EvidenceRegistrySnapshot } from './evidenceRegistrySnapshot';
-import type { ConversationArtifactSource } from '../../ragConversation/conversationArtifactSources';
+import type { ConversationArtifactSource } from '../../conversationTools/conversationArtifactSources';
 import type { ResearchInputTrackerSnapshot } from './researchInputTrackerSnapshot';
 import type { ToolReferenceScopeSnapshot } from './toolReferenceScopeSnapshot';
 import type { SelectedExternalEvidenceSnapshot } from './selectedExternalEvidence';

@@ -1,5 +1,5 @@
 import type { SavedSummarySource } from '../../../diseaseHypotheses/savedSummaries';
-import { isConversationPhotoSource } from '../../../ragConversation/conversationArtifactSources';
+import { isConversationPhotoSource } from '../../../conversationTools/conversationArtifactSources';
 import type { actualSendRetentionFixture } from './actualSendRetentionFixture';
 import { isPeriodSummarySource } from '../../../diseaseHypotheses/savedSummaries';
 import { registerHealthContextEvidence } from '../healthContextEvidence';

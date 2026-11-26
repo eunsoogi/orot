@@ -1,7 +1,7 @@
 import { hasTypedHeartRateSource } from './typedHeartRateReusePolicy';
 import { createColdResearchSourceReader } from './coldResearchSourceReader';
-import type { ConversationArtifactSource } from '../../ragConversation/conversationArtifactSources';
-import { isConversationPhotoSource } from '../../ragConversation/conversationArtifactSources';
+import type { ConversationArtifactSource } from '../../conversationTools/conversationArtifactSources';
+import { isConversationPhotoSource } from '../../conversationTools/conversationArtifactSources';
 import { restoreColdPhotoEvidence } from './restoreColdPhotoEvidence';
 import { LocalEvidenceReferenceRegistry } from './evidenceRegistry';
 import type { EvidenceRegistrySnapshot } from './evidenceRegistrySnapshot';
