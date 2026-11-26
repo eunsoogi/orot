@@ -1,5 +1,4 @@
 import { ConversationA2UILocalDraftOwner } from './conversationA2UILocalDraftOwner';
-import { GeneratedReportBookmarkContext } from './GeneratedReportBookmark';
 import { FloatingComposerSurface } from './FloatingComposerSurface';
 import { NavigationOcclusionContext } from '../navigation/useNavigationContentInset';
 import { type ContextType, type ReactNode } from 'react';
@@ -104,18 +103,11 @@ export function ConversationWorkspace(props: Props) {
                         </NavigationOcclusionContext.Provider>
                       }
                     >
-                      <GeneratedReportBookmarkContext.Provider
-                        value={{
-                          sessionId: props.session.id,
-                          isCurrent: props.isEntryCurrent,
-                        }}
+                      <ConversationA2UILocalDraftOwner.Provider
+                        value={props.localDraftOwner}
                       >
-                        <ConversationA2UILocalDraftOwner.Provider
-                          value={props.localDraftOwner}
-                        >
-                          {props.children}
-                        </ConversationA2UILocalDraftOwner.Provider>
-                      </GeneratedReportBookmarkContext.Provider>
+                        {props.children}
+                      </ConversationA2UILocalDraftOwner.Provider>
                     </FloatingComposerSurface>
                   </DirectPhotoPresentationScope>
                 </TranscriptInset>
