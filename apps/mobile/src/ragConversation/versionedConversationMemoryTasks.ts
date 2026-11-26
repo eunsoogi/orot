@@ -1,3 +1,4 @@
+import { withConversationA2UIPanelCaptions } from './conversationA2UIPanelCaptionTask';
 import { withComposedConversationControls } from './conversationA2UIComposedControlTask';
 import { observeConversationA2UIFinalAdmission } from './conversationA2UIFinalDiagnostic';
 import { withConversationDraftPreview } from './conversationA2UIDraftPreviewTask';
@@ -72,6 +73,10 @@ export function versionedConversationMemoryTasks(
   const conversationTaskV46 = observeConversationA2UIFinalAdmission(
     withComposedConversationControls(conversationTaskV44, '46'),
   );
+  const captionBase = withComposedConversationControls(
+    conversationTaskV44,
+    '47',
+  );
   return {
     conversationTaskV25,
     conversationTaskV26,
@@ -102,9 +107,10 @@ export function versionedConversationMemoryTasks(
       v44: conversationTaskV44,
       v45: conversationTaskV45,
       v46: conversationTaskV46,
+      v47: observeConversationA2UIFinalAdmission(captionBase),
     },
     ragConversationTask: observeConversationA2UIFinalAdmission(
-      withComposedConversationControls(conversationTaskV44, '47'),
+      withConversationA2UIPanelCaptions(captionBase),
     ),
   };
 }

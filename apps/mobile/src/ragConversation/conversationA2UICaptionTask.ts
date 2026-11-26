@@ -10,6 +10,9 @@ import type { GroundedRagAnswer } from './task';
 const captions = new WeakSet<ConversationA2UINode>();
 export const isFinalConversationCaption = (node: ConversationA2UINode) =>
   captions.has(node);
+export function markFinalConversationCaption(node: ConversationA2UINode) {
+  captions.add(node);
+}
 
 function closedCaptionFrame(value: unknown) {
   if (!Array.isArray(value) || value.length !== 1) return;
@@ -120,7 +123,7 @@ export function withFinalConversationCaption(
         leaf?.id !== frame.id
       )
         return previous.validateResult({ ...value, a2uiFrames: [] }, input);
-      captions.add(leaf);
+      markFinalConversationCaption(leaf);
       return result;
     },
   };
