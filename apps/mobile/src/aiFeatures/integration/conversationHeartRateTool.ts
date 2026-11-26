@@ -6,8 +6,10 @@ import {
   typedHeartRateMaxDays,
 } from '../../healthEvidence/typedHeartRateWindow';
 import { parseHealthContextScope } from '../../healthEvidence/healthContext/scope';
-import { conversationExecutionNative } from '../../ragConversation/conversationExecutionNative';
-import type { ConversationToolContext } from '../../conversationTools/conversationToolContext';
+import type {
+  ConversationToolContext,
+  ProtectedConversationToolRead,
+} from '../../conversationTools/conversationToolContext';
 import {
   admitConversationHeartRateRequest,
   conversationHeartRateCategories,
@@ -20,6 +22,7 @@ import { LocalEvidenceReferenceRegistry } from './evidenceRegistry';
 /** Model input proposes a metric and period. Only the current composer can grant the protected read. */
 export function createConversationHeartRateTool(input: {
   readonly read: HealthContextReader;
+  readonly protectedDataAvailable: ProtectedConversationToolRead;
   readonly acquireSourceEpoch: () =>
     { current(): boolean; dispose(): void } | undefined;
   readonly registry: LocalEvidenceReferenceRegistry;
@@ -97,12 +100,7 @@ export function createConversationHeartRateTool(input: {
       const confirmNativeProtection = async () => {
         if (!current()) return false;
         try {
-          const native = conversationExecutionNative();
-          return (
-            native?.bridgeAvailable === true &&
-            (await native.protectedDataAvailable()) === true &&
-            current()
-          );
+          return (await input.protectedDataAvailable()) === true && current();
         } catch {
           return false;
         }
@@ -110,10 +108,8 @@ export function createConversationHeartRateTool(input: {
       const confirmedCurrent = async () => {
         if (!current()) return false;
         try {
-          const native = conversationExecutionNative();
           return (
-            native?.bridgeAvailable === true &&
-            (await native.protectedDataAvailable()) === true &&
+            (await input.protectedDataAvailable()) === true &&
             (await model.recheck()) &&
             (await observer.expectedConversationModel?.isDurablyCurrent?.()) !==
               false &&

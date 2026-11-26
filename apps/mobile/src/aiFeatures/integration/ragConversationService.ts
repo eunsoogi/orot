@@ -21,6 +21,7 @@ import * as voiceSelection from './conversationVoiceSelection';
 import { prepareConversationPhoto as preparePhoto } from './conversationPhotoService';
 import * as targets from './conversationEntryTargets';
 import { conversationExternalEvidence } from '../../conversationTools/conversationExternalEvidence';
+import { protectedConversationToolDataAvailable } from '../../ragConversation/conversationToolProtection';
 export function createRagConversationService(
   deps: RagConversationServiceDependencies,
 ) {
@@ -153,6 +154,7 @@ export function createRagConversationService(
           researchInputs,
           externalTools: external.tools,
           selected,
+          protectedDataAvailable: protectedConversationToolDataAvailable,
           ...searchPlan.toolPolicy,
         });
       const retention = createConversationRetentionBridge({

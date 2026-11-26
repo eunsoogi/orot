@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
+import { readFileSync } from 'node:fs';
 import { readdir, readFile } from 'node:fs/promises';
-import { dirname, join, relative, resolve } from 'node:path';
+import { dirname, join, relative, resolve, sep } from 'node:path';
 import test from 'node:test';
 import { fileURLToPath } from 'node:url';
 import ts from 'typescript';
@@ -57,4 +58,113 @@ test('Conversation tool implementations do not import text or voice surfaces', a
       );
     }
   }
+});
+
+/** Value-level dependencies survive type erasure. Include local literal lazy edges, not import types. */
+function runtimeImports(file, text) {
+  const source = ts.createSourceFile(file, text, ts.ScriptTarget.Latest, true);
+  const imports = new Set();
+  function add(value) {
+    if (value && ts.isStringLiteralLike(value)) imports.add(value.text);
+  }
+  function visit(node) {
+    if (ts.isImportDeclaration(node)) {
+      const clause = node.importClause;
+      if (
+        !clause ||
+        (!clause.isTypeOnly &&
+          (clause.name ||
+            !clause.namedBindings ||
+            !ts.isNamedImports(clause.namedBindings) ||
+            !clause.namedBindings.elements.length ||
+            clause.namedBindings.elements.some((item) => !item.isTypeOnly)))
+      )
+        add(node.moduleSpecifier);
+    } else if (ts.isExportDeclaration(node) && !node.isTypeOnly) {
+      const clause = node.exportClause;
+      if (
+        !clause ||
+        !ts.isNamedExports(clause) ||
+        !clause.elements.length ||
+        clause.elements.some((item) => !item.isTypeOnly)
+      )
+        add(node.moduleSpecifier);
+    } else if (
+      ts.isImportEqualsDeclaration(node) &&
+      !node.isTypeOnly &&
+      ts.isExternalModuleReference(node.moduleReference)
+    ) {
+      add(node.moduleReference.expression);
+    } else if (
+      ts.isCallExpression(node) &&
+      (node.expression.kind === ts.SyntaxKind.ImportKeyword ||
+        (ts.isIdentifier(node.expression) && node.expression.text === 'require'))
+    ) {
+      add(node.arguments[0]);
+    }
+    ts.forEachChild(node, visit);
+  }
+  visit(source);
+  return imports;
+}
+
+/** Breadth-first traversal reports the shortest actionable chain and stops on cycles. */
+function findRuntimePath(entry, forbidden, read, resolveImport) {
+  const queue = [[entry]];
+  const visited = new Set([entry]);
+  for (let index = 0; index < queue.length; index++) {
+    const path = queue[index];
+    const file = path.at(-1);
+    if (file === forbidden) return path;
+    for (const name of runtimeImports(file, read(file))) {
+      const dependency = resolveImport(name, file);
+      if (dependency && !visited.has(dependency)) {
+        visited.add(dependency);
+        queue.push([...path, dependency]);
+      }
+    }
+  }
+  return undefined;
+}
+
+test('the dependency guard follows an intermediate runtime re-export but ignores type imports', () => {
+  const files = new Map([
+    ['/shared.ts', "import type { Bridge } from './channel'; export { run } from './middle';"],
+    ['/middle.ts', "export { type Bridge, run } from './domain';"],
+    ['/domain.ts', "export const run = () => import('./channel');"],
+    ['/channel.ts', 'export type Bridge = string;'],
+  ]);
+  const check = () =>
+    findRuntimePath(
+      '/shared.ts',
+      '/channel.ts',
+      (file) => files.get(file),
+      (name, file) => join(dirname(file), name + '.ts'),
+    );
+  assert.deepEqual(check(), ['/shared.ts', '/middle.ts', '/domain.ts', '/channel.ts']);
+  files.set(
+    '/domain.ts',
+    "import { type Bridge } from './channel'; export const run = () => null;",
+  );
+  assert.equal(check(), undefined);
+});
+
+test('the typed-read tool contribution does not depend on the Text execution facade', () => {
+  const repo = resolve(dirname(fileURLToPath(import.meta.url)), '../../..');
+  const src = join(repo, 'apps/mobile/src');
+  const entry = join(src, 'conversationTools/conversationTypedReadContribution.ts');
+  const facade = join(src, 'ragConversation/conversationExecutionNative.ts');
+  const options = { moduleResolution: ts.ModuleResolutionKind.Bundler, allowJs: true };
+  const path = findRuntimePath(
+    entry,
+    facade,
+    (file) => readFileSync(file, 'utf8'),
+    (name, file) => {
+      if (!name.startsWith('.')) return;
+      const dependency = ts.resolveModuleName(name, file, options, ts.sys).resolvedModule
+        ?.resolvedFileName;
+      if (dependency?.startsWith(src + sep) && !dependency.endsWith('.d.ts')) return dependency;
+    },
+  );
+  assert.equal(path, undefined, path?.map((file) => relative(src, file)).join(' -> '));
 });
