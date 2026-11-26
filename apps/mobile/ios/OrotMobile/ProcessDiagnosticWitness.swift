@@ -97,13 +97,17 @@ final class ProcessDiagnosticWitness: @unchecked Sendable {
     /// Accepted layout decisions stay in the opted-in process log, never the Settings ring.
     static func conversationA2UILine(stage: String, outcome: String) -> String? {
         let admissions = ["a2ui_no_frames", "a2ui_invalid_frames", "a2ui_admitted"]
-        guard (stage == "conversation_a2ui_final_admission" && admissions.contains(outcome)) ||
+        let envelope = ["present", "absent", "decode_failed", "presence_mismatch"]
+        guard (stage == "conversation_a2ui_plan_envelope" && envelope.contains(outcome)) ||
+            (stage == "conversation_a2ui_final_admission" && admissions.contains(outcome)) ||
             (stage == "conversation_a2ui_react_commit" && outcome == "completed") else { return nil }
         return "OROT_PROVIDER_DIAGNOSTIC layer=app feature=rag stage=" + stage + " outcome=" + outcome
     }
 
     func acceptAndContinueJS(feature: String, stage: String, outcome: String) -> Bool {
-        if stage == "conversation_a2ui_final_admission" || stage == "conversation_a2ui_react_commit" {
+        if stage == "conversation_a2ui_plan_envelope" || stage == "conversation_a2ui_final_admission" ||
+            stage == "conversation_a2ui_react_commit"
+        {
             if feature == "rag", let line = Self.conversationA2UILine(stage: stage, outcome: outcome) {
                 NSLog("%@", line)
             }
