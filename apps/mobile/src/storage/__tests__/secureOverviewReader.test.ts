@@ -1,6 +1,5 @@
 import { IOS_LIBRARY_PATH, open, type DB } from '@op-engineering/op-sqlite';
-import type { ConversationExecutionEvent } from '../../ragConversation/conversationExecutionLease';
-import { conversationExecutionNative } from '../../ragConversation/conversationExecutionNative';
+import { AppState, NativeEventEmitter, NativeModules } from 'react-native';
 import { projectOverviewMetricSnapshot } from '../../routes/overview/metricLoader';
 import { createSecureOverviewReader } from '../secureOverviewReader';
 import { guardedNativeDatabase } from '../protectedReadEpoch';
@@ -10,8 +9,11 @@ jest.mock('@op-engineering/op-sqlite', () => ({
   isSQLCipher: () => true,
   open: jest.fn(),
 }));
-jest.mock('../../ragConversation/conversationExecutionNative', () => ({
-  conversationExecutionNative: jest.fn(),
+jest.mock('react-native', () => ({
+  AppState: { currentState: 'active', addEventListener: jest.fn() },
+  NativeEventEmitter: jest.fn(),
+  NativeModules: {},
+  Platform: { OS: 'ios' },
 }));
 jest.mock('../../routes/overview/metricLoader', () => ({
   projectOverviewMetricSnapshot: jest.fn(),
@@ -65,18 +67,23 @@ function fixture() {
     },
     close,
   } as unknown as DB);
-  let event: (value: ConversationExecutionEvent) => void = () => {};
+  // Drive the real neutral witness through the same native event and read
+  // surfaces it uses on iOS, including protection loss during DB close.
+  let event: (value: unknown) => void = () => {};
   const unsubscribe = jest.fn();
+  const unsubscribePhase = jest.fn();
   const protectedDataAvailable = jest.fn(async () => true);
-  jest.mocked(conversationExecutionNative).mockReturnValue({
-    bridgeAvailable: true,
-    currentPhase: () => 'active',
-    protectedDataAvailable,
-    subscribe: (listener: (value: ConversationExecutionEvent) => void) => {
+  NativeModules.ConversationExecutionModule = { protectedDataAvailable };
+  jest.mocked(AppState.addEventListener).mockReturnValue({
+    remove: unsubscribePhase,
+  });
+  Object.assign(NativeEventEmitter.prototype, {
+    addListener(name: string, listener: (value: unknown) => void) {
+      expect(name).toBe('ConversationExecutionChanged');
       event = listener;
-      return unsubscribe;
+      return { remove: unsubscribe };
     },
-  } as unknown as ReturnType<typeof conversationExecutionNative>);
+  });
   jest
     .mocked(projectOverviewMetricSnapshot)
     .mockResolvedValue({ metrics: {}, quantityTruncated: false });
@@ -97,8 +104,9 @@ function fixture() {
     events,
     close,
     unsubscribe,
+    unsubscribePhase,
     protectedDataAvailable,
-    event: (value: ConversationExecutionEvent) => event(value),
+    event: (value: unknown) => event(value),
   };
 }
 
@@ -138,6 +146,7 @@ test('production adapter opens the same existing owner and publishes only after 
   expect(f.events).toEqual(['begin', 'settled', 'close', 'publish']);
   expect(f.protectedDataAvailable).toHaveBeenCalledTimes(2);
   expect(f.unsubscribe).toHaveBeenCalledTimes(1);
+  expect(f.unsubscribePhase).toHaveBeenCalledTimes(1);
 });
 
 test.each(['writer', 'protected-data'] as const)(
@@ -157,6 +166,7 @@ test.each(['writer', 'protected-data'] as const)(
     await nativeWrite;
     expect(publish).not.toHaveBeenCalled();
     expect(f.unsubscribe).toHaveBeenCalledTimes(1);
+    expect(f.unsubscribePhase).toHaveBeenCalledTimes(1);
   },
 );
 
@@ -175,6 +185,7 @@ test('a delayed native protection event cannot turn an SQL/open error into fallb
   expect(publish).not.toHaveBeenCalled();
   expect(f.protectedDataAvailable).toHaveBeenCalledTimes(2);
   expect(f.unsubscribe).toHaveBeenCalledTimes(1);
+  expect(f.unsubscribePhase).toHaveBeenCalledTimes(1);
 });
 
 test('legacy workout choice yields a protected receipt for the grouped heart card', async () => {
