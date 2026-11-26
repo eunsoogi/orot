@@ -37,12 +37,12 @@ test.each(['stock', 'stale'] as const)(
         await tx.execute(
           'CREATE TABLE research_artifacts (id INTEGER PRIMARY KEY AUTOINCREMENT, snapshot_json TEXT NOT NULL, search_text TEXT NOT NULL)',
         );
-        await setupResearchInputs(tx);
         await tx.execute(
           'CREATE TABLE IF NOT EXISTS symptom_summary_runs (id TEXT PRIMARY KEY NOT NULL, created_at TEXT NOT NULL, model_name TEXT NOT NULL, result_json TEXT NOT NULL)',
         );
         await setupSummaryPeriods(tx);
         await setupVisitQuestionPeriods(tx);
+        await setupResearchInputs(tx);
       });
       const triggerNames = [
         'research_agent_memory_removed_sources_removed',
@@ -50,7 +50,7 @@ test.each(['stock', 'stale'] as const)(
         'visit_question_period_logical_health_observations_agent_memory_removed_sources',
       ];
       const { rows: ddl } = await database.execute(
-        "SELECT sql FROM sqlite_master WHERE type = 'trigger' AND name IN (?, ?)",
+        "SELECT sql FROM sqlite_master WHERE type = 'trigger' AND name IN (?, ?, ?)",
         triggerNames,
       );
       expect(ddl).toHaveLength(3);
