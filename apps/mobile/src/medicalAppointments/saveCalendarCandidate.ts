@@ -19,7 +19,7 @@ export async function saveCalendarCandidate(
   repository: AppointmentRepository,
   bridge: CalendarBridge,
   signal?: AbortSignal,
-): Promise<'saved' | 'stale' | 'cancelled' | 'preserved'> {
+): Promise<'saved' | 'stale' | 'cancelled' | 'preserved' | 'unchanged'> {
   if (signal?.aborted) return 'cancelled';
   const existingAppointments = await repository.list();
   const linked = existingAppointments.find(
@@ -57,8 +57,10 @@ export async function saveCalendarCandidate(
     if (
       candidate.reusedClassification &&
       calendarEventMatchesAppointment(current.event, linked)
-    )
-      return 'preserved';
+    ) {
+      // An identical scheduled occurrence is not the same as protecting a user's existing override.
+      return 'unchanged';
+    }
     await repository.reconfirmCalendarEvent(linked.id, current.event);
   } else {
     await repository.confirmCalendarEvent(current.event);

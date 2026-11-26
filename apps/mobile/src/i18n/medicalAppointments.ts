@@ -185,8 +185,10 @@ export const medicalAppointmentsKo = {
     '일부 일정을 분류하지 못했어요. 다시 시도하거나 직접 입력해 주세요.',
   'medicalAppointments.status.noMedical': '진료 일정으로 분류된 일정이 없어요.',
   'medicalAppointments.status.imported': '진료 일정 {count}건을 가져왔어요.',
+  'medicalAppointments.status.unchanged':
+    '이미 저장된 일정 {count}건은 변경하지 않았어요.',
   'medicalAppointments.status.preserved':
-    '취소하거나 완료한 일정 {count}건은 그대로 유지했어요.',
+    '기존 상태를 유지한 일정 {count}건이 있어요.',
   'medicalAppointments.status.notClassified': '아직 분류하지 않았습니다.',
   'medicalAppointments.actions.save': '진료 일정으로 추가',
   'medicalAppointments.actions.saving': '저장 중입니다.',

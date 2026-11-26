@@ -74,11 +74,22 @@ export const medicalAppointmentCopy = {
   get noMedical() {
     return t('medicalAppointments.status.noMedical');
   },
-  imported(count: number) {
-    return t('medicalAppointments.status.imported', { count });
-  },
-  preserved(count: number) {
-    return t('medicalAppointments.status.preserved', { count });
+  importSummary({
+    saved,
+    unchanged,
+    preserved,
+  }: Record<'saved' | 'unchanged' | 'preserved', number>) {
+    return [
+      saved ? t('medicalAppointments.status.imported', { count: saved }) : '',
+      unchanged
+        ? t('medicalAppointments.status.unchanged', { count: unchanged })
+        : '',
+      preserved
+        ? t('medicalAppointments.status.preserved', { count: preserved })
+        : '',
+    ]
+      .filter(Boolean)
+      .join(' ');
   },
   get notClassified() {
     return t('medicalAppointments.status.notClassified');
