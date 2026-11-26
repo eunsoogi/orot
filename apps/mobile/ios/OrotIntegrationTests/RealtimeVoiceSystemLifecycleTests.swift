@@ -45,9 +45,10 @@ extension RealtimeVoiceLifecycleTests {
     func testSystemActivationGatesCaptureAndLateActivationCannotRestartStoppedCall() async throws {
         let audio = Audio(), socket = Socket(), system = SystemCall()
         var activations: [Bool] = []
+        var isForeground = true
         let ownership = AudioSessionOwnership(configure: { _, _, _ in }, setActive: { activations.append($0) })
         let call = RealtimeVoiceCall(audio: audio, socket: socket, ownership: ownership, systemCall: system,
-                                     permission: { $0(true) }, foreground: { true }, emit: { _, _ in })
+                                     permission: { $0(true) }, foreground: { isForeground }, emit: { _, _ in })
         await opening(call, socket: socket)
         socket.received?(started())
         XCTAssertEqual(system.starts, 1)
@@ -69,6 +70,21 @@ extension RealtimeVoiceLifecycleTests {
         // The same production lease rejects old cleanup even after the next call owns it.
         staleActivation?()
         XCTAssertEqual(audio.starts, 1)
+
+        // The callback may arrive during inactive, before didEnterBackground.
+        await opening(call, socket: socket, id: "next")
+        socket.received?(started())
+        let prepare = try XCTUnwrap(system.prepare)
+        let activate = try XCTUnwrap(system.activated)
+        XCTAssertEqual(system.starts, 2)
+        isForeground = false
+        XCTAssertThrowsError(try prepare())
+        activate()
+        XCTAssertEqual(audio.starts, 1)
+        XCTAssertFalse(call.systemCallActive)
+        XCTAssertNil(call.id)
+        XCTAssertNil(call.token)
+        XCTAssertEqual(system.ends, 2)
     }
 
     func testDeniedAsyncOpeningClearsOwnedCallBeforeBridgeRejection() async throws {
