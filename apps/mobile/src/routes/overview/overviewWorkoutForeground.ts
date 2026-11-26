@@ -44,8 +44,12 @@ export function createOverviewWorkoutForeground<
       inactiveSince === undefined ? 0 : Date.now() - inactiveSince;
     inactiveSince = undefined;
     const existing = owner();
-    if (existing && (pausedFor > 5_000 || existing.usable?.() === false))
-      retire();
+    if (existing && (pausedFor > 5_000 || existing.usable?.() === false)) {
+      // A retired snapshot is not an empty or denied result. The parent
+      // selection may still be revalidating before its successor can start.
+      retire(false);
+      pending();
+    }
     const target = owner();
     if (!target) {
       start();
