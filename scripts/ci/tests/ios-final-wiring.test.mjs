@@ -91,7 +91,8 @@ test('full integration execution preserves profile observations and every regist
   // Current main includes conversation retention and visit preparation in the full schedule.
   // Nine host regressions run outside iOS; seven picker journeys still repeat across cohorts.
   // Visit preparation adds one native accessibility fixture; fade lifecycle adds six cases.
-  assert.equal(scheduled.length, 286);
+  // The ticketed voice continuation completion case is in the core schedule once.
+  assert.equal(scheduled.length, 287);
   assert.equal(
     scheduled.filter(
       (identifier) =>
@@ -101,7 +102,7 @@ test('full integration execution preserves profile observations and every regist
     1,
   );
   const identifiers = new Set(scheduled);
-  assert.equal(identifiers.size, 279);
+  assert.equal(identifiers.size, 280);
   const frequencies = new Map();
   for (const identifier of scheduled)
     frequencies.set(identifier, (frequencies.get(identifier) ?? 0) + 1);
