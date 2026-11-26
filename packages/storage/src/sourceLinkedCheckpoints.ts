@@ -3,6 +3,46 @@ import type { SqlDatabase, SqlExecutor } from './sql';
 
 const REMOVAL_MARKERS = ['source_deletion_tombstones', 'agent_memory_removed_sources'] as const;
 
+const approvalKey = "checkpoint_key GLOB 'encounter-approval:*'";
+const approvalSource =
+  "json_extract(CASE WHEN json_valid(value) THEN value ELSE '{}' END, '$.sourceId')";
+const cleanupIndexes = [
+  {
+    name: 'langgraph_checkpoint_sources_source_record_idx',
+    table: 'langgraph_checkpoint_sources',
+    definition: '(source_record_id)',
+  },
+  {
+    name: 'healthkit_sync_checkpoints_encounter_source_idx',
+    table: 'healthkit_sync_checkpoints',
+    definition: `(${approvalSource}) WHERE ${approvalKey}`,
+  },
+] as const;
+
+async function missingCleanupIndexes(sql: SqlExecutor) {
+  const { rows } = await sql.execute(
+    'SELECT name, type FROM sqlite_master WHERE name IN (?, ?, ?, ?)',
+    cleanupIndexes.flatMap(({ name, table }) => [name, table]),
+  );
+  if (!rows.some((row) => row.name === cleanupIndexes[0].table && row.type === 'table')) return [];
+  return cleanupIndexes.filter(
+    ({ name, table }) =>
+      rows.some((row) => row.name === table && row.type === 'table') &&
+      !rows.some((row) => row.name === name && row.type === 'index'),
+  );
+}
+
+async function installCleanupIndexes(executor: SqlExecutor) {
+  for (const { name, table, definition } of await missingCleanupIndexes(executor))
+    await executor.execute(`CREATE INDEX IF NOT EXISTS ${name} ON ${table} ${definition}`);
+}
+
+/** Backfill only existing checkpoint schema; ordinary opens do not create it or take a writer. */
+export async function ensureSourceLinkedCheckpointCleanupIndexes(database: SqlDatabase) {
+  if ((await missingCleanupIndexes(database)).length)
+    await database.transaction(installCleanupIndexes);
+}
+
 /** These are canonical deletion markers, not a second removal registry. A table may still be lazily unopened. */
 async function existingMarkers(sql: SqlExecutor): Promise<string[]> {
   const result = await sql.execute(
@@ -18,8 +58,8 @@ function cleanup(sourceExpression: 'OLD.id' | 'NEW.source_id'): string {
     DELETE FROM langgraph_checkpoints WHERE thread_id IN
     (SELECT thread_id FROM langgraph_checkpoint_sources WHERE source_record_id = ${sourceExpression});
     DELETE FROM langgraph_checkpoint_sources WHERE source_record_id = ${sourceExpression};
-    DELETE FROM healthkit_sync_checkpoints WHERE checkpoint_key GLOB 'encounter-approval:*'
-    AND json_extract(CASE WHEN json_valid(value) THEN value ELSE '{}' END, '$.sourceId') = ${sourceExpression};`;
+    DELETE FROM healthkit_sync_checkpoints WHERE
+    ${approvalKey} AND ${approvalSource} = ${sourceExpression};`;
 }
 
 /** Source-linked graphs may retain review text. Delete their existing checkpoint rows with the source, atomically. */
@@ -29,6 +69,8 @@ export async function createSourceLinkedCheckpointIntegrity(database: SqlDatabas
       thread_id TEXT PRIMARY KEY NOT NULL,
       source_record_id TEXT NOT NULL
     )`);
+    // Each transcript identity fence fires the cleanup trigger; unrelated history must not multiply its work.
+    await installCleanupIndexes(transaction);
     await transaction.execute(`CREATE TRIGGER IF NOT EXISTS source_records_delete_linked_checkpoints
       AFTER DELETE ON source_records BEGIN ${cleanup('OLD.id')} END`);
     for (const table of await existingMarkers(transaction)) {
