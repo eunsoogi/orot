@@ -12,13 +12,36 @@ final class LiveNativeResultBatch {
         let response: String
     }
 
-    struct ApprovedOutput {
+    /// Capture the authority's exact owned output, not a caller-supplied proof ID.
+    @MainActor
+    final class Proof {
+        let owner: Owner
         let function: String
-        let proof: UUID
         let text: String
         let kind: LiveNativeResultDispatchAuthority.ResultKind
-        let sourceCurrent: () -> Bool
-        let retire: () -> Void
+        private let sourceCurrent: (Owner, String, Data) -> Bool
+        private let release: () -> Void
+        private(set) var reserved = false, retired = false
+
+        init(owner: Owner, function: String, text: String, kind: LiveNativeResultDispatchAuthority.ResultKind,
+             sourceCurrent: @escaping (Owner, String, Data) -> Bool, release: @escaping () -> Void)
+        {
+            self.owner = owner; self.function = function; self.text = text; self.kind = kind
+            self.sourceCurrent = sourceCurrent; self.release = release
+        }
+
+        func check() -> Bool {
+            !retired && sourceCurrent(owner, function, Data(text.utf8)) && !retired
+        }
+
+        fileprivate func reserve() {
+            reserved = true
+        }
+
+        func retire(reservedByBatch: Bool) {
+            guard !retired, reserved == reservedByBatch else { return }
+            retired = true; release()
+        }
     }
 
     enum Frame: Equatable {
@@ -33,17 +56,18 @@ final class LiveNativeResultBatch {
 
     private let owner: Owner
     private let owns: (Owner) -> Bool
-    private let outputs: [ApprovedOutput]
+    private let outputs: [Proof]
     private var next = 0
     private var pending: UUID?
     private var terminal = false
 
-    init?(owner: Owner, functions: [String], outputs: [ApprovedOutput], owns: @escaping (Owner) -> Bool) {
+    init?(owner: Owner, functions: [String], outputs: [Proof], owns: @escaping (Owner) -> Bool) {
         guard (2 ... 8).contains(outputs.count), functions == outputs.map(\.function),
               [owner.call, owner.session, owner.delegation, owner.response].allSatisfy(RealtimeVoiceToolLease.validID),
               functions.allSatisfy(RealtimeVoiceToolLease.validID), Set(functions).count == functions.count,
-              Set(outputs.map(\.proof)).count == outputs.count,
-              owns(owner), outputs.allSatisfy({ $0.kind.allows($0.text) && $0.sourceCurrent() }), owns(owner)
+              Set(outputs.map(ObjectIdentifier.init)).count == outputs.count,
+              outputs.allSatisfy({ $0.owner == owner && (!$0.reserved && !$0.retired) }),
+              owns(owner), outputs.allSatisfy({ $0.kind.allows($0.text) && $0.check() }), owns(owner)
         else { return nil }
         self.owner = owner
         self.outputs = outputs
@@ -51,7 +75,8 @@ final class LiveNativeResultBatch {
     }
 
     func reserveWireFrames() -> [[String: Any]]? {
-        guard !queued, current(), !terminal, !queued else { return nil }
+        guard !queued, current(), !terminal, !queued, outputs.allSatisfy({ !$0.reserved && !$0.retired }) else { return nil }
+        outputs.forEach { $0.reserve() }
         queued = true
         return outputs.map { output in
             ["type": "response.item.create", "event_id": UUID().uuidString,
@@ -60,7 +85,7 @@ final class LiveNativeResultBatch {
     }
 
     func matches(_ function: String, text: String, at index: Int) -> Bool {
-        outputs.indices.contains(index) && outputs[index].function == function && outputs[index].text == text
+        outputs.indices.contains(index) && outputs[index].function == function && Data(outputs[index].text.utf8) == Data(text.utf8)
     }
 
     /// Call only at the oldest FIFO write's real synchronous handoff.
@@ -94,11 +119,11 @@ final class LiveNativeResultBatch {
         guard !terminal else { return }
         terminal = true
         pending = nil
-        outputs.forEach { $0.retire() }
+        outputs.forEach { $0.retire(reservedByBatch: queued) }
     }
 
     private func current() -> Bool {
-        owns(owner) && outputs.allSatisfy { $0.sourceCurrent() } && owns(owner)
+        owns(owner) && outputs.allSatisfy { $0.check() } && owns(owner)
     }
 }
 

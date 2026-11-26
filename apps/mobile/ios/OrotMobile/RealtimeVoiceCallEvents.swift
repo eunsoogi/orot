@@ -165,6 +165,9 @@ struct LiveResponsesAdmission {
     // Constructed by the separate native companion mailbox; no fallback schema.
     var canonicalConfiguration: (() -> [String: Any]?)?
     var serialV3: LiveV3SerialTransitions?
+    // Only an independently configured trusted authority can opt in. The shipped
+    // single-source transport does not provide this factory.
+    var batchProof: (@MainActor (Request, String) -> LiveNativeResultBatch.Proof?)?
 
     /// Same Live socket and voice model. The configured server backend model is a distinct
     /// approved choice, never inferred from the selected voice ID or the user's text model.
@@ -190,5 +193,46 @@ extension LiveV3SerialTransitions {
         if !allowsFreshSpeech(false) {
             retire()
         }
+    }
+}
+
+extension LiveResponsesAdmission {
+    func queueProofBatch(_ results: [(Request, String)], current: @escaping () -> Bool,
+                         send: (@MainActor (LiveNativeResultBatch) -> Bool)?) -> Bool
+    {
+        guard let send, Thread.isMainThread else { return false }
+        return MainActor.assumeIsolated {
+            guard let batch = makeProofBatch(results, current: current) else { return false }
+            guard send(batch) else { batch.retire(); return false }
+            return true
+        }
+    }
+
+    @MainActor
+    private func makeProofBatch(_ results: [(Request, String)], current: @escaping () -> Bool) -> LiveNativeResultBatch? {
+        guard let batchProof, let first = results.first?.0, current() else { return nil }
+        let owner = LiveNativeResultBatch.Owner(call: first.owner.callID, session: first.owner.sessionID, epoch: first.owner.epoch,
+                                                delegation: first.delegationID, response: first.responseID)
+        guard results.allSatisfy({
+            $0.0.owner == first.owner && $0.0.delegationID == first.delegationID && $0.0.responseID == first.responseID
+        }) else { return nil }
+        var proofs: [LiveNativeResultBatch.Proof] = []
+        var prepared: LiveNativeResultBatch?
+        defer {
+            if prepared == nil {
+                proofs.forEach { $0.retire(reservedByBatch: false) }
+            }
+        }
+        for (request, text) in results {
+            guard current(), let proof = batchProof(request, text) else { return nil }
+            proofs.append(proof)
+            guard proof.owner == owner, proof.function == request.functionID,
+                  Data(proof.text.utf8) == Data(text.utf8)
+            else { return nil }
+        }
+        prepared = LiveNativeResultBatch(owner: owner, functions: results.map(\.0.functionID), outputs: proofs, owns: {
+            $0 == owner && current()
+        })
+        return prepared
     }
 }

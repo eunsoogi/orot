@@ -66,7 +66,9 @@ extension RealtimeVoiceCall {
                         session["delegation"] = configuration
                         session["instructions"] = Self.instructions(language: language, tools: registry.eligible)
                         event["session"] = session
-                        managedResponses = LiveResponsesToolBridge(admission: managedAdmission, registry: registry) { [weak self] in
+                        managedResponses = LiveResponsesToolBridge(admission: managedAdmission, registry: registry, sendBatch: { [weak self] batch in
+                            self?.socket.sendTicketedToolBatch(batch) == true
+                        }) { [weak self] in
                             guard let self, liveSocketEpoch == epoch else { return }
                             if socket.discardManagedToolFrames() {
                                 fail()

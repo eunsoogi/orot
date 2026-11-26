@@ -9,10 +9,11 @@ final class LiveResponsesToolBridge {
     private let admission: LiveResponsesAdmission
     private let registry: LiveNativeToolRegistry
     private let discard: () -> Void
+    private let sendBatch: (@MainActor (LiveNativeResultBatch) -> Bool)?
     private var owner: Owner?
     private var delegation: (id: String, response: String, offset: Int, timestamp: DispatchTime?)?
     private var pending: [Request] = []
-    private var received: [String: Bool] = [:]
+    private var received: [String: ManagedToolEventReceipt] = [:]
     private var skippedResponses = Set<String>()
     private var created = false, spent = false
     private var progress = 0
@@ -21,13 +22,15 @@ final class LiveResponsesToolBridge {
     private var emptyTerminal = false
     private var approvalSettled = false, retired = false
     private var cancel: (() -> Void)?
-    init(admission: LiveResponsesAdmission, registry: LiveNativeToolRegistry, discard: @escaping () -> Void) {
-        self.admission = admission; self.registry = registry; self.discard = discard
+    init(admission: LiveResponsesAdmission, registry: LiveNativeToolRegistry,
+         sendBatch: (@MainActor (LiveNativeResultBatch) -> Bool)? = nil, discard: @escaping () -> Void)
+    {
+        self.admission = admission; self.registry = registry; self.sendBatch = sendBatch; self.discard = discard
     }
 
     func ownsCompleted(_ request: Request) -> Bool {
         !retired && spent && owner == request.owner && delegation?.id == request.delegationID &&
-            delegation?.response == request.responseID && pending == [request]
+            delegation?.response == request.responseID && pending.contains(request)
     }
 
     func retire() {
@@ -63,21 +66,19 @@ final class LiveResponsesToolBridge {
             && (envelope["delegation_id"] as? String).map { $0 == delegation?.id } == true
             && event?["type"] as? String == "response.output_item.done"
             && itemKind != "message" && itemKind != "reasoning"
+        let observed: ManagedToolEventReceipt = if scopedToolItem, let item = repeatedItem, let delegation {
+            .identity(toolRequest(item, owner: owner, delegationID: delegation.id, responseID: delegation.response))
+        } else {
+            .other
+        }
         if let prior = received[id] {
-            if prior || scopedToolItem {
-                // Same receipt only if it still identifies the same validated request.
-                // The terminal event has no output list to recover a conflicting item from.
-                guard prior, scopedToolItem, let item = repeatedItem, let delegation,
-                      let previous = pending.first,
-                      toolRequest(item, owner: owner, delegationID: delegation.id, responseID: delegation.response) == previous
-                else { retire(); return }
-            }
+            guard prior.matches(observed) else { retire(); return }
             return
         }
         if admission.serialV3 != nil, received.count >= 4096 {
             retire(); return
         }
-        received[id] = scopedToolItem
+        received[id] = observed
         if envelope["type"] as? String == "session.delegation.created" {
             guard let item = envelope["delegation"] as? [String: Any], item["type"] as? String == "delegation",
                   item["target"] as? String == "responses", let delegationID = item["id"] as? String,
@@ -90,8 +91,7 @@ final class LiveResponsesToolBridge {
                 case .deny: retire(); return
                 case .allow:
                     delegation = (delegationID, responseID, offset, LiveManagedToolLatency.start())
-                    incomingContinuation = nil
-                    resetRound()
+                    incomingContinuation = nil; resetRound()
                     return
                 }
             }
@@ -155,9 +155,8 @@ final class LiveResponsesToolBridge {
                 }
                 return
             }
-            // An earlier result's protected source is not re-proved after another
-            // independent challenge. Reject a second call before any approval/read.
-            guard pending.isEmpty, admission.serialV3?.rememberFunction(functionID) != false else { retire(); return }
+            guard pending.isEmpty || (admission.batchProof != nil && sendBatch != nil && pending.count < 8),
+                  admission.serialV3?.rememberFunction(functionID) != false else { retire(); return }
             pending.append(request)
             return
         }
@@ -214,15 +213,20 @@ final class LiveResponsesToolBridge {
                 return results.allSatisfy { self.admission.mayDisclose($0.0, $0.1) } && current()
             }
             guard permitted() else { retire(); return }
-            // response.create names no delegation. Keep this batch owned at *every*
-            // transport handoff; a replacement retires queued work, and nothing retries.
-            let continuation = UUID().uuidString
-            if admission.serialV3 != nil {
-                issuedContinuation = continuation
+            if results.count != 1 {
+                let queued = admission.queueProofBatch(results, current: permitted, send: sendBatch)
+                if !queued {
+                    retire()
+                }
+                return
             }
+            let continuation = UUID().uuidString
+            issuedContinuation = admission.serialV3 == nil ? nil : continuation
             let frames = Self.resultFrames(results, continuation)
-            let ticket = results.count == 1 ? admission.dispatchTicket?(results[0].0, results[0].1) : nil
-            guard admission.dispatchTicket == nil || ticket != nil else { retire(); return }
+            let ticket = admission.dispatchTicket?(results[0].0, results[0].1)
+            if admission.dispatchTicket != nil, ticket == nil {
+                retire(); return
+            }
             send(frames, permitted, ticket)
             return
         }
