@@ -47,7 +47,14 @@ export function ConversationDirectPhotoComposer({
     deliveryReady: false,
     ...(selected
       ? {
-          status: image ? 'ready' : picking ? 'preparing' : 'error',
+          // During a mounted Send, history owns the preview, not the composer.
+          status: sending
+            ? 'transferring'
+            : image
+              ? 'ready'
+              : picking
+                ? 'preparing'
+                : 'error',
           previewData: image ? 'data:image/jpeg;base64,' + image : undefined,
           deliveryReady: Boolean(image),
           deliveryMode: 'image',
