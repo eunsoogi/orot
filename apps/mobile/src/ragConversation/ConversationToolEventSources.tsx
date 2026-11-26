@@ -63,7 +63,7 @@ export function ConversationToolEventSources({
     if (sheet) setResolving(current => withoutSourceKey(current, sheet.key));
     setSheet(null);
   };
-  const activeControllers = useRef(new Set<AbortController>());
+  const activeControllers = useRef(new Map<string, AbortController>());
 
   const sourceIdentity = JSON.stringify(event.sources);
   useEffect(() => {
@@ -97,9 +97,11 @@ export function ConversationToolEventSources({
     )
       return;
     const key = sourceKey(source);
-    const controller = new AbortController();
     const external = source.sourceKind === 'external_medical';
-    if (external && publicOperation.current) return;
+    // The React busy state may not have committed before the next press.
+    if (external ? publicOperation.current : activeControllers.current.has(key))
+      return;
+    const controller = new AbortController();
     const timing = !selectedWebSource
       ? beginSourceOpenTiming(
           controller.signal,
@@ -111,7 +113,6 @@ export function ConversationToolEventSources({
         ? waitForPublicSourcePresentation(controller.signal)
         : undefined;
     if (external) {
-      // A second press cannot start another lookup before React disables the chip.
       publicOperation.current = controller;
       setSheet(current =>
         selectedWebSource && current?.key === key
@@ -119,12 +120,11 @@ export function ConversationToolEventSources({
           : { key, timing, onPresented: presentation?.shown },
       );
     }
-    activeControllers.current.add(controller);
+    activeControllers.current.set(key, controller);
     setResolving(current => new Set(current).add(key));
     setErrors(current => withoutSourceKey(current, key));
     try {
-      // Leave the tap free to commit the empty, cancellable sheet before a
-      // resolver can do synchronous validation on the shared JS thread.
+      // Let the empty public sheet commit before synchronous source validation.
       if (presentation && !(await presentation.ready)) return;
       if (controller.signal.aborted) return;
       const verified = await resolveToolSource(source, controller.signal, {
@@ -169,7 +169,8 @@ export function ConversationToolEventSources({
         }
       }
     } finally {
-      activeControllers.current.delete(controller);
+      if (activeControllers.current.get(key) === controller)
+        activeControllers.current.delete(key);
       if (publicOperation.current === controller)
         publicOperation.current = null;
       if (!controller.signal.aborted)
