@@ -126,6 +126,31 @@ function symptomChoices(source: ComputedFact): StatisticChoice[] {
     symptoms.entryCount <= 0
   )
     return [];
+  return [
+    {
+      key: 'symptoms',
+      description:
+        'Include recorded symptom coverage and supplied recent entries without inference.',
+      texts: { recent_entries: renderComputedSymptomSummary(source)! },
+    },
+  ];
+}
+
+/** Bound only card excerpts. Totals still describe the entire cited period,
+ * and every unabridged source entry remains available through that citation. */
+export function renderComputedSymptomSummary(
+  source: ComputedFact,
+  maxCharacters = Infinity,
+): string | undefined {
+  const symptoms = source.symptoms;
+  if (!factObject(symptoms) || !finiteFact(symptoms.entryCount)) return;
+  const total = t('computedTopic.symptomEntries', {
+    count: symptoms.entryCount,
+    coverage: finiteFact(symptoms.recordedDays)
+      ? t('computedTopic.symptomDays', { days: symptoms.recordedDays })
+      : '',
+    entries: '',
+  });
   const entries = Array.isArray(symptoms.latest)
     ? symptoms.latest.flatMap(entry =>
         factObject(entry) && typeof entry.description === 'string'
@@ -135,22 +160,21 @@ function symptomChoices(source: ComputedFact): StatisticChoice[] {
           : [],
       )
     : [];
-  return [
-    {
-      key: 'symptoms',
-      description:
-        'Include recorded symptom coverage and supplied recent entries without inference.',
-      texts: {
-        recent_entries: t('computedTopic.symptomEntries', {
-          count: symptoms.entryCount,
-          coverage: finiteFact(symptoms.recordedDays)
-            ? t('computedTopic.symptomDays', { days: symptoms.recordedDays })
-            : '',
-          entries: entries.length ? '\n' + entries.join('\n') : '',
-        }),
-      },
-    },
-  ];
+  const full = [total, ...entries].join('\n');
+  if (full.length <= maxCharacters) return full;
+
+  const notice = t('computedTopic.additionalSymptomsInEvidence');
+  if (total.length + 1 + notice.length > maxCharacters) return;
+  const displayed = [total];
+  let remaining = maxCharacters - total.length - 1 - notice.length;
+  for (const entry of entries) {
+    // Keep each example verbatim or leave it in source detail. A single
+    // oversized entry does not exclude other complete, recent examples.
+    if (entry.length + 1 > remaining) continue;
+    displayed.push(entry);
+    remaining -= entry.length + 1;
+  }
+  return [...displayed, notice].join('\n');
 }
 
 export function computedTopicChoices(source: ComputedFact): StatisticChoice[] {

@@ -2,7 +2,12 @@ import {
   providerSuccess,
   type LanguageModelRequest,
 } from '@orot/model-runtime';
+import { serializeAppleRequest } from '../../../providers/apple/serializeRequest';
 import { t } from '../../../i18n';
+import {
+  seedLongComputedSymptoms,
+  expectBoundedSymptomPresentation,
+} from '../testSupport/computedSymptomExcerptFixture';
 import { createAiFeatureServices } from '../featureServices';
 import {
   apple,
@@ -37,13 +42,17 @@ function privateSourceId(request: LanguageModelRequest): string | undefined {
   }
 }
 
-test.each([false, true])(
-  'keeps app-owned selector validation through the real local summary turn, bad citation=%s',
-  async badCitation => {
+test.each(['valid', 'foreign', 'long-symptoms'] as const)(
+  'keeps app-owned selector validation through the real local summary turn, fixture=%s',
+  async scenario => {
+    const badCitation = scenario === 'foreign';
+    const longSymptoms = scenario === 'long-symptoms';
     const fixture = await healthContextFixture();
     try {
+      if (longSymptoms) await seedLongComputedSymptoms(fixture.repository);
       const calls = { lookup: 0, final: 0 };
       const wire: string[] = [];
+      const nativeFinalSchemas: unknown[] = [];
       const option = {
         ...apple,
         provider: {
@@ -57,10 +66,18 @@ test.each([false, true])(
             const source = privateSourceId(request);
             if (source) {
               calls.final++;
+              const native = serializeAppleRequest(request);
+              nativeFinalSchemas.push(native.nativeResponseSchema);
               wire.push(JSON.stringify(request.responseFormat?.schema ?? {}));
               const response = {
                 type: 'result',
-                value: { recordSummaries: { [source]: { q0: 'mean' } } },
+                value: {
+                  recordSummaries: {
+                    [source]: longSymptoms
+                      ? { symptoms: 'recent_entries' }
+                      : { q0: 'mean' },
+                  },
+                },
                 citations: [badCitation ? 'foreign-test-source' : source],
               };
               return providerSuccess({
@@ -80,7 +97,10 @@ test.each([false, true])(
                   {
                     id: 'health-context-call',
                     name: 'local-health-context',
-                    arguments: { window, topics: ['measurements'] },
+                    arguments: {
+                      window,
+                      topics: [longSymptoms ? 'symptoms' : 'measurements'],
+                    },
                   },
                 ],
                 finishReason: 'tool_calls' as const,
@@ -117,6 +137,7 @@ test.each([false, true])(
         { onRetentionCandidate: retained },
         { intent: 'health-summary', entryKey: 'summary-choice' },
       );
+
       expect(calls.lookup).toBe(1);
       expect(calls.final).toBeGreaterThan(0);
       // RED on original production service: runtime never passed a partition
@@ -124,6 +145,7 @@ test.each([false, true])(
       expect(wire.every(schema => schema.includes('"recordSummaries"'))).toBe(
         true,
       );
+      expect(nativeFinalSchemas.every(Boolean)).toBe(true);
       if (badCitation) {
         expect(result).toMatchObject({
           status: 'failure',
@@ -148,11 +170,19 @@ test.each([false, true])(
         expect(retained).toHaveBeenCalledTimes(1);
         const committed = await fixture.storage.read(saved[0]!.id);
         expect(committed?.analysis.hypotheses[0]?.summary).toContain(
-          '72 count/min',
+          longSymptoms ? '증상 기록 4건' : '72 count/min',
         );
         expect(
           committed?.analysis.hypotheses[0]?.supportingEvidence,
         ).toHaveLength(1);
+        if (longSymptoms && result.status === 'answer') {
+          const section = result.healthSummary!.analysis.hypotheses[0]!;
+          await expectBoundedSymptomPresentation(
+            services.readSource,
+            section.supportingEvidence[0]!,
+            section.summary,
+          );
+        }
       }
     } finally {
       fixture.close();
