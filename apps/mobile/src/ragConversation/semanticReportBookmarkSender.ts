@@ -20,10 +20,7 @@ export interface BoundReportBookmark {
   readonly current: () => boolean;
 }
 
-export function latestReportArtifact(
-  store: ConversationSessions,
-  sessionId: number,
-) {
+function latestReportCandidate(store: ConversationSessions, sessionId: number) {
   const session = store
     .getSnapshot()
     .sessions.find(row => row.id === sessionId);
@@ -41,7 +38,17 @@ export function latestReportArtifact(
   const last = savedHistoryTranscript(savedDisplay ?? [], session.messages).at(
     -1,
   );
-  if (!last || last.role !== 'assistant' || last.streaming || last.incomplete)
+  if (
+    !last ||
+    last.role !== 'assistant' ||
+    last.streaming ||
+    last.incomplete ||
+    last.completion === 'partial' ||
+    last.localClarification ||
+    last.historyUnavailable ||
+    last.interruptionReason ||
+    last.directPhotoReply
+  )
     return;
   const saved = last.savedHistoryDisplayOnly
     ? savedDisplay?.find(item => item.answerId === last.id)?.row
@@ -52,8 +59,30 @@ export function latestReportArtifact(
         id: last.retainedTurnId,
         healthSummary: last.healthSummary,
         dailyReport: last.dailyReport,
+        committedPossibilityOriginal: last.committedPossibilityOriginal,
       };
-  if (!candidate || !candidate.id) return;
+  return candidate || undefined;
+}
+
+/** The live completion receipt elects only the exact adjacent original. */
+export function latestConversationPossibilityArtifact(
+  store: ConversationSessions,
+  sessionId: number,
+) {
+  const candidate = latestReportCandidate(store, sessionId);
+  return candidate &&
+    'committedPossibilityOriginal' in candidate &&
+    candidate.committedPossibilityOriginal
+    ? candidate.id
+    : undefined;
+}
+
+export function latestReportArtifact(
+  store: ConversationSessions,
+  sessionId: number,
+) {
+  const candidate = latestReportCandidate(store, sessionId);
+  if (!candidate?.id) return;
   if (candidate.dailyReport)
     return { artifactId: candidate.id, kind: 'daily-report' as const };
   const summary = candidate.healthSummary?.analysis.savedSummary;
