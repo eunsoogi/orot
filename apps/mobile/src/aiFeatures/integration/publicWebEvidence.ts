@@ -1,3 +1,4 @@
+import { isSettingsOnlyExecutionConsent } from '../../agent/execution/settingsOnlyExecutionConsent';
 import { withLiveConsentSignal } from '../../agent/execution/withLiveConsentSignal';
 import { t } from '../../i18n';
 import { isExecutionConsentCurrent } from '@orot/agent-runtime';
@@ -65,6 +66,9 @@ export function createPublicWebEvidence(input: {
     id: 'public-web-search',
     sourceKind: 'external_medical',
     execution: 'external_read_only',
+    approvalWait: isSettingsOnlyExecutionConsent(consent)
+      ? 'checkpoint-only'
+      : undefined,
     additionalModelCalls: 1,
     description:
       'Search the general public web beyond Europe PMC using app-owned public topics. Output is a cited model explanation, not original source passages.',

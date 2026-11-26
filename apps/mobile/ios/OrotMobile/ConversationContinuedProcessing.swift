@@ -65,19 +65,18 @@ final class ConversationContinuedProcessing {
             #if OROT_TESTS && targetEnvironment(simulator)
                 fixtureGrantWitness = UUID()
             #endif
-            observeConversationExecution(.granted)
-            status("continued-granted", nil)
             continued.expirationHandler = { [weak self] in
                 DispatchQueue.main.async {
                     guard let self, !self.finished else { return }
                     observeConversationExecution(.continuedExpired)
-                    self.finish(success: false)
-                    self.expired()
+                    self.finish(success: false, beforeCompleting: self.expired)
                 }
             }
             continued.progress.totalUnitCount = 5
             continued.progress.completedUnitCount = completedUnits
             continued.updateTitle(Self.copy("title"), subtitle: Self.copy(statusKey))
+            observeConversationExecution(.granted)
+            status("continued-granted", nil)
         }) else {
             observeConversationExecution(.registrationRefused)
             status("continued-refused", nil)
@@ -145,9 +144,12 @@ final class ConversationContinuedProcessing {
         }
     }
 
-    func finish(success: Bool) {
+    func finish(success: Bool, beforeCompleting: () -> Void = {}) {
         guard !finished else { return }
         finished = true
+        // Retire the app owner before surrendering the OS task. If retirement
+        // re-enters finish, the finished flag leaves completion to this call.
+        beforeCompleting()
         BGTaskScheduler.shared.cancel(taskRequestWithIdentifier: identifier)
         if success {
             task?.progress.completedUnitCount = 5

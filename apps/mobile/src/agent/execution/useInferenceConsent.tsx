@@ -4,16 +4,13 @@ import type { ExecutionConsentPort } from '@orot/agent-runtime';
 import { createSettingsConsentAuthorization } from './settingsConsentAuthorization';
 import { useSettingsConsentReadServices } from './SettingsConsentReadServices';
 import { SETTINGS_CONSENT_CATALOG_VERSION } from './settingsConsentCatalog';
+import { markSettingsOnlyExecutionConsent } from './settingsOnlyExecutionConsent';
+
+export { isSettingsOnlyExecutionConsent } from './settingsOnlyExecutionConsent';
 
 export interface InferenceConsentController {
   readonly consent: ExecutionConsentPort;
   readonly disclosureSheet: ReactElement | null;
-}
-
-const settingsOnlyPorts = new WeakSet<ExecutionConsentPort>();
-
-export function isSettingsOnlyExecutionConsent(port: ExecutionConsentPort) {
-  return settingsOnlyPorts.has(port);
 }
 
 /** Conversation execution never displays a recurring transmission prompt. Missing,
@@ -61,7 +58,7 @@ export function useInferenceConsent(): InferenceConsentController {
       },
       readGrant: services.readGrant,
     });
-    settingsOnlyPorts.add(port);
+    markSettingsOnlyExecutionConsent(port);
     return port;
   }, [services, ownerToken]);
   return { consent, disclosureSheet: null };

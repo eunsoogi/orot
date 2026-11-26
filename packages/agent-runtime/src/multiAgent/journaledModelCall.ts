@@ -117,7 +117,7 @@ export async function journaledModelCall<TResult>(
     // Only an OS pause while the exact app-declared decision-free wait is
     // pending changes provenance. This never grants consent or replay rights.
     const pauseAuthorization = () => {
-      if (checkpointOnly) context.pause?.confirmCooperativeModelWait();
+      if (checkpointOnly) context.pause?.confirmCooperativeDecisionFreeWait();
       throw new AuthorizationPaused();
     };
     const prepared = prepare ? await prepare(approvalSignal, request) : 'ready';

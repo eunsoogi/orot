@@ -54,7 +54,9 @@ export async function journaledEvidenceSearch<TResult>(
   const approval = context.pause.approvalSignal(request.signal);
   const notify = (waiting: boolean) => {
     try {
-      context.onApprovalWait?.(waiting);
+      if (tool.approvalWait === 'checkpoint-only')
+        context.onApprovalWait?.(waiting, 'checkpoint-only');
+      else context.onApprovalWait?.(waiting);
     } catch {
       /* UI is not authority. */
     }
@@ -67,7 +69,11 @@ export async function journaledEvidenceSearch<TResult>(
     );
     approval.finishApproval();
     notify(false);
-    if (approval.signal.aborted && !request.signal.aborted) return { status: 'paused' as const };
+    if (approval.signal.aborted && !request.signal.aborted) {
+      if (tool.approvalWait === 'checkpoint-only')
+        context.pause.confirmCooperativeDecisionFreeWait();
+      return { status: 'paused' as const };
+    }
     if (
       observed.kind !== 'value' ||
       observed.value.status !== 'authorized' ||
