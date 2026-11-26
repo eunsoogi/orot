@@ -16,7 +16,6 @@ const answer = {
   answer: 'Synthetic response',
   citations: [],
 };
-
 const intents = [
   'daily-report',
   'health-summary',
@@ -26,6 +25,7 @@ const intents = [
   'nonmedical',
   'unsupported-capability',
   'changed-owner',
+  'owner-recheck-timeout',
 ] as const;
 const typed = {
   'daily-report': '오늘 하루 건강 기록으로 오늘의 보고서를 만들어 줘.',
@@ -36,20 +36,30 @@ const typed = {
   nonmedical: '다음 팀 점심에서 물어볼 질문을 준비해줘.',
   'unsupported-capability': '내 건강 기록을 요약해서 보고서로 정리해 줘.',
   'changed-owner': '다음 진료에서 물어볼 질문을 준비해 줘.',
+  'owner-recheck-timeout': '기록에서 최근 흐름을 알려 줘.',
 } satisfies Record<(typeof intents)[number], string>;
 const cases = (['chatgpt', 'apple'] as const).flatMap(adapter =>
-  intents.map(intent => [adapter, intent] as const),
+  intents
+    .filter(intent => adapter === 'apple' || intent !== 'owner-recheck-timeout')
+    .map(intent => [adapter, intent] as const),
 );
-
 test.each(cases)(
   'the same template contract uses only selected %s on %s',
   async (adapter, intent) => {
     let ownerCurrent = true;
+    let releaseRecheck!: (value: boolean) => void;
+    const heldRecheck = new Promise<boolean>(
+      resolve => (releaseRecheck = resolve),
+    );
+    const beforeDispatchTimeout = intent === 'owner-recheck-timeout';
+    const recheck = jest.fn(async () =>
+      beforeDispatchTimeout ? heldRecheck : true,
+    );
     const native = syntheticTemplateTransport(
       adapter,
       intent === 'changed-owner'
         ? 'visit-questions'
-        : intent === 'nonmedical'
+        : beforeDispatchTimeout || intent === 'nonmedical'
           ? 'ordinary'
           : intent,
       () => {
@@ -104,7 +114,7 @@ test.each(cases)(
         providerId: provider.id,
         modelId: selected.modelId,
         current: () => ownerCurrent,
-        recheck: async () => true,
+        recheck,
         watch: () => () => {},
       },
       modelTemplateAdmission: {
@@ -123,6 +133,39 @@ test.each(cases)(
         content: 'This prior turn must not be sent by routing.',
       },
     ];
+    if (beforeDispatchTimeout) {
+      jest.useFakeTimers();
+      try {
+        const result = app.sendRagMessage(
+          authored,
+          history,
+          new AbortController().signal,
+          observer,
+        );
+        await jest.advanceTimersByTimeAsync(0);
+        expect(recheck).toHaveBeenCalledTimes(1);
+        expect(native.calls()).toBe(0);
+        expect(rag).not.toHaveBeenCalled();
+        await jest.advanceTimersByTimeAsync(2_500);
+        await expect(result).resolves.toEqual(answer);
+        expect(rag).toHaveBeenCalledWith(
+          authored,
+          history,
+          expect.any(AbortSignal),
+          observer,
+          undefined,
+        );
+        releaseRecheck(true);
+        await jest.advanceTimersByTimeAsync(0);
+        expect(native.calls()).toBe(0);
+        expect(authorize).not.toHaveBeenCalled();
+        expect(observer.onTaskStreamEvent).not.toHaveBeenCalled();
+      } finally {
+        releaseRecheck(false);
+        jest.useRealTimers();
+      }
+      return;
+    }
     await expect(
       app.sendRagMessage(
         authored,

@@ -94,9 +94,11 @@ export async function proposeConversationTemplate(input: {
             return stillOwned;
           },
         },
-        // Routing is not a receipt for the ordinary or specialized answer.
-        onExecutionState: () => {
+        // Count only actual provider entry after the durable owner recheck.
+        // A timed-out preflight cannot suppress the ordinary reviewed opening.
+        onProviderExecution: () => {
           spent = true;
+          return undefined;
         },
       });
       if (

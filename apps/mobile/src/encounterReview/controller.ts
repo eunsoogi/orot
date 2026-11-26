@@ -30,6 +30,7 @@ export interface EncounterReviewService {
     consent: ExecutionConsentPort,
     signal: AbortSignal,
     lifetime?: AbortSignal,
+    progress?: (completed: number) => void,
   ): Promise<ReviewResult>;
   decide(
     sourceId: string,
@@ -40,6 +41,7 @@ export interface EncounterReviewService {
 export interface ReviewState {
   status: ReviewResult['status'] | 'loading' | 'running' | 'saving';
   pending?: EncounterPending;
+  completedBatches?: number;
   candidates: EncounterCandidate[];
   selected: string[];
 }
@@ -83,7 +85,7 @@ export class EncounterReviewController {
     this.operation = operation;
     this.service.diagnostics?.begin(status, this.sourceId);
     const diagnostics = this.service.diagnostics?.current();
-    this.set({ ...this.state, status });
+    this.set({ ...this.state, status, completedBatches: undefined });
     let result: ReviewResult;
     try {
       result = await action(operation.signal);
@@ -136,7 +138,20 @@ export class EncounterReviewController {
   }
   start(consent: ExecutionConsentPort) {
     return this.run('running', signal =>
-      this.service.start(this.sourceId, consent, signal, this.lifetime.signal),
+      this.service.start(
+        this.sourceId,
+        consent,
+        signal,
+        this.lifetime.signal,
+        completed => {
+          if (
+            !signal.aborted &&
+            this.operation?.signal === signal &&
+            this.state.status === 'running'
+          )
+            this.set({ ...this.state, completedBatches: completed });
+        },
+      ),
     );
   }
   edit(id: string, field: 'text' | 'dosageInstruction', text: string) {

@@ -2,6 +2,21 @@ import type { ReactNode } from 'react';
 import { transcriptMessageVisible } from './conversationWorkspaceLayout';
 import type { DisplayMessage } from './conversationDisplayMessage';
 
+export function hasSentPhoto(message: DisplayMessage) {
+  return (
+    message.role === 'user' &&
+    Boolean(message.photoAttached || message.submittedInput?.ocr)
+  );
+}
+
+/** The restored marker alone never authorizes a file, network URI or image. */
+export function sentPhotoPreview(message: DisplayMessage) {
+  const uri = message.directPhotoPreviewData;
+  return hasSentPhoto(message) && uri?.startsWith('data:image/jpeg;base64,')
+    ? uri
+    : undefined;
+}
+
 export type ConversationBubblePresentation = {
   readonly showCitations: boolean;
   readonly showToolActivity: boolean;
@@ -40,7 +55,8 @@ export function conversationBubblePaint(
     opening,
     showBody: opening
       ? hasAnswer
-      : message.role === 'user' ||
+      : (message.role === 'user' &&
+          (!hasSentPhoto(message) || Boolean(message.content.trim()))) ||
         hasAnswer ||
         (message.streaming && message.initialResponse?.source === 'receipt'),
   };
@@ -52,6 +68,12 @@ export function projectTranscript(
   separated: boolean,
 ) {
   return messages.filter(message => {
+    if (
+      hasSentPhoto(message) &&
+      !message.content.trim() &&
+      !sentPhotoPreview(message)
+    )
+      return false;
     if (
       message.role === 'assistant' &&
       message.restoredHistory &&

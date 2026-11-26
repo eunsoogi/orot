@@ -11,7 +11,10 @@ export type VisitBookmarkQuestion = Readonly<{
   rationale: string;
 }>;
 
-type Preview = Readonly<{ questions: readonly VisitBookmarkQuestion[] }>;
+export type ArchivedVisitInlineQuestion = VisitBookmarkQuestion & {
+  readonly priority: 'routine' | 'important';
+};
+type Preview = Readonly<{ questions: readonly ArchivedVisitInlineQuestion[] }>;
 type Lease = Readonly<{ id: string; version: number }>;
 type Current = () => boolean;
 
@@ -35,7 +38,7 @@ export function createArchivedVisitBookmarkAccess(
     current: Current,
   ) => Promise<{
     target: string;
-    questions: readonly VisitBookmarkQuestion[];
+    questions: readonly ArchivedVisitInlineQuestion[];
   } | null>,
   bookmark: (
     input: Omit<PreviewOwner, 'serialized'>,

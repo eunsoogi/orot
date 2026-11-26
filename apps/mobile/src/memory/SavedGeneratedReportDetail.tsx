@@ -1,3 +1,4 @@
+import { possibilityReportTemplate } from '../ragConversation/conversationReportTemplate';
 import { GeneratedVisitQuestionPreview } from './GeneratedVisitQuestionPreview';
 import { conversationDailyReportText } from '../aiFeatures/integration/conversationDailyReportText';
 import { GeneratedReportContent } from '../generatedReports/GeneratedReportContent';
@@ -21,7 +22,11 @@ export function SavedGeneratedReportDetail({
   isReadCurrent,
 }: {
   artifactId: string;
-  reportKind?: 'health_summary' | 'disease_possibilities' | 'visit_questions';
+  reportKind?:
+    | 'health_summary'
+    | 'disease_possibilities'
+    | 'conversation_disease_possibilities'
+    | 'visit_questions';
   isReadCurrent: () => boolean;
 }) {
   const [result, setResult] = useState<
@@ -60,6 +65,32 @@ export function SavedGeneratedReportDetail({
       }
       const storage = await openSavedGeneratedReportReferences();
       if (!isCurrent()) return null;
+      if (reportKind === 'conversation_disease_possibilities') {
+        const exact = await storage.readBookmarkedConversationPossibility(
+          artifactId,
+          {
+            current: isCurrent,
+            confirmProtected: admission.confirm,
+          },
+        );
+        const template = exact && possibilityReportTemplate();
+        return exact && template && isCurrent()
+          ? {
+              paragraphs: [],
+              conversationPossibility: {
+                title: template.title,
+                sections: template.sections.map((title, index) => ({
+                  title,
+                  content:
+                    exact.sections[index]! +
+                    (index === template.sections.length - 1
+                      ? exact.trailing
+                      : ''),
+                })),
+              },
+            }
+          : null;
+      }
       if (reportKind === 'visit_questions') {
         if (!(await admission.confirm()) || !isCurrent()) return null;
         const questions = await storage.readSavedVisitQuestionReference(
@@ -113,7 +144,8 @@ export function SavedGeneratedReportDetail({
         {t(
           reportKind === 'health_summary'
             ? 'savedMemory.generatedReportHealthSummary'
-            : reportKind === 'disease_possibilities'
+            : reportKind === 'disease_possibilities' ||
+                reportKind === 'conversation_disease_possibilities'
               ? 'savedMemory.generatedReportDiseasePossibilities'
               : reportKind === 'visit_questions'
                 ? 'savedMemory.generatedReportVisitQuestions'

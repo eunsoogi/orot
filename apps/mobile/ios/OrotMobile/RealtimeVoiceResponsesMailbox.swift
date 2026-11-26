@@ -102,6 +102,7 @@ enum LiveManagedToolLatency: String {
     case delegationToToolTerminal = "delegation_to_tool_terminal"
     case settleToSocketSubmission = "settle_to_socket_submission"
     case authorizationQueue = "authorization_queue"
+    case continuationSendCallback = "continuation_send_callback"
     case terminalToOwnedTool = "terminal_to_owned_tool"
 
     private static let enabled = ProcessInfo.processInfo.arguments.contains("-OROT_PROVIDER_DIAGNOSTICS")
@@ -135,9 +136,9 @@ enum LiveManagedToolLatency: String {
         }
     }
 
-    static func finish(_ stage: Self, since start: DispatchTime?, observe: ((Self, UInt64) -> Void)? = nil) {
+    static func finish(_ stage: Self, since start: DispatchTime?, observe: ((Self, UInt64) -> Void)? = nil, at end: DispatchTime? = nil) {
         guard let start else { return }
-        let now = DispatchTime.now().uptimeNanoseconds
+        let now = (end ?? .now()).uptimeNanoseconds
         guard now >= start.uptimeNanoseconds else { return }
         let elapsed = (now - start.uptimeNanoseconds) / 1_000_000
         guard elapsed <= 300_000 else { return }

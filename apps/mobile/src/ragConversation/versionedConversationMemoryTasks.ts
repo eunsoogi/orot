@@ -1,3 +1,4 @@
+import { withComposedConversationControls } from './conversationA2UIComposedControlTask';
 import { observeConversationA2UIFinalAdmission } from './conversationA2UIFinalDiagnostic';
 import { withConversationDraftPreview } from './conversationA2UIDraftPreviewTask';
 import { withPairedConversationControls } from './conversationA2UILocalFormTask';
@@ -61,6 +62,10 @@ export function versionedConversationMemoryTasks(
   const conversationTaskV42 =
     withPairedConversationControls(conversationTaskV41);
   const conversationTaskV43 = withConversationDraftPreview(conversationTaskV42);
+  const conversationTaskV44 = withPairedConversationControls(
+    conversationTaskV43,
+    true,
+  );
   return {
     conversationTaskV25,
     conversationTaskV26,
@@ -88,9 +93,10 @@ export function versionedConversationMemoryTasks(
       v41: conversationTaskV41,
       v42: conversationTaskV42,
       v43: conversationTaskV43,
+      v44: conversationTaskV44,
     },
     ragConversationTask: observeConversationA2UIFinalAdmission(
-      withPairedConversationControls(conversationTaskV43, true),
+      withComposedConversationControls(conversationTaskV44),
     ),
   };
 }

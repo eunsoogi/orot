@@ -10,6 +10,7 @@ import {
 
 export const coreTests = [
   // Synthetic voice ports verify Live and retained tool rejection without microphone or network.
+  'OrotIntegrationTests/RealtimeVoiceLifecycleTests/testTicketedContinuationTimingRequiresOwnedTransportCompletion',
   'OrotIntegrationTests/RealtimeVoiceLifecycleTests/testSessionConfigurationGatesAudioAndStopClosesEverything',
   'OrotIntegrationTests/RealtimeVoiceLifecycleTests/testLiveOutputRequiresCurrentUnexpiredStartupAndPreservesPrimaryFrameOrder',
   'OrotIntegrationTests/RealtimeVoiceLifecycleTests/testReleaseFailureRetainsOwnershipForRetry',

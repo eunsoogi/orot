@@ -3,12 +3,13 @@ import {
   createRecordRepository,
   runMigrations,
 } from '@orot/storage';
-import { fireEvent, render, waitFor } from '@testing-library/react-native';
+import { act, fireEvent, render, waitFor } from '@testing-library/react-native';
 import App from '../App';
 import { configureLocalHealthKitAutoSync } from '../src/healthkit/autoSyncLocal';
 import { importLocalCommonObservations } from '../src/healthkit/commonObservations/importLocal';
 import { createAppleSelectionOption } from '../src/providers/selection/options';
 import * as classificationWorkflow from '../src/medicalAppointments/classificationWorkflow';
+import { record } from '../src/medicalAppointments/testSupport/incrementalCalendarFixtures';
 import { medicalAppointmentCopy } from '../src/medicalAppointments/copy.ko';
 import type {
   CalendarEvent,
@@ -45,7 +46,7 @@ jest.mock(
 
 const appleOption = createAppleSelectionOption('available');
 
-test('keeps imported records in Records and reclassifies a saved appointment only after an explicit action', async () => {
+test('keeps imported records in Records and only reclassifies and reconfirms an edited Calendar occurrence', async () => {
   const opened = openSqliteTestDatabase(':memory:');
 
   try {
@@ -55,20 +56,21 @@ test('keeps imported records in Records and reclassifies a saved appointment onl
       clock: () => '2035-06-01T00:00:00.000Z',
       createId: () => 'appointment-1',
     });
-    const event: CalendarEvent = {
-      calendarEventIdentifier: 'synthetic-calendar-event',
-      effectiveAt: '2035-06-02T00:00:00.000Z',
-      endsAt: '2035-06-02T01:00:00.000Z',
-      calendarEventSnapshot: {
-        title: 'Synthetic appointment candidate',
-        timeZoneIdentifier: 'Asia/Seoul',
-        isAllDay: false,
-        occurrenceDate: null,
-        isDetached: false,
-        recurrenceRules: [],
-      },
-    };
+    const event = record(1);
+    const { classificationWitness } = event;
     await appointments.confirmCalendarEvent(event);
+    await appointments.classificationCache!.commit(
+      0,
+      [
+        {
+          ...classificationWitness,
+          classification: 'medical',
+          uncertainty: 'low',
+        },
+      ],
+      undefined,
+      new AbortController().signal,
+    );
     const originalAppointment = (await appointments.list())[0];
     if (!originalAppointment)
       throw new Error('Expected the saved appointment.');
@@ -81,14 +83,16 @@ test('keeps imported records in Records and reclassifies a saved appointment onl
       appointments,
       'reconfirmCalendarEvent',
     );
+    let currentEvent: CalendarEvent = event;
+    const listeners = new Set<() => void>();
     const listUpcomingEvents = jest.fn(async () => ({
       access: 'fullAccess' as const,
-      events: [event],
+      events: [currentEvent],
     }));
     const requestEventAccess = jest.fn(async () => 'fullAccess' as const);
     const requestAccessAndListUpcomingEvents = jest.fn(async () => ({
       access: 'fullAccess' as const,
-      events: [event],
+      events: [currentEvent],
     }));
     const calendar = {
       requestEventAccess,
@@ -96,18 +100,21 @@ test('keeps imported records in Records and reclassifies a saved appointment onl
       requestAccessAndListUpcomingEvents,
       findEvent: jest.fn(async () => ({
         access: 'fullAccess' as const,
-        event,
+        event: currentEvent,
       })),
-      addEventStoreListener: jest.fn(() => ({ remove: jest.fn() })),
+      addEventStoreListener: jest.fn((listener: () => void) => {
+        listeners.add(listener);
+        return { remove: () => listeners.delete(listener) };
+      }),
     } as unknown as EventKitCalendarBridge;
     const classify = jest
       .spyOn(classificationWorkflow, 'classifyCalendarEvents')
-      .mockResolvedValue({
+      .mockImplementation(async input => ({
         status: 'complete',
         candidates: [
           {
             candidateId: 'calendar-candidate-1',
-            event,
+            event: input.events[0]!,
             status: 'classified',
             classification: 'medical',
             reason: 'Synthetic classification result.',
@@ -116,7 +123,7 @@ test('keeps imported records in Records and reclassifies a saved appointment onl
         ],
         completedBatches: 1,
         totalBatches: 1,
-      });
+      }));
     const view = await render(
       <App
         calendarBridge={calendar}
@@ -188,19 +195,46 @@ test('keeps imported records in Records and reclassifies a saved appointment onl
     expect(classify).not.toHaveBeenCalled();
 
     await fireEvent.press(view.getByTestId('medical-appointment-import'));
-    await waitFor(() => expect(classify).toHaveBeenCalledTimes(1));
+    expect(
+      await view.findByText(/기존 분류 1건 재사용 · 새로 분류 0건/),
+    ).toBeTruthy();
+    expect(await view.findByText(/그대로 유지했어요/)).toBeTruthy();
+    expect(classify).not.toHaveBeenCalled();
+    expect(reconfirmCalendarEvent).not.toHaveBeenCalled();
+
+    const edited: CalendarEvent = {
+      ...event,
+      effectiveAt: '2035-06-02T09:15:00.000Z',
+      classificationWitness: {
+        ...classificationWitness,
+        revision: record(1, 2).classificationWitness.revision,
+      },
+    };
+    currentEvent = edited;
+    const reads = listUpcomingEvents.mock.calls.length;
+    await act(async () => {
+      for (const listener of listeners) listener();
+    });
+    await waitFor(() =>
+      expect(listUpcomingEvents.mock.calls.length).toBeGreaterThan(reads),
+    );
+    await fireEvent.press(view.getByRole('button', { name: '다시 분류하기' }));
+    await fireEvent.press(view.getByTestId('medical-appointment-import'));
     await waitFor(() =>
       expect(reconfirmCalendarEvent).toHaveBeenCalledWith(
         originalAppointment.id,
-        event,
+        edited,
       ),
     );
+    expect(reconfirmCalendarEvent).toHaveBeenCalledTimes(1);
+    expect(classify).toHaveBeenCalledTimes(1);
+    expect(classify.mock.calls[0]?.[0].events).toEqual([edited]);
 
     const finalAppointments = await appointments.list();
     expect(finalAppointments).toHaveLength(1);
     expect(finalAppointments[0]?.id).toBe(originalAppointment.id);
     expect(confirmCalendarEvent).not.toHaveBeenCalled();
-    expect(listUpcomingEvents).toHaveBeenCalledTimes(1);
+    expect(finalAppointments[0]?.effectiveAt).toBe(edited.effectiveAt);
     expect(requestEventAccess).not.toHaveBeenCalled();
     expect(requestAccessAndListUpcomingEvents).not.toHaveBeenCalled();
   } finally {

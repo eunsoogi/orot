@@ -12,38 +12,52 @@ extension NavigationGlassSurfaceView {
     }
 
     /// Pins only an admitted window-owned right Back, keeping the old insets for local and left renderers.
-    func contextualRailTop(hostHeight: CGFloat, mountedToWindow: Bool, observe: Bool = false) -> CGFloat {
+    func contextualRailTop(hostHeight: CGFloat, mountedToWindow: Bool) -> CGFloat {
         let hasBack = renderedActions.contains { $0.id == "back" }
         let hasRootTabs = renderedActions.contains(where: \.rootTab)
         let end = hostHeight - railBottomInset
-        var resolution: String?
-        defer {
-            if observe {
-                observeContextualBackResolution(resolution)
-            }
-        }
-        if layoutMode == "right", !isPageDock, hasBack {
-            resolution = "local-host"
-        }
-        if resolution != nil, mountedToWindow {
-            if !railBackTopInset.isFinite || railBackTopInset < 0 {
-                resolution = "missing-top"
-            } else {
-                // Non-root controls share a flexible spacer after Back, preserving their bottom anchor.
-                let required = hasRootTabs
-                    ? rootBar.railHeight + NavigationRootGlassBar.contextualBackGroupHeight
-                    : CGFloat(renderedActions.count) * (48 + innerActions.spacing)
-                if railBackTopInset + required <= end {
-                    resolution = "pinned"
-                    return railBackTopInset
-                }
-                resolution = "insufficient-fit"
-            }
+        if layoutMode == "right", !isPageDock, hasBack, mountedToWindow,
+           rightBackFit(hostHeight: hostHeight) == "pinned"
+        {
+            return railBackTopInset
         }
         // Without the right-window contract, keep Back above existing bottom-anchored root tabs.
         return layoutMode != "bottom" && hasRootTabs && hasBack
             ? end - rootBar.railHeight - NavigationRootGlassBar.contextualBackGroupHeight
             : railTopInset
+    }
+
+    private func rightBackFit(hostHeight: CGFloat) -> String {
+        guard railBackTopInset.isFinite, railBackTopInset >= 0 else { return "missing-top" }
+        // Non-root controls share a flexible spacer after Back, preserving their bottom anchor.
+        let required = renderedActions.contains(where: \.rootTab)
+            ? rootBar.railHeight + NavigationRootGlassBar.contextualBackGroupHeight
+            : CGFloat(renderedActions.count) * (48 + innerActions.spacing)
+        return railBackTopInset + required <= hostHeight - railBottomInset ? "pinned" : "insufficient-fit"
+    }
+
+    /// Observe only a committed, visible Back target. A right-placement calculation alone
+    /// cannot distinguish a real bottom host from a native portal or frame failure.
+    func visibleBackPlacement(from parent: UIView) -> String? {
+        guard !isPageDock, let window, NavigationSurfaceGeometry.isVisible(self),
+              renderedActions.contains(where: { $0.id == "back" }),
+              innerActions.superview === parent, let button = contextualButtons["back"],
+              button.window === window, button.isDescendant(of: innerActions),
+              NavigationSurfaceGeometry.isVisible(button), !button.bounds.isEmpty
+        else { return nil }
+        let frame = button.convert(button.bounds, to: window)
+        guard window.bounds.intersects(frame) else { return nil }
+        if layoutMode == "bottom" {
+            return "bottom-layout"
+        }
+        guard layoutMode == "right" else { return nil }
+        guard parent is NavigationWindowRailHost else { return "local-host" }
+        let fit = rightBackFit(hostHeight: parent.bounds.height)
+        if fit == "pinned" {
+            let intended = parent.convert(CGPoint(x: 0, y: railBackTopInset), to: window).y
+            guard abs(frame.minY - intended) <= 1 else { return "pinned-frame-mismatch" }
+        }
+        return fit
     }
 
     /// Emit only distinct fixed categories on the normal explicit local diagnostic launch.
@@ -79,7 +93,12 @@ extension NavigationGlassSurfaceView {
     func publishNavigationGeometry(from parent: UIView) {
         let controls: UIView = rootBar.isHidden ? innerActions : rootBar
         guard !isPageDock, controls.superview === parent else { return }
-        NavigationSurfaceGeometry.publish(controls, side: layoutMode, actions: renderedActions)
+        NavigationSurfaceGeometry.publish(controls, side: layoutMode, actions: renderedActions) {
+            // Read after the actual parent laid out the controls; report no geometry or identity.
+            if ProcessInfo.processInfo.arguments.contains("-OROT_PROVIDER_DIAGNOSTICS") {
+                observeContextualBackResolution(visibleBackPlacement(from: parent))
+            }
+        }
     }
 
     /// Finish on the actual parent so portal-mounted controls publish their newly rendered frame.
@@ -105,21 +124,27 @@ final class NavigationGlassViewManager: RCTViewManager {
 
 /// Sends only physical control geometry; a sensor ignores notifications from other windows.
 enum NavigationSurfaceGeometry {
-    static func publish(_ view: UIView, side: String, actions: [NavigationActionDescriptor]) {
+    static func isVisible(_ view: UIView) -> Bool {
+        var ancestor: UIView? = view
+        while let current = ancestor {
+            guard !current.isHidden, current.alpha > 0.01 else { return false }
+            ancestor = current.superview
+        }
+        return true
+    }
+
+    static func publish(_ view: UIView, side: String, actions: [NavigationActionDescriptor], committed: () -> Void) {
         #if OROT_TESTS
             // Record requests separately so a missing callback differs from a guarded-out publication.
             TestLifecycleObservation.record("navigation-frame-publication-request", fields: ["side": side, "attached": view.window != nil, "hidden": view.isHidden])
         #endif
         // Primary-only bottom actions do not replace the side navigation's measured frame.
         guard actions.contains(where: { $0.rootTab || $0.id == "back" || $0.id == "home" }) else { return }
-        var ancestor: UIView? = view
-        while let current = ancestor {
-            guard !current.isHidden, current.alpha > 0.01 else { return }
-            ancestor = current.superview
-        }
+        guard isVisible(view) else { return }
         view.layoutIfNeeded()
         guard !view.isHidden, let window = view.window, !view.bounds.isEmpty else { return }
         let frame = view.convert(view.bounds, to: window)
+        committed()
         #if OROT_TESTS
             TestLifecycleObservation.record("navigation-frame-published", fields: ["side": side, "frame": ["x": Double(frame.minX), "y": Double(frame.minY), "width": Double(frame.width), "height": Double(frame.height)]])
         #endif

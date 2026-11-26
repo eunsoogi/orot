@@ -21,8 +21,11 @@ export type WorkflowOperationRecord =
  * identity and source revisions. Pending work is never taken over: its remote outcome is unknown.
  * Authorization decisions are deliberately absent and must not be stored with these records.
  */
+export type WorkflowSteeringAppliedReceipt = Readonly<{ id: string; readAt: string }>;
+
 export interface WorkflowSteeringStore {
-  subscribe?(listener: () => Promise<void>): () => void;
+  /** A receipt is sent only after a verified live application is committed in this store. */
+  subscribe?(listener: (receipt?: WorkflowSteeringAppliedReceipt) => Promise<void>): () => void;
   enqueue(id: string, text: string): Promise<boolean>;
   /** In the owning queue, atomically detect pending input or close admission for this answer. */
   pendingAtFinalBoundary?(): Promise<boolean>;

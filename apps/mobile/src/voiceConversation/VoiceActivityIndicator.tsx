@@ -13,7 +13,11 @@ import type { VoicePhase } from './voiceTurn';
 const levelExpiryMs = 240;
 const minimumUpdateMs = 65;
 const audibleFloor = 0.025;
-const liveBarCount = 9;
+// Match the recording waveform's fine bars with more recent speech detail
+// without changing native sampling or how quickly silence clears the display.
+const liveBarCount = 19;
+const liveWaveformWidth = 111;
+const liveWaveformHeight = 48;
 const silence = Array<number>(liveBarCount).fill(0);
 
 function useReducedMotion() {
@@ -128,7 +132,7 @@ export function VoiceActivityIndicator({
             <AudioLevelWaveform
               active
               levels={levels}
-              maxBarHeight={36}
+              maxBarHeight={liveWaveformHeight}
               style={styles.waveform}
               testID="voice-activity-waveform"
             />
@@ -145,10 +149,10 @@ export function VoiceActivityIndicator({
   );
 }
 const styles = StyleSheet.create({
-  waveform: { width: 59, height: 36 },
+  waveform: { width: liveWaveformWidth, height: liveWaveformHeight },
   frame: {
-    minWidth: 59,
-    minHeight: 36,
+    minWidth: liveWaveformWidth,
+    minHeight: liveWaveformHeight,
     alignItems: 'center',
     justifyContent: 'center',
   },

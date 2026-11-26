@@ -1,0 +1,111 @@
+import { createContext, useContext, useState } from 'react';
+import { Pressable, StyleSheet, Switch, TextInput, View } from 'react-native';
+import { AppText } from '../layout/AppText';
+import { appColors } from '../layout/appColors';
+import type { ComposedControl } from './conversationA2UIComposedControlState';
+
+export const ConversationA2UIComposedOwner = createContext<
+  { surface: string; current: () => boolean } | undefined
+>(undefined);
+
+/** The model only supplies checked display metadata. Native interactions may
+ * update this mounted leaf, never a shared store, model request, or tool. */
+export function ConversationA2UIComposedControl({
+  control,
+}: {
+  control: ComposedControl;
+}) {
+  const owner = useContext(ConversationA2UIComposedOwner);
+  return owner?.current() ? (
+    <MountedControl
+      key={owner.surface}
+      control={control}
+      current={owner.current}
+    />
+  ) : null;
+}
+
+function MountedControl({
+  control,
+  current,
+}: {
+  control: ComposedControl;
+  current: () => boolean;
+}) {
+  const [checked, setChecked] = useState(false);
+  const [text, setText] = useState('');
+  const [selected, setSelected] = useState<readonly string[]>([]);
+  return (
+    <View style={styles.control}>
+      <AppText allowFontScaling>{control.label}</AppText>
+      {control.kind === 'check' ? (
+        <Switch
+          accessibilityLabel={control.label}
+          value={checked}
+          onValueChange={next => {
+            if (current() && typeof next === 'boolean') setChecked(next);
+          }}
+        />
+      ) : control.kind === 'text' ? (
+        <TextInput
+          accessibilityLabel={control.label}
+          autoComplete="off"
+          autoCorrect={false}
+          maxLength={256}
+          spellCheck={false}
+          textContentType="none"
+          value={text}
+          style={styles.field}
+          placeholder={control.placeholder}
+          onChangeText={next => {
+            if (current() && typeof next === 'string')
+              setText(next.slice(0, 256));
+          }}
+        />
+      ) : (
+        <View
+          accessibilityRole={control.multiple ? undefined : 'radiogroup'}
+          accessibilityLabel={control.label}
+        >
+          {control.options.map(option => {
+            const chosen = selected.includes(option.value);
+            return (
+              <Pressable
+                key={option.value}
+                accessibilityLabel={option.label}
+                accessibilityRole={control.multiple ? 'checkbox' : 'radio'}
+                accessibilityState={{ checked: chosen }}
+                style={chosen ? [styles.option, styles.chosen] : styles.option}
+                onPress={() => {
+                  if (!current()) return;
+                  setSelected(previous => {
+                    if (!current()) return previous;
+                    if (previous.includes(option.value))
+                      return previous.filter(value => value !== option.value);
+                    return control.multiple
+                      ? [...previous, option.value]
+                      : [option.value];
+                  });
+                }}
+              >
+                <AppText allowFontScaling>{option.label}</AppText>
+              </Pressable>
+            );
+          })}
+        </View>
+      )}
+    </View>
+  );
+}
+
+const styles = StyleSheet.create({
+  control: { gap: 6 },
+  field: {
+    minHeight: 44,
+    paddingHorizontal: 12,
+    borderRadius: 8,
+    backgroundColor: appColors.primarySoft,
+  },
+  option: { minHeight: 44, paddingHorizontal: 12, justifyContent: 'center' },
+  chosen: { backgroundColor: appColors.primarySoft, borderRadius: 8 },
+});

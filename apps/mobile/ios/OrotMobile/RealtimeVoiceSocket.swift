@@ -13,6 +13,7 @@ final class RealtimeVoiceSocket: RealtimeSocketPort {
     var responsesTransportCurrent: (() -> Bool)?
     var received: (([String: Any]) -> Void)?
     var failed: (() -> Void)?
+    var observeContinuationSend: ((LiveManagedToolLatency, UInt64) -> Void)?
 
     init(endpoint: RealtimeVoiceSocketEndpoint = RealtimeVoiceSocketEndpoint()) {
         self.endpoint = endpoint
@@ -90,7 +91,9 @@ final class RealtimeVoiceSocket: RealtimeSocketPort {
         let submit = { [self] in
             message.permit?.issued = true
             sending = true
-            task.send(.string(message.text)) { [weak self] error in
+            let (permit, stamp) = message.continuationTiming(observed: observeContinuationSend != nil)
+            task.send(.string(message.text)) { [weak self, weak permit] error in
+                let end = stamp.map { _ in DispatchTime.now() }
                 DispatchQueue.main.async {
                     guard let self, self.epoch == current, self.socket === task else { return }
                     self.sending = false
@@ -98,7 +101,11 @@ final class RealtimeVoiceSocket: RealtimeSocketPort {
                         self.transportFailed()
                         return
                     }
+                    let admitted = permit?.continuationObservationRetired == false
                     self.bytes -= self.queue.removeFirst().text.utf8.count
+                    if admitted, self.closing == nil, self.captionTerminal.prepared == nil {
+                        LiveManagedToolLatency.finish(.continuationSendCallback, since: stamp, observe: self.observeContinuationSend, at: end)
+                    }
                     if self.closing != nil {
                         self.sendClose()
                     } else {
@@ -134,13 +141,7 @@ final class RealtimeVoiceSocket: RealtimeSocketPort {
                 guard let self else { return }
                 guard self.epoch == current, self.socket === task else { return }
                 guard case let .success(message) = result else { self.transportFailed(); return }
-                let data: Data
-                switch message {
-                case let .data(value): data = value
-                case let .string(value): data = Data(value.utf8)
-                @unknown default: self.transportFailed(); return
-                }
-                guard let event = (try? JSONSerialization.jsonObject(with: data)) as? [String: Any] else { self.transportFailed(); return }
+                guard let event = Self.decodeSocketEvent(message) else { self.transportFailed(); return }
                 if let closing = self.closing {
                     if let confirmed = Self.captionTerminalReceipt(event, closing: closing) {
                         self.close(confirmed: confirmed)
@@ -158,7 +159,7 @@ final class RealtimeVoiceSocket: RealtimeSocketPort {
     /// Remove protected frames before later events can resume this queue. A partial handoff is not replayable.
     func discardManagedToolFrames() -> Bool {
         let retained = sending ? 1 : 0
-        queue.forEach { $0.permit?.ticket?.retire() }
+        queue.forEach { $0.permit?.retireQueueObservation() }
         let uncertain = queue.dropFirst(retained).contains { $0.permit?.issued == true }
         queue = Array(queue.prefix(retained)) + queue.dropFirst(retained).filter { $0.permit == nil }
         bytes = queue.reduce(0) { $0 + $1.text.utf8.count }
@@ -216,8 +217,7 @@ final class RealtimeVoiceSocket: RealtimeSocketPort {
         guard !sending, let task = socket, let closing, !closing.sent else { return }
         self.closing?.sent = true
         let current = epoch
-        // The command is an app-generated UUID; neither server input nor user data enters JSON.
-        task.send(.string("{\"type\":\"session.close\",\"event_id\":\"\(closing.command)\"}")) { [weak self] error in
+        task.send(Self.captionCloseMessage(command: closing.command)) { [weak self] error in
             DispatchQueue.main.async {
                 guard let self, self.epoch == current, self.socket === task, self.closing != nil else { return }
                 if error != nil {

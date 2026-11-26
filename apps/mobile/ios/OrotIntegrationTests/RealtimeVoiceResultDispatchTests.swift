@@ -130,3 +130,74 @@ extension RealtimeVoiceLifecycleTests {
         XCTAssertFalse(ticket.submit { XCTFail("A retired ticket must not submit") })
     }
 }
+
+#if OROT_TESTS && targetEnvironment(simulator)
+    extension RealtimeVoiceLifecycleTests {
+        func testTicketedContinuationTimingRequiresOwnedTransportCompletion() async {
+            for disposition in ["completed", "retired", "replaced", "error"] {
+                let task = HeldContinuationSocketTask(), replacement = HeldContinuationSocketTask()
+                let endpoint = RealtimeVoiceSocketEndpoint(networklessTask: {
+                    task.resumed ? replacement : task
+                })
+                let socket = RealtimeVoiceSocket(endpoint: endpoint)
+                defer { socket.close() }
+                var samples: [LiveManagedToolLatency] = [], terminal = [Bool]()
+                socket.observeContinuationSend = { stage, elapsed in
+                    samples.append(stage)
+                    XCTAssertLessThanOrEqual(elapsed, 300_000)
+                }
+                socket.open(model: "gpt-live-1.1", key: "synthetic")
+                XCTAssertTrue(task.resumed)
+                let authority = LiveNativeResultDispatchAuthority()
+                let ticket = authority.begin(call: "synthetic", challenge: "synthetic")
+                XCTAssertTrue(ticket.claim())
+                XCTAssertTrue(ticket.bind { terminal.append($0) })
+                let frames: [[String: Any]] = [
+                    ["type": "response.item.create", "event_id": UUID().uuidString,
+                     "item": ["type": "function_call_output", "call_id": "synthetic", "output": "fixture"]],
+                    ["type": "response.create", "event_id": UUID().uuidString],
+                ]
+                XCTAssertTrue(socket.sendTicketedToolFrames(frames, current: { true }, ticket: ticket))
+                XCTAssertEqual(task.completions.count, 1)
+                task.completions.removeFirst()(nil)
+                await drainContinuationCallbacks()
+                XCTAssertEqual(terminal, [true])
+                XCTAssertEqual(task.completions.count, 1)
+                XCTAssertTrue(samples.isEmpty)
+                if disposition == "retired" {
+                    _ = socket.discardManagedToolFrames()
+                } else if disposition == "replaced" {
+                    socket.close()
+                    socket.open(model: "gpt-live-1.1", key: "synthetic")
+                    XCTAssertTrue(replacement.resumed)
+                }
+                task.completions.removeFirst()(disposition == "error" ? URLError(.networkConnectionLost) : nil)
+                await drainContinuationCallbacks()
+                XCTAssertEqual(samples, disposition == "completed" ? [.continuationSendCallback] : [])
+                XCTAssertTrue(replacement.completions.isEmpty)
+            }
+        }
+
+        private func drainContinuationCallbacks() async {
+            await withCheckedContinuation { (continuation: CheckedContinuation<Void, Never>) in
+                DispatchQueue.main.async { continuation.resume() }
+            }
+        }
+    }
+
+    private final class HeldContinuationSocketTask: RealtimeVoiceSocketTask {
+        var resumed = false
+        var completions: [@Sendable (Error?) -> Void] = []
+
+        func resume() {
+            resumed = true
+        }
+
+        func send(_: URLSessionWebSocketTask.Message, completionHandler: @escaping @Sendable (Error?) -> Void) {
+            completions.append(completionHandler)
+        }
+
+        func receive(completionHandler _: @escaping @Sendable (Result<URLSessionWebSocketTask.Message, Error>) -> Void) {}
+        func cancel(with _: URLSessionWebSocketTask.CloseCode, reason _: Data?) {}
+    }
+#endif

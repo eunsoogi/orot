@@ -31,6 +31,62 @@ final class NavigationViewportFrameIntegrationTests: OrotFailFastTestCase {
         XCTAssertNotEqual(windowBounds, viewportBounds)
     }
 
+    /// A guide-only open before sensor attachment must not wait for another keyboard announcement.
+    @MainActor
+    func testLateKeyboardSensorPublishesOnlyItsOwnKeyWindowDockedGuide() throws {
+        let scene = try XCTUnwrap(UIApplication.shared.connectedScenes.compactMap { $0 as? UIWindowScene }
+            .first { $0.activationState == .foregroundActive })
+        let previous = scene.windows.first(where: \.isKeyWindow)
+        let window = UIWindow(windowScene: scene)
+        window.frame = CGRect(x: 0, y: 0, width: 951, height: 669)
+        let controller = UIViewController()
+        window.rootViewController = controller
+        window.makeKeyAndVisible()
+        controller.view.frame = window.bounds
+        defer {
+            window.isHidden = true
+            previous?.makeKey()
+        }
+        let viewport = UIView(frame: CGRect(x: 24, y: 10, width: 850, height: 420))
+        controller.view.addSubview(viewport)
+        let docked = CGRect(x: 95, y: 445, width: 850, height: 224)
+        var guide = docked
+        let keyboard = NavigationDockedKeyboard { root, owner in
+            XCTAssertTrue(root === controller.view && owner === window)
+            return guide
+        }
+        let sensor = NavigationGeometryView(frame: viewport.bounds, keyboard: keyboard)
+        var snapshot: [AnyHashable: Any]?
+        sensor.onGeometryChange = { snapshot = $0 }
+        viewport.addSubview(sensor)
+        let frame = try XCTUnwrap(snapshot?["dockedKeyboardFrame"] as? [String: Double])
+        XCTAssertEqual(frame["x"], Double(docked.minX))
+        XCTAssertEqual(frame["y"], Double(docked.minY))
+        XCTAssertEqual(frame["height"], Double(docked.height))
+        let unchangedViewport = snapshot?["viewportBounds"] as? [String: Double]
+        XCTAssertEqual(unchangedViewport?["height"], 420)
+
+        guide = CGRect(x: 100, y: 220, width: 400, height: 200)
+        sensor.setNeedsLayout()
+        sensor.layoutIfNeeded()
+        XCTAssertNil(snapshot?["dockedKeyboardFrame"], "Undocked overlap never clips the composer")
+        let bottom = controller.view.safeAreaInsets.bottom
+        guide = CGRect(x: 0, y: window.bounds.maxY - bottom, width: 951, height: bottom)
+        sensor.setNeedsLayout()
+        sensor.layoutIfNeeded()
+        XCTAssertNil(snapshot?["dockedKeyboardFrame"], "Home safe area is not the keyboard")
+
+        guide = docked
+        let center = NotificationCenter.default
+        center.post(name: UIResponder.keyboardWillHideNotification, object: scene.screen,
+                    userInfo: [UIResponder.keyboardIsLocalUserInfoKey: true])
+        XCTAssertNil(snapshot?["dockedKeyboardFrame"], "A known dismissal beats a stale guide")
+        let unrelated = UIWindow(windowScene: scene)
+        XCTAssertNil(keyboard.frame(in: unrelated), "A foreign window cannot borrow guide evidence")
+        sensor.removeFromSuperview()
+        XCTAssertNil(keyboard.frame(in: window), "A detached publisher cannot retain overlap")
+    }
+
     @MainActor
     func testBottomActionMetricsGrowWithAccessibilityText() throws {
         let action = try XCTUnwrap(NavigationActionDescriptor([

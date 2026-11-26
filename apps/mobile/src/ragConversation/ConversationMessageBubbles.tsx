@@ -23,12 +23,14 @@ export function ConversationMessageBubbles({
   message,
   children,
   beforeAnswer,
+  photo,
   openingCopyMenu,
   presentation,
 }: {
   readonly message: DisplayMessage;
   readonly children: ReactNode;
   readonly beforeAnswer?: ReactNode;
+  readonly photo?: ReactNode;
   readonly openingCopyMenu?: ConversationBubbleCopy;
   readonly presentation: ConversationBubblePresentation;
 }) {
@@ -38,9 +40,12 @@ export function ConversationMessageBubbles({
     message.streaming && !message.content && !message.restoredHistory
       ? message.layoutSkeleton
       : undefined;
-  if (!opening && !beforeAnswer && !layout) return showBody ? children : null;
+  if (!opening && !beforeAnswer && !layout && !photo)
+    return showBody ? children : null;
   return (
-    <View style={styles.assistantBubbleSequence}>
+    <View
+      style={photo ? styles.userPhotoSequence : styles.assistantBubbleSequence}
+    >
       {opening ? (
         <ConversationBubbleEntrance
           entranceKey={conversationBubbleKey('opening', message.id)}
@@ -64,6 +69,7 @@ export function ConversationMessageBubbles({
       ) : null}
       {beforeAnswer}
       {layout ? <ConversationA2UILiveSkeleton layout={layout} /> : null}
+      {photo}
       {showBody ? children : null}
     </View>
   );

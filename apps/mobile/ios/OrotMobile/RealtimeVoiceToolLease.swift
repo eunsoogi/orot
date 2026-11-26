@@ -98,6 +98,13 @@ final class LiveQueuedToolPermit {
     let ticket: LiveNativeResultDispatchAuthority.Ticket?
     private var retired = false
     var issued = false
+    private(set) var continuationObservationRetired = false
+
+    /// A submitted write cannot be recalled; its late callback no longer samples retired work.
+    func retireQueueObservation() {
+        continuationObservationRetired = true
+        ticket?.retire()
+    }
 
     init(current: @escaping () -> Bool, ticket: LiveNativeResultDispatchAuthority.Ticket? = nil) {
         self.current = current
@@ -134,7 +141,7 @@ final class LiveQueuedToolPermit {
             }
             guard let data = try? JSONSerialization.data(withJSONObject: frame),
                   let text = String(data: data, encoding: .utf8) else { return nil }
-            writes.append(RealtimeSocketWrite(text: text, isInput: false, permit: self))
+            writes.append(RealtimeSocketWrite(text: text, isInput: false, permit: self, isFinalContinuation: index == frames.count - 1))
         }
         return writes
     }

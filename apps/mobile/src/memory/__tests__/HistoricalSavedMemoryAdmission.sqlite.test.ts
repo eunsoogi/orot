@@ -1,3 +1,4 @@
+import { createConversationArtifactStorage } from '../../storage/conversationArtifactStorage';
 import { createAgentMemory, listSavedMemories } from '@orot/agent-memory';
 import type { SqlDatabase } from '@orot/storage';
 import { openLocalAgentMemoryDatabase } from '../../storage/secureDatabase';
@@ -97,6 +98,84 @@ test.each([
     } finally {
       release();
       await Promise.allSettled([writer, read]);
+      f.close();
+    }
+  },
+);
+
+test.each([
+  'selection committed',
+  'source revoked',
+  'locked',
+  'selection lost',
+  'owner replaced',
+] as const)(
+  'an in-flight confirmation only reopens the same owned exact Visit memory: %s',
+  async scenario => {
+    const f = await historicalMemoryFixture(true);
+    let release = () => {};
+    try {
+      await f.storage.listUnavailableMetadata();
+      const artifacts = createConversationArtifactStorage(f.guarded);
+      const now = '2026-11-26T00:00:00.000Z';
+      const signal = new AbortController().signal;
+      const select = (modelId: string) =>
+        artifacts.continuousSession(
+          { providerId: 'synthetic', modelId },
+          modelId,
+          now,
+          signal,
+        );
+      expect((await select('original')).id).toBe('original');
+      let entered = () => {};
+      const confirmed = new Promise<void>(resolve => (entered = resolve));
+      const held = new Promise<boolean>(
+        resolve => (release = () => resolve(true)),
+      );
+      checkProtection.mockResolvedValueOnce(true).mockImplementationOnce(() => {
+        entered();
+        return held;
+      });
+      let selected = true;
+      const read = readHistoricalSavedMemory(f.id, () => selected);
+      try {
+        await confirmed;
+        expect((await select('replacement')).id).toBe('replacement');
+        expect(await artifacts.activeSessionVersion('original')).toBe(0);
+        if (scenario === 'source revoked')
+          await f.guarded.execute(
+            'INSERT INTO source_deletion_tombstones(source_id) VALUES (?)',
+            [f.sourceId],
+          );
+        if (scenario === 'locked')
+          for (const notify of nativeListeners)
+            notify({ kind: 'protectedData', available: false });
+        if (scenario === 'selection lost') selected = false;
+        if (scenario === 'owner replaced')
+          jest
+            .mocked(openLocalAgentMemoryDatabase)
+            .mockResolvedValue(guardedNativeDatabase(f.db));
+        release();
+        await expect(read).resolves.toEqual(
+          scenario === 'selection committed'
+            ? {
+                id: f.id,
+                createdAt: f.retained.createdAt,
+                text: f.retained.text,
+              }
+            : null,
+        );
+      } finally {
+        release();
+        await Promise.allSettled([read]);
+      }
+      expect(createAgentMemory).not.toHaveBeenCalled();
+      expect(await listSavedMemories(f.storage)).toEqual([]);
+      expect(
+        (await f.db.execute('SELECT record_json FROM agent_memory_records'))
+          .rows,
+      ).toEqual([{ record_json: f.raw }]);
+    } finally {
       f.close();
     }
   },

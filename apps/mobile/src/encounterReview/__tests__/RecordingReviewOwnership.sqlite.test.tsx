@@ -1,3 +1,5 @@
+import { providerSuccess } from '@orot/model-runtime';
+import { reviewCopy } from '../strings';
 import { act, fireEvent, render, screen } from '@testing-library/react-native';
 import type { ReactNode } from 'react';
 import { RecordingReviewRoute } from '../../routes/RecordingReviewRoute';
@@ -138,6 +140,74 @@ test('a current recording route gets reviewable proposals from the selected fake
     await fireEvent.press(screen.getByTestId('encounter-save'));
     expect(await fixture.rows()).toHaveLength(1);
     expect(calls()).toBe(2);
+  } finally {
+    await view.unmount();
+  }
+});
+
+test('foreground does not replay a held page and the same recording can restart by explicit tap', async () => {
+  const { calls, service, listeners } = await harness(9, 'local');
+  const resolver = jest.mocked(resolveSelectedAiProvider);
+  const resolve = resolver.getMockImplementation()!;
+  let count = 0;
+  let release!: () => void;
+  let enter!: () => void;
+  const held = new Promise<void>(done => {
+    enter = done;
+  });
+  const empty = () =>
+    providerSuccess({
+      text: '{"type":"result","value":{"candidates":[]},"citations":[]}',
+      toolCalls: [],
+      finishReason: 'complete' as const,
+    });
+  resolver.mockImplementationOnce(async (...args) => {
+    const selected = await resolve(...args);
+    if (selected.status !== 'ready') return selected;
+    return {
+      ...selected,
+      provider: {
+        ...selected.provider,
+        async generate() {
+          if (++count === 2) {
+            enter();
+            await new Promise<void>(done => {
+              release = done;
+            });
+          }
+          return empty();
+        },
+      },
+    };
+  });
+  const view = await render(<RecordingReviewRoute reviewService={service} />);
+  try {
+    await screen.findByTestId('encounter-start');
+    await fireEvent.press(screen.getByTestId('encounter-start'));
+    await held;
+    expect(
+      await screen.findByTestId('encounter-batch-progress'),
+    ).toHaveTextContent('전사 묶음 1개를 처리했어요.');
+
+    expect(screen.getByTestId('encounter-status')).toHaveTextContent(
+      reviewCopy.running,
+    );
+    await act(async () => {
+      listeners.forEach(listener => listener({ kind: 'phase' }));
+      release();
+      listeners.forEach(listener => listener({ kind: 'phase' }));
+    });
+    await screen.findByText(reviewCopy.unavailable);
+    expect(screen.queryByTestId('encounter-batch-progress')).toBeNull();
+    expect(count).toBe(2);
+    expect(calls()).toBe(0);
+    expect(screen.queryByTestId('encounter-save')).toBeNull();
+    expect(await fixture.rows()).toEqual([]);
+    await fireEvent.press(screen.getByTestId('encounter-start'));
+    await screen.findByTestId('encounter-save');
+    expect(calls()).toBe(2);
+    expect(screen.getByText('Synthetic ninth line only.')).toBeTruthy();
+    expect(await fixture.rows()).toEqual([]);
   } finally {
     await view.unmount();
   }

@@ -112,3 +112,41 @@ test('applied receipt cannot be downgraded and deletion removes its delivery ide
     f.connection.close();
   }
 });
+
+test('a rolled-back live Applied transition never publishes Read', async () => {
+  const f = await conversationWorkflowContinuationFixture();
+  const raw = f.connection.database;
+  let reject = false;
+  try {
+    const journal = await createConversationOperationJournal(
+      {
+        ...raw,
+        transaction: operation =>
+          raw.transaction(async tx => {
+            await operation(tx);
+            if (reject) throw new Error('Synthetic receipt rollback');
+          }),
+      },
+      owner,
+      async () => true,
+    );
+    const steering = journal.steering!;
+    await journal.loadOrCreate(identity);
+    await journal.begin({ ...identity, revision: 0 });
+    await steering.enqueue('live', 'Synthetic update');
+    await steering.beginLive!(identity.operationId, 'live');
+    const publish = jest.fn(async () => {});
+    steering.subscribe!(publish);
+    reject = true;
+    await expect(
+      steering.settleLive!(identity.operationId, 'live', 'applied'),
+    ).rejects.toThrow('Synthetic receipt rollback');
+    reject = false;
+    expect(publish).not.toHaveBeenCalled();
+    const [row] = await steering.list();
+    expect(row?.status).toBe('delivery_pending');
+    expect(row).not.toHaveProperty('readAt');
+  } finally {
+    f.connection.close();
+  }
+});

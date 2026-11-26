@@ -5,6 +5,7 @@ import { createRecordRepository } from './repository';
 import type { RecordRepository } from './repository';
 import type { RandomByteSource, SecureKeyStore } from './key';
 import type { SqlDatabase } from './sql';
+import { ensureSourceLinkedCheckpointCleanupIndexes } from './sourceLinkedCheckpoints';
 
 export interface OpenEncryptedStorageOptions {
   name: string;
@@ -29,6 +30,7 @@ export async function openEncryptedStorage(
   try {
     await database.execute('SELECT count(*) AS schema_count FROM sqlite_master');
     await runMigrations(database);
+    await ensureSourceLinkedCheckpointCleanupIndexes(database);
     if (options.keyStore.setDatabaseInitializationState) {
       await options.keyStore.setDatabaseInitializationState('ready');
       if (

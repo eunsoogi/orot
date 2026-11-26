@@ -28,6 +28,8 @@ export async function directPhotoComposerFixture({
   granted = true,
   holdGrant = false,
   beforeWrite,
+  isEntryCurrent = () => true,
+  ownsDraftRoute,
   enableOrdinaryMemory = false,
 }: {
   supported?: boolean;
@@ -35,6 +37,8 @@ export async function directPhotoComposerFixture({
   granted?: boolean;
   holdGrant?: boolean;
   beforeWrite?: () => Promise<void>;
+  isEntryCurrent?: () => boolean;
+  ownsDraftRoute?: () => boolean;
   enableOrdinaryMemory?: boolean;
 } = {}) {
   const f = openSqliteTestDatabase(':memory:');
@@ -185,7 +189,9 @@ export async function directPhotoComposerFixture({
       <ConversationSteeringComposer
         store={store}
         session={session()}
-        isEntryCurrent={() => true}
+        isEntryCurrent={Object.assign(() => isEntryCurrent(), {
+          routeOwnsDraft: ownsDraftRoute,
+        })}
         photo={{ status: 'empty', onSelect: onPickOCR, onRemove: jest.fn() }}
         onSend={onSendText}
         onCancel={jest.fn()}

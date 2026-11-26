@@ -27,6 +27,15 @@ export async function finishConversationWorkflow(
   // No continuation, fallback, preview or retention work owns a stopped turn.
   if (history === 'cancelled' || input.signal.aborted)
     return { status: 'failure', kind: 'cancelled' };
+  if (
+    history === 'rejected' &&
+    input.outcome.status === 'failure' &&
+    input.outcome.kind === 'answer_memory_not_saved'
+  ) {
+    // The bookmark arbiter already refused the save. Preserve that body-free
+    // verdict when its original also fails the final transcript check.
+    return input.outcome;
+  }
   if (history === 'rejected')
     return {
       status: 'failure',

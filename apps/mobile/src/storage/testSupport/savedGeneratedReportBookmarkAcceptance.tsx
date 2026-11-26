@@ -15,7 +15,11 @@ import { createConversationSessionRetention } from '../../ragConversation/conver
 import { conversationSavedHistoryDisplayOption } from '../../aiFeatures/integration/conversationSavedHistoryDisplayOption';
 import { openSavedGeneratedReportReferences } from '../../memory/openSavedGeneratedReportReferences';
 import { SavedMemoryDetail } from '../../memory/SavedMemoryDetail';
-import { exerciseColdDailyReportBookmarkTap } from './coldDailyReportBookmarkTap';
+import {
+  exerciseColdDailyReportBookmarkTap,
+  isolatedColdDailyBookmark,
+  expectColdDailyReportOwner,
+} from './coldDailyReportBookmarkTap';
 import type { ConversationArtifact } from '../conversationArtifactTypes';
 import type { createConversationArtifactStorage } from '../conversationArtifactStorage';
 
@@ -96,18 +100,23 @@ export async function expectReportBookmarkMounted(
     };
   });
   let store!: ReturnType<typeof useConversationSessions>;
+  let showIsolatedTap = false;
   function Capture() {
     store = useConversationSessions();
     return (
-      <ConversationScreen
-        onSend={onSend}
-        onBack={jest.fn()}
-        onOpenSource={jest.fn()}
-      />
+      <>
+        <ConversationScreen
+          onSend={onSend}
+          onBack={jest.fn()}
+          onOpenSource={jest.fn()}
+        />
+        {showIsolatedTap &&
+          isolatedColdDailyBookmark(store.getSnapshot().activeId, historical)}
+      </>
     );
   }
 
-  const view = await render(
+  const tree = () => (
     <ConversationSessionsProvider
       options={{
         continuousSession: async () => ({
@@ -136,14 +145,18 @@ export async function expectReportBookmarkMounted(
       }}
     >
       <Capture />
-    </ConversationSessionsProvider>,
+    </ConversationSessionsProvider>
   );
+  const view = await render(tree());
   try {
     expect(
       await screen.findByText('Synthetic answer based on revision one.'),
     ).toBeTruthy();
     expect(
       screen.queryByTestId('conversation-bookmark-generated-report'),
+    ).toBeNull();
+    expect(
+      screen.queryByTestId('conversation-bookmark-daily-report'),
     ).toBeNull();
     expect(await conversations.listSavedGeneratedReportReferences()).toEqual(
       [],
@@ -154,11 +167,19 @@ export async function expectReportBookmarkMounted(
     const alert = jest.spyOn(Alert, 'alert').mockImplementation(() => {});
     try {
       if (mode === 'tap') {
+        // Exercise the isolated archived lease without reviving the production transcript button.
+        showIsolatedTap = true;
+        await view.rerender(tree());
         await exerciseColdDailyReportBookmarkTap(
           conversations,
           historical,
           bookmark,
         );
+        expect(
+          await screen.findByText('보고서 링크를 기억에 보관했어요.'),
+        ).toBeTruthy();
+        showIsolatedTap = false;
+        await view.rerender(tree());
       } else {
         await fireEvent.changeText(
           screen.getByTestId('rag-conversation-input'),
@@ -166,22 +187,7 @@ export async function expectReportBookmarkMounted(
             ? '방금 본 일일 보고서를 나중에 다시 열 수 있게 보관해 줄래?'
             : '이 보고서를 기억해줘.',
         );
-        const { sessions, activeId } = store.getSnapshot();
-        const active = sessions.find(row => row.id === activeId);
-        expect({
-          lease: store.savedReportLease(activeId),
-          archive: active?.savedHistoryDisplay?.map(
-            x => x.row.kind === 'answer' && Boolean(x.row.dailyReport),
-          ),
-          live: active?.messages.map(x => [
-            x.role,
-            Boolean(x.dailyReport),
-            Boolean(x.retainedTurnId),
-          ]),
-        }).toMatchObject({
-          lease: { id: historical.sessionId, version: 0 },
-          archive: [true],
-        });
+        expectColdDailyReportOwner(store, historical.sessionId);
         await fireEvent(
           screen.getByTestId('rag-conversation-send'),
           'composerPress',
@@ -193,11 +199,7 @@ export async function expectReportBookmarkMounted(
         expect(
           await screen.findByText('Synthetic committed receipt'),
         ).toBeTruthy();
-      else if (mode === 'tap')
-        expect(
-          await screen.findByText('보고서 링크를 기억에 보관했어요.'),
-        ).toBeTruthy();
-      else
+      else if (mode !== 'tap')
         await waitFor(() =>
           expect(alert).toHaveBeenCalledWith(
             '보고서 링크를 기억에 보관했어요.',

@@ -156,6 +156,7 @@ export type {
   WorkflowOperationJournal,
   WorkflowOperationIdentity,
   WorkflowOperationRecord,
+  WorkflowSteeringAppliedReceipt,
 } from './multiAgent/workflowOperationJournal';
 
 export type { PreparedEvidenceSearch } from './multiAgent/evidenceContracts';
