@@ -34,3 +34,25 @@ export const liveResponsesPermissions: readonly SettingsConsentPermission[] = [
     sourceKinds: ['personal_record'],
   },
 ];
+
+export const liveResponsesAggregateV2Permissions: readonly SettingsConsentPermission[] =
+  [
+    liveResponsesPermissions[0]!,
+    {
+      purpose: 'live_responses_health_aggregate',
+      policyVersion: 'selected-live-heart-rate-aggregate-v2',
+      dataCategories: ['health_aggregate'],
+      sourceKinds: ['personal_record'],
+    },
+  ];
+
+/** V1 disclosed recurring decisions; matching it must never authorize V2. */
+export function liveResponsesPermissionVersion(
+  permissions: readonly SettingsConsentPermission[],
+) {
+  const exact = JSON.stringify(permissions);
+  if (exact === JSON.stringify(liveResponsesAggregateV2Permissions))
+    return 'headless-v2';
+  if (exact === JSON.stringify(liveResponsesPermissions))
+    return 'interactive-v1';
+}

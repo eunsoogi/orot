@@ -16,6 +16,9 @@ export function nativeLiveManagedTools() {
     return null;
   const events = new NativeEventEmitter(module);
   return {
+    ...(module.supportsLiveAggregateHeadlessV2 === true
+      ? { headlessAggregateAvailable: true as const }
+      : {}),
     canonicalAvailable: module.supportsCanonicalHealthContextV2 === true,
     ...(typeof module.reviewCanonicalLiveCall === 'function' &&
     typeof module.retireCanonicalLiveReview === 'function'

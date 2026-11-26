@@ -1,7 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { AppState } from 'react-native';
-import { liveResponsesConversationRun } from './liveResponsesConversationRun';
-import { useRealtimeToolConfirmation } from './useRealtimeToolConfirmation';
+import { promptlessLiveAggregateRun } from './promptlessLiveAggregateRun';
 import { liveModel } from '../voiceSettings/liveVoicePreferences';
 import { voiceSettingsStore } from '../voiceSettings/voiceSettingsStore';
 import { useInferenceConsent } from '../agent/execution/useInferenceConsent';
@@ -17,16 +16,15 @@ import { initialVoiceState } from './voiceTurn';
 import { resumeVoice } from './voiceSession';
 import { voiceStatus } from './voiceStatus';
 
-/** Owned Live audio with separate opt-in Responses delegation; never uses legacy Realtime. */
+/** Owned Live audio under its exact saved audio permission; never uses legacy Realtime. */
 export function LiveConversationVoiceEntry(
   props: ConversationVoiceProps & {
     readonly onStatusChange?: (value: string) => void;
   },
 ) {
-  const confirmation = useRealtimeToolConfirmation(true);
-  const lease = useRef<ReturnType<typeof liveResponsesConversationRun> | null>(
-    null,
-  );
+  const managedRun = useRef<ReturnType<
+    typeof promptlessLiveAggregateRun
+  > | null>(null);
   const { consent } = useInferenceConsent();
   const permission = useMemo(
     () => createRealtimeSettingsPermission(consent, true),
@@ -69,15 +67,13 @@ export function LiveConversationVoiceEntry(
     setTranscripts([]);
     setVisible(false);
     setState(initialVoiceState);
-    const managed = liveResponsesConversationRun({
-      current: () => current() && permission.current(),
-      confirm: confirmation.confirm,
-      stop: () => owner.current?.stop(),
-    });
+    const managed = promptlessLiveAggregateRun(
+      () => current() && permission.current(),
+      () => owner.current?.stop(),
+    );
     const native = nativeLiveVoice(
       id => props.store.captureVoiceEnd?.(props.sessionId, id),
       managed.nativeGrant,
-      managed.canonicalRegistration,
     );
     if (!native) {
       managed.dispose();
@@ -112,7 +108,7 @@ export function LiveConversationVoiceEntry(
       },
     });
     owner.current = session;
-    lease.current = managed;
+    managedRun.current = managed;
     const revoke = () => {
       permission.stop();
       managed.retire();
@@ -133,14 +129,14 @@ export function LiveConversationVoiceEntry(
       mounted = false;
       permission.stop();
       managed.dispose();
-      lease.current = null;
+      managedRun.current = null;
       owner.current = null;
       session.dispose();
       settings();
       app.remove();
     };
     // Current route and session guards are read on each callback from the live ref.
-  }, [props.sessionId, props.store, permission, confirmation.confirm]);
+  }, [props.sessionId, props.store, permission]);
   useEffect(() => {
     owner.current?.revalidate();
   });
@@ -177,7 +173,7 @@ export function LiveConversationVoiceEntry(
     }
   };
   const stop = (graceful: boolean) => {
-    lease.current?.retire();
+    managedRun.current?.retire();
     if (graceful) owner.current?.stop(true);
     permission.stop();
     if (!graceful) owner.current?.stop();
@@ -207,8 +203,7 @@ export function LiveConversationVoiceEntry(
           state.identity?.sessionId === props.sessionId &&
           item.callId === state.identity.turnId,
       )}
-      inlineToolConfirmation
-      toolConfirmation={confirmation.node}
+      toolConfirmation={null}
       disabled={!available || props.busy || props.photoPending}
       statusExternallyRendered={Boolean(props.onStatusChange)}
       start={start}

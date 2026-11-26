@@ -33,7 +33,7 @@ final class VoiceRealtimeModule: RCTEventEmitter {
     }
 
     override func constantsToExport() -> [AnyHashable: Any]! {
-        ["supportsVoiceAudioLevels": true, "supportsCanonicalHealthContextV2": RealtimeVoiceCanonicalHealthAdmission.enabledForLiveBridge]
+        ["supportsVoiceAudioLevels": true, "supportsLiveAggregateHeadlessV2": true, "supportsCanonicalHealthContextV2": RealtimeVoiceCanonicalHealthAdmission.enabledForLiveBridge]
     }
 
     override func supportedEvents() -> [String]! {
@@ -60,7 +60,7 @@ final class VoiceRealtimeModule: RCTEventEmitter {
                     reject("VOICE_LIVE_FAILED", "Live voice is unavailable.", nil); return
                 }
                 if canonicalRequested {
-                    guard let request = options["canonicalHealthGrant"],
+                    guard !grant.requiresAggregateScope, let request = options["canonicalHealthGrant"],
                           let companion = RealtimeVoiceCanonicalHealthAdmission(request),
                           let declaration = options["canonicalHealthDeclaration"] as? [String: Any],
                           companion.configuration(declaration, base: grant, key: apiKey, read: read) != nil,

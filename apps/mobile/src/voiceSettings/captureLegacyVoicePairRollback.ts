@@ -10,7 +10,7 @@ import {
 import type { SettingsConsentGrant } from '../agent/execution/settingsConsentGrant';
 import { readBinding, sameBinding } from './liveResponsesSettingsBinding';
 import {
-  liveResponsesPermissions,
+  liveResponsesPermissionVersion,
   liveResponsesProviderId,
   liveResponsesRecipient,
 } from './liveResponsesSettingsIdentity';
@@ -43,12 +43,12 @@ export async function captureLegacyVoicePairRollback(input: {
       identity.recipient ===
         (audio ? liveVoiceRecipient : liveResponsesRecipient) &&
       identity.credentialEpoch === input.epoch &&
-      JSON.stringify(grant.permissions) ===
-        JSON.stringify(
-          audio
-            ? settingsPermissionsForFeature('voice', liveVoiceProviderId)
-            : liveResponsesPermissions,
-        )
+      (audio
+        ? JSON.stringify(grant.permissions) ===
+          JSON.stringify(
+            settingsPermissionsForFeature('voice', liveVoiceProviderId),
+          )
+        : liveResponsesPermissionVersion(grant.permissions) !== undefined)
     );
   }
   try {

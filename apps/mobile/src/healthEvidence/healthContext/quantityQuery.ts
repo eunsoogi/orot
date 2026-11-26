@@ -26,7 +26,7 @@ export async function readHealthQuantityContext(
   executor: SqlExecutor,
   days: readonly HealthContextDay[],
   signal?: AbortSignal,
-  family: 'all' | 'measurements' | 'activity' = 'all',
+  family: 'all' | 'measurements' | 'activity' | 'ordinary-heart-rate' = 'all',
   dataAvailableThrough?: string,
   indexedLatest = false,
   calendarTimestampKeys?: string,
@@ -50,7 +50,10 @@ export async function readHealthQuantityContext(
       ? ''
       : family === 'activity'
         ? `AND ${activity}`
-        : `AND NOT (${activity})`;
+        : family === 'ordinary-heart-rate'
+          ? // Restrict the SQL population before any sensor/measurement aggregation.
+            `AND ${concept} = 'heart_rate'`
+          : `AND NOT (${activity})`;
   parameters.push(from, to);
   if (dataAvailableThrough)
     parameters.push(localQueryTimestampKey(dataAvailableThrough));

@@ -43,6 +43,7 @@ extension RealtimeVoiceLifecycleTests {
                 nil
             }
         }
+        try assertAggregateV2ScopeWitness(readBase: read, generation: legacy, credential: credential)
         XCTAssertFalse(grant.current(base: old, key: "synthetic-test-only", read: read))
         present = true
         XCTAssertTrue(grant.current(base: old, key: "synthetic-test-only", read: read))
@@ -69,6 +70,32 @@ extension RealtimeVoiceLifecycleTests {
         let mismatched = try XCTUnwrap(Admission(another))
         try assertNativeReviewIsExactFreshAndSingleUse(grant, mismatched: mismatched)
         try assertNativePresenterOnlyIssuesFromItsVisibleDecision(grant)
+    }
+
+    private func assertAggregateV2ScopeWitness(
+        readBase: (String, String) -> [String: Any]?, generation: String, credential: String,
+    ) throws {
+        let scope = "selected-live-heart-rate-aggregate-v2"
+        let input = ["backendModel": "gpt-6-sol", "generation": generation, "grantID": generation + "-model"]
+        let legacy = try XCTUnwrap(LiveResponsesSettingsGrant(input))
+        let upgraded = try XCTUnwrap(LiveResponsesSettingsGrant(input.merging(["scope": scope]) { $1 }))
+        var marker: [String: Any]?
+        let read: (String, String) -> [String: Any]? = { service, account in
+            if service == "com.orot.mobile.live-aggregate-policy.v2." + generation, account == "live-aggregate-policy" {
+                return marker
+            }
+            return readBase(service, account)
+        }
+        XCTAssertTrue(legacy.isCurrent(key: "synthetic-test-only", read: read))
+        XCTAssertFalse(upgraded.isCurrent(key: "synthetic-test-only", read: read))
+        marker = [
+            "scope": scope, "providerId": "openai-live-responses", "recipient": "OpenAI Responses (Live)",
+            "backendModel": "gpt-6-sol", "grantID": generation + "-model", "generation": generation, "credentialEpoch": credential,
+        ]
+        XCTAssertTrue(upgraded.isCurrent(key: "synthetic-test-only", read: read))
+        marker?["recipient"] = "Another recipient"
+        XCTAssertFalse(upgraded.isCurrent(key: "synthetic-test-only", read: read))
+        XCTAssertNil(LiveResponsesSettingsGrant(input.merging(["scope": "something-else"]) { $1 }))
     }
 
     private func assertNativeReviewIsExactFreshAndSingleUse(

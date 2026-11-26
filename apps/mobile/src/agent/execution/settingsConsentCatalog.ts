@@ -12,6 +12,7 @@ import {
 import {
   isLiveResponsesContextScope,
   liveResponsesPermissions,
+  liveResponsesAggregateV2Permissions,
   liveResponsesProviderId,
 } from '../../voiceSettings/liveResponsesSettingsIdentity';
 import type { SettingsConsentPermission } from './settingsConsentGrant';
@@ -196,6 +197,7 @@ export function isCatalogPermission(value: SettingsConsentPermission): boolean {
     ...voice,
     ...liveVoice,
     ...liveResponsesPermissions,
+    ...liveResponsesAggregateV2Permissions,
     ...Object.values(publicSearchSettingsPermissions),
   ].some(
     known =>
@@ -222,7 +224,9 @@ export function isCatalogDomainPermission(
 ): boolean {
   const candidates =
     domain === 'model'
-      ? settingsPermissionsForFeature(feature, providerId, true)
+      ? feature === 'voice-responses' && providerId === liveResponsesProviderId
+        ? [...liveResponsesPermissions, ...liveResponsesAggregateV2Permissions]
+        : settingsPermissionsForFeature(feature, providerId, true)
       : feature !== 'conversation'
         ? []
         : domain === 'public-web'

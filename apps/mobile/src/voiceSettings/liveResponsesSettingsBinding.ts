@@ -12,6 +12,7 @@ export interface NativeLiveResponsesGrant {
   readonly backendModel: LiveResponsesBackend;
   readonly grantID: string;
   readonly generation: string;
+  readonly scope?: 'selected-live-heart-rate-aggregate-v2';
 }
 
 export interface DeviceBinding extends NativeLiveResponsesGrant {

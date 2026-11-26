@@ -48,7 +48,7 @@ export const modelSettingsKo = {
   'modelSettings.liveResponsesConsentTitle':
     '음성 대화에 OpenAI Responses를 사용할까요?',
   'modelSettings.liveResponsesConsentScope':
-    'OpenAI가 이 통화와 관련된 대화 내용을 {model}로 처리해요. 앱은 요청하고 승인한 기간의 일반 심박수를 기기에서 집계해요. 3일 이상에 걸쳐 측정값이 3개 이상일 때만 반올림한 평균과 표본 수를 계산하며, 그 결과를 별도로 확인하고 동의한 경우에만 전송해요. 개별 수치, 측정 시각, 메모, 투약 정보와 이전 대화를 앱이 자동으로 첨부하지 않아요.',
+    'OpenAI Responses (Live)의 {model}이 이 통화에 필요한 음성 대화 내용을 처리해요. 통화 중 일반 심박을 요청하면 이 기기의 일반 심박 기록에서 요청한 3~31일만 조회해요. 3일 이상에 걸쳐 측정값이 3개 이상일 때만 기간, 반올림한 일별 평균의 평균, 측정값 개수를 별도 확인 없이 같은 통화의 {model}로 보내요. 개별 수치, 측정 시각, 다른 건강 기록, 메모와 투약 정보는 보내지 않아요.',
   'modelSettings.liveResponsesConsentNotice':
     '기존 OpenAI API 계정을 사용하며 음성 통화와 별도로 API 사용료가 발생할 수 있어요. 설정의 개인정보 보호에서 동의를 철회할 수 있어요.',
   'modelSettings.liveVoiceUnselected': '선택',
