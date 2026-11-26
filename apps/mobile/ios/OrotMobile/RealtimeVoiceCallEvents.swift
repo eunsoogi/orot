@@ -91,6 +91,7 @@ extension RealtimeVoiceCall {
 extension RealtimeVoiceCall {
     /// Retire the local permit only. The current Live wire has no response cancellation command.
     func retireManagedResponses() {
+        managedBackgroundOwner = nil
         let previous = managedResponses
         managedResponses = nil
         previous?.retire()
@@ -99,7 +100,7 @@ extension RealtimeVoiceCall {
     func receiveManagedResponses(_ event: [String: Any]) {
         guard let bridge = managedResponses else { return }
         guard let callID = id, let sessionID = liveSessionID, let epoch = liveSocketEpoch,
-              ready, !paused, token != nil, foreground(), liveIsCurrent()
+              ready, !paused, token != nil, managedExecutionAllowed(), liveIsCurrent()
         else {
             retireManagedResponses()
             return
@@ -108,7 +109,7 @@ extension RealtimeVoiceCall {
         let current: () -> Bool = { [weak self, weak bridge] in
             guard let self, let bridge else { return false }
             return managedResponses === bridge && id == callID && liveSessionID == sessionID && liveSocketEpoch == epoch
-                && ready && !paused && token != nil && foreground() && liveIsCurrent()
+                && ready && !paused && token != nil && managedExecutionAllowed() && liveIsCurrent()
         }
         bridge.receive(event, owner: owner, current: current) { [weak self] frames, approved, ticket in
             guard let self else { ticket?.retire(); return }

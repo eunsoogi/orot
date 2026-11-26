@@ -26,10 +26,13 @@ export function liveCommonConversationStartup() {
         port: ReturnType<typeof createLiveCommonHealthPort>;
       }
     | undefined;
+  let stopProtection: (() => void) | undefined;
   let epoch = 0;
   const retire = () => {
     epoch += 1;
     prepared = undefined;
+    stopProtection?.();
+    stopProtection = undefined;
   };
   return {
     retire,
@@ -43,15 +46,37 @@ export function liveCommonConversationStartup() {
       callId: string,
       credentialEpoch: string,
       ownsCall: () => boolean,
+      toolOwnerCurrent: () => boolean,
+      cancelCurrent: () => void,
     ) {
       retire();
       const captured = epoch;
+      let locked = false;
+      let protectionEpoch = 0;
       const owns = () => epoch === captured && ownsCall();
+      const protectedOwner = () => owns() && !locked;
       if (!native || !protection?.bridgeAvailable || !owns()) return;
-      const available = async () =>
-        owns() &&
-        (await protection.protectedDataAvailable()) === true &&
-        owns();
+      // A lock retires the pending challenge even if unlock races a held read.
+      stopProtection = protection.subscribe(event => {
+        if (
+          epoch !== captured ||
+          event.kind !== 'protectedData' ||
+          event.available === !locked
+        )
+          return;
+        locked = !event.available;
+        ++protectionEpoch;
+        if (locked) cancelCurrent();
+      });
+      const available = async () => {
+        const checked = protectionEpoch;
+        return (
+          protectedOwner() &&
+          (await protection.protectedDataAvailable()) === true &&
+          protectedOwner() &&
+          checked === protectionEpoch
+        );
+      };
       if (!(await available())) return;
       const [selection, witness] = await Promise.all([
         loadLiveResponsesSettings(credentialEpoch, 'tool-reproof'),
@@ -81,6 +106,7 @@ export function liveCommonConversationStartup() {
           registration,
           settings: selection,
           current,
+          toolOwnerCurrent: () => protectedOwner() && toolOwnerCurrent(),
           protectedDataAvailable: available,
           openData: () => {
             const { openAiFeatureLocalData } =
@@ -98,18 +124,31 @@ export function liveCommonConversationStartup() {
 export function bindLiveCommonConversationStartup(input: {
   readonly injected?: LiveCommonConversationPort;
   readonly readState: () => VoiceState | undefined;
+  readonly ownsSystemCall: (id: string) => boolean;
   readonly current: () => boolean;
   readonly credentials: typeof loadLiveCallSettings;
 }) {
   const startup = liveCommonConversationStartup();
+  // Background access requires the current, native-owned CallKit audio call.
+  // Neither a retained React screen nor a synthetic AppState can renew it.
+  const toolOwnerCurrent = (id: string) => {
+    const state = input.readState();
+    const phase = AppState.currentState;
+    return (
+      state?.identity?.turnId === id &&
+      input.current() &&
+      ['listening', 'processing', 'speaking'].includes(state.phase) &&
+      (phase === 'active' ||
+        ((phase === 'inactive' || phase === 'background') &&
+          input.ownsSystemCall(id)))
+    );
+  };
   const run = liveCommonConversationRun(
     () => input.injected ?? startup.port(),
-    () =>
-      AppState.currentState === 'active' &&
-      input.current() &&
-      ['listening', 'processing', 'speaking'].includes(
-        input.readState()?.phase ?? '',
-      ),
+    () => {
+      const id = input.readState()?.identity?.turnId;
+      return Boolean(id && toolOwnerCurrent(id));
+    },
   );
   return {
     cancelCurrent: run.cancelCurrent,
@@ -121,7 +160,13 @@ export function bindLiveCommonConversationStartup(input: {
       if (id && owns()) {
         if (!input.injected)
           await startup
-            .prepare(id, result.credentialEpoch, owns)
+            .prepare(
+              id,
+              result.credentialEpoch,
+              owns,
+              () => toolOwnerCurrent(id),
+              run.cancelCurrent,
+            )
             .catch(() => undefined);
         if (owns()) run.attach(id);
       }

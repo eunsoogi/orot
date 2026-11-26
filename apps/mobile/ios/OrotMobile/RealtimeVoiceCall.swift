@@ -40,6 +40,7 @@ final class RealtimeVoiceCall {
     var liveExpiryTimer: Timer?
     var managedResponses: LiveResponsesToolBridge?
     var managedResponsesTransport = false
+    var managedBackgroundOwner: (owner: LiveResponsesAdmission.Owner, audio: AudioSessionOwnership.Token, capture: UUID)?
     var captureEpoch = UUID()
     var outputRenderStartedAt: DispatchTime?
     var outputRenderClock = LiveManagedToolLatency.start
@@ -74,7 +75,7 @@ final class RealtimeVoiceCall {
                 guard let self else { return }
                 if name == UIApplication.didEnterBackgroundNotification {
                     let stage = VoiceSystemCallLifecycle.backgroundStage(systemCallActive: systemCallActive,
-                                                                         managed: managedResponsesTransport, audioStarting: audioStarting)
+                                                                         managed: managedResponsesTransport && !canContinueAcknowledgedManagedCall(), audioStarting: audioStarting)
                     if id != nil {
                         VoiceSystemCallLifecycle.report(stage)
                     }

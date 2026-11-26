@@ -1,5 +1,9 @@
-import { act } from '@testing-library/react-native';
-import { DeviceEventEmitter } from 'react-native';
+import { act, waitFor } from '@testing-library/react-native';
+import {
+  AppState,
+  type AppStateStatus,
+  DeviceEventEmitter,
+} from 'react-native';
 import type { LiveCommonRegistration } from '../nativeLiveCommonConversation';
 
 export const witness = {
@@ -133,4 +137,96 @@ export function assertFakeLiveCommonResult(
     /synthetic-health-id|delegation|topics|native-session/,
   );
   return { id, challenge };
+}
+
+export function mockOwnedToolVisibility(
+  protection: jest.Mock,
+  subscribe: jest.Mock,
+) {
+  const phases = new Set<(phase: AppStateStatus) => void>();
+  const listeners = new Set<
+    (event: { kind: 'protectedData'; available: boolean }) => void
+  >();
+  let available = true;
+  protection.mockReset().mockImplementation(async () => available);
+  subscribe.mockReset().mockImplementation(listener => {
+    listeners.add(listener);
+    return () => {
+      listeners.delete(listener);
+    };
+  });
+  const subscription = jest
+    .spyOn(AppState, 'addEventListener')
+    .mockImplementation((_type, listener) => {
+      phases.add(listener);
+      return {
+        remove: () => {
+          phases.delete(listener);
+        },
+      };
+    });
+  return {
+    transition(phase: AppStateStatus) {
+      AppState.currentState = phase;
+      for (const listener of [...phases]) listener(phase);
+    },
+    lock() {
+      available = false;
+      for (const listener of [...listeners])
+        listener({ kind: 'protectedData', available });
+    },
+    restore() {
+      subscription.mockRestore();
+    },
+  };
+}
+
+export async function assertBackgroundOwnedTool(input: {
+  native: ReturnType<typeof fakeLiveCommonNative>;
+  callId: string;
+  finish?: (value: boolean) => void;
+  transition(phase: AppStateStatus): void;
+  emit(challenge: string): void;
+  setChallenge(challenge: string): void;
+}) {
+  const { native, callId, transition, emit, finish, setChallenge } = input;
+  await act(() => transition('background'));
+  expect(native.retireLiveCommonConversationResult).not.toHaveBeenCalled();
+  expect(native.closeLiveCall).not.toHaveBeenCalled();
+  expect(finish).toBeDefined();
+  await act(() => {
+    finish?.(true);
+  });
+  // The native audio channel still owns this session even with no foreground UI.
+  await act(() => {
+    setChallenge('fresh-in-background');
+    emit('fresh-in-background');
+  });
+  await waitFor(() =>
+    expect(native.settleLiveCommonConversationResult).toHaveBeenCalledTimes(2),
+  );
+  expect(
+    native.claimLiveCommonConversationResult.mock.calls.map(
+      ([id, challenge]) => [id, challenge],
+    ),
+  ).toEqual([
+    [callId, 'prior'],
+    [callId, 'fresh-in-background'],
+  ]);
+  expect(native.openLiveCall).toHaveBeenCalledTimes(1);
+  expect(native.closeLiveCall).not.toHaveBeenCalled();
+}
+
+export function emitFakeLiveReadyBatch(
+  callId: string,
+  registration: LiveCommonRegistration,
+  challenge: string,
+) {
+  DeviceEventEmitter.emit('VoiceRealtimeState', { callId, phase: 'listening' });
+  DeviceEventEmitter.emit('VoiceRealtimeCommonToolsReady', {
+    callId,
+    sessionId: 'native-session',
+    registration,
+  });
+  emitFakeLiveCommonBatch(callId, registration, challenge);
 }

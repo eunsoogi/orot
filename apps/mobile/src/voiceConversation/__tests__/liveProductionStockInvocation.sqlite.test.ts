@@ -68,6 +68,7 @@ test.each([false, true])(
           current: () => true,
         } as Input['settings'],
         current: () => true,
+        toolOwnerCurrent: () => true,
         protectedDataAvailable: async () => true,
         openData: () => data.openData(),
       });

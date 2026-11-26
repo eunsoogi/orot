@@ -7,7 +7,6 @@ import {
 } from '@testing-library/react-native';
 import {
   AppState,
-  type AppStateStatus,
   DeviceEventEmitter,
   NativeModules,
   Platform,
@@ -19,9 +18,11 @@ import { fixture as protectedFixture } from '../testSupport/liveResponsesProtect
 import { LiveConversationVoiceEntry } from '../LiveConversationVoiceEntry';
 import type { ConversationVoiceProps } from '../conversationVoiceDependencies';
 import {
-  emitFakeLiveCommonBatch,
+  emitFakeLiveReadyBatch,
   fakeLiveCommonNative,
   witness,
+  assertBackgroundOwnedTool,
+  mockOwnedToolVisibility,
 } from '../testSupport/fakeLiveCommonNative';
 
 jest.mock(
@@ -31,6 +32,8 @@ jest.mock(
 const mockSettings = jest.fn();
 const mockAuthorize = jest.fn();
 const mockOpenData = jest.fn();
+const mockProtection = jest.fn();
+const mockSubscribeProtection = jest.fn();
 jest.mock('../../voiceSettings/voiceSettingsStore', () => ({
   voiceSettingsStore: { subscribe: () => () => {} },
 }));
@@ -49,8 +52,8 @@ jest.mock('../../voiceSettings/liveConversationToolsAuthorization', () => ({
 jest.mock('../../ragConversation/conversationExecutionNative', () => ({
   conversationExecutionNative: () => ({
     bridgeAvailable: true,
-    protectedDataAvailable: async () => true,
-    subscribe: () => () => {},
+    protectedDataAvailable: mockProtection,
+    subscribe: mockSubscribeProtection,
   }),
 }));
 jest.mock('../../voiceSettings/liveVoicePreferencesKeychain', () => ({
@@ -65,8 +68,15 @@ jest.mock('../../aiFeatures/integration/localData', () => ({
   openAiFeatureLocalData: () => mockOpenData(),
 }));
 
-test.each(['stop', 'background', 'navigate', 'callkit-background'] as const)(
-  'held shared Live settlement cannot outlive its route: %s',
+test.each([
+  'stop',
+  'background',
+  'navigate',
+  'callkit-background',
+  'lock',
+  'call-ended',
+] as const)(
+  'shared Live tool ownership follows audio and protection: %s',
   async mode => {
     const audio = openLiveAudioSettingsFixture();
     const storage = await protectedFixture();
@@ -77,21 +87,10 @@ test.each(['stop', 'background', 'navigate', 'callkit-background'] as const)(
     const os = Object.getOwnPropertyDescriptor(Platform, 'OS')!;
     Object.defineProperty(Platform, 'OS', { configurable: true, value: 'ios' });
     AppState.currentState = 'active';
-    const listeners = new Set<(phase: AppStateStatus) => void>();
-    const subscription = jest
-      .spyOn(AppState, 'addEventListener')
-      .mockImplementation((_type, listener) => {
-        listeners.add(listener);
-        return {
-          remove: () => {
-            listeners.delete(listener);
-          },
-        };
-      });
-    function transition(phase: AppStateStatus) {
-      AppState.currentState = phase;
-      for (const listener of [...listeners]) listener(phase);
-    }
+    const { transition, lock, restore } = mockOwnedToolVisibility(
+      mockProtection,
+      mockSubscribeProtection,
+    );
     mockOpenData.mockReset().mockResolvedValue(await storage.openData());
     mockAuthorize.mockReset().mockResolvedValue('authorized');
     mockSettings.mockResolvedValue({
@@ -160,25 +159,14 @@ test.each(['stop', 'background', 'navigate', 'callkit-background'] as const)(
           native.openLiveCall.mock.calls[0]!;
         if (!registration)
           throw new Error('Expected ordinary V3 startup registration');
-        const emitOld = (challenge: string) => {
-          DeviceEventEmitter.emit('VoiceRealtimeState', {
-            callId,
-            phase: 'listening',
-          });
-          DeviceEventEmitter.emit('VoiceRealtimeCommonToolsReady', {
-            callId,
-            sessionId: 'native-session',
-            registration,
-          });
-          emitFakeLiveCommonBatch(callId, registration, challenge);
-        };
+        const emit = (challenge: string) =>
+          emitFakeLiveReadyBatch(callId, registration, challenge);
         await act(() => {
-          if (mode === 'callkit-background')
-            DeviceEventEmitter.emit('VoiceRealtimeSystemCall', {
-              callId,
-              active: true,
-            });
-          emitOld('prior');
+          DeviceEventEmitter.emit('VoiceRealtimeSystemCall', {
+            callId: mode === 'background' ? 'different-native-call' : callId,
+            active: true,
+          });
+          emit('prior');
         });
         await waitFor(() =>
           expect(
@@ -188,7 +176,36 @@ test.each(['stop', 'background', 'navigate', 'callkit-background'] as const)(
         expect(
           native.retireLiveCommonConversationResult,
         ).not.toHaveBeenCalled();
-        if (mode === 'stop')
+        if (mode === 'callkit-background') {
+          await assertBackgroundOwnedTool({
+            native,
+            callId,
+            finish,
+            transition,
+            emit,
+            setChallenge: value => {
+              activeChallenge = value;
+            },
+          });
+          expect(onSend).not.toHaveBeenCalled();
+          return;
+        }
+        if (mode === 'lock' || mode === 'call-ended') {
+          await act(() => transition('background'));
+          expect(
+            native.retireLiveCommonConversationResult,
+          ).not.toHaveBeenCalled();
+          await act(() => {
+            if (mode === 'lock') {
+              lock();
+            } else {
+              DeviceEventEmitter.emit('VoiceRealtimeSystemCall', {
+                callId,
+                active: false,
+              });
+            }
+          });
+        } else if (mode === 'stop')
           await fireEvent.press(screen.getByTestId('voice-call-end'));
         else if (mode === 'navigate') {
           selected = 2;
@@ -198,15 +215,15 @@ test.each(['stop', 'background', 'navigate', 'callkit-background'] as const)(
           callId,
           'prior',
         );
-        if (mode === 'callkit-background')
-          expect(native.closeLiveCall).not.toHaveBeenCalled();
         if (mode === 'navigate') {
           selected = 1;
           await result.rerender(view(1));
-        } else if (mode !== 'stop') await act(() => transition('active'));
+        } else if (mode === 'background') await act(() => transition('active'));
         await act(() => {
           finish?.(true); // The late native result cannot reattach the old owner.
-          emitOld('prior');
+          emit('prior');
+          activeChallenge = 'fresh-after-revoke';
+          if (mode === 'lock' || mode === 'call-ended') emit(activeChallenge);
         });
         expect(native.claimLiveCommonConversationResult).toHaveBeenCalledTimes(
           1,
@@ -215,28 +232,12 @@ test.each(['stop', 'background', 'navigate', 'callkit-background'] as const)(
           1,
         );
         expect(mockOpenData).toHaveBeenCalledTimes(1);
-        if (mode === 'callkit-background') {
-          await act(() => {
-            activeChallenge = 'fresh-after-return';
-            emitOld(activeChallenge);
-          });
-          await waitFor(() =>
-            expect(
-              native.settleLiveCommonConversationResult,
-            ).toHaveBeenCalledTimes(2),
-          );
-          expect(
-            native.claimLiveCommonConversationResult.mock.calls[1]?.[1],
-          ).toBe('fresh-after-return');
-          expect(native.closeLiveCall).not.toHaveBeenCalled();
-          expect(native.openLiveCall).toHaveBeenCalledTimes(1);
-        }
         expect(onSend).not.toHaveBeenCalled();
       } finally {
         await result.unmount();
       }
     } finally {
-      subscription.mockRestore();
+      restore();
       Object.defineProperty(Platform, 'OS', os);
       AppState.currentState = previous[0];
       NativeModules.VoiceRealtimeModule = previous[1];

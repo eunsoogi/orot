@@ -1,5 +1,6 @@
 import CryptoKit
 import Foundation
+import UIKit
 
 /// The shared app holds its real SQLite source epoch until native settlement.
 /// The synchronous claim pins the exact approved projection to one native
@@ -162,7 +163,7 @@ extension RealtimeVoiceCall {
         let owns = { [weak self] in
             guard let self else { return false }
             return id == callID && liveSessionID == sessionID && liveSocketEpoch == socketEpoch
-                && token != nil && ready && !paused && foreground() && liveIsCurrent()
+                && token != nil && ready && !paused && managedExecutionAllowed() && liveIsCurrent()
         }
         let current = { owns() && approvedCurrent() && owns() }
         if let ticket {
@@ -189,6 +190,30 @@ extension LiveCanonicalContextV3Transport {
 
     static func json(_ value: [String: Any]) -> Data? {
         try? JSONSerialization.data(withJSONObject: value, options: [.sortedKeys])
+    }
+}
+
+extension RealtimeVoiceCall {
+    /// Record only the acknowledged V3 owner's current audio session. Merely
+    /// requesting CallKit activation or opening the managed socket grants nothing.
+    func acknowledgeManagedBackgroundOwner(_ owner: LiveResponsesAdmission.Owner) {
+        guard foreground(), ready, !paused, managedResponsesTransport, let token,
+              id == owner.callID, liveSessionID == owner.sessionID, liveSocketEpoch == owner.epoch
+        else { return }
+        managedBackgroundOwner = (owner, token, captureEpoch)
+    }
+
+    func canContinueAcknowledgedManagedCall() -> Bool {
+        guard systemCallActive, systemCallOwner != nil, ready, !audioStarting, !paused,
+              let proof = managedBackgroundOwner, token == proof.audio, captureEpoch == proof.capture,
+              id == proof.owner.callID, liveSessionID == proof.owner.sessionID, liveSocketEpoch == proof.owner.epoch,
+              liveIsCurrent()
+        else { return false }
+        return UIApplication.shared.isProtectedDataAvailable
+    }
+
+    func managedExecutionAllowed() -> Bool {
+        foreground() || canContinueAcknowledgedManagedCall()
     }
 }
 
