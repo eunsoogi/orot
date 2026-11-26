@@ -108,6 +108,7 @@ export function useSavedMemories(
           if (!isCurrent()) return;
           const snapshot = await readHistoricalSavedMemory(
             missingCurrentSource.id,
+            isCurrent,
           );
           if (snapshot) {
             result = rows.map(row =>

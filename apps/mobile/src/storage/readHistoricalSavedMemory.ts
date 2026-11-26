@@ -1,5 +1,5 @@
 import { projectDefaultSavedMemory } from '@orot/agent-memory';
-import type { SqlExecutor } from '@orot/storage';
+import type { SqlDatabase, SqlExecutor } from '@orot/storage';
 import {
   referencesDeletedSymptom,
   deletedSymptomIds,
@@ -28,13 +28,16 @@ type HistoricalMemory = {
  * Do not return provenance, vectors, or a current-evidence capability to the UI. */
 export async function readHistoricalSavedMemory(
   id: string,
+  isSelectionCurrent: () => boolean = () => true,
 ): Promise<HistoricalMemory | null> {
   if (!id || id !== id.trim()) return null;
   const protection = conversationExecutionNative();
   if (!protection?.bridgeAvailable) return null;
   const lifetime = new AbortController();
   const current = () =>
-    !lifetime.signal.aborted && protection.currentPhase?.() === 'active';
+    !lifetime.signal.aborted &&
+    protection.currentPhase?.() === 'active' &&
+    isSelectionCurrent();
   const confirm = async () => {
     try {
       return (await protection.protectedDataAvailable()) === true;
@@ -77,31 +80,54 @@ export async function readHistoricalSavedMemory(
       epoch = acquireIndependentReadEpoch(database);
       if (!epoch) return null;
     }
-    try {
-      let result: HistoricalMemory | null = null;
-      await database.transaction(async tx => {
-        result = await readOwnerSnapshot(tx, id);
-      });
-      if (!result || !current() || !epoch.current() || !(await confirm()))
-        return null;
-      if (!current() || !epoch.current()) return null;
-      const currentOwner = await openLocalAgentMemoryDatabase();
-      return database === currentOwner && current() && epoch.current()
-        ? result
-        : null;
-    } finally {
-      epoch.dispose();
+    // A completed same-owner commit can retire the witness while UIKit
+    // confirms protection. Never reuse the first bytes: allow one fresh proof
+    // of the same revision, not a retry of missing or revoked content.
+    let originalBytes: string | undefined;
+    for (let attempt = 0; attempt < 2; attempt++) {
+      try {
+        const original = await readOwnerSnapshotInTransaction(database, id);
+        if (
+          !original ||
+          (originalBytes !== undefined && originalBytes !== original.bytes) ||
+          !current() ||
+          !epoch.current() ||
+          !(await confirm()) ||
+          !current()
+        )
+          return null;
+        const currentOwner = await openLocalAgentMemoryDatabase();
+        if (database !== currentOwner || !current()) return null;
+        if (epoch.current()) return original.detail;
+        originalBytes = original.bytes;
+      } finally {
+        epoch.dispose();
+      }
+      if (attempt !== 0) return null;
+      epoch = acquireIndependentReadEpoch(database);
+      if (!epoch) return null;
     }
+    return null;
   } finally {
     lifetime.abort();
     unsubscribe();
   }
 }
 
-async function readOwnerSnapshot(
-  tx: SqlExecutor,
+async function readOwnerSnapshotInTransaction(
+  database: SqlDatabase,
   id: string,
-): Promise<HistoricalMemory | null> {
+) {
+  const read: { result: Awaited<ReturnType<typeof readOwnerSnapshot>> } = {
+    result: null,
+  };
+  await database.transaction(async tx => {
+    read.result = await readOwnerSnapshot(tx, id);
+  });
+  return read.result;
+}
+
+async function readOwnerSnapshot(tx: SqlExecutor, id: string) {
   const row = (
     await tx.execute(
       'SELECT m.record_json, q.revision FROM agent_memory_records m JOIN memory_parent_quarantine q ON q.memory_id=m.id WHERE m.id=?',
@@ -109,7 +135,9 @@ async function readOwnerSnapshot(
     )
   ).rows;
   if (!row.length) return null;
-  const record = decodeAgentMemoryRecord(row[0]?.record_json);
+  const bytes = row[0]?.record_json;
+  if (typeof bytes !== 'string') return null;
+  const record = decodeAgentMemoryRecord(bytes);
   const snapshot = projectDefaultSavedMemory(record);
   const revision = reviewedMemoryRevision(record);
   if (
@@ -132,5 +160,8 @@ async function readOwnerSnapshot(
     (await hasHistoricalMemoryRevocation(tx, id, sources))
   )
     return null;
-  return { id, text: snapshot.text, createdAt: snapshot.createdAt };
+  return {
+    bytes,
+    detail: { id, text: snapshot.text, createdAt: snapshot.createdAt },
+  };
 }
