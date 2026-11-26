@@ -1,3 +1,4 @@
+import { startLiveCommonHealthTiming } from './liveCommonHealthTiming';
 import {
   runOwnedLiveGraphTool,
   type OwnedLiveGraphToolOptions,
@@ -51,7 +52,7 @@ export function liveCommonConversationRun(
   let subscribedPort: LiveCommonConversationPort | undefined;
   let task: AbortController | undefined;
   let waiting: AbortController | undefined;
-  let pending: Turn | undefined;
+  let pending: { turn: Turn; admitted: () => void } | undefined;
   const admittedDelegations = new Set<string>();
   const cancelCurrent = () => {
     subscribedPort?.cancelCurrent?.();
@@ -84,7 +85,7 @@ export function liveCommonConversationRun(
       const attachOwner = {};
       active = attachOwner;
       let sessionId: string | undefined;
-      const start = (turn: Turn) => {
+      const start = (turn: Turn, admitted?: () => void) => {
         if (
           active !== attachOwner ||
           id !== callId ||
@@ -107,13 +108,19 @@ export function liveCommonConversationRun(
             sessionId === turn.owner.sessionId &&
             turn.queuedCurrent?.() === true
           )
-            pending = turn;
+            pending = {
+              turn,
+              // This is only the successor's own JS queue interval, not native
+              // delivery or provider/audio time. Never publish cancelled waits.
+              admitted: startLiveCommonHealthTiming('admission_queue'),
+            };
           return;
         }
         sessionId = turn.owner.sessionId;
         admittedDelegations.add(key);
         const operation = new AbortController();
         task = operation;
+        admitted?.();
         const current = () =>
           active === attachOwner &&
           id === callId &&
@@ -169,7 +176,8 @@ export function liveCommonConversationRun(
           waiting = undefined;
           const next = pending;
           pending = undefined;
-          if (delivered && next?.queuedCurrent?.() === true) start(next);
+          if (delivered && next?.turn.queuedCurrent?.() === true)
+            start(next.turn, next.admitted);
         };
         execute().then(
           value => complete(value === true),

@@ -188,6 +188,7 @@ test.each([
               registration: commonToolsRegistration!,
               native,
               finish: finishNative,
+              waiting: timings.holdQueue,
               current: value => {
                 activeChallenge = value;
               },

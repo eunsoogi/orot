@@ -87,6 +87,7 @@ export async function assertFakeLiveCommonSuccessor(input: {
   registration: LiveCommonRegistration;
   native: ReturnType<typeof fakeLiveCommonNative>;
   finish?: (value: boolean) => void;
+  waiting?: () => void;
   current(value: string): void;
 }) {
   const { callId, registration, native, finish, mode, current } = input;
@@ -99,6 +100,7 @@ export async function assertFakeLiveCommonSuccessor(input: {
   });
   expect(native.settleLiveCommonConversationResult).toHaveBeenCalledTimes(1);
   expect(finish).toBeDefined();
+  input.waiting?.();
   await act(() => {
     if (mode === 'successor-revoked') current('revoked');
     finish?.(mode !== 'predecessor-failed');
