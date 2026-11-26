@@ -13,7 +13,7 @@ import { ConversationMessageText } from '../ConversationMessageText';
 import {
   ConversationA2UILocalDraftOwner,
   useConversationA2UILocalDraftOwner,
-} from '../ConversationA2UILocalDraftOwner';
+} from '../conversationA2UILocalDraftOwner';
 import { conversationA2UICatalog } from '../conversationA2UI';
 import { storeArchivedConversationWeightedCards } from '../archivedConversationWeightedCards';
 import { conversationA2UICardWeight } from '../conversationA2UICardWeightTask';
