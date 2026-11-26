@@ -13,10 +13,14 @@ interface PageDemandStream {
 export function useRecentPageDemand(
   stream: PageDemandStream,
   pageSize: number,
+  resumeDepth = 0,
 ) {
   const [demand, setDemand] = useState<{ epoch: number; depth: number }>();
   const { loadMore, more, pageEpoch, rows, state } = stream;
-  const depth = demand?.epoch === pageEpoch ? demand.depth : pageSize;
+  const depth = Math.max(
+    resumeDepth,
+    demand?.epoch === pageEpoch ? demand.depth : pageSize,
+  );
   useEffect(() => {
     if (state === 'ready' && more && rows.length < depth) {
       // Only the stream's pending guard and exact tail may issue this next page.

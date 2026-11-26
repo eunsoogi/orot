@@ -1,4 +1,8 @@
-import { useLayoutEffect } from 'react';
+import { useLayoutEffect, useState } from 'react';
+import {
+  RecordsSnapshotSurface,
+  hasRecordsNativeSnapshotSurface,
+} from './RecordsSnapshotSurface';
 import { useRecentRecordsSuspension } from './useRecentRecordsSuspension';
 import { StyleSheet, View } from 'react-native';
 import type { MedicalDocumentSourceRecord } from '../medicalDocuments/medicalDocumentImportService';
@@ -43,6 +47,7 @@ export interface RecordsRecentSourcesProps {
 /** Renders actual local activity in one grouped timeline while preserving each existing destination. */
 export function RecordsRecentSources(props: RecordsRecentSourcesProps) {
   const { showAll = false, onViewAll, documents, documentsOpening } = props;
+  const [shieldBound, setShieldBound] = useState(false);
   const suspension = useRecentRecordsSuspension(
     props.active ?? true,
     props.ownership,
@@ -53,15 +58,22 @@ export function RecordsRecentSources(props: RecordsRecentSourcesProps) {
     groups,
     showMore,
     retrySources,
+    retryProtectedPaint,
     openRecord,
     isCurrent,
     more,
     isLoading,
     isFresh,
     warmPaint,
+    holdingMountedList,
+    shieldRecords,
+    presentationRevision,
     canAdvance,
     loadErrors,
-  } = useRecordsRecentFeed(props);
+  } = useRecordsRecentFeed(props, {
+    available: hasRecordsNativeSnapshotSurface,
+    bound: shieldBound,
+  });
   useLayoutEffect(() => {
     suspension.update(
       (isFresh && !isLoading) || warmPaint,
@@ -69,7 +81,9 @@ export function RecordsRecentSources(props: RecordsRecentSourcesProps) {
       records.length > 0,
     );
   });
-  if (suspension.hidden) return null;
+  if (suspension.hidden && !holdingMountedList) return null;
+  const covered = suspension.hidden || holdingMountedList;
+  const inert = covered || warmPaint;
   // A source failure must not add an error banner to records that are already usable.
   const hasRecords = records.length > 0;
   const statusAtTail = hasRecords && showAll;
@@ -89,11 +103,26 @@ export function RecordsRecentSources(props: RecordsRecentSourcesProps) {
   );
 
   return (
-    <View
-      pointerEvents={warmPaint ? 'none' : 'auto'}
-      accessibilityElementsHidden={warmPaint}
-      importantForAccessibility={warmPaint ? 'no-hide-descendants' : 'auto'}
-      style={styles.container}
+    <RecordsSnapshotSurface
+      active={shieldRecords}
+      onBound={setShieldBound}
+      terminal={loadErrors.length > 0}
+      neutralStyle={styles.container}
+      neutral={
+        <RecordsRecentSourceState
+          state="failed"
+          onRetry={retryProtectedPaint}
+        />
+      }
+      revision={
+        covered || (loadErrors.length > 0 && hasRecords)
+          ? undefined
+          : presentationRevision
+      }
+      pointerEvents={inert ? 'none' : 'auto'}
+      accessibilityElementsHidden={inert}
+      importantForAccessibility={inert ? 'no-hide-descendants' : 'auto'}
+      style={[styles.container, covered && styles.covered]}
       testID="records-recent-sources"
     >
       <View style={styles.headingRow}>
@@ -103,7 +132,7 @@ export function RecordsRecentSources(props: RecordsRecentSourcesProps) {
         {!showAll && records.length > 0 && onViewAll ? (
           <AppButton
             accessibilityLabel={t('records.recent.viewAll')}
-            onPress={() => !warmPaint && isCurrent() && onViewAll()}
+            onPress={() => !inert && isCurrent() && onViewAll()}
             size="compact"
             testID="records-recent-view-all"
             title={t('records.recent.viewAll') + '  ›'}
@@ -111,7 +140,7 @@ export function RecordsRecentSources(props: RecordsRecentSourcesProps) {
           />
         ) : null}
       </View>
-      {!warmPaint && !statusAtTail ? status : null}
+      {!inert && !statusAtTail ? status : null}
       {!isLoading && loadErrors.length === 0 && records.length === 0 ? (
         <RecordsRecentSourceState
           state="empty"
@@ -142,7 +171,7 @@ export function RecordsRecentSources(props: RecordsRecentSourcesProps) {
                     documentsOpening={documentsOpening}
                     groupLabel={group.label}
                     onOpen={() => {
-                      if (!warmPaint) openRecord(record);
+                      if (!inert) openRecord(record);
                     }}
                     record={record}
                   />
@@ -156,24 +185,25 @@ export function RecordsRecentSources(props: RecordsRecentSourcesProps) {
         <AppButton
           testID="records-recent-show-more"
           title={t('records.recent.showMore')}
-          disabled={warmPaint || !canAdvance}
+          disabled={inert || !canAdvance}
           onPress={() => {
-            if (!warmPaint) showMore();
+            if (!inert) showMore();
           }}
         />
       ) : null}
-      {!warmPaint && statusAtTail ? status : null}
+      {!inert && statusAtTail ? status : null}
       {documentsOpening ? (
         <Text accessibilityLiveRegion="polite">
           {t('medicalDocument.source.opening')}
         </Text>
       ) : null}
-    </View>
+    </RecordsSnapshotSurface>
   );
 }
 
 const styles = StyleSheet.create({
   container: { gap: hubSpacing.item, minWidth: 0 },
+  covered: { opacity: 0 },
   headingRow: {
     alignItems: 'center',
     flexDirection: 'row',

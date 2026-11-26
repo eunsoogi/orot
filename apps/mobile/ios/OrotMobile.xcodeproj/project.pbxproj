@@ -8,6 +8,7 @@
 
 /* Begin PBXBuildFile section */
 		652B141D147F4AF795148EF8 /* ConversationBubbleCopyViewManager.m in Sources */ = {isa = PBXBuildFile; fileRef = 57D050A8E6C54A179AFBDD76 /* ConversationBubbleCopyViewManager.m */; };
+		A19740000000000000000007 /* RecordsSnapshotSurfaceManager.m in Sources */ = {isa = PBXBuildFile; fileRef = A19740000000000000000008 /* RecordsSnapshotSurfaceManager.m */; };
 		9F405D3D32784ED2A0408D80 /* RouteRefreshFeedbackModule.m in Sources */ = {isa = PBXBuildFile; fileRef = 7CFC65CFF33F460F8EAC5110 /* RouteRefreshFeedbackModule.m */; };
 		B8A130BD6D51CFCE98120001 /* ClassificationReaderGeometryUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = B8A130BD6D51CFCE98120002 /* ClassificationReaderGeometryUITests.swift */; };
 		B8A130BD6D51CFCE98120101 /* ClassificationResultScrollingUITestConditions.swift in Sources */ = {isa = PBXBuildFile; fileRef = B8A130BD6D51CFCE98120102 /* ClassificationResultScrollingUITestConditions.swift */; };
@@ -238,6 +239,8 @@
 		A62F00000000000000000002 /* AppleFoundationModelsModule.m in Sources */ = {isa = PBXBuildFile; fileRef = B62F00000000000000000002 /* AppleFoundationModelsModule.m */; };
 		A7F000000000000000000001 /* ConversationExecutionModule.swift in Sources */ = {isa = PBXBuildFile; fileRef = B7F000000000000000000001 /* ConversationExecutionModule.swift */; };
 		8CEBDE8273409A95A90FECBA /* ConversationNativeSceneOwnership.swift in Sources */ = {isa = PBXBuildFile; fileRef = 174E6E280AED849EAE203557 /* ConversationNativeSceneOwnership.swift */; };
+		A19740000000000000000005 /* RecordsSnapshotSurface.swift in Sources */ = {isa = PBXBuildFile; fileRef = A19740000000000000000006 /* RecordsSnapshotSurface.swift */; };
+		A19740000000000000000001 /* RecordsSnapshotShield.swift in Sources */ = {isa = PBXBuildFile; fileRef = A19740000000000000000002 /* RecordsSnapshotShield.swift */; };
 		A7F000000000000000000003 /* ConversationContinuedProcessing.swift in Sources */ = {isa = PBXBuildFile; fileRef = B7F000000000000000000003 /* ConversationContinuedProcessing.swift */; };
 		A7F000000000000000000002 /* ConversationExecutionModule.m in Sources */ = {isa = PBXBuildFile; fileRef = B7F000000000000000000002 /* ConversationExecutionModule.m */; };
 		A62F00000000000000000003 /* AppleFoundationModelsCodec.swift in Sources */ = {isa = PBXBuildFile; fileRef = B62F00000000000000000003 /* AppleFoundationModelsCodec.swift */; };
@@ -379,6 +382,7 @@
 		E648492F5D474C5293C721B1 /* WindowPresentationAnchorIntegrationTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = F3A1E76C2B9D4F5086C2E73 /* WindowPresentationAnchorIntegrationTests.swift */; };
 		A77400000000000000000001 /* RotationGeometryGuardTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = A77400000000000000000002 /* RotationGeometryGuardTests.swift */; };
 		A77400000000000000000009 /* AppointmentPageScrollOwnershipTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = A7740000000000000000000A /* AppointmentPageScrollOwnershipTests.swift */; };
+		A19740000000000000000003 /* RecordsSnapshotShieldTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = A19740000000000000000004 /* RecordsSnapshotShieldTests.swift */; };
 		66CC310178C127BD44BF4B1C /* CalendarRangeSnapshotTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = D2E66F895672FDDE49254D1E /* CalendarRangeSnapshotTests.swift */; };
 		F561A51C3C3D4D4F9C7E1A21 /* WindowPresentationAnchorIntegrationTestSupport.swift in Sources */ = {isa = PBXBuildFile; fileRef = F561A51C3C3D4D4F9C7E1A22 /* WindowPresentationAnchorIntegrationTestSupport.swift */; };
 		A7D33F4106284AE897BBC52A /* OrientationPresentationAnchorUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = B3C94FA27D314E2B80A74D16 /* OrientationPresentationAnchorUITests.swift */; };
@@ -451,6 +455,7 @@
 
 /* Begin PBXFileReference section */
 		57D050A8E6C54A179AFBDD76 /* ConversationBubbleCopyViewManager.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; name = ConversationBubbleCopyViewManager.m; path = OrotMobile/ConversationBubbleCopyViewManager.m; sourceTree = "<group>"; };
+		A19740000000000000000008 /* RecordsSnapshotSurfaceManager.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; name = RecordsSnapshotSurfaceManager.m; path = OrotMobile/RecordsSnapshotSurfaceManager.m; sourceTree = "<group>"; };
 		7CFC65CFF33F460F8EAC5110 /* RouteRefreshFeedbackModule.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; name = RouteRefreshFeedbackModule.m; path = OrotMobile/RouteRefreshFeedbackModule.m; sourceTree = "<group>"; };
 		B8A130BD6D51CFCE98120002 /* ClassificationReaderGeometryUITests.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = ClassificationReaderGeometryUITests.swift; sourceTree = "<group>"; };
 		B8A130BD6D51CFCE98120102 /* ClassificationResultScrollingUITestConditions.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = ClassificationResultScrollingUITestConditions.swift; sourceTree = "<group>"; };
@@ -634,6 +639,7 @@
 		F3A1E76C2B9D4F5086C2E73 /* WindowPresentationAnchorIntegrationTests.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = WindowPresentationAnchorIntegrationTests.swift; sourceTree = "<group>"; };
 		A77400000000000000000002 /* RotationGeometryGuardTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RotationGeometryGuardTests.swift; sourceTree = "<group>"; };
 		A7740000000000000000000A /* AppointmentPageScrollOwnershipTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppointmentPageScrollOwnershipTests.swift; sourceTree = "<group>"; };
+		A19740000000000000000004 /* RecordsSnapshotShieldTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RecordsSnapshotShieldTests.swift; sourceTree = "<group>"; };
 		D2E66F895672FDDE49254D1E /* CalendarRangeSnapshotTests.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = CalendarRangeSnapshotTests.swift; sourceTree = "<group>"; };
 		F561A51C3C3D4D4F9C7E1A22 /* WindowPresentationAnchorIntegrationTestSupport.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = WindowPresentationAnchorIntegrationTestSupport.swift; sourceTree = "<group>"; };
 		B1011000B1011000B1011001 /* NavigationGlassView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NavigationGlassView.swift; sourceTree = "<group>"; };
@@ -711,6 +717,8 @@
 		B62F00000000000000000002 /* AppleFoundationModelsModule.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; name = AppleFoundationModelsModule.m; path = OrotMobile/AppleFoundationModelsModule.m; sourceTree = "<group>"; };
 		B7F000000000000000000001 /* ConversationExecutionModule.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = ConversationExecutionModule.swift; path = OrotMobile/ConversationExecutionModule.swift; sourceTree = "<group>"; };
 		174E6E280AED849EAE203557 /* ConversationNativeSceneOwnership.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = ConversationNativeSceneOwnership.swift; path = OrotMobile/ConversationNativeSceneOwnership.swift; sourceTree = "<group>"; };
+		A19740000000000000000006 /* RecordsSnapshotSurface.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = RecordsSnapshotSurface.swift; path = OrotMobile/RecordsSnapshotSurface.swift; sourceTree = "<group>"; };
+		A19740000000000000000002 /* RecordsSnapshotShield.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = RecordsSnapshotShield.swift; path = OrotMobile/RecordsSnapshotShield.swift; sourceTree = "<group>"; };
 		B7F000000000000000000003 /* ConversationContinuedProcessing.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = ConversationContinuedProcessing.swift; path = OrotMobile/ConversationContinuedProcessing.swift; sourceTree = "<group>"; };
 		B7F000000000000000000002 /* ConversationExecutionModule.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; name = ConversationExecutionModule.m; path = OrotMobile/ConversationExecutionModule.m; sourceTree = "<group>"; };
 		B62F00000000000000000003 /* AppleFoundationModelsCodec.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = AppleFoundationModelsCodec.swift; path = OrotMobile/AppleFoundationModelsCodec.swift; sourceTree = "<group>"; };
@@ -953,6 +961,8 @@
 				B62F00000000000000000002 /* AppleFoundationModelsModule.m */,
 				B7F000000000000000000001 /* ConversationExecutionModule.swift */,
 				174E6E280AED849EAE203557 /* ConversationNativeSceneOwnership.swift */,
+				A19740000000000000000006 /* RecordsSnapshotSurface.swift */,
+				A19740000000000000000002 /* RecordsSnapshotShield.swift */,
 				B7F000000000000000000003 /* ConversationContinuedProcessing.swift */,
 				B7F000000000000000000002 /* ConversationExecutionModule.m */,
 				B62F00000000000000000003 /* AppleFoundationModelsCodec.swift */,
@@ -1062,6 +1072,7 @@
 				B821C7E44F1D4E9B981B2102 /* RootURLModule.swift */,
 				B821C7E44F1D4E9B981B2103 /* RootURLModule.m */,
 				57D050A8E6C54A179AFBDD76 /* ConversationBubbleCopyViewManager.m */,
+				A19740000000000000000008 /* RecordsSnapshotSurfaceManager.m */,
 				7CFC65CFF33F460F8EAC5110 /* RouteRefreshFeedbackModule.m */,
 				B2EB315EC5D5450DABCC07D7 /* ConsentFingerprintModule.swift */,
 				F097A6B0483243F38A41E365 /* ConsentFingerprintModule.m */,
@@ -1219,6 +1230,7 @@
 				F3A1E76C2B9D4F5086C2E73 /* WindowPresentationAnchorIntegrationTests.swift */,
 				A77400000000000000000002 /* RotationGeometryGuardTests.swift */,
 				A7740000000000000000000A /* AppointmentPageScrollOwnershipTests.swift */,
+				A19740000000000000000004 /* RecordsSnapshotShieldTests.swift */,
 				D2E66F895672FDDE49254D1E /* CalendarRangeSnapshotTests.swift */,
 				F561A51C3C3D4D4F9C7E1A22 /* WindowPresentationAnchorIntegrationTestSupport.swift */,
 				1147F5B3B0385D117589F2B5 /* AppleWorkflowIntegrationTests.swift */,
@@ -1750,6 +1762,8 @@
 				A62F00000000000000000002 /* AppleFoundationModelsModule.m in Sources */,
 				A7F000000000000000000001 /* ConversationExecutionModule.swift in Sources */,
 				8CEBDE8273409A95A90FECBA /* ConversationNativeSceneOwnership.swift in Sources */,
+				A19740000000000000000005 /* RecordsSnapshotSurface.swift in Sources */,
+				A19740000000000000000001 /* RecordsSnapshotShield.swift in Sources */,
 				A7F000000000000000000003 /* ConversationContinuedProcessing.swift in Sources */,
 				A7F000000000000000000002 /* ConversationExecutionModule.m in Sources */,
 				A62F00000000000000000003 /* AppleFoundationModelsCodec.swift in Sources */,
@@ -1859,6 +1873,7 @@
 				A821C7E44F1D4E9B981B2102 /* RootURLModule.swift in Sources */,
 				A821C7E44F1D4E9B981B2103 /* RootURLModule.m in Sources */,
 				652B141D147F4AF795148EF8 /* ConversationBubbleCopyViewManager.m in Sources */,
+				A19740000000000000000007 /* RecordsSnapshotSurfaceManager.m in Sources */,
 				9F405D3D32784ED2A0408D80 /* RouteRefreshFeedbackModule.m in Sources */,
 				5DE544E9C786430A8CEAE33C /* ConsentFingerprintModule.swift in Sources */,
 				2D158C819B404E85932B08B6 /* ConsentFingerprintModule.m in Sources */,
@@ -2093,6 +2108,7 @@
 				E648492F5D474C5293C721B1 /* WindowPresentationAnchorIntegrationTests.swift in Sources */,
 				A77400000000000000000001 /* RotationGeometryGuardTests.swift in Sources */,
 				A77400000000000000000009 /* AppointmentPageScrollOwnershipTests.swift in Sources */,
+				A19740000000000000000003 /* RecordsSnapshotShieldTests.swift in Sources */,
 				66CC310178C127BD44BF4B1C /* CalendarRangeSnapshotTests.swift in Sources */,
 				F561A51C3C3D4D4F9C7E1A21 /* WindowPresentationAnchorIntegrationTestSupport.swift in Sources */,
 				CA78D0E959578C2643221424 /* AppleWorkflowIntegrationTests.swift in Sources */,

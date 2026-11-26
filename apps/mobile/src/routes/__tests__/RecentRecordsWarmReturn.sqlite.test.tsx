@@ -26,7 +26,7 @@ import {
   recentTestExecution,
   renderRecords,
 } from '../testSupport/recentRecordsRouteTestSupport';
-
+jest.mock('../RecordsSnapshotSurface');
 jest.mock(
   'react-native-safe-area-context',
   () => require('react-native-safe-area-context/jest/mock').default,
@@ -54,6 +54,8 @@ test.each([
   'native foreground',
   'inactive compact',
   'inactive app default',
+  'inactive app default without warm receipt',
+  'background app default',
   'inactive full',
   'background full',
 ] as const)(
@@ -124,7 +126,7 @@ test.each([
           provenance: { sourceIds: [], reviewState: 'user_confirmed' },
         },
       });
-      const defaultRoute = journey === 'inactive app default';
+      const defaultRoute = journey.includes('app default');
       jest
         .mocked(loadRecentSourceMaterial)
         .mockImplementation(async (before, supplied) => {
@@ -141,7 +143,9 @@ test.each([
             before && { id: before.key, createdAt: before.createdAt },
             options?.signal,
             options?.canRetry,
-            defaultRoute && options?.settledOwner && options.registerSettled
+            journey === 'inactive app default' &&
+              options?.settledOwner &&
+              options.registerSettled
               ? {
                   owner: options.settledOwner,
                   onSettled: options.registerSettled,
@@ -165,6 +169,7 @@ test.each([
           );
         expect(await screen.findByText(file)).toBeTruthy();
         expect(await screen.findByTestId(memory)).toBeTruthy();
+        const paintedFile = screen.getByText(file);
         const warmGrants = grants;
         if (journey === 'Voice Model Back') {
           await act(async () => {
@@ -186,6 +191,12 @@ test.each([
           ).toBeNull();
           expect(screen.queryByText(file)).toBeNull();
           expect(screen.queryByTestId(memory)).toBeNull();
+          if (defaultRoute) {
+            expect(
+              screen.getByText(file, { includeHiddenElements: true }),
+            ).toBe(paintedFile);
+            expect(grants).toBe(warmGrants);
+          }
         }
         readAgain = true;
         await act(async () => {
@@ -200,7 +211,7 @@ test.each([
           await waitFor(() => {
             expect(
               screen.getByText(file, { includeHiddenElements: true }),
-            ).toBeTruthy();
+            ).toBe(paintedFile);
             expect(
               screen.getByTestId(memory, { includeHiddenElements: true }),
             ).toBeTruthy();
