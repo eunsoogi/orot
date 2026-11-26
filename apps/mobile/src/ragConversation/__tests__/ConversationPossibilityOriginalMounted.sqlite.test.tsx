@@ -17,6 +17,29 @@ import { runRagConversationTurn } from '../service';
 import { fixture, response } from '../testSupport/conversationEnvelopeFixtures';
 import { answer } from '../testSupport/structuredPossibilityReportFixture';
 
+jest.mock('../../generatedReports/readers', () => {
+  const actual = jest.requireActual<
+    typeof import('../../generatedReports/readers')
+  >('../../generatedReports/readers');
+  // Select the real reader over this fixture's protected DB without requiring
+  // Jest's VM to load the production lazy native-storage boundary.
+  return {
+    ...actual,
+    openGeneratedReportReader: async () => {
+      const {
+        openLocalAgentMemoryDatabase,
+        isCurrentLocalAgentMemoryDatabase,
+      } = jest.requireMock<typeof import('../../storage/secureDatabase')>(
+        '../../storage/secureDatabase',
+      );
+      return actual.createGeneratedReportReader(
+        await openLocalAgentMemoryDatabase(),
+        undefined,
+        isCurrentLocalAgentMemoryDatabase,
+      );
+    },
+  };
+});
 jest.mock('../conversationExecutionNative');
 jest.mock('../../storage/secureDatabase', () => ({
   isCurrentLocalAgentMemoryDatabase: jest.fn(),
