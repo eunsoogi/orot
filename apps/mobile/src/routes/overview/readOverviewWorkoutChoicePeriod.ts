@@ -1,4 +1,5 @@
 import type { RecordRepository } from '@orot/storage';
+import { loadOverviewMetricSelectionProof } from './metricSelection';
 import { readOwnedWorkoutPeriod } from '../../healthkit/ownedWorkoutPeriodRead';
 import {
   reproveWorkoutChoice,
@@ -10,12 +11,20 @@ export async function readOverviewWorkoutChoicePeriod(
   startup: WorkoutChoiceReceipt | undefined,
   period: Parameters<typeof readOwnedWorkoutPeriod>[0],
   owner: Parameters<typeof readOwnedWorkoutPeriod>[1] & {
+    readSavedSelection?: boolean;
     repository: Pick<
       RecordRepository,
       'listHealthObservationPage' | 'getSyncCheckpoint'
     >;
   },
 ) {
+  // The focused panel can be provisionally drawn from defaults. Only the
+  // durable preference in this protected workout read can authorize dispatch.
+  if (owner.readSavedSelection) {
+    const preference = await loadOverviewMetricSelectionProof(owner.repository);
+    if (!owner.current() || !preference.selection.includes('heartRate'))
+      return { result: undefined, stale: false };
+  }
   let stale = false;
   if (startup) {
     const status = await reproveWorkoutChoice(

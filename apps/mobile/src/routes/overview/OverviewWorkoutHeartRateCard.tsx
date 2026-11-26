@@ -11,6 +11,7 @@ export function OverviewWorkoutHeartRateCard({
   width,
   active,
   embedded,
+  readSavedSelection = false,
   unverifiedSelection = false,
   selectionEpoch,
   selectionWitness,
@@ -19,6 +20,7 @@ export function OverviewWorkoutHeartRateCard({
   readonly width: number | undefined;
   readonly active: boolean;
   readonly embedded?: boolean;
+  readonly readSavedSelection?: boolean;
   readonly unverifiedSelection?: boolean;
   readonly selectionEpoch?: number | null;
   readonly selectionWitness?: string | null;
@@ -29,6 +31,7 @@ export function OverviewWorkoutHeartRateCard({
     selectionEpoch,
     startupWorkoutChoice,
     selectionWitness,
+    readSavedSelection,
   );
   return (
     <View

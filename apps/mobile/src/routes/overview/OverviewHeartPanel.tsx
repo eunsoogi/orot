@@ -1,4 +1,3 @@
-import type { WorkoutChoiceReceipt } from './earlyWorkoutChoice';
 import { useIsFocused } from '@react-navigation/native';
 import { StyleSheet, View } from 'react-native';
 import { AppText as Text } from '../../layout/AppText';
@@ -109,30 +108,12 @@ export function OverviewHeartPanel({
   width,
   metrics,
   state,
-  workoutSelectionEpoch,
-  workoutSelectionWitness,
-  startupWorkoutChoice,
-  preserveWorkoutOwner,
-  initialWorkoutChoicePending,
 }: {
   readonly width: number | '100%';
   readonly metrics: Partial<Record<HeartReading, OverviewMetricProjection>>;
   readonly state: State;
-  readonly workoutSelectionEpoch?: number | null;
-  readonly workoutSelectionWitness?: string | null;
-  readonly startupWorkoutChoice?: WorkoutChoiceReceipt;
-  readonly preserveWorkoutOwner?: boolean;
-  readonly initialWorkoutChoicePending?: boolean;
 }) {
   const focused = useIsFocused();
-  // The provisional default selection is not authority for a native workout read.
-  const active =
-    focused &&
-    (state === 'ready' ||
-      state === 'refreshing' ||
-      (state === 'loading' &&
-        (preserveWorkoutOwner === true || !!startupWorkoutChoice)) ||
-      state === 'stale');
   return (
     <View
       style={[overview.card, overview.gridCard, styles.panel, { width }]}
@@ -162,17 +143,9 @@ export function OverviewHeartPanel({
         />
         <OverviewWorkoutHeartRateCard
           width={undefined}
-          active={active}
+          active={focused}
+          readSavedSelection
           embedded
-          selectionEpoch={workoutSelectionEpoch}
-          selectionWitness={workoutSelectionWitness}
-          startupWorkoutChoice={startupWorkoutChoice}
-          unverifiedSelection={
-            focused &&
-            state === 'loading' &&
-            (initialWorkoutChoicePending === true || !active) &&
-            !startupWorkoutChoice
-          }
         />
       </View>
     </View>

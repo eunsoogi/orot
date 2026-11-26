@@ -94,18 +94,25 @@ test('does not mount a heart card or workout read when heart is unselected', asy
   expect(workout).not.toHaveBeenCalled();
 });
 
-test('provisional defaults never enable a native workout read before owned metrics load', async () => {
+test('delegates workout admission to the focused card independently of chart readiness', async () => {
   workout.mockClear();
   workout.mockReturnValue({ status: 'unavailable' });
-  mocked.mockReturnValue({
-    ...state(),
-    state: 'loading',
-    workoutSelectionEpoch: null,
-  });
+  mocked.mockReturnValue({ ...state(), state: 'loading' });
   const { rerender } = await render(<OverviewMetrics />);
-  expect(workout).toHaveBeenCalledWith(false, null, undefined, undefined);
-  expect(workout.mock.calls.some(([active]) => active)).toBe(false);
-  mocked.mockReturnValue({ ...state(), workoutSelectionEpoch: 1 });
+  expect(workout).toHaveBeenCalledWith(
+    true,
+    undefined,
+    undefined,
+    undefined,
+    true,
+  );
+  mocked.mockReturnValue({ ...state(), state: 'failed' });
   await rerender(<OverviewMetrics />);
-  expect(workout).toHaveBeenCalledWith(true, 1, undefined, undefined);
+  expect(workout).toHaveBeenLastCalledWith(
+    true,
+    undefined,
+    undefined,
+    undefined,
+    true,
+  );
 });

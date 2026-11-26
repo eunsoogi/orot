@@ -3,6 +3,7 @@ import { AppState, type AppStateStatus } from 'react-native';
 import { act, render, screen, waitFor } from '@testing-library/react-native';
 import { readIsolatedOverview } from '../../storage/secureDatabase';
 import { OverviewMetrics } from './OverviewMetrics';
+import { saveOverviewMetricSelection } from './metricSelection';
 import { setup } from './testSupport/overviewWorkoutCardHarness';
 
 jest.mock('@react-navigation/native', () => ({
@@ -72,6 +73,7 @@ test.each([
         jest.mocked(useIsFocused).mockReturnValue(false);
         await view.rerender(<OverviewMetrics />);
         selectionRemoved = true;
+        await saveOverviewMetricSelection(lane.repository, ['sleep', 'steps']);
         jest.mocked(useIsFocused).mockReturnValue(true);
         await view.rerender(<OverviewMetrics />);
       } else {
@@ -82,7 +84,13 @@ test.each([
               : 'inactive',
           );
           if (outcome === 'revoked') lane.revoke();
-          if (outcome === 'removed') selectionRemoved = true;
+          if (outcome === 'removed') {
+            selectionRemoved = true;
+            await saveOverviewMetricSelection(lane.repository, [
+              'sleep',
+              'steps',
+            ]);
+          }
           // Native foreground can precede the RN notification and reap stale authority.
           lane.transition('active');
         });
@@ -93,7 +101,7 @@ test.each([
       if (outcome === 'available')
         expect(result()).toHaveTextContent(/불러오는 중/);
       await act(async () => probe.release(outcome !== 'revoked'));
-      if (outcome === 'available') {
+      if (outcome === 'available' || outcome === 'background') {
         await waitFor(() => expect(result()).toHaveTextContent('120 BPM'));
         expect(lane.queryWorkoutPeriodHeartRate).toHaveBeenCalledTimes(1);
       } else {
@@ -122,7 +130,7 @@ test.each([
 );
 
 test.each(['available', 'denied'] as const)(
-  'shows pending choice without opening native workout until cold projection: %s',
+  'reads the protected saved workout independently of a held cold projection: %s',
   async outcome => {
     const lane = await setup();
     jest.mocked(useIsFocused).mockReturnValue(true);
@@ -144,19 +152,18 @@ test.each(['available', 'denied'] as const)(
         return 'published';
       });
     try {
+      if (outcome === 'denied') lane.revoke();
       const view = await render(<OverviewMetrics />);
       await waitFor(() => expect(release).toBeDefined());
-      expect(result()).toHaveTextContent(/불러오는 중/);
-      expect(lane.queryWorkoutPeriodHeartRate).not.toHaveBeenCalled();
-      await act(async () => {
-        if (outcome === 'denied') lane.revoke();
-        release?.();
-      });
       await waitFor(() =>
         expect(result()).toHaveTextContent(
           outcome === 'available' ? '120 BPM' : /심박수를 확인할 수 없어요/,
         ),
       );
+      expect(lane.queryWorkoutPeriodHeartRate).toHaveBeenCalledTimes(
+        outcome === 'available' ? 1 : 0,
+      );
+      await act(async () => release?.());
       expect(lane.queryWorkoutPeriodHeartRate).toHaveBeenCalledTimes(
         outcome === 'available' ? 1 : 0,
       );

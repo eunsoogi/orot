@@ -21,7 +21,7 @@ jest.mock('../../ragConversation/conversationExecutionNative', () => ({
 }));
 
 test.each(['available', 'parent failure', 'native denial'] as const)(
-  'does not display a workout failure while the parent revalidates the saved selection: %s',
+  'reads workout source changes independently while parent charts reload: %s',
   async outcome => {
     const lane = await setup();
     const previous = AppState.currentState;
@@ -52,10 +52,6 @@ test.each(['available', 'parent failure', 'native denial'] as const)(
           screen.getByTestId('overview-workout-heart-rate-result');
         await waitFor(() => expect(result()).toHaveTextContent('120 BPM'));
         expect(lane.queryWorkoutPeriodHeartRate).toHaveBeenCalledTimes(1);
-        await act(async () => notifyLocalSourceDeleted('local'));
-        await waitFor(() => expect(release).toBeDefined());
-        expect(result()).toHaveTextContent(t('healthRecords.loading'));
-        expect(lane.queryWorkoutPeriodHeartRate).toHaveBeenCalledTimes(1);
         if (outcome === 'native denial')
           lane.queryWorkoutPeriodHeartRate.mockImplementationOnce(
             async period => ({
@@ -63,17 +59,18 @@ test.each(['available', 'parent failure', 'native denial'] as const)(
               status: 'unavailable',
             }),
           );
-        await act(async () => release?.());
+        await act(async () => notifyLocalSourceDeleted('local'));
+        await waitFor(() => expect(release).toBeDefined());
         await waitFor(() =>
           expect(result()).toHaveTextContent(
-            outcome === 'available'
+            outcome !== 'native denial'
               ? '120 BPM'
               : t('healthRecords.workoutHeartRate.periodUnavailable'),
           ),
         );
-        expect(lane.queryWorkoutPeriodHeartRate).toHaveBeenCalledTimes(
-          outcome === 'parent failure' ? 1 : 2,
-        );
+        expect(lane.queryWorkoutPeriodHeartRate).toHaveBeenCalledTimes(2);
+        await act(async () => release?.());
+        expect(lane.queryWorkoutPeriodHeartRate).toHaveBeenCalledTimes(2);
         if (outcome === 'parent failure')
           expect(screen.getByRole('alert')).toHaveTextContent(
             t('overview.metricError'),
