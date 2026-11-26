@@ -189,37 +189,3 @@ extension RealtimeVoiceCanonicalHealthMailbox {
         )
     }
 }
-
-/// Exactly one mailbox instance and purpose per active call. A stale call ID
-/// cannot settle or retire the successor, even if both use the same base grant.
-struct OwnedLiveResponsesMailbox {
-    enum Mode {
-        case aggregate(LiveResponsesMailbox)
-        case canonical(RealtimeVoiceCanonicalHealthMailbox, LiveResponsesSettingsGrant)
-    }
-
-    let identifier: String
-    let mode: Mode
-
-    var grant: LiveResponsesSettingsGrant {
-        switch mode {
-        case let .aggregate(mailbox): mailbox.grant
-        case let .canonical(_, grant): grant
-        }
-    }
-
-    func settle(call: String, challenge: String, output: String?, finish: @escaping (Bool) -> Void) {
-        guard identifier == call else { finish(false); return }
-        switch mode {
-        case let .aggregate(mailbox): mailbox.settle(challenge, output: output, completion: finish)
-        case let .canonical(mailbox, _): mailbox.settle(challenge, output: output, completion: finish)
-        }
-    }
-
-    func revoke() {
-        switch mode {
-        case let .aggregate(mailbox): mailbox.revoke()
-        case let .canonical(mailbox, _): mailbox.revoke()
-        }
-    }
-}

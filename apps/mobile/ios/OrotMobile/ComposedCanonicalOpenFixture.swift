@@ -1,5 +1,6 @@
 #if OROT_TESTS && targetEnvironment(simulator)
     import Foundation
+    import UIKit
 
     /// No test setting reaches the normal bridge build. Use the real saved
     /// settings witness over UUID-owned Keychain aliases, not a JS true flag.
@@ -22,6 +23,17 @@
             return RealtimeVoiceCanonicalHealthAdmission.read(namespace + "." + alias, "synthetic-settings-consent")
         }
 
+        @MainActor
+        static func witness(base: LiveResponsesSettingsGrant, key: String) -> LiveConversationToolsSettingsWitness? {
+            guard allowed, let session else { return nil }
+            return LiveConversationToolsSettingsWitness.resolve(
+                base: base, key: key,
+                protected: { allowed && !session.protectedBlocked && UIApplication.shared.isProtectedDataAvailable },
+                read: read,
+                policy: { _, _ in LiveConversationToolsSettingsWitness.fixturePolicy(session.namespace) },
+            )
+        }
+
         static func fixtureCall(emit: @escaping (String, [String: Any]) -> Void) -> RealtimeVoiceCall? {
             if !requested {
                 return SettingsConsentRealtimeFixture.requested ? SettingsConsentRealtimeFixture.makeCall(emit: emit) : nil
@@ -36,11 +48,12 @@
             )
         }
 
+        @MainActor
         static func run(_ module: VoiceRealtimeModule, identifier: String, scenario: String,
                         finish: @escaping ([String: Any]) -> Void)
         {
             // Use the product capability the React Native bridge actually exports.
-            guard module.constantsToExport()?["supportsCanonicalHealthContextV2"] as? Bool == true,
+            guard module.constantsToExport()?["supportsLiveCommonConversationToolsV3"] as? Bool == true,
                   allowed, session == nil, module.active == nil,
                   let namespace = SettingsConsentRealtimeFixture.canonicalNamespace(identifier),
                   let value = RealtimeVoiceCanonicalHealthAdmission.read(
@@ -76,6 +89,7 @@
                 self.finish = finish
             }
 
+            @MainActor
             func start(_ value: [String: Any], binding: RealtimeVoiceCanonicalHealthAdmission) {
                 guard let key = ComposedCanonicalOpenFixture.read(
                     "com.orot.mobile.voice-settings.v1", "voice-settings",
@@ -84,13 +98,6 @@
                 let base: NSDictionary = [
                     "backendModel": binding.backendModel, "generation": binding.legacyGeneration,
                     "grantID": binding.legacyGeneration + "-model",
-                ]
-                let declaration: [String: Any] = [
-                    "name": RealtimeVoiceCanonicalHealthAdmission.name,
-                    "description": "Synthetic owned canonical tool",
-                    "strict": false,
-                    "parameters": ["type": "object", "additionalProperties": false,
-                                   "properties": ["days": [:], "topics": [:], "detail": [:], "window": [:]]],
                 ]
                 module.reviewCanonicalLiveCall(id, canonical: value as NSDictionary, baseline: base, resolver: { [weak self] result in
                     guard let self else { return }
@@ -104,12 +111,16 @@
                         open(id, key: key, options: ["language": "auto", "voice": "default"])
                         return
                     }
-                    guard approved == true else { complete(false); return }
-                    let requested = scenario == "open-mismatch" ? id + "-wrong" : id
+                    guard approved == true, let grant = LiveResponsesSettingsGrant(base),
+                          let current = ComposedCanonicalOpenFixture.witness(base: grant, key: key)
+                    else { complete(false); return }
+                    var registration = LiveCanonicalContextV3Transport.registration(current)
+                    if scenario == "open-mismatch" {
+                        registration["credentialEpoch"] = "foreign"
+                    }
                     protectedBlocked = scenario == "open-locked"
-                    open(requested, key: key, options: [
-                        "language": "auto", "voice": "default", "responsesGrant": base,
-                        "canonicalHealthGrant": value, "canonicalHealthDeclaration": declaration,
+                    open(id, key: key, options: [
+                        "language": "auto", "voice": "default", "commonToolsRegistration": registration,
                     ])
                 }, rejecter: { [weak self] _, _, _ in self?.complete(false) })
                 DispatchQueue.main.asyncAfter(deadline: .now() + 12) { [weak self] in
@@ -141,17 +152,19 @@
             }
 
             func receive(_ event: String, _ payload: [String: Any]) {
-                guard event == "VoiceRealtimeManagedToolCall", payload["callId"] as? String == id,
-                      payload["name"] as? String == RealtimeVoiceCanonicalHealthAdmission.name,
-                      let challenge = payload["challengeId"] as? String
+                guard event == "VoiceRealtimeCommonToolBatch",
+                      let calls = payload["calls"] as? [[String: Any]], calls.count == 1,
+                      let tool = calls.first, tool["callId"] as? String == id,
+                      tool["name"] as? String == RealtimeVoiceCanonicalHealthAdmission.name,
+                      let challenge = tool["challengeId"] as? String
                 else { return }
                 challenges += 1
                 let denying = scenario == "open-reject-transfer"
-                if !denying, !module.claimLiveResponsesResult(id, challengeId: challenge).boolValue {
+                if !denying, !module.claimLiveCommonConversationResult(id, challengeId: challenge, exactOutput: exact).boolValue {
                     complete(false)
                     return
                 }
-                module.settleLiveResponsesToolCall(id, challengeId: challenge, output: denying ? nil : exact, resolver: { [weak self] accepted in
+                module.settleLiveCommonConversationResult(id, challengeId: challenge, output: denying ? nil : exact, resolver: { [weak self] accepted in
                     guard let self else { return }
                     let frames = transport.resultFrames
                     if denying {

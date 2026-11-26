@@ -31,14 +31,6 @@ extension RealtimeVoiceLifecycleTests {
             XCTAssertFalse(settings.isCurrent(key: "synthetic-key", read: read))
             selected = backend; status = "revoked"
             XCTAssertFalse(settings.isCurrent(key: "synthetic-key", read: read))
-            XCTAssertTrue(LiveResponsesAdmission.validAggregate(
-                #"{"topic":"measurements","metric":"heart_rate","unit":"count/min","days":7,"sampleCount":3,"meanOfRecordedDailyMeans":66}"#,
-                days: 7,
-            ))
-            XCTAssertFalse(LiveResponsesAdmission.validAggregate(
-                #"{"topic":"measurements","metric":"heart_rate","unit":"count/min","days":7,"sampleCount":3,"meanOfRecordedDailyMeans":66,"text":"raw"}"#,
-                days: 7,
-            ))
             let socket = ManagedResponseFixtureSocket()
             let configured = expectation(description: "held Live socket configuration")
             let queued = expectation(description: "one owned result and continuation")
@@ -47,7 +39,7 @@ extension RealtimeVoiceLifecycleTests {
             let call = managedFixtureCall(socket)
             var invocations: [String] = []
             let admission = managedAdmission(backendModel: backend) { request, finish in
-                XCTAssertEqual(request.query, "synthetic-only")
+                XCTAssertEqual(request.canonicalArguments, "{\"topics\":[\"sleep\"]}")
                 invocations.append(request.functionID)
                 finish("{\"status\":\"synthetic\"}")
                 finish("must-not-send-twice")
@@ -129,8 +121,8 @@ extension RealtimeVoiceLifecycleTests {
                 } else if mode == "wrong" {
                     events[1]["delegation_id"] = "other-delegation"
                 } else {
-                    let item = ["type": "function_call", "call_id": mode == "conflicting-scope" ? "function-a" : "function-b", "name": "orot_reviewed_memory",
-                                "arguments": mode == "conflicting-scope" ? #"{"query":"different"}"# : #"{"query":"synthetic-only"}"#]
+                    let item = ["type": "function_call", "call_id": mode == "conflicting-scope" ? "function-a" : "function-b", "name": "local-health-context",
+                                "arguments": mode == "conflicting-scope" ? #"{"topics":["symptoms"]}"# : #"{"topics":["sleep"]}"#]
                     events.insert(["type": "response.event", "event_id": mode == "second-call" ? "second-item-event" : "item-event", "delegation_id": "delegation-a",
                                    "event": ["type": "response.output_item.done", "item": item]], at: events.count - 1)
                 }
@@ -172,10 +164,12 @@ extension RealtimeVoiceLifecycleTests {
         backendModel: String = "gpt-6-luna",
         _ execute: @escaping (LiveResponsesAdmission.Request, @escaping (String?) -> Void) -> (() -> Void),
     ) -> LiveResponsesAdmission {
-        LiveResponsesAdmission(backendModel: backendModel, functionName: "orot_reviewed_memory",
+        LiveResponsesAdmission(backendModel: backendModel, functionName: "local-health-context",
                                backendAllowed: { true }, mayRun: { $0.owner.callID == "fixture-call" },
                                approve: { _, finish in finish(true); return {} },
-                               execute: execute, mayDisclose: { _, value in value.contains("synthetic") })
+                               execute: execute, mayDisclose: { _, value in value.contains("synthetic") },
+                               dispatchTicket: { request, _ in LiveNativeResultDispatchAuthority().begin(call: request.owner.callID, challenge: request.functionID) },
+                               canonicalConfiguration: { RealtimeVoiceNativeRegistryAssertions.stockConfiguration(backendModel) })
     }
 
     func managedEvents() -> [[String: Any]] {
@@ -183,7 +177,7 @@ extension RealtimeVoiceLifecycleTests {
             ["type": "response.event", "event_id": id, "delegation_id": "delegation-a", "event": event]
         }
         let item: [String: Any] = ["type": "function_call", "call_id": "function-a",
-                                   "name": "orot_reviewed_memory", "arguments": "{\"query\":\"synthetic-only\"}"]
+                                   "name": "local-health-context", "arguments": "{\"topics\":[\"sleep\"]}"]
         return [
             ["type": "session.delegation.created", "event_id": "delegation-event", "offset_ms": 5,
              "delegation": ["type": "delegation", "id": "delegation-a", "target": "responses", "response_id": "response-a"]],
@@ -229,6 +223,10 @@ final class ManagedResponseFixtureSocket: RealtimeSocketPort {
         permit = next
         queued?()
         return true
+    }
+
+    func sendTicketedToolFrames(_ frames: [[String: Any]], current: @escaping () -> Bool, ticket _: LiveNativeResultDispatchAuthority.Ticket) -> Bool {
+        sendManagedToolFrames(frames, current: current)
     }
 
     func handoff() -> Bool {

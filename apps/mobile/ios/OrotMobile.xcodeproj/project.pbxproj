@@ -41,6 +41,7 @@
 		C7A8C3EFD30D42D2A9EFF001 /* RealtimeVoiceBatchTransport.swift in Sources */ = {isa = PBXBuildFile; fileRef = C7A8C3EFD30D42D2A9EFF002 /* RealtimeVoiceBatchTransport.swift */; };
 		234A515CF0115BDB807EA81C /* VoiceRealtimeCommonV3Bridge.swift in Sources */ = {isa = PBXBuildFile; fileRef = C344C90C9A215AE48D8CFF70 /* VoiceRealtimeCommonV3Bridge.swift */; };
 		6696823F1F6659B290098921 /* LiveCommonV3SourcePins.swift in Sources */ = {isa = PBXBuildFile; fileRef = ED8F2DE1F8945BC7AA40E99A /* LiveCommonV3SourcePins.swift */; };
+		A9BB0000000000000000000A /* LiveStockHealthAttestation.swift in Sources */ = {isa = PBXBuildFile; fileRef = A9BB0000000000000000000B /* LiveStockHealthAttestation.swift */; };
 		80BE500D5D2A5F8E8E9ED496 /* LiveCanonicalContextV3Transport.swift in Sources */ = {isa = PBXBuildFile; fileRef = ED0D92502965599D8B8C1E24 /* LiveCanonicalContextV3Transport.swift */; };
 		35D7EC75B09954A789162479 /* LiveConversationToolsSettingsWitness.swift in Sources */ = {isa = PBXBuildFile; fileRef = 60F5E8C119FD52DBA1F31C1B /* LiveConversationToolsSettingsWitness.swift */; };
 		E73A4A9DC65F411B8186B011 /* RealtimeVoiceCanonicalHealthMailbox.swift in Sources */ = {isa = PBXBuildFile; fileRef = E73A4A9DC65F411B8186A011 /* RealtimeVoiceCanonicalHealthMailbox.swift */; };
@@ -48,7 +49,6 @@
 		E73A4A9DC65F411B8186B052 /* CanonicalLiveCallPresenter.swift in Sources */ = {isa = PBXBuildFile; fileRef = E73A4A9DC65F411B8186A052 /* CanonicalLiveCallPresenter.swift */; };
 		E73A4A9DC65F411B8186B053 /* ComposedCanonicalOpenFixture.swift in Sources */ = {isa = PBXBuildFile; fileRef = E73A4A9DC65F411B8186A053 /* ComposedCanonicalOpenFixture.swift */; };
 		E73A4A9DC65F411B8186B054 /* ComposedCanonicalFixtureTransport.swift in Sources */ = {isa = PBXBuildFile; fileRef = E73A4A9DC65F411B8186A054 /* ComposedCanonicalFixtureTransport.swift */; };
-		F40DFDA44E25442F829B17D7 /* RealtimeVoiceResponsesMailbox.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9F244E5C3A124BFC92A5929D /* RealtimeVoiceResponsesMailbox.swift */; };
 		A32CEFB009D745E0AD3A3D1A /* RealtimeVoiceSocketFrame.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1A4DE0BF65DE4917856558B9 /* RealtimeVoiceSocketFrame.swift */; };
 		CB1180000000000000000001 /* RealtimeVoiceToolLease.swift in Sources */ = {isa = PBXBuildFile; fileRef = CB1180000000000000000002 /* RealtimeVoiceToolLease.swift */; };
 		F9ABB0000000000000000001 /* AppointmentViewportGeometry.swift in Sources */ = {isa = PBXBuildFile; fileRef = F9ABB0000000000000000002 /* AppointmentViewportGeometry.swift */; };
@@ -495,6 +495,7 @@
 		C7A8C3EFD30D42D2A9EFF002 /* RealtimeVoiceBatchTransport.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OrotMobile/RealtimeVoiceBatchTransport.swift; sourceTree = "<group>"; };
 		C344C90C9A215AE48D8CFF70 /* VoiceRealtimeCommonV3Bridge.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OrotMobile/VoiceRealtimeCommonV3Bridge.swift; sourceTree = "<group>"; };
 		ED8F2DE1F8945BC7AA40E99A /* LiveCommonV3SourcePins.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OrotMobile/LiveCommonV3SourcePins.swift; sourceTree = "<group>"; };
+		A9BB0000000000000000000B /* LiveStockHealthAttestation.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OrotMobile/LiveStockHealthAttestation.swift; sourceTree = "<group>"; };
 		ED0D92502965599D8B8C1E24 /* LiveCanonicalContextV3Transport.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OrotMobile/LiveCanonicalContextV3Transport.swift; sourceTree = "<group>"; };
 		60F5E8C119FD52DBA1F31C1B /* LiveConversationToolsSettingsWitness.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OrotMobile/LiveConversationToolsSettingsWitness.swift; sourceTree = "<group>"; };
 		E73A4A9DC65F411B8186A011 /* RealtimeVoiceCanonicalHealthMailbox.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OrotMobile/RealtimeVoiceCanonicalHealthMailbox.swift; sourceTree = "<group>"; };
@@ -502,7 +503,6 @@
 		E73A4A9DC65F411B8186A052 /* CanonicalLiveCallPresenter.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OrotMobile/CanonicalLiveCallPresenter.swift; sourceTree = "<group>"; };
 		E73A4A9DC65F411B8186A053 /* ComposedCanonicalOpenFixture.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OrotMobile/ComposedCanonicalOpenFixture.swift; sourceTree = "<group>"; };
 		E73A4A9DC65F411B8186A054 /* ComposedCanonicalFixtureTransport.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OrotMobile/ComposedCanonicalFixtureTransport.swift; sourceTree = "<group>"; };
-		9F244E5C3A124BFC92A5929D /* RealtimeVoiceResponsesMailbox.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OrotMobile/RealtimeVoiceResponsesMailbox.swift; sourceTree = "<group>"; };
 		1A4DE0BF65DE4917856558B9 /* RealtimeVoiceSocketFrame.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OrotMobile/RealtimeVoiceSocketFrame.swift; sourceTree = "<group>"; };
 		CB1180000000000000000002 /* RealtimeVoiceToolLease.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OrotMobile/RealtimeVoiceToolLease.swift; sourceTree = "<group>"; };
 		F9ABB0000000000000000002 /* AppointmentViewportGeometry.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppointmentViewportGeometry.swift; sourceTree = "<group>"; };
@@ -960,6 +960,7 @@
 				C7A8C3EFD30D42D2A9EFF002 /* RealtimeVoiceBatchTransport.swift */,
 				C344C90C9A215AE48D8CFF70 /* VoiceRealtimeCommonV3Bridge.swift */,
 				ED8F2DE1F8945BC7AA40E99A /* LiveCommonV3SourcePins.swift */,
+				A9BB0000000000000000000B /* LiveStockHealthAttestation.swift */,
 				ED0D92502965599D8B8C1E24 /* LiveCanonicalContextV3Transport.swift */,
 				60F5E8C119FD52DBA1F31C1B /* LiveConversationToolsSettingsWitness.swift */,
 				E73A4A9DC65F411B8186A011 /* RealtimeVoiceCanonicalHealthMailbox.swift */,
@@ -967,7 +968,6 @@
 				E73A4A9DC65F411B8186A052 /* CanonicalLiveCallPresenter.swift */,
 				E73A4A9DC65F411B8186A053 /* ComposedCanonicalOpenFixture.swift */,
 				E73A4A9DC65F411B8186A054 /* ComposedCanonicalFixtureTransport.swift */,
-				9F244E5C3A124BFC92A5929D /* RealtimeVoiceResponsesMailbox.swift */,
 				1A4DE0BF65DE4917856558B9 /* RealtimeVoiceSocketFrame.swift */,
 				CB1180000000000000000002 /* RealtimeVoiceToolLease.swift */,
 				AA7479A548CDF9306903EC3C /* RealtimeVoiceSocket.swift */,
@@ -1490,6 +1490,7 @@
 			buildConfigurationList = 13B07F931A680F5B00A75B9A /* Build configuration list for PBXNativeTarget "OrotMobile" */;
 			buildPhases = (
 				C38B50BA6285516D6DCD4F65 /* [CP] Check Pods Manifest.lock */,
+				A9BB00000000000000000009 /* Verify generated Chat health descriptor */,
 				13B07F871A680F5B00A75B9A /* Sources */,
 				13B07F8C1A680F5B00A75B9A /* Frameworks */,
 				13B07F8E1A680F5B00A75B9A /* Resources */,
@@ -1628,6 +1629,25 @@
 /* End PBXResourcesBuildPhase section */
 
 /* Begin PBXShellScriptBuildPhase section */
+		A9BB00000000000000000009 /* Verify generated Chat health descriptor */ = {
+			isa = PBXShellScriptBuildPhase;
+			alwaysOutOfDate = 1;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			inputPaths = (
+				"$(SRCROOT)/../../../scripts/ci/live-stock-health-attestation.mjs",
+				"$(SRCROOT)/../../../scripts/ci/verify-live-stock-health-attestation.sh",
+				"$(SRCROOT)/../src/aiFeatures/integration/healthContextToolDefinition.ts",
+				"$(SRCROOT)/../src/healthEvidence/healthContext/types.ts",
+				"$(SRCROOT)/../../../packages/agent-runtime/src/multiAgent/guidedSchema.ts",
+				"$(SRCROOT)/OrotMobile/LiveStockHealthAttestation.swift",
+			);
+			name = "Verify generated Chat health descriptor";
+			runOnlyForDeploymentPostprocessing = 0;
+			shellPath = /bin/sh;
+			shellScript = "set -e\nWITH_ENVIRONMENT=\"$REACT_NATIVE_PATH/scripts/xcode/with-environment.sh\"\nVERIFY=\"$SRCROOT/../../../scripts/ci/verify-live-stock-health-attestation.sh\"\n/bin/bash \"$WITH_ENVIRONMENT\" \"$VERIFY\"\n";
+		};
 		00DD1BFF1BD5951E006B06BC /* Bundle React Native code and images */ = {
 			isa = PBXShellScriptBuildPhase;
 			alwaysOutOfDate = 1;
@@ -1748,6 +1768,7 @@
 				C7A8C3EFD30D42D2A9EFF001 /* RealtimeVoiceBatchTransport.swift in Sources */,
 				234A515CF0115BDB807EA81C /* VoiceRealtimeCommonV3Bridge.swift in Sources */,
 				6696823F1F6659B290098921 /* LiveCommonV3SourcePins.swift in Sources */,
+				A9BB0000000000000000000A /* LiveStockHealthAttestation.swift in Sources */,
 				80BE500D5D2A5F8E8E9ED496 /* LiveCanonicalContextV3Transport.swift in Sources */,
 				35D7EC75B09954A789162479 /* LiveConversationToolsSettingsWitness.swift in Sources */,
 				E73A4A9DC65F411B8186B011 /* RealtimeVoiceCanonicalHealthMailbox.swift in Sources */,
@@ -1755,7 +1776,6 @@
 				E73A4A9DC65F411B8186B052 /* CanonicalLiveCallPresenter.swift in Sources */,
 				E73A4A9DC65F411B8186B053 /* ComposedCanonicalOpenFixture.swift in Sources */,
 				E73A4A9DC65F411B8186B054 /* ComposedCanonicalFixtureTransport.swift in Sources */,
-				F40DFDA44E25442F829B17D7 /* RealtimeVoiceResponsesMailbox.swift in Sources */,
 				A32CEFB009D745E0AD3A3D1A /* RealtimeVoiceSocketFrame.swift in Sources */,
 				CB1180000000000000000001 /* RealtimeVoiceToolLease.swift in Sources */,
 				5F5BF337ADDFF3C31D481496 /* RealtimeVoiceSocket.swift in Sources */,

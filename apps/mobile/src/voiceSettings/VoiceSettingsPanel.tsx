@@ -28,7 +28,6 @@ import type { LiveResponsesBackend } from './liveResponsesSettingsIdentity';
 import { selectOpenAiVoicePair } from './reviewOpenAiVoicePair';
 import { usePreviouslyReviewedVoicePair } from './usePreviouslyReviewedVoicePair';
 import { useOpenAiVoicePairSave } from './useOpenAiVoicePairSave';
-import { useCanonicalLiveHealthSelection } from './useCanonicalLiveHealthSelection';
 import { VoiceCurrentSelection } from './VoiceCurrentSelection';
 /** Local and API providers are sibling sections; a hidden tab must not own navigation actions. */
 export function VoiceSettingsPanel({
@@ -108,27 +107,12 @@ export function VoiceSettingsPanel({
     onSaved: value => selection.markPairSaved(value.speechModel),
     onUnavailable: selection.markPairUnavailable,
   });
-  const companion = useCanonicalLiveHealthSelection(
-    !voicePair?.commonTools &&
-      active &&
-      pair &&
-      mode === savedMode &&
-      model === savedModel
-      ? { revision: pair.accountRevision, backend: pair.backendModel }
-      : undefined,
-    preferences?.revision === revision && preferences.draft?.dirty === true,
-  );
   const saveDisabled =
-    busy ||
-    failedLoad ||
-    pairedSave.busy ||
-    companion.busy ||
-    (apiDraft && !pair);
+    busy || failedLoad || pairedSave.busy || (apiDraft && !pair);
   const saveLabel = t('modelSettings.confirmVoice');
   const requestSave = () => {
     if (!saveDisabled) {
-      if (companion.dirty) companion.save();
-      else if (apiDraft) pairedSave.save();
+      if (apiDraft) pairedSave.save();
       else selection.save();
     }
   };
@@ -136,7 +120,7 @@ export function VoiceSettingsPanel({
     active,
     label: saveLabel,
     disabled: saveDisabled,
-    busy: busy || pairedSave.busy || companion.busy,
+    busy: busy || pairedSave.busy,
     onPress: requestSave,
   });
   const choices = (connection: 'local' | 'openai-api') =>
@@ -174,9 +158,7 @@ export function VoiceSettingsPanel({
   return (
     <View testID="voice-settings-panel">
       <VoiceCurrentSelection selection={selection} />
-      {active
-        ? (pairedSave.disclosureSheet ?? companion.disclosureSheet)
-        : null}
+      {active ? pairedSave.disclosureSheet : null}
       <View style={styles.section} testID="voice-model-group-local">
         <Text accessibilityRole="header" style={styles.heading}>
           Apple
@@ -206,7 +188,7 @@ export function VoiceSettingsPanel({
                         : { revision, draft },
                     )
                   }
-                  busy={busy || pairedSave.busy || companion.dirty}
+                  busy={busy || pairedSave.busy}
                   {...(livePreferences ?? {
                     ready: true,
                     store: preferencesReader!,
@@ -217,7 +199,6 @@ export function VoiceSettingsPanel({
             }
             tools={
               <OpenAiVoiceToolOptions
-                companion={companion.option}
                 models={catalog.toolIds}
                 selected={tool?.revision === revision ? tool.model : undefined}
                 disabled={busy || failedLoad || pairedSave.busy}

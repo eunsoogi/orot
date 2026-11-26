@@ -34,7 +34,9 @@ final class LiveCanonicalContextV3Transport {
     {
         guard RealtimeVoiceToolLease.validID(call), startupCurrent(call), let selected = witness() else { return nil }
         let registration = Self.registration(selected)
-        guard requested.count == 10, Self.bounded(requested), Self.json(requested) == Self.json(registration),
+        guard requested.count == 10, Self.bounded(requested),
+              let descriptors = requested["tools"] as? [[String: Any]], descriptors.count == 1,
+              LiveStockHealthAttestation.attestsStock(descriptors[0]), Self.json(requested) == Self.json(registration),
               witness() == selected, startupCurrent(call)
         else { return nil }
         manifest = registration
@@ -70,6 +72,7 @@ final class LiveCanonicalContextV3Transport {
               acknowledged == nil, !retired
         else { return nil }
         var tool = Self.stock
+        guard !tool.isEmpty else { return nil }
         tool["strict"] = false
         tool["type"] = "function"
         return ["type": "responses", "responses": ["model": initial.backendModel, "tools": [tool]]]

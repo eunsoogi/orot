@@ -69,6 +69,7 @@ test.each([
   'valid',
   'wrong-ack',
   'no-common-grant',
+  'old-v2-grant',
   'source-denied',
   'stop-in-queue',
   'successor-before-promise',
@@ -86,17 +87,19 @@ test.each([
     const os = Object.getOwnPropertyDescriptor(Platform, 'OS')!;
     Object.defineProperty(Platform, 'OS', { configurable: true, value: 'ios' });
     AppState.currentState = 'active';
-    mockOpenData.mockReset().mockResolvedValue(await storage.input.openData());
+    mockOpenData.mockReset().mockResolvedValue(await storage.openData());
     mockAuthorize.mockReset().mockImplementation(async () => {
       if (mode === 'source-denied') storage.revokeDbOwner();
       return 'authorized';
     });
+    const legacy = mode === 'old-v2-grant';
+    const noTools = legacy || mode === 'no-common-grant';
     mockSettings.mockResolvedValue({
       kind: 'active',
       credentialEpoch: witness.credentialEpoch,
       nativeGrant: witness,
-      commonToolsPolicy:
-        mode === 'no-common-grant' ? undefined : 'common-tools-v3',
+      ...(legacy ? { aggregatePolicy: 'headless-v2' } : {}),
+      commonToolsPolicy: noTools ? undefined : 'common-tools-v3',
       current: () => true,
       subscribe: () => () => {},
     });
@@ -156,7 +159,7 @@ test.each([
         );
         const [callId, , , { commonToolsRegistration }] =
           native.openLiveCall.mock.calls[0]!;
-        if (mode === 'no-common-grant') {
+        if (noTools) {
           expect(commonToolsRegistration).toBeUndefined();
           expect(mockOpenData).not.toHaveBeenCalled();
           return;

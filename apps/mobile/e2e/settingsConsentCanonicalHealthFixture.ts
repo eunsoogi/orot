@@ -10,16 +10,24 @@ import {
 } from '../src/storage/settingsVoicePairSelection';
 import {
   canonicalHealthBinding,
+  canonicalHealthPolicy,
   canonicalHealthSlot,
   type CanonicalHealthBinding,
 } from '../src/voiceSettings/liveCanonicalHealthBinding';
-import { canonicalHealthPermission } from '../src/voiceSettings/liveCanonicalHealthSettings';
 import {
   liveResponsesProviderId,
   liveResponsesRecipient,
   liveResponsesPermissions,
 } from '../src/voiceSettings/liveResponsesSettingsIdentity';
 import type { openSettingsConsentNativeStore } from './settingsConsentNativeStore';
+
+// Kept only in the synthetic regression harness to test revoked historical consent.
+const canonicalHealthPermission = {
+  purpose: 'live_responses_canonical_health_context',
+  policyVersion: canonicalHealthPolicy,
+  dataCategories: ['health_records'],
+  sourceKinds: ['personal_record'],
+} as const;
 
 type NativeStore = Awaited<ReturnType<typeof openSettingsConsentNativeStore>>;
 type Store = Pick<

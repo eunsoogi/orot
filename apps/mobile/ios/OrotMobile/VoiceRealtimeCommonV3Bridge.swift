@@ -2,19 +2,6 @@ import Foundation
 import React
 
 extension VoiceRealtimeModule {
-    /// These process-local methods never wait for main or inspect any health data.
-    @objc(claimLiveResponsesResult:challengeId:)
-    func claimLiveResponsesResult(_ identifier: String, challengeId: String) -> NSNumber {
-        NSNumber(value: resultAuthority.claim(call: identifier, challenge: challengeId))
-    }
-
-    @objc(retireLiveResponsesResult:challengeId:)
-    func retireLiveResponsesResult(_ identifier: String, challengeId: String) -> NSNumber {
-        NSNumber(value: resultAuthority.retire(call: identifier, challenge: challengeId))
-    }
-}
-
-extension VoiceRealtimeModule {
     @MainActor
     func prepareCommonV3(_ callId: String, model: String, key: String, options: NSDictionary) -> LiveResponsesAdmission? {
         guard model == "gpt-live-1.1", commonV3 == nil,
@@ -28,7 +15,14 @@ extension VoiceRealtimeModule {
         let pins = commonSourcePins
         guard let transport = LiveCanonicalContextV3Transport(
             call: callId, requested: registration,
-            witness: { LiveConversationToolsSettingsWitness.readCurrent(base: base, key: key) },
+            witness: {
+                #if OROT_TESTS && targetEnvironment(simulator)
+                    if ComposedCanonicalOpenFixture.requested {
+                        return ComposedCanonicalOpenFixture.witness(base: base, key: key)
+                    }
+                #endif
+                return LiveConversationToolsSettingsWitness.readCurrent(base: base, key: key)
+            },
             startupCurrent: { [weak self] callId in
                 guard let self, call.foreground() else { return false }
                 return (active == nil && call.id == nil) || (active == callId && call.id == callId && call.token != nil)
@@ -38,7 +32,7 @@ extension VoiceRealtimeModule {
             sourceTicketCurrent: pins.matches,
         ) else { return nil }
         commonV3 = transport
-        return transport.bridge(pins: pins) { [weak self] event, body in self?.sendEvent(withName: event, body: body) }
+        return transport.bridge(pins: pins) { [weak self] event, body in self?.emitCanonicalReviewEvent(event, body) }
     }
 
     @MainActor

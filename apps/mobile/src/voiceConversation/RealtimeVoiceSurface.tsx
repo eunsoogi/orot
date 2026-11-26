@@ -1,5 +1,3 @@
-import type { ReactNode } from 'react';
-import { AppButton } from '../layout/AppButton';
 import { t } from '../i18n';
 import { liveModel } from '../voiceSettings/liveVoicePreferences';
 import { VoiceCallIdentity } from './VoiceCallIdentity';
@@ -8,53 +6,40 @@ import { VoiceConversationControl } from './VoiceConversationControl';
 import type { RealtimeTranscript } from './nativeRealtimeVoice';
 import type { VoiceState } from './voiceTurn';
 
-/** Keep stop reachable while the native voice modal yields to the app's approval surfaces. */
+/** Keep stop reachable through the native voice overlay. */
 export function RealtimeVoiceSurface({
   visible,
-  voiceVisible,
-  suspended,
-  handoffBusy,
   state,
   status,
   model,
   transcripts,
-  toolConfirmation,
-  inlineToolConfirmation = false,
   disabled,
   statusExternallyRendered,
   start,
   stop,
   mute,
   resume,
-  returnToCall,
   onDismiss,
 }: {
   visible: boolean;
-  voiceVisible: boolean;
-  suspended: boolean;
-  handoffBusy: boolean;
   state: VoiceState;
   status: string;
   model: string;
   transcripts: RealtimeTranscript[];
-  toolConfirmation: ReactNode;
-  inlineToolConfirmation?: boolean;
   disabled: boolean;
   statusExternallyRendered: boolean;
   start: () => void;
   stop: () => void;
   mute: () => void;
   resume: () => void;
-  returnToCall: () => void;
   onDismiss: () => void;
 }) {
   return (
     <>
-      {!inlineToolConfirmation && toolConfirmation}
       <VoiceConversationScreen
         key={state.identity?.turnId ?? 'idle'}
         manualFinish={false}
-        visible={voiceVisible}
+        visible={visible}
         onDismiss={onDismiss}
         phase={state.phase}
         status={status}
@@ -68,27 +53,11 @@ export function RealtimeVoiceSurface({
           text: item.text,
         }))}
         identity={<VoiceCallIdentity />}
-        toolConfirmation={inlineToolConfirmation ? toolConfirmation : null}
         onEnd={stop}
         onMute={mute}
         onResume={resume}
         onFinish={() => {}}
       />
-      {suspended && (
-        <>
-          <AppButton
-            title={t('realtimeToolConsent.returnToCall')}
-            disabled={handoffBusy}
-            onPress={returnToCall}
-            testID="realtime-return-to-call"
-          />
-          <AppButton
-            title={t('ragConversation.voice.endCall')}
-            onPress={stop}
-            testID="realtime-handoff-end"
-          />
-        </>
-      )}
       {!visible && (
         <VoiceConversationControl
           phase={state.phase}

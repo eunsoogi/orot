@@ -1,4 +1,3 @@
-import type { ReactNode } from 'react';
 import { t } from '../i18n';
 import { ProviderModelChoiceRow } from '../providers/selection/ProviderModelChoiceRow';
 import { savedChatGPTModelLabel } from '../providers/selection/knownChatGPTModelLabel';
@@ -10,13 +9,11 @@ export function OpenAiVoiceToolOptions({
   selected,
   disabled,
   choose,
-  companion,
 }: {
   models: readonly LiveResponsesBackend[];
   selected: LiveResponsesBackend | undefined;
   disabled: boolean;
   choose: (model: LiveResponsesBackend) => void;
-  companion?: ReactNode;
 }) {
   return (
     <>
@@ -34,7 +31,6 @@ export function OpenAiVoiceToolOptions({
           onPress={() => choose(model)}
         />
       ))}
-      {companion}
     </>
   );
 }

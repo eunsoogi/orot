@@ -200,12 +200,7 @@ final class LiveResponsesToolBridge {
               registry.allows(name), let functionID = item["call_id"] as? String,
               RealtimeVoiceToolLease.validID(functionID), let arguments = item["arguments"] as? String
         else { return nil }
-        if name == RealtimeVoiceCanonicalHealthAdmission.name {
-            return Request.canonicalHealth(owner, delegationID, responseID, functionID, arguments)
-        }
-        guard let fields = Self.arguments(arguments, tool: name) else { return nil }
-        return Request(owner: owner, delegationID: delegationID, responseID: responseID, functionID: functionID,
-                       name: name, query: fields["query"] as? String, topic: fields["topic"] as? String, days: fields["days"] as? Int)
+        return Request.canonicalHealth(owner, delegationID, responseID, functionID, arguments)
     }
 
     private func runBatch(_ results: [(Request, String)], current: @escaping () -> Bool,

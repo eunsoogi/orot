@@ -1,4 +1,3 @@
-import CoreFoundation
 import Foundation
 import Security
 
@@ -125,7 +124,6 @@ extension RealtimeVoiceCall {
 /// Internal policy port, supplied only for a current explicit Settings grant. Admitting voice audio
 /// does not authorize a Responses backend, app-owned tool execution, or exact result transfer.
 struct LiveResponsesAdmission {
-    static let healthTopics = ["measurements"]
     struct Owner: Equatable {
         let callID: String
         let sessionID: String
@@ -138,13 +136,10 @@ struct LiveResponsesAdmission {
         let responseID: String
         let functionID: String
         let name: String
-        let query: String?
-        let topic: String?
-        let days: Int?
         let canonicalArguments: String?
 
         init(owner: Owner, delegationID: String, responseID: String, functionID: String,
-             name: String, query: String? = nil, topic: String? = nil, days: Int? = nil,
+             name: String,
              canonicalArguments: String? = nil)
         {
             self.owner = owner
@@ -152,7 +147,6 @@ struct LiveResponsesAdmission {
             self.responseID = responseID
             self.functionID = functionID
             self.name = name
-            self.query = query; self.topic = topic; self.days = days
             self.canonicalArguments = canonicalArguments
         }
     }
@@ -172,43 +166,13 @@ struct LiveResponsesAdmission {
     var canonicalConfiguration: (() -> [String: Any]?)?
     var serialV3: LiveV3SerialTransitions?
 
-    static func validAggregate(_ output: String, days: Int?) -> Bool {
-        guard output.utf8.count <= 512,
-              let data = (try? JSONSerialization.jsonObject(with: Data(output.utf8))) as? [String: Any],
-              data.count == 6, data["topic"] as? String == "measurements",
-              data["metric"] as? String == "heart_rate", data["unit"] as? String == "count/min",
-              integer(data["days"]) == days, days != nil,
-              let samples = integer(data["sampleCount"]), samples >= 3,
-              let mean = integer(data["meanOfRecordedDailyMeans"]), mean >= 0 else { return false }
-        return true
-    }
-
-    private static func integer(_ value: Any?) -> Int? {
-        guard let number = value as? NSNumber, CFGetTypeID(number) != CFBooleanGetTypeID() else { return nil }
-        return value as? Int
-    }
-
     /// Same Live socket and voice model. The configured server backend model is a distinct
     /// approved choice, never inferred from the selected voice ID or the user's text model.
     func configuration() -> [String: Any]? {
         guard backendAllowed(), ["gpt-6-luna", "gpt-6-sol"].contains(backendModel),
               RealtimeVoiceToolLease.validID(functionName) else { return nil }
-        if functionName == RealtimeVoiceCanonicalHealthAdmission.name {
-            return canonicalConfiguration?()
-        }
-        let reviewedMemory = functionName == "orot_reviewed_memory"
-        let properties: [String: Any] = reviewedMemory
-            ? ["query": ["type": "string", "minLength": 1, "maxLength": 1000]] : [:]
-        let health = functionName == "orot_health_context"
-        let healthProperties: [String: Any] = ["topic": ["type": "string", "enum": Self.healthTopics],
-                                               "days": ["type": "integer", "minimum": 3, "maximum": 31]]
-        let schema: [String: Any] = ["type": "object", "properties": health ? healthProperties : properties,
-                                     "required": health ? ["topic", "days"] : (reviewedMemory ? ["query"] : []),
-                                     "additionalProperties": false]
-        let function: [String: Any] = ["type": "function", "name": functionName, "strict": true,
-                                       "description": health ? "Requests the rounded mean of daily heart-rate means for the requested period." : "Requests one explicitly enabled app capability.",
-                                       "parameters": schema]
-        return ["type": "responses", "responses": ["model": backendModel, "tools": [function]]]
+        guard functionName == RealtimeVoiceCanonicalHealthAdmission.name else { return nil }
+        return canonicalConfiguration?()
     }
 }
 
@@ -217,23 +181,6 @@ extension RealtimeVoiceSocket {
         guard current(), responsesTransportCurrent == nil else { return false }
         responsesTransportCurrent = current
         return true
-    }
-}
-
-extension LiveResponsesToolBridge {
-    static func arguments(_ payload: String, tool: String) -> [String: Any]? {
-        guard payload.utf8.count <= 2048,
-              let object = (try? JSONSerialization.jsonObject(with: Data(payload.utf8))) as? [String: Any] else { return nil }
-        if tool == "orot_health_context" {
-            guard object.count == 2, let topic = object["topic"] as? String, LiveResponsesAdmission.healthTopics.contains(topic),
-                  let raw = object["days"] as? NSNumber, CFGetTypeID(raw) != CFBooleanGetTypeID(),
-                  let days = object["days"] as? Int, (3 ... 31).contains(days) else { return nil }
-            return ["topic": topic, "days": days]
-        }
-        guard tool == "orot_reviewed_memory" else { return object.isEmpty ? object : nil }
-        guard object.count == 1, let query = object["query"] as? String, query.count <= 1000,
-              !query.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else { return nil }
-        return ["query": query]
     }
 }
 

@@ -1,5 +1,4 @@
 import type { LiveCommonRegistration } from './nativeLiveCommonConversation';
-import type { bindCanonicalLiveHealthRun } from './bindCanonicalLiveHealthRun';
 import {
   createVoiceStopReceipts,
   type CaptureVoiceEndReceipt,
@@ -21,8 +20,6 @@ import {
   hasRealtimeVoiceRuntime,
 } from '../voiceSettings/voiceRuntimeCapability';
 
-export { nativeLiveManagedTools } from './nativeLiveManagedTools';
-
 // Survives screen disposal: a failed release must be retried before any newer call opens.
 const pendingCleanup = createVoiceStopReceipts();
 const openingCalls = new Map<string, { cancelled: boolean }>();
@@ -37,36 +34,16 @@ export function nativeRealtimeVoice(): NativeRealtimeVoice | null {
   return nativeOwnedVoice(false);
 }
 
-export type LiveResponsesGrantIdentity = Readonly<{
-  backendModel: string;
-  grantID: string;
-  generation: string;
-}>;
-
-type CanonicalRegistration = NonNullable<
-  ReturnType<typeof bindCanonicalLiveHealthRun>
->['registration'];
-
 export function nativeLiveVoice(
   captureEnd?: CaptureVoiceEndReceipt,
-  responsesGrant?: (callId: string) => LiveResponsesGrantIdentity | null,
-  canonicalRegistration?: (callId: string) => CanonicalRegistration | undefined,
   commonRegistration?: (callId: string) => LiveCommonRegistration | undefined,
 ): NativeRealtimeVoice | null {
-  return nativeOwnedVoice(
-    true,
-    captureEnd,
-    responsesGrant,
-    canonicalRegistration,
-    commonRegistration,
-  );
+  return nativeOwnedVoice(true, captureEnd, commonRegistration);
 }
 
 function nativeOwnedVoice(
   live: boolean,
   captureEnd?: CaptureVoiceEndReceipt,
-  responsesGrant?: (callId: string) => LiveResponsesGrantIdentity | null,
-  canonicalRegistration?: (callId: string) => CanonicalRegistration | undefined,
   commonRegistration?: (callId: string) => LiveCommonRegistration | undefined,
 ): NativeRealtimeVoice | null {
   const module =
@@ -148,14 +125,10 @@ function nativeOwnedVoice(
             captionsCurrent: captureObservedVoiceCloseAuthority(),
           };
           const common = commonRegistration?.(id);
-          const grant = common ? undefined : responsesGrant?.(id);
           await module.openLiveCall(id, model, key, {
             language: 'auto',
             voice: preferences.voice,
             ...(common ? { commonToolsRegistration: common } : {}),
-            ...(grant
-              ? { responsesGrant: grant, ...canonicalRegistration?.(id) }
-              : {}),
           });
         } else {
           await module.openRealtimeCall(id, model, key, language, enableTools);

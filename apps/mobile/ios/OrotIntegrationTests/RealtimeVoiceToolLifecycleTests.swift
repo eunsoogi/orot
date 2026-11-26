@@ -8,6 +8,9 @@ extension RealtimeVoiceLifecycleTests {
         try assertCanonicalGrantRequiresItsOwnCurrentDeviceBindingAndLegacyOwner()
         assertOnlyCanonicalFieldsAndUniquelyScopedResultReferencesCross()
         try assertOnlyOwnedCanonicalTicketAcceptsTheApprovedBoundedResultAndContinuation()
+        let retired = RealtimeVoiceToolLease()
+        retired.reset(enabled: true)
+        XCTAssertFalse(retired.enabled)
         let audio = Audio(), socket = Socket()
         var requested = 0, rejected = 0
         let ownership = AudioSessionOwnership(configure: { _, _, _ in }, setActive: { _ in })
@@ -32,10 +35,10 @@ extension RealtimeVoiceLifecycleTests {
     func testUnfinishedLiveTranscriptAndDelegationNeverEmitRecordsOrToolRequests() async throws {
         verifyObservedCallCaptionsRequireTheExactCorrelatedClose()
         let audio = Audio(), socket = Socket()
-        var emitted: [String] = []
+        var emitted: [(String, [String: Any])] = []
         let call = RealtimeVoiceCall(audio: audio, socket: socket,
                                      ownership: AudioSessionOwnership(configure: { _, _, _ in }, setActive: { _ in }),
-                                     permission: { $0(true) }, foreground: { true }, emit: { name, _ in emitted.append(name) })
+                                     permission: { $0(true) }, foreground: { true }, emit: { name, body in emitted.append((name, body)) })
         await opening(call, socket: socket)
         socket.received?(started())
         let config = socket.sent.first?["session"] as? [String: Any]
@@ -57,8 +60,8 @@ extension RealtimeVoiceLifecycleTests {
         for event in events + events {
             socket.received?(event)
         }
-        XCTAssertFalse(emitted.contains("VoiceRealtimeToolCall"))
-        XCTAssertFalse(emitted.contains("VoiceRealtimeTranscript"))
+        XCTAssertFalse(emitted.contains { $0.0 == "VoiceRealtimeToolCall" })
+        XCTAssertEqual(emitted.filter { $0.0 == "VoiceRealtimeTranscript" }.compactMap { $0.1["itemId"] as? String }, ["observed-1", "observed-2"])
         XCTAssertFalse(call.resolveTool("call", toolCallID: "candidate", responseID: "legacy", output: "synthetic"))
         XCTAssertEqual(socket.sent.count, before)
         try call.pause("call")
@@ -67,80 +70,83 @@ extension RealtimeVoiceLifecycleTests {
         XCTAssertFalse(call.resolveTool("call", toolCallID: "candidate", responseID: "legacy", output: "synthetic"))
     }
 
-    /// Retain original authority guarantees as focused tests of the old inert lease, without
-    /// reopening a legacy provider or manufacturing a completed Live source.
-    func testLegacyLeaseStillRequiresBoundInputCompletedResponseAndOneShotExactIDs() {
-        let lease = RealtimeVoiceToolLease()
-        lease.reset(enabled: true)
-        lease.commit("input")
-        lease.bind("response")
-        lease.receive(responseID: "response", toolCallID: "tool", name: "orot_conversation", arguments: " { } ")
-        XCTAssertNil(lease.pending)
-        XCTAssertNil(lease.complete("stale", successful: true))
-        XCTAssertEqual(lease.complete("response", successful: true)?.inputItemID, "input")
-        XCTAssertFalse(lease.consume(toolCallID: "other", responseID: "response"))
-        XCTAssertFalse(lease.consume(toolCallID: "tool", responseID: "other"))
-        XCTAssertTrue(lease.consume(toolCallID: "tool", responseID: "response"))
-        XCTAssertFalse(lease.consume(toolCallID: "tool", responseID: "response"))
-    }
-
-    func testLegacyLeaseRejectsArgumentsIDsNoncompletionAndRevokedPending() {
-        for arguments in ["", "[]", "{\"recordId\":\"synthetic\"}", "null", String(repeating: " ", count: 1025)] {
-            let lease = RealtimeVoiceToolLease()
+    #if OROT_TESTS && targetEnvironment(simulator)
+        /// Retain original authority guarantees as focused tests of the old inert lease, without
+        /// reopening a legacy provider or manufacturing a completed Live source.
+        func testLegacyLeaseStillRequiresBoundInputCompletedResponseAndOneShotExactIDs() {
+            let lease = RealtimeVoiceToolLease(fixtureToolName: "fixture-owned-lease")
             lease.reset(enabled: true)
             lease.commit("input")
             lease.bind("response")
-            lease.receive(responseID: "response", toolCallID: "tool", name: "orot_conversation", arguments: arguments)
-            XCTAssertNil(lease.complete("response", successful: true))
-        }
-        XCTAssertFalse(RealtimeVoiceToolLease.validID("bad id"))
-        XCTAssertFalse(RealtimeVoiceToolLease.validID(String(repeating: "a", count: 129)))
-        XCTAssertFalse(RealtimeVoiceToolLease.validID("한글"))
-        for completed in [true, false] {
-            let lease = RealtimeVoiceToolLease()
-            lease.reset(enabled: true)
-            lease.commit("input")
-            lease.bind("response")
-            lease.receive(responseID: "response", toolCallID: "tool", name: "orot_conversation", arguments: "{}")
-            XCTAssertEqual(lease.complete("response", successful: completed) != nil, completed)
-            XCTAssertEqual(lease.invalidate(), completed ? "tool" : nil)
+            lease.receive(responseID: "response", toolCallID: "tool", name: "fixture-owned-lease", arguments: " { } ")
+            XCTAssertNil(lease.pending)
+            XCTAssertNil(lease.complete("stale", successful: true))
+            XCTAssertEqual(lease.complete("response", successful: true)?.inputItemID, "input")
+            XCTAssertFalse(lease.consume(toolCallID: "other", responseID: "response"))
+            XCTAssertFalse(lease.consume(toolCallID: "tool", responseID: "other"))
+            XCTAssertTrue(lease.consume(toolCallID: "tool", responseID: "response"))
             XCTAssertFalse(lease.consume(toolCallID: "tool", responseID: "response"))
         }
-    }
 
-    func testLegacyLeaseRejectsReplaysAndAmbiguousInputEpochs() {
-        let lease = RealtimeVoiceToolLease()
-        lease.reset(enabled: true)
-        lease.commit("input")
-        lease.bind("response")
-        lease.receive(responseID: "response", toolCallID: "tool", name: "orot_conversation", arguments: "{}")
-        XCTAssertNotNil(lease.complete("response", successful: true))
-        lease.invalidate()
-        lease.commit("new-input")
-        lease.bind("new-response")
-        lease.receive(responseID: "new-response", toolCallID: "tool", name: "orot_conversation", arguments: "{}")
-        XCTAssertNil(lease.complete("new-response", successful: true))
-        lease.commit("input_a")
-        lease.invalidate()
-        lease.commit("input_b")
-        lease.bind("late_response")
-        lease.receive(responseID: "late_response", toolCallID: "other", name: "orot_conversation", arguments: "{}")
-        XCTAssertNil(lease.complete("late_response", successful: true))
-        XCTAssertFalse(lease.enabled)
-    }
-
-    func testLegacyLeaseBudgetDoesNotEvictTombstones() {
-        let lease = RealtimeVoiceToolLease()
-        lease.reset(enabled: true)
-        for index in 0 ... 64 {
-            lease.commit("input_\(index)"); lease.bind("response_\(index)")
-            lease.receive(responseID: "response_\(index)", toolCallID: "tool_\(index)", name: "orot_conversation", arguments: "{}")
-            let request = lease.complete("response_\(index)", successful: true)
-            XCTAssertEqual(request != nil, index < 64)
-            lease.invalidate()
+        func testLegacyLeaseRejectsArgumentsIDsNoncompletionAndRevokedPending() {
+            for arguments in ["", "[]", "{\"recordId\":\"synthetic\"}", "null", String(repeating: " ", count: 1025)] {
+                let lease = RealtimeVoiceToolLease(fixtureToolName: "fixture-owned-lease")
+                lease.reset(enabled: true)
+                lease.commit("input")
+                lease.bind("response")
+                lease.receive(responseID: "response", toolCallID: "tool", name: "fixture-owned-lease", arguments: arguments)
+                XCTAssertNil(lease.complete("response", successful: true))
+            }
+            XCTAssertFalse(RealtimeVoiceToolLease.validID("bad id"))
+            XCTAssertFalse(RealtimeVoiceToolLease.validID(String(repeating: "a", count: 129)))
+            XCTAssertFalse(RealtimeVoiceToolLease.validID("한글"))
+            for completed in [true, false] {
+                let lease = RealtimeVoiceToolLease(fixtureToolName: "fixture-owned-lease")
+                lease.reset(enabled: true)
+                lease.commit("input")
+                lease.bind("response")
+                lease.receive(responseID: "response", toolCallID: "tool", name: "fixture-owned-lease", arguments: "{}")
+                XCTAssertEqual(lease.complete("response", successful: completed) != nil, completed)
+                XCTAssertEqual(lease.invalidate(), completed ? "tool" : nil)
+                XCTAssertFalse(lease.consume(toolCallID: "tool", responseID: "response"))
+            }
         }
-        XCTAssertFalse(lease.enabled)
-    }
+
+        func testLegacyLeaseRejectsReplaysAndAmbiguousInputEpochs() {
+            let lease = RealtimeVoiceToolLease(fixtureToolName: "fixture-owned-lease")
+            lease.reset(enabled: true)
+            lease.commit("input")
+            lease.bind("response")
+            lease.receive(responseID: "response", toolCallID: "tool", name: "fixture-owned-lease", arguments: "{}")
+            XCTAssertNotNil(lease.complete("response", successful: true))
+            lease.invalidate()
+            lease.commit("new-input")
+            lease.bind("new-response")
+            lease.receive(responseID: "new-response", toolCallID: "tool", name: "fixture-owned-lease", arguments: "{}")
+            XCTAssertNil(lease.complete("new-response", successful: true))
+            lease.commit("input_a")
+            lease.invalidate()
+            lease.commit("input_b")
+            lease.bind("late_response")
+            lease.receive(responseID: "late_response", toolCallID: "other", name: "fixture-owned-lease", arguments: "{}")
+            XCTAssertNil(lease.complete("late_response", successful: true))
+            XCTAssertFalse(lease.enabled)
+        }
+
+        func testLegacyLeaseBudgetDoesNotEvictTombstones() {
+            let lease = RealtimeVoiceToolLease(fixtureToolName: "fixture-owned-lease")
+            lease.reset(enabled: true)
+            for index in 0 ... 64 {
+                lease.commit("input_\(index)"); lease.bind("response_\(index)")
+                lease.receive(responseID: "response_\(index)", toolCallID: "tool_\(index)", name: "fixture-owned-lease", arguments: "{}")
+                let request = lease.complete("response_\(index)", successful: true)
+                XCTAssertEqual(request != nil, index < 64)
+                lease.invalidate()
+            }
+            XCTAssertFalse(lease.enabled)
+        }
+
+    #endif
 
     /// Exercise the exact production encoder and queued authority without opening a socket.
     func testManagedToolQueueRequiresExactFrameKindsAndFreshEgressPermit() {

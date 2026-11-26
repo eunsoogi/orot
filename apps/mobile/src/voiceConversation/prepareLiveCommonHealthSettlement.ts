@@ -12,7 +12,7 @@ import { stable } from '../aiFeatures/integration/stableEvidenceReference';
 import type { LiveCommonConversationPort } from './liveCommonConversationRun';
 import type { nativeLiveCommonConversation } from './nativeLiveCommonConversation';
 import { liveStockHealthCatalog } from './liveStockHealthDescriptor';
-import { canonicalLiveHealthPayload } from './canonicalLiveHealthRead';
+import { canonicalLiveHealthPayload } from './canonicalLiveHealthPayload';
 import { stageLiveResponsesResult } from './stageLiveResponsesResult';
 
 type Native = NonNullable<ReturnType<typeof nativeLiveCommonConversation>>;
