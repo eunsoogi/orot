@@ -185,6 +185,7 @@ export function useConversationWorkspaceBounds(routeKey?: string) {
   const profileVisualLift = conversationProfileVisualLift(geometry, shared, {
     x: hostBounds.x + plan.leading,
     y: hostBounds.y + plan.top,
+    topGutter: plan.top,
     width: plan.visible ? plan.activityWidth : plan.transcriptWidth,
   });
   return { ref, measure, plan, profileVisualLift, workspaceOcclusion };

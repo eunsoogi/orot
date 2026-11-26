@@ -151,6 +151,9 @@ export function conversationCompletedAnswer(input: {
               ...(outcome.dailyReport
                 ? { dailyReport: outcome.dailyReport }
                 : {}),
+              ...(input.retainedTurnId && outcome.committedPossibilityOriginal
+                ? { committedPossibilityOriginal: true as const }
+                : {}),
               citations: outcome.citations,
               ...(!input.retentionUnavailable &&
               !outcome.completion &&

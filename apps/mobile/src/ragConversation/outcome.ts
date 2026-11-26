@@ -34,6 +34,8 @@ export type RagConversationOutcome =
   | {
       readonly status: 'answer';
       readonly answer: string;
+      /** Issued by protected storage only after the exact generated original commits. */
+      readonly committedPossibilityOriginal?: true;
       readonly committedRecordingCitations?: CommittedConversationCitations;
       readonly proactiveMemory?: true;
       readonly replyPreferenceSpan?: string;

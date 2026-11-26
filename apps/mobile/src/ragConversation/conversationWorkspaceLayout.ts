@@ -13,7 +13,7 @@ const TOP_PROFILE_INDICATOR_GAP = 4;
 export function conversationProfileVisualLift(
   geometry: NavigationGeometrySnapshot | null,
   frame: NavigationContentFrame | null,
-  lane: { x: number; y: number; width: number },
+  lane: { x: number; y: number; width: number; topGutter?: number },
 ): number {
   if (
     !frame?.systemIndicatorAtTop ||
@@ -29,9 +29,11 @@ export function conversationProfileVisualLift(
   )
     return 0;
 
-  // A workspace measurement can lag the window. Reclaim only the clear band
-  // above the current safe-content origin, never a contracted viewport's edge.
-  const safeTop = Math.min(lane.y, frame.availableContentFrame.y);
+  // Trust the current plan's extra gutter, not an old, lower host measurement.
+  // A corner obstruction may move the whole lane down while leaving its centered profile clear.
+  const gutter = lane.topGutter ?? 0;
+  if (!Number.isFinite(gutter) || gutter < 0) return 0;
+  const safeTop = Math.min(lane.y, frame.availableContentFrame.y + gutter);
   const lift = Math.min(
     TOP_PROFILE_VISUAL_LIFT,
     safeTop -

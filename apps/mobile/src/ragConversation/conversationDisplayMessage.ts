@@ -8,6 +8,7 @@ export interface DisplayMessage extends RagConversationMessage {
   /** Cold affordance only. No candidates, citations or save authority cross this path. */
   readonly archivedVisitBookmark?: import('../storage/archivedVisitBookmarkIdentity').ArchivedVisitBookmarkMarker;
   /** Rendering marker for an already admitted saved Possibility artifact. */
+  readonly committedPossibilityOriginal?: true;
   readonly savedPossibilityNarrative?: true;
   /** App-owned terminal clarification and its question are for display only. */
   readonly localClarification?: true;

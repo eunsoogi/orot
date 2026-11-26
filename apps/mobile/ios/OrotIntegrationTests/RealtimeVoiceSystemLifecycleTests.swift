@@ -71,29 +71,6 @@ extension RealtimeVoiceLifecycleTests {
         XCTAssertEqual(audio.starts, 1)
     }
 
-    func testBackgroundRequiresSystemActivationAndProtectedDataLossAlwaysStops() async throws {
-        let audio = Audio(), socket = Socket(), system = SystemCall()
-        let ownership = AudioSessionOwnership(configure: { _, _, _ in }, setActive: { _ in })
-        let call = RealtimeVoiceCall(audio: audio, socket: socket, ownership: ownership, systemCall: system,
-                                     permission: { $0(true) }, foreground: { true }, emit: { _, _ in })
-        await opening(call, socket: socket)
-        socket.received?(started())
-        NotificationCenter.default.post(name: UIApplication.didEnterBackgroundNotification, object: nil)
-        XCTAssertNil(call.id)
-        XCTAssertEqual(audio.starts, 0)
-        await opening(call, socket: socket, id: "next")
-        socket.received?(started())
-        try system.prepare?()
-        system.activated?()
-        NotificationCenter.default.post(name: AVAudioSession.interruptionNotification, object: nil,
-                                        userInfo: [AVAudioSessionInterruptionTypeKey: AVAudioSession.InterruptionType.ended.rawValue])
-        NotificationCenter.default.post(name: UIApplication.didEnterBackgroundNotification, object: nil)
-        XCTAssertTrue(call.id == "next" && audio.starts == 1)
-        NotificationCenter.default.post(name: UIApplication.protectedDataWillBecomeUnavailableNotification, object: nil)
-        XCTAssertNil(call.id)
-        XCTAssertFalse(call.systemCallActive)
-    }
-
     func testDeniedAsyncOpeningClearsOwnedCallBeforeBridgeRejection() async throws {
         try assertPairNativeAdmissionRequiresProtectedPublicationWitnessAndBothAuthorities()
         let audio = Audio(), socket = Socket()
@@ -231,7 +208,7 @@ extension RealtimeVoiceLifecycleTests {
         XCTAssertFalse(RealtimeVoiceSocket.matchesClose(event, sessionID: "live1", command: "cmd"))
     }
 
-    private final class SystemCall: VoiceSystemCallPort {
+    final class SystemCall: VoiceSystemCallPort {
         var starts = 0, ends = 0
         var prepare: (() throws -> Void)?
         var activated: (() -> Void)?
