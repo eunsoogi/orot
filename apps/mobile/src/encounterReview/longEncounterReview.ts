@@ -125,7 +125,11 @@ export function createLongEncounterReview(
             !signal.aborted && !lifetime.aborted && witness.isCurrent(),
         };
         const result = remote
-          ? await remote.extract(read, 'encounter-remote-long-' + executionId)
+          ? await remote.extract(
+              read,
+              'encounter-remote-long-' + executionId,
+              progress,
+            )
           : selected &&
             (await prepareLocalEncounterExtraction({
               read,

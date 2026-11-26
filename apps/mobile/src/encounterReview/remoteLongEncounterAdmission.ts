@@ -95,6 +95,7 @@ export async function admitRemoteLongEncounter(input: {
     async extract(
       read: Parameters<typeof openLocalTranscriptPages>[0],
       executionId: string,
+      progress?: (completed: number) => void,
     ) {
       const pages = await openLocalTranscriptPages(read);
       return extractLocalTranscriptPages({
@@ -102,6 +103,8 @@ export async function admitRemoteLongEncounter(input: {
         signal: read.signal,
         pages,
         selectionCurrent: authority.current,
+        // Report only the same validated, current batches as the on-device route.
+        progress,
         extract: encounterPageModel({
           sourceId,
           selected,
