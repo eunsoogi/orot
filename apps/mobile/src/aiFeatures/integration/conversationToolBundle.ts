@@ -35,7 +35,10 @@ export function createConversationToolBundle(input: {
   readonly registry: LocalEvidenceReferenceRegistry;
   readonly observer?: RagConversationObserver;
   readonly researchInputs: ReturnType<typeof createResearchInputTracker>;
-  readonly external: ReturnType<typeof conversationExternalEvidence>;
+  readonly external: Pick<
+    ReturnType<typeof conversationExternalEvidence>,
+    'tools' | 'publicWebTool' | 'createTypedHeartRateOwner'
+  >;
   readonly publicSearchSucceeded: boolean;
   readonly literatureOnly?: boolean;
   readonly typedHeartRateOwner?: {

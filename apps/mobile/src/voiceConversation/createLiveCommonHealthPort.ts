@@ -1,8 +1,11 @@
-import type { LiveToolCall } from '@orot/agent-runtime';
+import {
+  nativeToolParameterSchema,
+  type LiveToolCall,
+} from '@orot/agent-runtime';
 import type { LanguageModelProvider } from '@orot/model-runtime';
 import { EVIDENCE_WORKFLOW_BUDGET } from '../agent/evidenceWorkflowBudget';
 import { evidenceConsentScope } from '../aiFeatures/integration/evidenceConsentScope';
-import { bindHealthContextTool } from '../aiFeatures/integration/bindHealthContextTool';
+import { bindOwnedLiveConversationInvocation } from '../aiFeatures/integration/ownedLiveConversationInvocation';
 import { LocalEvidenceReferenceRegistry } from '../aiFeatures/integration/evidenceRegistry';
 import type { AiFeatureLocalData } from '../aiFeatures/integration/localData';
 import { stable } from '../aiFeatures/integration/stableEvidenceReference';
@@ -37,9 +40,9 @@ export function canonicalLiveCommonRegistration(
   });
 }
 
-/** V3 first value path: the ordinary bound health tool and its existing
- * transfer projection. Neither a duration/old V2 receipt nor an utterance
- * delta confers authority to add another source, provider, tool or mutation. */
+/** Use the stock Chat invocation behind the current native manifest. Its V3
+ * projection remains the exact health-result scope; lookup availability does
+ * not widen model consent, native output authority, or supported action scope. */
 export function createLiveCommonHealthPort(input: {
   readonly native: Native;
   readonly registration: LiveCommonRegistration;
@@ -111,8 +114,38 @@ export function createLiveCommonHealthPort(input: {
             const data = await input.openData();
             if (!owns(call)) return;
             const registry = new LocalEvidenceReferenceRegistry();
-            const tool = bindHealthContextTool(data, registry, 'rag');
-            if (!tool || !owns(call)) return;
+            // Native registration is an allowlist, not authority to activate every
+            // stock Chat tool (some nominal reads also maintain persistent indexes).
+            const tools = bindOwnedLiveConversationInvocation({
+              data,
+              registry,
+              current: () => owns(call),
+              permits(tool) {
+                return (
+                  tool.sourceKind === 'personal_record' &&
+                  registration.tools.some(
+                    item =>
+                      item.name === tool.id &&
+                      stable(item.parameters) ===
+                        stable(nativeToolParameterSchema(tool.inputSchema)),
+                  )
+                );
+              },
+              async beforeRead(signal) {
+                return (
+                  !signal.aborted &&
+                  owns(call) &&
+                  (await input.protectedDataAvailable()) === true &&
+                  !signal.aborted &&
+                  owns(call)
+                );
+              },
+              didRead(id, result) {
+                if (id === call.name && owns(call))
+                  retained = { call, data, batch: result, registry };
+              },
+            });
+            if (!tools?.length || !owns(call)) return;
             accept({
               owner: batch.owner,
               queuedCurrent: () => owns(call),
@@ -135,23 +168,7 @@ export function createLiveCommonHealthPort(input: {
                 consent,
                 revalidateEvidence: (references, signal) =>
                   registry.revalidateEvidence(references, signal),
-                tools: [
-                  {
-                    ...tool,
-                    async search(request, runtime) {
-                      if (
-                        !owns(call) ||
-                        !(await input.protectedDataAvailable()) ||
-                        !owns(call)
-                      )
-                        throw new Error('Live source is no longer current');
-                      const result = await tool.search(request, runtime);
-                      if (!('status' in result) && owns(call))
-                        retained = { call, data, batch: result, registry };
-                      return result;
-                    },
-                  },
-                ],
+                tools,
               },
             });
           };
