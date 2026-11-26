@@ -21,7 +21,7 @@ const question = 'Could you keep your preceding reply for later?';
 const at = '2026-11-25T00:00:00.000Z';
 const arm = { target: 'previous_completed_answer' };
 const owner = { id: sessionId, version: 0 };
-const row = {
+const archiveRow = {
   id: sourceId,
   kind: 'answer' as const,
   createdAt: at,
@@ -35,8 +35,8 @@ const operation = {
 function restored(newer?: { partial?: true; directPhoto?: true }) {
   const rows =
     newer?.partial || newer?.directPhoto
-      ? [row, { ...row, ...newer, id: 'newer' }]
-      : [row];
+      ? [archiveRow, { ...archiveRow, ...newer, id: 'newer' }]
+      : [archiveRow];
   const savedHistoryDisplay = rows.map((row, i) => ({
     row,
     questionId: -1 - i * 2,
@@ -55,15 +55,14 @@ function actionSelection(
   remoteProcessing = false,
   withProof = true,
 ) {
-  const selected = {
-    modelId,
-    provider: { id: providerId, capabilities: { toolCalling: true } },
-    remoteProcessing,
-  };
-  return conversationMutationExecution({
+  const result = conversationMutationExecution({
     baseExecution: { execution: operation },
     data,
-    selected,
+    selected: {
+      modelId,
+      provider: { id: providerId, capabilities: { toolCalling: true } },
+      remoteProcessing,
+    },
     registry: { resolve: () => undefined },
     question,
     history: {
@@ -92,6 +91,9 @@ function actionSelection(
       ...observer,
     },
   } as unknown as Parameters<typeof conversationMutationExecution>[0]);
+  if (!('actions' in result.execution))
+    throw new Error('Expected ordinary conversation.');
+  return { ...result, execution: result.execution };
 }
 const toolId = 'remember-conversation-answer';
 test.each([
@@ -136,7 +138,7 @@ test.each([
       mode !== 'missing native proof',
     );
   const offers = (target: typeof archive) =>
-    select(target).execution.actions?.some(tool => tool.id === toolId);
+    select(target).execution.actions.some(tool => tool.id === toolId);
   expect(offers(archive)).toBe(false);
   if (mode === 'remote subscription') expect(offers(undefined)).toBe(true);
 });
@@ -156,9 +158,7 @@ test.each(['save', 'source reproof', 'lock during consent'] as const)(
       protectedDataAvailable: async () => true,
       subscribe(listener) {
         listeners.add(listener);
-        return () => {
-          listeners.delete(listener);
-        };
+        return () => void listeners.delete(listener);
       },
     });
     try {
@@ -169,7 +169,7 @@ test.each(['save', 'source reproof', 'lock during consent'] as const)(
         sessionId,
         sessionVersion: 0,
         createdAt: at,
-        question: row.question,
+        question: archiveRow.question,
       };
       await storage.startRequest(prior);
       await storage.append({
@@ -209,7 +209,7 @@ test.each(['save', 'source reproof', 'lock during consent'] as const)(
       const observer = { archivedAnswerMemoryTarget, confirmHistorySave };
       const action = actionSelection(observer, data);
       try {
-        const tool = action.execution.actions?.find(item => item.id === toolId);
+        const tool = action.execution.actions.find(item => item.id === toolId);
         if (!tool) throw new Error('Expected the local archived answer tool.');
         expect(JSON.stringify(tool.inputSchema)).not.toMatch(
           /Exact private|latest-visible-ordinary|new-owned-request/u,
