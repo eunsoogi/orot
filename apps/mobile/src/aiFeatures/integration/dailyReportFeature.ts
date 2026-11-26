@@ -13,6 +13,7 @@ import {
   dailyReportDeadlineFailure,
 } from './dailyReportDeadline';
 import { previewDailyReport } from './dailyReportPreview';
+import { openDailyReportDatabase } from './openDailyReportDatabase';
 import { operationRunId } from './featureRunIdentity';
 import { resolveSelectedAiProvider } from './provider';
 import type { AiFeatureServiceDependencies } from './featureServiceDependencies';
@@ -37,19 +38,15 @@ export function createDailyReportFeature(
   consent: ExecutionConsentPort,
   dependencies: AiFeatureServiceDependencies,
 ) {
-  const database = () =>
-    import('../../storage/secureDatabase').then(module =>
-      module.openLocalAgentMemoryDatabase(),
-    );
   const currentIdentity = (_timeZone?: string, now?: string) =>
     dailyReportDeviceIdentity(now);
   const requests = createDailyReportRequests({
     currentIdentity,
     lookup: async identity => {
       try {
-        return await createDailyReportStorage(await database()).lookup(
-          identity,
-        );
+        return await createDailyReportStorage(
+          await openDailyReportDatabase(),
+        ).lookup(identity);
       } catch {
         providerDiagnostic('daily_report', 'persistence', 'failed');
         return { status: 'error' as const };
@@ -65,7 +62,7 @@ export function createDailyReportFeature(
         async operationSignal => {
           let db: SqlDatabase;
           try {
-            db = await database();
+            db = await openDailyReportDatabase();
           } catch {
             if (operationSignal.aborted)
               return {
@@ -144,7 +141,10 @@ export function createDailyReportFeature(
   });
   return {
     ...requests,
-    ...createDailyReportRecoveryActions({ database, currentIdentity }),
+    ...createDailyReportRecoveryActions({
+      database: openDailyReportDatabase,
+      currentIdentity,
+    }),
     preview: (
       identity: Parameters<typeof previewDailyReport>[0]['identity'],
       signal: AbortSignal,
@@ -153,7 +153,7 @@ export function createDailyReportFeature(
         identity,
         signal,
         now: new Date().toISOString(),
-        openDatabase: database,
+        openDatabase: openDailyReportDatabase,
       }),
   };
 }
