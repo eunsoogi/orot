@@ -62,6 +62,6 @@ test('production local review can restart when native protection returns', async
   expect((await start()).status).toBe('pending');
   expect(synthetic.calls()).toBe(1);
   expect(consent.authorize).not.toHaveBeenCalled();
-  expect(cleanup).toHaveBeenCalledTimes(2);
+  expect(cleanup).toHaveBeenCalledTimes(3);
   expect(await fixture.rows()).toHaveLength(0);
 });

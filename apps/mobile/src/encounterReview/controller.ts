@@ -20,7 +20,11 @@ export type ReviewResult =
     };
 export interface EncounterReviewService {
   diagnostics?: ReviewDiagnostics;
-  restore(sourceId: string, signal: AbortSignal): Promise<ReviewResult>;
+  restore(
+    sourceId: string,
+    signal: AbortSignal,
+    lifetime?: AbortSignal,
+  ): Promise<ReviewResult>;
   start(
     sourceId: string,
     consent: ExecutionConsentPort,
@@ -123,7 +127,7 @@ export class EncounterReviewController {
   }
   restore() {
     return this.run('loading', signal =>
-      this.service.restore(this.sourceId, signal),
+      this.service.restore(this.sourceId, signal, this.lifetime.signal),
     );
   }
   activate() {

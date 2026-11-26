@@ -26,6 +26,7 @@ import type { EncounterReviewService, ReviewResult } from './controller';
 import type { ReviewDiagnostics, ReviewDiagnosticAttempt } from './diagnostics';
 import { createEncounterStartAdmission } from './startAdmission';
 import { runWithEncounterNativeAdmission } from './runNativeAdmission';
+import { createProtectedEncounterRestore } from './protectedEncounterRestore';
 import { openEncounterReviewSessions } from './openSessions';
 import { createLongEncounterReview } from './longEncounterReview';
 /** Known-source discovery precedes graph invocation; missing checkpoints must never initiate extraction on restore. */
@@ -37,6 +38,7 @@ async function readSessionResult(
 ): Promise<ReviewResult> {
   diagnostics?.stage('source_lookup');
   const repository = await openLocalStorage();
+  if (signal.aborted) return { status: 'cancelled' };
   await repository.transaction(async (writer, sql) => {
     if (!sql) throw new Error('Canonical storage required.');
     await requireLiveCheckpointSource(sql, sourceId);
@@ -46,9 +48,12 @@ async function readSessionResult(
     )
       throw new Error('Recording source unavailable.');
   });
+  if (signal.aborted) return { status: 'cancelled' };
   diagnostics?.stage('session_read');
   const { storage, discovery } = await openEncounterReviewSessions(sourceId);
+  if (signal.aborted) return { status: 'cancelled' };
   const session = await discovery.read();
+  if (signal.aborted) return { status: 'cancelled' };
   if (!session) {
     if (approval) diagnostics?.unavailable('session_read');
     return { status: approval ? 'unavailable' : 'idle' };
@@ -63,6 +68,7 @@ async function readSessionResult(
       thread_id: 'encounter:' + encodeURIComponent(session.threadId),
     },
   });
+  if (signal.aborted) return { status: 'cancelled' };
   if (!checkpoint) {
     diagnostics?.unavailable('checkpoint_lookup');
     return { status: 'unavailable' };
@@ -122,14 +128,18 @@ export function createEncounterReviewService(
   resolveSelected = resolveSelectedAiProvider,
   observations?: ReviewDiagnostics,
 ): EncounterReviewService {
+  const restore = createProtectedEncounterRestore(
+    resolveSelected === resolveSelectedAiProvider,
+    (sourceId, signal) =>
+      resume(sourceId, signal, undefined, observations?.current()),
+  );
   const long =
     resolveSelected === resolveSelectedAiProvider
       ? createLongEncounterReview(resolveSelected)
       : undefined;
   return {
     diagnostics: observations,
-    restore: (sourceId, signal) =>
-      resume(sourceId, signal, undefined, observations?.current()),
+    restore,
     async decide(sourceId, approval, signal) {
       return (
         (await long?.decide(sourceId, approval, signal)) ??
