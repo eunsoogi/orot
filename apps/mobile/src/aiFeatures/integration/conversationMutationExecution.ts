@@ -50,12 +50,21 @@ export function conversationMutationExecution(input: {
     typeof input.remoteMemory === 'object' ? input.remoteMemory : undefined;
   // A consumed shortcut can leave plain Conversation entry metadata behind.
   // It grants neither a report target nor permission to change the recipient.
-  const untargetedComposerEntry =
-    entry?.intent === 'conversation' &&
+  const unboundEntry =
+    entry &&
     !entry.appointmentId &&
     !entry.dailyReport &&
     !entry.directDailyReportRequest &&
     !entry.typedPossibilityReport;
+  const untargetedComposerEntry =
+    unboundEntry && entry.intent === 'conversation';
+  // A Possibilities shortcut retains its discussion context, not authority
+  // over a fresh composer turn's exact prior authored statement.
+  const authoredPossibilityFollowup =
+    unboundEntry &&
+    entry.intent === 'possibilities' &&
+    !entry.reportRequest &&
+    observer?.inputOrigin === 'composer';
   const plainAuthoredEntry = untargetedComposerEntry && !entry.reportRequest;
   const allowRemoteAnswer =
     input.remoteAnswerMemory ||
@@ -91,7 +100,10 @@ export function conversationMutationExecution(input: {
     // Consuming a Daily Report entry changes its intent but retains the
     // old request metadata. It is not the selected report identity and must
     // not hide the already local-only prior-statement action.
-    localModel && observer && runId && (!entry || untargetedComposerEntry)
+    localModel &&
+    observer &&
+    runId &&
+    (!entry || untargetedComposerEntry || authoredPossibilityFollowup)
       ? conversationPriorAuthoredMemoryAction({
           data,
           observer,
