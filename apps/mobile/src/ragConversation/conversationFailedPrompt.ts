@@ -35,9 +35,11 @@ export function conversationFailureReporter(
     ) {
       const { pendingMessage: pending, messages } = find(id);
       const opening = pending?.initialResponse;
-      // A separately reviewed opening may stay visible. A receipt is not an
-      // opening; body text and superseded generations never survive rejection.
+      // A separately reviewed opening is not proof of a bookmark. After that
+      // exact save fails, keep only the authoritative failure, not its opening.
+      // Other failures still retain independently reviewed, non-receipt text.
       if (
+        kind !== 'answer_memory_not_saved' &&
         pending &&
         !pending.withholdHealthBody &&
         opening &&
