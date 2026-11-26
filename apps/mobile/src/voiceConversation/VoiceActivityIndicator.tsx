@@ -125,7 +125,7 @@ export function VoiceActivityIndicator({
       importantForAccessibility="no-hide-descendants"
     >
       {visible && phase === 'authorizing' ? (
-        <ConversationActivityBubble />
+        <ConversationActivityBubble centered />
       ) : (
         <View testID="voice-activity-symbol">
           {direction ? (

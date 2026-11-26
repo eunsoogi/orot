@@ -16,6 +16,8 @@ export const styles = StyleSheet.create({
     justifyContent: 'center',
     gap: 5,
   },
+  // Voice shares these dots, but places the capsule on its centered status axis.
+  centered: { alignSelf: 'center' },
   dot: {
     width: 6,
     height: 6,

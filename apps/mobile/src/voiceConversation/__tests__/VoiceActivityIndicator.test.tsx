@@ -46,6 +46,9 @@ test('connecting reuses all three Conversation dots with no audio subscription',
   expect(
     view.getAllByTestId('rag-conversation-activity-dot', hidden),
   ).toHaveLength(3);
+  expect(
+    view.getByTestId('rag-conversation-activity-bubble', hidden),
+  ).toHaveStyle({ alignSelf: 'center' });
   expect(subscribe).not.toHaveBeenCalled();
 });
 
