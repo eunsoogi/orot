@@ -3,6 +3,7 @@ import {
   type SqlExecutor,
   type SqlResult,
 } from '@orot/storage';
+import { currentEvidenceCondition } from '../healthEvidence/evidenceCandidateScope';
 import type { SavedRecordSummarySource } from '../diseaseHypotheses/savedSummaries';
 import { RetainedSourceInvalidError } from '../aiFeatures/integration/retainedSourceError';
 
@@ -56,12 +57,18 @@ export async function readRetainedRecordRows(
     const memory = kind === 'reviewed_memory';
     const table = memory ? 'agent_memory_records' : STORAGE_TABLES[kind].table;
     const column = memory ? 'record_json' : 'payload_json';
+    // Older transcript revisions intentionally remain readable in history and
+    // do not themselves get derived-artifact stale markers. A retained
+    // derivative must still prove that its exact transcript revision is current.
+    const transcript = kind === 'transcript_segment';
+    const stale = transcript
+      ? `NOT (${currentEvidenceCondition(kind)})`
+      : `EXISTS (SELECT 1 FROM transcript_artifact_staleness s
+          WHERE s.artifact_kind = ? AND s.artifact_id = r.id)`;
     const result = await tx.execute(
-      `SELECT r.id, r.${column} AS source_json,
-        EXISTS (SELECT 1 FROM transcript_artifact_staleness s
-          WHERE s.artifact_kind = ? AND s.artifact_id = r.id) AS stale
+      `SELECT r.id, r.${column} AS source_json, ${stale} AS stale
        FROM ${table} r WHERE r.id IN (SELECT value FROM json_each(?))`,
-      [kind, JSON.stringify(ids)],
+      transcript ? [JSON.stringify(ids)] : [kind, JSON.stringify(ids)],
     );
     for (const row of result.rows) {
       const { id, ...current } = checkedRetainedRow(row);
