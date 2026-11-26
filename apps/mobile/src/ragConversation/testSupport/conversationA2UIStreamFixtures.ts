@@ -24,6 +24,9 @@ const row = frame('updateComponents', {
     { id: 'content', component: 'Row', children: ['first', 'second'] },
   ],
 });
+const replaceRoot = frame('updateComponents', {
+  components: [{ id: 'root', component: 'Row', children: ['first', 'second'] }],
+});
 const repeated = frame('createSurface', {
   catalogId: conversationA2UICatalog,
   dataModel: { items: [{ title: previewOnly }, { title: '임시 값' }] },
@@ -43,8 +46,14 @@ const repeatedUpdate = frame('updateDataModel', {
   value: repeatedAnswer.split('\n').map(title => ({ title })),
 });
 
-export function streamedAnswer(usesRepeatedChildren: boolean) {
-  const update = usesRepeatedChildren ? repeatedUpdate : row;
+export function streamedAnswer(mode: boolean | 'replacement') {
+  const usesRepeatedChildren = mode === true;
+  const update =
+    mode === 'replacement'
+      ? replaceRoot
+      : usesRepeatedChildren
+        ? repeatedUpdate
+        : row;
   const envelope = JSON.stringify({
     type: 'result',
     value: {

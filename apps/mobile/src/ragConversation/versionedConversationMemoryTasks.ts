@@ -1,3 +1,4 @@
+import { withConversationA2UIReplacement } from './conversationA2UIReplacementTask';
 import { withConversationA2UIPanelCaptions } from './conversationA2UIPanelCaptionTask';
 import { withComposedConversationControls } from './conversationA2UIComposedControlTask';
 import { observeConversationA2UIFinalAdmission } from './conversationA2UIFinalDiagnostic';
@@ -77,6 +78,7 @@ export function versionedConversationMemoryTasks(
     conversationTaskV44,
     '47',
   );
+  const replacementBase = withConversationA2UIPanelCaptions(captionBase);
   return {
     conversationTaskV25,
     conversationTaskV26,
@@ -108,9 +110,10 @@ export function versionedConversationMemoryTasks(
       v45: conversationTaskV45,
       v46: conversationTaskV46,
       v47: observeConversationA2UIFinalAdmission(captionBase),
+      v48: observeConversationA2UIFinalAdmission(replacementBase),
     },
     ragConversationTask: observeConversationA2UIFinalAdmission(
-      withConversationA2UIPanelCaptions(captionBase),
+      withConversationA2UIReplacement(replacementBase),
     ),
   };
 }
