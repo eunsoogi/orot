@@ -56,13 +56,15 @@ export function EncounterReviewPanel({
       if (retired) return;
       if (owner && !owner.isCurrent()) {
         if (!admitted) return;
-        retired = true;
+        admitted = false;
         controller.dispose();
         setActiveController(undefined);
         setState({ status: 'unavailable', candidates: [], selected: [] });
         return;
       }
       if (admitted) return;
+      // A declined leave may return this exact mounted route. Restore under a
+      // fresh protected lifetime; never replay a retired callback or generation.
       admitted = true;
       controller.activate();
       controller.restore();

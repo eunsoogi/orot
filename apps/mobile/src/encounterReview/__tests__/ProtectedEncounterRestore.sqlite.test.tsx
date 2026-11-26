@@ -1,4 +1,10 @@
-import { act, render, screen, waitFor } from '@testing-library/react-native';
+import {
+  act,
+  render,
+  screen,
+  waitFor,
+  within,
+} from '@testing-library/react-native';
 import { AppState } from 'react-native';
 import type { ConversationExecutionEvent } from '../../ragConversation/conversationExecutionLease';
 import { conversationExecutionNative } from '../../ragConversation/conversationExecutionNative';
@@ -6,13 +12,13 @@ import { resolveSelectedAiProvider } from '../../aiFeatures/integration/provider
 import { openLocalStorage } from '../../storage/secureDatabase';
 import { notifyLocalSourceDeleted } from '../../storage/localDataClearEvents';
 import { EncounterReviewPanel } from '../EncounterReviewPanel';
+import { createNavigationController } from '../../navigation/navigationController';
 import {
   consent,
   sourceId,
   sqliteReviewFixture,
 } from '../__fixtures__/sqliteReview';
 import { reviewCopy } from '../strings';
-
 jest.mock('../../storage/secureDatabase', () => ({
   openLocalStorage: jest.fn(),
   openLocalAgentMemoryDatabase: jest.fn(),
@@ -29,7 +35,6 @@ jest.mock('../../agent/execution/useInferenceConsent', () => ({
     disclosureSheet: null,
   }),
 }));
-
 const fixture = sqliteReviewFixture();
 const report = () => {};
 const panel = (
@@ -39,7 +44,6 @@ const panel = (
     onInteractionChange={report}
   />
 );
-
 test.each([
   'unknown',
   'held lock',
@@ -146,3 +150,101 @@ test.each([
     }
   },
 );
+test('declining Back restores the exact locally checkpointed review on the same mounted recording route', async () => {
+  const previousPhase = AppState.currentState;
+  AppState.currentState = 'active';
+  const seed = fixture.controllerFor();
+  const graph = await seed.service.start(
+    sourceId,
+    consent,
+    new AbortController().signal,
+  );
+  if (graph.status !== 'pending')
+    throw new Error('Expected a synthetic review checkpoint');
+  expect(graph.pending.candidates.map(candidate => candidate.kind)).toEqual([
+    'medication',
+    'plan',
+  ]);
+  let allowed: boolean | null = true;
+  const native = jest.fn(async () => allowed);
+  const listeners = new Set<(event: ConversationExecutionEvent) => void>();
+  jest.mocked(conversationExecutionNative).mockReturnValue({
+    bridgeAvailable: true,
+    currentPhase: () => 'active',
+    begin: async () => false,
+    end() {},
+    isActive: async () => false,
+    protectedDataAvailable: native,
+    subscribe(callback) {
+      listeners.add(callback);
+      return () => {
+        listeners.delete(callback);
+      };
+    },
+  });
+  jest.mocked(resolveSelectedAiProvider).mockClear();
+  const navigation = createNavigationController<'root' | 'recording'>('root');
+  const route = navigation.push('recording')!;
+  const routeOwner = {
+    isCurrent() {
+      const current = navigation.getSnapshot();
+      return !current.isTransitioning && current.currentRoute.key === route.key;
+    },
+    subscribe: navigation.subscribe,
+  };
+  let respond!: (result: boolean) => void;
+  const leave = () =>
+    new Promise<boolean>(resolve => {
+      respond = resolve;
+    });
+  navigation.registerLeaveGuard(route.key, leave);
+  const view = await render(
+    <EncounterReviewPanel
+      sourceId={sourceId}
+      disabled={false}
+      routeOwner={routeOwner}
+      onInteractionChange={report}
+    />,
+  );
+  const verifyQuotes = async () => {
+    for (const candidate of graph.pending.candidates) {
+      const row = await screen.findByTestId(
+        `encounter-evidence-${candidate.id}-0`,
+      );
+      expect(within(row).getByText(candidate.evidence[0]!.quote)).toBeVisible();
+    }
+  };
+  try {
+    await verifyQuotes();
+    let back!: Promise<boolean>;
+    await act(() => {
+      back = navigation.requestBack();
+    });
+    expect(screen.queryByTestId('encounter-candidate-0')).toBeNull();
+    await act(async () => {
+      respond(false);
+      expect(await back).toBe(false);
+    });
+    expect(navigation.getSnapshot().currentRoute.key).toBe(route.key);
+    await verifyQuotes();
+    expect(resolveSelectedAiProvider).not.toHaveBeenCalled();
+    expect(await fixture.rows()).toEqual([]);
+    await act(() => {
+      back = navigation.requestBack();
+    });
+    const reads = native.mock.calls.length;
+    allowed = null;
+    await act(async () => {
+      respond(false);
+      await back;
+    });
+    expect(native.mock.calls.length).toBeGreaterThan(reads);
+    expect(screen.queryByTestId('encounter-candidate-0')).toBeNull();
+    expect(screen.queryByTestId('encounter-save')).toBeNull();
+    expect(seed.synthetic.calls()).toBe(1);
+    expect(listeners.size).toBe(0);
+  } finally {
+    await view.unmount();
+    AppState.currentState = previousPhase;
+  }
+});
