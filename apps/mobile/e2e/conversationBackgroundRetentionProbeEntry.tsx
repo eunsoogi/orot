@@ -19,6 +19,7 @@ import { LocalEvidenceReferenceRegistry } from '../src/aiFeatures/integration/ev
 import { openLocalAgentMemoryDatabase } from '../src/storage/secureDatabase';
 import { NavigationRouteAdapter } from '../src/navigation/NavigationRouteAdapter';
 import { createNavigationController } from '../src/navigation/navigationController';
+import { observeFixtureConversationLease } from './conversationLeaseProbeObservation';
 import type { ConversationSender } from '../src/ragConversation/conversationSessionTypes';
 import {
   afterBackgroundCommit,
@@ -31,10 +32,12 @@ import {
 } from './conversationRetentionBackgroundProbe';
 
 // This opt-in test entry uses the app's protected database; only synthetic values enter its counter.
-const options = createConversationSessionOptions({
+const base = createConversationSessionOptions({
   loadLocalData: openAiFeatureLocalData,
   registry: new LocalEvidenceReferenceRegistry(),
 });
+const lease = observeFixtureConversationLease(base.execution);
+const options = { ...base, execution: lease.execution };
 let release: (() => void) | undefined;
 let publish: ((value: string) => void) | undefined;
 let backgroundReady = false;
@@ -84,8 +87,15 @@ const send: ConversationSender = async (
       release = finish;
       signal?.addEventListener('abort', finish, { once: true });
     });
-    if (background) {
-      await preflightBackgroundCommit(db);
+    const owner = background
+      ? await preflightBackgroundCommit(
+          db,
+          observer?.retentionRequestId,
+          lease,
+          signal,
+        )
+      : undefined;
+    if (owner) {
       if (signal?.aborted) throw new Error('Background request stopped.');
       backgroundReady = true;
       publish?.(await readProbe());
@@ -103,8 +113,8 @@ const send: ConversationSender = async (
         if (phase !== 'background') stayedBackground = false;
       });
     }
-    const before = background
-      ? await beforeBackgroundCommit(db, signal!)
+    const before = owner
+      ? await beforeBackgroundCommit(db, owner, signal!)
       : undefined;
     await observer!.onRetentionCandidate!(
       {

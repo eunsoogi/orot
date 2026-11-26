@@ -36,6 +36,11 @@ export function observeFixtureConversationLease(
       )
         throw new Error('Native execution lease was not acquired.');
       observedLeaseId = leaseId;
+      return Object.freeze({
+        id: leaseId,
+        current: () =>
+          !signal?.aborted && observedLeaseId === leaseId && acquisitions === 1,
+      });
     },
     /** Read the exact positively observed lease; never infer a key from SQLite. */
     async state() {
