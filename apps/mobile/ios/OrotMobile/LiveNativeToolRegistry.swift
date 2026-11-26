@@ -45,6 +45,34 @@ struct LiveNativeToolRegistry {
               let tools = responses["tools"] as? [[String: Any]],
               tools.count == eligible.count,
               tools.compactMap({ $0["name"] as? String }) == eligible.map(\.rawValue) else { return nil }
+        if eligible == [.canonicalHealthContext],
+           !LiveNativeToolManifest.matchesCanonicalHealth(configuration, model: admission.backendModel)
+        {
+            return nil
+        }
         return configuration
+    }
+}
+
+/// Structural stock identity only. Settings, startup liveness, source proof,
+/// and result transport remain with the original admission and ticket owners.
+private enum LiveNativeToolManifest {
+    static func matchesCanonicalHealth(_ configuration: [String: Any], model: String) -> Bool {
+        // Reuse the exact app-owned descriptor; never attest a proposed schema
+        // by round-tripping the same provider or companion value.
+        var tool = LiveCanonicalContextV3Transport.stock
+        tool["type"] = "function"
+        tool["strict"] = false
+        let expected: [String: Any] = [
+            "type": "responses",
+            "responses": ["model": model, "tools": [tool]],
+        ]
+        guard let actual = canonical(configuration), let expected = canonical(expected) else { return false }
+        return actual == expected
+    }
+
+    private static func canonical(_ value: [String: Any]) -> Data? {
+        guard JSONSerialization.isValidJSONObject(value) else { return nil }
+        return try? JSONSerialization.data(withJSONObject: value, options: [.sortedKeys])
     }
 }

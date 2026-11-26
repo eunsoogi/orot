@@ -1,18 +1,15 @@
-import {
-  nativeToolParameterSchema,
-  type LiveToolCall,
-} from '@orot/agent-runtime';
+import type { LiveToolCall } from '@orot/agent-runtime';
 import type { LanguageModelProvider } from '@orot/model-runtime';
 import { EVIDENCE_WORKFLOW_BUDGET } from '../agent/evidenceWorkflowBudget';
 import { evidenceConsentScope } from '../aiFeatures/integration/evidenceConsentScope';
 import { bindHealthContextTool } from '../aiFeatures/integration/bindHealthContextTool';
 import { LocalEvidenceReferenceRegistry } from '../aiFeatures/integration/evidenceRegistry';
-import { healthContextToolDefinition } from '../aiFeatures/integration/healthContextToolDefinition';
 import type { AiFeatureLocalData } from '../aiFeatures/integration/localData';
 import { stable } from '../aiFeatures/integration/stableEvidenceReference';
 import { ragConversationTask } from '../ragConversation/task';
 import { liveConversationToolsAuthorization } from '../voiceSettings/liveConversationToolsAuthorization';
 import type { LiveResponsesSettings } from '../voiceSettings/liveResponsesSettings';
+import { liveStockHealthCatalog } from './liveStockHealthDescriptor';
 import type { LiveCommonConversationPort } from './liveCommonConversationRun';
 import {
   type LiveCommonRegistration,
@@ -30,20 +27,13 @@ type Active = Extract<LiveResponsesSettings, { kind: 'active' }>;
 export function canonicalLiveCommonRegistration(
   witness: LiveCommonWitness,
 ): LiveCommonRegistration {
-  const definition = healthContextToolDefinition('rag');
   return Object.freeze({
     ...witness,
     policy: 'common-tools-v3',
     providerId: 'openai-live-responses',
     recipient: 'OpenAI Responses (Live)',
     manifestRevision: 'canonical-health-context-v3',
-    tools: Object.freeze([
-      Object.freeze({
-        name: definition.id,
-        description: definition.description,
-        parameters: nativeToolParameterSchema(definition.inputSchema),
-      }),
-    ]),
+    tools: liveStockHealthCatalog.manifest.tools,
   });
 }
 
@@ -105,6 +95,7 @@ export function createLiveCommonHealthPort(input: {
       const detach = native.subscribe(
         callId,
         registration,
+        liveStockHealthCatalog.acceptsArguments,
         batch => {
           const call = batch.calls[0];
           if (!call || !current() || (observed && owns(observed))) return;
