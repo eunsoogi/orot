@@ -51,7 +51,7 @@ test('real Daily shortcut separates lookup, dispatch, verified receipt and visib
       const message = request.messages.find(item => item.role === 'user');
       let facts: unknown;
       try {
-        if (typeof message?.content === 'string')
+        if (message?.role === 'user' && typeof message.content === 'string')
           facts = JSON.parse(message.content).facts;
       } catch {
         /* The optional opening is plain text. */
