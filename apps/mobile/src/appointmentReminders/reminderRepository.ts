@@ -21,6 +21,8 @@ export function withAppointmentReminders(
   }
 
   return {
+    // Preserve exact local verdict reuse; only appointment mutations reconcile reminders.
+    classificationCache: repository.classificationCache,
     list: () => repository.list(),
     create: input => committed(() => repository.create(input)),
     confirmCalendarEvent: input =>
