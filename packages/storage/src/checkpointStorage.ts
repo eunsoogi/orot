@@ -2,8 +2,8 @@ import type { SqlDatabase, SqlExecutor, SqlValue } from './sql';
 import { createSchema, readCheckpoint, readText, readWrite } from './checkpointStorageCodec';
 import {
   bindCheckpointSource,
-  canReadSourceLinkedCheckpoint,
   createSourceLinkedCheckpointIntegrity,
+  readSourceLinkedCheckpoint,
 } from './sourceLinkedCheckpoints';
 
 export interface StoredCheckpoint {
@@ -110,14 +110,7 @@ export function createLangGraphCheckpointStorage(
       await ensureSchema();
       return read(database);
     }
-    const sourceId = options.sourceRecordId;
-    let result = absent;
-    // Authorize source and read both checkpoint and pending writes in one snapshot.
-    await database.transaction(async (transaction) => {
-      if (await canReadSourceLinkedCheckpoint(transaction, threadId, sourceId))
-        result = await read(transaction);
-    });
-    return result;
+    return readSourceLinkedCheckpoint(database, threadId, options.sourceRecordId, absent, read);
   }
 
   return {

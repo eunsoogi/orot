@@ -81,7 +81,7 @@ async function isLiveCheckpointSource(sql: SqlExecutor, sourceId: string): Promi
 }
 
 /** A scoped read may only reopen an existing live binding, never initialize one. */
-export async function canReadSourceLinkedCheckpoint(
+async function canReadSourceLinkedCheckpoint(
   sql: SqlExecutor,
   threadId: string,
   sourceRecordId: string,
@@ -98,4 +98,20 @@ export async function canReadSourceLinkedCheckpoint(
   return (
     bound.rows[0]?.source_record_id === sourceId && (await isLiveCheckpointSource(sql, sourceId))
   );
+}
+
+export async function readSourceLinkedCheckpoint<T>(
+  database: SqlDatabase,
+  threadId: string,
+  sourceId: string,
+  absent: T,
+  read: (executor: SqlExecutor) => Promise<T>,
+): Promise<T> {
+  let result = absent;
+  // Authorize source and read both checkpoint and pending writes in one snapshot.
+  await database.transaction(async (transaction) => {
+    if (await canReadSourceLinkedCheckpoint(transaction, threadId, sourceId))
+      result = await read(transaction);
+  });
+  return result;
 }
