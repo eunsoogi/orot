@@ -76,7 +76,7 @@ extension RealtimeVoiceLifecycleTests {
                     executed += 1
                     return {}
                 },
-                mayDisclose: { _, _ in false },
+                mayDisclose: { _, _ in false }
             )
             admission.observeTiming = { stage, duration in
                 observed.append(stage)
@@ -84,7 +84,7 @@ extension RealtimeVoiceLifecycleTests {
             }
             let bridge = try LiveResponsesToolBridge(
                 admission: admission, registry: XCTUnwrap(LiveNativeToolRegistry(admission: admission)),
-                discard: {},
+                discard: {}
             )
             let owner = LiveResponsesAdmission.Owner(callID: "fixture-call", sessionID: "fixture-session", epoch: UUID())
             for event in managedEvents() {
@@ -107,5 +107,74 @@ extension RealtimeVoiceLifecycleTests {
             XCTAssertEqual(frames, 0)
             bridge.retire()
         }
+    }
+}
+
+extension RealtimeVoiceLifecycleTests {
+    @MainActor
+    func testCommonV3ProductionAdmissionPinsOwnedTerminalProjection() async throws {
+        let witness = LiveConversationToolsSettingsWitness(backendModel: "gpt-6-luna", credentialEpoch: "synthetic",
+                                                           generation: "generation", grantID: "generation-model", voiceGeneration: "voice")
+        let owner = LiveResponsesAdmission.Owner(callID: "fixture-call", sessionID: "fixture-session", epoch: UUID())
+        let pins = LiveCommonV3SourcePins()
+        var bridge: LiveResponsesToolBridge?
+        let factory = try XCTUnwrap(LiveCanonicalContextV3Transport(call: owner.callID,
+                                                                    requested: LiveCanonicalContextV3Transport.registration(witness), witness: { witness },
+                                                                    startupCurrent: { $0 == owner.callID }, owns: { $0 == owner },
+                                                                    ownsRequest: { bridge?.ownsCompleted($0) == true }, sourceTicketCurrent: pins.matches))
+        defer { bridge?.retire(); factory.retire() }
+        let called = expectation(description: "exact finished function")
+        var batch: [String: Any]?
+        let admission = factory.bridge(pins: pins) { event, body in
+            guard event == "VoiceRealtimeCommonToolBatch" else { return }
+            batch = body
+            called.fulfill()
+        }
+        let registry = try XCTUnwrap(LiveNativeToolRegistry(admission: admission))
+        XCTAssertNotNil(registry.configuration(for: admission))
+        XCTAssertNotNil(factory.acknowledge(owner))
+        bridge = LiveResponsesToolBridge(admission: admission, registry: registry, discard: {})
+        let output = #"{"tool":"local-health-context","items":[{"evidenceId":"fixture","evidenceRevision":"1","content":"Synthetic"}]}"#
+        let queued = expectation(description: "ticketed exact output and continuation")
+        var wire: [[String: Any]] = []
+        var currentWire: (() -> Bool)?
+        var ticket: LiveNativeResultDispatchAuthority.Ticket?
+        func send(_ event: [String: Any]) {
+            bridge?.receive(event, owner: owner, current: { true }) { out, current, receivedTicket in
+                wire = out; currentWire = current; ticket = receivedTicket
+                queued.fulfill()
+            }
+        }
+        let events = managedEvents().map { envelope -> [String: Any] in
+            var outer = envelope
+            guard var event = outer["event"] as? [String: Any], var item = event["item"] as? [String: Any] else { return outer }
+            item["name"] = "local-health-context"; item["arguments"] = "{}"
+            event["item"] = item; outer["event"] = event
+            return outer
+        }
+        events.dropLast().forEach(send)
+        XCTAssertNil(batch)
+        try send(XCTUnwrap(events.last))
+        await fulfillment(of: [called], timeout: 1)
+        let item = try XCTUnwrap((batch?["calls"] as? [[String: String]])?.first)
+        let challenge = try XCTUnwrap(item["challengeId"])
+        XCTAssertTrue(pins.isCurrent(call: owner.callID, session: owner.sessionID, delegation: "delegation-a",
+                                     response: "response-a", challenge: challenge, function: "function-a"))
+        XCTAssertFalse(pins.claim("other-call", challenge, output))
+        XCTAssertTrue(pins.claim(owner.callID, challenge, output))
+        XCTAssertFalse(pins.claim(owner.callID, challenge, output + " "))
+        let retired = expectation(description: "only the independent source retirement settles false")
+        factory.settleBridge(callId: owner.callID, challenge: challenge, exact: output) {
+            XCTAssertFalse($0)
+            retired.fulfill()
+        }
+        await fulfillment(of: [queued], timeout: 1)
+        XCTAssertEqual(wire.compactMap { $0["type"] as? String }, ["response.item.create", "response.create"])
+        XCTAssertEqual((wire.first?["item"] as? [String: Any])?["output"] as? String, output)
+        XCTAssertEqual(currentWire?(), true)
+        pins.retire(call: owner.callID, challenge: challenge)
+        XCTAssertEqual(currentWire?(), false)
+        XCTAssertFalse(try XCTUnwrap(ticket).submit { XCTFail("Retired source cannot reach socket.") })
+        await fulfillment(of: [retired], timeout: 1)
     }
 }

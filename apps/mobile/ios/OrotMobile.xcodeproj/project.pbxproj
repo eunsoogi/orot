@@ -38,6 +38,10 @@
 		B6C8E7BDC20CD24E8395499B /* LiveNativeToolRegistry.swift in Sources */ = {isa = PBXBuildFile; fileRef = 74BF394607A18502B912271E /* LiveNativeToolRegistry.swift */; };
 		5C4F70F3EE4C4DBD93D0DCE0 /* RealtimeVoiceResultDispatchAuthority.swift in Sources */ = {isa = PBXBuildFile; fileRef = B42B5940143246ACB22BCEC3 /* RealtimeVoiceResultDispatchAuthority.swift */; };
 		C7A8C3EFD30D42D2A9EFF001 /* RealtimeVoiceBatchTransport.swift in Sources */ = {isa = PBXBuildFile; fileRef = C7A8C3EFD30D42D2A9EFF002 /* RealtimeVoiceBatchTransport.swift */; };
+		234A515CF0115BDB807EA81C /* VoiceRealtimeCommonV3Bridge.swift in Sources */ = {isa = PBXBuildFile; fileRef = C344C90C9A215AE48D8CFF70 /* VoiceRealtimeCommonV3Bridge.swift */; };
+		6696823F1F6659B290098921 /* LiveCommonV3SourcePins.swift in Sources */ = {isa = PBXBuildFile; fileRef = ED8F2DE1F8945BC7AA40E99A /* LiveCommonV3SourcePins.swift */; };
+		80BE500D5D2A5F8E8E9ED496 /* LiveCanonicalContextV3Transport.swift in Sources */ = {isa = PBXBuildFile; fileRef = ED0D92502965599D8B8C1E24 /* LiveCanonicalContextV3Transport.swift */; };
+		35D7EC75B09954A789162479 /* LiveConversationToolsSettingsWitness.swift in Sources */ = {isa = PBXBuildFile; fileRef = 60F5E8C119FD52DBA1F31C1B /* LiveConversationToolsSettingsWitness.swift */; };
 		E73A4A9DC65F411B8186B011 /* RealtimeVoiceCanonicalHealthMailbox.swift in Sources */ = {isa = PBXBuildFile; fileRef = E73A4A9DC65F411B8186A011 /* RealtimeVoiceCanonicalHealthMailbox.swift */; };
 		E73A4A9DC65F411B8186B010 /* RealtimeVoiceCanonicalHealthAdmission.swift in Sources */ = {isa = PBXBuildFile; fileRef = E73A4A9DC65F411B8186A010 /* RealtimeVoiceCanonicalHealthAdmission.swift */; };
 		E73A4A9DC65F411B8186B052 /* CanonicalLiveCallPresenter.swift in Sources */ = {isa = PBXBuildFile; fileRef = E73A4A9DC65F411B8186A052 /* CanonicalLiveCallPresenter.swift */; };
@@ -487,6 +491,10 @@
 		74BF394607A18502B912271E /* LiveNativeToolRegistry.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OrotMobile/LiveNativeToolRegistry.swift; sourceTree = "<group>"; };
 		B42B5940143246ACB22BCEC3 /* RealtimeVoiceResultDispatchAuthority.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OrotMobile/RealtimeVoiceResultDispatchAuthority.swift; sourceTree = "<group>"; };
 		C7A8C3EFD30D42D2A9EFF002 /* RealtimeVoiceBatchTransport.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OrotMobile/RealtimeVoiceBatchTransport.swift; sourceTree = "<group>"; };
+		C344C90C9A215AE48D8CFF70 /* VoiceRealtimeCommonV3Bridge.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OrotMobile/VoiceRealtimeCommonV3Bridge.swift; sourceTree = "<group>"; };
+		ED8F2DE1F8945BC7AA40E99A /* LiveCommonV3SourcePins.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OrotMobile/LiveCommonV3SourcePins.swift; sourceTree = "<group>"; };
+		ED0D92502965599D8B8C1E24 /* LiveCanonicalContextV3Transport.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OrotMobile/LiveCanonicalContextV3Transport.swift; sourceTree = "<group>"; };
+		60F5E8C119FD52DBA1F31C1B /* LiveConversationToolsSettingsWitness.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OrotMobile/LiveConversationToolsSettingsWitness.swift; sourceTree = "<group>"; };
 		E73A4A9DC65F411B8186A011 /* RealtimeVoiceCanonicalHealthMailbox.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OrotMobile/RealtimeVoiceCanonicalHealthMailbox.swift; sourceTree = "<group>"; };
 		E73A4A9DC65F411B8186A010 /* RealtimeVoiceCanonicalHealthAdmission.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OrotMobile/RealtimeVoiceCanonicalHealthAdmission.swift; sourceTree = "<group>"; };
 		E73A4A9DC65F411B8186A052 /* CanonicalLiveCallPresenter.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OrotMobile/CanonicalLiveCallPresenter.swift; sourceTree = "<group>"; };
@@ -948,6 +956,10 @@
 				74BF394607A18502B912271E /* LiveNativeToolRegistry.swift */,
 				B42B5940143246ACB22BCEC3 /* RealtimeVoiceResultDispatchAuthority.swift */,
 				C7A8C3EFD30D42D2A9EFF002 /* RealtimeVoiceBatchTransport.swift */,
+				C344C90C9A215AE48D8CFF70 /* VoiceRealtimeCommonV3Bridge.swift */,
+				ED8F2DE1F8945BC7AA40E99A /* LiveCommonV3SourcePins.swift */,
+				ED0D92502965599D8B8C1E24 /* LiveCanonicalContextV3Transport.swift */,
+				60F5E8C119FD52DBA1F31C1B /* LiveConversationToolsSettingsWitness.swift */,
 				E73A4A9DC65F411B8186A011 /* RealtimeVoiceCanonicalHealthMailbox.swift */,
 				E73A4A9DC65F411B8186A010 /* RealtimeVoiceCanonicalHealthAdmission.swift */,
 				E73A4A9DC65F411B8186A052 /* CanonicalLiveCallPresenter.swift */,
@@ -1731,6 +1743,10 @@
 				B6C8E7BDC20CD24E8395499B /* LiveNativeToolRegistry.swift in Sources */,
 				5C4F70F3EE4C4DBD93D0DCE0 /* RealtimeVoiceResultDispatchAuthority.swift in Sources */,
 				C7A8C3EFD30D42D2A9EFF001 /* RealtimeVoiceBatchTransport.swift in Sources */,
+				234A515CF0115BDB807EA81C /* VoiceRealtimeCommonV3Bridge.swift in Sources */,
+				6696823F1F6659B290098921 /* LiveCommonV3SourcePins.swift in Sources */,
+				80BE500D5D2A5F8E8E9ED496 /* LiveCanonicalContextV3Transport.swift in Sources */,
+				35D7EC75B09954A789162479 /* LiveConversationToolsSettingsWitness.swift in Sources */,
 				E73A4A9DC65F411B8186B011 /* RealtimeVoiceCanonicalHealthMailbox.swift in Sources */,
 				E73A4A9DC65F411B8186B010 /* RealtimeVoiceCanonicalHealthAdmission.swift in Sources */,
 				E73A4A9DC65F411B8186B052 /* CanonicalLiveCallPresenter.swift in Sources */,

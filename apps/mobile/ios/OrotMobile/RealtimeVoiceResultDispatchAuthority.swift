@@ -130,6 +130,12 @@ final class LiveNativeResultDispatchAuthority: @unchecked Sendable {
         return install(call: call, challenge: challenge, resultKind: .canonicalHealth)
     }
 
+    /// Common V3 owns a separate authority instance and can mint only the stock canonical result ticket.
+    func beginV3Canonical(call: String, challenge: String, current: () -> Bool) -> Ticket? {
+        guard current() else { return nil }
+        return install(call: call, challenge: challenge, resultKind: .canonicalHealth)
+    }
+
     private func install(call: String, challenge: String, resultKind: ResultKind) -> Ticket {
         let next = Ticket(call: call, challenge: challenge, resultKind: resultKind)
         lock.lock()

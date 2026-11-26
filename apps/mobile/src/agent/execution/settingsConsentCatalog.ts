@@ -14,9 +14,11 @@ import {
   isLiveResponsesContextScope,
   liveResponsesPermissions,
   liveResponsesAggregateV2Permissions,
+  liveResponsesCommonToolsPermissions,
   liveResponsesProviderId,
 } from '../../voiceSettings/liveResponsesSettingsIdentity';
 import type { SettingsConsentPermission } from './settingsConsentGrant';
+import { conversationSettingsPermissions } from './conversationSettingsPermissions';
 
 /** Changing a declared boundary requires explicit settings consent again. This catalog
  * describes possible permissions; it does not enable a recipient or create a grant. */
@@ -36,78 +38,6 @@ const permission = (
   sourceKinds,
 });
 
-const evidenceCategories = [
-  'health_records',
-  'reviewed_memory',
-  'conversation',
-  'medical_literature',
-  'public_web_results',
-  'photo_ocr',
-];
-const evidenceKinds = [
-  'personal_record',
-  'reviewed_memory',
-  'external_medical',
-];
-const conversation: readonly SettingsConsentPermission[] = [
-  ...['record_conversation', 'symptom_summary', 'disease_hypotheses'].flatMap(
-    purpose => [
-      permission(
-        purpose,
-        'local-records-v1',
-        evidenceCategories,
-        evidenceKinds,
-      ),
-      permission(
-        purpose,
-        'local-artifacts-v1',
-        [...evidenceCategories, 'generated_artifacts'],
-        [...evidenceKinds, 'generated_artifact'],
-      ),
-    ],
-  ),
-  permission(
-    'visit_questions',
-    'local-records-v1',
-    ['health_records', 'reviewed_memory', 'visit_title_time'],
-    ['personal_record', 'reviewed_memory'],
-  ),
-  permission(
-    'visit_questions',
-    'local-artifacts-v1',
-    [
-      'health_records',
-      'reviewed_memory',
-      'visit_title_time',
-      'generated_artifacts',
-    ],
-    ['personal_record', 'reviewed_memory', 'generated_artifact'],
-  ),
-  permission(
-    'daily_report',
-    'daily-report-analysis-v2',
-    ['health_records'],
-    ['personal_record'],
-  ),
-  permission(
-    'daily_report',
-    'daily-report-calendar-analysis-v2',
-    ['health_records', 'calendar_plans'],
-    ['personal_record'],
-  ),
-  permission(
-    'encounter_transcript_review',
-    'single-recording-v1',
-    ['selected_recording_transcript'],
-    ['personal_record'],
-  ),
-  permission(
-    'visit_recap',
-    'transcript-recap-v1',
-    ['selected_recording_transcript', 'prepared_visit_questions'],
-    ['personal_record'],
-  ),
-];
 const calendar = [
   permission(
     'calendar_classification',
@@ -166,8 +96,8 @@ export function settingsPermissionsForFeature(
   const values =
     feature === 'conversation'
       ? reviewedDirectPhoto && providerId?.startsWith('chatgpt-plan:')
-        ? [...conversation, directPhotoPermission]
-        : conversation
+        ? [...conversationSettingsPermissions, directPhotoPermission]
+        : conversationSettingsPermissions
       : feature === 'calendar'
         ? calendar
         : feature === 'voice'
@@ -193,7 +123,7 @@ export function isCatalogPermission(value: SettingsConsentPermission): boolean {
   if (isDirectPhotoConsentScope(value.purpose, value.policyVersion))
     return isExactDirectPhotoPermission(value);
   return [
-    ...conversation,
+    ...conversationSettingsPermissions,
     ...calendar,
     ...voice,
     ...liveVoice,
@@ -226,7 +156,7 @@ export function isCatalogDomainPermission(
   const candidates =
     domain === 'model'
       ? feature === 'voice-responses' && providerId === liveResponsesProviderId
-        ? [...liveResponsesPermissions, ...liveResponsesAggregateV2Permissions]
+        ? [...liveResponsesPermissions, ...liveResponsesCommonToolsPermissions]
         : settingsPermissionsForFeature(feature, providerId, true)
       : feature !== 'conversation'
         ? []
@@ -240,6 +170,14 @@ export function isCatalogDomainPermission(
     candidates.some(
       known =>
         known.purpose === value.purpose &&
+        (feature !== 'voice-responses' ||
+          value.purpose !== 'record_conversation' ||
+          (value.dataCategories.every(category =>
+            known.dataCategories.includes(category),
+          ) &&
+            value.sourceKinds.every(kind =>
+              known.sourceKinds.includes(kind),
+            ))) &&
         (known.policyVersion === value.policyVersion ||
           (known.purpose === directPhotoPermission.purpose &&
             known.policyVersion === directPhotoPermission.policyVersion &&

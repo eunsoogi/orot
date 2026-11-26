@@ -44,8 +44,10 @@ function validEvidenceTool(tool: EvidenceSearchTool, scope: AllowedEvidenceScope
     isSourceAllowed(scope, tool.sourceKind)
   );
 }
-
-export function validIdentity<TResult>(options: MultiAgentWorkflowOptions<TResult>): boolean {
+export function validIdentity<TResult>(
+  options: MultiAgentWorkflowOptions<TResult>,
+  contextFreeLiveRead = false,
+): boolean {
   const { execution, provider, task, actions, confirmTerminalLocalAction } = options;
   const id = /^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$/u;
   const evidenceOnly = validPhotoInput(options);
@@ -59,7 +61,7 @@ export function validIdentity<TResult>(options: MultiAgentWorkflowOptions<TResul
     requireTaskContract(task) &&
     validInitialEvidenceSearch(options) &&
     (!options.photoInput || evidenceOnly) &&
-    (options.request.trim().length > 0 || evidenceOnly) &&
+    (options.request.trim().length > 0 || evidenceOnly || contextFreeLiveRead) &&
     execution.allowedScope.sourceKinds.length > 0 &&
     execution.allowedScope.sourceKinds.every((kind) =>
       ['personal_record', 'reviewed_memory', 'generated_artifact', 'external_medical'].includes(
@@ -82,7 +84,6 @@ export function validIdentity<TResult>(options: MultiAgentWorkflowOptions<TResul
       ))
   );
 }
-
 function isNonNegativeSafeInteger(value: number): boolean {
   return Number.isSafeInteger(value) && value >= 0;
 }

@@ -10,6 +10,8 @@ import { saveReviewedOpenAiVoicePair } from './saveReviewedOpenAiVoicePair';
 
 export function useOpenAiVoicePairSave(input: {
   active: boolean;
+  /** Exact composed capability, never inferred from audio or a past heart grant. */
+  commonTools?: true;
   pair?: OpenAiVoicePair;
   commit?: typeof saveReviewedOpenAiVoicePair;
   preferences?: Preferences;
@@ -25,6 +27,7 @@ export function useOpenAiVoicePairSave(input: {
     useSettingsDisclosure();
   const {
     active,
+    commonTools,
     pair,
     preferences,
     commit = saveReviewedOpenAiVoicePair,
@@ -40,7 +43,16 @@ export function useOpenAiVoicePairSave(input: {
       operation.current = null;
       cancelDisclosure();
     };
-  }, [active, revision, speech, tools, preferences, commit, cancelDisclosure]);
+  }, [
+    active,
+    commonTools,
+    revision,
+    speech,
+    tools,
+    preferences,
+    commit,
+    cancelDisclosure,
+  ]);
   return {
     busy,
     error,
@@ -55,6 +67,7 @@ export function useOpenAiVoicePairSave(input: {
           operation.current === controller &&
           !controller.signal.aborted &&
           next.active &&
+          next.commonTools === commonTools &&
           next.pair?.accountRevision === revision &&
           next.pair?.speechModel === speech &&
           next.pair?.backendModel === tools &&
@@ -68,6 +81,7 @@ export function useOpenAiVoicePairSave(input: {
         let presented: () => boolean = () => false;
         const saved = await reviewOpenAiVoicePair({
           pair,
+          commonTools,
           signal: controller.signal,
           current,
           review: confirmDisclosure,

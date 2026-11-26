@@ -1,3 +1,4 @@
+import type { LiveCommonRegistration } from './nativeLiveCommonConversation';
 import type { bindCanonicalLiveHealthRun } from './bindCanonicalLiveHealthRun';
 import {
   createVoiceStopReceipts,
@@ -50,12 +51,14 @@ export function nativeLiveVoice(
   captureEnd?: CaptureVoiceEndReceipt,
   responsesGrant?: (callId: string) => LiveResponsesGrantIdentity | null,
   canonicalRegistration?: (callId: string) => CanonicalRegistration | undefined,
+  commonRegistration?: (callId: string) => LiveCommonRegistration | undefined,
 ): NativeRealtimeVoice | null {
   return nativeOwnedVoice(
     true,
     captureEnd,
     responsesGrant,
     canonicalRegistration,
+    commonRegistration,
   );
 }
 
@@ -64,6 +67,7 @@ function nativeOwnedVoice(
   captureEnd?: CaptureVoiceEndReceipt,
   responsesGrant?: (callId: string) => LiveResponsesGrantIdentity | null,
   canonicalRegistration?: (callId: string) => CanonicalRegistration | undefined,
+  commonRegistration?: (callId: string) => LiveCommonRegistration | undefined,
 ): NativeRealtimeVoice | null {
   const module =
     Platform.OS === 'ios' ? NativeModules.VoiceRealtimeModule : null;
@@ -143,10 +147,12 @@ function nativeOwnedVoice(
             receive: captureEnd?.(id),
             captionsCurrent: captureObservedVoiceCloseAuthority(),
           };
-          const grant = responsesGrant?.(id);
+          const common = commonRegistration?.(id);
+          const grant = common ? undefined : responsesGrant?.(id);
           await module.openLiveCall(id, model, key, {
             language: 'auto',
             voice: preferences.voice,
+            ...(common ? { commonToolsRegistration: common } : {}),
             ...(grant
               ? { responsesGrant: grant, ...canonicalRegistration?.(id) }
               : {}),

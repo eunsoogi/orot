@@ -90,6 +90,7 @@ export async function consumeNativeToolCall<TResult>(
   context: RuntimeContext<TResult>,
   state: WorkflowState,
   response: LanguageModelResponse,
+  suppressOpening = false,
 ): Promise<Partial<WorkflowState> | undefined> {
   if (!response.toolCalls.length) return undefined;
   const call = response.toolCalls[0];
@@ -149,7 +150,8 @@ export async function consumeNativeToolCall<TResult>(
     return completeState();
   }
   // A local terminal selection never previews untrusted provider prose.
-  const firstTool = state.toolCalls === 0 && !context.nativeToolMessages.length;
+  const freshOpening = !suppressOpening && state.toolCalls === 0;
+  const firstTool = freshOpening && !context.nativeToolMessages.length;
   if (firstTool && !context.signal.aborted && action?.completion !== 'host_terminal') {
     let initial: string | undefined;
     try {

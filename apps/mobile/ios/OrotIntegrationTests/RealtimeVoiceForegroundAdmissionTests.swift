@@ -1,6 +1,7 @@
 import AVFoundation
 import Foundation
 @testable import Orot
+import Security
 import UIKit
 import XCTest
 
@@ -110,6 +111,96 @@ extension RealtimeVoiceLifecycleTests {
         {
             let note = Notification(name: AVAudioSession.interruptionNotification, userInfo: [AVAudioSessionInterruptionTypeKey: raw, "synthetic": "never logged"])
             XCTAssertEqual(interruption(note), expected)
+        }
+    }
+}
+
+extension RealtimeVoiceLifecycleTests {
+    @MainActor
+    func testV3LiveToolSettingsRequiresExactProtectedPairedWitness() throws {
+        let response = String(repeating: "a", count: 64)
+        let voice = String(repeating: "b", count: 64)
+        let epoch = String(repeating: "c", count: 64)
+        let next = String(repeating: "d", count: 64)
+        let grant = response + "-model"
+        let base = try XCTUnwrap(LiveResponsesSettingsGrant(["backendModel": "gpt-6-luna", "generation": response, "grantID": grant]))
+        let pair: [String: Any] = ["version": 1, "credentialEpoch": epoch, "backendModel": base.backendModel,
+                                   "speechModel": "gpt-live-1.1", "voiceGeneration": voice, "responsesGeneration": response]
+        let marker = ["scope": "selected-live-conversation-local-tools-v3", "providerId": "openai-live-responses",
+                      "recipient": "OpenAI Responses (Live)", "backendModel": base.backendModel, "credentialEpoch": epoch,
+                      "generation": response, "grantID": grant, "voiceGeneration": voice]
+        let raw = try JSONSerialization.data(withJSONObject: marker)
+        XCTAssertEqual(LiveConversationToolsSettingsWitness.decodePolicy(raw, accessibility: kSecAttrAccessibleWhenUnlockedThisDeviceOnly as String), marker)
+        XCTAssertNil(LiveConversationToolsSettingsWitness.decodePolicy(raw, accessibility: kSecAttrAccessibleWhenUnlocked as String))
+        XCTAssertNil(LiveConversationToolsSettingsWitness.decodePolicy(raw, accessibility: nil))
+
+        let modes = ["exact", "locked", "lock-after-marker", "rotated-second-marker", "wrong-key", "wrong-scope",
+                     "wrong-recipient", "wrong-grant", "extra-marker", "legacy", "missing", "v2-only", "wrong-pair",
+                     "duplicate-pair", "revoked-audio", "replaced-responses", "bool-version"]
+        for mode in modes {
+            var protected = mode != "locked"
+            var currentEpoch = epoch
+            var reads: [String] = []
+            var markerReads = 0
+            let result = LiveConversationToolsSettingsWitness.resolve(base: base, key: "synthetic-account", protected: { protected },
+                                                                      read: { service, account -> [String: Any]? in
+                                                                          reads.append(service)
+                                                                          if service == "com.orot.mobile.voice-settings.v1", account == "voice-settings" {
+                                                                              let candidates: [[String: Any]] = [["pair": pair], ["pair": pair]]
+                                                                              var credential: [String: Any] = [
+                                                                                  "apiKey": mode == "wrong-key" ? "other" : "synthetic-account",
+                                                                                  "credentialEpoch": currentEpoch,
+                                                                                  "pairCandidates": mode == "wrong-pair" ? [] : Array(candidates.prefix(mode == "duplicate-pair" ? 2 : 1)),
+                                                                              ]
+                                                                              if mode != "legacy" {
+                                                                                  credential["effectiveResponsesGeneration"] = response
+                                                                              }
+                                                                              return credential
+                                                                          }
+                                                                          guard account == "settings-consent-authority" else { return nil }
+                                                                          switch service {
+                                                                          case "com.orot.mobile.settings-consent-authority.v1.voice":
+                                                                              return ["version": mode == "bool-version" ? NSNumber(value: true) : NSNumber(value: 1),
+                                                                                      "status": mode == "revoked-audio" ? "revoked" : "active", "generation": voice]
+                                                                          case "com.orot.mobile.settings-consent-authority.v1.voice-responses":
+                                                                              return ["version": 1, "status": "active", "generation": mode == "replaced-responses" ? next : response]
+                                                                          default:
+                                                                              return nil
+                                                                          }
+                                                                      },
+                                                                      policy: { service, account in
+                                                                          XCTAssertEqual(service, "com.orot.mobile.live-conversation-tools-policy.v3." + response)
+                                                                          XCTAssertEqual(account, "live-conversation-tools-policy")
+                                                                          markerReads += 1
+                                                                          if mode == "lock-after-marker" {
+                                                                              protected = false
+                                                                          }
+                                                                          if mode == "rotated-second-marker", markerReads == 2 {
+                                                                              currentEpoch = next
+                                                                          }
+                                                                          if mode == "missing" || mode == "v2-only" {
+                                                                              return nil
+                                                                          }
+                                                                          var row = marker
+                                                                          if mode == "wrong-scope" {
+                                                                              row["scope"] = "selected-live-heart-rate-aggregate-v2"
+                                                                          }
+                                                                          if mode == "wrong-recipient" {
+                                                                              row["recipient"] = "other"
+                                                                          }
+                                                                          if mode == "wrong-grant" {
+                                                                              row["grantID"] = next + "-model"
+                                                                          }
+                                                                          if mode == "extra-marker" {
+                                                                              row["extra"] = "synthetic"
+                                                                          }
+                                                                          return row
+                                                                      })
+            XCTAssertEqual(result?.voiceGeneration, mode == "exact" ? voice : nil, mode)
+            XCTAssertFalse(reads.contains { $0.contains("live-responses-settings") || $0.contains("live-health-context") })
+            if mode == "locked" {
+                XCTAssertEqual(markerReads, 0); XCTAssertTrue(reads.isEmpty)
+            }
         }
     }
 }

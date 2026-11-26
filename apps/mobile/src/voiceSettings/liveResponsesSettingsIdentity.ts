@@ -1,3 +1,4 @@
+import { liveConversationSettingsPermissions } from '../agent/execution/conversationSettingsPermissions';
 import type { SettingsConsentPermission } from '../agent/execution/settingsConsentGrant';
 
 export const liveResponsesBackends = ['gpt-6-luna', 'gpt-6-sol'] as const;
@@ -46,11 +47,21 @@ export const liveResponsesAggregateV2Permissions: readonly SettingsConsentPermis
     },
   ];
 
-/** V1 disclosed recurring decisions; matching it must never authorize V2. */
+// V3 contains the exact existing heart rule plus the closed local Conversation
+// rows. Putting them in the same pair commit makes one disclosure one decision.
+export const liveResponsesCommonToolsPermissions: readonly SettingsConsentPermission[] =
+  [
+    ...liveResponsesAggregateV2Permissions,
+    ...liveConversationSettingsPermissions,
+  ];
+
+/** No older or partial receipt can authorize the shared catalog. */
 export function liveResponsesPermissionVersion(
   permissions: readonly SettingsConsentPermission[],
 ) {
   const exact = JSON.stringify(permissions);
+  if (exact === JSON.stringify(liveResponsesCommonToolsPermissions))
+    return 'common-tools-v3';
   if (exact === JSON.stringify(liveResponsesAggregateV2Permissions))
     return 'headless-v2';
   if (exact === JSON.stringify(liveResponsesPermissions))
