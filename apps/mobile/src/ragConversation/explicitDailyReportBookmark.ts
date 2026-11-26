@@ -3,10 +3,14 @@ import { handleExplicitVisitQuestionsBookmark } from './explicitVisitQuestionsBo
 import {
   latestReportArtifact,
   latestConversationPossibilityArtifact,
-  semanticReportBookmarkSender,
 } from './semanticReportBookmarkSender';
 import { openSavedGeneratedReportReferences } from '../memory/openSavedGeneratedReportReferences';
-import { dispatchConversationMessage } from './conversationVisitDispatch';
+import type { dispatchConversationMessage } from './conversationVisitDispatch';
+import { explicitReportBookmarkCommand } from './explicitReportBookmarkCommand';
+import {
+  dispatchBoundReportComposer,
+  delegateLocalDailyReportCommand,
+} from './localDailyReportSemanticSender';
 import { Alert, AppState } from 'react-native';
 import {
   captureReportBookmarkOwner,
@@ -86,12 +90,9 @@ export function handleExplicitDailyReportBookmark(owner: Owner): boolean {
   const draftOwner = store.getSnapshot().sessions.find(row => row.id === id);
   if (!draftOwner) return false;
   const originalDraft = draftOwner.draft;
-  const command =
-    /^(?:(?:이( 일일)?|지금 이)\s*보고서(?:를)?\s*(?:기억해(?:\s*줘)?|기억에\s*(?:저장|보관)해(?:\s*줘)?|저장해(?:\s*줘)?|보관해(?:\s*줘)?)|(?:please\s+)?(?:remember|save|bookmark)\s+this\s+(?:(daily)\s+)?report)[.!]?$/iu.exec(
-      originalDraft.trim(),
-    );
+  const command = explicitReportBookmarkCommand(originalDraft);
   if (!command) return false;
-  const namedDaily = Boolean(command[1] || command[2]);
+  const { namedDaily } = command;
   if (store.photoDrafts.get(id).status !== 'empty') return false;
   const session = currentReportBookmarkOwner(owner);
   if (!session || session.busy || session.preparingSend) return true;
@@ -230,17 +231,13 @@ export function composerSendWithReportBookmark(
     if (
       handleExplicitVisitQuestionsBookmark(owner, () =>
         currentReportBookmarkOwner(owner),
-      ) ||
-      handleExplicitDailyReportBookmark(owner)
+      )
     )
       return;
-    const bound = semanticReportBookmarkSender(store, id, current, send);
-    return dispatchConversationMessage(
-      store,
-      id,
-      bound.send,
-      prepare,
-      current,
-    ).finally(bound.close);
+    const dispatch = (sender: typeof send) =>
+      dispatchBoundReportComposer(store, id, current, sender, prepare);
+    const legacy = () =>
+      handleExplicitDailyReportBookmark(owner) ? undefined : dispatch(send);
+    return delegateLocalDailyReportCommand(owner, send, dispatch, legacy);
   };
 }

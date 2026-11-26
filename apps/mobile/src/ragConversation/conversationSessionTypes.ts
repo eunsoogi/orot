@@ -49,6 +49,7 @@ export interface ConversationSessionOptions {
     | import('./conversationWarmAdmission').WarmConversationSelectionProof
     | undefined
   >;
+  readonly prepareLocalReportModel?: import('./conversationLocalReportModel').PrepareLocalReportModel;
   /** Narrow proof for the optional routing call, not a warm or native execution lease. */
   readonly captureTemplateSelection?: (
     identity: import('./conversationTemplateOwner').TemplateSelectionIdentity,

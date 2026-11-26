@@ -5,6 +5,7 @@ import {
   waitFor,
 } from '@testing-library/react-native';
 import { Alert, AppState } from 'react-native';
+import { dailyBookmarkDeviceSelectionFixture } from './dailyBookmarkDeviceSelectionFixture';
 import { runDailyReportBookmarkGraphFixture } from './runDailyReportBookmarkGraphFixture';
 import { ConversationScreen } from '../../ragConversation/ConversationScreen';
 import {
@@ -27,7 +28,7 @@ import type { createConversationArtifactStorage } from '../conversationArtifactS
 export async function expectReportBookmarkMounted(
   conversations: ReturnType<typeof createConversationArtifactStorage>,
   historical: ConversationArtifact,
-  mode: 'tap' | 'explicit-local' | 'semantic',
+  mode: 'tap' | 'explicit-local' | 'semantic' | 'semantic-exact-device',
 ) {
   jest
     .mocked(openSavedGeneratedReportReferences)
@@ -64,11 +65,17 @@ export async function expectReportBookmarkMounted(
     value: 'active',
   });
   const confirm = jest.fn(async () => true);
+  const device = mode === 'semantic-exact-device';
+  const semantic = mode === 'semantic' || device;
+  const selection = device
+    ? dailyBookmarkDeviceSelectionFixture(conversations)
+    : undefined;
   const onSend = jest.fn<
     ReturnType<React.ComponentProps<typeof ConversationScreen>['onSend']>,
     Parameters<React.ComponentProps<typeof ConversationScreen>['onSend']>
   >(async (_question, _history, signal, observer) => {
     if (!observer || !signal) throw new Error('Owned Composer turn is missing');
+    expect(observer.protectedLocalInput).toBe(device ? true : undefined);
     expect(observer.reportBookmark?.artifactId).toBe(historical.id);
     await runDailyReportBookmarkGraphFixture(observer, confirm, signal);
     return {
@@ -106,6 +113,7 @@ export async function expectReportBookmarkMounted(
             modelId: historical.modelId,
           },
         }),
+        ...selection?.options,
         retention: createConversationSessionRetention({
           openStorage: async () => conversations,
           createId: () => 'unused',
@@ -173,7 +181,7 @@ export async function expectReportBookmarkMounted(
       }
       await waitFor(() => expect(bookmark).toHaveBeenCalledTimes(1));
       await expect(bookmark.mock.results[0]?.value).resolves.toBe(true);
-      if (mode === 'semantic')
+      if (semantic)
         expect(
           await screen.findByText('Synthetic committed receipt'),
         ).toBeTruthy();
@@ -188,8 +196,8 @@ export async function expectReportBookmarkMounted(
       alert.mockRestore();
       bookmark.mockRestore();
     }
-    expect(onSend).toHaveBeenCalledTimes(mode === 'semantic' ? 1 : 0);
-    expect(confirm).toHaveBeenCalledTimes(mode === 'semantic' ? 1 : 0);
+    expect(onSend).toHaveBeenCalledTimes(semantic ? 1 : 0);
+    expect(confirm).toHaveBeenCalledTimes(semantic ? 1 : 0);
     await view.rerender(
       <SavedMemoryDetail
         memoryId={'generated-report:' + historical.id}
@@ -213,6 +221,7 @@ export async function expectReportBookmarkMounted(
     ).toBeNull();
   } finally {
     await view.unmount();
+    selection?.restore();
     if (appState) Object.defineProperty(AppState, 'currentState', appState);
   }
 }

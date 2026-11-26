@@ -1,3 +1,4 @@
+import { APPLE_PROVIDER_ID } from '@orot/provider-apple';
 import { selectedChatGPTAccountId } from './savedChatGPTModelLabel';
 import { warmNativeChatGPTSelection } from './warmNativeChatGPTSelection';
 import type { ConversationSessionOptions } from '../../ragConversation/conversationSessionTypes';
@@ -15,6 +16,7 @@ export function continuousSessionOption(
   ConversationSessionOptions,
   | 'continuousSession'
   | 'prepareWarmSend'
+  | 'prepareLocalReportModel'
   | 'captureWarmExecution'
   | 'captureTemplateSelection'
 > {
@@ -63,6 +65,31 @@ export function continuousSessionOption(
           current() &&
           !signal.aborted,
       };
+    },
+    async prepareLocalReportModel(lease, signal) {
+      const target = previous;
+      const selected = target?.selectionCurrent;
+      if (
+        target?.model.providerId !== APPLE_PROVIDER_ID ||
+        target.id !== lease.id ||
+        target.version !== lease.version ||
+        !selected?.() ||
+        signal.aborted
+      )
+        return;
+      const current = () => !signal.aborted && selected();
+      const storage = await openStorage();
+      if (
+        previous !== target ||
+        !current() ||
+        !(await storage.validateWarmLease(target.model, lease, signal)) ||
+        previous !== target ||
+        !current()
+      )
+        return;
+      // A benign re-resolution of the same selected provider does not
+      // replace this native selection epoch. The binder reproves the new request.
+      return { modelId: target.model.modelId, lease, current };
     },
     prepareWarmSend: (lease, signal) =>
       warmNativeChatGPTSelection(previous, lease, signal, openStorage),

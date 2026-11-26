@@ -223,7 +223,7 @@ export function continuousConversationPolicy<
       store.refreshAfterSourceDeletionOwned(event, deferReloadId);
       if (interrupted && rootRestore.visible) restartInitial().catch(() => {});
     },
-    // Route intent may update the current conversation, but cannot create a parallel chat.
+    prepareLocalReportModel: warm.prepareLocalReportModel,
     create: () => {
       if (!enabled) store.create();
     },
