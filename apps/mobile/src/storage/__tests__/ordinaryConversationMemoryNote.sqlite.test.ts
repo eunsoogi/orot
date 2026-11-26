@@ -178,3 +178,73 @@ test('permanent source deletion removes only its auto provenance, not explicit l
     f.close();
   }
 });
+test.each([
+  'live repeat',
+  'deleted note',
+  'corrected note',
+  'revised statement',
+] as const)(
+  'never coalesces distinct authenticated memory with a %s',
+  async state => {
+    const f = await prepared();
+    try {
+      const history = createManualHistoryRepository(f.database, {
+        createId: () => 'synthetic-correction',
+        clock: () => createdAt,
+      });
+      expect(
+        await saveOrdinaryConversationMemoryNote(f.capture, source, true, keep),
+      ).toBe(true);
+      if (state === 'deleted note') await history.delete(noteId);
+      if (state === 'corrected note')
+        await history.correct(noteId, {
+          kind: 'note',
+          title: 'Synthetic corrected memory',
+          details: 'Synthetic corrected statement.',
+          effectiveDate: { status: 'unknown' },
+        });
+      const statement =
+        state === 'revised statement'
+          ? 'For future replies, I prefer detailed answers.'
+          : question;
+      const next = {
+        ...source,
+        requestId: 'synthetic-next',
+        question: statement,
+      };
+      await f.retained.startRequest({ ...next, id: next.requestId });
+      await f.retained.append({
+        id: next.requestId,
+        sessionId: next.sessionId,
+        question: next.question,
+        createdAt,
+        providerId: 'synthetic',
+        modelId: 'synthetic',
+        answer: 'Another synthetic answer.',
+        status: 'complete',
+        sources: [],
+      });
+      const repeats = state === 'live repeat';
+      expect(
+        await saveOrdinaryConversationMemoryNote(f.capture, next, true, keep),
+      ).toBe(!repeats);
+      const followup = await readManualHistoryEntry(
+        f.database,
+        'conversation-local-memory:auto:synthetic-next',
+      );
+      if (repeats) {
+        expect(followup).toBeNull();
+        expect(
+          (
+            await f.database.execute(
+              'SELECT request_id FROM ordinary_conversation_memory_notes ORDER BY request_id',
+            )
+          ).rows,
+        ).toEqual([{ request_id: source.requestId }]);
+      } else expect(followup?.details).toBe(statement);
+      expect((await f.retained.read(next.requestId))?.question).toBe(statement);
+    } finally {
+      f.close();
+    }
+  },
+);

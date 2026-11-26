@@ -1,3 +1,4 @@
+import { hasCurrentOrdinaryMemoryRepeat } from './ordinaryConversationMemoryRepeat';
 import { createManualHistoryEntry } from '@orot/domain';
 import {
   autoLocalConversationMemoryIdPrefix,
@@ -94,6 +95,11 @@ export async function saveOrdinaryConversationMemoryNote(
     );
     // A deleted or edited note is never reconstructed from historical text.
     if (existing.rows.length || !isCurrent()) return;
+    if (
+      (await hasCurrentOrdinaryMemoryRepeat(tx, source, authored)) ||
+      !isCurrent()
+    )
+      return;
     const id = autoLocalConversationMemoryIdPrefix + source.requestId;
     const entry = createManualHistoryEntry({
       id,
