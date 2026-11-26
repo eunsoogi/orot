@@ -56,10 +56,15 @@ export function createDailyReportBookmark(
       current: () => boolean;
       savedAt?: string;
       displayedReport?: DailyReportBookmarkTarget;
+      confirmArchivedProtection?: () => Promise<boolean>;
     },
     automatic?: { token: object; runId: string; revision: number },
   ) {
-    if (!input.current()) return false;
+    if (
+      !input.current() ||
+      (input.confirmArchivedProtection && (!input.displayedReport || automatic))
+    )
+      return false;
     // Only the explicit tap equality gate uses display metadata; prove the
     // canonical artifact and its report revision again within the owner.
     const displayed = input.displayedReport && { ...input.displayedReport };
@@ -129,8 +134,17 @@ export function createDailyReportBookmark(
         !original ||
         original.revision !== reference.revision ||
         original.context.identity.key !== reference.identity.key
-      )
+      ) {
+        // The calendar validator can stage an invalidation even without a pin.
+        if (
+          input.confirmArchivedProtection &&
+          (!input.current() ||
+            !(await input.confirmArchivedProtection()) ||
+            !input.current())
+        )
+          throw new Error('Report bookmark owner moved.');
         return;
+      }
       await tx.execute(
         'INSERT INTO saved_generated_report_refs VALUES (?, ?, ?) ON CONFLICT(report_id) DO NOTHING',
         [
@@ -159,6 +173,8 @@ export function createDailyReportBookmark(
       if (
         (automaticCurrent && !(await automaticCurrent.matches(tx))) ||
         (automaticCurrent && !automaticCurrent.live()) ||
+        (input.confirmArchivedProtection &&
+          !(await input.confirmArchivedProtection())) ||
         !input.current()
       )
         throw new Error('Report bookmark owner moved.');

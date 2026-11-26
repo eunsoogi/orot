@@ -5,7 +5,7 @@ import {
 } from '../storage/localDataClearEvents';
 
 /** One explicit archive tap; restored protection cannot revive an old save. */
-export function captureArchivedSummaryBookmarkProtection() {
+export function captureArchivedReportBookmarkProtection() {
   const controller = new AbortController();
   const abort = () => controller.abort();
   const clear = subscribeLocalDataClear(abort);
