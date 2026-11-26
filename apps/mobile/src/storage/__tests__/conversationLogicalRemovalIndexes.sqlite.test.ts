@@ -71,7 +71,7 @@ test.each([
           [id, 'fixture-session', window.fromInclusive, '{}'],
         );
         await database.execute(
-          'INSERT INTO conversation_artifact_periods VALUES (?, ?, ?, ?)',
+          'INSERT INTO conversation_artifact_periods (artifact_id, topic, from_key, to_key) VALUES (?, ?, ?, ?)',
           [
             id,
             topic,
