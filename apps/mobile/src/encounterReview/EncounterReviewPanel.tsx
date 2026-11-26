@@ -34,8 +34,11 @@ export function EncounterReviewPanel({
     candidates: [],
     selected: [],
   });
-  const controller = useMemo(
-    () => new EncounterReviewController(sourceId, service, setState),
+  const { controller, owner } = useMemo(
+    () => ({
+      controller: new EncounterReviewController(sourceId, service, setState),
+      owner: routeOwner,
+    }),
     [sourceId, service, routeOwner],
   );
   const { consent, disclosureSheet } = useInferenceConsent();
@@ -50,7 +53,7 @@ export function EncounterReviewPanel({
     // controller there so a held selection cannot dispatch from a retired route.
     const update = () => {
       if (retired) return;
-      if (routeOwner && !routeOwner.isCurrent()) {
+      if (owner && !owner.isCurrent()) {
         if (!admitted) return;
         retired = true;
         controller.dispose();
@@ -64,14 +67,14 @@ export function EncounterReviewPanel({
       controller.restore();
       setActiveController(controller);
     };
-    const unsubscribe = routeOwner?.subscribe(update);
+    const unsubscribe = owner?.subscribe(update);
     update();
     return () => {
       retired = true;
       unsubscribe?.();
       controller.dispose();
     };
-  }, [controller, routeOwner]);
+  }, [controller, owner]);
   useEffect(() => {
     onInteractionChange({ busy, dirty: reviewable });
   }, [busy, reviewable, onInteractionChange]);
