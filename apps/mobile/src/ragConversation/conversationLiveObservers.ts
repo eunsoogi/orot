@@ -123,6 +123,10 @@ export function liveConversationObservers(
       };
     },
   });
+  const retainedHistory = retainedHistoryTurns(
+    session.messages,
+    request.question,
+  );
   return {
     recordingClarification,
     ...(retained && recovery
@@ -195,8 +199,9 @@ export function liveConversationObservers(
       lease: () => owner.retention?.activeLease(id),
       current: () => current() && ownsReportSelection(),
       currentUserId: request.userMessageId,
+      priorRetainedAnswerId: retainedHistory.at(-1)?.id,
     }),
-    retainedHistory: retainedHistoryTurns(session.messages, request.question),
+    retainedHistory,
     ...requestIdentityObserver(owner.retention, retained, id),
     artifactContinuation: session.artifactContinuation ?? null,
     onArtifactContinuation(value) {
