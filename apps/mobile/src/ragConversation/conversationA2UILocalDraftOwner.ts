@@ -1,3 +1,9 @@
+import { visibleSavedHistoryDisplay } from './conversationSavedHistoryDisplay';
+import { createConversationA2UIModalArbiter } from './conversationA2UIModalArbiter';
+import {
+  captureReportBookmarkOwner,
+  type ReportBookmarkVisibility,
+} from './reportBookmarkOwnership';
 import {
   createContext,
   useCallback,
@@ -11,6 +17,18 @@ import type { ConversationSessions } from './conversationSessions';
 interface Owner {
   readonly surface: (root: ConversationA2UINode) => string | undefined;
   readonly subscribe: (listener: () => void) => () => void;
+  readonly hasArchive?: (
+    root: ConversationA2UINode,
+    lease: { id: string; version: number },
+  ) => boolean;
+  readonly beginArchive?: (
+    root: ConversationA2UINode,
+    lease: { id: string; version: number },
+    mounted: () => boolean,
+    onLost: () => void,
+  ) =>
+    | { controller: AbortController; current: () => boolean; close: () => void }
+    | undefined;
 }
 
 export const ConversationA2UILocalDraftOwner = createContext<Owner | undefined>(
@@ -23,10 +41,66 @@ export const ConversationA2UILocalDraftOwner = createContext<Owner | undefined>(
 export function useConversationA2UILocalDraftOwner(
   store: ConversationSessions,
   sessionId: number,
-  ownsPresentation?: () => boolean,
+  [ownsPresentation, archiveVisibility]: readonly [
+    (() => boolean) | undefined,
+    ReportBookmarkVisibility | undefined,
+  ] = [undefined, undefined],
 ) {
-  return useMemo<Owner>(
-    () => ({
+  return useMemo<Owner>(() => {
+    const sheets = createConversationA2UIModalArbiter();
+    const hasArchive: NonNullable<Owner['hasArchive']> = (root, lease) => {
+      const active = store.savedReportLease(sessionId);
+      const session = store
+        .getSnapshot()
+        .sessions.find(item => item.id === sessionId);
+      return (
+        active?.id === lease.id &&
+        active.version === lease.version &&
+        ownsPresentation?.() === true &&
+        archiveVisibility?.() === true &&
+        archiveVisibility.route?.isCurrent() === true &&
+        !!session &&
+        !session.busy &&
+        !session.preparingSend &&
+        !!visibleSavedHistoryDisplay(session)?.some(
+          ({ row }) =>
+            row.kind === 'answer' && row.archivedA2UIPresentation === root,
+        )
+      );
+    };
+    return {
+      hasArchive,
+      beginArchive(root, lease, mounted, onLost) {
+        const current = () => hasArchive(root, lease);
+        if (!current()) return;
+        const controller = sheets.acquire();
+        if (!controller) return;
+        const owner = captureReportBookmarkOwner({
+          store,
+          sessionId,
+          current: Object.assign(current, {
+            route: archiveVisibility?.route,
+            subscribeRoot: archiveVisibility?.subscribeRoot,
+          }),
+          mounted,
+          allowDraftChanges: true,
+          onLost: () => {
+            sheets.release(controller);
+            onLost();
+          },
+        });
+        const close = () => {
+          sheets.release(controller);
+          owner.close();
+        };
+        const valid = () =>
+          sheets.owns(controller) && current() && owner.current();
+        if (!valid()) {
+          close();
+          return;
+        }
+        return { controller, close, current: valid };
+      },
       surface(root) {
         if (
           AppState.currentState !== 'active' ||
@@ -59,9 +133,8 @@ export function useConversationA2UILocalDraftOwner(
           appState.remove();
         };
       },
-    }),
-    [ownsPresentation, sessionId, store],
-  );
+    };
+  }, [archiveVisibility, ownsPresentation, sessionId, store]);
 }
 
 const subscribeIdle = () => () => {};

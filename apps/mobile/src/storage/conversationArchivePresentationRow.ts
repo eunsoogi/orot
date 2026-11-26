@@ -1,3 +1,4 @@
+import { stageMountedPairedDetails } from './archivedPairedDetailsOwner';
 import {
   archivedVisitRevision,
   type ArchivedVisitBookmarkIdentity,
@@ -161,7 +162,10 @@ export function decodeOwnedArchiveRow(
   // A legacy artifact without the exact completed request/completion pair never gains a surface.
   const archivedA2UIPresentation =
     row.request_id === row.id && row.completion_id === row.id
-      ? recoverArchiveLayout(value)
+      ? (stageMountedPairedDetails(
+          { artifactId: row.id, sessionId, createdAt: row.created_at },
+          row.result_json,
+        ) ?? recoverArchiveLayout(value))
       : undefined;
   // This is affordance identity only. The selected read still owns every
   // Visit validation and does not borrow the archive page as authority.

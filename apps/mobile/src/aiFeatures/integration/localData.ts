@@ -144,7 +144,12 @@ async function openDefault(): Promise<AiFeatureLocalData> {
         providerVisiblePersistedMemory,
       ),
     summaryArtifactDiscovery: registry => summaryDiscovery(data, registry),
-    ...createConversationLocalAccess(database, () => data),
+    ...createConversationLocalAccess(
+      database,
+      () => data,
+      undefined,
+      isCurrentLocalAgentMemoryDatabase,
+    ),
     async validateConversationPhotoInput(input, signal) {
       const [
         { createConversationArtifactStorage },

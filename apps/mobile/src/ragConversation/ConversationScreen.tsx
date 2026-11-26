@@ -73,11 +73,10 @@ export function ConversationScreen({
     canPaint,
   );
   const { id, messages, pendingMessage, busy, error } = session;
-  const localDraftOwner = useConversationA2UILocalDraftOwner(
-    store,
-    id,
+  const localDraftOwner = useConversationA2UILocalDraftOwner(store, id, [
     ownsConversationPresentation,
-  );
+    isEntryCurrent,
+  ]);
   const preflightError =
     session.errorSurface === 'composerPreflight' ? error : '';
   // Confirmed retries retain feature scope instead of becoming ordinary chat.

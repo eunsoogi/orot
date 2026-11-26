@@ -1,3 +1,5 @@
+import { ArchivedPairedDetailsSurface } from './ArchivedPairedDetailsSurface';
+import { archivedPairedDetailsFor } from './archivedPairedDetailsBinding';
 import { SavedPossibilityNarrative } from './SavedPossibilityNarrative';
 import { savedPossibilityNarrativeParts } from './savedPossibilityNarrativeParts';
 import { ConversationReportText } from './ConversationReportText';
@@ -65,7 +67,11 @@ export const ConversationMessageText = memo(
     // Explicit reports and retained narratives above keep their native design.
     // The surrounding bubble still owns any verified sources and copy menu.
     if (verifiedA2UI)
-      return <ConversationA2UISurface root={verifiedA2UI} testID={testID} />;
+      return archivedPairedDetailsFor(verifiedA2UI) ? (
+        <ArchivedPairedDetailsSurface root={verifiedA2UI} testID={testID} />
+      ) : (
+        <ConversationA2UISurface root={verifiedA2UI} testID={testID} />
+      );
     // During a draft the existing text host keeps appending; only a complete
     // ordinary answer (live or restored) can replace raw syntax with formatting.
     const markdown =

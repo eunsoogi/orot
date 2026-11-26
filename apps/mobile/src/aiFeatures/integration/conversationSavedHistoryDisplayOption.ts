@@ -1,3 +1,5 @@
+import { bindMountedPairedDetails } from '../../storage/archivedPairedDetailsOwner';
+import { bindArchivedPairedDetails } from '../../ragConversation/archivedPairedDetailsBinding';
 import { bindArchivedVisitBookmark } from '../../storage/archivedVisitBookmarkIdentity';
 import type { ReadSavedHistoryDisplay } from '../../ragConversation/conversationSavedHistoryDisplay';
 import type { createConversationSessionStorage } from './conversationSessionStorage';
@@ -77,6 +79,17 @@ export function conversationSavedHistoryDisplayOption(
                   : {}),
               },
             ];
+          const surface = row.archivedA2UIPresentation;
+          if (surface && storage.readMountedPairedDetails) {
+            const lease = { id: sessionId, version };
+            const bound = bindMountedPairedDetails(surface, lease);
+            if (bound)
+              bindArchivedPairedDetails(surface, {
+                ...bound,
+                lease,
+                verify: storage.readMountedPairedDetails,
+              });
+          }
           return [
             {
               kind: 'answer',

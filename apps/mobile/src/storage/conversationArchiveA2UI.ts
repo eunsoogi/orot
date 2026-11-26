@@ -1,3 +1,4 @@
+import { readPairedDetails } from '../ragConversation/archivedPairedDetailsLayout';
 import { restoreConversationA2UILayout } from '../ragConversation/conversationA2UIArchive';
 
 /** Only completed ordinary answers participate. Report/source paths remain independent. */
@@ -16,5 +17,8 @@ export function recoverArchiveLayout(value: Record<string, unknown>) {
       (!Array.isArray(value.citations) || value.citations.length > 0))
   )
     return undefined;
-  return restoreConversationA2UILayout(value.archivedA2UILayout, value.answer);
+  return (
+    readPairedDetails(value.archivedA2UILayout, value.answer)?.root ??
+    restoreConversationA2UILayout(value.archivedA2UILayout, value.answer)
+  );
 }

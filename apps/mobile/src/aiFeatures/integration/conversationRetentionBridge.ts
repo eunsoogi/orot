@@ -1,3 +1,4 @@
+import { storePairedDetails } from '../../ragConversation/archivedPairedDetailsLayout';
 import { storeConversationA2UILayout } from '../../ragConversation/conversationA2UIArchive';
 import type { HistoricalDialogueParent } from '../../ragConversation/conversationRetention';
 import { observeConversationFinalization as finalize } from '../../ragConversation/conversationFinalizationDiagnostics';
@@ -110,10 +111,16 @@ export function createConversationRetentionBridge(input: {
           !outcome.healthSummary &&
           !outcome.visitQuestions &&
           citations.length === 0
-            ? storeConversationA2UILayout(
+            ? ((!captured.sources.length &&
+              !input.historicalDialogueParents?.length &&
+              !input.priorDialogue?.length &&
+              !input.priorUserReports?.length
+                ? storePairedDetails(outcome.a2uiPresentation, outcome.answer)
+                : undefined) ??
+              storeConversationA2UILayout(
                 outcome.a2uiPresentation,
                 outcome.answer,
-              )
+              ))
             : undefined;
         // A shortcut itself is not current user prose. A typed follow-up can
         // carry a validated span only outside a specific report/visit request.

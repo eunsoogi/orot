@@ -1,3 +1,4 @@
+import { createArchivedPairedDetailsOwner } from './archivedPairedDetailsOwner';
 import { createConversationAnswerMemory } from './conversationAnswerMemoryStore';
 import { createConversationArtifactAppend } from './conversationArtifactAppend';
 import { readConversationGeneration as generation } from './conversationGeneration';
@@ -23,7 +24,10 @@ import { createConversationPreviewStorage } from './conversationPreviewStorage';
 import { createConversationRequestStorage } from './conversationRequestStorage';
 import { createConversationTaskCardStorage } from './conversationTaskCards';
 /** Session and source validation share each write transaction; no retry can reopen a removed session. */
-export function createConversationArtifactStorage(database: SqlDatabase) {
+export function createConversationArtifactStorage(
+  database: SqlDatabase,
+  isCurrentDatabase?: (owner: SqlDatabase) => boolean,
+) {
   let ready: Promise<void> | undefined;
   const ensure = () =>
     (ready ??= database
@@ -39,6 +43,10 @@ export function createConversationArtifactStorage(database: SqlDatabase) {
   const storage = {
     ...createSavedGeneratedReportReferences(database, ensure),
     ...createConversationAnswerMemory(database, ensure),
+    readMountedPairedDetails: createArchivedPairedDetailsOwner(
+      database,
+      isCurrentDatabase,
+    ),
     listTimeline,
     writeDirectPhotoReply: createDirectPhotoReplyWriter(database, ensure),
     ...createConversationProjectionReaders(database, ensure),
