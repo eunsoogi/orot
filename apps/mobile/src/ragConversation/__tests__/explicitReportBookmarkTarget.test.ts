@@ -51,11 +51,13 @@ test.each([
     ] as unknown as Messages;
     jest.spyOn(store, 'getSnapshot').mockReturnValue({
       ...snapshot,
-      sessions: snapshot.sessions.map((row) => ({ ...row, messages })),
+      sessions: snapshot.sessions.map(row => ({ ...row, messages })),
     });
     const bookmarkDailyReport = jest.fn(async () => true);
     const bookmarkHealthSummary = jest.fn(async () => true);
-    type Storage = Awaited<ReturnType<typeof openSavedGeneratedReportReferences>>;
+    type Storage = Awaited<
+      ReturnType<typeof openSavedGeneratedReportReferences>
+    >;
     const open = jest.mocked(openSavedGeneratedReportReferences);
     open.mockReset();
     open.mockResolvedValue({
@@ -66,14 +68,21 @@ test.each([
       expect(handleExplicitDailyReportBookmark({ store, id })).toBe(true);
       await Promise.resolve();
       await Promise.resolve();
-      expect(bookmarkDailyReport).toHaveBeenCalledTimes(chosen === 'daily' ? 1 : 0);
-      expect(bookmarkHealthSummary).toHaveBeenCalledTimes(chosen === 'summary' ? 1 : 0);
+      expect(bookmarkDailyReport).toHaveBeenCalledTimes(
+        chosen === 'daily' ? 1 : 0,
+      );
+      expect(bookmarkHealthSummary).toHaveBeenCalledTimes(
+        chosen === 'summary' ? 1 : 0,
+      );
       if (chosen === 'none') {
         expect(open).not.toHaveBeenCalled();
         expect(alert).toHaveBeenCalledTimes(1);
-        expect(alert).not.toHaveBeenCalledWith('보고서 링크를 기억에 보관했어요.');
+        expect(alert).not.toHaveBeenCalledWith(
+          '보고서 링크를 기억에 보관했어요.',
+        );
       } else {
-        const save = chosen === 'daily' ? bookmarkDailyReport : bookmarkHealthSummary;
+        const save =
+          chosen === 'daily' ? bookmarkDailyReport : bookmarkHealthSummary;
         expect(save).toHaveBeenCalledWith(
           expect.objectContaining({
             artifactId: chosen === 'daily' ? 'older-daily' : 'latest',
@@ -90,7 +99,7 @@ test.each([
 
 test.each([true, false])(
   'a local photo shown after the report blocks a generic typed bookmark: %s',
-  async (photoAfterReport) => {
+  async photoAfterReport => {
     const before = AppState.currentState;
     AppState.currentState = 'active';
     const alert = jest.spyOn(Alert, 'alert').mockImplementation(() => {});
@@ -132,7 +141,7 @@ test.each([true, false])(
     ];
     jest.spyOn(store, 'getSnapshot').mockReturnValue({
       ...snapshot,
-      sessions: snapshot.sessions.map((row) => ({
+      sessions: snapshot.sessions.map(row => ({
         ...row,
         messages,
         savedHistoryDisplay,
@@ -142,7 +151,9 @@ test.each([true, false])(
     const open = jest.mocked(openSavedGeneratedReportReferences).mockReset();
     open.mockResolvedValue({
       bookmarkDailyReport: save,
-    } as unknown as Awaited<ReturnType<typeof openSavedGeneratedReportReferences>>);
+    } as unknown as Awaited<
+      ReturnType<typeof openSavedGeneratedReportReferences>
+    >);
     try {
       expect(handleExplicitDailyReportBookmark({ store, id })).toBe(true);
       await Promise.resolve();
@@ -150,7 +161,9 @@ test.each([true, false])(
       expect(save).toHaveBeenCalledTimes(photoAfterReport ? 0 : 1);
       if (photoAfterReport) {
         expect(open).not.toHaveBeenCalled();
-        expect(alert).not.toHaveBeenCalledWith('보고서 링크를 기억에 보관했어요.');
+        expect(alert).not.toHaveBeenCalledWith(
+          '보고서 링크를 기억에 보관했어요.',
+        );
       } else {
         expect(save).toHaveBeenCalledWith(
           expect.objectContaining({
