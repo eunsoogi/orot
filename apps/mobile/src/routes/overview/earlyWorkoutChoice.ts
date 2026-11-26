@@ -8,14 +8,6 @@ export type WorkoutChoiceReceipt = Readonly<{
   expires: number;
 }>;
 
-export type OverviewWorkoutOwnerProps = {
-  workoutSelectionEpoch?: number | null;
-  workoutSelectionWitness?: string | null;
-  preserveWorkoutOwner?: boolean;
-  startupWorkoutChoice?: WorkoutChoiceReceipt;
-  initialWorkoutChoicePending?: boolean;
-};
-
 export const workoutChoiceReceiptLifetimeMs = 2_000;
 const workoutChoiceNow = () => globalThis.performance?.now?.() ?? Infinity;
 export const workoutChoiceReceiptCurrent = (receipt: WorkoutChoiceReceipt) =>

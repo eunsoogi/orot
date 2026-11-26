@@ -38,10 +38,9 @@ const unavailable = { status: 'unavailable' } as const;
 const loading = { status: 'loading' } as const;
 const startupWriterBudgetMs = 2_500;
 const trace = workoutReadDiagnostics('overview');
-type Epoch = ReturnType<typeof acquireIndependentReadEpoch>;
 type ReadOwner = WorkoutForegroundOwner & {
   abort: AbortController;
-  epoch?: Epoch;
+  epoch?: ReturnType<typeof acquireIndependentReadEpoch>;
   stopExpiry?: () => void;
   staleStartup?: boolean;
   receipt?: WorkoutChoiceReceipt;
@@ -51,6 +50,7 @@ export function useOverviewWorkoutPeriodHeartRate(
   selectionEpoch?: number | null,
   startupWorkoutChoice?: WorkoutChoiceReceipt,
   selectionWitness?: string | null,
+  readSavedSelection = false,
 ): State {
   const admission = useOverviewWorkoutSelectionAdmission(
     selectionEpoch,
@@ -59,15 +59,13 @@ export function useOverviewWorkoutPeriodHeartRate(
   );
   const [state, setState] = useState<State>(unavailable);
   useLayoutEffect(() => {
-    trace.report('route', active ? 'started' : 'skipped');
     const native = active ? conversationExecutionNative() : null;
     if (!native?.bridgeAvailable) {
       if (active) trace.report('protection', 'missing');
       setState(unavailable);
       return;
     }
-    const protection = native;
-    const phase = () => protection.currentPhase?.() ?? 'unknown';
+    const phase = () => native.currentPhase?.() ?? 'unknown';
     let mounted = true;
     let task: ReadOwner | undefined;
     let boundary: ReturnType<typeof setTimeout> | undefined;
@@ -88,12 +86,11 @@ export function useOverviewWorkoutPeriodHeartRate(
     const current = (target: ReadOwner) =>
       mounted && task === target && !target.abort.signal.aborted;
     const probe = createWorkoutProtectionProbe();
-    const confirm = confirmProtection(current, phase, probe, protection);
+    const confirm = confirmProtection(current, phase, probe, native);
     async function start(rechecks = 2, previous?: OverviewWorkoutRecovery) {
       if (!mounted || task || phase() !== 'active' || !admission.mayStart())
         return;
       const startup = admission.startup();
-      trace.report('route', 'completed');
       const window = overviewWorkoutReadWindow(previous?.period);
       const { period, currentWindow } = window;
       const cohortFence = overviewWorkoutCohortFence(previous?.cohort);
@@ -130,7 +127,6 @@ export function useOverviewWorkoutPeriodHeartRate(
             target.abort.signal,
           );
         if (!target.epoch) {
-          trace.report('epoch', 'started');
           if (
             !(await awaitWriter()) ||
             !(await confirm(target)) ||
@@ -155,6 +151,7 @@ export function useOverviewWorkoutPeriodHeartRate(
             signal: target.abort.signal,
             current: admitted,
             confirm: () => confirm(target),
+            readSavedSelection,
             observeReadCohort: cohort => {
               observedCohort = cohort;
             },
@@ -204,7 +201,7 @@ export function useOverviewWorkoutPeriodHeartRate(
         }
       }
     }
-    const unsubscribeProtection = protection.subscribe(
+    const unsubscribeProtection = native.subscribe(
       createOverviewWorkoutForeground({
         phase,
         owner: () => task,
@@ -217,15 +214,18 @@ export function useOverviewWorkoutPeriodHeartRate(
         pending: () => setState(loading),
       }),
     );
-    const unsubscribeImport = subscribeWorkoutImportCommitted(() => {
+    function onSourceChange() {
       const replacing =
         !!task && (phase() === 'active' || phase() === 'inactive');
       retire(!replacing && !!task);
       if (replacing) setState(loading);
       start();
-    });
+    }
+    const unsubscribeImport = subscribeWorkoutImportCommitted(onSourceChange);
     const unsubscribeClear = subscribeLocalDataClear(retire);
-    const unsubscribeDelete = subscribeLocalSourceDeletion(() => retire());
+    const unsubscribeDelete = subscribeLocalSourceDeletion(
+      readSavedSelection ? onSourceChange : () => retire(),
+    );
     const retirePending = () => {
       retire(false);
       setState(loading);
@@ -245,6 +245,6 @@ export function useOverviewWorkoutPeriodHeartRate(
       unsubscribeClear();
       unsubscribeDelete();
     };
-  }, [active, admission]);
+  }, [active, admission, readSavedSelection]);
   return active ? state : unavailable;
 }
