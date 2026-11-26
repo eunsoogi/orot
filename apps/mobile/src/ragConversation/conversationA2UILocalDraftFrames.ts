@@ -1,3 +1,4 @@
+import { readConversationDraftPreviewPlan } from './conversationA2UIDraftPreviewWire';
 import { readPairedConversationDraft } from './conversationA2UILocalFormFrames';
 import type { ConversationA2UINode } from './conversationA2UI';
 import { conversationA2UIFrameLimit } from './conversationA2UI';
@@ -87,20 +88,19 @@ export function conversationA2UILocalDraftFor(root: ConversationA2UINode) {
   return approvals.get(root);
 }
 
-/**
- * A graph result may rematerialize its validated render tree. The final live
- * publisher can rebind only the closed plan, never a model field value or an
- * archive. The projection itself contains just two mechanically allowed IDs.
- */
+/** Rebind only the exact validated final live plan, never archive/user values. */
 export function bindLiveConversationA2UILocalDraft(
   root: ConversationA2UINode,
   candidate: unknown,
 ) {
   approvals.delete(root);
   const plan = record(candidate);
-  const paired = plan && readPairedConversationDraft(plan);
-  if (root.component === 'Column' && paired) {
-    approvals.set(root, paired);
+  const composed =
+    plan &&
+    (readPairedConversationDraft(plan) ??
+      readConversationDraftPreviewPlan(plan));
+  if (root.component === 'Column' && composed) {
+    approvals.set(root, composed);
     return root;
   }
   if (

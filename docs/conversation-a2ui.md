@@ -60,7 +60,6 @@ historical tasks do not accept this property. Completed eligible replies archive
 only the validated layout ratio and reconstruct prose from the existing answer.
 No new control, URL, function, tool or external action is admitted.
 
-
 Fresh Conversation task v30 also admits a literal Basic Catalog `List.direction`.
 `vertical` or omission keeps the existing in-message flow. `horizontal` uses a
 local horizontal viewport for bounded items; narrow bubbles, nested narrow
@@ -73,7 +72,6 @@ Fresh Conversation task v31 adds literal cross-axis alignment on vertical Lists:
 behavior. The app still owns accessibility, responsive layout, all reading order,
 and the exact accepted answer. Archive version 7 retains layout tokens only.
 
-
 Fresh ordinary Conversation task v32 also accepts one read-only Basic Catalog
 `Modal` in a single static final `createSurface`. Its literal `trigger` and
 `content` are distinct existing component IDs; the trigger is a body Text
@@ -83,7 +81,6 @@ native protected data. Dismissal, losing the message or screen, and native
 protection loss close it. No protocol action or provider call is emitted. Older
 task contracts still reject Modal, and the owned archive stores the same
 verified prose as inline layout and cannot reopen a sheet.
-
 
 Fresh v33 ordinary replies additionally accept one Basic Catalog Text
 `variant: "caption"` for the exact last prose paragraph of a single static
@@ -118,8 +115,6 @@ The existing final answer and evidence checks still own publication. Other
 providers do not acquire a new stream path, and arbitrary data-bound widgets
 and sendDataModel remain unsupported.
 
-
-
 ## Independent sections in one reply
 
 Fresh v38 replies can compose two data-bound sections under one surface.
@@ -133,7 +128,6 @@ The accepted answer order, the aggregate 64-node budget, and ordinary archive
 validation apply to the combined layout. v37 remains unchanged for restored
 requests and the existing provisional geometry path; no new layout or values
 are published provisionally for two-section replies.
-
 
 ## Two independent detail sheets
 
@@ -215,3 +209,17 @@ owner and are retired together when that owner or mount changes. Reopening
 an archive does not restore either field or replay an action. Neither field
 is shared with the model or written to local storage. Prior single-control
 and final formatting contracts retain their original behavior.
+
+## Reactive local scratch preview
+
+Fresh ordinary task v43 may add a read-only Text bound to the same
+`/local/draft` path as the existing temporary scratch field. It appears
+after the existing Reset control and shows what the user typed on this
+screen. Reset clears the input and preview together. The app provides the
+preview label. It does not send or save the value, join it to the accepted
+answer or Copy, or speak it automatically.
+
+Only the exact completed, foreground conversation owner may edit or render
+the scratch preview. Leaving the owner or reopening an archive never
+restores its input. Other paths, initial values, model-generated text in
+the preview, and new actions remain unsupported.

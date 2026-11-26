@@ -6,6 +6,7 @@ import { appColors } from '../layout/appColors';
 import {
   localA2UICheckLabel,
   localA2UIDraftFieldLabel,
+  localA2UIDraftPreviewLabel,
   localA2UIDraftResetLabel,
   mountConversationA2UILocalDraft,
   type ConversationA2UILocalDraft,
@@ -137,6 +138,18 @@ export function ConversationA2UILocalDraftControls({
       >
         <AppText>{localA2UIDraftResetLabel}</AppText>
       </Pressable>
+      {approved.previewId ? (
+        <View accessibilityLabel={localA2UIDraftPreviewLabel}>
+          <AppText allowFontScaling>{localA2UIDraftPreviewLabel}</AppText>
+          <AppText
+            allowFontScaling
+            selectable={false}
+            testID="a2ui-local-draft-preview"
+          >
+            {value}
+          </AppText>
+        </View>
+      ) : null}
     </View>
   );
 }
