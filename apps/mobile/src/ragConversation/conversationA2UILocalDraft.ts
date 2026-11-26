@@ -12,6 +12,7 @@ export const localA2UIChoices = Object.freeze([
 ] as const);
 
 export const localA2UIDraftFieldLabel = '이 화면에서만 쓰는 메모';
+export const localA2UIDraftPreviewLabel = '이 화면의 메모 미리보기';
 export const localA2UIDraftResetLabel = '메모 지우기';
 export const localA2UIDraftPath = '/local/draft';
 export const localA2UIDraftResetAction = 'orot:reset-local-draft';
@@ -20,7 +21,12 @@ export const localA2UIDraftResetAction = 'orot:reset-local-draft';
  * labels, the only editable path and the only handler; model strings do not
  * become native behavior or leave this mounted draft. */
 export type ConversationA2UILocalDraft =
-  | Readonly<{ fieldId: string; resetId: string; kind?: never }>
+  | Readonly<{
+      fieldId: string;
+      resetId: string;
+      previewId?: string;
+      kind?: never;
+    }>
   | Readonly<{ fieldId: string; kind: 'checkbox' }>
   | Readonly<{ fieldId: string; kind: 'choice' }>
   | Readonly<{ fieldId: string; kind: 'paired'; choiceId: string }>;
