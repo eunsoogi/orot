@@ -11,6 +11,10 @@ export const swiftSuiteExtensions = new Map([
   ],
   ['OrotIntegrationTests/RealtimeVoiceSystemLifecycleTests.swift', 'RealtimeVoiceLifecycleTests'],
   [
+    'OrotIntegrationTests/RealtimeVoiceNativeRegistryAssertions.swift',
+    'RealtimeVoiceLifecycleTests',
+  ],
+  [
     'OrotIntegrationTests/RealtimeVoiceForegroundAdmissionTests.swift',
     'RealtimeVoiceLifecycleTests',
   ],

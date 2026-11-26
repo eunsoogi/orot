@@ -11,6 +11,7 @@ import { settingsConsentRecipient } from './settingsConsentRecipient';
 import { useModelSettingsServices } from './ModelSettingsServices';
 import type { ProviderSelectionStore } from '../../providers/selection/types';
 import { useSettingsDisclosure } from './useSettingsDisclosure';
+import { conversationTransmissionCopy } from './conversationTransmissionDisclosure';
 
 type Slot = 'conversation' | 'calendar';
 
@@ -29,11 +30,9 @@ function disclosureFor(
   if (!recipient) throw new Error('Unknown transmission recipient');
   const copy = remote
     ? [
-        t(
-          slot === 'calendar'
-            ? 'modelSettings.consentCalendarData'
-            : 'modelSettings.consentConversationData',
-        ),
+        slot === 'calendar'
+          ? t('modelSettings.consentCalendarData')
+          : conversationTransmissionCopy('conversation').information,
       ]
     : [];
   if (photoDisclosed)
@@ -75,7 +74,7 @@ function disclosureFor(
           ? t('modelSettings.consentJointConversationWebTitle')
           : t('medicalAppointments.inferenceDisclosure.title'),
     information: copy.join('\n'),
-    notice: t('modelSettings.consentContinuing'),
+    notice: conversationTransmissionCopy('conversation').notice,
   };
 }
 

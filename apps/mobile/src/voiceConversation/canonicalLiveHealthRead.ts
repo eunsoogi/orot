@@ -1,3 +1,4 @@
+import type { EvidenceBatch } from '@orot/agent-runtime';
 import type { HealthContextToolDefinition } from '../aiFeatures/integration/healthContextToolDefinition';
 import type { AiFeatureLocalData } from '../aiFeatures/integration/localData';
 import { LocalEvidenceReferenceRegistry } from '../aiFeatures/integration/evidenceRegistry';
@@ -36,6 +37,26 @@ export function canonicalLiveHealthDeclaration(
     parameters: tool.inputSchema,
     strict: false as const,
   };
+}
+
+/** Existing canonical transfer body. No complete source row, native identity,
+ * transcript or unrelated registry item crosses this projection. */
+export function canonicalLiveHealthPayload(batch: EvidenceBatch) {
+  if (
+    !batch.items.length ||
+    batch.items.some(item => item.sourceKind !== 'personal_record') ||
+    batch.coverage.some(coverage => coverage.truncated || coverage.gaps.length)
+  )
+    return;
+  const payload = {
+    tool: name,
+    items: batch.items.map(({ evidenceId, evidenceRevision, content }) => ({
+      evidenceId,
+      evidenceRevision,
+      content,
+    })),
+  };
+  return jsonByteLength(payload) <= maxBytes ? payload : undefined;
 }
 
 /** Private peer transport for one canonical serial health-read capability.
@@ -131,27 +152,9 @@ export function createCanonicalLiveHealthRead(input: {
         maxPayloadBytes: maxBytes,
         signal,
       });
-      if (
-        !current() ||
-        'status' in batch ||
-        !batch.items.length ||
-        batch.items.some(item => item.sourceKind !== 'personal_record') ||
-        batch.coverage.some(
-          coverage => coverage.truncated || coverage.gaps.length,
-        )
-      )
-        return;
-      // Tool output carries this explicitly approved canonical content only.
-      // Never include the session, raw prompt, recipient credentials or any unrelated registry item.
-      const payload = {
-        tool: name,
-        items: batch.items.map(({ evidenceId, evidenceRevision, content }) => ({
-          evidenceId,
-          evidenceRevision,
-          content,
-        })),
-      };
-      if (jsonByteLength(payload) > maxBytes || !current()) return;
+      if (!current() || 'status' in batch) return;
+      const payload = canonicalLiveHealthPayload(batch);
+      if (!payload || !current()) return;
       const output = JSON.stringify(payload);
       const approved = await input.approveTransfer(call, output, signal);
       if (!approved || !approved() || !current()) return;

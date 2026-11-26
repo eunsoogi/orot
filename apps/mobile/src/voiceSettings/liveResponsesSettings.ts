@@ -10,7 +10,6 @@ import {
   isLiveResponsesBackend,
   type LiveResponsesBackend,
   liveResponsesAggregateV2Permissions,
-  liveResponsesPermissionVersion,
   liveResponsesProviderId,
   liveResponsesRecipient,
   liveResponsesSlot,
@@ -29,7 +28,6 @@ import {
 import { voiceSettingsStore } from './voiceSettingsStore';
 import {
   liveAggregateDevicePolicy,
-  liveAggregateDeviceWitnessMatches,
   stageLiveAggregateSettingsBinding,
   liveAggregateSettingsBindingMatches,
 } from './liveAggregateDeviceWitness';
@@ -37,6 +35,7 @@ import {
   takeReviewedLiveResponsesAggregate,
   type ReviewedLiveResponsesAggregate,
 } from './reviewLiveResponsesAggregate';
+import { liveResponsesActivePolicy } from './liveResponsesActivePolicy';
 const authority = () => settingsConsentAuthority(liveResponsesSlot);
 const audioAuthority = () => settingsConsentAuthority('voice');
 
@@ -59,6 +58,7 @@ export type LiveResponsesSettings =
       readonly credentialEpoch: string;
       /** The v1 receipt is still displayable, but never authorizes headless health. */
       readonly aggregatePolicy?: 'headless-v2';
+      readonly commonToolsPolicy?: 'common-tools-v3';
       readonly current: () => boolean;
       readonly subscribe: (listener: () => void) => () => void;
     };
@@ -123,34 +123,27 @@ export async function loadLiveResponsesSettings(
     const store = await settingsConsentRepository();
     const grant = await store.read(liveResponsesSlot);
     const current = () => owned() && state.current() && audioCurrent();
-    const permission =
-      grant && liveResponsesPermissionVersion(grant.permissions);
-    if (
-      !current() ||
-      !sameBinding(expected, metadata) ||
-      !grant ||
-      grant.catalogVersion !== SETTINGS_CONSENT_CATALOG_VERSION ||
-      grant.identity.providerId !== liveResponsesProviderId ||
-      grant.identity.modelId !== expected.backendModel ||
-      grant.identity.recipient !== liveResponsesRecipient ||
-      grant.identity.authorityGeneration !== expected.generation ||
-      grant.identity.credentialEpoch !== credential ||
-      !permission ||
-      (permission === 'headless-v2' &&
-        !(await liveAggregateDeviceWitnessMatches(expected)))
-    )
+    if (!current() || !sameBinding(expected, metadata))
       return { kind: 'unavailable' };
+    const permission = await liveResponsesActivePolicy(
+      grant,
+      expected,
+      pair?.pair.voiceGeneration,
+    );
+    if (!permission || !current()) return { kind: 'unavailable' };
+    const headless = permission !== 'interactive-v1';
     const after = await voiceSettingsStore.liveCredentials();
     if (!current() || after.credentialEpoch !== credential)
       return { kind: 'unavailable' };
     return {
       kind: 'active',
-      ...(permission === 'headless-v2' ? { aggregatePolicy: permission } : {}),
+      ...(headless ? { aggregatePolicy: 'headless-v2' as const } : {}),
+      ...(permission === 'common-tools-v3'
+        ? { commonToolsPolicy: permission }
+        : {}),
       credentialEpoch: credential,
       nativeGrant: Object.freeze({
-        ...(permission === 'headless-v2'
-          ? { scope: liveAggregateDevicePolicy }
-          : {}),
+        ...(headless ? { scope: liveAggregateDevicePolicy } : {}),
         backendModel: expected.backendModel,
         grantID: expected.grantID,
         generation: expected.generation,
@@ -188,7 +181,7 @@ export async function saveLiveResponsesSettings(input: {
     input.backendModel,
     input.signal,
   );
-  if (!reviewed)
+  if (!reviewed || reviewed.commonTools)
     throw new Error('Fresh Live aggregate settings review required');
   const owned = captureOwner();
   const current = () =>

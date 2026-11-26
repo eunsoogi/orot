@@ -4,10 +4,7 @@ import {
 } from '../agent/execution/consentRevision';
 import { captureLegacyVoicePairRollback } from './captureLegacyVoicePairRollback';
 import { binding, readBinding } from './liveResponsesSettingsBinding';
-import {
-  stageLiveAggregateDeviceWitness,
-  liveAggregateDeviceWitnessMatches,
-} from './liveAggregateDeviceWitness';
+import { createReviewedLivePairDevicePolicy } from './liveConversationToolsDeviceWitness';
 import { settingsConsentCredential } from '../agent/execution/settingsConsentCredential';
 import {
   SETTINGS_CONSENT_CATALOG_VERSION,
@@ -23,6 +20,7 @@ import { commitReviewedVoicePair } from './commitReviewedVoicePair';
 import {
   isLiveResponsesBackend,
   liveResponsesAggregateV2Permissions,
+  liveResponsesCommonToolsPermissions,
   liveResponsesProviderId,
   liveResponsesRecipient,
 } from './liveResponsesSettingsIdentity';
@@ -133,11 +131,14 @@ export async function saveReviewedOpenAiVoicePair(input: {
         },
         permissions: audio
           ? settingsPermissionsForFeature('voice', liveVoiceProviderId)
-          : liveResponsesAggregateV2Permissions,
+          : reviewed.commonTools
+            ? liveResponsesCommonToolsPermissions
+            : liveResponsesAggregateV2Permissions,
       }),
     };
   };
   let presented: () => boolean = () => false;
+  const devicePolicy = createReviewedLivePairDevicePolicy(reviewed.commonTools);
   await commitReviewedVoicePair(
     [target('voice'), target('voice-responses')],
     {
@@ -149,13 +150,7 @@ export async function saveReviewedOpenAiVoicePair(input: {
           credential.epoch,
           pair.backendModel,
         );
-        if (!current()) return false;
-        await stageLiveAggregateDeviceWitness(marker);
-        if (!(
-          current() &&
-          (await liveAggregateDeviceWitnessMatches(marker)) &&
-          current()
-        ))
+        if (!(await devicePolicy.stage(marker, generations.voice, current)))
           return false;
         await voiceSettingsStore.stageVoicePair(
           {
@@ -205,12 +200,8 @@ export async function saveReviewedOpenAiVoicePair(input: {
           credential.epoch,
           pair.backendModel,
         );
-        if (!(
-          guards() &&
-          (await liveAggregateDeviceWitnessMatches(marker)) &&
-          guards()
-        ))
-          throw new Error('Live aggregate scope witness unavailable');
+        if (!(await devicePolicy.matches(marker, generations.voice, guards)))
+          throw new Error('Live tool scope witness unavailable');
         const selection = {
           version: 1 as const,
           credentialEpoch: credential.epoch,
@@ -234,10 +225,15 @@ export async function saveReviewedOpenAiVoicePair(input: {
           selection,
           pair.accountRevision,
         );
+        if (reviewed.commonTools && (!guards() || witness?.() !== true))
+          throw new Error('Common Live tools publication unavailable');
         presented = () => sameAccount() && witness?.() === true;
       },
     },
     current,
-  );
+  ).catch(async error => {
+    await devicePolicy.retire();
+    throw error;
+  });
   return presented;
 }

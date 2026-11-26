@@ -38,6 +38,15 @@ export type {
   EncounterTranscript,
 } from './encounter/contracts';
 export { runMultiAgentWorkflow } from './multiAgent/workflow';
+export {
+  runOwnedLiveGraphTool,
+  type OwnedLiveGraphToolOptions,
+} from './multiAgent/ownedLiveGraphTool';
+export type {
+  LiveDelegation,
+  LiveToolBatch,
+  LiveToolCall,
+} from './multiAgent/ownedLiveConversationTools';
 export { extractPartialJsonStringAtPath } from './multiAgent/streamProjection';
 export {
   createLocalObservationEvidenceTool,
@@ -169,3 +178,6 @@ export type { CoverageDiagnosticCode } from './multiAgent/coverageDiagnostics';
 
 export { isExecutionConsentCurrent } from './multiAgent/consentCurrentness';
 export { guardProviderAuthorization } from './multiAgent/authorizedProvider';
+
+export { authorizeModelCall } from './multiAgent/modelAuthorization';
+export { guidedSchema as nativeToolParameterSchema } from './multiAgent/guidedSchema';

@@ -45,6 +45,10 @@ export const modelSettingsKo = {
     '도구 호출 모델을 사용하려면 먼저 OpenAI API 음성 모델을 적용해 주세요.',
   'modelSettings.liveResponsesUnavailable':
     '음성 대화 도구 설정을 확인하지 못했어요.',
+  'modelSettings.liveConversationAudioTransmission':
+    '{recipient}의 {model}에는 음성 대화 중 말한 소리와 이 통화의 대화만 보냅니다.',
+  'modelSettings.liveConversationToolsTransmission':
+    '음성 대화에서 같은 대화 도구를 쓸 때, 이 통화에 필요한 대화 내용, 선택된 건강 기록, 검토한 기억과 생성 결과를 전송합니다. 사진이나 사진에서 읽은 글, 녹음 전사문, 외부 검색어와 검색 결과는 이 동의에 포함되지 않습니다. 기록의 저장, 수정, 삭제는 별도 행동 승인 없이 실행하지 않습니다.',
   'modelSettings.liveResponsesConsentTitle':
     '음성 대화에 OpenAI Responses를 사용할까요?',
   'modelSettings.liveResponsesConsentScope':

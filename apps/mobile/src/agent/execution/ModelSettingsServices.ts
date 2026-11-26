@@ -22,6 +22,7 @@ export interface ModelSettingsServices {
   >;
   readonly voicePair?: {
     readonly runtimeAvailable: boolean;
+    readonly commonTools?: true;
     readonly commit: typeof saveReviewedOpenAiVoicePair;
   };
   readonly calendar: ProviderSelectionStore;
@@ -39,10 +40,24 @@ export interface ModelSettingsServices {
   ) => Promise<boolean>;
 }
 
-// Production defaults are unchanged. A scoped synthetic native host can provide
-// isolated storage and transports without changing global credential singletons.
+const commonVoicePair: NonNullable<ModelSettingsServices['voicePair']> = {
+  runtimeAvailable: true,
+  commonTools: true,
+  commit: (...args) => {
+    const { saveReviewedOpenAiVoicePair: save } =
+      require('../../voiceSettings/saveReviewedOpenAiVoicePair') as typeof import('../../voiceSettings/saveReviewedOpenAiVoicePair');
+    return save(...args);
+  },
+};
+
+// A scoped synthetic native host can still provide isolated stores/capabilities.
 const productionServices: ModelSettingsServices = {
   voice: voiceSettingsStore,
+  get voicePair() {
+    const { hasLiveCommonConversationRuntime } =
+      require('../../voiceConversation/nativeLiveCommonConversation') as typeof import('../../voiceConversation/nativeLiveCommonConversation');
+    return hasLiveCommonConversationRuntime() ? commonVoicePair : undefined;
+  },
   calendar: calendarModelStore,
   calendarOption: createCalendarDecisionsOption,
   saveConsent: saveModelSettingsConsent,

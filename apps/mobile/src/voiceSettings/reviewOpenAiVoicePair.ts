@@ -49,6 +49,7 @@ export function selectOpenAiVoicePair(input: {
 /** Consent is a pair intake boundary. No stage or store write runs on a single Allow. */
 export async function reviewOpenAiVoicePair(input: {
   readonly pair: OpenAiVoicePair;
+  readonly commonTools?: true;
   readonly signal: AbortSignal;
   readonly current: () => boolean;
   readonly review: (
@@ -65,20 +66,23 @@ export async function reviewOpenAiVoicePair(input: {
   const { pair, signal, review, commit } = input;
   const current = () => !signal.aborted && input.current();
   if (!current()) return false;
-  const speech = await review(
-    {
-      providerId: liveVoiceProviderId,
-      modelId: pair.speechModel,
-      recipient: liveVoiceRecipient,
-      subtitle: t('modelSettings.liveVoiceConsentTitle'),
-      information: t('modelSettings.liveVoiceConsentScope'),
-      notice: t('modelSettings.liveVoiceConsentNotice'),
-    },
-    signal,
-  );
-  if (!speech || !current()) return false;
+  if (!input.commonTools) {
+    const speech = await review(
+      {
+        providerId: liveVoiceProviderId,
+        modelId: pair.speechModel,
+        recipient: liveVoiceRecipient,
+        subtitle: t('modelSettings.liveVoiceConsentTitle'),
+        information: t('modelSettings.liveVoiceConsentScope'),
+        notice: t('modelSettings.liveVoiceConsentNotice'),
+      },
+      signal,
+    );
+    if (!speech || !current()) return false;
+  }
   const reviewedAggregate = await reviewLiveResponsesAggregate({
     backend: pair.backendModel,
+    commonTools: input.commonTools,
     signal,
     current,
     confirm: review,

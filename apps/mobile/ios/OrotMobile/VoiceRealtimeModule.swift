@@ -4,7 +4,7 @@ import React
 /// Native-only audio and network ownership. JavaScript receives status and transcripts, never PCM.
 @objc(VoiceRealtimeModule)
 final class VoiceRealtimeModule: RCTEventEmitter {
-    private lazy var call: RealtimeVoiceCall = {
+    private(set) lazy var call: RealtimeVoiceCall = {
         let emit: (String, [String: Any]) -> Void = { [weak self] event, body in
             self?.sendEvent(withName: event, body: body)
         }
@@ -26,18 +26,20 @@ final class VoiceRealtimeModule: RCTEventEmitter {
     #endif
     private(set) var active: String?
     private var responsesMailbox: OwnedLiveResponsesMailbox?
-    private let resultAuthority = LiveNativeResultDispatchAuthority()
+    let resultAuthority = LiveNativeResultDispatchAuthority()
+    let commonSourcePins = LiveCommonV3SourcePins()
+    @MainActor var commonV3: LiveCanonicalContextV3Transport?
     let canonicalCallReview = CanonicalLiveCallPresenter()
     override static func requiresMainQueueSetup() -> Bool {
         true
     }
 
     override func constantsToExport() -> [AnyHashable: Any]! {
-        ["supportsVoiceAudioLevels": true, "supportsLiveAggregateHeadlessV2": true, "supportsCanonicalHealthContextV2": RealtimeVoiceCanonicalHealthAdmission.enabledForLiveBridge]
+        ["supportsVoiceAudioLevels": true, "supportsLiveAggregateHeadlessV2": true, "supportsLiveCommonConversationToolsV3": true, "supportsCanonicalHealthContextV2": RealtimeVoiceCanonicalHealthAdmission.enabledForLiveBridge]
     }
 
     override func supportedEvents() -> [String]! {
-        ["VoiceRealtimeState", "VoiceRealtimeTranscript", "VoiceRealtimeInterrupted", "VoiceRealtimeSystemCall", "VoiceRealtimePaused", "VoiceRealtimeAudioLevel", "VoiceRealtimeToolCall", "VoiceRealtimeToolCancelled", "VoiceRealtimeManagedToolCall", "VoiceRealtimeManagedToolCancelled"]
+        ["VoiceRealtimeState", "VoiceRealtimeTranscript", "VoiceRealtimeInterrupted", "VoiceRealtimeSystemCall", "VoiceRealtimePaused", "VoiceRealtimeAudioLevel", "VoiceRealtimeToolCall", "VoiceRealtimeToolCancelled", "VoiceRealtimeManagedToolCall", "VoiceRealtimeManagedToolCancelled", "VoiceRealtimeCommonToolsReady", "VoiceRealtimeCommonToolBatch", "VoiceRealtimeCommonToolCancelled"]
     }
 
     @objc(openLiveCall:model:apiKey:options:resolver:rejecter:)
@@ -48,14 +50,18 @@ final class VoiceRealtimeModule: RCTEventEmitter {
             guard active == nil else { reject("VOICE_BUSY", "Voice is already active.", nil); return }
             let read = Self.canonicalAuthority
             guard RealtimeVoiceCanonicalHealthAdmission.permitsStartupOptions(options, enabled: Self.canonicalReviewEnabled(identifier)),
-                  Set(options.allKeys.compactMap { $0 as? String }).isSubset(of: ["language", "voice", "responsesGrant", "canonicalHealthGrant", "canonicalHealthDeclaration"]),
+                  Set(options.allKeys.compactMap { $0 as? String }).isSubset(of: ["language", "voice", "responsesGrant", "canonicalHealthGrant", "canonicalHealthDeclaration", "commonToolsRegistration"]),
                   let language = options["language"] as? String, let voice = options["voice"] as? String
             else {
                 reject("VOICE_LIVE_FAILED", "Live voice is unavailable.", nil); return
             }
             let canonicalRequested = options["canonicalHealthGrant"] != nil || options["canonicalHealthDeclaration"] != nil
             var admission: LiveResponsesAdmission?
-            if let request = options["responsesGrant"] {
+            if options["commonToolsRegistration"] != nil {
+                guard !canonicalRequested, let prepared = prepareCommonV3(identifier, model: model, key: apiKey, options: options)
+                else { reject("VOICE_LIVE_FAILED", "Live voice is unavailable.", nil); return }
+                admission = prepared
+            } else if let request = options["responsesGrant"] {
                 guard let grant = LiveResponsesSettingsGrant(request), grant.isCurrent(key: apiKey, read: read) else {
                     reject("VOICE_LIVE_FAILED", "Live voice is unavailable.", nil); return
                 }
@@ -91,9 +97,19 @@ final class VoiceRealtimeModule: RCTEventEmitter {
             active = identifier
             call.open(identifier, model: model, key: apiKey, language: language, voice: voice, managedAdmission: admission) { result in
                 switch result {
-                case .success: resolve(nil)
+                case .success:
+                    guard self.acknowledgeCommonV3(identifier) else {
+                        self.call.fail()
+                        if self.active == identifier {
+                            self.active = nil
+                        }
+                        reject("VOICE_LIVE_FAILED", "Live voice is unavailable.", nil)
+                        return
+                    }
+                    resolve(nil)
                 case .failure:
                     if self.call.id == nil, self.active == identifier {
+                        self.retireCommonV3(identifier)
                         self.responsesMailbox?.revoke()
                         self.responsesMailbox = nil
                         self.active = nil
@@ -114,22 +130,12 @@ final class VoiceRealtimeModule: RCTEventEmitter {
         }
     }
 
-    /// These process-local methods never wait for main or inspect any health data.
-    @objc(claimLiveResponsesResult:challengeId:)
-    func claimLiveResponsesResult(_ identifier: String, challengeId: String) -> NSNumber {
-        NSNumber(value: resultAuthority.claim(call: identifier, challenge: challengeId))
-    }
-
-    @objc(retireLiveResponsesResult:challengeId:)
-    func retireLiveResponsesResult(_ identifier: String, challengeId: String) -> NSNumber {
-        NSNumber(value: resultAuthority.retire(call: identifier, challenge: challengeId))
-    }
-
     @objc(revokeLiveResponsesGrant:generation:resolver:rejecter:)
     func revokeLiveResponsesGrant(_ grantID: String, generation: String,
                                   resolver resolve: @escaping RCTPromiseResolveBlock, rejecter _: @escaping RCTPromiseRejectBlock)
     {
         DispatchQueue.main.async {
+            self.revokeCommonV3(grantID: grantID, generation: generation)
             if let mailbox = self.responsesMailbox, mailbox.grant.grantID == grantID,
                mailbox.grant.generation == generation
             {
@@ -137,16 +143,6 @@ final class VoiceRealtimeModule: RCTEventEmitter {
                 self.call.fail()
             }
             resolve(nil)
-        }
-    }
-
-    /// JavaScript owns per-payload approval; this boundary only accepts the still-owned pending request.
-    @objc(resolveRealtimeToolCall:toolCallId:responseId:output:resolver:rejecter:)
-    func resolveRealtimeToolCall(_ identifier: String, toolCallId: String, responseId: String, output: String,
-                                 resolver resolve: @escaping RCTPromiseResolveBlock, rejecter _: @escaping RCTPromiseRejectBlock)
-    {
-        DispatchQueue.main.async {
-            resolve(self.call.resolveTool(identifier, toolCallID: toolCallId, responseID: responseId, output: output))
         }
     }
 
@@ -195,6 +191,7 @@ final class VoiceRealtimeModule: RCTEventEmitter {
                     }
                 }, observedClose: capture)
                 if active == identifier {
+                    retireCommonV3(identifier)
                     responsesMailbox?.revoke()
                     responsesMailbox = nil
                     active = nil
@@ -242,6 +239,7 @@ final class VoiceRealtimeModule: RCTEventEmitter {
             self.responsesMailbox?.revoke()
             self.responsesMailbox = nil
             if let id = self.active {
+                self.retireCommonV3(id)
                 try? self.call.stop(id)
             }
         }

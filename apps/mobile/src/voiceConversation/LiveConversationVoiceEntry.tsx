@@ -1,7 +1,10 @@
+import { bindLiveCommonConversationStartup } from './liveCommonConversationStartup';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { AppState } from 'react-native';
 import { promptlessLiveAggregateRun } from './promptlessLiveAggregateRun';
 import { liveModel } from '../voiceSettings/liveVoicePreferences';
+import { loadLiveCallSettings } from '../voiceSettings/liveVoicePreferencesKeychain';
+import { hasLiveCommonConversationRuntime } from './nativeLiveCommonConversation';
 import { voiceSettingsStore } from '../voiceSettings/voiceSettingsStore';
 import { useInferenceConsent } from '../agent/execution/useInferenceConsent';
 import type { ConversationVoiceProps } from './conversationVoiceDependencies';
@@ -24,6 +27,9 @@ export function LiveConversationVoiceEntry(
 ) {
   const managedRun = useRef<ReturnType<
     typeof promptlessLiveAggregateRun
+  > | null>(null);
+  const commonRun = useRef<ReturnType<
+    typeof bindLiveCommonConversationStartup
   > | null>(null);
   const { consent } = useInferenceConsent();
   const permission = useMemo(
@@ -71,9 +77,18 @@ export function LiveConversationVoiceEntry(
       () => current() && permission.current(),
       () => owner.current?.stop(),
     );
+    const commonRuntime = hasLiveCommonConversationRuntime();
+    const common = bindLiveCommonConversationStartup({
+      injected: props.liveCommonTools,
+      readState: () => owner.current?.getState(),
+      current: () => current() && permission.current(),
+      credentials: commonRuntime ? loadLiveCallSettings : managed.credentials,
+    });
     const native = nativeLiveVoice(
       id => props.store.captureVoiceEnd?.(props.sessionId, id),
-      managed.nativeGrant,
+      commonRuntime ? undefined : managed.nativeGrant,
+      undefined,
+      common.registration,
     );
     if (!native) {
       managed.dispose();
@@ -87,9 +102,11 @@ export function LiveConversationVoiceEntry(
       model: liveModel,
       liveAudioOnly: true,
       sessionId: props.sessionId,
-      credentials: managed.credentials,
+      credentials: common.credentials,
       isCurrent: () => current() && permission.current(),
       changed: value => {
+        if (['stopped', 'ended', 'cleaning', 'error'].includes(value.phase))
+          common.retire();
         if (mounted) setState(value);
       },
       transcript: event => {
@@ -109,9 +126,11 @@ export function LiveConversationVoiceEntry(
     });
     owner.current = session;
     managedRun.current = managed;
+    commonRun.current = common;
     const revoke = () => {
       permission.stop();
       managed.retire();
+      common.retire();
       session.stop();
       setVisible(false);
       setTranscripts([]);
@@ -129,6 +148,8 @@ export function LiveConversationVoiceEntry(
       mounted = false;
       permission.stop();
       managed.dispose();
+      common.retire();
+      commonRun.current = null;
       managedRun.current = null;
       owner.current = null;
       session.dispose();
@@ -136,7 +157,7 @@ export function LiveConversationVoiceEntry(
       app.remove();
     };
     // Current route and session guards are read on each callback from the live ref.
-  }, [props.sessionId, props.store, permission]);
+  }, [props.sessionId, props.store, props.liveCommonTools, permission]);
   useEffect(() => {
     owner.current?.revalidate();
   });
@@ -174,6 +195,7 @@ export function LiveConversationVoiceEntry(
   };
   const stop = (graceful: boolean) => {
     managedRun.current?.retire();
+    commonRun.current?.retire();
     if (graceful) owner.current?.stop(true);
     permission.stop();
     if (!graceful) owner.current?.stop();

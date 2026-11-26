@@ -99,6 +99,7 @@ export function VoiceSettingsPanel({
   const pairedSave = useOpenAiVoicePairSave({
     active: active && !failedLoad && !busy,
     pair,
+    commonTools: voicePair?.commonTools,
     commit: voicePair?.commit,
     preferences:
       preferences?.revision === revision
@@ -108,7 +109,11 @@ export function VoiceSettingsPanel({
     onUnavailable: selection.markPairUnavailable,
   });
   const companion = useCanonicalLiveHealthSelection(
-    active && pair && mode === savedMode && model === savedModel
+    !voicePair?.commonTools &&
+      active &&
+      pair &&
+      mode === savedMode &&
+      model === savedModel
       ? { revision: pair.accountRevision, backend: pair.backendModel }
       : undefined,
     preferences?.revision === revision && preferences.draft?.dirty === true,

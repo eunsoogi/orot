@@ -15,6 +15,7 @@ export interface ConversationVoiceProps {
   readonly photoPending: boolean;
   readonly isEntryCurrent?: () => boolean;
   readonly selectionRevision: number;
+  readonly liveCommonTools?: import('./liveCommonConversationRun').LiveCommonConversationPort;
   readonly resolveSelectedAi: () => Promise<SelectedAiResolution>;
   readonly onSend: ConversationScreenProps['onSend'];
   readonly confirmRealtimeResult?: (

@@ -42,16 +42,6 @@ extension RealtimeVoiceCall {
         }
         return socket.sendManagedToolFrames(frames, current: current)
     }
-
-    func resolveTool(_ identifier: String, toolCallID: String, responseID: String, output: String) -> Bool {
-        guard id == identifier, !paused, ready, token != nil else { return false }
-        guard foreground() else { cancelTools(); return false }
-        guard output.utf8.count <= 16384,
-              tools.consume(toolCallID: toolCallID, responseID: responseID) else { return false }
-        socket.send(["type": "conversation.item.create", "item": ["type": "function_call_output", "call_id": toolCallID, "output": output]])
-        socket.send(["type": "response.create"])
-        return true
-    }
 }
 
 /// Permit one independently approved local tool result per delegation. Do not
@@ -73,6 +63,11 @@ final class LiveResponsesToolBridge {
     private var cancel: (() -> Void)?
     init(admission: LiveResponsesAdmission, registry: LiveNativeToolRegistry, discard: @escaping () -> Void) {
         self.admission = admission; self.registry = registry; self.discard = discard
+    }
+
+    func ownsCompleted(_ request: Request) -> Bool {
+        !retired && spent && owner == request.owner && delegation?.id == request.delegationID &&
+            delegation?.response == request.responseID && pending == [request]
     }
 
     func retire() {

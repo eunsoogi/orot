@@ -1,5 +1,10 @@
 import type { SettingsDisclosureSummary } from '../agent/execution/settingsDisclosureSummary';
 import { t } from '../i18n';
+import { conversationTransmissionCopy } from '../agent/execution/conversationTransmissionDisclosure';
+import {
+  liveVoiceModelId,
+  liveVoiceRecipient,
+} from '../agent/execution/liveVoiceSettingsIdentity';
 import {
   isLiveResponsesBackend,
   liveResponsesProviderId,
@@ -12,13 +17,14 @@ export type ReviewedLiveResponsesAggregate = Readonly<{
 }>;
 const receipts = new WeakMap<
   ReviewedLiveResponsesAggregate,
-  { signal: AbortSignal; current: () => boolean }
+  { signal: AbortSignal; current: () => boolean; commonTools: boolean }
 >();
 
 /** Both Settings entry points must show exactly this v2 operation and result
  * boundary. No prior model approval can manufacture this one-use receipt. */
 export async function reviewLiveResponsesAggregate(input: {
   backend: LiveResponsesBackend;
+  commonTools?: true;
   signal: AbortSignal;
   current: () => boolean;
   confirm: (
@@ -29,22 +35,35 @@ export async function reviewLiveResponsesAggregate(input: {
   const { backend, signal } = input;
   const current = () => !signal.aborted && input.current();
   if (!isLiveResponsesBackend(backend) || !current()) return;
+  const common = input.commonTools === true;
+  const shared = conversationTransmissionCopy('live-local-tools');
   const allowed = await input.confirm(
     Object.freeze({
       providerId: liveResponsesProviderId,
       modelId: backend,
       recipient: liveResponsesRecipient,
-      subtitle: t('modelSettings.liveResponsesConsentTitle'),
-      information: t('modelSettings.liveResponsesConsentScope', {
-        model: backend,
-      }),
-      notice: t('modelSettings.liveResponsesConsentNotice'),
+      subtitle: common
+        ? shared.subtitle
+        : t('modelSettings.liveResponsesConsentTitle'),
+      information: common
+        ? [
+            t('modelSettings.liveConversationAudioTransmission', {
+              recipient: liveVoiceRecipient,
+              model: liveVoiceModelId,
+            }),
+            shared.information,
+            t('modelSettings.liveResponsesConsentScope', { model: backend }),
+          ].join('\n')
+        : t('modelSettings.liveResponsesConsentScope', { model: backend }),
+      notice: common
+        ? shared.notice
+        : t('modelSettings.liveResponsesConsentNotice'),
     }),
     signal,
   );
   if (!allowed || !current()) return;
   const receipt = Object.freeze({ backend });
-  receipts.set(receipt, { signal, current });
+  receipts.set(receipt, { signal, current, commonTools: common });
   return receipt;
 }
 
@@ -52,7 +71,7 @@ export function takeReviewedLiveResponsesAggregate(
   receipt: ReviewedLiveResponsesAggregate,
   backend: LiveResponsesBackend,
   signal: AbortSignal,
-): (() => boolean) | undefined {
+) {
   const owner = receipts.get(receipt);
   if (
     !owner ||
@@ -62,5 +81,7 @@ export function takeReviewedLiveResponsesAggregate(
   )
     return;
   receipts.delete(receipt);
-  return owner.current;
+  return Object.assign(() => owner.current(), {
+    commonTools: owner.commonTools,
+  });
 }

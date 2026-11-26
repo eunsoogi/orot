@@ -2,14 +2,16 @@ import { createActionNodes } from './actionNodes';
 import { executeInitialEvidenceSearch } from './initialEvidenceSearch';
 import { END, START, StateGraph } from '@langchain/langgraph/web';
 import type { MultiAgentWorkflowOptions } from './contracts';
-import type { RuntimeContext } from './runtimeContext';
+import { completeState, type RuntimeContext } from './runtimeContext';
 import { createNodes } from './nodes';
 import { pauseBoundaryWrapper } from './workflowPause';
 import { MultiAgentState, routeForPhase, workflowNodeRoutes, type WorkflowState } from './state';
 
 export function makeGraph<TResult>(
   context: RuntimeContext<TResult>,
-  graphOptions: Pick<MultiAgentWorkflowOptions<TResult>, 'checkpointer' | 'store'> = {},
+  graphOptions: Pick<MultiAgentWorkflowOptions<TResult>, 'checkpointer' | 'store'> & {
+    readonly endAfterOwnedTool?: true;
+  } = {},
 ) {
   const nodes = createNodes(context);
   const actions = createActionNodes(context);
@@ -43,7 +45,9 @@ export function makeGraph<TResult>(
       )
       .addNode(
         'prepareRevision',
-        wrap((state) => nodes.prepareRevision(state)),
+        wrap((state) =>
+          graphOptions.endAfterOwnedTool ? completeState() : nodes.prepareRevision(state),
+        ),
       )
       .addNode('invokeRevision', wrap(nodes.invokeRevision))
       .addEdge(START, 'checkpointStart')
