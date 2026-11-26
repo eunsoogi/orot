@@ -26,8 +26,8 @@ test('groups exact selectable text and metadata without truncating or shrinking 
   expect(body.props.selectable).toBe(true);
   expect(body.props.numberOfLines).toBeUndefined();
   expect(StyleSheet.flatten(body.props.style)).toMatchObject({
-    fontSize: 18,
-    lineHeight: 29,
+    fontSize: 19,
+    lineHeight: 31,
   });
   expect(metadata.getByText('연결된 출처 2개')).toBeTruthy();
   expect(screen.queryByText('source-a')).toBeNull();
