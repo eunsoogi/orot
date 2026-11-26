@@ -1,5 +1,5 @@
 import { personalSearchTiming } from './personalSearchStageDiagnostic';
-import { resultCoverage } from '../../conversationTools/evidenceSearchCoverage';
+import { bindResultCoverage } from '../../conversationTools/evidenceSearchCoverage';
 import {
   providerObservationEvidence,
   selectedProviderRecordId,
@@ -72,6 +72,11 @@ export function createLocalEvidenceSearchTool(input: {
         request.signal,
       );
       let snapshot = input.snapshot ?? unsearchedSnapshot;
+      const coverageFor = bindResultCoverage(
+        () => snapshot.coverage,
+        request,
+        input.sourceKind,
+      );
       try {
         if (input.loadSnapshot)
           snapshot = await time('personal_search_snapshot', () =>
@@ -110,15 +115,7 @@ export function createLocalEvidenceSearchTool(input: {
           const items: EvidenceItem[] = [];
           return {
             items,
-            coverage: [
-              resultCoverage(
-                snapshot.coverage,
-                request,
-                input.sourceKind,
-                items,
-                false,
-              ),
-            ],
+            coverage: [coverageFor(items, false)],
             conflicts: [],
           } satisfies EvidenceBatch;
         }
@@ -161,10 +158,7 @@ export function createLocalEvidenceSearchTool(input: {
           const item = byKey.get(localEvidenceKey(hit.chunk.metadata));
           if (!item || seen.has(localEvidenceKey(item))) continue;
           const candidate = [...selected, item];
-          const candidateCoverage = resultCoverage(
-            snapshot.coverage,
-            request,
-            input.sourceKind,
+          const candidateCoverage = coverageFor(
             candidate,
             hits.length >= request.resultLimit || omittedForPayload,
             omittedForPayload
@@ -203,10 +197,7 @@ export function createLocalEvidenceSearchTool(input: {
         return {
           items: projected,
           coverage: [
-            resultCoverage(
-              snapshot.coverage,
-              request,
-              input.sourceKind,
+            coverageFor(
               projected,
               hits.length >= request.resultLimit ||
                 omittedForPayload ||
@@ -223,10 +214,7 @@ export function createLocalEvidenceSearchTool(input: {
         return {
           items,
           coverage: [
-            resultCoverage(
-              snapshot.coverage,
-              request,
-              input.sourceKind,
+            coverageFor(
               items,
               true,
               '로컬 검색을 사용할 수 없어 근거를 찾지 못했어요.',
