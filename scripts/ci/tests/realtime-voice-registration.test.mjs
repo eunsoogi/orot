@@ -9,13 +9,22 @@ test('Realtime lifecycle cases have exactly one core integration owner', () => {
   const cases = iosTestInventory('core').filter((id) =>
     id.includes('/RealtimeVoiceLifecycleTests/'),
   );
-  assert.equal(cases.length, 33);
+  assert.equal(cases.length, 34);
   const scheduled = iosTestCohortTasks('core-integration').flatMap((task) => task.identifiers);
   for (const id of cases) assert.equal(scheduled.filter((candidate) => candidate === id).length, 1);
   assert.ok(
     cases.includes(
       'OrotIntegrationTests/RealtimeVoiceLifecycleTests/testManagedTerminalFailureOnlyRetiresItsExactResponse',
     ),
+  );
+  const batch =
+    'OrotIntegrationTests/RealtimeVoiceLifecycleTests/testManagedCompletedBatchRequiresAllProofsBeforeActualFIFO';
+  assert.equal(cases.filter((candidate) => candidate === batch).length, 1);
+  assert.equal(
+    iosTestCohortTasks('release-core')
+      .flatMap((task) => task.identifiers)
+      .filter((candidate) => candidate === batch).length,
+    1,
   );
   assert.deepEqual(
     iosTestImpactForPath('apps/mobile/ios/OrotIntegrationTests/RealtimeVoiceLifecycleTests.swift')

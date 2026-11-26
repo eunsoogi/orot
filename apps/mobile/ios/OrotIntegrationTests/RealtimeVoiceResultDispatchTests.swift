@@ -189,11 +189,12 @@ extension RealtimeVoiceLifecycleTests {
                 socket.open(model: "gpt-live-1.1", key: "synthetic")
                 var source = true, retired = 0
                 let outputs = ["first", "second"].enumerated().map { i, function in
-                    LiveNativeResultBatch.ApprovedOutput(function: function, proof: i == 0 || mode == "duplicate" ? owner.epoch : UUID(),
-                                                         text: function, kind: .aggregate, sourceCurrent: { i != 0 || source },
-                                                         retire: { retired += 1 })
+                    LiveNativeResultBatch.Proof(owner: owner, function: function, text: function, kind: .aggregate,
+                                                sourceCurrent: { $0 == owner && $1 == function && $2 == Data(function.utf8) && (i != 0 || source) },
+                                                release: { retired += 1 })
                 }
-                let candidate = LiveNativeResultBatch(owner: owner, functions: ["first", "second"], outputs: outputs, owns: { $0 == owner })
+                let offered = mode == "duplicate" ? [outputs[0], outputs[0]] : outputs
+                let candidate = LiveNativeResultBatch(owner: owner, functions: ["first", "second"], outputs: offered, owns: { $0 == owner })
                 if mode == "duplicate" {
                     XCTAssertNil(candidate); continue
                 }
@@ -222,14 +223,14 @@ extension RealtimeVoiceLifecycleTests {
             }
         }
 
-        private func drainContinuationCallbacks() async {
+        func drainContinuationCallbacks() async {
             await withCheckedContinuation { (continuation: CheckedContinuation<Void, Never>) in
                 DispatchQueue.main.async { continuation.resume() }
             }
         }
     }
 
-    private final class HeldContinuationSocketTask: RealtimeVoiceSocketTask {
+    final class HeldContinuationSocketTask: RealtimeVoiceSocketTask {
         var resumed = false
         var frames: [String] = []
         var completions: [@Sendable (Error?) -> Void] = []

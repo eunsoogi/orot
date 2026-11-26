@@ -178,4 +178,73 @@ extension RealtimeVoiceLifecycleTests {
         XCTAssertFalse(try XCTUnwrap(ticket).submit { XCTFail("Retired source cannot reach socket.") })
         await fulfillment(of: [retired], timeout: 1)
     }
+
+    #if OROT_TESTS && targetEnvironment(simulator)
+        @MainActor
+        func testManagedCompletedBatchRequiresAllProofsBeforeActualFIFO() async throws {
+            for mode in ["owned", "missing", "retired", "ordinary"] {
+                let task = HeldContinuationSocketTask()
+                let socket = RealtimeVoiceSocket(endpoint: RealtimeVoiceSocketEndpoint(networklessTask: { task }))
+                socket.open(model: "gpt-live-1.1", key: "synthetic")
+                defer { socket.close() }
+                socket.failed = { [weak socket] in socket?.close() }
+                var alive = true, released = 0, reads = 0
+                let ready = expectation(description: "actual wire or fail-closed queue decision")
+                let owner = LiveResponsesAdmission.Owner(callID: "fixture-call", sessionID: "fixture-session", epoch: UUID())
+                var admission = managedAdmission { _, finish in
+                    reads += 1
+                    finish("synthetic")
+                    return {}
+                }
+                if mode != "ordinary" {
+                    admission.batchProof = { request, text in
+                        let first = request.functionID == "function-a"
+                        guard first || mode != "missing" else { return nil }
+                        let scope = LiveNativeResultBatch.Owner(call: owner.callID, session: owner.sessionID, epoch: owner.epoch,
+                                                                delegation: request.delegationID, response: request.responseID)
+                        return .init(owner: scope, function: request.functionID, text: text, kind: .aggregate,
+                                     sourceCurrent: { $0 == scope && $1 == request.functionID && $2 == Data(text.utf8) && (first || alive) },
+                                     release: { released += 1 })
+                    }
+                }
+                let bridge = try LiveResponsesToolBridge(admission: admission, registry: XCTUnwrap(LiveNativeToolRegistry(admission: admission)), sendBatch: {
+                    let sent = socket.sendTicketedToolBatch($0)
+                    ready.fulfill()
+                    return sent
+                }, discard: {
+                    if task.frames.isEmpty {
+                        ready.fulfill()
+                    }
+                })
+                var events = managedEvents()
+                var second = events[2], event = try XCTUnwrap(second["event"] as? [String: Any])
+                var item = try XCTUnwrap(event["item"] as? [String: Any])
+                item["call_id"] = "function-b"; event["item"] = item
+                second["event"] = event; second["event_id"] = "second-function"
+                events.insert(second, at: events.count - 1)
+                for envelope in events {
+                    bridge.receive(envelope, owner: owner, current: { true }) { _, _, _ in XCTFail("Cannot use non-batch send.") }
+                }
+                await fulfillment(of: [ready], timeout: 1)
+                XCTAssertEqual(reads, mode == "ordinary" ? 0 : 2)
+                if mode == "missing" || mode == "ordinary" {
+                    XCTAssertTrue(task.frames.isEmpty)
+                    XCTAssertEqual(released, mode == "missing" ? 1 : 0)
+                    continue
+                }
+                XCTAssertEqual(task.frames, ["function-a"])
+                alive = mode != "retired"
+                task.completions.removeFirst()(nil)
+                await drainContinuationCallbacks()
+                if alive {
+                    task.completions.removeFirst()(nil)
+                    await drainContinuationCallbacks()
+                    task.completions.removeFirst()(nil)
+                    await drainContinuationCallbacks()
+                }
+                XCTAssertEqual(task.frames, alive ? ["function-a", "function-b", "response.create"] : ["function-a"])
+                XCTAssertEqual(released, 2)
+            }
+        }
+    #endif
 }

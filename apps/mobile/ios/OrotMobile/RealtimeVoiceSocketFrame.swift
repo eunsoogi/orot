@@ -1,3 +1,4 @@
+import CryptoKit
 import Foundation
 
 /// Ordered, bounded WebSocket writes; never logs authentication, remote errors or audio.
@@ -10,6 +11,7 @@ protocol RealtimeSocketPort: AnyObject {
     func sendManagedToolFrames(_ frames: [[String: Any]], current: @escaping () -> Bool) -> Bool
     func sendTicketedToolFrames(_ frames: [[String: Any]], current: @escaping () -> Bool,
                                 ticket: LiveNativeResultDispatchAuthority.Ticket) -> Bool
+    @MainActor func sendTicketedToolBatch(_ batch: LiveNativeResultBatch) -> Bool
     func discardManagedToolFrames() -> Bool
     func discardInput()
     func close()
@@ -19,6 +21,11 @@ protocol RealtimeSocketPort: AnyObject {
 }
 
 extension RealtimeSocketPort {
+    @MainActor
+    func sendTicketedToolBatch(_: LiveNativeResultBatch) -> Bool {
+        false
+    }
+
     func prepareManagedCaptionClose(sessionID _: String) -> Bool {
         false
     }
@@ -199,5 +206,20 @@ final class RealtimeVoiceSocketEndpoint {
 
     func invalidateAndCancel() {
         session?.invalidateAndCancel()
+    }
+}
+
+/// Keep only a digest of each completed tool event, not its model arguments.
+enum ManagedToolEventReceipt: Equatable {
+    case other, malformed, tool(SHA256.Digest)
+    static func identity(_ request: LiveResponsesAdmission.Request?) -> Self {
+        guard let request, let payload = try? JSONEncoder().encode(
+            [request.delegationID, request.responseID, request.functionID, request.name, request.canonicalArguments ?? ""],
+        ) else { return .malformed }
+        return .tool(SHA256.hash(data: payload))
+    }
+
+    func matches(_ incoming: Self) -> Bool {
+        self != .malformed && self == incoming
     }
 }
