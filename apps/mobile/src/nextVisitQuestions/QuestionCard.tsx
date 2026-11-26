@@ -72,7 +72,11 @@ export function QuestionCard<TReference extends NextVisitEvidenceReference>({
   ) : null;
   return (
     <View style={styles.card} testID={`next-visit-question-${index}`}>
-      <View style={styles.headingRow}>
+      <View
+        style={styles.headingRow}
+        testID={`visit-question-heading-${index}`}
+      >
+        {compact && editable ? selectionControl : null}
         <View style={styles.numberBadge}>
           <Text style={styles.heading} testID={`question-number-${index}`}>
             {number}
@@ -97,7 +101,7 @@ export function QuestionCard<TReference extends NextVisitEvidenceReference>({
             {question.questionText}
           </Text>
         )}
-        {!compact && editControl}
+        {editControl}
         {editable && !priorityInDetails ? (
           <QuestionPriorityControl
             question={question}
@@ -108,8 +112,6 @@ export function QuestionCard<TReference extends NextVisitEvidenceReference>({
           />
         ) : null}
       </View>
-      {/* Conversation uses the archived question body first; review actions
-          do not squeeze the wording in narrow or split-screen conversations. */}
       {question.rationale && (archived || (compact && !detailsOpen)) ? (
         <Text
           style={styles.rationale}
@@ -117,15 +119,6 @@ export function QuestionCard<TReference extends NextVisitEvidenceReference>({
         >
           {question.rationale}
         </Text>
-      ) : null}
-      {compact && editControl ? (
-        <View
-          style={styles.reviewControls}
-          testID={`visit-review-controls-${index}`}
-        >
-          {selectionControl}
-          {editControl}
-        </View>
       ) : null}
       {editable && detailsOpen ? (
         <View style={styles.actions}>
