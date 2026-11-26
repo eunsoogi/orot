@@ -157,6 +157,23 @@ final class LiveQueuedToolPermit {
         LiveManagedToolLatency.finish(.continuationSendCallback, since: stamp, observe: observe, at: end)
     }
 
+    static func acceptsReceipt(_ required: Bool, owner: LiveQueuedToolPermit?, final: Bool, succeeded: Bool,
+                               currentFrame: @autoclosure () -> Bool) -> Bool
+    {
+        guard required else { return true }
+        guard let owner else { return false }
+        return owner.verifyV3Callback(currentFrame: currentFrame(), final: final, succeeded: succeeded)
+    }
+
+    func verifyV3Callback(currentFrame: @autoclosure () -> Bool, final: Bool, succeeded: Bool) -> Bool {
+        guard let ticket, ticket.requiresWireReceipt else { return true }
+        guard currentFrame() else { return false }
+        guard succeeded else { ticket.retire(); return true }
+        guard authorizeHandoff(), currentFrame(), !final || ticket.acknowledgeWire()
+        else { ticket.retire(); return false }
+        return currentFrame()
+    }
+
     func settleBatch(_ receipt: UUID, result: Bool) -> Bool {
         guard let batch, Thread.isMainThread else { return false }
         return MainActor.assumeIsolated { batch.complete(receipt, succeeded: result) }

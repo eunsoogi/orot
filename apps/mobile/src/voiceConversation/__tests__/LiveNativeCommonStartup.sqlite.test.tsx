@@ -18,6 +18,9 @@ import { fixture as protectedFixture } from '../testSupport/liveResponsesProtect
 import { LiveConversationVoiceEntry } from '../LiveConversationVoiceEntry';
 import type { ConversationVoiceProps } from '../conversationVoiceDependencies';
 import {
+  assertFakeLiveCommonSuccessor,
+  assertFakeLiveCommonResult,
+  emitFakeLiveCommonBatch,
   fakeLiveCommonNative,
   witness,
 } from '../testSupport/fakeLiveCommonNative';
@@ -68,6 +71,9 @@ test.each([
   'no-common-grant',
   'source-denied',
   'stop-in-queue',
+  'successor-before-promise',
+  'successor-revoked',
+  'predecessor-failed',
 ] as const)(
   'production Live start and completed native V3 batch preserve exact proof: %s',
   async mode => {
@@ -95,13 +101,22 @@ test.each([
       subscribe: () => () => {},
     });
     let finishNative: ((value: boolean) => void) | undefined;
-    const native = fakeLiveCommonNative(
-      mode === 'stop-in-queue'
-        ? () =>
-            new Promise<boolean>(resolve => {
-              finishNative = resolve;
-            })
-        : undefined,
+    const queued =
+      mode === 'successor-before-promise' ||
+      mode === 'successor-revoked' ||
+      mode === 'predecessor-failed';
+    let activeChallenge = 'ch';
+    let awaitingFirst = true;
+    const native = fakeLiveCommonNative(() => {
+      if ((!queued && mode !== 'stop-in-queue') || !awaitingFirst)
+        return Promise.resolve(true);
+      awaitingFirst = false;
+      return new Promise<boolean>(resolve => {
+        finishNative = resolve;
+      });
+    });
+    native.isLiveCommonConversationToolCurrent.mockImplementation(
+      (_1, _2, _3, _4, challenge) => challenge === activeChallenge,
     );
     NativeModules.VoiceRealtimeModule = native;
     const store = {
@@ -151,12 +166,6 @@ test.each([
           policy: 'common-tools-v3',
           tools: [{ name: 'local-health-context' }],
         });
-        const owner = {
-          callId,
-          sessionId: 'native-session',
-          delegationId: 'delegation',
-          responseId: 'response',
-        };
         await act(() => {
           DeviceEventEmitter.emit('VoiceRealtimeState', {
             callId,
@@ -164,48 +173,32 @@ test.each([
           });
           DeviceEventEmitter.emit('VoiceRealtimeCommonToolsReady', {
             callId,
-            sessionId: owner.sessionId,
+            sessionId: 'native-session',
             registration:
               mode === 'wrong-ack'
                 ? { ...commonToolsRegistration, manifestRevision: 'wrong' }
                 : commonToolsRegistration,
           });
-          DeviceEventEmitter.emit('VoiceRealtimeCommonToolBatch', {
-            owner,
-            manifestRevision: commonToolsRegistration!.manifestRevision,
-            calls: [
-              {
-                ...owner,
-                name: 'local-health-context',
-                challengeId: 'ch',
-                toolCallId: 'tool',
-                args: '{"topics":["measurements"],"days":7}',
-              },
-            ],
-          });
+          emitFakeLiveCommonBatch(callId, commonToolsRegistration!, 'ch');
         });
-        if (mode === 'valid' || mode === 'stop-in-queue') {
+        if (mode === 'valid' || mode === 'stop-in-queue' || queued) {
           await waitFor(() =>
             expect(
               native.settleLiveCommonConversationResult,
             ).toHaveBeenCalledTimes(1),
           );
-          const [id, challenge, bytes] =
-            native.settleLiveCommonConversationResult.mock.calls[0]!;
-          expect(native.claimLiveCommonConversationResult).toHaveBeenCalledWith(
-            id,
-            challenge,
-            bytes,
-          );
-          expect(JSON.parse(bytes)).toMatchObject({
-            tool: 'local-health-context',
-            items: [
-              { evidenceId: expect.any(String), content: expect.any(String) },
-            ],
-          });
-          expect(bytes).not.toMatch(
-            /synthetic-health-id|delegation|topics|native-session/,
-          );
+          const { id, challenge } = assertFakeLiveCommonResult(native);
+          if (queued)
+            await assertFakeLiveCommonSuccessor({
+              mode,
+              callId,
+              registration: commonToolsRegistration!,
+              native,
+              finish: finishNative,
+              current: value => {
+                activeChallenge = value;
+              },
+            });
           if (mode === 'stop-in-queue') {
             expect(
               native.retireLiveCommonConversationResult,

@@ -84,7 +84,7 @@ final class RealtimeVoiceSocket: RealtimeSocketPort {
             message.permit?.issued = true
             sending = true
             let (permit, stamp) = message.continuationTiming(observed: observeContinuationSend != nil)
-            task.send(.string(message.text)) { [weak self, weak permit, weak owner = message.permit, wireText = message.text] error in
+            task.send(.string(message.text)) { [weak self, weak permit, weak owner = message.permit, wireText = message.text, final = message.finalResultContinuation, requiresWireReceipt = message.permit?.ticket?.requiresWireReceipt == true] error in
                 let end = stamp.map { _ in DispatchTime.now() }
                 DispatchQueue.main.async {
                     guard let self, self.epoch == current, self.socket === task else { return }
@@ -98,6 +98,8 @@ final class RealtimeVoiceSocket: RealtimeSocketPort {
                             return
                         }
                     }
+                    guard LiveQueuedToolPermit.acceptsReceipt(requiresWireReceipt, owner: owner, final: final, succeeded: error == nil,
+                                                              currentFrame: self.epoch == current && self.socket === task && self.queue.first?.permit === owner && self.queue.first?.text == wireText) else { return }
                     self.sending = false
                     if error != nil {
                         self.transportFailed()

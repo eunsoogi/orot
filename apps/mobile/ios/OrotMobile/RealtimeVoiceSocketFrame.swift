@@ -110,6 +110,10 @@ struct RealtimeSocketWrite {
         self.isFinalContinuation = isFinalContinuation
     }
 
+    var finalResultContinuation: Bool {
+        isFinalContinuation
+    }
+
     /// Only the validated, ticketed final write can start a transport observation.
     func continuationTiming(observed: Bool) -> (LiveQueuedToolPermit?, DispatchTime?) {
         guard isFinalContinuation, let permit, permit.ticket != nil else { return (nil, nil) }

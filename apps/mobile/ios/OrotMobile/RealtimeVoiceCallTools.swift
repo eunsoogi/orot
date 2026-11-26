@@ -1,49 +1,5 @@
 import Foundation
 
-/// Native transports only identifiers and a separately approved JS reply. It never reads
-/// health stores or interprets model arguments as a delegated action or user authorization.
-extension RealtimeVoiceCall {
-    func cancelTools(keepInput: Bool = false) {
-        if let tool = tools.invalidate(keepInput: keepInput), let id {
-            emit("VoiceRealtimeToolCancelled", ["callId": id, "toolCallId": tool])
-        }
-    }
-
-    func receiveTool(_ event: [String: Any]) {
-        guard !paused, ready, let responseID = event["response_id"] as? String,
-              responseID == response, !ignoredResponses.contains(responseID),
-              let toolCallID = event["call_id"] as? String, let name = event["name"] as? String,
-              let arguments = event["arguments"] as? String else { return }
-        tools.receive(responseID: responseID, toolCallID: toolCallID, name: name, arguments: arguments)
-    }
-
-    func completeTools(_ result: [String: Any]?) {
-        guard let result, let responseID = result["id"] as? String else { return }
-        let successful = result["status"] as? String == "completed" && !paused && ready
-        guard let request = tools.complete(responseID, successful: successful), let id else { return }
-        emit("VoiceRealtimeToolCall", ["callId": id, "responseId": request.responseID,
-                                       "toolCallId": request.toolCallID, "inputItemId": request.inputItemID])
-    }
-
-    /// The new tool port accepts only the exact current Live call, plus its separate native grant.
-    func enqueueManagedToolFrames(
-        _ frames: [[String: Any]], callID: String, sessionID: String, socketEpoch: UUID,
-        approvedCurrent: @escaping () -> Bool,
-        ticket: LiveNativeResultDispatchAuthority.Ticket? = nil,
-    ) -> Bool {
-        let owns = { [weak self] in
-            guard let self else { return false }
-            return id == callID && liveSessionID == sessionID && liveSocketEpoch == socketEpoch
-                && token != nil && ready && !paused && foreground() && liveIsCurrent()
-        }
-        let current = { owns() && approvedCurrent() && owns() }
-        if let ticket {
-            return socket.sendTicketedToolFrames(frames, current: current, ticket: ticket)
-        }
-        return socket.sendManagedToolFrames(frames, current: current)
-    }
-}
-
 /// Permit one independently approved local tool result per delegation. Do not
 /// continue an incomplete or ambiguous response; legacy Realtime cannot use this port.
 final class LiveResponsesToolBridge {
@@ -59,6 +15,8 @@ final class LiveResponsesToolBridge {
     private var received: [String: Bool] = [:]
     private var created = false, spent = false
     private var progress = 0
+    private var cycle: UUID?
+    private var emptyTerminal = false
     private var approvalSettled = false, retired = false
     private var cancel: (() -> Void)?
     init(admission: LiveResponsesAdmission, registry: LiveNativeToolRegistry, discard: @escaping () -> Void) {
@@ -87,6 +45,11 @@ final class LiveResponsesToolBridge {
         guard !retired, current(), admission.backendAllowed() else { retire(); return }
         guard self.owner == nil || self.owner == owner else { retire(); return }
         self.owner = owner
+        if envelope["type"] as? String == "response.event", let old = envelope["delegation_id"] as? String,
+           admission.serialV3?.stale(old) == true
+        {
+            return
+        }
         if delegation == nil, envelope["type"] as? String == "session.input_transcript.delta" {
             return
         }
@@ -109,6 +72,9 @@ final class LiveResponsesToolBridge {
             }
             return
         }
+        if admission.serialV3 != nil, received.count >= 4096 {
+            retire(); return
+        }
         received[id] = scopedToolItem
         if envelope["type"] as? String == "session.delegation.created" {
             guard let item = envelope["delegation"] as? [String: Any], item["type"] as? String == "delegation",
@@ -116,6 +82,18 @@ final class LiveResponsesToolBridge {
                   let responseID = item["response_id"] as? String, RealtimeVoiceToolLease.validID(delegationID),
                   RealtimeVoiceToolLease.validID(responseID), let offset = envelope["offset_ms"] as? Int,
                   offset >= 0 else { return }
+            if let serial = admission.serialV3 {
+                switch serial.reserve(owner, delegationID, responseID, offset, emptyTerminal) {
+                case .replay: return
+                case .deny: retire(); return
+                case .allow:
+                    delegation = (delegationID, responseID, offset, LiveManagedToolLatency.start())
+                    pending.removeAll()
+                    cycle = UUID()
+                    created = false; spent = false; approvalSettled = false; emptyTerminal = false; progress = 0
+                    return
+                }
+            }
             if let delegation {
                 if delegation.id != delegationID || delegation.response != responseID {
                     retire()
@@ -128,7 +106,8 @@ final class LiveResponsesToolBridge {
         guard let delegation else { return }
         // New speech can revoke this local operation, never authorize it or cancel server work.
         if envelope["type"] as? String == "session.input_transcript.delta",
-           let start = envelope["start_ms"] as? Int, start > delegation.offset
+           let start = envelope["start_ms"] as? Int, start > delegation.offset,
+           admission.serialV3?.allowsFreshSpeech(emptyTerminal) != true
         {
             retire(); return
         }
@@ -164,7 +143,7 @@ final class LiveResponsesToolBridge {
             }
             // An earlier result's protected source is not re-proved after another
             // independent challenge. Reject a second call before any approval/read.
-            guard pending.isEmpty else { retire(); return }
+            guard pending.isEmpty, admission.serialV3?.rememberFunction(functionID) != false else { retire(); return }
             pending.append(request)
             return
         }
@@ -176,14 +155,19 @@ final class LiveResponsesToolBridge {
             return
         case ("response.completed", "completed") where !pending.isEmpty:
             break
+        case ("response.completed", "completed") where admission.serialV3 != nil && pending.isEmpty:
+            emptyTerminal = true
+            spent = true
+            return
         default:
             return
         }
         spent = true
         LiveManagedToolLatency.finish(.delegationToToolTerminal, since: delegation.timestamp)
         guard pending.allSatisfy(admission.mayRun), current(), admission.backendAllowed() else { retire(); return }
+        let expectedCycle = cycle
         cancel = admission.approve(pending, LiveManagedToolLatency.queuedApproval(admission.observeTiming) { [weak self] granted, timing in
-            guard let self, !retired, !approvalSettled else { return }
+            guard let self, !retired, cycle == expectedCycle, !approvalSettled else { return }
             approvalSettled = true
             cancel = nil
             guard granted, current(), admission.backendAllowed() else { retire(); return }
@@ -230,9 +214,10 @@ final class LiveResponsesToolBridge {
         let request = pending[results.count]
         guard admission.mayRun(request) else { retire(); return }
         timing?.finish()
+        let expectedCycle = cycle
         cancel = admission.execute(request) { [weak self] result in
             DispatchQueue.main.async { [weak self] in
-                guard let self, !retired else { return }
+                guard let self, !retired, cycle == expectedCycle else { return }
                 let currentIndex = results.count
                 guard progress == currentIndex else { return }
                 progress += 1

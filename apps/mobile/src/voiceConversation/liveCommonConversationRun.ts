@@ -11,7 +11,7 @@ type Result = NonNullable<
 type Turn = Pick<
   Graph,
   'workflow' | 'owner' | 'utterance' | 'select' | 'nativeChallengeCurrent'
->;
+> & { readonly queuedCurrent?: () => boolean };
 
 type SettlementResult = Result extends infer Owned
   ? Owned extends { call: infer Receipt }
@@ -33,7 +33,7 @@ export interface LiveCommonConversationPort {
     | undefined
     | {
         remoteCurrent(): boolean;
-        settle(current: () => boolean): Promise<void>;
+        settle(current: () => boolean): Promise<boolean | void>;
       }
   >;
 }
@@ -45,14 +45,20 @@ export function liveCommonConversationRun(
   ownerCurrent: () => boolean,
 ) {
   let id: string | undefined;
+  let active: object | undefined;
   let fromNative: (() => void) | undefined;
   let task: AbortController | undefined;
+  let waiting: AbortController | undefined;
+  let pending: Turn | undefined;
   const admittedDelegations = new Set<string>();
   const retire = () => {
+    active = undefined;
     id = undefined;
     admittedDelegations.clear();
     task?.abort();
     task = undefined;
+    waiting = undefined;
+    pending = undefined;
     const close = fromNative;
     fromNative = undefined;
     close?.();
@@ -65,13 +71,17 @@ export function liveCommonConversationRun(
       if (port?.commonToolsPolicy !== 'common-tools-v3' || !port.current())
         return;
       id = callId;
-      fromNative = port.subscribe(callId, turn => {
+      const attachOwner = {};
+      active = attachOwner;
+      let sessionId: string | undefined;
+      const start = (turn: Turn) => {
         if (
+          active !== attachOwner ||
           id !== callId ||
           !ownerCurrent() ||
           !port.current() ||
           turn.owner.callId !== callId ||
-          task
+          (sessionId !== undefined && sessionId !== turn.owner.sessionId)
         )
           return;
         const key = JSON.stringify([
@@ -80,10 +90,22 @@ export function liveCommonConversationRun(
           turn.owner.responseId,
         ]);
         if (admittedDelegations.has(key)) return;
+        if (task) {
+          if (
+            waiting === task &&
+            !pending &&
+            sessionId === turn.owner.sessionId &&
+            turn.queuedCurrent?.() === true
+          )
+            pending = turn;
+          return;
+        }
+        sessionId = turn.owner.sessionId;
         admittedDelegations.add(key);
         const operation = new AbortController();
         task = operation;
         const current = () =>
+          active === attachOwner &&
           id === callId &&
           task === operation &&
           !operation.signal.aborted &&
@@ -127,14 +149,24 @@ export function liveCommonConversationRun(
             prepared.remoteCurrent() &&
             turn.utterance.current() &&
             current();
-          if (dispatchCurrent()) await prepared.settle(dispatchCurrent);
+          if (!dispatchCurrent()) return false;
+          waiting = operation;
+          return (await prepared.settle(dispatchCurrent)) === true;
         };
-        execute()
-          .catch(() => undefined)
-          .finally(() => {
-            if (task === operation) task = undefined;
-          });
-      });
+        const complete = (delivered: boolean) => {
+          if (active !== attachOwner || task !== operation) return;
+          task = undefined;
+          waiting = undefined;
+          const next = pending;
+          pending = undefined;
+          if (delivered && next?.queuedCurrent?.() === true) start(next);
+        };
+        execute().then(
+          value => complete(value === true),
+          () => complete(false),
+        );
+      };
+      fromNative = port.subscribe(callId, start);
     },
   };
 }
