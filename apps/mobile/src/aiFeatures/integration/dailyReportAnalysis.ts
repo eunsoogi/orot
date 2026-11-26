@@ -1,3 +1,4 @@
+import { isRecordedWorkout } from '../../healthEvidence/healthContext/dailyReportBehaviorHistory';
 import type { DailyReportOutput, DailyReportSourceRecord } from '@orot/domain';
 import type { LocalHealthEvidenceRecord } from '../../healthEvidence/localEvidenceQueries';
 import { dailyReportGuidance } from './dailyReportGuidance';
@@ -62,8 +63,32 @@ export function dailyReportAnalysis(
           ]
         : [claim];
     });
+  // Count distinct validated workout records already in this snapshot. No
+  // step total, historical day, plan, or absence is a workout observation.
+  const workouts = new Map<string, Claim['sourceReferences'][number]>();
+  values.forEach((value, index) => {
+    if (!isRecordedWorkout(value)) return;
+    const source = sources[index];
+    if (source?.source !== value.kind || source.recordId !== value.record.id)
+      throw new Error('Workout source snapshot mismatch.');
+    workouts.set(source.recordId, {
+      source: source.source,
+      recordId: source.recordId,
+    });
+  });
+  const recorded = workouts.size
+    ? [
+        {
+          text: t('dailyReport.activity.recordedWorkout', {
+            count: workouts.size,
+          }),
+          sourceReferences: [...workouts.values()],
+        },
+      ]
+    : [];
   return [
     ...reviewedSection(priority, 'priority'),
+    ...section([...recorded, ...sleep], 'patterns'),
     ...section(
       generated.filter(
         item => item.kind !== 'action' || !reviewed.has(item.text),
@@ -72,7 +97,6 @@ export function dailyReportAnalysis(
     ),
     ...reviewedSection(actions, 'actions'),
     ...section(history, 'history'),
-    ...section(sleep, 'patterns'),
     ...section(dailyReportSynthesis(values, sources, selected), 'patterns'),
     ...section(plans, 'plans'),
   ];

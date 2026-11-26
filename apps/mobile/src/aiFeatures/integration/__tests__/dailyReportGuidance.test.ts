@@ -80,11 +80,8 @@ test('a conflicting severe reading is not silently ignored', () => {
   expect(result[0]?.text).toContain('우선 확인');
   expect(result[0]?.text).not.toContain('어느 기록이 정확한지');
 });
-test('missing workout is not inactivity; partial step sample is never a daily total', () => {
-  const text = guidance(sample('step_count', 8, 'count'))[0]!.text;
-  expect(text).toContain('실제로 운동을 하지 않았다는 뜻은 아니');
-  expect(text).toContain('불편한 증상이나 운동 제한이 없다면');
-  expect(text).not.toContain('운동 부족');
+test('step observations create neither workout-absence claims nor exercise advice', () => {
+  expect(guidance(sample('step_count', 8, 'count'))).toEqual([]);
 });
 test('display names and units are localized while model facts preserve exact stored fields', () => {
   const values = [sample('step_count', 8, 'count')];
@@ -96,7 +93,7 @@ test('display names and units are localized while model facts preserve exact sto
   expect(values[0]?.record).toHaveProperty('value.unit', 'count');
 });
 test('source identity mismatch fails closed', () => {
-  const values = [sample('step_count', 8, 'count')];
+  const values = [sample('blood_pressure_systolic', 145)];
   expect(() => dailyReportGuidance(values, [])).toThrow(
     'Snapshot source mismatch',
   );

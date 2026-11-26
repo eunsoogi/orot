@@ -73,27 +73,8 @@ export function dailyReportGuidance(
         ),
       );
   }
-  const activity = values.flatMap((item, index) =>
-    item.kind === 'health_observation' &&
-    (item.record.concept === 'step_count' || item.record.workout)
-      ? [index]
-      : [],
-  );
-  if (activity.length && !severe.length) {
-    const hasWorkout = activity.some(
-      index =>
-        values[index]?.kind === 'health_observation' &&
-        values[index].record.workout,
-    );
-    result.push(
-      claim(
-        hasWorkout
-          ? t('dailyGuidance.recordedWorkout')
-          : t('dailyGuidance.stepsWithoutWorkout'),
-        activity,
-      ),
-    );
-  }
+  // Steps do not establish exercise coverage. Render activity in the direct
+  // observation projection instead of turning missing workout rows into advice.
   return result;
 }
 
