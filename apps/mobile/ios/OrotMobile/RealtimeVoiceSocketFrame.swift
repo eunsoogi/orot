@@ -159,9 +159,13 @@ struct LiveSocketOwnedState {
 
     mutating func markHandoff(_ write: RealtimeSocketWrite, recording: Bool) {
         write.permit?.issued = true
-        guard recording, let id = write.managedEventID else { return }
+        guard recording, let id = write.managedEventID else {
+            return
+        }
         handedCommands.append((id, write.finalResultContinuation))
-        if handedCommands.count > 16 { handedCommands.removeFirst() }
+        if handedCommands.count > 16 {
+            handedCommands.removeFirst()
+        }
     }
 
     func deliver(_ event: [String: Any], report: ((VoiceSystemCallLifecycle.DiagnosticStage) -> Void)?, to receive: (([String: Any]) -> Void)?) {

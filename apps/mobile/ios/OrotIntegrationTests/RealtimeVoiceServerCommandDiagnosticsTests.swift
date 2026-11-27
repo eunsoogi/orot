@@ -53,7 +53,8 @@ import XCTest
             let stale = try XCTUnwrap(first.receiver)
             socket.close()
             socket.open(model: "gpt-live-1.1", key: "unused-networkless")
-            stale(.success(.data(try JSONSerialization.data(withJSONObject: Self.error(output)))))
+            let stalePayload = try JSONSerialization.data(withJSONObject: Self.error(output))
+            stale(.success(.data(stalePayload)))
             await NetworklessTask.drain()
             XCTAssertEqual(harness.stages.count, reportCount)
             XCTAssertEqual(harness.forwarded.count, 9)
@@ -74,7 +75,9 @@ import XCTest
                 harness.queue(output: next, continuation: UUID().uuidString)
                 try await first.complete()
                 try await first.complete()
-                if index == 1 { boundary = next }
+                if index == 1 {
+                    boundary = next
+                }
                 recent = next
             }
             try await first.input(Self.error(oldest))
@@ -136,19 +139,26 @@ import XCTest
         private var completions: [@Sendable (Error?) -> Void] = []
         private(set) var writes: [String] = []
 
-        func resume() { resumed = true }
+        func resume() {
+            resumed = true
+        }
+
         func send(_ message: URLSessionWebSocketTask.Message, completionHandler: @escaping @Sendable (Error?) -> Void) {
             writes.append(RealtimeVoiceSocket.decodeSocketEvent(message)?["type"] as? String ?? "malformed")
             completions.append(completionHandler)
         }
 
-        func receive(completionHandler: @escaping Receiver) { receiver = completionHandler }
+        func receive(completionHandler: @escaping Receiver) {
+            receiver = completionHandler
+        }
+
         func cancel(with _: URLSessionWebSocketTask.CloseCode, reason _: Data?) {}
 
         func input(_ event: [String: Any]) async throws {
             let callback = try XCTUnwrap(receiver)
             receiver = nil
-            callback(.success(.data(try JSONSerialization.data(withJSONObject: event))))
+            let payload = try JSONSerialization.data(withJSONObject: event)
+            callback(.success(.data(payload)))
             await Self.drain()
         }
 
