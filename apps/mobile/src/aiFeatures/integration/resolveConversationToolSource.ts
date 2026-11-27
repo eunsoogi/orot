@@ -1,3 +1,4 @@
+import { readVerifiedBoundToolSource } from './verifiedBoundToolRead';
 import type { ToolSourceReference } from '@orot/agent-runtime';
 import type { LocalEvidenceReferenceRegistry } from './evidenceRegistry';
 
@@ -13,7 +14,16 @@ export async function resolveConversationToolSource(
       ? scope && registry.toolReferences.findResearch(reference, scope, true)
       : registry.resolveToolReference(reference);
   if (!alias) return undefined;
-  const read = await registry.readSource(alias, signal);
+  const read = await readVerifiedBoundToolSource(
+    registry,
+    alias,
+    signal,
+    reference.sourceKind === 'external_medical' && scope
+      ? 'public-web'
+      : reference.sourceKind === 'personal_record'
+        ? 'personal'
+        : undefined,
+  );
   if (read.status !== 'available') return undefined;
   if (reference.sourceKind !== 'external_medical') return alias;
   return read.document.sourceKind === 'generated_artifact' &&

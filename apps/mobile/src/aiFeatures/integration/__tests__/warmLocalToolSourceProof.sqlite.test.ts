@@ -235,12 +235,12 @@ test.each(['personal', 'public'] as const)(
         source: readSource.mock.calls.length,
         reopenedResult,
       }).toMatchObject({
-        proof: 4,
-        source: 2,
+        proof: 2,
+        source: 1,
         reopenedResult: expect.anything(),
       });
-      expect(proof).toHaveBeenCalledTimes(4);
-      expect(readSource).toHaveBeenCalledTimes(2);
+      expect(proof).toHaveBeenCalledTimes(2);
+      expect(readSource).toHaveBeenCalledTimes(1);
     } finally {
       releaseWriter();
       f.close();

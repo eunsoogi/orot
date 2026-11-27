@@ -36,6 +36,11 @@ export interface StoredConversationToolTurn {
 
 // Only factory-created strict readers may grant batched capture authority.
 const strictReaders = new WeakSet<object>();
+const strictCallReaders = new WeakSet<object>();
+
+export function isOwnedConversationToolCallReader(reader: unknown): boolean {
+  return typeof reader === 'function' && strictCallReaders.has(reader);
+}
 export function isOwnedConversationToolReader(reader: unknown): boolean {
   return typeof reader === 'function' && strictReaders.has(reader);
 }
@@ -212,5 +217,6 @@ export function createConversationToolEventStorage(
     ...boundConversationToolReads(readSnapshot),
   };
   strictReaders.add(storage.readToolTurns);
+  strictCallReaders.add(storage.readToolCall);
   return storage;
 }
