@@ -162,7 +162,7 @@ extension RootNavigationUITests {
         capture(app, "settings-privacy-light")
         try backToSettings(app)
     }
-    /// Keeps the account panel assertion on the synthetic route and its measured return path.
+
     @MainActor
     func testSettingsAccountsLayoutTracksMeasuredPanels() throws {
         let app = XCUIApplication()
