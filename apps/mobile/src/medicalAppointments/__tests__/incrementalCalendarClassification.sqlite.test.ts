@@ -1,3 +1,6 @@
+import { mkdtempSync, rmSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
 import {
   createAppointmentRepository,
   createRecordRepository,
@@ -15,12 +18,17 @@ import {
 } from '../testSupport/incrementalCalendarFixtures';
 
 test('SQLite restart reuses excluded and included recurring occurrences with zero model or consent; edited and new only are sent', async () => {
-  const lane = openSqliteTestDatabase(':memory:');
+  const root = mkdtempSync(join(tmpdir(), 'orot-calendar-cache-reopen-'));
+  const path = join(root, 'calendar.sqlite3');
+  const firstLane = openSqliteTestDatabase(path);
+  let reopened: ReturnType<typeof openSqliteTestDatabase> | undefined;
+  let firstClosed = false;
   try {
-    await runMigrations(lane.database);
-    const records = createRecordRepository(lane.database);
-    const appointment = () =>
-      createAppointmentRepository(records, lane.database);
+    await runMigrations(firstLane.database);
+    const firstRepository = createAppointmentRepository(
+      createRecordRepository(firstLane.database),
+      firstLane.database,
+    );
     const first = record(1);
     const excluded = {
       ...record(2),
@@ -39,19 +47,27 @@ test('SQLite restart reuses excluded and included recurring occurrences with zer
     });
     const completed = await classifyCalendarEventsIncrementally(
       one,
-      appointment().classificationCache,
+      firstRepository.classificationCache,
     );
     expect(completed.status).toBe('complete');
     expect(completed.candidates[1]?.classification).toBe('non_medical');
     expect(decide).toHaveBeenCalledTimes(1);
+    // Discard the first runtime and connection. Only the same SQLite file
+    // carries classification decisions into the next repository and provider.
+    firstLane.close();
+    firstClosed = true;
+    reopened = openSqliteTestDatabase(path);
+    const cache = createAppointmentRepository(
+      createRecordRepository(reopened.database),
+      reopened.database,
+    ).classificationCache!;
+    const afterRestart = provider();
+    const restartedProvider = makeProvider(afterRestart);
     const two = input(original, {
       bridge: native(original),
-      provider: representative,
+      provider: restartedProvider,
     });
-    const repeated = await classifyCalendarEventsIncrementally(
-      two,
-      appointment().classificationCache,
-    );
+    const repeated = await classifyCalendarEventsIncrementally(two, cache);
     expect(repeated).toMatchObject({ status: 'complete', totalBatches: 0 });
     expect(
       repeated.candidates.map(row => [
@@ -63,7 +79,7 @@ test('SQLite restart reuses excluded and included recurring occurrences with zer
       ['non_medical', true],
       ['non_medical', true],
     ]);
-    expect(decide).toHaveBeenCalledTimes(1);
+    expect(afterRestart).not.toHaveBeenCalled();
     expect(two.consent.authorize).not.toHaveBeenCalled();
 
     const edited = {
@@ -84,25 +100,22 @@ test('SQLite restart reuses excluded and included recurring occurrences with zer
     const selected = [excluded, edited, addition];
     const three = input(selected, {
       bridge: native(selected),
-      provider: representative,
+      provider: restartedProvider,
     });
-    const mixed = await classifyCalendarEventsIncrementally(
-      three,
-      appointment().classificationCache,
-    );
+    const mixed = await classifyCalendarEventsIncrementally(three, cache);
     expect(mixed.candidates.map(row => row.event)).toEqual(selected);
     expect(mixed.candidates.map(row => row.reusedClassification)).toEqual([
       true,
       undefined,
       undefined,
     ]);
-    expect(decide).toHaveBeenCalledTimes(2);
-    const sent = JSON.stringify(decide.mock.calls[1]?.[0]);
+    expect(decide).toHaveBeenCalledTimes(1);
+    expect(afterRestart).toHaveBeenCalledTimes(1);
+    const sent = JSON.stringify(afterRestart.mock.calls[0]?.[0]);
     expect(sent).toContain('Changed synthetic event');
     expect(sent).toContain('New synthetic event');
     expect(sent).not.toContain(excluded.calendarEventSnapshot.title);
     expect(sent).not.toContain('private-calendar-id');
-    const cache = appointment().classificationCache!;
     const persisted = await cache.read(
       [key(1), key(2), key(3), key(4)],
       new AbortController().signal,
@@ -110,7 +123,9 @@ test('SQLite restart reuses excluded and included recurring occurrences with zer
     expect(persisted.rows.map(row => row.occurrence)).not.toContain(key(3));
     expect(JSON.stringify(persisted)).not.toContain('Changed synthetic event');
   } finally {
-    lane.close();
+    if (!firstClosed) firstLane.close();
+    reopened?.close();
+    rmSync(root, { recursive: true, force: true });
   }
 });
 
