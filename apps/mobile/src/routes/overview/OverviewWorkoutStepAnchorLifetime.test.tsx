@@ -150,10 +150,7 @@ test.each([
         ).toHaveLength(3);
         // Compare the exact original and successor bridge inputs, excluding the new call ID.
         const args = lane.queryWorkoutPeriodHeartRate.mock.calls.map(
-          ([request]) => {
-            const { callId, ...scope } = request;
-            return scope;
-          },
+          ([request]) => ({ ...request, callId: undefined }),
         );
         expect(args[0]).toEqual(args[1]);
       } else {

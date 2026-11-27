@@ -85,7 +85,7 @@ test.each(['queued-before-begin', 'arrived-during-proof'] as const)(
         () => '2035-01-01T00:00:00.000Z',
       )!;
       // Set the rejection handler before any gate is released.
-      scoped = expect(advance()).rejects.toThrow('unconfirmed native rollback');
+      scoped = advance().catch((error: unknown) => error);
       await schemaSubmitted.wait; // synchronous BEGIN has occurred; proof is already enqueued.
       if (timing === 'queued-before-begin') {
         directHeld.release();
@@ -106,7 +106,11 @@ test.each(['queued-before-begin', 'arrived-during-proof'] as const)(
       const settlement = awaitIndependentReadSettlementResult(owner, 1000);
       schemaHeld.release();
       await Promise.allSettled([foreign]);
-      await scoped;
+      expect(await scoped).toEqual(
+        expect.objectContaining({
+          message: expect.stringContaining('unconfirmed native rollback'),
+        }),
+      );
       await expect(settlement).resolves.toBe('settlement_failed');
       expect(f.events.some(event => event.event === 'ROLLBACK;')).toBe(true);
       expect(
