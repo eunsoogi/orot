@@ -103,8 +103,8 @@ test('failure displays immediately and a user retry does not restart the startup
 test('unmount cancels the pending minimum and never enters the later-ready app', async () => {
   const pending = stagedAppearance();
   load.mockReturnValue(pending.preference);
-  const set = jest.spyOn(global, 'setTimeout');
-  const clear = jest.spyOn(global, 'clearTimeout');
+  const set = jest.spyOn(globalThis, 'setTimeout');
+  const clear = jest.spyOn(globalThis, 'clearTimeout');
   const ui = await render(tree);
   const index = set.mock.calls.findIndex(call => call[1] === 2_000);
   expect(index).toBeGreaterThanOrEqual(0);
