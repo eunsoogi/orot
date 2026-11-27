@@ -17,6 +17,7 @@ import { useRecordingSelection } from '../recording/RecordingSelectionContext';
 import RecordingPlaybackControls from '../recording/RecordingPlaybackControls';
 import RecordingExportPanel from '../recording/RecordingExportPanel';
 import { useRouteRecordingPlayback } from '../recording/useRouteRecordingPlayback';
+import { SavedRecordingDeleteAction } from '../recording/SavedRecordingDeleteAction';
 import { recordingService } from '../recording/recordingService';
 import TranscriptEvidencePanel from '../transcription/TranscriptEvidencePanel';
 import { transcriptEvidenceService } from '../transcription/transcriptEvidenceService';
@@ -29,10 +30,12 @@ export function RecordingReviewRoute({
   reviewService,
   routeKey,
   routeOwner,
+  onBack,
 }: {
   readonly reviewService?: EncounterReviewService;
   readonly routeKey?: string;
   readonly routeOwner?: NavigationRouteOwnership;
+  readonly onBack?: () => void | Promise<boolean>;
 } = {}) {
   const focused = useIsFocused();
   const { selection } = useRecordingSelection();
@@ -43,16 +46,7 @@ export function RecordingReviewRoute({
   const [exportBusy, setExportBusy] = useState(false);
   const [review, setReview] = useState({ busy: false, dirty: false });
   const [autoPlayConsumed, setAutoPlayConsumed] = useState(false);
-  const busy = interaction.busy || exportBusy || review.busy;
-  const dirty = interaction.dirty || review.dirty;
-  useNavigationLeaveStateRegistration({
-    canLeave: !busy,
-    hasUnsavedChanges: dirty,
-    isRecording: false,
-    hasOngoingOperation: busy,
-    revision: Number(busy),
-    inputRevision: Number(dirty),
-  });
+  const [deleteBusy, setDeleteBusy] = useState(false);
   const selectedSource =
     !selection?.recentRouteKey || selection.recentRouteKey === routeKey
       ? selection?.summary.source
@@ -76,6 +70,16 @@ export function RecordingReviewRoute({
     metadata?.status === 'missing' || metadata?.status === 'protected'
       ? undefined
       : selectedSource;
+  const busy = interaction.busy || exportBusy || review.busy || deleteBusy;
+  const dirty = interaction.dirty || review.dirty;
+  useNavigationLeaveStateRegistration({
+    canLeave: !busy,
+    hasUnsavedChanges: dirty,
+    isRecording: false,
+    hasOngoingOperation: busy,
+    revision: Number(busy),
+    inputRevision: Number(dirty),
+  });
   const playback = useRouteRecordingPlayback(
     recordingService,
     source?.id,
@@ -115,6 +119,16 @@ export function RecordingReviewRoute({
         />
       ) : null}
       <View style={styles.page}>
+        {source ? (
+          <AppText
+            style={styles.title}
+            accessibilityRole="header"
+            testID="recording-detail-title"
+          >
+            {source.title ?? t('recording.library.untitled')}
+          </AppText>
+        ) : null}
+
         {metadata?.status === 'unavailable' ? (
           <AppText>{t('recording.detail.refreshUnavailable')}</AppText>
         ) : null}
@@ -136,6 +150,7 @@ export function RecordingReviewRoute({
                   onAutoPlayConsumed={() => setAutoPlayConsumed(true)}
                 />
                 <TranscriptEvidencePanel
+                  key={source.id}
                   savedDetail
                   playSegment={segment =>
                     playback.playRange(
@@ -145,7 +160,7 @@ export function RecordingReviewRoute({
                     )
                   }
                   recordingSourceId={source.id}
-                  deletionBusy={exportBusy || review.busy}
+                  deletionBusy={exportBusy || review.busy || deleteBusy}
                   onInteractionChange={setInteraction}
                   automaticTranscriptionStatus={
                     transcription.state?.sourceId === source.id
@@ -165,21 +180,31 @@ export function RecordingReviewRoute({
                 <EncounterReviewPanel
                   key={source.id}
                   sourceId={source.id}
-                  disabled={interaction.busy || interaction.dirty || exportBusy}
+                  disabled={
+                    interaction.busy ||
+                    interaction.dirty ||
+                    exportBusy ||
+                    deleteBusy
+                  }
                   onInteractionChange={setReview}
                   routeOwner={routeOwner}
                   service={reviewService}
                 />
-                <View
-                  accessible={false}
-                  importantForAccessibility="no"
-                  style={materialLibraryStyles.divider}
-                />
                 <RecordingExportPanel
                   savedDetail
+                  active={focused}
+                  routeOwner={routeOwner}
                   recordingSourceId={source.id}
                   onBusyChange={setExportBusy}
                   actionsDisabled={busy || dirty}
+                />
+                <SavedRecordingDeleteAction
+                  source={source}
+                  active={focused}
+                  actionsDisabled={busy || dirty}
+                  routeOwner={routeOwner}
+                  onBusyChange={setDeleteBusy}
+                  onDeleted={onBack}
                 />
               </View>
             }
@@ -209,4 +234,5 @@ const styles = StyleSheet.create({
     backgroundColor: appColors.background,
   },
   group: { minWidth: 0, gap: 20 },
+  title: { fontSize: 28, fontWeight: '700', color: appColors.primaryText },
 });

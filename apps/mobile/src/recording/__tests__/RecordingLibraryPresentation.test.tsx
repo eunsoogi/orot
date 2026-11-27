@@ -176,7 +176,7 @@ test('starts the newly selected recording when the prior library playback is pen
     372000,
     expect.any(Symbol),
   );
-  expect(screen.getByLabelText('녹음 재생 중…')).toBeTruthy();
+  expect(screen.getByLabelText('재생 중지')).toBeTruthy();
 
   await fireEvent.press(
     screen.getByTestId('recording-playback-list-button-recording-ui-2'),

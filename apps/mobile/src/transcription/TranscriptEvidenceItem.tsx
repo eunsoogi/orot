@@ -12,7 +12,7 @@ interface TranscriptEvidenceItemProps {
   collapsed: boolean;
   busy: boolean;
   playing: boolean;
-  onToggleCollapsed: () => void;
+  onToggleCollapsed?: () => void;
   onPlay: () => Promise<void>;
   onEdit: () => void;
 }
@@ -58,49 +58,56 @@ export default function TranscriptEvidenceItem({
   onPlay,
   onEdit,
 }: TranscriptEvidenceItemProps) {
+  const labels = (
+    <View style={styles.segmentHeaderLabels}>
+      {/* Storage is not clinician verification; saved machine text needs no review chip. */}
+      {segment.reviewState.status !== 'unreviewed' ? (
+        <View style={styles.reviewBadge}>
+          <Text
+            style={styles.reviewBadgeText}
+            testID={`transcript-review-${segment.segmentOrdinal}`}
+          >
+            {reviewLabel(segment)}
+          </Text>
+        </View>
+      ) : null}
+      <Text
+        style={styles.origin}
+        testID={`transcript-origin-${segment.segmentOrdinal}`}
+      >
+        {originLabel(segment)}
+      </Text>
+    </View>
+  );
   return (
     <View
       style={styles.segment}
       testID={`transcript-segment-${segment.segmentOrdinal}`}
     >
       <View style={styles.segmentHeadingRow}>
-        <Pressable
-          accessibilityLabel={
-            collapsed
-              ? t('recording.transcript.expandSegment')
-              : t('recording.transcript.collapseSegment')
-          }
-          accessibilityRole="button"
-          accessibilityState={{ expanded: !collapsed }}
-          onPress={onToggleCollapsed}
-          style={styles.segmentHeader}
-          testID={`transcript-segment-toggle-${segment.segmentOrdinal}`}
-        >
-          <View style={styles.segmentHeaderLabels}>
-            {/* Storage is not clinician verification; saved machine text needs no review chip. */}
-            {segment.reviewState.status !== 'unreviewed' ? (
-              <View style={styles.reviewBadge}>
-                <Text
-                  style={styles.reviewBadgeText}
-                  testID={`transcript-review-${segment.segmentOrdinal}`}
-                >
-                  {reviewLabel(segment)}
-                </Text>
-              </View>
-            ) : null}
-            <Text
-              style={styles.origin}
-              testID={`transcript-origin-${segment.segmentOrdinal}`}
-            >
-              {originLabel(segment)}
-            </Text>
-          </View>
-          <AppSymbol
-            name={collapsed ? 'chevron.down' : 'chevron.up'}
-            size={18}
-            color={appColors.secondary}
-          />
-        </Pressable>
+        {onToggleCollapsed ? (
+          <Pressable
+            accessibilityLabel={
+              collapsed
+                ? t('recording.transcript.expandSegment')
+                : t('recording.transcript.collapseSegment')
+            }
+            accessibilityRole="button"
+            accessibilityState={{ expanded: !collapsed }}
+            onPress={onToggleCollapsed}
+            style={styles.segmentHeader}
+            testID={`transcript-segment-toggle-${segment.segmentOrdinal}`}
+          >
+            {labels}
+            <AppSymbol
+              name={collapsed ? 'chevron.down' : 'chevron.up'}
+              size={18}
+              color={appColors.secondary}
+            />
+          </Pressable>
+        ) : (
+          <View style={styles.segmentHeader}>{labels}</View>
+        )}
         <Pressable
           accessibilityLabel={t('recording.transcript.edit')}
           accessibilityRole="button"

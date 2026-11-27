@@ -7,6 +7,7 @@ final class AVAudioPlayer {
     var numberOfLoops = 0
     var delegate: AnyObject?
     var stops = 0
+    var isPlaying = true
     func stop() {
         stops += 1; currentTime = 0
     }
@@ -24,6 +25,10 @@ public final class RecordingModule {
     var deactivations = 0
     func deactivateAudioSession() {
         deactivations += 1
+    }
+
+    func releasePlaybackAudio() {
+        deactivateAudioSession()
     }
 
     func emitPlaybackState() {
@@ -54,6 +59,22 @@ enum RecordingPlaybackCompletionHostRegression {
         check(player.stops == 1 && stopped.emissions == 1 && stopped.deactivations == 1,
               "Late duplicate completion cannot repeat settlement or cleanup")
         #if !BASELINE
+            let seeking = RecordingModule()
+            seeking.playbackResult = ["seekID": "live", "startMs": 0, "endMs": 2585, "actualStartMs": 0]
+            let owned = seeking.playbackPlayer!
+            check(!seeking.seekCurrentPlayback("other", seekID: "live", position: 500), "Foreign recording cannot seek")
+            check(!seeking.seekCurrentPlayback("saved", seekID: "old", position: 500), "Old player cannot seek replacement")
+            check(!seeking.seekCurrentPlayback("saved", seekID: "live", position: .infinity), "Invalid offset cannot seek")
+            check(!seeking.seekCurrentPlayback("saved", seekID: "live", position: 2586), "Out-of-range seek is denied")
+            check(seeking.seekCurrentPlayback("saved", seekID: "live", position: 500) &&
+                owned.currentTime == 0.5 && seeking.emissions == 1, "Owned seek changes only the active clock")
+            check(seeking.seekCurrentPlayback("saved", seekID: "live", position: 2585) &&
+                owned.currentTime < owned.duration, "Seek endpoint preserves natural completion")
+            owned.isPlaying = false
+            check(!seeking.seekCurrentPlayback("saved", seekID: "live", position: 500), "Inactive player cannot seek")
+            seeking.playbackResolve = { receipt = $0 as? [String: Any] }
+            seeking.stopPlayback()
+            check(receipt?["seekID"] == nil && receipt?["completion"] as? String == "stopped", "Stop retains terminal reason without exposing seek identity")
             let natural = RecordingModule()
             natural.playbackResolve = { receipt = $0 as? [String: Any] }
             natural.stopPlayback(completed: true)

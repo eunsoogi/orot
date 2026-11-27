@@ -174,6 +174,7 @@ export function AppRouteContent({
     case 'recording-review':
       return (
         <RecordingReviewRoute
+          onBack={actions.onBack}
           routeKey={actions.route.key}
           routeOwner={actions.ownership}
         />

@@ -52,13 +52,14 @@ test('opens saved recordings with review and export in the same detail flow and 
   await fireEvent.press(
     await screen.findByTestId('recording-details-' + savedSource.id),
   );
-  expect(await screen.findByRole('header', { name: '전사 검토' })).toBeTruthy();
+  expect(
+    (await screen.findByTestId('recording-detail-transcript-toggle')).props
+      .accessibilityState,
+  ).toMatchObject({ expanded: false });
   expect(screen.getByTestId('recording-export-panel')).toBeTruthy();
   expect(screen.queryByTestId('recording-open-export')).toBeNull();
-  expect(
-    await screen.findByRole('header', { name: '녹음 내보내기' }),
-  ).toBeTruthy();
-  expect(screen.getByTestId('recording-export-audio')).toBeTruthy();
+  expect(await screen.findByTestId('recording-export-menu')).toBeEnabled();
+  expect(screen.queryByTestId('recording-export-audio')).toBeNull();
   for (const marker of ['recording-library-panel', 'records-title']) {
     await waitFor(() =>
       expect(screen.getByTestId('navigation-back')).toBeEnabled(),

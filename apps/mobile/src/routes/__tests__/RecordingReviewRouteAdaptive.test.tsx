@@ -47,7 +47,10 @@ jest.mock('../../navigation', () => ({
 jest.mock('../../recording/RecordingSelectionContext', () => ({
   useRecordingSelection: () => ({
     selection: {
-      summary: { source: { id: 'recording-a' }, durationMs: 3000 },
+      summary: {
+        source: { id: 'recording-a', title: 'Synthetic recording' },
+        durationMs: 3000,
+      },
       autoPlay: false,
     },
   }),
@@ -160,7 +163,20 @@ async function setMeasuredHostWidth(width: number): Promise<void> {
 /** Reflow must keep the recording transcript and encounter review drafts in their mounted route panels. */
 test('reflows source and review panels without losing edits, selection, or request ownership', async () => {
   await render(<RecordingReviewRoute reviewService={encounterReviewService} />);
-  await screen.findByTestId('transcript-text-0');
+  const heading = screen.getByTestId('recording-detail-title');
+  expect(heading).toHaveTextContent('Synthetic recording');
+  const disclosure = await screen.findByTestId(
+    'recording-detail-transcript-toggle',
+  );
+  expect(disclosure).toHaveTextContent('전사');
+  expect(disclosure.props.accessibilityState.expanded).toBe(false);
+  expect(screen.queryByTestId('transcript-text-0')).toBeNull();
+  await fireEvent.press(disclosure);
+  expect(await screen.findByTestId('transcript-text-0')).toBeVisible();
+  expect(screen.queryByTestId('transcript-segment-toggle-0')).toBeNull();
+  expect(screen.queryByTestId('transcript-summary')).toBeNull();
+  expect(screen.getByTestId('transcript-play-0')).toBeEnabled();
+  expect(screen.getByTestId('transcript-range-0')).toBeVisible();
   await screen.findByTestId('encounter-save');
 
   expect(layoutAxis()).toBe('column');
