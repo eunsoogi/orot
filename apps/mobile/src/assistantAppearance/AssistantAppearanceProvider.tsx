@@ -8,7 +8,8 @@ import {
   useState,
 } from 'react';
 import type { ComponentType, ReactNode } from 'react';
-import { ActivityIndicator, View } from 'react-native';
+import { View } from 'react-native';
+import { StartupLoadingScreen } from '../appEntry/StartupLoadingScreen';
 import { AppButton } from '../layout/AppButton';
 import { AppText } from '../layout/AppText';
 import SafeAreaLayout from '../layout/SafeAreaLayout';
@@ -86,14 +87,7 @@ export function AssistantAppearanceProvider({
       visibleValue ? { value: visibleValue, ready, canEnter, edit } : null,
     [visibleValue, ready, canEnter, edit],
   );
-  if (state.status === 'loading')
-    return (
-      <SafeAreaLayout>
-        <ActivityIndicator
-          accessibilityLabel={t('assistantAppearance.loading')}
-        />
-      </SafeAreaLayout>
-    );
+  if (state.status === 'loading') return <StartupLoadingScreen />;
   if (state.status === 'error')
     return (
       <SafeAreaLayout>
