@@ -206,7 +206,7 @@ export async function directPhotoComposerFixture({
       </DirectPhotoPresentationScope>
     );
   }
-  const view = <CurrentView />;
+  const renderView = () => <CurrentView />;
   return {
     store,
     createOptions,
@@ -214,9 +214,13 @@ export async function directPhotoComposerFixture({
     optedIn: permission?.enabled === true,
     memoryCapture,
     memorySave,
-    close: f.close,
+    close() {
+      store.dispose();
+      f.close();
+    },
     session,
-    view,
+    view: renderView(),
+    renderView,
     start,
     ordinary,
     cancel,
