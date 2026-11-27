@@ -92,3 +92,87 @@ test.each(['unchanged', 'changed', 'locked'] as const)(
     }
   },
 );
+
+test.each(['settles', 'locks'] as const)(
+  'retains its initial owner when another guarded writer enters during foreground proof: %s',
+  async outcome => {
+    const lane = await setup();
+    const appState = AppState.currentState;
+    AppState.currentState = 'active';
+    const original = conversationExecutionNative();
+    if (!original) throw new Error('Missing native fixture.');
+    const gates = new Map<number, (value: boolean) => void>();
+    let probes = 0;
+    jest.mocked(conversationExecutionNative).mockReturnValue({
+      ...original,
+      protectedDataAvailable() {
+        const sequence = ++probes;
+        if (sequence === 2 || sequence === 3) {
+          return new Promise<boolean>(resolve => {
+            gates.set(sequence, resolve);
+          });
+        }
+        return original.protectedDataAvailable();
+      },
+    });
+    let writer = await lane.holdStartupWriter();
+    try {
+      const ui = await render(
+        <OverviewWorkoutHeartRateCard
+          active
+          selectionEpoch={1}
+          width={undefined}
+        />,
+      );
+      try {
+        const result = () =>
+          screen.getByTestId('overview-workout-heart-rate-result');
+        await act(async () => {
+          await writer.release();
+        });
+        await waitFor(() => expect(gates.has(2)).toBe(true));
+        await act(async () => {
+          writer = await lane.holdStartupWriter();
+          lane.transition('inactive');
+          lane.transition('active');
+          gates.get(2)?.(true);
+        });
+        expect(result()).toHaveTextContent(t('healthRecords.loading'));
+        expect(lane.queryWorkoutPeriodHeartRate).not.toHaveBeenCalled();
+        await act(async () => {
+          await writer.release();
+        });
+        await waitFor(() => expect(gates.has(3)).toBe(true));
+        await act(async () => {
+          writer = await lane.holdStartupWriter();
+          gates.get(3)?.(true);
+          if (outcome === 'locks') lane.revoke();
+        });
+        expect(lane.queryWorkoutPeriodHeartRate).not.toHaveBeenCalled();
+        if (outcome === 'settles')
+          expect(result()).toHaveTextContent(t('healthRecords.loading'));
+        await act(async () => {
+          await writer.release();
+        });
+        await waitFor(() =>
+          expect(result()).toHaveTextContent(
+            outcome === 'settles'
+              ? '120 BPM'
+              : t('healthRecords.workoutHeartRate.periodUnavailable'),
+          ),
+        );
+        expect(lane.queryWorkoutPeriodHeartRate).toHaveBeenCalledTimes(
+          outcome === 'settles' ? 1 : 0,
+        );
+        expect(lane.requestReadAuthorizations).not.toHaveBeenCalled();
+      } finally {
+        for (const release of gates.values()) release(false);
+        await ui.unmount();
+      }
+    } finally {
+      await writer.release();
+      AppState.currentState = appState;
+      lane.close();
+    }
+  },
+);

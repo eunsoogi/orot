@@ -117,23 +117,22 @@ export function useOverviewWorkoutPeriodHeartRate(
         );
         if (!current(target) || (previous && database !== previous.database))
           return;
-        target.epoch = acquireIndependentReadEpoch(database);
         const { signal } = target.abort;
         const awaitWriter = () =>
           awaitIndependentReadSettlement(database, undefined, signal);
-        if (!target.epoch) {
-          if (
-            !(await awaitWriter()) ||
-            !(await confirm(target)) ||
-            !storage.isCurrentLocalAgentMemoryDatabase(database)
-          )
-            return trace.report('epoch', 'failed');
-          target.epoch = acquireIndependentReadEpoch(database);
-        }
         const ownsScope = () =>
           current(target) &&
           currentWindow() &&
           storage.isCurrentLocalAgentMemoryDatabase(database);
+        // A different writer can enter while the last settlement is being
+        // re-proved. An absent epoch is not a failed workout read: wait on
+        // that writer's own settlement without retiring this route owner.
+        while (ownsScope()) {
+          target.epoch = acquireIndependentReadEpoch(database);
+          if (target.epoch) break;
+          if (!(await awaitWriter()) || !(await confirm(target)))
+            return trace.report('epoch', 'failed');
+        }
         const admitted = () => ownsScope() && target.epoch?.current() === true;
         target.usable = admitted;
         let observedCohort: Parameters<typeof cohortFence.admit>[0] | undefined;
