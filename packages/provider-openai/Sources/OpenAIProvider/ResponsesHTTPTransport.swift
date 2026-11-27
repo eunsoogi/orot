@@ -144,7 +144,6 @@ final class DirectPhotoNoRedirectDelegate: NSObject, URLSessionTaskDelegate, @un
     }
 }
 
-
 /// Refuse redirect, authentication resend, and body-stream re-creation. Neither
 /// a refusal nor a transport error causes the app to start another request.
 final class ProtectedEncounterHTTPDelegate: NSObject, URLSessionTaskDelegate, @unchecked Sendable {

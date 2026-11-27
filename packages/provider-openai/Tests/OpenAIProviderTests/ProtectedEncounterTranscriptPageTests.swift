@@ -26,7 +26,7 @@ final class ProtectedEncounterTranscriptPageTests: XCTestCase {
         XCTAssertThrowsError(try ProtectedEncounterTranscriptPage(request: web, accountID: account, accountSubject: subject, selectedModel: model))
     }
 
-    func testRedirectCallbackNeverSuppliesAReplayRequestAndCannotReplaceBodyStream() {
+    func testRedirectCallbackNeverSuppliesAReplayRequestAndCannotReplaceBodyStream() throws {
         let transport = ProtectedEncounterHTTPDelegate()
         let session = URLSession(configuration: .ephemeral)
         defer { session.invalidateAndCancel() }
@@ -34,10 +34,11 @@ final class ProtectedEncounterTranscriptPageTests: XCTestCase {
         var request = URLRequest(url: endpoint)
         request.httpMethod = "POST"
         request.httpBody = Data("Synthetic page".utf8)
+        let other = try XCTUnwrap(URL(string: "https://different.invalid/v1/responses"))
         for status in [301, 302, 303, 307, 308] {
-            for url in [endpoint, URL(string: "https://different.invalid/v1/responses")!] {
+            for url in [endpoint, other] {
                 let task = session.dataTask(with: request) // never resumed
-                let response = HTTPURLResponse(url: endpoint, statusCode: status, httpVersion: "HTTP/1.1", headerFields: ["Location": url.absoluteString])!
+                let response = try XCTUnwrap(HTTPURLResponse(url: endpoint, statusCode: status, httpVersion: "HTTP/1.1", headerFields: ["Location": url.absoluteString]))
                 var destination = request
                 destination.url = url
                 transport.urlSession(session, task: task, willPerformHTTPRedirection: response, newRequest: destination) { replay in
@@ -52,7 +53,7 @@ final class ProtectedEncounterTranscriptPageTests: XCTestCase {
     }
 
     func testProtectedTransportRejectsDifferentEndpointBeforeCreatingTask() async throws {
-        let other = URL(string: "https://different.invalid/v1/responses")!
+        let other = try XCTUnwrap(URL(string: "https://different.invalid/v1/responses"))
         var request = URLRequest(url: other)
         request.httpMethod = "POST"
         request.httpBody = Data("Synthetic page".utf8)
