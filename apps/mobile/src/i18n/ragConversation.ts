@@ -6,6 +6,8 @@ import { voiceConversationKo } from './voiceConversationKo';
 
 /** Korean catalog entries for the grounded local-record conversation screen. */
 export const ragConversationKo = {
+  'ragConversation.a2ui.filterChoices': '{label} 검색',
+  'ragConversation.a2ui.noMatchingChoice': '일치하는 선택지가 없어요.',
   'ragConversation.a2ui.chooseDate': '날짜 선택',
   'ragConversation.a2ui.confirmDate': '이 날짜 선택',
   'ragConversation.a2ui.chooseTime': '시간 선택',

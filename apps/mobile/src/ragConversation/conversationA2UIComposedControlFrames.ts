@@ -1,7 +1,8 @@
+import { parseConversationA2UIChoiceControl } from './conversationA2UIChoiceControlFrames';
 import type { ComposedControl } from './conversationA2UIComposedControlState';
 import { canonicalConversationDraftDate } from './canonicalConversationDraftDate';
 import { draftA2UISurfaceId } from './conversationA2UIPresentation';
-import { conversationA2UIFrameLimit, maxNodes } from './conversationA2UIWire';
+import { conversationA2UIFrameLimit } from './conversationA2UIWire';
 import { binding, fail, id, keys, object } from './conversationA2UIWireValues';
 const kinds = new Set(['CheckBox', 'ChoicePicker', 'TextField']);
 
@@ -27,6 +28,7 @@ function controlFor(
   value: Record<string, unknown>,
   timeControls: boolean,
   multiline: boolean,
+  filterable: boolean,
 ): ComposedControl {
   const base = ['id', 'component', 'label', 'value'];
   const caption = label(value.label);
@@ -93,33 +95,14 @@ function controlFor(
       if (!min || !max || min >= max) fail();
       return { kind: 'date', label: caption, min, max };
     }
-    case 'ChoicePicker': {
-      keys(value, [...base, 'variant', 'options']);
-      if (
-        (value.variant !== undefined &&
-          value.variant !== 'mutuallyExclusive' &&
-          value.variant !== 'multipleSelection') ||
-        !Array.isArray(value.options) ||
-        value.options.length === 0 ||
-        value.options.length > maxNodes
-      )
-        fail();
-      const seen = new Set<string>();
-      const options = value.options.map((raw: unknown) => {
-        const option = object(raw);
-        keys(option, ['label', 'value']);
-        const token = label(option.value);
-        if (seen.has(token)) fail();
-        seen.add(token);
-        return { label: label(option.label), value: token };
-      });
-      return {
-        kind: 'choice',
-        label: caption,
-        multiple: value.variant === 'multipleSelection',
-        options,
-      };
-    }
+    case 'ChoicePicker':
+      return parseConversationA2UIChoiceControl(
+        value,
+        base,
+        caption,
+        label,
+        filterable,
+      );
     default:
       return fail();
   }
@@ -134,6 +117,7 @@ export function projectConversationA2UIComposedControls(
   dateControls = false,
   timeControls = false,
   multiline = false,
+  filterable = false,
 ) {
   if (
     !Array.isArray(raw) ||
@@ -184,7 +168,7 @@ export function projectConversationA2UIComposedControls(
           return node;
         }
         const path = pathFor(node.value);
-        const control = controlFor(node, timeControls, multiline);
+        const control = controlFor(node, timeControls, multiline, filterable);
         fields.set(componentId, { path, control });
         return { id: componentId, component: 'Divider' };
       });
