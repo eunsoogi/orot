@@ -1,5 +1,4 @@
 import '../agent/polyfills';
-import { requireLiveCheckpointSource } from '@orot/storage';
 import type {
   EncounterApproval,
   EncounterPending,
@@ -16,7 +15,10 @@ import {
   encounterReadOnlyModel,
 } from '../agent/encounter/modelComposition';
 import { resolveSelectedAiProvider } from '../aiFeatures/integration/provider';
-import { runLocalEncounterProcessing } from '../agent/encounter/workflow';
+import {
+  runFreshShortEncounterProcessing,
+  runLocalEncounterProcessing,
+} from '../agent/encounter/workflow';
 import {
   EncounterTranscriptEmpty,
   EncounterTranscriptTooLong,
@@ -28,9 +30,12 @@ import { createEncounterStartDiagnostics } from './startDiagnostics';
 import { createEncounterStartAdmission } from './startAdmission';
 import { runWithEncounterNativeAdmission } from './runNativeAdmission';
 import { createProtectedEncounterRestore } from './protectedEncounterRestore';
-import { openEncounterReviewSessions } from './openSessions';
+import {
+  openEncounterReviewSessions,
+  requireCurrentEncounterRecording,
+} from './openSessions';
 import { createLongEncounterReview } from './longEncounterReview';
-/** Known-source discovery precedes graph invocation; missing checkpoints must never initiate extraction on restore. */
+// Missing checkpoints must never initiate extraction on restore.
 async function readSessionResult(
   sourceId: string,
   signal: AbortSignal,
@@ -40,15 +45,7 @@ async function readSessionResult(
   diagnostics?.stage('source_lookup');
   const repository = await openLocalStorage();
   if (signal.aborted) return { status: 'cancelled' };
-  await repository.transaction(async (writer, sql) => {
-    if (!sql) throw new Error('Canonical storage required.');
-    await requireLiveCheckpointSource(sql, sourceId);
-    if (
-      (await writer.get('source_record', sourceId))?.sourceKind !==
-      'audio_recording'
-    )
-      throw new Error('Recording source unavailable.');
-  });
+  await requireCurrentEncounterRecording(repository, sourceId);
   if (signal.aborted) return { status: 'cancelled' };
   diagnostics?.stage('session_read');
   const { storage, discovery } = await openEncounterReviewSessions(sourceId);
@@ -124,7 +121,6 @@ async function resume(
     return { status: signal.aborted ? 'cancelled' : 'unavailable' };
   }
 }
-/** Production composition shares the selected model and consent UI, while approvals remain local explicit gestures. */
 export function createEncounterReviewService(
   resolveSelected = resolveSelectedAiProvider,
   observations?: ReviewDiagnostics,
@@ -223,16 +219,20 @@ export function createEncounterReviewService(
             admission.consent,
           );
           diagnostics?.stage('graph_setup');
-          const result = await runLocalEncounterProcessing({
-            sourceId,
-            threadId: session.threadId,
-            expectedTranscript,
-            model,
-            signal: executionSignal,
-            onDiagnostic: diagnostics?.capture,
-          });
+          const result = await runFreshShortEncounterProcessing(
+            {
+              sourceId,
+              threadId: session.threadId,
+              expectedTranscript,
+              model,
+              signal: executionSignal,
+              onDiagnostic: diagnostics?.capture,
+            },
+            repo,
+            confirm,
+          );
           if (signal.aborted) return { status: 'cancelled' };
-          if (!(await confirm())) return { status: 'unavailable' };
+          if (!result) return { status: 'unavailable' };
           diagnostics?.stage('session_readback');
           if ((await discovery.read())?.threadId !== session.threadId) {
             diagnostics?.unavailable('session_readback');

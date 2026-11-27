@@ -70,97 +70,129 @@ const stages = () =>
     .mocked(providerDiagnostic)
     .mock.calls.filter(([, stage]) => stage.startsWith('encounter_review_'));
 
-test('distinguishes selected model, native protection and invalid evidence on the shipping Start path', async () => {
-  jest.mocked(providerDiagnostic).mockClear();
-  const service = createEncounterReviewService();
-  const start = () =>
-    service.start(sourceId, consent, new AbortController().signal);
-  jest
-    .mocked(resolveSelectedAiProvider)
-    .mockResolvedValueOnce({ status: 'unavailable' });
-  expect(await start()).toEqual({ status: 'unavailable' });
-  expect(stages()).toEqual([
-    ['storage', 'encounter_review_selection', 'unavailable'],
-  ]);
+test.each(['current', 'locked', 'revised'])(
+  'reports rejected evidence only while the selected source stays current: %s',
+  async state => {
+    let protectedAvailable = true;
+    let correction: Promise<unknown> | undefined;
+    jest
+      .mocked(providerDiagnostic)
+      .mockClear()
+      .mockImplementation((_provider, stage, outcome) => {
+        if (
+          stage !== 'encounter_review_extraction' ||
+          outcome !== 'invalid_output'
+        )
+          return;
+        if (state === 'locked') protectedAvailable = false;
+        if (state === 'revised')
+          correction = fixture
+            .repository()
+            .transcripts.correct(
+              sourceId + ':segment:r1',
+              'Corrected synthetic statement.',
+              '2035-01-02T00:00:12Z',
+            );
+      });
+    const service = createEncounterReviewService();
+    const start = () =>
+      service.start(sourceId, consent, new AbortController().signal);
+    jest
+      .mocked(resolveSelectedAiProvider)
+      .mockResolvedValueOnce({ status: 'unavailable' });
+    expect(await start()).toEqual({ status: 'unavailable' });
+    expect(stages()).toEqual([
+      ['storage', 'encounter_review_selection', 'unavailable'],
+    ]);
 
-  const generate = jest.fn(async () =>
-    providerSuccess({
-      text: JSON.stringify({
-        type: 'result',
-        value: {
-          candidates: [
-            {
-              kind: 'plan',
-              text: '합성 계획',
-              speaker: 'unknown',
-              evidence: [
-                {
-                  segmentId: sourceId + ':segment:r1',
-                  startOffset: 0,
-                  endOffset: 1,
-                  quote: '불일치',
-                },
-              ],
-            },
-          ],
-        },
-        citations: [sourceId + ':segment:r1'],
+    const generate = jest.fn(async () =>
+      providerSuccess({
+        text: JSON.stringify({
+          type: 'result',
+          value: {
+            candidates: [
+              {
+                kind: 'plan',
+                text: '합성 계획',
+                speaker: 'unknown',
+                evidence: [
+                  {
+                    segmentId: sourceId + ':segment:r1',
+                    startOffset: 0,
+                    endOffset: 1,
+                    quote: '불일치',
+                  },
+                ],
+              },
+            ],
+          },
+          citations: [sourceId + ':segment:r1'],
+        }),
+        toolCalls: [],
+        finishReason: 'complete' as const,
       }),
-      toolCalls: [],
-      finishReason: 'complete' as const,
-    }),
-  );
-  const provider = {
-    id: 'synthetic-encounter',
-    kind: 'language-model' as const,
-    displayName: 'Synthetic encounter',
-    capabilities: {
-      inputTypes: ['text' as const],
-      streaming: false,
-      structuredOutput: false,
-      toolCalling: false,
-    },
-    generate,
-  };
-  jest.mocked(resolveSelectedAiProvider).mockResolvedValue({
-    status: 'ready',
-    selection: { providerId: provider.id, modelId: 'synthetic' },
-    option: {
+    );
+    const provider = {
+      id: 'synthetic-encounter',
+      kind: 'language-model' as const,
+      displayName: 'Synthetic encounter',
+      capabilities: {
+        inputTypes: ['text' as const],
+        streaming: false,
+        structuredOutput: false,
+        toolCalling: false,
+      },
+      generate,
+    };
+    jest.mocked(resolveSelectedAiProvider).mockResolvedValue({
+      status: 'ready',
+      selection: { providerId: provider.id, modelId: 'synthetic' },
+      option: {
+        provider,
+        modelId: 'synthetic',
+        displayName: 'Synthetic encounter',
+        privacyBoundary: 'on-device',
+        availability: { status: 'available' },
+      },
       provider,
       modelId: 'synthetic',
-      displayName: 'Synthetic encounter',
-      privacyBoundary: 'on-device',
-      availability: { status: 'available' },
-    },
-    provider,
-    modelId: 'synthetic',
-    recipient: 'on-device',
-    remoteProcessing: false,
-    onDeviceSelectionWitness: {
-      isCurrent: () => true,
+      recipient: 'on-device',
+      remoteProcessing: false,
+      onDeviceSelectionWitness: {
+        isCurrent: () => true,
+        subscribe: () => () => {},
+      },
+    });
+    jest.mocked(conversationExecutionNative).mockReturnValue({
+      bridgeAvailable: true,
+      currentPhase: () => 'active',
+      begin: async () => true,
+      end: () => {},
+      isActive: async () => true,
+      protectedDataAvailable: jest
+        .fn(async () => {
+          await correction;
+          return protectedAvailable;
+        })
+        .mockResolvedValueOnce(false),
       subscribe: () => () => {},
-    },
-  });
-  jest.mocked(conversationExecutionNative).mockReturnValue({
-    bridgeAvailable: true,
-    currentPhase: () => 'active',
-    begin: async () => true,
-    end: () => {},
-    isActive: async () => true,
-    protectedDataAvailable: jest
-      .fn(async () => true)
-      .mockResolvedValueOnce(false),
-    subscribe: () => () => {},
-  });
-  expect(await start()).toEqual({ status: 'unavailable' });
-  expect(generate).not.toHaveBeenCalled();
-  expect(await start()).toEqual({ status: 'unavailable' });
-  expect(generate).toHaveBeenCalled();
-  expect(stages()).toEqual([
-    ['storage', 'encounter_review_selection', 'unavailable'],
-    ['storage', 'encounter_review_native_admission', 'unavailable'],
-    ['storage', 'encounter_review_extraction', 'invalid_output'],
-  ]);
-  expect(await fixture.rows()).toEqual([]);
-  expect(consent.authorize).not.toHaveBeenCalled();
-});
+    });
+    expect(await start()).toEqual({ status: 'unavailable' });
+    expect(generate).not.toHaveBeenCalled();
+    expect(await start()).toEqual({
+      status: state === 'current' ? 'invalid-candidates' : 'unavailable',
+    });
+    expect(generate).toHaveBeenCalled();
+    expect(Boolean(correction)).toBe(state === 'revised');
+    expect(stages()).toEqual([
+      ['storage', 'encounter_review_selection', 'unavailable'],
+      ['storage', 'encounter_review_native_admission', 'unavailable'],
+      ['storage', 'encounter_review_extraction', 'invalid_output'],
+      ...(state === 'locked'
+        ? [['storage', 'encounter_review_native_admission', 'unavailable']]
+        : []),
+    ]);
+    expect(await fixture.rows()).toEqual([]);
+    expect(consent.authorize).not.toHaveBeenCalled();
+  },
+);

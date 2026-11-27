@@ -18,7 +18,10 @@ import { readEncounterTranscript } from './transcript';
 import { SqlCipherAgentMemoryStorage } from '../../storage/agentMemoryStorage';
 import { persistEncounterApproval } from './persistence';
 import { encounterConflicts } from './conflicts';
-import { extractEncounterCandidates } from './extraction';
+import {
+  extractEncounterCandidates,
+  InvalidEncounterCandidates,
+} from './extraction';
 import type { EncounterModelOptions } from './extraction';
 import type { RecordRepository } from '@orot/storage';
 
@@ -29,6 +32,7 @@ export function createEncounterGraphPort(
   requireCurrentSession = false,
   onDiagnostic?: EncounterGraphOptions['onDiagnostic'],
   expectedTranscript?: EncounterTranscript,
+  onRejectedCandidates?: () => void,
 ): EncounterGraphPort {
   const loadCurrent: EncounterGraphPort['load'] = async (sourceId, signal) => {
     requireEncounterActive(signal);
@@ -53,16 +57,24 @@ export function createEncounterGraphPort(
         throw new Error('The selected transcript changed before extraction.');
       return transcript;
     },
-    extract: (transcript, signal) =>
-      extractEncounterCandidates({
-        transcript,
-        model,
-        signal,
-        onDiagnostic,
-        isCurrent: async () =>
-          encounterCanonical(await loadCurrent(transcript.sourceId, signal)) ===
-          encounterCanonical(transcript),
-      }),
+    async extract(transcript, signal) {
+      try {
+        return await extractEncounterCandidates({
+          transcript,
+          model,
+          signal,
+          onDiagnostic,
+          isCurrent: async () =>
+            encounterCanonical(
+              await loadCurrent(transcript.sourceId, signal),
+            ) === encounterCanonical(transcript),
+        });
+      } catch (error) {
+        if (error instanceof InvalidEncounterCandidates && !signal.aborted)
+          onRejectedCandidates?.();
+        throw error;
+      }
+    },
     conflicts: async (candidates, signal) => {
       requireEncounterActive(signal);
       const result = await encounterConflicts(repository, candidates);
@@ -90,12 +102,13 @@ export async function runLocalEncounterProcessing(input: {
   requireCurrentReviewSession?: boolean;
   expectedTranscript?: EncounterTranscript;
   onDiagnostic?: EncounterGraphOptions['onDiagnostic'];
+  onRejectedCandidates?: () => void;
 }) {
   if (input.signal?.aborted) return { status: 'cancelled' as const };
   const database = await openLocalAgentMemoryDatabase();
   // Open the existing marker owner before installing source-linked checkpoint cleanup triggers.
   await new SqlCipherAgentMemoryStorage(database).listRemovedSourceIds();
-  const { expectedTranscript, ...graphInput } = input;
+  const { expectedTranscript, onRejectedCandidates, ...graphInput } = input;
   return runEncounterProcessingGraph({
     ...graphInput,
     checkpointer: new SqliteCheckpointSaver(
@@ -110,6 +123,54 @@ export async function runLocalEncounterProcessing(input: {
       input.requireCurrentReviewSession,
       input.onDiagnostic,
       expectedTranscript,
+      onRejectedCandidates,
     ),
   });
+}
+
+/** An invalid proposal is not a record or a recoverable checkpoint. Expose the
+ * specific failure only for the same source and exact transcript that ran. */
+export async function runFreshShortEncounterProcessing(
+  input: Parameters<typeof runLocalEncounterProcessing>[0] & {
+    expectedTranscript: EncounterTranscript;
+    signal: AbortSignal;
+  },
+  repository: RecordRepository,
+  confirm: () => Promise<boolean>,
+) {
+  let explicitlyRejected = false;
+  const result = await runLocalEncounterProcessing({
+    ...input,
+    onRejectedCandidates: () => {
+      explicitlyRejected = true;
+    },
+  });
+  // Check the original native/selection lease before reading local data again.
+  if (!(await confirm())) return undefined;
+  if (
+    result.status !== 'unavailable' ||
+    !explicitlyRejected ||
+    input.signal.aborted
+  )
+    return result;
+  try {
+    const exact = await repository.transaction(async (writer, sql) => {
+      if (!sql || input.signal.aborted) return false;
+      const current = await readEncounterTranscript(
+        writer,
+        sql,
+        input.sourceId,
+      );
+      return (
+        encounterCanonical(current) ===
+        encounterCanonical(input.expectedTranscript)
+      );
+    });
+    return exact && !input.signal.aborted
+      ? { status: 'invalid-candidates' as const }
+      : result;
+  } catch {
+    // Invalidated or unreadable transcript must not be described as a current proposal.
+    return result;
+  }
 }
