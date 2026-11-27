@@ -186,16 +186,16 @@ test.each(['personal', 'public'] as const)(
       ).resolves.toBeDefined();
       readSource.mockClear();
       let writerEntered = () => {};
-      const writerEntry = new Promise<void>(resolve => {
-        writerEntered = resolve;
+      const writerEntry = new Promise<void>(ready => {
+        writerEntered = ready;
       });
-      const writerGate = new Promise<void>(resolve => {
-        releaseWriter = resolve;
+      const writerGate = new Promise<void>(release => {
+        releaseWriter = release;
       });
       const run = f.database.transaction.bind(f.database);
       let reportQueued = () => {};
-      const queued = new Promise<void>(resolve => {
-        reportQueued = resolve;
+      const queued = new Promise<void>(report => {
+        reportQueued = report;
       });
       const proof = jest.fn();
       const write = run(async () => {
