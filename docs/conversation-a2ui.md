@@ -345,3 +345,12 @@ answer, storage, or a model request. A panel change, Reset or owner loss
 discards the query; selection keeps its existing temporary lifetime.
 Authored queries, bound filter flags and actions are not supported.
 Earlier versions retain their original grammar.
+
+Fresh task v59 can place weighted Cards beside weighted Columns in a
+single final read-only Row. For example, a compact summary card can sit
+next to a wider group containing several paragraphs. Only literal
+weights from 1 to 3 on already validated direct children of that Row
+are allowed; mixed layouts do not use model data or actions. Compact
+widths and larger text stack the accepted answer in the same order.
+Archive reopening retains the exact read-only grouping without the live
+weights; prior task and archive contracts are unchanged.

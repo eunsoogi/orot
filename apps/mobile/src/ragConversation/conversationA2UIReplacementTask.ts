@@ -2,7 +2,10 @@ import {
   bindConversationA2UIComposedReset,
   projectConversationA2UIComposedReset,
 } from './conversationA2UIComposedReset';
-import { acceptConversationA2UIColumnWeights } from './conversationA2UICardWeightTask';
+import {
+  acceptConversationA2UIColumnWeights,
+  acceptConversationA2UIMixedWeights,
+} from './conversationA2UICardWeightTask';
 import type { JsonValue } from '@orot/model-runtime';
 import type { TaskResponderContract } from '@orot/agent-runtime';
 import { conversationA2UIFrameLimit } from './conversationA2UI';
@@ -65,6 +68,7 @@ function normalizeObjectFrames(value: JsonValue): JsonValue {
 export function withConversationA2UIReplacement(
   previous: TaskResponderContract<GroundedRagAnswer>,
   version: '49' | '50' | '51' | '52' | '53' | '54' | '55' = '49',
+  mixedWeights = false,
 ): TaskResponderContract<GroundedRagAnswer> {
   return {
     ...previous,
@@ -129,6 +133,9 @@ export function withConversationA2UIReplacement(
                 : '') +
               (version === '54' || version === '55'
                 ? ' A single native Button can reset the temporary controls in its own final createSurface. Bind its child to one short exact accepted Text line and its action to {"event":{"name":"orot:reset-local-draft","context":{}}}. No data model, other action, or agent event.'
+                : '') +
+              (mixedWeights
+                ? ' In one static read-only createSurface without a data model, mix weighted Cards and Columns as direct children of the same Row. Use literal weights from 1 to 3; every accepted answer line stays in order.'
                 : ''),
           },
         },
@@ -179,6 +186,9 @@ export function withConversationA2UIReplacement(
         );
       const root =
         validateFrames(value.a2uiFrames) ??
+        (mixedWeights
+          ? acceptConversationA2UIMixedWeights(value.a2uiFrames, validateFrames)
+          : undefined) ??
         (version === '53' || version === '54' || version === '55'
           ? acceptConversationA2UIColumnWeights(
               value.a2uiFrames,
