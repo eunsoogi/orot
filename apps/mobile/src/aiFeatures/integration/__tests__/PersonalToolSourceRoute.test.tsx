@@ -16,6 +16,7 @@ import { ConversationMessage as MockConversationMessage } from '../../../ragConv
 import type { AiFeatureFlowScreenProps } from '../AiFeatureFlowScreenTypes';
 import type { EvidenceSourceReadResult } from '../evidenceRegistry';
 import { conversationToolEventFixtures as mockToolEvents } from '../../../ragConversation/testSupport/conversationToolEventFixtures';
+import { preparePersonalSourceByResolver } from '../../../ragConversation/personalToolSourceRoute';
 import { guardPersonalToolSource } from '../../../ragConversation/guardPersonalToolSource';
 import type { ResolveConversationToolSource } from '../../../ragConversation/ConversationToolEventSources';
 import type { ConversationSession } from '../../../ragConversation/conversationSessionTypes';
@@ -89,7 +90,7 @@ function held<T>() {
   return { promise, finish };
 }
 
-function admission() {
+function admission(prepared = false) {
   const first = held<EvidenceReference>();
   const second = held<EvidenceSourceReadResult>();
   const admit = jest.fn((_source, _signal: AbortSignal) => first.promise);
@@ -100,6 +101,11 @@ function admission() {
       { toolMessageId: 'synthetic-turn', toolEvents: [mockToolEvents[0]!] },
     ],
   } as unknown as ConversationSession;
+  if (prepared)
+    preparePersonalSourceByResolver.set(admit, () => ({
+      reference,
+      read: signal => mockServices.readSource(reference, signal),
+    }));
   let activeId = 1;
   const listeners = new Set<() => void>();
   mockLocalAdmission = guardPersonalToolSource(
@@ -177,33 +183,39 @@ test.each(['close', 'origin route replacement'])(
   },
 );
 
-test('current owner reaches the independent detail read exactly once', async () => {
-  const { admit, first, second } = admission();
-  await open();
-  await act(async () => first.finish(reference));
-  await admitDetail();
-  expect(admit).toHaveBeenCalledTimes(1);
-  expect(screen.queryByText('Synthetic private locator')).toBeNull();
-  expect(screen.queryByText('Synthetic protected record')).toBeNull();
-  await act(async () => second.finish(sourceResult));
-  expect(screen.getByText('Synthetic protected record')).toBeTruthy();
-});
+test.each([false, true])(
+  'current owner reaches one detail read (prepared: %s)',
+  async prepared => {
+    const { admit, first, second } = admission(prepared);
+    await open();
+    await act(async () => first.finish(reference));
+    await admitDetail();
+    expect(admit).toHaveBeenCalledTimes(prepared ? 0 : 1);
+    expect(screen.queryByText('Synthetic private locator')).toBeNull();
+    expect(screen.queryByText('Synthetic protected record')).toBeNull();
+    await act(async () => second.finish(sourceResult));
+    expect(screen.getByText('Synthetic protected record')).toBeTruthy();
+  },
+);
 
-test('owner ABA while the second read is held permanently revokes the sheet proof', async () => {
-  const { first, second, changeOwner } = admission();
-  await open();
-  await act(async () => first.finish(reference));
-  await admitDetail();
-  const signal = mockServices.readSource.mock.calls[0]![1];
-  await act(async () => {
-    changeOwner(2);
-    changeOwner(1);
-    second.finish(sourceResult);
-  });
-  expect(signal.aborted).toBe(true);
-  expect(screen.getByTestId('ai-feature-source-unavailable')).toBeTruthy();
-  expect(screen.queryByText('Synthetic protected record')).toBeNull();
-});
+test.each([false, true])(
+  'owner ABA during the detail read revokes the proof (prepared: %s)',
+  async prepared => {
+    const { first, second, changeOwner } = admission(prepared);
+    await open();
+    await act(async () => first.finish(reference));
+    await admitDetail();
+    const signal = mockServices.readSource.mock.calls[0]![1];
+    await act(async () => {
+      changeOwner(2);
+      changeOwner(1);
+      second.finish(sourceResult);
+    });
+    expect(signal.aborted).toBe(true);
+    expect(screen.getByTestId('ai-feature-source-unavailable')).toBeTruthy();
+    expect(screen.queryByText('Synthetic protected record')).toBeNull();
+  },
+);
 
 test.each(['first', 'second'])(
   'provider teardown releases listeners while %s proof is held',
