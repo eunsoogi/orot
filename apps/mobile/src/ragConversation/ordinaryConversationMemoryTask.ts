@@ -1,3 +1,4 @@
+import { createOrdinaryMemorySidecar } from './ordinaryMemorySidecar';
 import { localConversationMemoryScope } from '../memory/authoredRoutineMemory';
 import type { LocalConversationMemoryScope } from '../storage/ordinaryConversationMemoryEnrollment';
 import type { OrdinaryConversationCompletionIdentity } from '../storage/ordinaryConversationMemoryCompletion';
@@ -57,13 +58,68 @@ export function beginOrdinaryConversationMemoryTask(
   let source: OrdinaryConversationCompletionIdentity | undefined;
   let proposed = false;
   let selectedScope = originalScope;
+  let toolMode = false;
+  let nominated:
+    { scope: LocalConversationMemoryScope; statement: string } | undefined;
+  let modelCurrent: (() => boolean) | undefined;
+  let unwatch: (() => void) | undefined;
   const discard = () => {
+    unwatch?.();
+    unwatch = undefined;
     active = false;
     source = undefined;
     proposed = false;
+    nominated = undefined;
   };
   const current = () => active && !signal.aborted;
   return {
+    bindSidecar(
+      runId: string,
+      owner: NonNullable<
+        import('./conversationObserver').RagConversationObserver['templateProposalOwner']
+      >,
+    ) {
+      if (!current() || !source || toolMode) return;
+      toolMode = true;
+      modelCurrent = owner.current;
+      try {
+        unwatch = owner.watch(discard);
+      } catch {
+        discard();
+        return;
+      }
+      if (!active) {
+        discard();
+        return;
+      }
+      return createOrdinaryMemorySidecar({
+        question,
+        runId,
+        originalScope,
+        async stage(witness, toolSignal) {
+          const receipt = await admissions.get(witness.scope);
+          if (receipt && current() && modelCurrent?.() && !toolSignal.aborted) {
+            try {
+              if (!(await owner.recheck(toolSignal))) return false;
+            } catch {
+              return false;
+            }
+          }
+          if (
+            nominated ||
+            issued ||
+            !current() ||
+            !modelCurrent?.() ||
+            toolSignal.aborted ||
+            !receipt?.isCurrent() ||
+            (receipt.scope ?? 'reply-preferences') !== witness.scope
+          )
+            return false;
+          nominated = witness;
+          return true;
+        },
+      });
+    },
     discard,
     hasPendingProposal: () => current() && source !== undefined && proposed,
     attach(identity: OrdinaryConversationCompletionIdentity) {
@@ -85,11 +141,15 @@ export function beginOrdinaryConversationMemoryTask(
         mixed &&
         validateAuthoredRoutineSpan(question, candidate.authoredRoutineSpan);
       const selected = Boolean(preference) !== Boolean(routine);
-      if (selected)
+      if (toolMode) selectedScope = nominated?.scope;
+      else if (selected)
         selectedScope = preference ? 'reply-preferences' : 'authored-routine';
       proposed =
-        ((originalScope !== undefined && candidate.proactiveMemory === true) ||
-          Boolean(selected)) &&
+        (toolMode
+          ? Boolean(nominated)
+          : (originalScope !== undefined &&
+              candidate.proactiveMemory === true) ||
+            Boolean(selected)) &&
         candidate.question === question &&
         candidate.status !== 'partial' &&
         !candidate.submittedInput &&
@@ -104,7 +164,12 @@ export function beginOrdinaryConversationMemoryTask(
       // neither the typed shortcut phrase nor generated report text can save.
       if (proposed && candidate.entryIntent === 'possibilities')
         source = { ...source, entryIntent: candidate.entryIntent };
-      if (proposed && selected)
+      if (proposed && toolMode && originalScope === undefined && nominated)
+        source =
+          nominated.scope === 'reply-preferences'
+            ? { ...source, replyPreferenceSpan: nominated.statement }
+            : { ...source, authoredRoutineSpan: nominated.statement };
+      if (proposed && !toolMode && selected)
         source = preference
           ? { ...source, replyPreferenceSpan: preference }
           : { ...source, authoredRoutineSpan: routine || undefined };
@@ -125,7 +190,10 @@ export function beginOrdinaryConversationMemoryTask(
       try {
         if (!selectedScope) return false;
         const receipt = await admissions.get(selectedScope);
-        const canCommit = () => current() && ownerCurrent();
+        const canCommit = () =>
+          current() &&
+          ownerCurrent() &&
+          (!toolMode || modelCurrent?.() === true);
         if (
           !receipt?.isCurrent() ||
           (receipt.scope ?? 'reply-preferences') !== selectedScope ||

@@ -65,6 +65,10 @@ export type RagConversationObserver = Pick<
     signal: AbortSignal,
   ) => Promise<boolean>;
   /** Opt-in is from the composer dispatch, never inferred from typed route or model output. */
+  readonly bindOrdinaryMemorySidecar?: (
+    operationRunId: string,
+    owner: NonNullable<RagConversationObserver['templateProposalOwner']>,
+  ) => import('@orot/agent-runtime').LocalActionTool | undefined;
   readonly inputOrigin?: 'composer' | 'shortcut';
   readonly reportBookmark?: import('./semanticReportBookmarkSender').BoundReportBookmark;
   readonly possibilityBookmark?: import('./semanticReportBookmarkSender').BoundPossibilityBookmark;
