@@ -1,3 +1,4 @@
+import { bindLocalEncounterProtection } from './localEncounterProtection';
 import { matchesLocalEncounterSelection } from './localEncounterSelection';
 import { admitRemoteLongEncounter } from './remoteLongEncounterAdmission';
 import {
@@ -24,7 +25,6 @@ import { prepareLocalEncounterExtraction } from './localEncounterPageExtraction'
 import { watchEncounterNativeAdmission } from './nativeAdmission';
 import { openEncounterReviewSessions } from './openSessions';
 import { proveLongEncounterPending } from './proveLongEncounterPending';
-
 type Owner = {
   pending?: EncounterPending;
   readonly lease: NonNullable<ReturnType<typeof watchEncounterNativeAdmission>>;
@@ -87,7 +87,8 @@ export function createLongEncounterReview(
         (selected && !matchesLocalEncounterSelection(selected, choice))
       )
         return { status: 'unavailable' };
-      const native = conversationExecutionNative();
+      const bridge = conversationExecutionNative();
+      const native = local ? bindLocalEncounterProtection(bridge) : bridge;
       const prior = owners.get(sourceId);
       prior?.lease.dispose();
       const lease = watchEncounterNativeAdmission(native, lifetime, current);
