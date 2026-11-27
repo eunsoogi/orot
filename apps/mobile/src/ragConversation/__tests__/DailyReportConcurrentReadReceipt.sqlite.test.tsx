@@ -1,3 +1,4 @@
+import type { LanguageModelProvider } from '@orot/model-runtime';
 import { act, render, screen, waitFor } from '@testing-library/react-native';
 import { useSyncExternalStore } from 'react';
 import { openSqliteTestDatabase } from '../../../../../packages/storage/__tests__/sqliteTestDatabase';
@@ -35,17 +36,19 @@ test.each(['current', 'replaced', 'stopped'] as const)(
     let providerStart: (() => void) | undefined;
     const activeProvider = reportProvider();
     const generate = activeProvider.generate.bind(activeProvider);
+    const providerBoundary: LanguageModelProvider = activeProvider;
     const dispatch = jest
-      .spyOn(activeProvider, 'generate')
+      .spyOn(providerBoundary, 'generate')
       .mockImplementation(async (request, options) => {
         providerStart = options?.onResponseStarted;
         await heldResponse.wait;
-        return generate(request, options);
+        return generate(request);
       });
     const retired = reportProvider();
     const oldDispatch = jest.spyOn(retired, 'generate');
+    let selections = 0;
     const resolveSelected = jest.fn(async () => {
-      const first = resolveSelected.mock.calls.length === 1;
+      const first = ++selections === 1;
       if (first) await heldSelection.wait;
       return selectedReportProvider(
         mode === 'replaced' && first ? retired : activeProvider,
