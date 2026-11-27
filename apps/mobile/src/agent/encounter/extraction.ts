@@ -60,6 +60,7 @@ const resultSchema = {
 /** Provider text is only a proposal. It cannot name durable records, approve itself or identify a clinician. */
 export function encounterExtractionTask(
   transcript: EncounterTranscript,
+  recordValidation?: (accepted: boolean) => void,
 ): TaskResponderContract<EncounterCandidate[]> {
   return {
     taskType: 'encounter-extraction',
@@ -96,8 +97,10 @@ export function encounterExtractionTask(
           evidence: candidate.evidence,
         }));
         validateEncounterCandidates(candidates, transcript);
+        recordValidation?.(true);
         return { status: 'valid', value: candidates };
       } catch {
+        recordValidation?.(false);
         return {
           status: 'invalid',
           reason: 'Candidates require exact current transcript evidence.',
@@ -125,11 +128,16 @@ export async function extractEncounterCandidates(input: {
     throw new Error(
       'Encounter extraction requires the exact selected recording scope.',
     );
+  // Runtime invalid_output also covers pre-dispatch configuration failures.
+  // Only a rejection from this run's candidate validator can classify model data.
+  let rejectedCandidates = false;
   const result = await runMultiAgentWorkflow(
     {
       ...model,
       request: 'Extract reviewable medication and follow-up plan candidates.',
-      task: encounterExtractionTask(transcript),
+      task: encounterExtractionTask(transcript, accepted => {
+        rejectedCandidates = !accepted;
+      }),
       initialEvidence: {
         items: transcript.segments.map(segment => ({
           sourceKind: 'personal_record',
@@ -183,7 +191,9 @@ export async function extractEncounterCandidates(input: {
       /* Evidence must not replace the original extraction failure. */
     }
     const ExtractionFailure =
-      result.status === 'invalid_output' ? InvalidEncounterCandidates : Error;
+      result.status === 'invalid_output' && rejectedCandidates
+        ? InvalidEncounterCandidates
+        : Error;
     throw new ExtractionFailure(
       'Encounter extraction did not produce validated candidates.',
     );
