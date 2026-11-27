@@ -1,6 +1,7 @@
 import { StyleSheet } from 'react-native';
 import { appColors } from '../layout/appColors';
 
+export const CONVERSATION_SECTION_GAP = 20;
 const userMessagePosition = { alignSelf: 'flex-end', maxWidth: '85%' } as const;
 const userMessageSurface = {
   backgroundColor: appColors.primaryAction,
@@ -27,7 +28,7 @@ export const styles = StyleSheet.create({
   content: { flex: 1, minHeight: 0 },
   history: { flex: 1, minHeight: 0 },
   container: {
-    gap: 20,
+    gap: CONVERSATION_SECTION_GAP,
     paddingHorizontal: 20,
     paddingTop: 24,
     paddingBottom: 0,

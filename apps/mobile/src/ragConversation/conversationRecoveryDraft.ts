@@ -30,3 +30,12 @@ export function conversationRecoveryDraft(session: ConversationSession) {
   );
   return { question: question.content, attachment, conflictingDraft };
 }
+
+/** A possible recovery or retained report keeps the transcript's ordinary end clearance. */
+export function hasConversationFooter(session: ConversationSession) {
+  return Boolean(
+    session.continueWorkflow ||
+    conversationRecoveryDraft(session) ||
+    session.taskCards?.some(card => card.task.kind === 'daily_report'),
+  );
+}

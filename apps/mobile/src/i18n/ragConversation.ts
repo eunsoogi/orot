@@ -131,6 +131,7 @@ export const ragConversationKo = {
   'ragConversation.archivedCitation.publicWeb': '공개 웹 출처',
   'ragConversation.sourceKind.healthRecord': '건강 기록',
   'ragConversation.sourceKind.previousAiOutput': '이전 AI 결과',
+  'ragConversation.history.previousConversation': '이전 대화',
   'ragConversation.history.today': '오늘',
   'ragConversation.history.yesterday': '어제',
   'ragConversation.history.savedOutputsTitle': '저장된 AI 결과',
