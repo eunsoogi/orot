@@ -1,8 +1,11 @@
 import { useLayoutEffect, useRef, useState } from 'react';
-import { AppState, StyleSheet, Switch, View } from 'react-native';
+import { AppState, Switch } from 'react-native';
 import { t } from '../i18n';
 import { AppText } from '../layout/AppText';
-import { appColors } from '../layout/appColors';
+import {
+  SettingsMemoryControl,
+  settingsMemorySwitchStyle,
+} from './SettingsMemoryControl';
 import type { NavigationRouteOwnership } from '../navigation/navigationRouteContracts';
 
 type Ports = typeof import('../memory/openSavedGeneratedReportReferences');
@@ -106,35 +109,34 @@ export function SettingsDailyReportMemorySection({
     }
   };
   return (
-    <View style={styles.card} testID="settings-daily-report-memory">
-      <AppText accessibilityRole="header" style={styles.title}>
-        {t('settings.dailyReportMemory.title')}
-      </AppText>
-      <AppText>{t('settings.dailyReportMemory.description')}</AppText>
-      <AppText>{t('settings.dailyReportMemory.retention')}</AppText>
-      {'enabled' in state && (
-        <Switch
-          testID="settings-daily-report-memory-toggle"
-          accessibilityLabel={t('settings.dailyReportMemory.title')}
-          disabled={state.kind === 'writing'}
-          value={state.enabled}
-          onValueChange={change}
-        />
-      )}
+    <SettingsMemoryControl
+      title={t('settings.dailyReportMemory.title')}
+      description={[
+        t('settings.dailyReportMemory.description'),
+        t('settings.dailyReportMemory.retention'),
+      ]}
+      testID="settings-daily-report-memory"
+      control={
+        'enabled' in state ? (
+          <Switch
+            style={settingsMemorySwitchStyle}
+            testID="settings-daily-report-memory-toggle"
+            accessibilityLabel={t('settings.dailyReportMemory.title')}
+            disabled={state.kind === 'writing'}
+            value={state.enabled}
+            onValueChange={next => {
+              if (state.kind !== 'writing' && next !== state.enabled)
+                change(next);
+            }}
+          />
+        ) : undefined
+      }
+    >
       {state.kind === 'error' || state.kind === 'write-error' ? (
         <AppText accessibilityRole="alert">
           {t('settings.automaticMemory.unavailable')}
         </AppText>
       ) : null}
-    </View>
+    </SettingsMemoryControl>
   );
 }
-const styles = StyleSheet.create({
-  card: {
-    backgroundColor: appColors.surface,
-    borderRadius: 18,
-    padding: 16,
-    gap: 8,
-  },
-  title: { color: appColors.text, fontSize: 16, fontWeight: '600' },
-});

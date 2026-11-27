@@ -5,7 +5,6 @@ extension RootNavigationUITests {
     @MainActor
     func testSettingsLayoutTracksMeasuredDuoSpaceAndLargeText() throws {
         let initialOrientation = XCUIDevice.shared.orientation
-        // Start from a supported baseline instead of assuming Simulator orientation is already established.
         XCUIDevice.shared.orientation = .portrait
         let app = XCUIApplication()
         app.launchArguments = [
@@ -34,11 +33,9 @@ extension RootNavigationUITests {
 
         NavigationUITestConditions.route(app, markers: ["rag-conversation-screen"])
         try NavigationUITestConditions.openTab(app, "settings", markers: ["settings-title"])
-        // The Settings route emits the adaptive geometry used as the rotation baseline.
         let initialWindow = try NavigationGeometryUITestConditions.snapshot(app).window
         let regularTitleHeight = UITestConditions.element(app, "settings-title").frame.height
         try verifySettingsPanels(app)
-
         appearanceSnapshot = try AppearanceUITestConditions.select(
             true,
             returningTo: app,
@@ -63,7 +60,6 @@ extension RootNavigationUITests {
         XCUIDevice.shared.orientation = .portrait
         _ = try NavigationGeometryUITestConditions.snapshot(app, after: returnedAt, width: initialWindow.width)
         try verifySettingsPanels(app)
-
         FormUITestConditions.reveal(
             UITestConditions.element(app, "settings-open-health-data"),
             in: app,
@@ -93,7 +89,7 @@ extension RootNavigationUITests {
         )
         try verifySettingsPanels(app, expectsStacked: true)
         try NavigationUITestConditions.scrollToBottom(app, "navigation-route-scroll")
-        XCTAssertTrue(UITestConditions.element(app, "settings-open-backup").isHittable)
+        XCTAssertTrue(UITestConditions.element(app, "settings-open-privacy-policy").isHittable)
         capture(app, "settings-duo-large-text")
     }
 
@@ -103,12 +99,14 @@ extension RootNavigationUITests {
         let app = launch(["-OROT_TEST_UI_GEOMETRY", "YES", "-OROT_TEST_NAVIGATION_OBSERVATION", "YES"])
         defer { app.terminate() }
         try ViewportObservation.openSettings(app, testCase: self)
-        for identifier in ["settings-open-health-data", "settings-open-sync-status", "settings-open-provider", "settings-open-accounts", "settings-open-privacy", "settings-open-backup"] {
+        for identifier in ["settings-open-health-data", "settings-open-sync-status", "settings-open-provider", "settings-open-accounts", "settings-open-privacy", "settings-open-privacy-policy", "settings-open-notifications", "settings-open-memory"] {
             let control = app.buttons[identifier]
+            FormUITestConditions.reveal(control, in: app, scrollID: "navigation-route-scroll")
             XCTAssertTrue(control.exists && control.isHittable)
         }
         capture(app, "settings-root-light")
 
+        FormUITestConditions.reveal(app.buttons["settings-open-health-data"], in: app, scrollID: "navigation-route-scroll")
         tap(app, "settings-open-health-data")
         NavigationUITestConditions.route(app, markers: ["health-data-title"])
         let medication = UITestConditions.element(app, "health-data-feature-medications")
@@ -122,11 +120,9 @@ extension RootNavigationUITests {
         NavigationUITestConditions.route(app, markers: ["settings-sync-status-title"])
         XCTAssertTrue(UITestConditions.element(app, "settings-sync-status-message").exists)
         XCTAssertTrue(UITestConditions.element(app, "settings-calendar-sync-section").exists)
-        let calendarAccess = UITestConditions.element(app, "settings-calendar-request-access")
-        FormUITestConditions.reveal(calendarAccess, in: app, scrollID: "settings-sync-status-scroll")
-        XCTAssertTrue(calendarAccess.isHittable)
+        XCTAssertFalse(UITestConditions.element(app, "settings-calendar-request-access").exists)
         XCTAssertTrue(UITestConditions.element(app, "settings-sync-retry").exists)
-        XCTAssertTrue(UITestConditions.element(app, "settings-sync-open-system-settings").isHittable)
+        XCTAssertFalse(UITestConditions.element(app, "settings-sync-open-system-settings").exists)
         try NavigationGeometryUITestConditions.captureChildBoundary(app, viewportIDs: ["settings-sync-status-scroll"], name: "settings-sync-status-boundary", testCase: self)
         capture(app, "settings-sync-status-light")
         try backToSettings(app)
@@ -141,13 +137,13 @@ extension RootNavigationUITests {
         XCTAssertTrue(UITestConditions.element(app, "chatgpt-account-setup").exists)
         try NavigationGeometryUITestConditions.captureChildBoundary(app, viewportIDs: ["settings-accounts-screen"], name: "settings-accounts-boundary", testCase: self)
         try backToSettings(app)
-        tap(app, "settings-open-backup")
-        NavigationUITestConditions.route(app, markers: ["settings-backup-title"])
-        XCTAssertTrue(UITestConditions.element(app, "backup-status-message").isHittable)
-        XCTAssertTrue(UITestConditions.element(app, "backup-prepare").isHittable)
-        try NavigationUITestConditions.contentClearOfNavigation(app, scrollID: "settings-backup-scroll", contentID: "backup-open-system-settings", testCase: self)
+        tap(app, "settings-open-sync-status")
+        XCTAssertFalse(app.buttons["settings-open-backup"].exists)
+        let backupPrepare = UITestConditions.element(app, "backup-prepare")
+        FormUITestConditions.reveal(backupPrepare, in: app, scrollID: "settings-sync-status-scroll")
+        XCTAssertTrue(backupPrepare.isHittable)
+        try NavigationUITestConditions.contentClearOfNavigation(app, scrollID: "settings-sync-status-scroll", contentID: "backup-open-system-settings", testCase: self)
         XCTAssertTrue(UITestConditions.element(app, "backup-open-system-settings").isHittable)
-        try NavigationGeometryUITestConditions.captureChildBoundary(app, viewportIDs: ["settings-backup-scroll"], name: "settings-backup-boundary", testCase: self)
         capture(app, "settings-backup-light")
         try backToSettings(app)
         tap(app, "settings-open-privacy")
@@ -162,7 +158,6 @@ extension RootNavigationUITests {
         try backToSettings(app)
     }
 
-    /// Keeps the account panel assertion on the synthetic route and its measured return path.
     @MainActor
     func testSettingsAccountsLayoutTracksMeasuredPanels() throws {
         let app = XCUIApplication()
@@ -222,7 +217,7 @@ extension RootNavigationUITests {
             )
         }
 
-        for identifier in ["settings-open-health-data", "settings-open-sync-status", "settings-open-provider", "settings-open-accounts", "settings-open-privacy", "settings-open-backup"] {
+        for identifier in ["settings-open-health-data", "settings-open-sync-status", "settings-open-provider", "settings-open-accounts", "settings-open-privacy", "settings-open-privacy-policy", "settings-open-notifications", "settings-open-memory"] {
             let control = app.buttons[identifier]
             XCTAssertTrue(control.exists && control.frame.height >= 44)
         }
@@ -234,7 +229,7 @@ extension RootNavigationUITests {
     /// Confirms panel axes, host containment, and clearance from the active navigation rail.
     @MainActor
     private func verifyAdaptivePanels(_ app: XCUIApplication, prefix: String, navigationID: String) throws -> Bool {
-        let ids = prefix == "settings-layout" ? ["settings-section-ai-accounts", "settings-section-app-info"] :
+        let ids = prefix == "settings-layout" ? ["settings-title", "settings-destinations"] :
             prefix == "settings-provider-panels" ? ["settings-provider-local-panel", "settings-provider-connected-panel"] : ["settings-accounts-list", "settings-accounts-actions"]
         let first = UITestConditions.element(app, ids[0]), second = UITestConditions.element(app, ids[1])
         XCTAssertTrue(first.exists && second.exists, app.debugDescription)

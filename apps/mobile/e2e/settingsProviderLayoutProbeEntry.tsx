@@ -122,8 +122,10 @@ function renderRoute(
       selectedAiResolverOptions={serviceDependencies.selectedAi}
       onOpenProviderSettings={() => actions.push('settings-provider')}
       onOpenAccounts={() => undefined}
+      onOpenNotifications={() => undefined}
+      onOpenMemory={() => undefined}
       onOpenPrivacy={() => undefined}
-      onOpenBackup={() => undefined}
+      onOpenPrivacyPolicy={() => undefined}
       onOpenHealthData={() => undefined}
       onOpenSyncStatus={() => undefined}
     />

@@ -11,6 +11,7 @@ import { savedSource } from '../recordingScreenSupport';
 import {
   confirmNativeDeletion,
   mockNativeDeletionAlert,
+  requestLibraryRowDeletion,
 } from '../testSupport/nativeDeletionAlert';
 
 test('removes a committed row and releases controls before a slow summary refresh', async () => {
@@ -29,10 +30,8 @@ test('removes a committed row and releases controls before a slow summary refres
       onBusyChange={onBusyChange}
     />,
   );
-  await screen.findByTestId(`recording-delete-${savedSource.id}`);
-  await fireEvent.press(
-    screen.getByTestId(`recording-delete-${savedSource.id}`),
-  );
+  await screen.findByTestId(`recording-details-${savedSource.id}`);
+  await requestLibraryRowDeletion(savedSource.id);
   await confirmNativeDeletion(alert);
   await waitFor(() =>
     expect(
@@ -68,18 +67,16 @@ test('marks confirmation, visible progress and committed row refresh in order', 
       <RecordingLibraryPanel service={service} />
     </RecordingDeletionTimingContext.Provider>,
   );
-  await screen.findByTestId(`recording-delete-${savedSource.id}`);
-  await fireEvent.press(
-    screen.getByTestId(`recording-delete-${savedSource.id}`),
-  );
+  await screen.findByTestId(`recording-details-${savedSource.id}`);
+  await requestLibraryRowDeletion(savedSource.id);
   await confirmNativeDeletion(alert);
 
   expect(probe.mark).toHaveBeenCalledWith('confirmation-tap');
   const progress = await screen.findByTestId('recording-delete-progress');
-  fireEvent(progress, 'layout', {
+  await fireEvent(progress, 'layout', {
     nativeEvent: { layout: { x: 0, y: 0, width: 120, height: 28 } },
   });
-  fireEvent(progress, 'layout', {
+  await fireEvent(progress, 'layout', {
     nativeEvent: { layout: { x: 0, y: 0, width: 120, height: 28 } },
   });
   await waitFor(() => {

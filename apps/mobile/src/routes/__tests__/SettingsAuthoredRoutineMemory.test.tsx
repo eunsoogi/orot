@@ -1,10 +1,15 @@
-import { fireEvent, render, screen } from '@testing-library/react-native';
+import {
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+} from '@testing-library/react-native';
 import {
   getGenericPassword,
   setGenericPassword,
   STORAGE_TYPE,
 } from 'react-native-keychain';
-import { View } from 'react-native';
+import { Alert } from 'react-native';
 import { openSqliteTestDatabase } from '../../../../../packages/storage/__tests__/sqliteTestDatabase';
 import {
   authoredRoutineMemoryDeviceOwner,
@@ -12,7 +17,11 @@ import {
   captureOrdinaryConversationMemoryAdmission,
 } from '../../storage/ordinaryConversationMemoryDeviceOwner';
 import { openLocalAgentMemoryDatabase } from '../../storage/secureDatabase';
-import { SettingsAutomaticMemorySection } from '../SettingsAutomaticMemorySection';
+import { SettingsMemoryRoute } from '../SettingsMemoryRoute';
+
+jest.mock('../SettingsDailyReportMemorySection', () => ({
+  SettingsDailyReportMemorySection: () => null,
+}));
 
 jest.mock('react-native-keychain', () => ({
   ACCESSIBLE: { WHEN_UNLOCKED_THIS_DEVICE_ONLY: 'device-only' },
@@ -29,6 +38,7 @@ const owner = { isCurrent: () => true, subscribe: () => () => {} };
 
 test('the distinct routine switch starts off and does not silently authorize when preferences are on', async () => {
   const fixture = openSqliteTestDatabase(':memory:');
+  const information = jest.spyOn(Alert, 'alert');
   const keychain = new Map<
     string,
     Awaited<ReturnType<typeof getGenericPassword>>
@@ -50,37 +60,55 @@ test('the distinct routine switch starts off and does not silently authorize whe
     );
   jest.mocked(openLocalAgentMemoryDatabase).mockResolvedValue(fixture.database);
   try {
-    const component = await render(
-      <View>
-        <SettingsAutomaticMemorySection ownership={owner} />
-        <SettingsAutomaticMemorySection ownership={owner} routine />
-        <SettingsAutomaticMemorySection ownership={owner} general />
-      </View>,
-    );
+    const component = await render(<SettingsMemoryRoute ownership={owner} />);
     try {
-      expect(await screen.findByText('습관 자동 저장 꺼짐')).toBeTruthy();
+      expect(
+        (await screen.findByTestId('settings-routine-memory-toggle')).props
+          .value,
+      ).toBe(false);
       expect(screen.getByText('대화에서 기억 자동 저장')).toBeTruthy();
       expect(
-        screen.getByText(/읽기나 공부처럼 직접 말한 일부 반복 습관/),
-      ).toBeTruthy();
+        screen.queryByText(/읽기나 공부처럼 직접 말한 일부 반복 습관/),
+      ).toBeNull();
+      await fireEvent.press(screen.getByTestId('settings-routine-memory-info'));
+      expect(information).toHaveBeenCalledWith(
+        '대화에서 기억 자동 저장',
+        expect.stringContaining('읽기나 공부처럼 직접 말한 일부 반복 습관'),
+      );
       expect(write).not.toHaveBeenCalled();
 
-      await fireEvent.press(
-        await screen.findByTestId('settings-automatic-memory-enable'),
+      await fireEvent(
+        screen.getByTestId('settings-automatic-memory-toggle'),
+        'valueChange',
+        true,
       );
-      expect(await screen.findByText('켜짐')).toBeTruthy();
-      expect(screen.getByText('습관 자동 저장 꺼짐')).toBeTruthy();
+      await waitFor(() =>
+        expect(
+          screen.getByTestId('settings-automatic-memory-toggle').props.value,
+        ).toBe(true),
+      );
+      expect(
+        screen.getByTestId('settings-routine-memory-toggle').props.value,
+      ).toBe(false);
       expect(
         await authoredRoutineMemoryDeviceOwner.captureAdmission(),
       ).toBeUndefined();
 
-      await fireEvent.press(
-        screen.getByTestId('settings-routine-memory-enable'),
+      await fireEvent(
+        screen.getByTestId('settings-routine-memory-toggle'),
+        'valueChange',
+        true,
       );
-      expect(await screen.findByText('습관 자동 저장 켜짐')).toBeTruthy();
+      await waitFor(() =>
+        expect(
+          screen.getByTestId('settings-routine-memory-toggle').props.value,
+        ).toBe(true),
+      );
       const granted = await authoredRoutineMemoryDeviceOwner.captureAdmission();
       expect(granted?.scope).toBe('authored-routine');
-      expect(screen.getByText('내가 말한 내용 자동 저장 꺼짐')).toBeTruthy();
+      expect(
+        screen.getByTestId('settings-authored-note-memory-toggle').props.value,
+      ).toBe(false);
       expect(
         await authoredNoteMemoryDeviceOwner.captureAdmission(),
       ).toBeUndefined();
@@ -92,29 +120,46 @@ test('the distinct routine switch starts off and does not silently authorize whe
         (await captureOrdinaryConversationMemoryAdmission())?.isCurrent(),
       ).toBe(true);
 
-      await fireEvent.press(
-        screen.getByTestId('settings-routine-memory-disable'),
+      await fireEvent(
+        screen.getByTestId('settings-routine-memory-toggle'),
+        'valueChange',
+        false,
       );
-      expect(await screen.findByText('습관 자동 저장 꺼짐')).toBeTruthy();
+      await waitFor(() =>
+        expect(
+          screen.getByTestId('settings-routine-memory-toggle').props.value,
+        ).toBe(false),
+      );
+      expect(screen.queryByText('습관 자동 저장 꺼짐')).toBeNull();
       expect(granted?.isCurrent()).toBe(false);
-      await fireEvent.press(
-        screen.getByTestId('settings-authored-note-memory-enable'),
+      await fireEvent(
+        screen.getByTestId('settings-authored-note-memory-toggle'),
+        'valueChange',
+        true,
       );
-      expect(
-        await screen.findByText('내가 말한 내용 자동 저장 켜짐'),
-      ).toBeTruthy();
+      await waitFor(() =>
+        expect(
+          screen.getByTestId('settings-authored-note-memory-toggle').props
+            .value,
+        ).toBe(true),
+      );
       const general = await authoredNoteMemoryDeviceOwner.captureAdmission();
       expect(general?.scope).toBe('authored-note');
       expect(write.mock.lastCall?.[2]).toMatchObject({
         service: 'com.orot.mobile.authored-note-memory-authority.v1',
         accessible: 'device-only',
       });
-      await fireEvent.press(
-        screen.getByTestId('settings-authored-note-memory-disable'),
+      await fireEvent(
+        screen.getByTestId('settings-authored-note-memory-toggle'),
+        'valueChange',
+        false,
       );
-      expect(
-        await screen.findByText('내가 말한 내용 자동 저장 꺼짐'),
-      ).toBeTruthy();
+      await waitFor(() =>
+        expect(
+          screen.getByTestId('settings-authored-note-memory-toggle').props
+            .value,
+        ).toBe(false),
+      );
       expect(general?.isCurrent()).toBe(false);
       expect(
         (await captureOrdinaryConversationMemoryAdmission())?.isCurrent(),
@@ -123,6 +168,7 @@ test('the distinct routine switch starts off and does not silently authorize whe
       await component.unmount();
     }
   } finally {
+    information.mockRestore();
     fixture.close();
   }
 });

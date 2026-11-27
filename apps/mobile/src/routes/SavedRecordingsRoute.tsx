@@ -1,7 +1,7 @@
 import { useRecordingSelection } from '../recording/RecordingSelectionContext';
 import type { NavigationRouteActions } from '../navigation/NavigationRouteAdapter';
 import type { AppNavigationRoute } from './appNavigationRoute';
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { StyleSheet, useWindowDimensions, View } from 'react-native';
 import RecordingLibraryPanel from '../recording/RecordingLibraryPanel';
 import { recordingLibraryService } from '../recording/recordingLibraryService';
@@ -20,9 +20,23 @@ export function SavedRecordingsRoute({
   readonly actions: NavigationRouteActions<AppNavigationRoute>;
   readonly libraryService?: RecordingLibraryService;
 }) {
-  const { select, selection } = useRecordingSelection();
+  const { select } = useRecordingSelection();
   const { width } = useWindowDimensions();
   const [busy, setBusy] = useState(false);
+  const [reviewReturnRevision, setReviewReturnRevision] = useState(0);
+  const pendingReviewReturn = useRef(false);
+  const ownership = actions.ownership;
+  useEffect(
+    () =>
+      ownership?.subscribe(() => {
+        if (!pendingReviewReturn.current || !ownership.isCurrent()) return;
+        // The list stays mounted behind review. Only reread the durable title
+        // after this exact route returns, not on every geometry or selection change.
+        pendingReviewReturn.current = false;
+        setReviewReturnRevision(value => value + 1);
+      }),
+    [ownership],
+  );
   const transcription = useAutomaticRecordingTranscription(
     transcriptEvidenceService,
   );
@@ -47,12 +61,13 @@ export function SavedRecordingsRoute({
           onNewRecording={() => actions.push('recording')}
           automaticTranscription={transcription.state}
           onSourceDeleted={transcription.cancel}
-          selectedSummarySourceId={selection?.summary.source.id ?? null}
           service={libraryService}
+          refreshKey={String(reviewReturnRevision)}
           onBusyChange={setBusy}
           onOpenRecording={(summary, autoPlay) => {
             select({ summary, autoPlay });
-            actions.push('recording-review');
+            if (actions.push('recording-review'))
+              pendingReviewReturn.current = true;
           }}
         />
       </View>

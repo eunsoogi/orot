@@ -11,15 +11,15 @@ final class OrotProviderDiagnostics: NSObject {
     @objc func constantsToExport() -> [AnyHashable: Any] {
         let arguments = ProcessInfo.processInfo.arguments
         let enabled = arguments.contains("-OROT_PROVIDER_DIAGNOSTICS")
-        return [
+        return NavigationDockedKeyboardDiagnostics.addingFlag(to: [
             "enabled": enabled,
             "derivedHeartRateShapeEnabled": enabled && arguments.contains("-OROT_DERIVED_HEART_RATE_SHAPE"),
             "historyValidationCostEnabled": enabled && arguments.contains("-OROT_HISTORY_VALIDATION_COST"),
-        ]
+        ])
     }
 
     @objc func report(_ feature: String, stage: String, outcome: String) {
-        guard ProcessDiagnosticWitness.current?.acceptAndContinueJS(feature: feature, stage: stage, outcome: outcome) == true, !WorkoutPeriodDiagnostics.handleJS(feature, stage: stage, outcome: outcome) else { return }
+        guard !NavigationDockedKeyboardDiagnostics.reportJS(feature, stage, outcome), ProcessDiagnosticWitness.current?.acceptAndContinueJS(feature: feature, stage: stage, outcome: outcome) == true, !WorkoutPeriodDiagnostics.handleJS(feature, stage: stage, outcome: outcome) else { return }
         if ["live_health", "report_calendar_daily", "report_calendar_conversation"].contains(feature) {
             // Never accept text, request identifiers, source identities, or provider/audio payloads.
             let liveStages = ["grant_lookup", "owner_reproof", "local_confirmation", "data_open", "stock_read", "evidence_lookup", "result_projection", "result_confirmation", "source_reproof", "native_handoff", "admission_queue"]

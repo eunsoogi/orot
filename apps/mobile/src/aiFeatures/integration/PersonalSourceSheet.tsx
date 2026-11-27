@@ -1,8 +1,7 @@
 import { useRef, type ReactNode } from 'react';
-import { ActivityIndicator, StyleSheet, View } from 'react-native';
+import { ActivityIndicator, Pressable, StyleSheet, View } from 'react-native';
 import { NavigationModal } from '../../navigation/NavigationModal';
 import { NavigationPrimaryActionContext } from '../../navigation/useNavigationPrimaryAction';
-import { AppButton } from '../../layout/AppButton';
 import { AppText } from '../../layout/AppText';
 import { appColors } from '../../layout/appColors';
 import { navigationText } from '../../i18n/navigation';
@@ -31,7 +30,23 @@ export function PersonalSourceSheet({
       testID="conversation-personal-source-sheet"
     >
       <View style={styles.shell} accessibilityViewIsModal>
-        <View style={styles.header}>
+        <View>
+          {/* RN does not expose the UIKit grabber. Draw one cue and leave drag dismissal to the sheet. */}
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel={navigationText.close.accessibilityLabel}
+            onAccessibilityEscape={dismiss}
+            onPress={dismiss}
+            style={styles.dismissControl}
+            testID="conversation-personal-source-close"
+          >
+            <View
+              accessible={false}
+              pointerEvents="none"
+              style={styles.grabber}
+              testID="conversation-personal-source-grabber"
+            />
+          </Pressable>
           <AppText
             accessibilityRole="header"
             style={styles.title}
@@ -39,13 +54,6 @@ export function PersonalSourceSheet({
           >
             {t('ragConversation.tool.sourceKind.personalRecord')}
           </AppText>
-          <AppButton
-            variant="cancel"
-            title={navigationText.close.label}
-            accessibilityLabel={navigationText.close.accessibilityLabel}
-            testID="conversation-personal-source-close"
-            onPress={dismiss}
-          />
         </View>
         <NavigationPrimaryActionContext.Provider value={null}>
           {children}
@@ -96,16 +104,22 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: appColors.background,
     paddingHorizontal: 24,
-    paddingTop: 16,
     gap: 16,
   },
-  header: {
-    flexDirection: 'row',
+  dismissControl: {
+    alignSelf: 'center',
+    width: 44,
+    height: 44,
     alignItems: 'center',
-    justifyContent: 'space-between',
-    gap: 12,
+    justifyContent: 'center',
   },
-  title: { flex: 1, fontSize: 22, fontWeight: '700', color: appColors.text },
+  grabber: {
+    width: 36,
+    height: 5,
+    borderRadius: 3,
+    backgroundColor: appColors.secondary,
+  },
+  title: { fontSize: 22, fontWeight: '700', color: appColors.text },
   status: { flexDirection: 'row', alignItems: 'center', gap: 10 },
   message: { flexShrink: 1, color: appColors.secondary },
 });

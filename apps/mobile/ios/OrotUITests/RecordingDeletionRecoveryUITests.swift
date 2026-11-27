@@ -67,8 +67,12 @@ final class RecordingDeletionRecoveryUITests: OrotFailFastTestCase {
         XCTAssertTrue(UITestConditions.exists(row), app.debugDescription)
         let sourceId = String(row.identifier.dropFirst("recording-details-".count))
         XCTAssertNotNil(UUID(uuidString: sourceId))
+        FormUITestConditions.reveal(row, in: app, scrollID: "navigation-route-scroll")
         let delete = UITestConditions.element(app, "recording-delete-\(sourceId)")
-        FormUITestConditions.reveal(delete, in: app, scrollID: "navigation-route-scroll")
+        XCTAssertFalse(delete.exists, app.debugDescription)
+        XCTAssertTrue(row.isHittable, row.debugDescription)
+        row.swipeLeft()
+        XCTAssertTrue(delete.waitForAppearance(), app.debugDescription)
         XCTAssertTrue(delete.isHittable, delete.debugDescription)
         delete.tap()
         let confirmation = app.alerts.firstMatch
@@ -110,7 +114,7 @@ final class RecordingDeletionRecoveryUITests: OrotFailFastTestCase {
             NSPredicate(format: "label == %@", "녹음 목록을 불러오지 못했어요."),
         ).firstMatch
         XCTAssertFalse(loadError.exists, app.debugDescription)
-        XCTAssertFalse(UITestConditions.element(app, "recording-delete-\(sourceId)").exists)
+        XCTAssertFalse(UITestConditions.element(app, "recording-library-item-\(sourceId)").exists)
     }
 
     @MainActor
@@ -218,7 +222,10 @@ final class RecordingDeletionRecoveryUITests: OrotFailFastTestCase {
         XCTAssertNotNil(UUID(uuidString: sourceId), row.debugDescription)
 
         let delete = UITestConditions.element(app, "recording-delete-\(sourceId)")
-        FormUITestConditions.reveal(delete, in: app, scrollID: "recording-review-scroll")
+        XCTAssertFalse(delete.exists, app.debugDescription)
+        XCTAssertTrue(row.isHittable, row.debugDescription)
+        row.swipeLeft()
+        XCTAssertTrue(delete.waitForAppearance(), app.debugDescription)
         XCTAssertTrue(delete.isHittable, delete.debugDescription)
         delete.tap()
         let confirmation = app.alerts.firstMatch

@@ -1,3 +1,5 @@
+import { useEffect, useRef } from 'react';
+import { NativeModules } from 'react-native';
 import type { NavigationGeometryRect } from '../navigation/navigationGeometry';
 
 type Panel = {
@@ -30,4 +32,37 @@ export function clipConversationToKeyboard<T extends Panel>(
     return panel;
 
   return { ...panel, height: Math.max(0, keyboard.y - top) };
+}
+
+/** Observe the committed routed clip decision with no coordinates or identity. */
+export function useReportConversationKeyboardClip(
+  routed: boolean,
+  panel: Panel,
+  plan: Panel,
+  hostTop: number,
+  keyboard: NavigationGeometryRect | undefined,
+) {
+  const clip = !keyboard
+    ? 'no-native-frame'
+    : plan.height <= 0
+      ? 'collapsed'
+      : plan !== panel
+        ? 'clipped'
+        : hostTop + panel.top + panel.height <= keyboard.y
+          ? 'already-above'
+          : 'disjoint';
+  const last = useRef<typeof clip | undefined>(undefined);
+  const count = useRef(0);
+  useEffect(() => {
+    if (!routed || last.current === clip || count.current >= 12) return;
+    try {
+      const sink = NativeModules.OrotProviderDiagnostics;
+      if (sink?.conversationKeyboardEnabled !== true) return;
+      last.current = clip;
+      count.current++;
+      sink.report('navigation', 'conversation_keyboard_clip', clip);
+    } catch {
+      // An unavailable diagnostic bridge must not affect measured layout.
+    }
+  }, [clip, routed]);
 }

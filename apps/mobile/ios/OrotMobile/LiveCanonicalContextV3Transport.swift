@@ -86,7 +86,7 @@ final class LiveCanonicalContextV3Transport {
               isCurrentRequest(request), !used, pending == nil
         else { return nil }
         used = true
-        guard let ticket = authority.beginV3Canonical(call: call, challenge: UUID().uuidString, current: { isCurrentRequest(request) })
+        guard let ticket = authority.beginV3Canonical(call: call, challenge: UUID().uuidString, delegation: request.delegationID, current: { isCurrentRequest(request) })
         else { retire(); return nil }
         pending = (request, ticket)
         let owner = ["callId": call, "sessionId": request.owner.sessionID,

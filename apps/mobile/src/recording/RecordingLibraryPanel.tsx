@@ -25,7 +25,6 @@ export default function RecordingLibraryPanel({
   automaticTranscription = null,
   fallbackExportSourceId,
   refreshKey,
-  selectedSummarySourceId = null,
   onSourceDeleted,
   actionsDisabled = false,
   onBusyChange,
@@ -62,10 +61,6 @@ export default function RecordingLibraryPanel({
   });
 
   const selected = recordings.find(item => item.source.id === selectedSourceId);
-  // The route context retains only identity; visible metadata comes from the currently loaded library.
-  const selectionSummary = selectedSummarySourceId
-    ? recordings.find(item => item.source.id === selectedSummarySourceId)
-    : undefined;
 
   function requestDelete(source: RecordingSourceRecord): void {
     notice.clear();
@@ -157,7 +152,6 @@ export default function RecordingLibraryPanel({
         onNewRecording={onNewRecording}
         onOpen={selectSource}
         recordings={recordings}
-        selectionSummary={selectionSummary}
       />
       {selected ? (
         <RecordingLibraryDetail

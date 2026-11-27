@@ -104,7 +104,7 @@ final class RecordingLibraryUITests: OrotFailFastTestCase {
         try inspect(extra: ["-OROT_RECORDING_VISUAL_WIDTH", "320"], suffix: "320pt", dark: false, liveTheme: false, editTranscript: false)
     }
 
-    /// Checks the selected source summary in the real saved route after returning from review.
+    /// Checks the real saved-list lane after returning from review, without a duplicate selection card.
     @MainActor
     func testSavedRecordingsSelectionSummaryReflowsAfterReturningFromReview() {
         let fixture = "test-persistence-" + UUID().uuidString.lowercased()
@@ -135,35 +135,28 @@ final class RecordingLibraryUITests: OrotFailFastTestCase {
         row.tap()
         XCTAssertTrue(UITestConditions.exists(UITestConditions.element(app, "encounter-review-panel")))
         UITestConditions.element(app, "navigation-back").tap()
-        let summary = UITestConditions.element(app, "saved-recordings-selection-summary")
-        XCTAssertTrue(UITestConditions.exists(summary))
-        assertSavedRecordingAxis(app, horizontal: false)
+        assertSavedRecordingLayout(app, row: row, sourceId: "\(fixture):ui-review")
 
         XCUIDevice.shared.orientation = .landscapeLeft
-        assertSavedRecordingAxis(app, horizontal: true)
-        XCTAssertTrue(UITestConditions.exists(summary))
+        assertSavedRecordingLayout(app, row: row, sourceId: "\(fixture):ui-review")
         XCUIDevice.shared.orientation = .portrait
-        assertSavedRecordingAxis(app, horizontal: false)
-        XCTAssertTrue(UITestConditions.exists(summary))
+        assertSavedRecordingLayout(app, row: row, sourceId: "\(fixture):ui-review")
     }
 
     @MainActor
-    private func assertSavedRecordingAxis(_ app: XCUIApplication, horizontal: Bool) {
-        let primary = UITestConditions.element(app, "saved-recordings-layout-primary")
-        let secondary = UITestConditions.element(app, "saved-recordings-layout-secondary")
+    private func assertSavedRecordingLayout(_ app: XCUIApplication, row: XCUIElement, sourceId: String) {
+        let lane = UITestConditions.element(app, "recording-library-lane")
+        let play = app.buttons.matching(identifier: "recording-playback-list-button-\(sourceId)").firstMatch
         let ready = XCTNSPredicateExpectation(predicate: NSPredicate { _, _ in
-            guard primary.exists, secondary.exists else { return false }
-            let first = primary.frame
-            let second = secondary.frame
-            // Non-overlap alone permits zero-sized panes; require area and overlap on the other axis.
-            let hasArea = first.width > 0 && first.height > 0 && second.width > 0 && second.height > 0
-            let followsAxis = horizontal ? first.maxX <= second.minX : first.maxY <= second.minY
-            let overlapsOtherAxis = horizontal
-                ? first.minY < second.maxY && second.minY < first.maxY
-                : first.minX < second.maxX && second.minX < first.maxX
-            return hasArea && overlapsOtherAxis && !first.intersects(second) && followsAxis
+            guard lane.exists, row.exists, play.exists else { return false }
+            let gap = play.frame.minX - row.frame.maxX
+            let fitsLane = lane.frame.width > 0 && lane.frame.width <= 441
+                && lane.frame.contains(row.frame) && lane.frame.contains(play.frame)
+            let adjacent = gap >= -1 && gap <= 12
+            return fitsLane && adjacent && row.isHittable && play.isHittable
         }, object: nil)
         XCTAssertEqual(UITestConditions.wait(for: [ready]), .completed, app.debugDescription)
+        XCTAssertFalse(UITestConditions.element(app, "saved-recordings-selection-summary").exists)
     }
 
     @MainActor

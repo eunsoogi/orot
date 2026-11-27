@@ -13,7 +13,27 @@ export type ResolveConversationToolSource = (
   scope: ToolCallScope & { readonly durableMessageId?: string },
 ) => Promise<EvidenceReference | undefined>;
 
+export type PreparedPersonalSource = {
+  readonly reference: EvidenceReference;
+  readonly read: (
+    signal: AbortSignal,
+  ) => Promise<
+    import('../aiFeatures/integration/evidenceSourceDocument').EvidenceSourceReadResult
+  >;
+};
+
+type PreparePersonalSource = (
+  source: Parameters<ResolveConversationToolSource>[0],
+) => PreparedPersonalSource | undefined;
+
+// Only the canonical feature-services registry can prepare the warm locator.
+export const preparePersonalSourceByResolver = new WeakMap<
+  ResolveConversationToolSource,
+  PreparePersonalSource
+>();
+
 export type PersonalSourceLease = {
+  readonly prepare?: () => PreparedPersonalSource | undefined;
   readonly signal: AbortSignal;
   readonly current: () => boolean;
   readonly retire: () => void;

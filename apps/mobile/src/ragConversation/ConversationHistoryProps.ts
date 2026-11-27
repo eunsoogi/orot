@@ -34,6 +34,7 @@ export interface ConversationHistoryProps {
   readonly beforeMessages?: ReactNode;
   readonly footer?: ReactNode;
   readonly entryChoices?: ReactNode;
+  readonly entryChoicesMayEnd?: boolean;
   readonly compact?: boolean;
   readonly unsavedCount?: number;
   readonly retryingSave?: boolean;

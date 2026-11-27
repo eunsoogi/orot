@@ -1,6 +1,8 @@
+import { SettingsInformationButton } from './SettingsInformationButton';
 import { SettingsNotificationDivider } from './SettingsNotificationDivider';
 import { useEffect, useState } from 'react';
-import { AppState, Pressable, StyleSheet, Switch, View } from 'react-native';
+import { AppState, StyleSheet, View } from 'react-native';
+import { SettingsNotificationToggleRow } from './SettingsNotificationToggleRow';
 import { t } from '../i18n';
 import { AppText as Text } from '../layout/AppText';
 import { appColors } from '../layout/appColors';
@@ -55,53 +57,55 @@ export function SettingsReplyNotificationSection() {
   }
 
   return (
-    <View style={styles.section}>
-      <Text accessibilityRole="header" style={styles.title}>
-        {t('settings.replyNotification.title')}
-      </Text>
-      <View style={styles.card}>
-        <Text
-          style={[styles.description, styles.introduction]}
-          testID="settings-reply-notification-description"
-        >
-          {t('settings.replyNotification.description')}
+    <View style={styles.section} testID="settings-section-reply-notifications">
+      <View style={styles.sectionHeading}>
+        <Text accessibilityRole="header" style={styles.title}>
+          {t('settings.replyNotification.title')}
         </Text>
-        <SettingsNotificationDivider />
-        <View style={styles.row}>
-          <Text style={styles.label}>
-            {t('settings.replyNotification.enabled')}
-          </Text>
-          <ReplySwitch
-            label={t('settings.replyNotification.enabled')}
-            disabled={busy || !preference}
-            value={preference?.enabled ?? false}
-            onToggle={() => {
-              if (preference)
-                save({ ...preference, enabled: !preference.enabled }).catch(
-                  () => undefined,
-                );
-            }}
-          />
-        </View>
-        <SettingsNotificationDivider />
-        <View style={styles.row}>
-          <Text style={styles.label}>
-            {t('settings.replyNotification.preview')}
-          </Text>
-          <ReplySwitch
-            label={t('settings.replyNotification.preview')}
-            disabled={busy || !preference?.enabled}
-            value={preference?.preview ?? true}
-            onToggle={() => {
-              if (preference)
-                save({ ...preference, preview: !preference.preview }).catch(
-                  () => undefined,
-                );
-            }}
-          />
-        </View>
+        <SettingsInformationButton
+          title={t('settings.replyNotification.title')}
+          message={t('settings.replyNotification.description')}
+          testID="settings-reply-notification-info"
+        />
+      </View>
+      <View style={styles.card}>
+        <SettingsNotificationToggleRow
+          testID="settings-reply-notification"
+          label={t('settings.replyNotification.enabled')}
+          hint={
+            preference?.preview
+              ? t('settings.replyNotification.previewRisk')
+              : undefined
+          }
+          disabled={busy || !preference}
+          value={preference?.enabled ?? false}
+          onToggle={() => {
+            if (preference)
+              save({ ...preference, enabled: !preference.enabled }).catch(
+                () => undefined,
+              );
+          }}
+        />
+        <SettingsNotificationDivider inset={16} />
+        <SettingsNotificationToggleRow
+          testID="settings-reply-preview"
+          label={t('settings.replyNotification.preview')}
+          hint={t('settings.replyNotification.previewRisk')}
+          disabled={busy || !preference?.enabled}
+          value={preference?.preview ?? true}
+          onToggle={() => {
+            if (preference)
+              save({ ...preference, preview: !preference.preview }).catch(
+                () => undefined,
+              );
+          }}
+        />
+        {/* Keep the warning visible before opt-in without shifting the title row's center. */}
+        <Text style={styles.previewRisk}>
+          {t('settings.replyNotification.previewRisk')}
+        </Text>
         {status && (
-          <Text accessibilityRole="alert" style={styles.description}>
+          <Text accessibilityRole="alert" style={styles.status}>
             {t(
               status === 'denied'
                 ? 'settings.replyNotification.denied'
@@ -114,81 +118,32 @@ export function SettingsReplyNotificationSection() {
   );
 }
 
-/** The wrapper owns the 44-point touch target and the accessible switch state. */
-function ReplySwitch({
-  label,
-  disabled,
-  value,
-  onToggle,
-}: {
-  label: string;
-  disabled: boolean;
-  value: boolean;
-  onToggle: () => void;
-}) {
-  const [size, setSize] = useState({ width: 0, height: 0 });
-  const padding = {
-    paddingHorizontal: size.width ? Math.max(0, (44 - size.width) / 2) : 0,
-    paddingVertical: size.height ? Math.max(0, (44 - size.height) / 2) : 0,
-  };
-  return (
-    <Pressable
-      accessibilityRole="switch"
-      accessibilityLabel={label}
-      accessibilityState={{ checked: value, disabled }}
-      disabled={disabled}
-      onPress={onToggle}
-      style={[styles.control, padding]}
-    >
-      <Switch
-        accessible={false}
-        importantForAccessibility="no-hide-descendants"
-        pointerEvents="none"
-        value={value}
-        disabled={disabled}
-        onLayout={event => {
-          const { width, height } = event.nativeEvent.layout;
-          setSize(current =>
-            current.width === width && current.height === height
-              ? current
-              : { width, height },
-          );
-        }}
-      />
-    </Pressable>
-  );
-}
-
 const styles = StyleSheet.create({
-  control: {
-    minWidth: 44,
-    minHeight: 44,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
   section: { gap: 8 },
+  sectionHeading: {
+    alignItems: 'center',
+    flexDirection: 'row',
+    gap: 8,
+    paddingLeft: 16,
+  },
   title: {
     color: appColors.secondary,
+    flex: 1,
     fontSize: 14,
     fontWeight: '600',
-    marginBottom: 2,
   },
   card: {
     backgroundColor: appColors.surface,
     borderColor: appColors.border,
     borderRadius: 12,
     borderWidth: 0,
-    padding: 16,
+    overflow: 'hidden',
   },
-  description: { color: appColors.secondary, fontSize: 15 },
-  // Match the daily reminder introduction without adding padding to error messages.
-  introduction: { paddingBottom: 12 },
-  row: {
-    alignItems: 'center',
-    flexDirection: 'row',
-    gap: 12,
-    justifyContent: 'space-between',
-    minHeight: 60,
+  status: { color: appColors.danger, fontSize: 14, padding: 16 },
+  previewRisk: {
+    color: appColors.secondary,
+    fontSize: 13,
+    paddingBottom: 16,
+    paddingHorizontal: 16,
   },
-  label: { color: appColors.text, flex: 1, fontSize: 17 },
 });

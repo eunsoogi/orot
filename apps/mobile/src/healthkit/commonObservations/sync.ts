@@ -1,3 +1,4 @@
+import { tryStepAnchor } from './tryStepAnchor';
 import { notifyWorkoutImportCommitted } from '../workoutImportEvents';
 import { reportDerivedHeartRateShape as reportShape } from './derivedHeartRateShapeDiagnostic';
 import { refreshRecentDiscreteHeartRate } from './refreshRecentDiscreteHeartRate';
@@ -45,7 +46,6 @@ export function syncCommonObservationChanges(
     return outcome;
   });
 }
-
 /** Commits each complete native page before using its opaque cursor for the next one. */
 async function syncCommonObservationChangesExclusive(
   options: SyncCommonObservationChangesOptions,
@@ -164,7 +164,8 @@ async function syncCommonObservationChangesExclusive(
       );
     }
     const pageCursorAdvanced = nextCursor !== cursor;
-    if (pageHasChanges || pageCursorAdvanced) {
+    const anchor = tryStepAnchor(options, pageHasChanges, cursor, nextCursor);
+    if ((pageHasChanges || pageCursorAdvanced) && !(anchor && (await anchor))) {
       deleted += await measureCommonObservationOperation(
         options.instrumentation,
         'persist',

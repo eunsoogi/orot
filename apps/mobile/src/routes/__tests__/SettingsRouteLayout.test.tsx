@@ -34,7 +34,9 @@ test('keeps one settings end gutter beyond the navigation overlap', async () => 
           onOpenProviderSettings={jest.fn()}
           onOpenAccounts={jest.fn()}
           onOpenPrivacy={jest.fn()}
-          onOpenBackup={jest.fn()}
+          onOpenMemory={jest.fn()}
+          onOpenNotifications={jest.fn()}
+          onOpenPrivacyPolicy={jest.fn()}
           onOpenHealthData={jest.fn()}
           onOpenSyncStatus={jest.fn()}
         />
@@ -79,7 +81,9 @@ test.each([
         onOpenProviderSettings={jest.fn()}
         onOpenAccounts={jest.fn()}
         onOpenPrivacy={jest.fn()}
-        onOpenBackup={jest.fn()}
+        onOpenMemory={jest.fn()}
+        onOpenNotifications={jest.fn()}
+        onOpenPrivacyPolicy={jest.fn()}
         onOpenHealthData={jest.fn()}
         onOpenSyncStatus={jest.fn()}
       />,
@@ -89,23 +93,18 @@ test.each([
       StyleSheet.flatten(screen.getByTestId('settings-layout').props.style)
         ?.flexDirection,
     ).toBe('column');
-    expect(screen.getByText(t('settings.summary'))).toBeTruthy();
-    for (const id of [
-      'settings-section-ai-accounts',
-      'settings-section-health-data',
-      'settings-section-privacy-backup',
-      'settings-section-daily-reminders',
-      'settings-section-app-info',
-    ]) {
-      expect(screen.getByTestId(id)).toBeTruthy();
-    }
+    expect(screen.queryByText(t('settings.summary'))).toBeNull();
+    expect(screen.getByTestId('settings-destinations')).toBeTruthy();
+    expect(screen.getByTestId('settings-app-info')).toBeTruthy();
     for (const id of [
       'settings-open-health-data',
       'settings-open-sync-status',
       'settings-open-provider',
       'settings-open-accounts',
       'settings-open-privacy',
-      'settings-open-backup',
+      'settings-open-privacy-policy',
+      'settings-open-notifications',
+      'settings-open-memory',
     ]) {
       expect(screen.getByTestId(id).props.accessibilityRole).toBe('button');
     }

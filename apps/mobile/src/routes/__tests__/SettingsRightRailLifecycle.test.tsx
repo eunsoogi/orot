@@ -105,6 +105,13 @@ test.each([
     'settings-privacy-title',
     false,
   ],
+  ['settings-memory', 'settings-open-memory', 'settings-memory-title', false],
+  [
+    'settings-notifications',
+    'settings-open-notifications',
+    'settings-notifications-title',
+    false,
+  ],
   [
     'settings-provider',
     'settings-open-provider',

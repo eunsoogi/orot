@@ -13,8 +13,10 @@ import {
 import { ConversationJumpToLatest } from './ConversationJumpToLatest';
 import { StyleSheet, View } from 'react-native';
 
-const ComposerInset = createContext(0);
-export const useFloatingComposerInset = () => useContext(ComposerInset);
+const ComposerInset = createContext({ height: 0, passiveTop: 0 });
+export const useFloatingComposerInset = () => useContext(ComposerInset).height;
+export const useFloatingComposerPassiveTop = () =>
+  useContext(ComposerInset).passiveTop;
 
 /** Float over the transcript while reserving exactly the mounted controls' height for its final items. */
 export function FloatingComposerSurface({
@@ -40,12 +42,20 @@ export function FloatingComposerSurface({
     height === null
       ? 0
       : height - (canUseField ? Math.min(height, Math.max(0, fieldTop)) : 0);
+  const reservedHeight = composer ? (height ?? 0) : 0;
+  const clearance = useMemo(
+    () => ({
+      height: reservedHeight,
+      passiveTop: Math.max(0, reservedHeight - anchor),
+    }),
+    [reservedHeight, anchor],
+  );
   return (
     <View
       style={styles.surface}
       testID="conversation-floating-composer-surface"
     >
-      <ComposerInset.Provider value={composer ? (height ?? 0) : 0}>
+      <ComposerInset.Provider value={clearance}>
         <ConversationJumpHost.Provider value={composer ? setJump : null}>
           {children}
         </ConversationJumpHost.Provider>

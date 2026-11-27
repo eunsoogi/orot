@@ -26,11 +26,19 @@ const summary: RecordingLibrarySummary = {
 };
 
 /** Supplies one persisted summary and removes it when the production delete flow commits. */
-export function createLibraryService(): RecordingLibraryService {
+export function createLibraryService(): RecordingLibraryService & {
+  readonly replaceSavedTitle: (title: string) => void;
+} {
   let summaries: readonly RecordingLibrarySummary[] = [summary];
   return {
     list: jest.fn(async () => summaries.map(item => item.source)),
     listSummaries: jest.fn(async () => summaries),
+    replaceSavedTitle(title) {
+      summaries = summaries.map(item => ({
+        ...item,
+        source: { ...item.source, title },
+      }));
+    },
     deleteRecording: jest.fn(async (sourceId: string) => {
       summaries = summaries.filter(item => item.source.id !== sourceId);
       return { audioCleanupPending: false };

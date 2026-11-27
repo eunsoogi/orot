@@ -1,3 +1,4 @@
+import { createBoundToolSourceRoutes } from './verifiedBoundToolRead';
 import { createArchivedCitationRouting } from './archivedCitationService';
 import { inheritConversationReadOperation } from './conversationReadOperation';
 import { createColdConversationServices } from './coldConversationServices';
@@ -243,8 +244,7 @@ export function createAiFeatureServices(
       analyze(false, signal, observer),
     summarizeSymptoms: (signal, observer) => analyze(true, signal, observer),
     resolveSource: reference => registry.resolve(reference),
-    resolveToolSource: (reference, signal, scope) =>
-      registry.resolveToolSource(reference, signal, scope),
+    ...createBoundToolSourceRoutes(registry),
     readSource: (reference, signal) => registry.readSource(reference, signal),
   };
 }

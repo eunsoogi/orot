@@ -53,8 +53,10 @@ test('prepares local backup support at startup and shows its status in Settings'
     jest.mocked(prepareDatabaseForBackup).mock.invocationCallOrder[0],
   );
   await fireEvent.press(screen.getByTestId('navigation-tab-settings'));
-  expect(screen.getByTestId('settings-open-backup')).toBeTruthy();
-  await fireEvent.press(screen.getByTestId('settings-open-backup'));
+  expect(screen.queryByTestId('settings-open-backup')).toBeNull();
+  await fireEvent.press(screen.getByTestId('settings-open-sync-status'));
+  await screen.findByTestId('settings-sync-status-title');
+  expect(screen.queryByTestId('settings-open-backup')).toBeNull();
   expect(await screen.findByTestId('backup-status-recovery')).toBeTruthy();
   expect(
     await screen.findByText(/백업을 위한 데이터 준비를 마쳤어요/u),

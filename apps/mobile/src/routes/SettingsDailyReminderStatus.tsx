@@ -21,6 +21,16 @@ export function SettingsDailyReminderStatus({
   state,
 }: SettingsDailyReminderStatusProps) {
   const [openSettingsError, setOpenSettingsError] = useState(false);
+  // A settled off state is already conveyed by the accessible switch.
+  if (
+    state.status === 'disabled' &&
+    !state.loading &&
+    !state.loadError &&
+    !state.saving &&
+    !state.saveError &&
+    !openSettingsError
+  )
+    return null;
   const statusMessage = state.loading
     ? t('settings.dailyReminder.loading')
     : state.loadError

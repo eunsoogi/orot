@@ -1,4 +1,4 @@
-import { act } from '@testing-library/react-native';
+import { act, fireEvent, screen } from '@testing-library/react-native';
 import { Alert } from 'react-native';
 
 type AlertButton = { readonly style?: string; readonly onPress?: () => void };
@@ -27,4 +27,15 @@ export async function confirmNativeDeletion(
     pressNativeDeletionButton(alert, 'destructive');
     await Promise.resolve();
   });
+}
+
+/** VoiceOver reveals the trailing control; only pressing it requests confirmation. */
+export async function requestLibraryRowDeletion(sourceId: string) {
+  const row = await screen.findByTestId(`recording-details-${sourceId}`);
+  await fireEvent(row, 'accessibilityAction', {
+    nativeEvent: { actionName: 'delete' },
+  });
+  await fireEvent.press(
+    await screen.findByTestId(`recording-delete-${sourceId}`),
+  );
 }

@@ -9,6 +9,10 @@ import {
 } from './encounter-review-test-inventory.mjs';
 
 export const coreTests = [
+  'OrotIntegrationTests/WorkoutAssociatedParentPairTests/testExactlyTwoPendingAndOrderedEquivalenceToSerial',
+  'OrotIntegrationTests/WorkoutAssociatedParentPairTests/testLostOwnerAndCancelledCallerCannotConsumeOrStartNextPair',
+  'OrotIntegrationTests/WorkoutAssociatedParentPairTests/testInvalidPreparationOrConsumptionDoesNotReadLaterWorkouts',
+  'OrotIntegrationTests/WorkoutAssociatedParentPairTests/testFirstQueryErrorCancelsIndependentlyHeldSibling',
   // Synthetic voice ports verify Live and retained tool rejection without microphone or network.
   'OrotIntegrationTests/RealtimeVoiceLifecycleTests/testTicketedContinuationTimingRequiresOwnedTransportCompletion',
   'OrotIntegrationTests/RealtimeVoiceServerCommandDiagnosticsTests/testServerOriginsFollowOnlyHandedCommandsInTheCurrentSocket',

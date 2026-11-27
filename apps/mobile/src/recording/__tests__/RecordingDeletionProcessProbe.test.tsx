@@ -1,10 +1,4 @@
-import {
-  act,
-  fireEvent,
-  render,
-  screen,
-  waitFor,
-} from '@testing-library/react-native';
+import { act, render, screen, waitFor } from '@testing-library/react-native';
 import { NativeModules } from 'react-native';
 import type { AgentMemoryService } from '@orot/agent-memory';
 import type { RecordRepository } from '@orot/storage';
@@ -16,6 +10,7 @@ import { savedSource } from '../recordingScreenSupport';
 import {
   confirmNativeDeletion,
   mockNativeDeletionAlert,
+  requestLibraryRowDeletion,
 } from '../testSupport/nativeDeletionAlert';
 
 test('the real recording screen distinguishes SQL commit from held audio cleanup in opt-in process diagnostics', async () => {
@@ -59,9 +54,7 @@ test('the real recording screen distinguishes SQL commit from held audio cleanup
         }}
       />,
     );
-    await fireEvent.press(
-      await screen.findByTestId(`recording-delete-${savedSource.id}`),
-    );
+    await requestLibraryRowDeletion(savedSource.id);
     await confirmNativeDeletion(alert);
     await waitFor(() =>
       expect(calls()).toContainEqual([

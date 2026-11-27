@@ -101,7 +101,10 @@ final class RecordingDeletionLatencyUITests: OrotFailFastTestCase {
         XCTAssertNotNil(UUID(uuidString: sourceId), row.debugDescription)
 
         let delete = UITestConditions.element(app, "recording-delete-\(sourceId)")
-        FormUITestConditions.reveal(delete, in: app, scrollID: "recording-review-scroll")
+        XCTAssertFalse(delete.exists, app.debugDescription)
+        XCTAssertTrue(row.isHittable, row.debugDescription)
+        row.swipeLeft()
+        XCTAssertTrue(delete.waitForAppearance(), app.debugDescription)
         XCTAssertTrue(delete.isHittable, delete.debugDescription)
         delete.tap()
 

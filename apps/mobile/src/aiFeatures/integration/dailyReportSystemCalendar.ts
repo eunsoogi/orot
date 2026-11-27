@@ -38,6 +38,29 @@ async function revision(snapshot: CalendarRangeSnapshot) {
   return digest;
 }
 
+/** An initial native sample is not a publication guard. The owning operation
+ * must still fully revalidate it and hold its listener through settlement. */
+export async function openReportCalendarCandidate(
+  binding: DailyReportSystemCalendar,
+  read: ReportCalendarReader = readReportCalendar,
+  signal?: AbortSignal,
+) {
+  let snapshot: CalendarRangeSnapshot | undefined;
+  try {
+    snapshot = await read(binding.fromInclusive, binding.toExclusive, signal);
+    if (
+      (await revision(snapshot)) === binding.revision &&
+      !signal?.aborted &&
+      snapshot.isCurrent()
+    )
+      return snapshot;
+  } catch {
+    /* Missing access never proves that retained prose is current. */
+  }
+  snapshot?.dispose();
+  return null;
+}
+
 /** Keep a native change listener alive across the caller's asynchronous storage operation. */
 export async function acquireReportCalendarGuard(
   context: Pick<DailyReportContext, 'systemCalendar'>,
@@ -51,19 +74,15 @@ export async function acquireReportCalendarGuard(
       revalidate: async (checkSignal?: AbortSignal) => !checkSignal?.aborted,
       dispose: () => {},
     };
-  let snapshot: CalendarRangeSnapshot | undefined;
+  const snapshot = await openReportCalendarCandidate(binding, read, signal);
+  if (!snapshot) return null;
   try {
-    snapshot = await read(binding.fromInclusive, binding.toExclusive, signal);
-    if (
-      (await revision(snapshot)) === binding.revision &&
-      (await snapshot.revalidate(signal)) &&
-      snapshot.isCurrent()
-    )
+    if ((await snapshot.revalidate(signal)) && snapshot.isCurrent())
       return snapshot;
   } catch {
-    /* Missing access never proves that retained prose is current. */
+    /* A failed revalidation never authorizes a retained report. */
   }
-  snapshot?.dispose();
+  snapshot.dispose();
   return null;
 }
 

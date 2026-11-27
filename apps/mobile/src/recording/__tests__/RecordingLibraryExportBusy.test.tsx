@@ -13,6 +13,7 @@ import { savedSource } from '../recordingScreenSupport';
 import {
   confirmNativeDeletion,
   mockNativeDeletionAlert,
+  requestLibraryRowDeletion,
 } from '../testSupport/nativeDeletionAlert';
 
 const current = { ...savedSource, id: 'current-share-source' };
@@ -90,7 +91,13 @@ test.each(['audio', 'transcript'] as const)(
       expect(
         screen.getByTestId(`recording-playback-list-button-${older.id}`),
       ).toBeDisabled();
-      expect(screen.getByTestId(`recording-delete-${older.id}`)).toBeDisabled();
+      expect(
+        screen.getByTestId(`recording-details-${older.id}`),
+      ).toBeDisabled();
+      expect(
+        screen.getByTestId(`recording-details-${older.id}`).props
+          .accessibilityActions,
+      ).toBeUndefined();
       expect(screen.queryByTestId('recording-delete-progress')).toBeNull();
       await fireEvent.press(row);
       expect(screen.queryByTestId('recording-detail')).toBeNull();
@@ -162,7 +169,7 @@ test.each(['audio', 'transcript'] as const)(
     await waitFor(() =>
       expect(screen.getByTestId(`recording-export-${kind}`)).toBeEnabled(),
     );
-    await fireEvent.press(screen.getByTestId(`recording-delete-${older.id}`));
+    await requestLibraryRowDeletion(older.id);
     await waitFor(() => expect(alert).toHaveBeenCalledTimes(1));
     await confirmNativeDeletion(alert);
     await waitFor(() =>

@@ -129,3 +129,4 @@ export {
   singletonProvenance,
   singletonProvenanceValue,
 } from './periodProvenanceIndexes';
+export { isRecordRepositoryForDatabase } from './recordRepositoryOwner';

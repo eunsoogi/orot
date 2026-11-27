@@ -1,3 +1,4 @@
+import { registerLivePersonalLocation } from './verifiedBoundToolRead';
 import type { EvidenceItem, EvidenceReference } from '@orot/agent-runtime';
 import type { ReviewState } from '@orot/domain';
 import type { RecordKind } from '@orot/storage';
@@ -223,6 +224,7 @@ export function buildPersonalEvidence(input: {
         },
       ),
     });
+    registerLivePersonalLocation(input.registry, item);
     items.push(item);
     recordsByEvidenceId.set(item.evidenceId, entry);
     chunks.push(

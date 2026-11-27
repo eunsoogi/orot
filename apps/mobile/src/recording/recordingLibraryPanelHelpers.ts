@@ -24,7 +24,6 @@ export interface RecordingLibraryPanelProps {
   readonly automaticTranscription?: AutomaticTranscriptionSnapshot | null;
   readonly fallbackExportSourceId?: string | null;
   readonly refreshKey?: string | null;
-  readonly selectedSummarySourceId?: string | null;
   readonly onSourceDeleted?: (sourceId: string) => void;
   readonly actionsDisabled?: boolean;
   readonly onBusyChange?: (busy: boolean) => void;

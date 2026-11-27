@@ -27,7 +27,9 @@ test('shows the installed application version supplied by native metadata', asyn
         onOpenProviderSettings={jest.fn()}
         onOpenAccounts={jest.fn()}
         onOpenPrivacy={jest.fn()}
-        onOpenBackup={jest.fn()}
+        onOpenMemory={jest.fn()}
+        onOpenNotifications={jest.fn()}
+        onOpenPrivacyPolicy={jest.fn()}
         onOpenHealthData={jest.fn()}
         onOpenSyncStatus={jest.fn()}
       />,
@@ -44,13 +46,15 @@ test('shows the installed application version supplied by native metadata', asyn
   }
 });
 
-test('groups destinations and preserves every Settings action', async () => {
+test('shows one compact list and preserves each Settings destination', async () => {
   const onOpenHealthData = jest.fn();
   const onOpenSyncStatus = jest.fn();
   const onOpenProviderSettings = jest.fn();
   const onOpenAccounts = jest.fn();
   const onOpenPrivacy = jest.fn();
-  const onOpenBackup = jest.fn();
+  const onOpenPrivacyPolicy = jest.fn();
+  const onOpenMemory = jest.fn();
+  const onOpenNotifications = jest.fn();
   await render(
     <SettingsRoute
       selectedProvider="Cached provider label"
@@ -58,39 +62,42 @@ test('groups destinations and preserves every Settings action', async () => {
       onOpenProviderSettings={onOpenProviderSettings}
       onOpenAccounts={onOpenAccounts}
       onOpenPrivacy={onOpenPrivacy}
-      onOpenBackup={onOpenBackup}
+      onOpenMemory={onOpenMemory}
+      onOpenNotifications={onOpenNotifications}
+      onOpenPrivacyPolicy={onOpenPrivacyPolicy}
       onOpenHealthData={onOpenHealthData}
       onOpenSyncStatus={onOpenSyncStatus}
     />,
   );
 
-  const sections = screen
-    .getAllByTestId(/^settings-section-/)
-    .map(section => section.props.testID);
-  expect(sections).toEqual([
-    'settings-section-ai-accounts',
-    'settings-section-health-data',
-    'settings-section-privacy-backup',
-    'settings-section-daily-reminders',
-    'settings-section-app-info',
-  ]);
-  expect(screen.getByText(t('settings.summary'))).toBeTruthy();
   expect(
-    within(screen.getByTestId('settings-section-ai-accounts')).getByText(
-      'AI와 계정',
+    screen.getByRole('header', { name: t('settings.title') }),
+  ).toBeTruthy();
+  expect(screen.queryAllByTestId(/^settings-section-/)).toHaveLength(0);
+  expect(screen.queryByText(t('settings.summary'))).toBeNull();
+  for (const id of ['settings-destinations', 'settings-version-group']) {
+    expect(
+      StyleSheet.flatten(screen.getByTestId(id).props.style),
+    ).toMatchObject({
+      backgroundColor: appColors.surface,
+    });
+  }
+  const destinations = within(screen.getByTestId('settings-destinations'));
+  expect(
+    destinations
+      .getAllByRole('button')
+      .slice(-3)
+      .map(row => row.props.accessibilityLabel),
+  ).toEqual(['권한', '동기화', '개인정보 처리 방침']);
+  expect(destinations.queryByTestId('settings-app-info')).toBeNull();
+  expect(
+    within(screen.getByTestId('settings-version-group')).getByTestId(
+      'settings-app-info',
     ),
   ).toBeTruthy();
-  expect(
-    within(screen.getByTestId('settings-section-health-data')).getByRole(
-      'header',
-      { name: '건강 데이터' },
-    ),
-  ).toBeTruthy();
-  expect(
-    within(screen.getByTestId('settings-section-privacy-backup')).getByText(
-      '개인정보와 보관',
-    ),
-  ).toBeTruthy();
+  expect(destinations.queryByTestId('settings-open-backup')).toBeNull();
+  expect(screen.queryByTestId('settings-daily-reminder-switch')).toBeNull();
+  expect(screen.queryAllByRole('switch')).toHaveLength(0);
   expect(screen.getByText('AI 제공자와 모델')).toBeTruthy();
   expect(screen.getByText('연결된 계정')).toBeTruthy();
   // These destinations keep their actions but no longer expose loading/account subtitles.
@@ -106,12 +113,16 @@ test('groups destinations and preserves every Settings action', async () => {
       t('provider.selection.chatGPTAccountsConnected', { count: 1 }),
     ),
   ).toBeNull();
-  expect(screen.getByText('개인정보 및 권한')).toBeTruthy();
-  expect(screen.getByText('백업과 복구')).toBeTruthy();
+  expect(screen.getByText('권한')).toBeTruthy();
+  expect(screen.getByText('개인정보 처리 방침')).toBeTruthy();
   expect(
     StyleSheet.flatten(screen.getByTestId('settings-app-info-icon').props.style)
       ?.backgroundColor,
   ).toEqual(appColors.primarySoft);
+  expect(
+    StyleSheet.flatten(screen.getByTestId('settings-app-info-icon').props.style)
+      ?.width,
+  ).toBe(28);
 
   const actionIDs = [
     'settings-open-health-data',
@@ -119,7 +130,9 @@ test('groups destinations and preserves every Settings action', async () => {
     'settings-open-provider',
     'settings-open-accounts',
     'settings-open-privacy',
-    'settings-open-backup',
+    'settings-open-privacy-policy',
+    'settings-open-memory',
+    'settings-open-notifications',
   ];
   for (const id of actionIDs) {
     expect(screen.getByTestId(id).props.accessibilityRole).toBe('button');
@@ -131,5 +144,7 @@ test('groups destinations and preserves every Settings action', async () => {
   expect(onOpenProviderSettings).toHaveBeenCalledTimes(1);
   expect(onOpenAccounts).toHaveBeenCalledTimes(1);
   expect(onOpenPrivacy).toHaveBeenCalledTimes(1);
-  expect(onOpenBackup).toHaveBeenCalledTimes(1);
+  expect(onOpenPrivacyPolicy).toHaveBeenCalledTimes(1);
+  expect(onOpenMemory).toHaveBeenCalledTimes(1);
+  expect(onOpenNotifications).toHaveBeenCalledTimes(1);
 });

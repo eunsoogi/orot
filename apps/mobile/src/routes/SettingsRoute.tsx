@@ -1,4 +1,3 @@
-import { HubBanner } from './HubBanner';
 import { NativeModules, StyleSheet, View } from 'react-native';
 import { AdaptiveColumns } from '../layout/AdaptiveColumns';
 import { AppText as Text } from '../layout/AppText';
@@ -10,29 +9,30 @@ import { NAVIGATION_CONTENT_GAP } from '../navigation/navigationLayout';
 import { SettingsRouteAppInfo, SettingsRouteRow } from './SettingsRouteRows';
 import { processDiagnosticWitnessEnabled } from '../providers/processDiagnosticWitness';
 import { ProcessDiagnosticWitnessSection } from './ProcessDiagnosticWitnessSection';
-import { SettingsDailyReminderSection } from './SettingsDailyReminderSection';
-import { SettingsReplyNotificationSection } from './SettingsReplyNotificationSection';
 
 interface SettingsRouteProps {
-  /** Tracks the latest committed choice after persisted resolution confirms it is valid. */
   readonly selectedProvider: string;
   readonly selectedAiResolverOptions?: SelectedAiResolverOptions;
   readonly onOpenProviderSettings: () => void;
   readonly onOpenAccounts: () => void;
   readonly onOpenPrivacy: () => void;
-  readonly onOpenBackup: () => void;
+  readonly onOpenPrivacyPolicy: () => void;
   readonly onOpenHealthData: () => void;
   readonly onOpenSyncStatus: () => void;
+  readonly onOpenNotifications: () => void;
+  readonly onOpenMemory: () => void;
 }
 
-/** Root rows are navigation only; model and account status belong to their detail screens. */
+/** The root list only navigates; persisted controls mount on their own screens. */
 export function SettingsRoute({
   onOpenProviderSettings,
   onOpenAccounts,
   onOpenPrivacy,
-  onOpenBackup,
+  onOpenPrivacyPolicy,
   onOpenHealthData,
   onOpenSyncStatus,
+  onOpenNotifications,
+  onOpenMemory,
 }: SettingsRouteProps) {
   useNavigationLeaveStateRegistration({
     canLeave: true,
@@ -47,103 +47,79 @@ export function SettingsRoute({
   )?.version;
   return (
     <View style={styles.container}>
-      {/* Keep all settings sections in a single usable region. */}
       <AdaptiveColumns
         primary={
           <View style={styles.panel} testID="settings-panel">
-            <View style={styles.banner}>
-              <HubBanner
-                title={t('settings.title')}
-                subtitle={t('settings.summary')}
-                testID="settings"
+            <Text
+              accessibilityRole="header"
+              style={styles.title}
+              testID="settings-title"
+            >
+              {t('settings.title')}
+            </Text>
+            <View style={styles.list} testID="settings-destinations">
+              <SettingsRouteRow
+                symbol="sparkles"
+                tone="purple"
+                title={t('settings.provider')}
+                onPress={onOpenProviderSettings}
+                testID="settings-open-provider"
+              />
+              <SettingsRouteRow
+                symbol="person.crop.circle"
+                tone="purple"
+                title={t('settings.accounts')}
+                onPress={onOpenAccounts}
+                testID="settings-open-accounts"
+              />
+              <SettingsRouteRow
+                symbol="heart.fill"
+                tone="pink"
+                title={t('settings.healthData')}
+                onPress={onOpenHealthData}
+                testID="settings-open-health-data"
+              />
+              <SettingsRouteRow
+                symbol="bell.fill"
+                tone="pink"
+                title={t('settings.notifications')}
+                onPress={onOpenNotifications}
+                testID="settings-open-notifications"
+              />
+              <SettingsRouteRow
+                symbol="bookmark.fill"
+                tone="purple"
+                title={t('settings.memory')}
+                onPress={onOpenMemory}
+                testID="settings-open-memory"
+              />
+              <SettingsRouteRow
+                symbol="checkmark.shield"
+                tone="green"
+                title={t('settings.permissions')}
+                onPress={onOpenPrivacy}
+                testID="settings-open-privacy"
+              />
+              <SettingsRouteRow
+                symbol="arrow.triangle.2.circlepath"
+                title={t('settings.syncStatus')}
+                onPress={onOpenSyncStatus}
+                testID="settings-open-sync-status"
+              />
+              <SettingsRouteRow
+                symbol="hand.raised.fill"
+                tone="neutral"
+                title={t('settings.privacyPolicy')}
+                onPress={onOpenPrivacyPolicy}
+                testID="settings-open-privacy-policy"
+                last
               />
             </View>
-
-            <View style={styles.section} testID="settings-section-ai-accounts">
-              <Text accessibilityRole="header" style={styles.sectionTitle}>
-                {t('settings.aiAccounts')}
-              </Text>
-              <View style={styles.group}>
-                <SettingsRouteRow
-                  symbol="sparkles"
-                  tone="purple"
-                  onPress={onOpenProviderSettings}
-                  testID="settings-open-provider"
-                  title={t('settings.provider')}
-                />
-                <View style={styles.divider} />
-                <SettingsRouteRow
-                  symbol="person"
-                  tone="purple"
-                  onPress={onOpenAccounts}
-                  testID="settings-open-accounts"
-                  title={t('settings.accounts')}
-                />
-              </View>
-            </View>
-
-            <View style={styles.section} testID="settings-section-health-data">
-              <Text accessibilityRole="header" style={styles.sectionTitle}>
-                {t('settings.healthData')}
-              </Text>
-              <View style={styles.group}>
-                <SettingsRouteRow
-                  symbol="heart.fill"
-                  tone="pink"
-                  onPress={onOpenHealthData}
-                  summary={t('settings.healthDataSummary')}
-                  testID="settings-open-health-data"
-                  title={t('settings.healthData')}
-                />
-                <View style={styles.divider} />
-                <SettingsRouteRow
-                  symbol="arrow.triangle.2.circlepath"
-                  onPress={onOpenSyncStatus}
-                  summary={t('settings.syncStatusSummary')}
-                  testID="settings-open-sync-status"
-                  title={t('settings.syncStatus')}
-                />
-              </View>
-            </View>
-
-            <View
-              style={styles.section}
-              testID="settings-section-privacy-backup"
-            >
-              <Text accessibilityRole="header" style={styles.sectionTitle}>
-                {t('settings.privacyBackup')}
-              </Text>
-              <View style={styles.group}>
-                <SettingsRouteRow
-                  symbol="checkmark.shield"
-                  tone="green"
-                  onPress={onOpenPrivacy}
-                  testID="settings-open-privacy"
-                  title={t('settings.permissions')}
-                />
-                <View style={styles.divider} />
-                <SettingsRouteRow
-                  symbol="externaldrive"
-                  onPress={onOpenBackup}
-                  testID="settings-open-backup"
-                  title={t('backup.pageTitle')}
-                />
-              </View>
-            </View>
-
-            <SettingsDailyReminderSection />
-            <SettingsReplyNotificationSection />
-
-            <View style={styles.section} testID="settings-section-app-info">
-              <Text accessibilityRole="header" style={styles.sectionTitle}>
-                {t('settings.appInfo')}
-              </Text>
-              <View style={styles.group}>
-                <SettingsRouteAppInfo version={version} />
-                {processDiagnosticWitnessEnabled() ? (
-                  <ProcessDiagnosticWitnessSection />
-                ) : null}
-              </View>
+            <View style={styles.list} testID="settings-version-group">
+              <SettingsRouteAppInfo version={version} />
+              {processDiagnosticWitnessEnabled() ? (
+                <ProcessDiagnosticWitnessSection />
+              ) : null}
             </View>
           </View>
         }
@@ -158,39 +134,22 @@ const styles = StyleSheet.create({
   container: {
     flexGrow: 1,
     minWidth: 0,
-    backgroundColor: appColors.background,
   },
   panel: {
-    flexGrow: 1,
-    minWidth: 0,
+    alignSelf: 'center',
+    width: '100%',
+    maxWidth: 680,
     gap: 20,
     paddingHorizontal: 20,
-    paddingTop: 16,
+    paddingTop: 24,
     // The outer route scroller already supplies the navigation gap.
     paddingBottom: 28 - NAVIGATION_CONTENT_GAP,
   },
-  banner: {
-    borderRadius: 24,
-    overflow: 'hidden',
+  title: { color: appColors.text, fontSize: 34, fontWeight: '700' },
+  list: {
+    // These groups use the same adaptive card surface as the Records tab.
     backgroundColor: appColors.surface,
-  },
-  section: { gap: 8 },
-  divider: {
-    height: StyleSheet.hairlineWidth,
-    backgroundColor: appColors.border,
-    marginHorizontal: 16,
-  },
-  group: {
-    backgroundColor: appColors.surface,
-    borderRadius: 12,
-    borderWidth: 0,
-    borderColor: appColors.border,
+    borderRadius: 20,
     overflow: 'hidden',
-  },
-  sectionTitle: {
-    color: appColors.secondary,
-    fontSize: 14,
-    fontWeight: '600',
-    marginBottom: 2,
   },
 });

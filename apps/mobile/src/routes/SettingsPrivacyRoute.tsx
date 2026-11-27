@@ -1,4 +1,3 @@
-import { SettingsDailyReportMemorySection } from './SettingsDailyReportMemorySection';
 import { useCallback, useState } from 'react';
 import { Linking, Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import { AppText as Text } from '../layout/AppText';
@@ -8,14 +7,21 @@ import { AdaptiveColumns } from '../layout/AdaptiveColumns';
 import { useNavigationLeaveStateRegistration } from '../navigation';
 import { useNavigationEdgeVerticalScroll } from '../navigation/navigationEdgeScroll';
 import { useNavigationContentInset } from '../navigation/useNavigationContentInset';
-import type { NavigationRouteOwnership } from '../navigation/navigationRouteContracts';
-import { SettingsAutomaticMemorySection } from './SettingsAutomaticMemorySection';
+import { settingsListColors } from './settingsListColors';
+import { SettingsPermissionRow } from './SettingsPermissionRow';
 import { InferenceConsentSettings } from '../agent/execution/InferenceConsentSettings';
+import type { CalendarAutoSyncActions } from '../calendar/useCalendarAutoSync';
+import { SettingsCalendarSyncSection } from './SettingsCalendarSyncSection';
+import { SettingsHealthConnectionSection } from './SettingsHealthConnectionSection';
 
 /** Measures privacy panels while keeping OS-owned permissions and consent scope explicit. */
 export function SettingsPrivacyRoute({
-  ownership,
-}: { readonly ownership?: NavigationRouteOwnership } = {}) {
+  policy = false,
+  calendarSync,
+}: {
+  readonly policy?: boolean;
+  readonly calendarSync?: CalendarAutoSyncActions;
+} = {}) {
   const navigationInset = useNavigationContentInset();
   // This page owns the scroll viewport; the panels retain their readable inset.
   const edge = useNavigationEdgeVerticalScroll({
@@ -59,105 +65,110 @@ export function SettingsPrivacyRoute({
             <Text
               accessibilityRole="header"
               style={styles.title}
-              testID="settings-privacy-title"
+              testID={
+                policy
+                  ? 'settings-privacy-policy-title'
+                  : 'settings-privacy-title'
+              }
             >
-              {t('settings.permissions')}
+              {t(policy ? 'settings.privacyPolicy' : 'settings.permissions')}
             </Text>
-            <View style={styles.section} testID="settings-privacy-permissions">
-              <PermissionRow
-                summary={t('settings.permission.microphone')}
-                title={t('settings.permission.microphoneTitle')}
-              />
-              <PermissionRow
-                summary={t('settings.permission.speechRecognition')}
-                title={t('settings.permission.speechRecognitionTitle')}
-              />
-              <PermissionRow
-                detail={t('healthkit.commonObservations.localOnly')}
-                summary={t('settings.permission.healthData')}
-                title={t('settings.healthPrivacy')}
-              />
-              <PermissionRow
-                detail={t('calendar.permissionExplanation')}
-                summary={t('settings.permission.calendar')}
-                title={t('settings.calendarPrivacy')}
-              />
-            </View>
-            <SettingsAutomaticMemorySection ownership={ownership} />
-            <SettingsAutomaticMemorySection ownership={ownership} routine />
-            <SettingsAutomaticMemorySection ownership={ownership} general />
-            <SettingsDailyReportMemorySection ownership={ownership} />
-            <View
-              style={styles.secondaryColumn}
-              testID="settings-privacy-external-transfer"
-            >
-              <View style={styles.externalSection}>
-                <Text style={styles.sectionTitle}>
-                  {t('settings.externalTransfer')}
-                </Text>
-                <Text style={styles.body}>
-                  {t('settings.externalTransferSummary')}
-                </Text>
-                <Text style={styles.detail}>
-                  {t('provider.selection.remotePrivacy')}
-                </Text>
-                <InferenceConsentSettings
-                  onClearingChange={handleConsentClearingChange}
-                />
-              </View>
-
-              <Pressable
-                accessibilityState={{ disabled: isClearingConsent }}
-                accessibilityRole="button"
-                disabled={isClearingConsent}
-                onPress={openSystemSettings}
-                style={[
-                  styles.settingsAction,
-                  isClearingConsent && styles.disabledAction,
-                ]}
-                testID="privacy-open-system-settings"
-              >
-                <Text style={styles.settingsActionTitle}>
-                  {t('settings.openSystemSettings')}
-                </Text>
-                <Text accessibilityElementsHidden style={styles.chevron}>
-                  ›
-                </Text>
-              </Pressable>
-              {settingsError ? (
-                <Text
-                  accessibilityRole="alert"
-                  style={styles.error}
-                  testID="privacy-open-system-settings-error"
+            {!policy ? (
+              <View style={styles.secondaryColumn}>
+                <View
+                  style={styles.section}
+                  testID="settings-privacy-permissions"
                 >
-                  {t('settings.openSystemSettingsError')}
-                </Text>
-              ) : null}
-            </View>
+                  <SettingsPermissionRow
+                    testID="privacy-microphone-information"
+                    summary={t('settings.permission.microphone')}
+                    title={t('settings.permission.microphoneTitle')}
+                  />
+                  <SettingsPermissionRow
+                    testID="privacy-speech-information"
+                    summary={t('settings.permission.speechRecognition')}
+                    title={t('settings.permission.speechRecognitionTitle')}
+                  />
+                  <SettingsPermissionRow
+                    detail={t('healthkit.commonObservations.localOnly')}
+                    testID="privacy-health-information"
+                    summary={t('settings.permission.healthData')}
+                    title={t('settings.healthPrivacy')}
+                  />
+                  <SettingsPermissionRow
+                    detail={t('calendar.permissionExplanation')}
+                    testID="privacy-calendar-information"
+                    summary={t('settings.permission.calendar')}
+                    title={t('settings.calendarPrivacy')}
+                  />
+                </View>
+                <SettingsHealthConnectionSection />
+                {calendarSync ? (
+                  <SettingsCalendarSyncSection
+                    sync={calendarSync}
+                    mode="permission"
+                  />
+                ) : null}
+                <Pressable
+                  accessibilityState={{ disabled: isClearingConsent }}
+                  accessibilityRole="button"
+                  disabled={isClearingConsent}
+                  onPress={openSystemSettings}
+                  style={[
+                    styles.settingsAction,
+                    isClearingConsent && styles.disabledAction,
+                  ]}
+                  testID="privacy-open-system-settings"
+                >
+                  <Text style={styles.settingsActionTitle}>
+                    {t('settings.openSystemSettings')}
+                  </Text>
+                  <Text accessibilityElementsHidden style={styles.chevron}>
+                    ›
+                  </Text>
+                </Pressable>
+                {settingsError ? (
+                  <Text
+                    accessibilityRole="alert"
+                    style={styles.error}
+                    testID="privacy-open-system-settings-error"
+                  >
+                    {t('settings.openSystemSettingsError')}
+                  </Text>
+                ) : null}
+              </View>
+            ) : (
+              <View style={styles.secondaryColumn}>
+                <View
+                  style={styles.externalSection}
+                  testID="settings-privacy-policy-summary"
+                >
+                  <Text accessibilityRole="header" style={styles.policyTitle}>
+                    {t('settings.externalTransfer')}
+                  </Text>
+                  <Text style={styles.policyBody}>
+                    {t('settings.externalTransferSummary')}
+                  </Text>
+                  <Text style={styles.policyBody}>
+                    {t('provider.selection.remotePrivacy')}
+                  </Text>
+                </View>
+                <View
+                  style={styles.externalSection}
+                  testID="settings-privacy-external-transfer"
+                >
+                  <InferenceConsentSettings
+                    onClearingChange={handleConsentClearingChange}
+                  />
+                </View>
+              </View>
+            )}
           </View>
         }
-        routeKey="settings-privacy"
+        routeKey={policy ? 'settings-privacy-policy' : 'settings-privacy'}
         testID="settings-privacy-columns"
       />
     </ScrollView>
-  );
-}
-
-function PermissionRow({
-  detail,
-  summary,
-  title,
-}: {
-  readonly detail?: string;
-  readonly summary: string;
-  readonly title: string;
-}) {
-  return (
-    <View style={styles.permissionRow}>
-      <Text style={styles.rowTitle}>{title}</Text>
-      <Text style={styles.body}>{summary}</Text>
-      {detail ? <Text style={styles.detail}>{detail}</Text> : null}
-    </View>
   );
 }
 
@@ -165,7 +176,6 @@ const styles = StyleSheet.create({
   scrollView: { flex: 1 },
   container: {
     flexGrow: 1,
-    backgroundColor: appColors.background,
     gap: 20,
     paddingHorizontal: 20,
     paddingTop: 16,
@@ -174,32 +184,25 @@ const styles = StyleSheet.create({
   title: { color: appColors.text, fontSize: 30, fontWeight: '700' },
   pageSections: { gap: 20 },
   section: {
-    backgroundColor: appColors.surface,
+    backgroundColor: settingsListColors.row,
     borderColor: appColors.border,
     borderRadius: 18,
     borderWidth: 0,
     paddingHorizontal: 16,
   },
-  permissionRow: {
-    gap: 5,
-    paddingVertical: 14,
-    borderBottomColor: appColors.border,
-    borderBottomWidth: StyleSheet.hairlineWidth,
-  },
-  rowTitle: { color: appColors.text, fontSize: 16, fontWeight: '600' },
-  body: { color: appColors.text, fontSize: 14, lineHeight: 21 },
-  detail: { color: appColors.secondary, fontSize: 13, lineHeight: 19 },
   externalSection: {
-    backgroundColor: appColors.surface,
+    backgroundColor: settingsListColors.row,
     borderRadius: 18,
     gap: 8,
-    padding: 16,
+    paddingHorizontal: 16,
+    paddingVertical: 12,
   },
+  policyTitle: { color: appColors.text, fontSize: 16, fontWeight: '600' },
+  policyBody: { color: appColors.secondary, fontSize: 14, lineHeight: 21 },
   secondaryColumn: { gap: 12, minWidth: 0 },
-  sectionTitle: { color: appColors.text, fontSize: 16, fontWeight: '600' },
   settingsAction: {
     alignItems: 'center',
-    backgroundColor: appColors.surface,
+    backgroundColor: settingsListColors.row,
     borderRadius: 16,
     flexDirection: 'row',
     justifyContent: 'space-between',

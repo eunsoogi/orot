@@ -189,18 +189,13 @@ test('uses accessible controls and keeps reminder card spacing', async () => {
   const card = StyleSheet.flatten(
     screen.getByTestId('settings-daily-reminder-card').props.style,
   );
-  const description = StyleSheet.flatten(
-    screen.getByTestId('settings-daily-reminder-description').props.style,
-  );
+  const info = screen.getByTestId('settings-daily-reminder-info');
   const toggleRow = StyleSheet.flatten(
     screen.getByTestId('settings-daily-reminder-toggle-row').props.style,
   );
   const labelTarget = StyleSheet.flatten(
     screen.getByTestId('settings-daily-reminder-toggle-label-target').props
       .style,
-  );
-  const statusContent = StyleSheet.flatten(
-    screen.getByTestId('settings-daily-reminder-status-content').props.style,
   );
 
   expect(toggle.props.accessibilityRole).toBe('switch');
@@ -214,22 +209,18 @@ test('uses accessible controls and keeps reminder card spacing', async () => {
   expect(visualSwitch.props.accessible).toBe(false);
   expect(visualSwitch.props.pointerEvents).toBe('none');
   expect(visualSwitch.props.value).toBe(false);
-  expect(description).toMatchObject({
-    paddingHorizontal: 16,
-    paddingTop: 16,
-    paddingBottom: 12,
-  });
+  expect(info.props.accessibilityRole).toBe('button');
+  expect(
+    screen.queryByText(t('settings.dailyReminder.description')),
+  ).toBeNull();
   expect(toggleRow).toMatchObject({
     alignItems: 'center',
     minHeight: 60,
     paddingHorizontal: 16,
   });
   expect(labelTarget).toMatchObject({ flex: 1, minHeight: 44 });
-  expect(statusContent).toMatchObject({
-    gap: 4,
-    paddingHorizontal: 16,
-    paddingTop: 12,
-    paddingBottom: 16,
-  });
+  expect(
+    screen.queryByTestId('settings-daily-reminder-status-content'),
+  ).toBeNull();
   expect(card?.backgroundColor).toBe(appColors.surface);
 });

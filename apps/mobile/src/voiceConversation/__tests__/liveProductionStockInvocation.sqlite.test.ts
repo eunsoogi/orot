@@ -1,5 +1,5 @@
 import { waitFor } from '@testing-library/react-native';
-import { AppState } from 'react-native';
+import { AppState, NativeModules } from 'react-native';
 import * as stock from '../ownedLiveConversationInvocation';
 import {
   canonicalLiveCommonRegistration,
@@ -17,15 +17,15 @@ jest.mock('../../voiceSettings/liveConversationToolsAuthorization', () => ({
 
 type Input = Parameters<typeof createLiveCommonHealthPort>[0];
 
-test.each([false, true])(
-  'native-owned V3 enters the shared Chat binder only with the exact attestation (changed=%s)',
-  async changed => {
+test.each(['valid', 'changed', 'deny', 'retire'] as const)(
+  'native-owned V3 enters the shared Chat binder only with the exact attestation (%s)',
+  async mode => {
     const data = await fixture();
     const phase = AppState.currentState;
     AppState.currentState = 'active';
     const actual = stock.bindOwnedLiveConversationInvocation;
     const bound = jest.spyOn(stock, 'bindOwnedLiveConversationInvocation');
-    if (changed)
+    if (mode === 'changed')
       bound.mockImplementation(input =>
         actual(input)?.map(tool => ({ ...tool, description: 'Changed' })),
       );
@@ -58,6 +58,16 @@ test.each([false, true])(
         return () => {};
       }),
     } as unknown as Input['native'];
+    const diagnostic = NativeModules.OrotProviderDiagnostics;
+    const report = jest.fn();
+    NativeModules.OrotProviderDiagnostics = { enabled: true, report };
+    let owns = true;
+    let finishProtection!: (available: boolean) => void;
+    const nativeProtection = new Promise<boolean>(resolve => {
+      finishProtection = resolve;
+    });
+    const protectedDataAvailable = jest.fn(() => nativeProtection);
+    const openData = jest.fn(data.openData);
     try {
       const port = createLiveCommonHealthPort({
         native,
@@ -67,15 +77,32 @@ test.each([false, true])(
           commonToolsPolicy: 'common-tools-v3',
           current: () => true,
         } as Input['settings'],
-        current: () => true,
+        current: () => owns,
         toolOwnerCurrent: () => true,
-        protectedDataAvailable: async () => true,
-        openData: () => data.openData(),
+        protectedDataAvailable,
+        openData,
       });
       const detach = port.subscribe(owner.callId, accepted);
       try {
+        expect(protectedDataAvailable).toHaveBeenCalledTimes(1);
+        expect(report).not.toHaveBeenCalled();
+        expect(openData).not.toHaveBeenCalled();
+        if (mode === 'retire') owns = false;
+        finishProtection(mode !== 'deny');
+        await nativeProtection;
+        if (mode === 'deny' || mode === 'retire') {
+          expect(report).not.toHaveBeenCalled();
+          expect(openData).not.toHaveBeenCalled();
+          expect(bound).not.toHaveBeenCalled();
+          expect(accepted).not.toHaveBeenCalled();
+          return;
+        }
         await waitFor(() => expect(bound).toHaveBeenCalledTimes(1));
-        if (changed) {
+        expect(report.mock.calls.map(([, stage]) => stage)).toEqual([
+          'owner_reproof',
+          'data_open',
+        ]);
+        if (mode === 'changed') {
           expect(accepted).not.toHaveBeenCalled();
         } else {
           expect(accepted).toHaveBeenCalledTimes(1);
@@ -87,6 +114,7 @@ test.each([false, true])(
         detach();
       }
     } finally {
+      NativeModules.OrotProviderDiagnostics = diagnostic;
       AppState.currentState = phase;
       bound.mockRestore();
       data.close();

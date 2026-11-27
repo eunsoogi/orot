@@ -22,8 +22,10 @@ export type AppNavigationRoute =
   | 'medical-manual'
   | 'settings-provider'
   | 'settings-accounts'
-  | 'settings-backup'
   | 'settings-privacy'
+  | 'settings-privacy-policy'
+  | 'settings-notifications'
+  | 'settings-memory'
   | 'settings-health-data'
   | 'settings-sync-status';
 import type { AiFeatureRouteName } from '../aiFeatures/integration/aiFeatureNavigation';

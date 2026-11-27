@@ -2,12 +2,6 @@ import { act, fireEvent, render, screen } from '@testing-library/react-native';
 import { useNavigationLeaveStateRegistration } from '../../navigation';
 import { HealthDataIntegrationRoute } from '../HealthDataIntegrationRoute';
 
-const availableIntegrationStatus = {
-  availability: 'available' as const,
-  lastSync: null,
-  statusLoadFailed: false,
-};
-
 jest.mock('../../layout/AppSymbol', () => ({ AppSymbol: () => null }));
 jest.mock('../../navigation', () => ({
   useNavigationLeaveStateRegistration: jest.fn(),
@@ -29,16 +23,6 @@ test('saves compact automatic-sync choices and shows the result', async () => {
   const loadSelection = jest.fn(
     async () => ['medications', 'bloodPressure'] as const,
   );
-  const loadIntegrationStatus = jest
-    .fn()
-    .mockResolvedValueOnce(availableIntegrationStatus)
-    .mockResolvedValueOnce({
-      ...availableIntegrationStatus,
-      lastSync: {
-        status: 'complete' as const,
-        updatedAt: '2026-10-27T00:00:00.000Z',
-      },
-    });
   let finishSave:
     ((result: { readonly status: 'complete' }) => void) | undefined;
   const saveSelection = jest.fn(
@@ -49,7 +33,6 @@ test('saves compact automatic-sync choices and shows the result', async () => {
   );
   await render(
     <HealthDataIntegrationRoute
-      loadIntegrationStatus={loadIntegrationStatus}
       loadSelection={loadSelection}
       saveSelection={saveSelection}
     />,
@@ -66,12 +49,8 @@ test('saves compact automatic-sync choices and shows the result', async () => {
   expect(
     screen.getByTestId('health-data-feature-status-sleep'),
   ).toHaveTextContent('자동 동기화 꺼짐');
-  expect(screen.getByTestId('health-data-connection-status')).toHaveTextContent(
-    '이 기기에서 건강 앱 기록을 사용할 수 있어요.',
-  );
-  expect(screen.getByTestId('health-data-permission-status')).toHaveTextContent(
-    /건강 앱에서 읽기를 허용했는지는 앱에서 확인할 수 없어요\./,
-  );
+  expect(screen.queryByTestId('health-data-connection-status')).toBeNull();
+  expect(screen.queryByTestId('health-data-last-sync-status')).toBeNull();
 
   await fireEvent.press(bloodPressure);
   await fireEvent.press(sleep);
@@ -91,21 +70,15 @@ test('saves compact automatic-sync choices and shows the result', async () => {
   expect(await screen.findByTestId('health-data-status')).toHaveTextContent(
     '자동 동기화 설정을 저장했어요.',
   );
-  expect(
-    await screen.findByText('마지막 동기화에서 선택한 기록을 확인했어요.'),
-  ).toBeTruthy();
-  expect(loadIntegrationStatus).toHaveBeenCalledTimes(2);
 });
 
 test('keeps an unsaved selection visible when preference persistence fails', async () => {
   const loadSelection = jest.fn(async () => [] as const);
-  const loadIntegrationStatus = jest.fn(async () => availableIntegrationStatus);
   const saveSelection = jest.fn(async () => ({
     status: 'selection_save_failed' as const,
   }));
   await render(
     <HealthDataIntegrationRoute
-      loadIntegrationStatus={loadIntegrationStatus}
       loadSelection={loadSelection}
       saveSelection={saveSelection}
     />,
@@ -126,84 +99,22 @@ test('keeps an unsaved selection visible when preference persistence fails', asy
   ).toMatchObject({ hasUnsavedChanges: true });
 });
 
-test('retries the saved choices without hiding the permission limitation', async () => {
+test('retries the saved choices without leaving the health data screen', async () => {
   const loadSelection = jest
     .fn()
     .mockRejectedValueOnce(new Error('Encrypted settings unavailable'))
     .mockResolvedValueOnce(['sleep'] as const);
-  const loadIntegrationStatus = jest.fn(async () => availableIntegrationStatus);
 
-  await render(
-    <HealthDataIntegrationRoute
-      loadIntegrationStatus={loadIntegrationStatus}
-      loadSelection={loadSelection}
-    />,
-  );
+  await render(<HealthDataIntegrationRoute loadSelection={loadSelection} />);
 
   expect(await screen.findByTestId('health-data-load-error')).toBeTruthy();
-  await screen.findByTestId('health-data-connection-status');
   expect(
     screen.getByTestId('health-data-save').props.accessibilityState,
   ).toEqual(expect.objectContaining({ disabled: true }));
-  const statusLoadCalls = loadIntegrationStatus.mock.calls.length;
   await fireEvent.press(screen.getByTestId('health-data-load-retry'));
 
   const sleep = await screen.findByTestId('health-data-feature-sleep');
   expect(sleep.props.accessibilityState.checked).toBe(true);
   expect(loadSelection).toHaveBeenCalledTimes(2);
-  expect(loadIntegrationStatus).toHaveBeenCalledTimes(statusLoadCalls);
-  expect(screen.getByTestId('health-data-permission-status')).toHaveTextContent(
-    /건강 앱에서 읽기를 허용했는지는 앱에서 확인할 수 없어요\./,
-  );
-});
-
-test('retries HealthKit status without replacing unsaved category choices', async () => {
-  const loadSelection = jest.fn(async () => ['steps'] as const);
-  let finishRetry:
-    ((status: typeof availableIntegrationStatus) => void) | undefined;
-  const pendingStatus = new Promise<typeof availableIntegrationStatus>(
-    resolve => {
-      finishRetry = resolve;
-    },
-  );
-  const loadIntegrationStatus = jest
-    .fn()
-    .mockRejectedValueOnce(new Error('HealthKit status unavailable'))
-    .mockReturnValueOnce(pendingStatus);
-  const saveSelection = jest.fn(async () => ({ status: 'complete' as const }));
-
-  await render(
-    <HealthDataIntegrationRoute
-      loadIntegrationStatus={loadIntegrationStatus}
-      loadSelection={loadSelection}
-      saveSelection={saveSelection}
-    />,
-  );
-
-  const steps = await screen.findByTestId('health-data-feature-steps');
-  expect(steps.props.accessibilityState.disabled).toBe(false);
-  expect(screen.getByTestId('health-data-connection-status')).toHaveTextContent(
-    '건강 앱 기록 상태를 확인하지 못했어요.',
-  );
-  expect(screen.queryByText('HealthKit status unavailable')).toBeNull();
-  expect(screen.getByTestId('health-data-status-load-error')).toHaveTextContent(
-    '연동 상태를 모두 확인하지 못했어요.',
-  );
-  await fireEvent.press(screen.getByTestId('health-data-feature-heartRate'));
-  expect(
-    screen.getByTestId('health-data-feature-status-heartRate'),
-  ).toHaveTextContent('자동 동기화 켜짐');
-  await fireEvent.press(screen.getByTestId('health-data-status-retry'));
-  expect(screen.getByTestId('health-data-connection-status')).toHaveTextContent(
-    '연동 상태를 확인하는 중…',
-  );
-  await act(async () => finishRetry?.(availableIntegrationStatus));
-  expect(
-    await screen.findByTestId('health-data-connection-status'),
-  ).toHaveTextContent('이 기기에서 건강 앱 기록을 사용할 수 있어요.');
-  expect(
-    screen.getByTestId('health-data-feature-status-heartRate'),
-  ).toHaveTextContent('자동 동기화 켜짐');
-  expect(loadSelection).toHaveBeenCalledTimes(1);
-  expect(saveSelection).not.toHaveBeenCalled();
+  expect(screen.queryByTestId('health-data-permission-status')).toBeNull();
 });

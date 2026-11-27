@@ -130,6 +130,9 @@ export async function proposeConversationTemplate(input: {
         },
         consent: input.consent,
         request: question,
+        ...(admission.visitFollowup
+          ? { priorTemplate: 'visit-questions' }
+          : {}),
         signal: linked.controller.signal,
       });
       if (!intent || !current()) return;

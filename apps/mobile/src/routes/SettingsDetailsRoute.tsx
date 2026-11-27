@@ -6,7 +6,8 @@ import type { AiFeatureServiceDependencies } from '../aiFeatures/integration/fea
 import type { BackupPreparationDisplayState } from '../backup/useBackupPreparation';
 import type { NavigationRouteActions } from '../navigation/NavigationRouteAdapter';
 import { SettingsAccountsRoute } from './SettingsAccountsRoute';
-import { SettingsBackupRoute } from './SettingsBackupRoute';
+import { SettingsMemoryRoute } from './SettingsMemoryRoute';
+import { SettingsNotificationsRoute } from './SettingsNotificationsRoute';
 import { SettingsPrivacyRoute } from './SettingsPrivacyRoute';
 import { SettingsProviderRoute } from './SettingsProviderRoute';
 import { HealthDataIntegrationRoute } from './HealthDataIntegrationRoute';
@@ -54,19 +55,22 @@ export function SettingsDetailsRoute({
           serviceDependencies={serviceDependencies}
         />
       );
-    case 'settings-backup':
-      return (
-        <SettingsBackupRoute state={backupState} onPrepare={onPrepareBackup} />
-      );
     case 'settings-privacy':
-      return <SettingsPrivacyRoute ownership={actions.ownership} />;
+      return <SettingsPrivacyRoute calendarSync={calendarSync} />;
+    case 'settings-privacy-policy':
+      return <SettingsPrivacyRoute policy />;
+    case 'settings-notifications':
+      return <SettingsNotificationsRoute />;
+    case 'settings-memory':
+      return <SettingsMemoryRoute ownership={actions.ownership} />;
     case 'settings-health-data':
       return <HealthDataIntegrationRoute />;
     case 'settings-sync-status':
       return (
         <SettingsSyncStatusRoute
           calendarSync={calendarSync}
-          onConfigureHealthData={() => actions.push('settings-health-data')}
+          backupState={backupState}
+          onPrepareBackup={onPrepareBackup}
         />
       );
     default:

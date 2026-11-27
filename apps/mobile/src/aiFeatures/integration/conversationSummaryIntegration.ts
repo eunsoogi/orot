@@ -2,7 +2,6 @@ import { hasConversationMemoryCommand } from '../../manualHistory/conversationHi
 import { conversationTemplateTarget } from '../../ragConversation/conversationTemplateTarget';
 import { proposeConversationTemplate } from '../../ragConversation/conversationTemplateProposal';
 import { APPLE_PROVIDER_ID } from '@orot/provider-apple';
-import { t } from '../../i18n';
 import { createConversationDailyReport } from './conversationDailyReport';
 import type { MultiAgentWorkflowOptions } from '@orot/agent-runtime';
 import type { runDiseaseHypothesisAnalysis } from '../../diseaseHypotheses/task';
@@ -112,9 +111,11 @@ export function createConversationSummaryIntegration(input: {
           APPLE_PROVIDER_ID
       )
         return {
-          status: 'answer',
-          answer: t('historyDisplay.answerMemoryDeviceOnly'),
-          citations: [],
+          status: 'failure',
+          kind: operationSignal.aborted
+            ? 'cancelled'
+            : 'protected_memory_not_saved',
+          discardUnverifiedDraft: true,
         } as const;
       if (protectedLocalInput)
         return input.sendRagMessage(question, history, signal, {

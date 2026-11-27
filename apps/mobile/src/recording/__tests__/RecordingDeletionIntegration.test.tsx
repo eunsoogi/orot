@@ -11,6 +11,7 @@ import type { RecordingLibraryService } from '../recordingLibraryService';
 import {
   confirmNativeDeletion,
   mockNativeDeletionAlert,
+  requestLibraryRowDeletion,
 } from '../testSupport/nativeDeletionAlert';
 import {
   completed,
@@ -109,9 +110,7 @@ test('prevents a new capture while a confirmed recording deletion is in flight',
   );
   await screen.findByTestId(`recording-library-item-${savedSource.id}`);
   await fireEvent.press(screen.getByTestId('recording-consent'));
-  await fireEvent.press(
-    screen.getByTestId('recording-delete-' + savedSource.id),
-  );
+  await requestLibraryRowDeletion(savedSource.id);
 
   await waitFor(() => expect(alert).toHaveBeenCalledTimes(1));
   await confirmNativeDeletion(alert);
@@ -161,9 +160,7 @@ test('immediate deletion after save cancels transcription without waiting for it
   await waitFor(() => expect(transcription.transcribe).toHaveBeenCalled());
   expect(recording.saveSource).toHaveBeenCalledWith(completed);
   expect(signal?.aborted).toBe(false);
-  await fireEvent.press(
-    screen.getByTestId(`recording-delete-${savedSource.id}`),
-  );
+  await requestLibraryRowDeletion(savedSource.id);
   await confirmNativeDeletion(alert);
   await waitFor(() => {
     expect(signal?.aborted).toBe(true);

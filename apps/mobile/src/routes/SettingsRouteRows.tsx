@@ -1,48 +1,49 @@
-import { StyleSheet, View } from 'react-native';
+import { Pressable, StyleSheet, View } from 'react-native';
 import type { ColorValue } from 'react-native';
-import { AppButton } from '../layout/AppButton';
 import { AppText as Text } from '../layout/AppText';
 import { AppSymbol } from '../layout/AppSymbol';
 import { appColors } from '../layout/appColors';
 import { t } from '../i18n';
+import { settingsListColors } from './settingsListColors';
 
 type SettingsRowTone = 'blue' | 'green' | 'pink' | 'purple' | 'neutral';
 
 interface SettingsRouteRowProps {
   readonly onPress: () => void;
-  readonly summary?: string;
   readonly testID: string;
   readonly title: string;
   readonly symbol: string;
+  readonly last?: boolean;
   readonly tone?: SettingsRowTone;
 }
 
 /** Keeps each Settings destination as the same accessible, appearance-aware action. */
 export function SettingsRouteRow({
   onPress,
-  summary,
   testID,
   title,
   symbol,
   tone = 'blue',
+  last = false,
 }: SettingsRouteRowProps) {
   return (
-    <AppButton
-      leadingContent={<SettingsRouteIcon symbol={symbol} tone={tone} />}
+    <Pressable
+      accessibilityLabel={title}
+      accessibilityRole="button"
       onPress={onPress}
-      size="compact"
-      summary={summary}
       testID={testID}
-      title={title}
-      trailingContent={
-        <AppSymbol name="chevron.right" size={14} color={appColors.secondary} />
-      }
-      variant="list"
-    />
+      style={({ pressed }) => [styles.row, pressed && styles.pressed]}
+    >
+      <SettingsRouteIcon symbol={symbol} tone={tone} />
+      <View style={[styles.rowContent, last && styles.noSeparator]}>
+        <Text style={styles.rowTitle}>{title}</Text>
+        <AppSymbol name="chevron.right" size={12} color={appColors.secondary} />
+      </View>
+    </Pressable>
   );
 }
 
-/** Shows the native app version with the same grouped row treatment as before. */
+/** Shows the native app version with the same compact row geometry as its neighboring destinations. */
 export function SettingsRouteAppInfo({
   version,
 }: {
@@ -79,7 +80,7 @@ function SettingsRouteIcon({
       style={[styles.icon, { backgroundColor: tones[tone].background }]}
       testID={testID}
     >
-      <AppSymbol name={symbol} color={tones[tone].foreground} />
+      <AppSymbol name={symbol} size={15} color={tones[tone].foreground} />
     </View>
   );
 }
@@ -104,19 +105,32 @@ const tones: Record<
 
 const styles = StyleSheet.create({
   icon: {
-    width: 44,
-    height: 44,
-    borderRadius: 12,
+    width: 28,
+    height: 28,
+    borderRadius: 7,
     alignItems: 'center',
     justifyContent: 'center',
   },
   row: {
     alignItems: 'center',
-    backgroundColor: appColors.surface,
     flexDirection: 'row',
-    gap: 16,
-    minHeight: 60,
-    paddingHorizontal: 16,
+    gap: 12,
+    minHeight: 48,
+    paddingLeft: 16,
+    paddingRight: 16,
   },
-  rowTitle: { color: appColors.text, fontSize: 16, fontWeight: '500' },
+  pressed: { opacity: 0.62 },
+  // The line starts at the label, not at the icon's leading edge.
+  rowContent: {
+    flex: 1,
+    minHeight: 48,
+    paddingVertical: 8,
+    gap: 8,
+    flexDirection: 'row',
+    alignItems: 'center',
+    borderBottomColor: settingsListColors.separator,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+  },
+  noSeparator: { borderBottomWidth: 0 },
+  rowTitle: { flex: 1, minWidth: 0, color: appColors.text, fontSize: 16 },
 });

@@ -5,7 +5,7 @@ export const healthkitSettingsKo = {
   'settings.integrations': '연동',
   'settings.healthData': '건강 데이터',
   'settings.healthDataSummary': '앱을 열 때 자동으로 동기화해요.',
-  'settings.syncStatus': '권한 및 동기화 상태',
+  'settings.syncStatus': '동기화',
   'settings.syncStatusSummary': '문제가 있으면 상태를 확인하고 다시 시도해요.',
   'settings.otherSettings': '기타 설정',
   'settings.dataManagement': '데이터 관리',
@@ -204,7 +204,7 @@ export const healthkitSettingsKo = {
   'settings.dailyReminder.cancel': '취소',
   'settings.dailyReminder.saveTime': '시간 저장',
   'settings.dailyReminder.enableWithTime': '시간을 저장하고 알림 켜기',
-  'settings.syncStatus.title': '권한 및 동기화 상태',
+  'settings.syncStatus.title': '동기화',
   'settings.syncStatus.healthData': '건강 기록',
   'settings.syncStatus.noSelection':
     '자동 동기화할 건강 기록이 선택되지 않았어요.',
