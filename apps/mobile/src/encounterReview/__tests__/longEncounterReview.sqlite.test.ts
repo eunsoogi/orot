@@ -1,3 +1,7 @@
+import {
+  notifyLocalDataCleared,
+  notifyLocalSourceDeleted,
+} from '../../storage/localDataClearEvents';
 import { consent } from '../__fixtures__/sqliteReview';
 import {
   fixture,
@@ -163,6 +167,38 @@ test.each(['logical', 'physical'] as const)(
     } finally {
       f.controller.dispose();
       cold.dispose();
+    }
+  },
+);
+
+test.each(['selected recording deletion', 'local clear'] as const)(
+  'retires the same still-mounted long review after %s',
+  async mode => {
+    const f = await harness();
+    try {
+      await f.controller.start(consent);
+      expect(f.controller.state.status).toBe('pending');
+      const source = f.controller.state.pending!.sourceId;
+      notifyLocalSourceDeleted('healthkit', new Set([source]));
+      notifyLocalSourceDeleted('local', new Set(['unrelated-recording']));
+      expect(f.controller.state.status).toBe('pending');
+
+      if (mode === 'selected recording deletion') {
+        await f.repository.sourceRecords.delete(source);
+        expect(await f.repository.get('source_record', source)).toBeNull();
+        notifyLocalSourceDeleted('local', new Set([source]));
+      } else {
+        await f.repository.deleteAllLocalData();
+        notifyLocalDataCleared();
+      }
+      expect(f.controller.state.status).toBe('unavailable');
+      expect(f.controller.state.candidates).toEqual([]);
+      expect(f.listeners.size).toBe(0);
+      await f.controller.decide('approve');
+      expect(await fixture.rows()).toEqual([]);
+      expect(f.calls()).toBe(2);
+    } finally {
+      f.controller.dispose();
     }
   },
 );

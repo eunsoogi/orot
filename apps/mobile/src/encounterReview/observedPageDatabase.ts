@@ -1,20 +1,36 @@
+import {
+  subscribeLocalDataClear,
+  subscribeLocalSourceDeletion,
+} from '../storage/localDataClearEvents';
 import { openLocalAgentMemoryDatabase } from '../storage/secureDatabase';
 import { subscribeTranscriptCorrection } from '../storage/transcriptCorrectionVisibility';
 
-/** Bind passive correction retirement to the exact database already used for
- * pages. No re-read, polling or new access permission follows a notification. */
+/** Keep the same review lease subscribed from page read through presentation.
+ * Committed invalidations retire it without reading protected data again. */
 export async function openObservedEncounterPageDatabase(
   sourceId: string,
   lease: { signal: AbortSignal; dispose: () => void },
 ) {
   const database = await openLocalAgentMemoryDatabase();
   if (!lease.signal.aborted) {
-    const stop = subscribeTranscriptCorrection(
+    const stopCorrection = subscribeTranscriptCorrection(
       database,
       sourceId,
       lease.dispose,
     );
-    lease.signal.addEventListener('abort', stop, { once: true });
+    const stopClear = subscribeLocalDataClear(lease.dispose);
+    const stopDelete = subscribeLocalSourceDeletion((_origin, ids) => {
+      if (!ids || ids.has(sourceId)) lease.dispose();
+    }, 'local');
+    lease.signal.addEventListener(
+      'abort',
+      () => {
+        stopCorrection();
+        stopClear();
+        stopDelete();
+      },
+      { once: true },
+    );
   }
   return database;
 }
