@@ -1,4 +1,9 @@
-import { fireEvent, render, screen } from '@testing-library/react-native';
+import {
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+} from '@testing-library/react-native';
 import { startConversationReportTurn } from '../startConversationReportTurn';
 import { conversationEntryForSession } from '../useConversationEntryIntent';
 import { ConversationScreen } from '../ConversationScreen';
@@ -9,13 +14,15 @@ import {
 import { setup } from '../testSupport/continuousSessionFixture';
 import { conversationChoiceActions } from '../selectConversationChoice';
 import { conversationIntentRequests } from '../../aiFeatures/integration/conversationIntent';
-import { defaultVisitQuestionRouteOperations } from '../../aiFeatures/integration/visitQuestionsRouteOperations';
-import { ConversationVisitQuestionCard } from '../../aiFeatures/integration/ConversationVisitQuestionCard';
-import { createNextVisitQuestionsTheme } from '../../aiFeatures/integration/nextVisitQuestionsRoutePresentation';
 import { appointment } from '../../agent/visitQuestions/testing/persistenceFixtures';
 import type { ConversationScreenProps } from '../ConversationScreenProps';
 
 import { scriptedTemplateSender } from '../testSupport/conversationTemplateFixture';
+import {
+  countVisitFixtureCompletions,
+  renderMountedVisitTemplate,
+  submitVisitFixturePrompt,
+} from '../testSupport/mountedVisitTemplateFixture';
 
 jest.mock('../ConversationSavedRecaps', () => ({
   ConversationSavedRecaps: () => null,
@@ -25,6 +32,7 @@ const focused = '다음 진료에서 물어볼 질문을 만들어 줘. 검사 �
 const splitRequest =
   '다음 진료에서 검사 결과를 확인할 예정이에요. 질문 준비해줘';
 const natural = '지금 병원에 가는데 검사 결과를 물어볼 건데 질문 뽑아줘';
+const followup = '이 검사는 어떻게 진행하는지 궁금해. 질문으로 만들어줘.';
 const ordinary = '다음 진료에서 혈압 검사가 필요한가요?';
 
 test.each([
@@ -35,6 +43,8 @@ test.each([
   'after-daily',
   'two-sentence',
   'natural',
+  'visit-followup',
+  'no-visit-followup',
 ] as const)(
   'mounted Conversation owns one protected send and renders the canonical visit card only for visit creation: %s',
   async mode => {
@@ -117,34 +127,21 @@ test.each([
           }
           onBack={jest.fn()}
           onOpenSource={jest.fn()}
-          onSend={scriptedTemplateSender(send, text =>
-            text === ordinary ? 'ordinary' : 'visit-questions',
+          onSend={scriptedTemplateSender(send, (text, admission) =>
+            text === followup
+              ? admission.visitFollowup
+                ? 'visit-questions-followup'
+                : 'ordinary'
+              : text === ordinary
+                ? 'ordinary'
+                : 'visit-questions',
           )}
           onOpenDailyReport={() =>
             startConversationReportTurn(store, () => true, send)
           }
           prepareVisitQuestions={prepare}
           retainedActions={{ visitQuestions: choices.onOpenVisitQuestions }}
-          renderVisitQuestions={(
-            message,
-            sessionId,
-            sessions,
-            onRegenerate,
-          ) => (
-            <ConversationVisitQuestionCard
-              message={message}
-              sessionId={sessionId}
-              store={sessions}
-              operations={defaultVisitQuestionRouteOperations}
-              services={{
-                resolveSource: jest.fn(),
-                registerVisitQuestionSource: jest.fn(),
-              }}
-              onOpenSource={jest.fn()}
-              theme={createNextVisitQuestionsTheme(false)}
-              onRegenerate={onRegenerate}
-            />
-          )}
+          renderVisitQuestions={renderMountedVisitTemplate}
         />
       );
     }
@@ -172,6 +169,7 @@ test.each([
       const prompts: Partial<Record<typeof mode, string>> = {
         'two-sentence': splitRequest,
         natural,
+        'no-visit-followup': followup,
         ordinary,
         shortcut: conversationIntentRequests['visit-questions'],
         selected: conversationIntentRequests['visit-questions'],
@@ -184,13 +182,9 @@ test.each([
       } else if (mode === 'selected') {
         await fireEvent.press(screen.getByTestId('conversation-visit-prepare'));
       } else {
-        await fireEvent.changeText(
-          screen.getByTestId('rag-conversation-input'),
-          prompt,
-        );
-        await fireEvent.press(screen.getByTestId('rag-conversation-send'));
+        await submitVisitFixturePrompt(prompt);
       }
-      if (mode === 'ordinary') {
+      if (mode === 'ordinary' || mode === 'no-visit-followup') {
         await screen.findByText('합성 일반 답변');
         expect(send).toHaveBeenCalledTimes(1);
         expect(prepare).not.toHaveBeenCalled();
@@ -216,25 +210,36 @@ test.each([
           checkpoint.mock.calls[0]?.[1],
         );
         expect(send).toHaveBeenCalledTimes(mode === 'after-daily' ? 1 : 0);
-        expect(
-          (
-            await f.database.execute(
-              'SELECT message_id FROM conversation_completions',
-            )
-          ).rows,
-        ).toHaveLength(mode === 'after-daily' ? 2 : 1);
+        expect(await countVisitFixtureCompletions(f.database)).toBe(
+          mode === 'after-daily' ? 2 : 1,
+        );
       }
       expect(screen.getByText(prompt)).toBeTruthy();
-      if (mode === 'typed' || mode === 'natural') {
-        await fireEvent.changeText(
-          screen.getByTestId('rag-conversation-input'),
-          ordinary,
+      if (mode === 'visit-followup') {
+        await submitVisitFixturePrompt(followup);
+        await waitFor(() =>
+          expect(screen.getAllByTestId('inline-visit-regenerate')).toHaveLength(
+            2,
+          ),
         );
-        await fireEvent.press(screen.getByTestId('rag-conversation-send'));
+        expect(prepare).toHaveBeenCalledTimes(2);
+        expect(prepare.mock.calls[1]?.[4]).toMatchObject({
+          intent: 'visit-questions',
+          appointmentId: appointment.id,
+        });
+        expect(send).not.toHaveBeenCalled();
+        expect(await countVisitFixtureCompletions(f.database)).toBe(2);
+      }
+      if (mode === 'typed' || mode === 'natural' || mode === 'visit-followup') {
+        await submitVisitFixturePrompt(ordinary);
         await screen.findByText('합성 일반 답변');
-        expect(prepare).toHaveBeenCalledTimes(1);
+        expect(prepare).toHaveBeenCalledTimes(
+          mode === 'visit-followup' ? 2 : 1,
+        );
         expect(send).toHaveBeenCalledTimes(1);
-        expect(screen.getByTestId('inline-visit-regenerate')).toBeTruthy();
+        expect(screen.getAllByTestId('inline-visit-regenerate')).toHaveLength(
+          mode === 'visit-followup' ? 2 : 1,
+        );
       }
     } finally {
       await view.unmount();

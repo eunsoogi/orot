@@ -123,3 +123,46 @@ test('a late model proposal cannot revive a stopped owner', async () => {
   await expect(pending).resolves.toEqual({ intent: undefined, spent: true });
   expect(f.generate).toHaveBeenCalledTimes(1);
 });
+
+test('a follow-up can route only with typed prior context; no visit contents or identifier are sent', async () => {
+  const followup = '이 검사는 어떻게 진행하는지 궁금해. 질문으로 만들어줘.';
+  const intent = 'visit-questions-followup';
+  const noPrior = fixture(choice({ intent }));
+  await expect(
+    proposeConversationTemplate({ ...noPrior.input, question: followup }),
+  ).resolves.toEqual({
+    intent: undefined,
+    spent: true,
+  });
+
+  const owned = fixture(choice({ intent }));
+  owned.input.observer = {
+    ...owned.input.observer,
+    modelTemplateAdmission: {
+      current: owned.current,
+      today: null,
+      visitFollowup: { appointmentId: 'secret-synthetic-appointment' },
+    },
+  };
+  await expect(
+    proposeConversationTemplate({ ...owned.input, question: followup }),
+  ).resolves.toEqual({
+    intent,
+    spent: true,
+  });
+  const [request] = owned.generate.mock.calls[0]!;
+  expect(request.messages.filter(message => message.role !== 'system')).toEqual(
+    [{ role: 'user', content: followup }],
+  );
+  expect(JSON.stringify(request)).toContain(
+    'active conversation just completed a Visit Questions template',
+  );
+  expect(JSON.stringify(request)).not.toContain('secret-synthetic-appointment');
+  expect(owned.authorization).toHaveBeenCalledTimes(1);
+  expect(owned.authorization).toHaveBeenCalledWith(
+    expect.objectContaining({
+      allowedScope: { sourceKinds: [] },
+      consentScope: expect.objectContaining({ purpose: 'record_conversation' }),
+    }),
+  );
+});
