@@ -2,7 +2,6 @@ import { emptyDailyActivityCoverage } from './dailyReportActivityCoverage';
 import { readSelectedEvidenceRows } from '../readSelectedEvidenceRows';
 import { dailyReportOccurrence } from './dailyReportOccurrence';
 import { dailyReportCandidateOrder } from './dailyReportCandidateOrder';
-import type { DailyReportSnapshotResult } from './dailyReportSnapshotResult';
 import { readDailyReportHistory } from './dailyReportHistory';
 import { readDailyReportMedicationContext } from './dailyReportMedicationContext';
 import {
@@ -16,11 +15,13 @@ import type {
   DailyReportSourceCoverage,
   DailyReportSourceRecord,
 } from '@orot/domain';
-import { fingerprint } from '../../aiFeatures/integration/evidenceUtils';
+import {
+  finishDailyReportSnapshot,
+  type SnapshotRevisionInput,
+} from './finishDailyReportSnapshot';
 import { candidateScopeCondition } from '../evidenceCandidateScope';
 import type { EvidenceCandidateScope } from '../evidenceCandidateScope';
 import type { LocalHealthEvidenceRecord } from '../localEvidenceQueries';
-import type { DailyReportLineage } from '../../storage/dailyReportStorageTypes';
 import type { DailyReportCalendarWindow } from './dailyReportWindow';
 import {
   validateDailyReportCalendarWindow,
@@ -36,7 +37,7 @@ const kinds = [
   'appointment',
 ] as const;
 
-/** Reads values, source revisions and generation fences before releasing the SQLite snapshot. */
+/** Read all source values and generation fences on one SQLite snapshot. */
 export async function readDailyReportSnapshot(
   database: SqlDatabase,
   calendar: DailyReportCalendarWindow,
@@ -48,15 +49,14 @@ export async function readDailyReportSnapshot(
     throw new Error('Daily report scope cannot replace its calendar window.');
   // Sorting selected health records must not create plaintext temporary files.
   await database.execute('PRAGMA temp_store = MEMORY');
-  let output: DailyReportSnapshotResult | undefined;
+  let output: Parameters<typeof finishDailyReportSnapshot>[0] | undefined;
+  const revisions: SnapshotRevisionInput[] = [];
   const preparation = dailyReportGenerationPreparation(database);
   await preparation.transaction(
     async tx => {
       if (!(await preparation.reuse(tx))) await preparation.prepare(tx);
       const generation = await readHealthContextGeneration(tx);
       const values: LocalHealthEvidenceRecord[] = [];
-      const records: DailyReportSourceRecord[] = [];
-      const lineage: DailyReportLineage[] = [];
       const coverage: DailyReportSourceCoverage[] = [];
       for (const kind of kinds) {
         if (signal?.aborted)
@@ -119,22 +119,22 @@ export async function readDailyReportSnapshot(
             partial = true;
             continue;
           }
-          const revision = fingerprint(payload);
-          const record: DailyReportSourceRecord = {
+          const record: Omit<DailyReportSourceRecord, 'revision'> = {
             source: kind,
             recordId: String(payload.id),
-            revision,
             ...temporal,
             ingestedAt: parsed.ingestedAt,
           };
           if (!dailyReportSourceRecordIsAvailable(record, calendar)) continue;
-          records.push(record);
-          lineage.push({
-            source: kind,
-            recordId: record.recordId,
-            kind: kind as RecordKind,
-            localId: record.recordId,
-            revision,
+          revisions.push({
+            record,
+            payload,
+            lineage: {
+              source: kind,
+              recordId: record.recordId,
+              kind: kind as RecordKind,
+              localId: record.recordId,
+            },
           });
           values.push(decoded);
         }
@@ -144,7 +144,9 @@ export async function readDailyReportSnapshot(
           limitationCodes: [
             'source_sync_unknown',
             ...(kind === 'symptom_entry' &&
-            records.some(r => r.contextRole === 'ongoing_symptom')
+            revisions.some(
+              ({ record }) => record.contextRole === 'ongoing_symptom',
+            )
               ? ['ongoing_symptom_context']
               : []),
             ...(partial
@@ -164,22 +166,22 @@ export async function readDailyReportSnapshot(
       );
       const linkedDoses = new Set<string>();
       for (const item of medications) {
-        const revision = fingerprint(item.payload);
         const recordId = item.value.record.id;
-        records.push({
-          source: item.value.kind,
-          recordId,
-          revision,
-          occurrence: { startInclusive: item.at },
-          ingestedAt: item.value.record.ingestedAt,
-          supportingRecordFor: item.doses,
-        });
-        lineage.push({
-          source: item.value.kind,
-          recordId,
-          kind: item.value.kind,
-          localId: recordId,
-          revision,
+        revisions.push({
+          payload: item.payload,
+          record: {
+            source: item.value.kind,
+            recordId,
+            occurrence: { startInclusive: item.at },
+            ingestedAt: item.value.record.ingestedAt,
+            supportingRecordFor: item.doses,
+          },
+          lineage: {
+            source: item.value.kind,
+            recordId,
+            kind: item.value.kind,
+            localId: recordId,
+          },
         });
         values.push(item.value);
         item.doses.forEach(id => linkedDoses.add(id));
@@ -220,18 +222,15 @@ export async function readDailyReportSnapshot(
         null,
         signal,
       );
-      records.push(...history.records);
-      lineage.push(...history.lineage);
       coverage.push(...history.coverage);
       output = {
         baselineValues: history.baselineValues,
         behaviorValues: history.behaviorValues,
         values,
-        lineage,
+        lineage: history.lineage,
         sourceSnapshot: {
           ...generation,
-          revision: fingerprint([generation, records]),
-          records,
+          records: history.records,
           coverage,
         },
       };
@@ -240,5 +239,5 @@ export async function readDailyReportSnapshot(
   );
   if (!output || signal?.aborted)
     throw new Error('Daily report snapshot cancelled.');
-  return output;
+  return finishDailyReportSnapshot(output, revisions, signal);
 }
