@@ -20,6 +20,8 @@ import {
   submitPossibilityFixture,
 } from '../testSupport/semanticPossibilityBookmarkFixture';
 import { answer } from '../testSupport/structuredPossibilityReportFixture';
+const missingOwner = 'The mounted composer lost its retained owner.';
+const possibilitiesPrompt = '가능성과 추가 확인할 점을 정리해 주세요.';
 jest.mock('../../generatedReports/readers', () => {
   const actual = jest.requireActual<
     typeof import('../../generatedReports/readers')
@@ -133,7 +135,7 @@ test.each(['open', 'bookmark', 'semantic'] as const)(
                   context,
                 );
               if (!signal || !observer?.onRetentionCandidate)
-                throw new Error('The mounted composer lost its retained owner.');
+                throw new Error(missingOwner);
               const entry = {
                 intent: 'possibilities',
                 entryKey: 'synthetic-owned-possibility',
@@ -208,13 +210,12 @@ test.each(['open', 'bookmark', 'semantic'] as const)(
           />
         </ConversationSessionsProvider>,
       );
-      await submitPossibilityFixture('가능성과 추가 확인할 점을 정리해 주세요.');
-      const body = answer.observations;
+      await submitPossibilityFixture(possibilitiesPrompt);
       const saved = await expectCommittedPossibilityFixture(
         observed,
         canonical.generate,
         storage,
-        body,
+        answer.observations,
       );
       if (semantic) return await semantic.verify(saved);
       if (file) {
