@@ -75,19 +75,22 @@ export function createHealthContextReader(
         topics = ['measurements'];
       }
       const key = healthContextReportCacheKey(window, topics);
-      const current = await traceHealthContext(trace, 'generation', () =>
-        readHealthContextGeneration(database),
-      );
       const cached = cache.get(key);
+      // For a cold ordinary measurement the cache probe has nothing to
+      // validate. Preserve the same in-transaction and post-commit checks,
+      // and leave the other report paths untouched.
+      const current =
+        cached || !prepareMeasurements
+          ? await traceHealthContext(trace, 'generation', () =>
+              readHealthContextGeneration(database),
+            )
+          : undefined;
       if (signal?.aborted) throw new Error('Health context was cancelled.');
+      const hit = cached && current && sameGeneration(cached, current);
       reportCacheDecision(
-        cached && sameGeneration(cached, current)
-          ? 'committed_hit'
-          : cached
-            ? 'generation_miss'
-            : 'new_key',
+        hit ? 'committed_hit' : cached ? 'generation_miss' : 'new_key',
       );
-      if (cached && sameGeneration(cached, current)) return cached;
+      if (hit) return cached;
       // Calendar instants and their bound text do not depend on records or generation.
       // Keep that pure work out of the shared transaction and reuse the key binding.
       const preparedCalendar = prepareMeasurements
