@@ -1,3 +1,4 @@
+import { PersonalSourceSheetStatus } from './PersonalSourceSheet';
 import { EvidenceRouteScrollView } from './EvidenceRouteScrollView';
 import { useNavigationRouteActions } from '../../navigation/useNavigationRouteActions';
 import { useState } from 'react';
@@ -20,6 +21,7 @@ import type { AiFeatureNavigationStateChange } from './useAiFeatureNavigationSta
 import { useAiFeatureScreenNavigationState } from './useAiFeatureNavigationState';
 
 interface EvidenceSourceDetailScreenProps {
+  readonly sheet?: boolean;
   readonly navigationRouteKey?: string;
   readonly onNavigationStateChange?: AiFeatureNavigationStateChange;
   readonly sourceOwner?: import('./coldConversationSourceResolvers').ColdConversationSourceOwner;
@@ -38,6 +40,7 @@ interface EvidenceSourceDetailScreenProps {
 
 /** Re-reads a citation on entry and discards the result if the screen closes mid-request. */
 export function EvidenceSourceDetailScreen({
+  sheet,
   navigationRouteKey,
   onNavigationStateChange,
   reference,
@@ -108,13 +111,14 @@ export function EvidenceSourceDetailScreen({
   return (
     <EvidenceRouteScrollView
       routeKey={navigationRouteKey}
+      localSheet={sheet}
       style={styles.screen}
-      contentContainerStyle={styles.container}
+      contentContainerStyle={sheet ? styles.sheetContainer : styles.container}
       testID="ai-feature-source-detail"
     >
       {lane => (
         <>
-          {navigationRouteKey ? null : (
+          {navigationRouteKey || sheet ? null : (
             <AppButton
               accessibilityLabel={navigationText.back.accessibilityLabel}
               onPress={onBack}
@@ -129,19 +133,34 @@ export function EvidenceSourceDetailScreen({
               testID="ai-feature-source-previous"
             />
           ) : null}
-          <Text
-            accessibilityRole="header"
-            onLayout={onHeaderLayout}
-            testID="ai-feature-source-heading"
-            style={styles.heading}
-          >
-            {t('sourceDisplay.inspect')}
-          </Text>
-          <Text style={styles.subtitle}>{t('sourceDisplay.citedRecords')}</Text>
+          {sheet ? (
+            <View
+              testID="ai-feature-source-content-start"
+              onLayout={onHeaderLayout}
+            />
+          ) : (
+            <>
+              <Text
+                accessibilityRole="header"
+                onLayout={onHeaderLayout}
+                testID="ai-feature-source-heading"
+                style={styles.heading}
+              >
+                {t('sourceDisplay.inspect')}
+              </Text>
+              <Text style={styles.subtitle}>
+                {t('sourceDisplay.citedRecords')}
+              </Text>
+            </>
+          )}
           {state.status === 'loading' ? (
-            <Text testID="ai-feature-source-loading">
-              {t('aiFeatures.source.loading')}
-            </Text>
+            sheet ? (
+              <PersonalSourceSheetStatus unavailable={false} />
+            ) : (
+              <Text testID="ai-feature-source-loading">
+                {t('aiFeatures.source.loading')}
+              </Text>
+            )
           ) : null}
           {state.status === 'missing' ? (
             <Text
@@ -188,6 +207,7 @@ export function EvidenceSourceDetailScreen({
               <EvidenceSourceSections
                 routeKey={navigationRouteKey}
                 edgeLane={lane}
+                compactSheet={sheet}
                 sections={presentation}
                 onContentLayout={onContentLayout}
               />
@@ -221,6 +241,7 @@ export function EvidenceSourceDetailScreen({
 const styles = StyleSheet.create({
   screen: { flex: 1, backgroundColor: appColors.background },
   container: { gap: 12, paddingHorizontal: 20, paddingTop: 16 },
+  sheetContainer: { gap: 12, paddingBottom: 20 },
   // Match the selected reference title without overriding system text scaling or its existing weight.
   heading: { fontSize: 36, fontWeight: '700' },
   subtitle: { fontSize: 14, color: appColors.secondary, marginBottom: 12 },

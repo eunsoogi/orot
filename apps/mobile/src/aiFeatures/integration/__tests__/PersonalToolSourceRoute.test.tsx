@@ -8,10 +8,8 @@ import {
   render,
   screen,
   waitFor,
-  within,
 } from '@testing-library/react-native';
-import { StackActions, useNavigation } from '@react-navigation/native';
-import { AppState, Pressable } from 'react-native';
+import { AppState } from 'react-native';
 import type { EvidenceReference } from '@orot/agent-runtime';
 import { AiFeatureRoute } from '../AiFeatureRoute';
 import { ConversationMessage as MockConversationMessage } from '../../../ragConversation/ConversationMessage';
@@ -30,9 +28,10 @@ jest.mock('../featureServices', () => ({
   createAiFeatureServices: () => mockServices,
 }));
 jest.mock('../AiFeatureFlowScreen', () => ({
-  AiFeatureFlowScreen: (props: AiFeatureFlowScreenProps) => (
-    <>
-      <MockNativeBack />
+  AiFeatureFlowScreen: (props: AiFeatureFlowScreenProps) => {
+    if (props.route !== 'saved-analysis')
+      mockLeaveOrigin = props.onOpenSavedAnalysis;
+    return (
       <MockConversationMessage
         message={{
           id: 9,
@@ -46,19 +45,11 @@ jest.mock('../AiFeatureFlowScreen', () => ({
         onOpenSource={props.onOpenSource}
         onLinkError={jest.fn()}
       />
-    </>
-  ),
+    );
+  },
 }));
 
-function MockNativeBack() {
-  const navigation = useNavigation();
-  return (
-    <Pressable
-      testID="native-source-pop"
-      onPress={() => navigation.dispatch(StackActions.pop())}
-    />
-  );
-}
+let mockLeaveOrigin: (() => void) | undefined;
 
 const source = mockToolEvents[0]!.sources[0]!;
 const reference: EvidenceReference = {
@@ -148,7 +139,7 @@ async function open() {
     screen.getByRole('button', { name: /원문 출처 확인/u }),
   );
   expect(screen.getByTestId('ai-feature-source-loading')).toBeTruthy();
-  expect(screen.queryByTestId('ai-feature-source-heading')).toBeNull();
+  expect(screen.getByTestId('ai-feature-source-heading')).toBeVisible();
   expect(mockServices.readSource).not.toHaveBeenCalled();
   await fireEvent(screen.getByTestId('ai-feature-source-detail'), 'layout', {
     nativeEvent: { layout: { x: 0, y: 0, width: 300, height: 20 } },
@@ -157,26 +148,28 @@ async function open() {
 }
 
 async function admitDetail() {
-  await fireEvent(screen.getByTestId('ai-feature-source-heading'), 'layout', {
-    nativeEvent: { layout: { x: 0, y: 0, width: 300, height: 20 } },
-  });
+  await fireEvent(
+    screen.getByTestId('ai-feature-source-content-start'),
+    'layout',
+    {
+      nativeEvent: { layout: { x: 0, y: 0, width: 300, height: 20 } },
+    },
+  );
   await waitFor(() => expect(mockServices.readSource).toHaveBeenCalledTimes(1));
 }
 
-test.each(['navigation-back', 'native-source-pop'])(
+test.each(['close', 'origin route replacement'])(
   'pending first proof is retired via %s with no late second read',
   async backTarget => {
     const { admit, first } = admission();
     await open();
     expect(admit).toHaveBeenCalledTimes(1);
     const signal = admit.mock.calls[0]![1];
-    await fireEvent.press(
-      backTarget === 'navigation-back'
-        ? screen.getByTestId(backTarget)
-        : within(
-            screen.getByTestId('navigation-route-scene-route-3'),
-          ).getByTestId(backTarget, { includeHiddenElements: true }),
-    );
+    if (backTarget === 'close')
+      await fireEvent.press(
+        screen.getByTestId('conversation-personal-source-close'),
+      );
+    else await act(() => mockLeaveOrigin?.());
     expect(signal.aborted).toBe(true);
     await act(async () => first.finish(reference));
     expect(screen.queryByTestId('ai-feature-source-detail')).toBeNull();

@@ -12,10 +12,12 @@ import type { EvidenceSourceDetailSection } from './evidenceSourcePresentation';
 /** Tabs select saved records, never inferred summaries or illustrative health values. */
 export function EvidenceSourceSections({
   sections,
+  compactSheet,
   routeKey,
   edgeLane,
   onContentLayout,
 }: {
+  readonly compactSheet?: boolean;
   readonly onContentLayout?: () => void;
   readonly sections: readonly EvidenceSourceDetailSection[];
   readonly routeKey?: string;
@@ -95,7 +97,7 @@ export function EvidenceSourceSections({
           );
         }
       }}
-      style={styles.section}
+      style={compactSheet ? styles.sheetSection : styles.section}
       testID="ai-feature-source-content"
     >
       <View style={styles.category}>
@@ -148,11 +150,11 @@ export function EvidenceSourceSections({
           testID="ai-feature-source-selection-owner"
           onLayout={event => setMenuOwnerWidth(event.nativeEvent.layout.width)}
         >
-          {sourceSelection}
+          {!compactSheet || sections.length > 1 ? sourceSelection : null}
           {sourceContent}
         </View>
       }
-      routeKey={routeKey}
+      routeKey={compactSheet ? undefined : routeKey}
       testID="ai-feature-source-detail-columns"
     />
   );
@@ -178,6 +180,12 @@ const styles = StyleSheet.create({
     borderRadius: 22,
     gap: 12,
     padding: 20,
+  },
+  sheetSection: {
+    backgroundColor: appColors.surface,
+    borderRadius: 16,
+    gap: 10,
+    padding: 16,
   },
   category: { flexDirection: 'row', alignItems: 'center', gap: 10 },
   categoryText: { color: appColors.secondary, fontSize: 14 },

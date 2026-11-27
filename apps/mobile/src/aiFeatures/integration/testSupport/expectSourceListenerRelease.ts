@@ -22,13 +22,12 @@ export function expectSourceListenerRelease() {
   const abort = jest.spyOn(AbortSignal.prototype, 'addEventListener');
   const remove = jest.spyOn(AbortSignal.prototype, 'removeEventListener');
   return () => {
-    // The pending source owns an explicit native AppState subscription and the
-    // off-scene route signal. Observe exact remove operands, not a total count.
+    // Match the exact modal lease's AppState cleanup registration, not a total count.
     const routeIndex = abort.mock.calls.findIndex(
       ([event, callback]) =>
         event === 'abort' &&
         typeof callback === 'function' &&
-        callback.name === 'onRouteExit',
+        callback.name === 'removeAppObserver',
     );
     expect(routeIndex).toBeGreaterThanOrEqual(0);
     const routeSignal = abort.mock.contexts[routeIndex];

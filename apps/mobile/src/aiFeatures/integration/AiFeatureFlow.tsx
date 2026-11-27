@@ -1,6 +1,9 @@
 import { PersonalToolSourceRoute } from '../../ragConversation/personalToolSourceRoute';
 import { useOpenPendingPersonalSource } from './usePendingPersonalSource';
-import { PersonalSourceDetail } from './PersonalSourceDetail';
+import {
+  PersonalSourceDetail,
+  sourceOriginPresentation,
+} from './PersonalSourceDetail';
 import { useDailyReminderPrompt } from '../../appointmentReminders/useDailyReminderPrompt';
 import { conversationChoiceActions } from '../../ragConversation/selectConversationChoice';
 import { useCallback, useContext } from 'react';
@@ -64,10 +67,13 @@ export function AiFeatureFlow({
     navigation,
     isEntryCurrent ?? isRouteCurrent,
   );
+  const pendingSheet =
+    shared.pendingPersonalSource?.routeKey === navigation.route.key;
+  const covered = sourceDetailOpen || providerSelectionOpen;
   const rootVisibility = useRootConversationVisibilitySubscription();
   const isConversationVisible = useConversationVisibility(
     isEntryCurrent ?? isRouteCurrent,
-    sourceDetailOpen,
+    sourceDetailOpen || pendingSheet,
     providerSelectionOpen,
     Boolean(isRouteCurrent),
     {
@@ -88,7 +94,6 @@ export function AiFeatureFlow({
     services,
   });
   const selectedAiDependencies = serviceDependencies?.selectedAi;
-  // Provider refreshes follow the explicit selection revision, not render churn.
   const resolveSelectedAiForRoute =
     useCallback<ResolveConversationModelDisplay>(
       display => resolveSelectedAi(selectedAiDependencies, display),
@@ -103,31 +108,16 @@ export function AiFeatureFlow({
   return (
     <View style={styles.container} testID="ai-feature-flow">
       <View style={styles.screen}>
-        {/* Keep feature ScrollViews mounted and bounded while an overlay is active. */}
-        <View
-          testID="ai-feature-screen-content"
-          style={
-            sourceDetailOpen || providerSelectionOpen
-              ? styles.hiddenFeatureScreen
-              : styles.featureScreen
-          }
-        >
-          {/* A hidden retained screen must not publish its action into the overlay's toolbar. */}
+        <View {...sourceOriginPresentation(covered, pendingSheet)}>
           <NavigationPrimaryActionContext.Provider
-            value={
-              sourceDetailOpen || providerSelectionOpen
-                ? null
-                : primaryActionHost
-            }
+            value={covered || pendingSheet ? null : primaryActionHost}
           >
             <PersonalToolSourceRoute.Provider value={openPersonalSource}>
               <AiFeatureFlowScreen
                 isEntryCurrent={isConversationVisible}
                 ownsConversationPresentation={ownsConversationPresentation}
                 route={screenRoute}
-                reportOwnsOperation={
-                  !sourceDetailOpen && !providerSelectionOpen
-                }
+                reportOwnsOperation={!covered && !pendingSheet}
                 onOpenSavedAnalysis={() => pushFeatureRoute('saved-analysis')}
                 onOpenSavedVisitQuestions={
                   renderVisitQuestions
