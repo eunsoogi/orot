@@ -76,7 +76,9 @@ export function useOverviewWorkoutPeriodHeartRate(
       retired?.stopExpiry?.();
       retired?.abort.abort();
       retired?.epoch?.dispose();
-      if (mounted && showUnavailable) setState(unavailable);
+      if (mounted && showUnavailable)
+        setState(trace.settlement(unavailable, !!retired));
+      else if (retired) trace.report('settlement', 'cancelled');
     }
     function retire(showUnavailable = true) {
       clearTimeout(boundary);
@@ -185,7 +187,7 @@ export function useOverviewWorkoutPeriodHeartRate(
         if (!result || phase() !== 'active') return;
         target.settled = usableResult;
         if (target.settled) {
-          setState(result);
+          setState(trace.settlement(result));
         } else if (rechecks > 1 && target.interrupted) {
           dropTask(false);
           start(0);

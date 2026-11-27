@@ -78,7 +78,15 @@ export async function readOwnedWorkoutPeriod(
         );
         if (!settled || exactCohortKey(settled) !== cohortKey) return;
       }
-      return current() && (await owner.confirm()) && current()
+      if (!current()) {
+        trace.report('finalproof', 'cancelled');
+        return undefined;
+      }
+      return (await trace.observe(
+        'finalproof',
+        () => owner.confirm(),
+        current,
+      )) && current()
         ? { result, cohortKey }
         : undefined;
     } catch {

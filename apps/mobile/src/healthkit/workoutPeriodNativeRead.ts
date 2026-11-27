@@ -1,4 +1,7 @@
-import { workoutReadDiagnostics } from './workoutReadDiagnostics';
+import {
+  workoutReadDiagnostics,
+  type WorkoutDecodeRejection,
+} from './workoutReadDiagnostics';
 import { NativeModules, Platform } from 'react-native';
 import type { PeriodWorkout, WorkoutPeriod } from './workoutPeriodCohort';
 import {
@@ -28,6 +31,10 @@ const exactCohortPolicy = 'exact-visible-native-cohort';
 type WorkoutReadContract =
   { readonly timeZone: string } | { readonly requireVisiblePeriodMatch: true };
 const trace = workoutReadDiagnostics('shared');
+const reject = (reason: WorkoutDecodeRejection) => {
+  trace.report('decode', reason);
+  return unavailable;
+};
 
 /** One local period read; native must support actual cancellation. No permissions are requested. */
 export async function readWorkoutPeriodHeartRate(
@@ -73,8 +80,8 @@ export async function readWorkoutPeriodHeartRate(
       workouts: cohort,
     });
     trace.report('bridge', signal.aborted ? 'cancelled' : 'completed');
-    if (signal.aborted || !result || typeof result !== 'object')
-      return unavailable;
+    if (signal.aborted) return reject('cancelled');
+    if (!result || typeof result !== 'object') return reject('payload_invalid');
     const value = result as Partial<
       Extract<WorkoutPeriodResult, { status: 'available' }>
     > & { status?: unknown };
@@ -83,9 +90,14 @@ export async function readWorkoutPeriodHeartRate(
       (result as { workoutCohortPolicy?: unknown }).workoutCohortPolicy !==
         exactCohortPolicy
     )
-      return unavailable;
-    if ((result as { status?: unknown }).status === 'emptyVisible')
-      return { status: 'emptyVisible' };
+      return reject('cohort_mismatch');
+    const status = (result as { status?: unknown }).status;
+    if (status === 'unavailable') return reject('native_unavailable');
+    if (status === 'emptyVisible') {
+      trace.report('decode', 'empty');
+      return { status };
+    }
+    if (status !== 'available') return reject('payload_invalid');
     const {
       sampleCount,
       minimum,
@@ -96,9 +108,11 @@ export async function readWorkoutPeriodHeartRate(
       membershipRevision,
     } = value;
     if (
-      value.status !== 'available' ||
       value.fromInclusive !== period.fromInclusive ||
-      value.toExclusive !== period.toExclusive ||
+      value.toExclusive !== period.toExclusive
+    )
+      return reject('window_mismatch');
+    if (
       typeof sampleCount !== 'number' ||
       !Number.isSafeInteger(sampleCount) ||
       sampleCount < 1 ||
@@ -107,24 +121,30 @@ export async function readWorkoutPeriodHeartRate(
       typeof maximum !== 'number' ||
       ![minimum, nativeMean, maximum].every(Number.isFinite) ||
       minimum <= 0 ||
-      minimum > maximum ||
+      minimum > maximum
+    )
+      return reject('statistics_invalid');
+    if (
       typeof firstSampleAtMs !== 'number' ||
       typeof lastSampleAtMs !== 'number' ||
       !Number.isSafeInteger(firstSampleAtMs) ||
       !Number.isSafeInteger(lastSampleAtMs) ||
       firstSampleAtMs < Date.parse(period.fromInclusive) ||
       lastSampleAtMs >= Date.parse(period.toExclusive) ||
-      firstSampleAtMs > lastSampleAtMs ||
+      firstSampleAtMs > lastSampleAtMs
+    )
+      return reject('timestamps_invalid');
+    if (
       typeof membershipRevision !== 'string' ||
       !/^v1:[0-9a-f]{64}$/u.test(membershipRevision)
     )
-      return unavailable;
+      return reject('membership_invalid');
     // The native compensated aggregate divides its rounded sum by count.
     // An exact in-range average may land just outside the measured boundary;
     // correct only machine-scale error, never a materially different value.
     const mean = Math.min(maximum, Math.max(minimum, nativeMean));
     if (Math.abs(nativeMean - mean) > Math.abs(mean) * Number.EPSILON)
-      return unavailable;
+      return reject('statistics_invalid');
     const days =
       recordsMonthChart &&
       validatedRecordsWorkoutDays(
@@ -132,6 +152,7 @@ export async function readWorkoutPeriodHeartRate(
         { ...period, sampleCount, minimum, mean, maximum },
         recordsMonthChart.timeZone,
       );
+    trace.report('decode', 'available');
     return {
       ...period,
       ...(days ? { days } : {}),
