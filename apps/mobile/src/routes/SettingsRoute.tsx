@@ -7,7 +7,6 @@ import { useNavigationLeaveStateRegistration } from '../navigation';
 import type { SelectedAiResolverOptions } from '../aiFeatures/integration/provider';
 import { NAVIGATION_CONTENT_GAP } from '../navigation/navigationLayout';
 import { SettingsRouteAppInfo, SettingsRouteRow } from './SettingsRouteRows';
-import { settingsListColors } from './settingsListColors';
 import { processDiagnosticWitnessEnabled } from '../providers/processDiagnosticWitness';
 import { ProcessDiagnosticWitnessSection } from './ProcessDiagnosticWitnessSection';
 
@@ -148,7 +147,8 @@ const styles = StyleSheet.create({
   },
   title: { color: appColors.text, fontSize: 34, fontWeight: '700' },
   list: {
-    backgroundColor: settingsListColors.row,
+    // These groups use the same adaptive card surface as the Records tab.
+    backgroundColor: appColors.surface,
     borderRadius: 20,
     overflow: 'hidden',
   },
