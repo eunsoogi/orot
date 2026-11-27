@@ -1,3 +1,8 @@
+import {
+  isOwnedConversationToolReader,
+  isOwnedConversationToolCallReader,
+} from '../../storage/conversationToolEventStorage';
+import { registerBoundToolRead } from './verifiedBoundToolRead';
 import { sourceOpenTiming } from '../../providers/sourceOpenDiagnostic';
 import { conversationToolCapture } from './conversationToolCaptureBatch';
 import type { EvidenceReference } from '@orot/agent-runtime';
@@ -25,14 +30,17 @@ export function bindConversationToolSource(input: {
   const original = input.registry.resolve(input.alias);
   if (!original) throw new Error('Tool source is unavailable.');
   const expected = fingerprint(input.snapshot);
-  const current = async (signal: AbortSignal) => {
+  const current = async (
+    signal: AbortSignal,
+    storage: typeof input.storage,
+  ) => {
     const timing = sourceOpenTiming(signal);
     const type = (original.locator as { type?: unknown } | null)?.type;
     const exact =
       original.sourceKind === 'generated_artifact' &&
       (type === 'research_publication' ||
         type === 'research_web_explanation') &&
-      input.storage.readToolCall;
+      storage.readToolCall;
     const identity = [
       input.sessionId,
       input.runId,
@@ -40,8 +48,8 @@ export function bindConversationToolSource(input: {
       input.messageId,
     ] as const;
     const turns = exact
-      ? [await exact.call(input.storage, ...identity, timing, signal)]
-      : await input.storage.readToolTurns(
+      ? [await exact.call(storage, ...identity, timing, signal)]
+      : await storage.readToolTurns(
           input.sessionId,
           undefined,
           // Check every sibling in the owning turn, but don't hydrate other
@@ -64,19 +72,58 @@ export function bindConversationToolSource(input: {
     }
     return false;
   };
-  const readSource = async (signal: AbortSignal) => {
-    if (signal.aborted || !(await current(signal)))
+  const readWithProof = async (
+    signal: AbortSignal,
+    storage: typeof input.storage,
+    read: LocalEvidenceReferenceRegistry['readSource'],
+  ) => {
+    if (signal.aborted || !(await current(signal, storage)))
       return { status: 'unavailable' as const };
-    const source = await input.registry.readSource(input.alias, signal);
-    if (signal.aborted || !(await current(signal)))
+    const source = await read.call(input.registry, input.alias, signal);
+    if (signal.aborted || !(await current(signal, storage)))
       return { status: 'unavailable' as const };
     return source;
   };
-  return input.registry.add({
+  const readSource = (signal: AbortSignal) =>
+    readWithProof(signal, input.storage, input.registry.readSource);
+  const bound = input.registry.add({
     reference: original,
     capture: conversationToolCapture(input),
     content: '',
     readSource,
     validate: async signal => (await readSource(signal)).status === 'available',
   });
+  const wholeTurn = input.storage.readToolTurns;
+  const call = input.storage.readToolCall;
+  const registryRead = input.registry.readSource;
+  const verifiedRead = (signal: AbortSignal) =>
+    readWithProof(
+      signal,
+      {
+        readToolTurns: wholeTurn.bind(input.storage),
+        ...(call ? { readToolCall: call.bind(input.storage) } : {}),
+      },
+      registryRead,
+    );
+  const type = (original.locator as { type?: unknown } | null)?.type;
+  if (
+    original.sourceKind === 'generated_artifact' &&
+    type === 'research_web_explanation' &&
+    isOwnedConversationToolCallReader(call)
+  )
+    registerBoundToolRead(input.registry, bound, {
+      kind: 'public-web',
+      current: () => input.storage.readToolCall === call,
+      read: verifiedRead,
+    });
+  else if (
+    original.sourceKind === 'personal_record' &&
+    isOwnedConversationToolReader(wholeTurn)
+  )
+    registerBoundToolRead(input.registry, bound, {
+      kind: 'personal',
+      current: () => input.storage.readToolTurns === wholeTurn,
+      read: verifiedRead,
+    });
+  return bound;
 }
