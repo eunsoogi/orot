@@ -215,6 +215,7 @@ export function createConversationToolEventStorage(
       callId: string,
       messageId?: string,
       timing?: SourceOpenTiming,
+      signal?: AbortSignal,
     ) {
       return (
         await readSnapshot(
@@ -224,6 +225,7 @@ export function createConversationToolEventStorage(
           true,
           { runId, callId },
           timing,
+          signal,
         )
       ).items[0];
     },
@@ -232,6 +234,7 @@ export function createConversationToolEventStorage(
       expectedVersion?: number,
       selectedIds?: readonly string[],
       timing?: SourceOpenTiming,
+      signal?: AbortSignal,
     ) {
       return (
         await readSnapshot(
@@ -241,6 +244,7 @@ export function createConversationToolEventStorage(
           true,
           undefined,
           timing,
+          signal,
         )
       ).items;
     },

@@ -83,3 +83,127 @@ test('warm local opener and detail validate only the owning turn but still withh
     f.close();
   }
 });
+
+test('closing during SQLite admission leaves only the reopened proof to run after the writer', async () => {
+  const f = await sharedAncestryProfileFixture(1, false);
+  let releaseWriter = () => {};
+  try {
+    const wanted = (await f.storage.read('turn-0'))!;
+    const runId = 'synthetic-held-run';
+    const callId = 'synthetic-held-call';
+    await f.storage.appendToolEvent({
+      sessionId: 'session',
+      messageId: wanted.id,
+      createdAt: wanted.createdAt,
+      sessionVersion: 0,
+      event: {
+        version: 1,
+        operationRunId: runId,
+        callId,
+        toolName: 'health',
+        order: 1,
+        status: 'completed',
+        inputSummary: { sourceKind: 'generated_artifact' },
+        sources: wanted.citations!,
+      },
+      dependencies: wanted.sources,
+    });
+    const registry = f.input.registry;
+    const readSource = jest.fn(async (signal: AbortSignal) =>
+      signal.aborted
+        ? { status: 'unavailable' as const }
+        : {
+            status: 'available' as const,
+            document: { sourceKind: 'personal_record' as const, records: [] },
+          },
+    );
+    const alias = registry.add({
+      reference: { ...wanted.citations![0]!, sourceKind: 'personal_record' },
+      content: '',
+      readSource,
+      validate: async () => true,
+    });
+    const owner = (await f.storage.readToolCall(
+      'session',
+      runId,
+      callId,
+      wanted.id,
+    ))!;
+    const link = bindConversationToolSource({
+      alias,
+      sessionId: 'session',
+      messageId: wanted.id,
+      runId,
+      callId,
+      snapshot: { event: owner.toolEvents[0], lineage: owner.lineages[0] },
+      storage: f.storage,
+      registry,
+    });
+    await expect(
+      registry.resolveToolSource(link, new AbortController().signal),
+    ).resolves.toBeDefined();
+    readSource.mockClear();
+    let writerEntered = () => {};
+    const writerEntry = new Promise<void>(resolve => {
+      writerEntered = resolve;
+    });
+    const writerGate = new Promise<void>(resolve => {
+      releaseWriter = resolve;
+    });
+    const run = f.database.transaction.bind(f.database);
+    let reportQueued = () => {};
+    const queued = new Promise<void>(resolve => {
+      reportQueued = resolve;
+    });
+    const proof = jest.fn();
+    const write = run(async () => {
+      writerEntered();
+      await writerGate;
+    });
+    await writerEntry;
+    let tail = write;
+    f.database.transaction = operation => {
+      reportQueued();
+      const result = tail.then(() =>
+        run(async tx =>
+          operation({
+            ...tx,
+            execute: async (...args) => {
+              if (args[0].includes('SELECT e.message_id, e.created_at'))
+                proof();
+              return tx.execute(...args);
+            },
+          }),
+        ),
+      );
+      tail = result.catch(() => {});
+      return result;
+    };
+    const closing = new AbortController();
+    const stale = registry.resolveToolSource(link, closing.signal);
+    await queued;
+    closing.abort();
+    const reopened = registry.resolveToolSource(
+      link,
+      new AbortController().signal,
+    );
+    releaseWriter();
+    await write;
+    await expect(stale).resolves.toBeUndefined();
+    const reopenedResult = await reopened;
+    expect({
+      proof: proof.mock.calls.length,
+      source: readSource.mock.calls.length,
+      reopenedResult,
+    }).toMatchObject({
+      proof: 4,
+      source: 2,
+      reopenedResult: expect.anything(),
+    });
+    expect(proof).toHaveBeenCalledTimes(4);
+    expect(readSource).toHaveBeenCalledTimes(2);
+  } finally {
+    releaseWriter();
+    f.close();
+  }
+});

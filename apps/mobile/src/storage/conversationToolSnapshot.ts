@@ -19,6 +19,8 @@ import { legacyToolPeriodAvailable } from './legacyToolPeriodQuarantine';
 import { RetainedSourceInvalidError } from '../aiFeatures/integration/retainedSourceError';
 import type { StoredConversationToolTurn } from './conversationToolEventStorage';
 
+const canceledSourceProof = Symbol();
+
 /** Snapshot unavailable source state without turning a recoverable read failure into a durable policy. */
 export function conversationToolSnapshotReader(
   database: SqlDatabase,
@@ -32,8 +34,15 @@ export function conversationToolSnapshotReader(
     strictSources = false,
     call?: { readonly runId: string; readonly callId: string },
     timing?: SourceOpenTiming,
+    signal?: AbortSignal,
   ) => {
+    const empty = { items: [], unavailable: [] };
+    if (signal?.aborted) return empty;
     await ensure();
+    if (signal?.aborted) return empty;
+    const checkCurrent = () => {
+      if (signal?.aborted) throw canceledSourceProof;
+    };
     const selected = conversationSelectedIds('e.message_id', selectedIds);
     const turns = new Map<
       string,
@@ -55,6 +64,7 @@ export function conversationToolSnapshotReader(
       calculate?: ReadOnlyPeriodValidation,
     ) => {
       enter?.();
+      checkCurrent();
       settle = timing?.span('source_open_db_work');
       // Share calculated values only inside an owned history operation. Strict/live
       // reads keep their existing independent source validation and rollback path.
@@ -83,6 +93,7 @@ export function conversationToolSnapshotReader(
         lineage: ReturnType<typeof decodeToolLineage>;
       }[] = [];
       for (const row of result.rows) {
+        checkCurrent();
         const event = projectConversationToolEvent(
           JSON.parse(String(row.event_json)),
         );
@@ -97,6 +108,7 @@ export function conversationToolSnapshotReader(
           },
         );
         await indexToolLineage(tx, sessionId, event, lineage.sources);
+        checkCurrent();
         if (
           !(await legacyToolPeriodAvailable(
             tx,
@@ -117,6 +129,7 @@ export function conversationToolSnapshotReader(
       // decisions commit just as in artifact/memory reads. Do not suppress that established policy.
       // Strict callers still throw the original error and roll back the outer transaction.
       for (const { row, event, lineage } of candidates) {
+        checkCurrent();
         try {
           await assertToolLineage(tx, database, lineage, false, validatePeriod);
         } catch (error) {
@@ -129,6 +142,7 @@ export function conversationToolSnapshotReader(
           });
           continue;
         }
+        checkCurrent();
         const messageId = String(row.message_id);
         let turn = turns.get(messageId);
         if (!turn) {
@@ -147,6 +161,7 @@ export function conversationToolSnapshotReader(
           sources: lineage.sources,
         });
       }
+      checkCurrent();
     };
     if (operation?.active && !strictSources)
       await operation.run(work, { rollbackOnFailure: true });
@@ -154,10 +169,14 @@ export function conversationToolSnapshotReader(
       enter = timing?.span('source_open_db_admission');
       try {
         await database.transaction(work);
+      } catch (error) {
+        if (error === canceledSourceProof) return empty;
+        throw error;
       } finally {
         settle?.();
       }
     }
+    if (signal?.aborted) return empty;
     // One unavailable call withholds its whole turn; no sibling payload can leak via that notice.
     return {
       items: [...turns]
