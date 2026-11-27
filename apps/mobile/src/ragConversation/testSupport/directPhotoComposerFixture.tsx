@@ -3,6 +3,7 @@ import {
   type ChatGPTPlanNativeBridge,
   type ChatGPTPlanNativeEvent,
 } from '@orot/provider-openai';
+import { useSyncExternalStore } from 'react';
 import { runMigrations } from '@orot/storage';
 import { createOrdinaryConversationMemoryEnrollmentStore } from '../../storage/ordinaryConversationMemoryEnrollment';
 import { saveOrdinaryConversationMemoryNote } from '../../storage/ordinaryConversationMemoryNote';
@@ -183,22 +184,29 @@ export async function directPhotoComposerFixture({
     const snapshot = store.getSnapshot();
     return snapshot.sessions.find(item => item.id === snapshot.activeId)!;
   };
-  const renderView = () => (
-    <DirectPhotoPresentationScope sessionId={session().id} available>
-      <Transcript store={store} />
-      <ConversationSteeringComposer
-        store={store}
-        session={session()}
-        isEntryCurrent={Object.assign(() => isEntryCurrent(), {
-          routeOwnsDraft: ownsDraftRoute,
-        })}
-        photo={{ status: 'empty', onSelect: onPickOCR, onRemove: jest.fn() }}
-        onSend={onSendText}
-        onCancel={jest.fn()}
-        onChangeText={text => store.setDraft(session().id, text)}
-      />
-    </DirectPhotoPresentationScope>
-  );
+  function CurrentView() {
+    const snapshot = useSyncExternalStore(store.subscribe, store.getSnapshot);
+    const active = snapshot.sessions.find(
+      item => item.id === snapshot.activeId,
+    )!;
+    return (
+      <DirectPhotoPresentationScope sessionId={active.id} available>
+        <Transcript store={store} />
+        <ConversationSteeringComposer
+          store={store}
+          session={active}
+          isEntryCurrent={Object.assign(() => isEntryCurrent(), {
+            routeOwnsDraft: ownsDraftRoute,
+          })}
+          photo={{ status: 'empty', onSelect: onPickOCR, onRemove: jest.fn() }}
+          onSend={onSendText}
+          onCancel={jest.fn()}
+          onChangeText={text => store.setDraft(session().id, text)}
+        />
+      </DirectPhotoPresentationScope>
+    );
+  }
+  const renderView = () => <CurrentView />;
   return {
     store,
     createOptions,

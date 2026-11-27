@@ -18,12 +18,14 @@ interface EvidenceRouteLane {
  * cannot. Measure outside the compensated native scroll view. */
 export function EvidenceRouteScrollView({
   routeKey,
+  localSheet,
   routeGutter = 20,
   children,
   style,
   contentContainerStyle,
   ...props
 }: Omit<ScrollViewProps, 'children'> & {
+  readonly localSheet?: boolean;
   readonly routeKey?: string;
   readonly routeGutter?: number;
   readonly children: ReactNode | ((lane: EvidenceRouteLane) => ReactNode);
@@ -31,7 +33,7 @@ export function EvidenceRouteScrollView({
   const [width, setWidth] = useState(0);
   const inset = useNavigationContentInset();
   const lane = {
-    width: routeKey ? width : 0,
+    width: routeKey && !localSheet ? width : 0,
     leftGutter: inset.paddingLeft ?? routeGutter,
     rightGutter: inset.paddingRight ?? routeGutter,
   };
@@ -51,7 +53,7 @@ export function EvidenceRouteScrollView({
         style={[style, edge.scrollViewStyle]}
         contentContainerStyle={[
           contentContainerStyle,
-          inset,
+          !localSheet && inset,
           edge.contentStyle,
         ]}
       >

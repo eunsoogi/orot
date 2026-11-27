@@ -150,3 +150,42 @@ enum RealtimeVoiceNativeRegistryAssertions {
         func cancel(with _: URLSessionWebSocketTask.CloseCode, reason _: Data?) {}
     }
 #endif
+
+/// Synthetic managed call witness: only an already-issued partial handoff
+/// makes fresh speech retire the socket; no event payload enters diagnostics.
+extension RealtimeVoiceLifecycleTests {
+    func assertFreshSpeechDiscriminatesPartialToolResultRetirement() async throws {
+        for issued in [false, true] {
+            let socket = ManagedResponseFixtureSocket()
+            let configured = expectation(description: "managed socket configured")
+            let queued = expectation(description: "protected result and continuation queued")
+            socket.configured = { configured.fulfill() }
+            socket.queued = { queued.fulfill() }
+            let call = managedFixtureCall(socket)
+            defer { try? call.stop("fixture-call") }
+            var observed: [VoiceSystemCallLifecycle.DiagnosticStage] = []
+            call.reportTermination = { [weak call] stage in
+                XCTAssertEqual(call?.id, "fixture-call", "The exact call still owns the termination.")
+                observed.append(stage)
+            }
+            let admission = managedAdmission { _, finish in
+                finish(#"{"status":"synthetic"}"#)
+                return {}
+            }
+            call.open("fixture-call", model: "gpt-live-1.1", key: "synthetic-key", language: "auto",
+                      managedAdmission: admission) { _ in }
+            await fulfillment(of: [configured], timeout: 2)
+            socket.received?(started())
+            managedEvents().forEach { socket.received?($0) }
+            await fulfillment(of: [queued], timeout: 2)
+            if issued {
+                XCTAssertTrue(socket.handoff())
+            }
+            socket.received?(["type": "session.input_transcript.delta", "event_id": "fresh-witness",
+                              "start_ms": 6, "end_ms": 7, "delta": "synthetic content must not become a stage"])
+            XCTAssertTrue(socket.dropped)
+            XCTAssertEqual(call.id == nil, issued, "Unissued result retirement does not stop the call.")
+            XCTAssertEqual(observed.map(\.rawValue), issued ? ["live_partial_tool_result_retired"] : [])
+        }
+    }
+}

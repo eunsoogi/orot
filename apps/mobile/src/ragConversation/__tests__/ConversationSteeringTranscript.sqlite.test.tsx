@@ -1,7 +1,7 @@
 import { act, fireEvent, render, screen } from '@testing-library/react-native';
 import { useConversationHistoryUserTurnFollow } from '../conversationHistoryUserTurn';
 import { ConversationSteeringComposer } from '../ConversationSteeringComposer';
-import type { ConversationSessions } from '../conversationSessionTypes';
+import { createConversationSessions } from '../conversationSessions';
 import { conversationWorkflowContinuationFixture } from '../../storage/testSupport/conversationWorkflowContinuationFixture';
 import { ConversationTranscriptMessages } from '../ConversationTranscriptMessages';
 import { createConversationOperationJournal } from '../../storage/conversationOperationJournal';
@@ -52,6 +52,7 @@ function textOrder(tree: unknown): string {
 test('a real admitted instruction becomes the newest user bubble and reappears once after owned restore', async () => {
   const { connection, requests: storage } =
     await conversationWorkflowContinuationFixture();
+  const store = createConversationSessions();
   try {
     const journal = await createConversationOperationJournal(
       connection.database,
@@ -82,11 +83,7 @@ test('a real admitted instruction becomes the newest user bubble and reappears o
     const composer = await render(
       <ConversationSteeringComposer
         session={session}
-        store={
-          {
-            steer: id => (submitted = owner.submit(id)),
-          } as ConversationSessions
-        }
+        store={{ ...store, steer: id => (submitted = owner.submit(id)) }}
         onChangeText={jest.fn()}
         onSend={ordinary}
         onCancel={stop}
@@ -201,6 +198,7 @@ test('a real admitted instruction becomes the newest user bubble and reappears o
     ).catch(() => ({ rows: [] }));
     expect(removed.rows).toEqual([]);
   } finally {
+    store.dispose();
     connection.close();
   }
 });

@@ -1,5 +1,6 @@
+import { captureDirectPhotoPrompt } from './captureDirectPhotoPrompt';
 import { pickDirectPhotoGroup } from './pickDirectPhotoGroup';
-import { useCallback, useRef, useState } from 'react';
+import { useCallback, useRef } from 'react';
 import { sendReviewedDirectPhotoGroup } from './sendReviewedDirectPhotoGroup';
 import { chatGPTPlanDirectPhoto } from '@orot/provider-openai';
 import { t } from '../i18n';
@@ -93,10 +94,8 @@ export function useConversationDirectPhoto(
     if (!action) return;
     const { controller, owns } = action;
     const images = state.images;
-    const currentPrompt = () =>
-      store.getSnapshot().sessions.find(item => item.id === sessionId)?.draft ??
-      '';
-    const prompt = currentPrompt();
+    const submission = captureDirectPhotoPrompt(store, sessionId);
+    const { prompt } = submission;
     const unavailable = t('ragConversation.photo.imageUnavailable');
     const retain = store.retainDirectPhoto(sessionId);
     if (!retain) {
@@ -104,7 +103,8 @@ export function useConversationDirectPhoto(
       setState({ images, message: unavailable });
       return;
     }
-    const ownsPrompt = () => owns() && currentPrompt() === prompt;
+    const ownsPrompt = () => owns() && submission.current();
+    let committed = false;
     setState(publish ? { sending: true } : { images, sending: true });
     let presentation: ReturnType<typeof beginDirectPhotoPresentation>;
     const revealPending = () => {
@@ -163,33 +163,32 @@ export function useConversationDirectPhoto(
         prompt,
         controller,
         admitted,
-        approved: revealPending,
+        approved() {
+          if (!submission.accept()) controller.abort();
+          else revealPending();
+        },
       });
       if (!admitted()) {
         controller.abort();
         return;
       }
       if (result.status === 'answer') {
-        let saved = false;
-        try {
-          // A generated textual quotation is allowed, never the transport bytes.
-          if (!images.some(image => result.text.includes(image)))
-            saved = await retain.commit(result.text, admitted);
-        } catch {
-          // An ambiguous local write is never retried and never resends the image.
-        }
+        // Never keep transport bytes or retry an ambiguous local write.
+        const saved =
+          !images.some(image => result.text.includes(image)) &&
+          (await retain.commit(result.text, admitted).catch(() => false));
         if (!admitted()) {
           controller.abort();
           return;
         }
         unsubscribeOwner();
+        committed = saved;
         if (saved) presentation?.complete();
         setState(
           saved
             ? {}
             : { message: t('ragConversation.photo.imageReplyNotSaved') },
         );
-        if (saved && currentPrompt() === prompt) store.setDraft(sessionId, '');
       } else {
         setState({
           images,
@@ -202,6 +201,7 @@ export function useConversationDirectPhoto(
       if (owns()) setState({ images, message: unavailable });
     } finally {
       unsubscribeOwner();
+      if (!committed && current()) submission.restore();
       presentation?.dispose(active.current === controller);
       if (active.current === controller) {
         active.current = null;

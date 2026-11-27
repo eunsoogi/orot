@@ -17,6 +17,7 @@ import {
 } from './literatureCitationBinding';
 import { localClaimsMatch } from './localEvidenceClaims';
 import { failureFromWorkflow } from './outcome';
+import { publishPublicWebConversationLayout } from './conversationA2UIPublicWebLayout';
 import { reportConversationA2UIFinalAdmission } from './conversationA2UIFinalDiagnostic';
 
 export type ConversationOutcomeOptions = Pick<
@@ -119,13 +120,28 @@ export async function conversationWorkflowOutcome(
       result.citations,
       Boolean(result.value.localReferences?.length),
     );
+    const publicWebNotice = result.citations.some(isPublicWebReference)
+      ? t('externalMedicalEvidence.answer.publicWebDisclaimer')
+      : undefined;
+    const publicWebLayout =
+      publicWebNotice &&
+      !presentation.mixed &&
+      !result.partialEvidence &&
+      !signal?.aborted
+        ? publishPublicWebConversationLayout(
+            result.value,
+            presentation.citations,
+            publicWebNotice,
+          )
+        : undefined;
     const candidate = {
       status: 'answer' as const,
+      ...(publicWebLayout ? { a2uiPresentation: publicWebLayout } : {}),
       // Label source-relative time even when the model omits that qualifier in its prose.
       answer: presentation.mixed
         ? `${result.value.answer}\n\n${t('ragConversation.mixed.recordComparisonUnavailable')}`
-        : result.citations.some(isPublicWebReference)
-          ? `${result.value.answer}\n\n${t('externalMedicalEvidence.answer.publicWebDisclaimer')}`
+        : publicWebNotice
+          ? `${result.value.answer}\n\n${publicWebNotice}`
           : result.citations.some(
                 reference => reference.sourceKind === 'external_medical',
               )

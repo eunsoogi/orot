@@ -71,7 +71,7 @@ extension RealtimeVoiceCall {
                         }) { [weak self] in
                             guard let self, liveSocketEpoch == epoch else { return }
                             if socket.discardManagedToolFrames() {
-                                fail()
+                                fail(.livePartialToolResultRetired)
                             }
                         }
                     }

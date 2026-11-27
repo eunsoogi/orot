@@ -2,13 +2,14 @@ import React from 'react';
 import { fireEvent, render, screen } from '@testing-library/react-native';
 import { ConversationSteeringComposer } from '../ConversationSteeringComposer';
 import { createEmptyConversation } from '../conversationEmptySession';
-import type { ConversationSessions } from '../conversationSessionTypes';
+import { createConversationSessions } from '../conversationSessions';
 
 /** Preflight retains the draft, so Stop must not accidentally become a steering action. */
 test('preparation keeps an enabled Stop without a status banner', async () => {
   const cancel = jest.fn();
   const steer = jest.fn();
-  await render(
+  const store = createConversationSessions();
+  const mounted = await render(
     <ConversationSteeringComposer
       session={{
         ...createEmptyConversation(1),
@@ -16,7 +17,7 @@ test('preparation keeps an enabled Stop without a status banner', async () => {
         preparingSend: true,
         modelSelectionPending: true,
       }}
-      store={{ steer } as unknown as ConversationSessions}
+      store={{ ...store, steer }}
       disabled
       onChangeText={jest.fn()}
       onSend={jest.fn()}
@@ -30,4 +31,6 @@ test('preparation keeps an enabled Stop without a status banner', async () => {
   await fireEvent.press(screen.getByTestId('rag-conversation-cancel'));
   expect(cancel).toHaveBeenCalledTimes(1);
   expect(steer).not.toHaveBeenCalled();
+  await mounted.unmount();
+  store.dispose();
 });
