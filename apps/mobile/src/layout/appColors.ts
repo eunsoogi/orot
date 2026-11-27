@@ -44,7 +44,8 @@ export const appColorPalettes = {
     dangerSurface: '#48211f',
     dangerAction: '#b3261e',
     onDanger: '#ffffff',
-    background: '#101318',
+    // Only the shared canvas turns black; cards and overlays retain their own fills.
+    background: '#000000',
     surface: '#1c222a',
     text: '#f2f4f6',
     secondary: '#a1acb8',

@@ -1,12 +1,9 @@
 import { Platform, PlatformColor } from 'react-native';
 import { appColors } from '../layout/appColors';
 
-/** Settings uses the semantic UIKit list surfaces in both iOS appearances. */
+/** Settings inherits the app canvas but keeps the semantic UIKit row surfaces. */
 export const settingsListColors = {
-  background:
-    Platform.OS === 'ios'
-      ? PlatformColor('systemGroupedBackground')
-      : appColors.background,
+  background: appColors.background,
   row:
     Platform.OS === 'ios'
       ? PlatformColor('secondarySystemGroupedBackground')
