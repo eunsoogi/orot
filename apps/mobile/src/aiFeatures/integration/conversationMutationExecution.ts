@@ -88,8 +88,15 @@ export function conversationMutationExecution(input: {
   const remoteOwner = allowRemoteAnswer
     ? conversationAnswerMemoryProviderOwner(selected, observer)
     : undefined;
+  // A fresh authored sentence can use its existing local save tool even when
+  // retained Possibilities context cannot grant a previous-answer action.
+  const authoredOwner =
+    remoteOwner ??
+    (authoredPossibilityFollowup
+      ? conversationAnswerMemoryProviderOwner(selected, observer)
+      : undefined);
   const terminal =
-    remoteOwner && runId ? { owner: remoteOwner, runId } : undefined;
+    authoredOwner && runId ? { owner: authoredOwner, runId } : undefined;
   const authoredMemory =
     (localModel || terminal) &&
     conversationAuthoredMemoryAction({ data, observer, question, terminal });

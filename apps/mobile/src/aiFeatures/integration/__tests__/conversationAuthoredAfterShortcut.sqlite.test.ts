@@ -19,7 +19,7 @@ const modelId = 'synthetic-model';
 const previousAnswerTool = 'remember-conversation-answer';
 
 /** Exercise the canonical shortcut sender, production tool assembly and SQLite write. */
-test.each(['ordinary', 'after-health-summary'] as const)(
+test.each(['ordinary', 'after-health-summary', 'after-possibilities'] as const)(
   'typed explicit authored detail is saved in the canonical %s Conversation',
   async mode => {
     const f = await healthContextFixture();
@@ -36,7 +36,16 @@ test.each(['ordinary', 'after-health-summary'] as const)(
         createdAt: '2026-11-25T00:00:00.000Z',
       });
       const store = {
-        getSnapshot: () => ({ sessions: [{ id: 1 }] }),
+        getSnapshot: () => ({
+          sessions: [
+            {
+              id: 1,
+              ...(mode === 'after-possibilities' && {
+                entryIntent: 'possibilities',
+              }),
+            },
+          ],
+        }),
         setEntryPrompt: jest.fn(),
       } as unknown as ConversationSessions;
       if (mode === 'after-health-summary') {
@@ -139,10 +148,12 @@ test.each(['ordinary', 'after-health-summary'] as const)(
           expect(entry).toEqual(
             mode === 'ordinary'
               ? undefined
-              : {
-                  intent: 'conversation',
-                  entryKey: 'synthetic-summary-shortcut',
-                },
+              : mode === 'after-possibilities'
+                ? { intent: 'possibilities', entryKey: 'restored' }
+                : {
+                    intent: 'conversation',
+                    entryKey: 'synthetic-summary-shortcut',
+                  },
           );
           return send(_q, _h, _s, observer, entry);
         },
