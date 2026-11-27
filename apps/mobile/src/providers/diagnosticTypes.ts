@@ -28,6 +28,8 @@ export type Stage =
   | 'conversation_receipt_main'
   | 'conversation_final_react_commit'
   | 'conversation_a2ui_final_admission'
+  | 'conversation_a2ui_public_proposal'
+  | 'conversation_a2ui_public_publication'
   | 'conversation_a2ui_plan_envelope'
   | 'conversation_a2ui_react_commit'
   | 'conversation_receipt_accepted'

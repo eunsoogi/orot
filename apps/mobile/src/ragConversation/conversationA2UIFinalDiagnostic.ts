@@ -64,6 +64,22 @@ export function reportConversationA2UIFinalAdmission(
   }
 }
 
+/** Opt-in grounded layout events carry only fixed decisions, never evidence. */
+export function reportConversationA2UIPublicDecision(
+  ...[stage, outcome]:
+    | ['conversation_a2ui_public_proposal', Admission]
+    | [
+        'conversation_a2ui_public_publication',
+        'a2ui_no_proposal' | 'a2ui_citation_mismatch' | 'a2ui_published',
+      ]
+) {
+  try {
+    if (diagnosticEnabled()) providerDiagnostic('rag', stage, outcome);
+  } catch {
+    // Display and source admission never depend on local diagnostics.
+  }
+}
+
 /** A React commit is not proof of native paint or local-control availability. */
 export function reportConversationA2UIReactCommit() {
   try {

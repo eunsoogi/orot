@@ -1,3 +1,4 @@
+import { NativeModules } from 'react-native';
 import type { EvidenceItem, TaskResponderInput } from '@orot/agent-runtime';
 import type { JsonValue } from '@orot/model-runtime';
 import { webReference } from '../../aiFeatures/integration/testSupport/publicWebEvidenceTestSupport';
@@ -100,3 +101,38 @@ test('restored v60 does not advertise or issue the new public-source receipt', (
     publishPublicWebConversationLayout(result.value, [webReference], notice),
   ).toBeUndefined();
 });
+
+test.each([true, false])(
+  'reports only the opted-in exact citation mismatch, enabled=%s',
+  enabled => {
+    const previous = NativeModules.OrotProviderDiagnostics;
+    const report = jest.fn();
+    NativeModules.OrotProviderDiagnostics = { enabled, report };
+    try {
+      const outcome = ragConversationTask.validateResult(value, input);
+      if (outcome.status !== 'valid')
+        throw new Error('Expected a grounded value.');
+      expect(
+        publishPublicWebConversationLayout(
+          outcome.value,
+          [{ ...webReference, evidenceRevision: 'revoked' }],
+          notice,
+        ),
+      ).toBeUndefined();
+      expect(report.mock.calls).toEqual(
+        enabled
+          ? [
+              ['rag', 'conversation_a2ui_public_proposal', 'a2ui_admitted'],
+              [
+                'rag',
+                'conversation_a2ui_public_publication',
+                'a2ui_citation_mismatch',
+              ],
+            ]
+          : [],
+      );
+    } finally {
+      NativeModules.OrotProviderDiagnostics = previous;
+    }
+  },
+);
