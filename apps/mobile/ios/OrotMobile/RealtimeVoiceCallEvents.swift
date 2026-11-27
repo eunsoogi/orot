@@ -237,3 +237,13 @@ extension LiveResponsesAdmission {
         return prepared
     }
 }
+
+func liveServerErrorStage(_ event: [String: Any], handed: [(id: String, final: Bool)]) -> VoiceSystemCallLifecycle.DiagnosticStage? {
+    guard event["type"] as? String == "error" else { return nil }
+    guard let details = event["error"] as? [String: Any], let id = details["client_event_id"] as? String,
+          id.utf8.count == 36, UUID(uuidString: id) != nil, event["client_event_id"] == nil || event["client_event_id"] as? String == id
+    else { return .liveServerUnattributedError }
+    let matches = handed.filter { $0.id == id }
+    guard matches.count == 1 else { return .liveServerUnmatchedError }
+    return matches[0].final ? .liveServerContinuationError : .liveServerFunctionOutputError
+}

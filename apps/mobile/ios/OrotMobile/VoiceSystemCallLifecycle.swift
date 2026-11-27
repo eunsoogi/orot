@@ -50,6 +50,10 @@ final class VoiceSystemCallLifecycle: NSObject, VoiceSystemCallPort, CXProviderD
         case routeChanged = "audio_route_changed"
         case liveTransportFailed = "live_transport_failed"
         case livePartialToolResultRetired = "live_partial_tool_result_retired"
+        case liveServerFunctionOutputError = "live_server_function_output_error"
+        case liveServerContinuationError = "live_server_response_continue_error"
+        case liveServerUnmatchedError = "live_server_unmatched_command_error"
+        case liveServerUnattributedError = "live_server_unattributed_error"
         case liveServerError = "live_server_error"
         case liveServerClosed = "live_server_closed"
         case liveSessionExpired = "live_session_expired"
@@ -65,8 +69,10 @@ final class VoiceSystemCallLifecycle: NSObject, VoiceSystemCallPort, CXProviderD
         case captionTerminalForegroundLost = "caption_terminal_foreground_lost"
     }
 
+    static let diagnosticsEnabled = ProcessInfo.processInfo.arguments.contains("-OROT_PROVIDER_DIAGNOSTICS")
+
     static func report(_ stage: DiagnosticStage) {
-        guard ProcessInfo.processInfo.arguments.contains("-OROT_PROVIDER_DIAGNOSTICS") else { return }
+        guard diagnosticsEnabled else { return }
         NSLog("OROT_VOICE_DIAGNOSTIC stage=%@", stage.rawValue)
     }
 
