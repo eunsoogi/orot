@@ -33,6 +33,7 @@ export async function readTypedHeartRateContext(
         window,
         signal,
         typedHeartRateMaxRows,
+        before,
       )
     : null;
   const generation = await readHealthContextGeneration(tx);

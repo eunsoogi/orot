@@ -115,6 +115,8 @@ export async function readTypedHeartRateSnapshot(
   { fromInclusive, toExclusive }: Period,
   signal?: AbortSignal,
   maximumCandidates?: number,
+  /** Only the enclosing typed context supplies its same-transaction start generation and checks it again after the read. */
+  startGeneration?: Awaited<ReturnType<typeof readHealthContextGeneration>>,
 ) {
   if (
     category !== 'ordinary_average' &&
@@ -133,7 +135,7 @@ export async function readTypedHeartRateSnapshot(
   let mean = 0;
   const sourceReferences: Evidence['sourceReferences'][number][] = [];
   const memberRevisions: Readonly<[string, string]>[] = [];
-  const generation = await readHealthContextGeneration(tx);
+  const generation = startGeneration ?? (await readHealthContextGeneration(tx));
   const query = `SELECT r.id, r.payload_json, length(CAST(r.payload_json AS BLOB)) AS payload_bytes
      FROM health_observations r WHERE ${condition} ORDER BY (${at}), r.id`;
   const { rows } = await readSelectedEvidenceRows(
