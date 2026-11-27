@@ -149,6 +149,9 @@ export async function journaledModelCall<TResult>(
         undefined,
         onTextEvent,
         options.onModelStage,
+        // The approval child has finished: native tool callbacks must remain
+        // fenced by the exact graph owner across its separately granted calls.
+        signal,
       );
     } finally {
       await live.close();

@@ -158,7 +158,10 @@ export async function dispatchAuthorizedModelCall(
   telemetry?: TelemetrySink,
   onTextEvent?: ModelTextObserver,
   onModelStage?: ModelStageObserver,
+  executionSignal = signal,
 ): Promise<ModelCallOutcome> {
+  // Approval and native execution have distinct lifetimes in a paused graph.
+  if (executionSignal.aborted) return { status: 'cancelled', providerStop: 'not_started' };
   // The grant is invocation-local, single use, and bound to the unchanged exact payload.
   if (!authorization.consume(request, execution, signal)) {
     return signal.aborted
@@ -183,12 +186,12 @@ export async function dispatchAuthorizedModelCall(
       const startedAt = Date.now();
       let result: ProviderCallOutcome;
       try {
-        result = await collectStream(guarded.provider, request, signal, onTextEvent);
+        result = await collectStream(guarded.provider, request, executionSignal, onTextEvent);
       } catch {
         result = { status: 'unavailable', errorCode: 'internal_error' };
       }
       if (guarded.wasDenied()) return { status: 'consent_required' };
-      if (result.status === 'response' && !signal.aborted)
+      if (result.status === 'response' && !executionSignal.aborted)
         observeChatGPTPromptCache(onModelStage, provider.id, result.response.usage);
       recordTelemetry(telemetry, 'language-model.stream', startedAt, result);
       return result;
@@ -197,14 +200,14 @@ export async function dispatchAuthorizedModelCall(
     let result: ProviderCallOutcome;
     try {
       result = await observeAdapter(
-        invokeProductionRequest(guarded.provider, request, signal),
-        signal,
+        invokeProductionRequest(guarded.provider, request, executionSignal),
+        executionSignal,
       );
     } catch {
       result = { status: 'unavailable', errorCode: 'internal_error' };
     }
     if (guarded.wasDenied()) return { status: 'consent_required' };
-    if (result.status === 'response' && !signal.aborted)
+    if (result.status === 'response' && !executionSignal.aborted)
       observeChatGPTPromptCache(onModelStage, provider.id, result.response.usage);
     recordTelemetry(telemetry, 'language-model.generate', startedAt, result);
     return result;
