@@ -1,10 +1,4 @@
-import {
-  act,
-  fireEvent,
-  render,
-  screen,
-  waitFor,
-} from '@testing-library/react-native';
+import { act, render, screen, waitFor } from '@testing-library/react-native';
 import type { AgentMemoryService } from '@orot/agent-memory';
 import type { RecordRepository } from '@orot/storage';
 import RecordingLibraryPanel from '../RecordingLibraryPanel';
@@ -13,6 +7,7 @@ import { savedSource } from '../recordingScreenSupport';
 import {
   confirmNativeDeletion,
   mockNativeDeletionAlert,
+  requestLibraryRowDeletion,
 } from '../testSupport/nativeDeletionAlert';
 import { resultGate } from '../testSupport/recordingSummaryRaceHarness';
 
@@ -58,9 +53,7 @@ test('hides the committed row before held cleanup while the audio queue and rout
       />,
     );
     const row = `recording-library-item-${savedSource.id}`;
-    await fireEvent.press(
-      await screen.findByTestId(`recording-delete-${savedSource.id}`),
-    );
+    await requestLibraryRowDeletion(savedSource.id);
     await confirmNativeDeletion(alert);
     await database.entered;
     expect(screen.getByTestId(row)).toBeVisible();

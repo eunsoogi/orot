@@ -14,6 +14,7 @@ import {
   mockNativeDeletionAlert,
   confirmNativeDeletion,
   pressNativeDeletionButton,
+  requestLibraryRowDeletion,
 } from '../testSupport/nativeDeletionAlert';
 
 const firstSource: RecordingSourceRecord = {
@@ -93,7 +94,7 @@ test('cancelling list deletion keeps the saved recording available', async () =>
   );
 
   await screen.findByTestId('recording-library-item-recording-1');
-  await fireEvent.press(screen.getByTestId('recording-delete-recording-1'));
+  await requestLibraryRowDeletion('recording-1');
   await waitFor(() => {
     expect(alert).toHaveBeenCalledTimes(1);
   });
@@ -129,7 +130,7 @@ test('a source deletion failure keeps the recording in the list', async () => {
   );
 
   await screen.findByTestId('recording-library-item-recording-1');
-  await fireEvent.press(screen.getByTestId('recording-delete-recording-1'));
+  await requestLibraryRowDeletion('recording-1');
   await waitFor(() => expect(alert).toHaveBeenCalledTimes(1));
   await confirmNativeDeletion(alert);
 
@@ -155,7 +156,7 @@ test('reports deferred audio cleanup when the source is already deleted', async 
   jest
     .mocked(service.list)
     .mockRejectedValueOnce(new Error('recovery unavailable'));
-  await fireEvent.press(screen.getByTestId('recording-delete-recording-1'));
+  await requestLibraryRowDeletion('recording-1');
   await waitFor(() => expect(alert).toHaveBeenCalledTimes(1));
   await confirmNativeDeletion(alert);
 

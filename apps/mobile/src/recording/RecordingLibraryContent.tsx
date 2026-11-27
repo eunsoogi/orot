@@ -1,10 +1,9 @@
 import { VerticalPageSections as AdaptiveColumns } from '../layout/VerticalPageSections';
 import RecordingLibraryList from './RecordingLibraryList';
-import RecordingLibrarySelectionSummary from './RecordingLibrarySelectionSummary';
 import type { RecordingLibrarySummary } from './recordingLibraryService';
 import type { RecordingSourceRecord } from './recordingTypes';
 
-/** Keeps loading, empty, and selected content within measured native usable regions. */
+/** Keeps loading, empty, and list content within measured native usable regions. */
 export default function RecordingLibraryContent({
   disabled,
   loadError,
@@ -14,7 +13,6 @@ export default function RecordingLibraryContent({
   onOpen,
   onRetry,
   recordings,
-  selectionSummary,
 }: {
   readonly disabled: boolean;
   readonly loadError: boolean;
@@ -24,7 +22,6 @@ export default function RecordingLibraryContent({
   readonly onOpen: (id: string, autoPlay?: boolean) => void;
   readonly onRetry: () => void;
   readonly recordings: readonly RecordingLibrarySummary[];
-  readonly selectionSummary?: RecordingLibrarySummary;
 }) {
   const list = (
     <RecordingLibraryList
@@ -39,15 +36,5 @@ export default function RecordingLibraryContent({
     />
   );
 
-  return (
-    <AdaptiveColumns
-      primary={list}
-      secondary={
-        selectionSummary ? (
-          <RecordingLibrarySelectionSummary summary={selectionSummary} />
-        ) : undefined
-      }
-      testID="saved-recordings-layout"
-    />
-  );
+  return <AdaptiveColumns primary={list} testID="saved-recordings-layout" />;
 }

@@ -97,7 +97,7 @@ test('shows saved audio review details, plays the recording and segment, and hid
   );
   expect(card).toHaveTextContent(/상담 녹음/u);
   expect(card).toHaveTextContent(/06:12/u);
-  expect(card).toHaveTextContent(/저장된 전사/u);
+  expect(card).not.toHaveTextContent(/저장된 전사/u);
   expect(card).not.toHaveTextContent(/검토 전 초안/u);
 
   await fireEvent.press(screen.getByTestId('recording-details-recording-ui-1'));

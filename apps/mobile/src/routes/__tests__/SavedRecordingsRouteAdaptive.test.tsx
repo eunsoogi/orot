@@ -14,6 +14,7 @@ import { RecordingSelectionProvider } from '../../recording/RecordingSelectionCo
 import {
   confirmNativeDeletion,
   mockNativeDeletionAlert,
+  requestLibraryRowDeletion,
 } from '../../recording/testSupport/nativeDeletionAlert';
 import { SavedRecordingsRoute } from '../SavedRecordingsRoute';
 import type { AppNavigationRoute } from '../appNavigationRoute';
@@ -79,7 +80,7 @@ afterEach(() => {
   jest.restoreAllMocks();
 });
 
-test('preserves the selected summary as usable geometry changes under production route policy', async () => {
+test('keeps a single bounded recording list as native route geometry changes', async () => {
   const controller = createNavigationController<AppNavigationRoute>('root');
   const service = createLibraryService();
 
@@ -132,6 +133,8 @@ test('preserves the selected summary as usable geometry changes under production
   );
 
   expect(screen.getByTestId('recording-review-back')).toBeTruthy();
+  const updatedTitle = 'Exact saved AI title (synthetic)';
+  service.replaceSavedTitle(updatedTitle);
   const reviewRouteKey = controller.getSnapshot().currentRoute.key;
   // RecordingReviewRoute measures the shared usable lane for both recording and review panels.
   expect(
@@ -145,22 +148,30 @@ test('preserves the selected summary as usable geometry changes under production
     expect(controller.getSnapshot().currentRoute.key).toBe(savedRouteKey);
   });
 
-  await screen.findByTestId('saved-recordings-selection-summary');
+  await screen.findByText(updatedTitle);
+  const row = screen.getByTestId('recording-library-item-recording-source');
+  expect(row).toHaveTextContent(/Exact saved AI title \(synthetic\)/u);
+  expect(screen.queryByText(source.title!)).toBeNull();
   expect(
-    screen.getByTestId('saved-recordings-selection-title'),
-  ).toHaveTextContent(/^Saved recording$/);
-  expect(
-    screen.getByTestId('saved-recordings-selection-duration'),
-  ).toHaveTextContent('01:33');
-  expect(
-    screen.getByTestId('saved-recordings-selection-review-state'),
-  ).toHaveTextContent('저장된 전사');
+    screen.getByTestId('recording-details-recording-source').props
+      .accessibilityLabel,
+  ).toContain(updatedTitle);
+  expect(row).toHaveTextContent(/01:33/u);
+  expect(row).not.toHaveTextContent(/저장된 전사/u);
+  const lane = StyleSheet.flatten(
+    screen.getByTestId('recording-library-lane').props.style,
+  );
+  expect(lane).toMatchObject({ width: '100%', maxWidth: 440, minWidth: 0 });
+  expect(screen.queryByTestId('saved-recordings-selection-summary')).toBeNull();
   await fireEvent(sensor, 'geometryChange', {
     nativeEvent: geometry(900, true),
   });
   expect(direction()).toBe('column');
   expect(columnWidth()).toBeLessThanOrEqual(leftUsableRegionWidth);
-  expect(screen.getByTestId('saved-recordings-selection-summary')).toBeTruthy();
+  expect(
+    screen.getByTestId('recording-library-item-recording-source'),
+  ).toBeTruthy();
+  expect(screen.queryByTestId('saved-recordings-selection-summary')).toBeNull();
 
   await act(async () => {
     Dimensions.set({ window: viewport(500), screen: viewport(500) });
@@ -169,7 +180,10 @@ test('preserves the selected summary as usable geometry changes under production
     });
   });
   expect(direction()).toBe('column');
-  expect(screen.getByTestId('saved-recordings-selection-summary')).toBeTruthy();
+  expect(
+    screen.getByTestId('recording-library-item-recording-source'),
+  ).toBeTruthy();
+  expect(screen.queryByTestId('saved-recordings-selection-summary')).toBeNull();
 
   await act(async () => {
     Dimensions.set({
@@ -181,7 +195,10 @@ test('preserves the selected summary as usable geometry changes under production
     });
   });
   expect(direction()).toBe('column');
-  expect(screen.getByTestId('saved-recordings-selection-summary')).toBeTruthy();
+  expect(
+    screen.getByTestId('recording-library-item-recording-source'),
+  ).toBeTruthy();
+  expect(screen.queryByTestId('saved-recordings-selection-summary')).toBeNull();
 
   await act(async () => {
     Dimensions.set({ window: viewport(320), screen: viewport(320) });
@@ -196,15 +213,14 @@ test('preserves the selected summary as usable geometry changes under production
     )?.width,
   ).toBe(320);
 
+  expect(service.listSummaries).toHaveBeenCalledTimes(2);
   const alert = mockNativeDeletionAlert();
-  await fireEvent.press(
-    screen.getByTestId('recording-delete-recording-source'),
-  );
+  await requestLibraryRowDeletion('recording-source');
   await waitFor(() => expect(alert).toHaveBeenCalledTimes(1));
   await act(async () => confirmNativeDeletion(alert));
   await waitFor(() => {
     expect(
-      screen.queryByTestId('saved-recordings-selection-summary'),
+      screen.queryByTestId('recording-library-item-recording-source'),
     ).toBeNull();
   });
   await act(async () => {
