@@ -41,6 +41,70 @@ test('Xcode project semantic changes and ordered-list changes remain blocking', 
   );
 });
 
+test('semantic refusal reports only fixed schema fields and shapes, never project data', () => {
+  const make = (deployment, secret, order) =>
+    Buffer.from(
+      JSON.stringify({
+        objects: {
+          ABCDEF1234567890ABCDEF12: {
+            buildSettings: { IPHONEOS_DEPLOYMENT_TARGET: deployment, SECRET_KEY: secret },
+            buildPhases: order,
+            shellScript: secret,
+          },
+        },
+        PRIVATE_ENVIRONMENT_KEY: secret,
+      }),
+    );
+  const before = make('PRIVATE_VERSION_OLD', 'PRIVATE_BEFORE', [
+    'private-target-a',
+    'private-target-b',
+  ]);
+  const after = make('PRIVATE_VERSION_NEW', 'PRIVATE_AFTER', [
+    'private-target-b',
+    'private-target-a',
+  ]);
+  assert.throws(
+    () => restoreEquivalentProjectSerialization(before, after, parseJson),
+    (error) => {
+      assert.equal(
+        error.message,
+        'Generated Xcode project metadata changed its meaning ' +
+          '(root=object->object; fields=objects.*.buildPhases:changed,' +
+          'objects.*.buildSettings.IPHONEOS_DEPLOYMENT_TARGET:changed,' +
+          'objects.*.buildSettings.<other>:changed,objects.*.shellScript:changed,<other>:changed)',
+      );
+      for (const privateText of [
+        'ABCDEF1234567890ABCDEF12',
+        'PRIVATE_',
+        'SECRET_KEY',
+        'private-target',
+      ])
+        assert.ok(!error.message.includes(privateText));
+      return true;
+    },
+  );
+});
+
+test('root shape and added object are classified without exposing object identifiers', () => {
+  const original = Buffer.from('{"objects":{}}');
+  assert.throws(
+    () => restoreEquivalentProjectSerialization(original, Buffer.from('[]'), parseJson),
+    /root=object->array; fields=root:object->array/,
+  );
+  assert.throws(
+    () =>
+      restoreEquivalentProjectSerialization(
+        original,
+        Buffer.from('{"objects":{"secretID":{}}}'),
+        parseJson,
+      ),
+    {
+      message:
+        'Generated Xcode project metadata changed its meaning (root=object->object; fields=objects.*:added)',
+    },
+  );
+});
+
 test('project input path rejects symlinked checkout components before restoring bytes', () => {
   const root = mkdtempSync(join(tmpdir(), 'orot-project-input-'));
   const outside = mkdtempSync(join(tmpdir(), 'orot-project-target-'));

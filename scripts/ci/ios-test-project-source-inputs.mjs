@@ -3,6 +3,7 @@ import { lstatSync, readFileSync, writeFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { isDeepStrictEqual } from 'node:util';
 import { join, resolve } from 'node:path';
+import { projectMetadataDifference } from './ios-test-project-metadata-shape.mjs';
 
 const projectPath = 'apps/mobile/ios/OrotMobile.xcodeproj/project.pbxproj';
 const projectParts = projectPath.split('/');
@@ -25,8 +26,12 @@ export function projectFilePath(root) {
 /** Restore committed bytes only when CocoaPods changed the project's serialization. */
 export function restoreEquivalentProjectSerialization(original, current, parseProject) {
   // Deep comparison ignores dictionary key order but keeps arrays ordered because PBX list order can be meaningful.
-  if (!isDeepStrictEqual(parseProject(original), parseProject(current)))
-    throw new Error('Generated Xcode project metadata changed its meaning');
+  const before = parseProject(original);
+  const after = parseProject(current);
+  if (!isDeepStrictEqual(before, after)) {
+    const summary = projectMetadataDifference(before, after);
+    throw new Error(`Generated Xcode project metadata changed its meaning (${summary})`);
+  }
   return original;
 }
 
