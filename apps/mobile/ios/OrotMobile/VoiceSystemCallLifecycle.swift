@@ -49,6 +49,7 @@ final class VoiceSystemCallLifecycle: NSObject, VoiceSystemCallPort, CXProviderD
         case interruptionUnspecified = "audio_interruption_unspecified"
         case routeChanged = "audio_route_changed"
         case liveTransportFailed = "live_transport_failed"
+        case livePartialToolResultRetired = "live_partial_tool_result_retired"
         case liveServerError = "live_server_error"
         case liveServerClosed = "live_server_closed"
         case liveSessionExpired = "live_session_expired"
