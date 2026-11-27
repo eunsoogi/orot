@@ -16,8 +16,26 @@ import { reportConversationA2UIReactCommit } from './conversationA2UIFinalDiagno
 import { AppText } from '../layout/AppText';
 import { AiResponseText } from '../layout/AiResponseText';
 import { AssistantMarkdown } from './AssistantMarkdown';
+import type { DisplayMessage } from './conversationDisplayMessage';
 import { parseAssistantMarkdown } from './conversationMarkdown';
 import { styles } from './ConversationScreen.styles';
+
+type AssistantTextFormat = 'prose' | 'report-capable';
+
+/** Choose formatting by completed content, not by where the timeline found it.
+ * Photo answers share Markdown rendering without becoming actionable reports. */
+export function conversationAssistantTextFormat(
+  message: DisplayMessage,
+): AssistantTextFormat | undefined {
+  if (
+    message.role === 'user' ||
+    message.streaming ||
+    message.incomplete ||
+    message.historyUnavailable
+  )
+    return undefined;
+  return message.directPhotoReply ? 'prose' : 'report-capable';
+}
 
 /** Only prose identity belongs to this memo boundary. Callbacks and source state
  * stay outside it so a new stream fragment cannot repaint every saved passage,
@@ -29,7 +47,7 @@ export const ConversationMessageText = memo(
     verifiedA2UI,
     user,
     testID,
-    allowReport = false,
+    assistantFormat,
     staticText = false,
     savedPossibilityNarrative,
     selectable = true,
@@ -39,16 +57,16 @@ export const ConversationMessageText = memo(
     readonly verifiedA2UI?: ConversationA2UINode;
     readonly user: boolean;
     readonly testID?: string;
-    readonly allowReport?: boolean;
+    readonly assistantFormat?: AssistantTextFormat;
     readonly staticText?: boolean;
     readonly savedPossibilityNarrative?: true;
     readonly selectable?: boolean;
     readonly onLinkError?: () => void;
   }) {
-    const report =
-      !user && allowReport ? parseConversationReport(content) : undefined;
+    const allowReport = !user && assistantFormat === 'report-capable';
+    const report = allowReport ? parseConversationReport(content) : undefined;
     const parts =
-      !report && !user && allowReport && savedPossibilityNarrative
+      !report && allowReport && savedPossibilityNarrative
         ? savedPossibilityNarrativeParts(content)
         : undefined;
     const committedRoot =
@@ -85,7 +103,9 @@ export const ConversationMessageText = memo(
     // During a draft the existing text host keeps appending; only a complete
     // ordinary answer (live or restored) can replace raw syntax with formatting.
     const markdown =
-      !user && allowReport && !hasConversationReportTitle(content)
+      !user &&
+      assistantFormat &&
+      (!allowReport || !hasConversationReportTitle(content))
         ? parseAssistantMarkdown(content)
         : undefined;
     if (markdown)
