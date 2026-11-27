@@ -8,13 +8,13 @@ final class RealtimeVoiceSocket: RealtimeSocketPort {
     private var sending = false
     private var epoch = 0
     private var closing: (sessionID: String, command: String, sent: Bool)?
+    private var continuationIngress = LiveContinuationIngress()
     private var captionTerminal = LiveSocketOwnedState()
     private var closeDeadline: DispatchWorkItem?
     var responsesTransportCurrent: (() -> Bool)?
     var received: (([String: Any]) -> Void)?
     var failed: (() -> Void)?
     var observeContinuationSend: ((LiveManagedToolLatency, UInt64) -> Void)?
-
     init(endpoint: RealtimeVoiceSocketEndpoint = RealtimeVoiceSocketEndpoint()) {
         self.endpoint = endpoint
     }
@@ -81,7 +81,7 @@ final class RealtimeVoiceSocket: RealtimeSocketPort {
             if receipt != nil, epoch != current || socket !== task || sending || queue.first?.text != message.text || closing != nil || captionTerminal.prepared != nil {
                 return false
             }
-            captionTerminal.markHandoff(message, recording: endpoint.reportServerCommand != nil)
+            continuationIngress.begin(message); captionTerminal.markHandoff(message, recording: endpoint.reportServerCommand != nil)
             sending = true
             let (permit, stamp) = message.continuationTiming(observed: observeContinuationSend != nil)
             task.send(.string(message.text)) { [weak self, weak permit, weak owner = message.permit, wireText = message.text, final = message.finalResultContinuation, requiresWireReceipt = message.permit?.ticket?.requiresWireReceipt == true] error in
@@ -105,7 +105,10 @@ final class RealtimeVoiceSocket: RealtimeSocketPort {
                         self.transportFailed()
                         return
                     }
-                    self.bytes -= self.queue.removeFirst().text.utf8.count
+                    let settled = self.queue.removeFirst(); self.bytes -= settled.text.utf8.count
+                    LiveContinuationIngress.replay(self.continuationIngress.complete(settled), owner: {
+                        self.epoch == current && self.canReportTransportFailure && self.responsesTransportCurrent?() == true && self.epoch == current && self.canReportTransportFailure
+                    }, receive: self.received)
                     permit?.reportContinuation(if: self.canReportTransportFailure, since: stamp, end: end, observe: self.observeContinuationSend)
                     if self.closing != nil {
                         self.sendClose()
@@ -116,12 +119,9 @@ final class RealtimeVoiceSocket: RealtimeSocketPort {
             }
             return true
         }
-        if let permit = message.permit {
-            if !permit.submit(submit) {
-                discardRejected(permit)
-            }
-        } else {
-            _ = submit(nil)
+        guard let permit = message.permit else { _ = submit(nil); return }
+        if !permit.submit(submit) {
+            discardRejected(permit)
         }
     }
 
@@ -139,29 +139,29 @@ final class RealtimeVoiceSocket: RealtimeSocketPort {
     }
 
     private func receive(_ task: RealtimeVoiceSocketTask, epoch current: Int) {
-        task.receive { [weak self] result in
-            DispatchQueue.main.async {
-                guard let self else { return }
-                guard self.epoch == current, self.socket === task else { return }
-                guard case let .success(message) = result else { self.transportFailed(); return }
-                guard let event = Self.decodeSocketEvent(message) else { self.transportFailed(); return }
-                if let closing = self.closing {
-                    if let confirmed = Self.captionTerminalReceipt(event, closing: closing) {
-                        self.close(confirmed: confirmed)
-                    }
-                } else if self.captionTerminal.prepared == nil {
-                    self.captionTerminal.deliver(event, report: self.endpoint.reportServerCommand, to: self.received)
+        LiveSocketReadPump.receive(task, owner: { [weak self] in self?.epoch == current && self?.socket === task }) { [weak self] decoded in
+            guard let self else { return }
+            guard let (event, message) = decoded else { transportFailed(); return }
+            if let closing, let confirmed = Self.captionTerminalReceipt(event, closing: closing) {
+                close(confirmed: confirmed)
+            } else if closing == nil, captionTerminal.prepared == nil {
+                let held = continuationIngress.admit(event, message: message)
+                if held == .overflow {
+                    transportFailed()
                 }
-                if self.socket === task {
-                    self.receive(task, epoch: current)
+                if held == .forward {
+                    captionTerminal.deliver(event, report: endpoint.reportServerCommand, to: received)
                 }
+            }
+            if socket === task {
+                receive(task, epoch: current)
             }
         }
     }
 
     /// Remove protected frames before later events can resume this queue. A partial handoff is not replayable.
     func discardManagedToolFrames() -> Bool {
-        let retained = sending ? 1 : 0
+        continuationIngress = LiveContinuationIngress(); let retained = sending ? 1 : 0
         queue.forEach { $0.permit?.retireQueueObservation() }
         let uncertain = queue.dropFirst(retained).contains { $0.permit?.issued == true }
         queue = Array(queue.prefix(retained)) + queue.dropFirst(retained).filter { $0.permit == nil }
@@ -236,7 +236,7 @@ final class RealtimeVoiceSocket: RealtimeSocketPort {
     }
 
     func close(confirmed: Bool) {
-        let observed = captionTerminal.retire()
+        continuationIngress = LiveContinuationIngress(); let observed = captionTerminal.retire()
         defer { observed?(confirmed) }
         epoch += 1
         closeDeadline?.cancel(); closeDeadline = nil; closing = nil
