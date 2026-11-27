@@ -54,8 +54,9 @@ test.each([
     );
     expect(screen.queryByText('준비 완료')).toBeNull();
     expect(screen.getByRole('header', { name: '오롯' })).toBeTruthy();
+    expect(screen.queryByText('설정을 불러오는 중')).toBeNull();
     expect(
-      screen.getByRole('progressbar', { name: '설정을 불러오는 중' }).props
+      screen.getByRole('progressbar', { name: '오롯 시작 중' }).props
         .accessibilityState,
     ).toEqual({ busy: true });
     const outer = screen.getByTestId('startup-surface');
@@ -81,7 +82,14 @@ test.each([
       pointerEvents: 'none',
       accessibilityElementsHidden: true,
     });
-    expect(readable.props.edges).toEqual(['top', 'right', 'bottom', 'left']);
+    expect(outer.parent?.type).not.toBe('View');
+    expect(readable.props.edges).toBeUndefined();
+    expect(readable.props.contentInsetAdjustmentBehavior).toBe('never');
+    expect(readable.props.automaticallyAdjustContentInsets).toBe(false);
+    expect(readable.props.contentContainerStyle).toMatchObject({
+      alignItems: 'center',
+      justifyContent: 'center',
+    });
     expect(
       StyleSheet.flatten(screen.getByTestId('startup-lockup').props.style)
         .flexDirection,
