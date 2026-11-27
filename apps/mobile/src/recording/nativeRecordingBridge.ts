@@ -76,6 +76,15 @@ export const nativeRecordingBridge: RecordingBridge = {
   stop() {
     return requireNativeModule().stopRecording();
   },
+  async seekPlayback(recordingId, seekID, positionMs) {
+    return (
+      (await requireNativeModule().seekRecordingPlayback?.(
+        recordingId,
+        seekID,
+        positionMs,
+      )) === true
+    );
+  },
   stopPlayback() {
     const module = requireNativeModule();
     if (!module.stopRecordingPlayback) {

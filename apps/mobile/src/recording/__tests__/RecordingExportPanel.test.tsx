@@ -1,10 +1,9 @@
+import { fireEvent, render, screen, act } from '@testing-library/react-native';
+import { ActionSheetIOS } from 'react-native';
 import {
-  fireEvent,
-  render,
-  screen,
-  within,
-} from '@testing-library/react-native';
-import { StyleSheet } from 'react-native';
+  NavigationPrimaryActionContext,
+  type NavigationPrimaryActionHost,
+} from '../../navigation/useNavigationPrimaryAction';
 import RecordingExportPanel from '../RecordingExportPanel';
 import {
   correction,
@@ -12,7 +11,6 @@ import {
   original,
   source,
 } from '../recordingExportTestFixtures';
-
 test('separates the two share options and explains their destination', async () => {
   const { transcriptService, exportService } = createServices([original]);
   await render(
@@ -38,7 +36,6 @@ test('separates the two share options and explains their destination', async () 
   expect(exportService.shareAudio).not.toHaveBeenCalled();
   expect(exportService.shareTranscript).not.toHaveBeenCalled();
 });
-
 test('exports the current transcript revision only after an explicit press', async () => {
   const { transcriptService, exportService } = createServices([
     original,
@@ -66,7 +63,6 @@ test('exports the current transcript revision only after an explicit press', asy
     await screen.findByTestId('recording-export-status'),
   ).toHaveTextContent('파일을 공유하거나 저장했어요.');
 });
-
 test('keeps empty transcript export actionable and reports that no content exists', async () => {
   const { transcriptService, exportService } = createServices([]);
   await render(
@@ -88,7 +84,6 @@ test('keeps empty transcript export actionable and reports that no content exist
   );
   expect(exportService.shareTranscript).not.toHaveBeenCalled();
 });
-
 test('refreshes after transcript text appears following the initial empty read', async () => {
   const { transcriptService, exportService } = createServices([]);
   transcriptService.load = jest
@@ -121,7 +116,6 @@ test('refreshes after transcript text appears following the initial empty read',
     await screen.findByTestId('recording-export-status'),
   ).toHaveTextContent('파일을 공유하거나 저장했어요.');
 });
-
 test('keeps audio export available when transcript lookup fails', async () => {
   const { transcriptService, exportService } = createServices([original]);
   transcriptService.load = jest.fn(async () => {
@@ -144,7 +138,6 @@ test('keeps audio export available when transcript lookup fails', async () => {
     await screen.findByTestId('recording-export-status'),
   ).toHaveTextContent('파일을 공유하거나 저장했어요.');
 });
-
 test('distinguishes cancellation from a missing original recording file', async () => {
   const { transcriptService, exportService } = createServices([original]);
   exportService.shareAudio = jest.fn(async () => 'cancelled');
@@ -171,7 +164,6 @@ test('distinguishes cancellation from a missing original recording file', async 
     '녹음 원본 파일을 찾을 수 없어요.',
   );
 });
-
 test('reports an iOS activity failure without claiming export success', async () => {
   const { transcriptService, exportService } = createServices([original]);
   exportService.shareTranscript = jest.fn(async () => {
@@ -196,31 +188,62 @@ test('reports an iOS activity failure without claiming export success', async ()
   expect(screen.queryByTestId('recording-export-status')).toBeNull();
 });
 
-test('saved-detail share rows use one list group and only an interior divider', async () => {
+test('saved detail registers just one dock action for original audio and current transcript', async () => {
   const { transcriptService, exportService } = createServices([original]);
-  await render(
-    <RecordingExportPanel
-      savedDetail
-      recordingSourceId={source.id}
-      transcriptService={transcriptService}
-      exportService={exportService}
-    />,
-  );
-  const list = within(screen.getByTestId('recording-export-rows'));
-  const audio = list.getByTestId('recording-export-audio');
-  const transcript = list.getByTestId('recording-export-transcript');
-  for (const row of [audio, transcript]) {
-    const style = StyleSheet.flatten(row.props.style);
-    expect(style.borderWidth ?? 0).toBe(0);
-    expect(style.borderLeftWidth ?? 0).toBe(0);
+  const sheet = jest
+    .spyOn(ActionSheetIOS, 'showActionSheetWithOptions')
+    .mockImplementation(() => {});
+  const dismiss = jest
+    .spyOn(ActionSheetIOS, 'dismissActionSheet')
+    .mockImplementation(() => {});
+  const register = jest.fn<
+    ReturnType<NavigationPrimaryActionHost['register']>,
+    Parameters<NavigationPrimaryActionHost['register']>
+  >(() => () => {});
+  try {
+    const view = await render(
+      <NavigationPrimaryActionContext.Provider
+        value={{
+          routeKey: 'recording',
+          register,
+          registerBackAction: jest.fn(() => () => {}),
+        }}
+      >
+        <RecordingExportPanel
+          savedDetail
+          recordingSourceId={source.id}
+          transcriptService={transcriptService}
+          exportService={exportService}
+        />
+      </NavigationPrimaryActionContext.Provider>,
+    );
+    const actions = () => register.mock.lastCall?.[0].actions ?? [];
+    expect(screen.queryByTestId('recording-export-audio')).toBeNull();
+    expect(screen.queryByTestId('recording-export-transcript')).toBeNull();
+    expect(actions().map(item => item.id)).toEqual(['recording-export-menu']);
+    await act(async () => {
+      await actions()[0]?.onPress();
+    });
+    expect(sheet).toHaveBeenCalledTimes(1);
+    const [menu, confirm] = sheet.mock.lastCall!;
+    expect(menu.options).toHaveLength(3);
+    expect(exportService.shareAudio).not.toHaveBeenCalled();
+    await act(async () => confirm(0));
+    expect(exportService.shareAudio).toHaveBeenCalledWith(source.id);
+    await act(async () => {
+      await actions()[0]?.onPress();
+    });
+    await act(async () => sheet.mock.lastCall![1](1));
+    expect(exportService.shareTranscript).toHaveBeenCalledTimes(1);
+    await act(async () => {
+      await actions()[0]?.onPress();
+    });
+    const retired = sheet.mock.lastCall![1];
+    await view.unmount();
+    await act(async () => retired(0));
+    expect(exportService.shareAudio).toHaveBeenCalledTimes(1);
+  } finally {
+    sheet.mockRestore();
+    dismiss.mockRestore();
   }
-  expect(StyleSheet.flatten(audio.props.style).borderBottomWidth).toBe(
-    StyleSheet.hairlineWidth,
-  );
-  expect(
-    StyleSheet.flatten(transcript.props.style).borderBottomWidth,
-  ).toBeUndefined();
-  expect(exportService.shareAudio).not.toHaveBeenCalled();
-  await fireEvent.press(audio);
-  expect(exportService.shareAudio).toHaveBeenCalledWith(source.id);
 });

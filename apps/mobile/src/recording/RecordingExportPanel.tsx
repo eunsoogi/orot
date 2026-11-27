@@ -15,11 +15,9 @@ import {
   recordingExportService,
   type RecordingExportService,
 } from './recordingExportService';
-import {
-  MaterialLibraryRows,
-  materialLibraryStyles,
-} from '../layout/MaterialLibraryRows';
-import RecordingExportOption from './RecordingExportOption';
+import { RecordingDetailActionMenu } from './RecordingDetailActionMenu';
+import type { NavigationRouteOwnership } from '../navigation/navigationRouteContracts';
+import { InlineRecordingExportOptions } from './RecordingExportOption';
 import { recordingExportPanelStyles as styles } from './RecordingExportPanel.styles';
 
 interface RecordingExportPanelProps {
@@ -29,6 +27,8 @@ interface RecordingExportPanelProps {
   onBusyChange?: (busy: boolean) => void;
   actionsDisabled?: boolean;
   savedDetail?: boolean;
+  active?: boolean;
+  routeOwner?: NavigationRouteOwnership;
 }
 
 type ExportError =
@@ -63,6 +63,8 @@ export default function RecordingExportPanel({
   onBusyChange,
   actionsDisabled = false,
   savedDetail = false,
+  active = true,
+  routeOwner,
 }: RecordingExportPanelProps) {
   const [view, setView] = useState<TranscriptRecordingView | null>(null);
   const [loading, setLoading] = useState(true);
@@ -71,6 +73,8 @@ export default function RecordingExportPanel({
   const [status, setStatus] = useState<'completed' | 'cancelled' | null>(null);
   const selectionRevision = useRef(0);
   const previousSourceId = useRef(recordingSourceId);
+  const focused = useRef(active);
+  focused.current = active;
 
   function updateBusy(value: boolean): void {
     setBusy(value);
@@ -112,7 +116,8 @@ export default function RecordingExportPanel({
   }, [recordingSourceId, transcriptService]);
 
   async function shareAudio(): Promise<void> {
-    if (busy || actionsDisabled) return;
+    if (busy || actionsDisabled || !active || routeOwner?.isCurrent() === false)
+      return;
     // Audio export reads the saved file directly and must stay available if transcript lookup fails.
     const requestRevision = selectionRevision.current;
     updateBusy(true);
@@ -133,14 +138,20 @@ export default function RecordingExportPanel({
   }
 
   async function shareTranscript(): Promise<void> {
-    if (busy || actionsDisabled) return;
+    if (busy || actionsDisabled || !active || routeOwner?.isCurrent() === false)
+      return;
     const requestRevision = selectionRevision.current;
     updateBusy(true);
     setError(null);
     setStatus(null);
     try {
       const current = await transcriptService.load(recordingSourceId);
-      if (requestRevision !== selectionRevision.current) return;
+      if (
+        requestRevision !== selectionRevision.current ||
+        !focused.current ||
+        routeOwner?.isCurrent() === false
+      )
+        return;
       if (!current) {
         setError('emptyTranscript');
         return;
@@ -164,72 +175,60 @@ export default function RecordingExportPanel({
     }
   }
 
-  function handleShareAudioPress(): void {
-    shareAudio();
-  }
-
-  function handleShareTranscriptPress(): void {
-    shareTranscript();
-  }
-
   const hasTranscript = Boolean(view?.segments.length);
-  const options = (
-    <>
-      <RecordingExportOption
-        kind="audio"
-        listRow={savedDetail}
-        divider={savedDetail}
-        title={t('recording.export.audio')}
-        description={t('recording.export.audioDescription')}
-        hint={t('recording.export.audioHint')}
-        disabled={busy || actionsDisabled}
-        onPress={handleShareAudioPress}
-        testID="recording-export-audio"
-      />
-      {/* Re-read on press so a transcript created after this panel mounts stays exportable. */}
-      <RecordingExportOption
-        kind="transcript"
-        listRow={savedDetail}
-        title={t('recording.export.transcript')}
-        description={t('recording.export.transcriptDescription')}
-        hint={t('recording.export.transcriptHint')}
-        disabled={busy || actionsDisabled || loading}
-        onPress={handleShareTranscriptPress}
-        testID="recording-export-transcript"
-      />
-    </>
-  );
   return (
     <View style={styles.panel} testID="recording-export-panel">
-      <Text
-        accessibilityRole="header"
-        style={savedDetail ? materialLibraryStyles.heading : styles.title}
-      >
-        {t('recording.export.title')}
-      </Text>
-      <Text
-        style={
-          savedDetail ? materialLibraryStyles.description : styles.subtitle
-        }
-      >
-        {t('recording.export.description')}
-      </Text>
       {savedDetail ? (
-        <MaterialLibraryRows testID="recording-export-rows">
-          {options}
-        </MaterialLibraryRows>
+        <RecordingDetailActionMenu
+          id="recording-export-menu"
+          label={t('recording.export.title')}
+          icon="square.and.arrow.up"
+          sourceId={recordingSourceId}
+          active={active}
+          owner={routeOwner}
+          choices={[
+            {
+              id: 'audio',
+              label: t('recording.export.audio'),
+              run: shareAudio,
+              disabled: busy || actionsDisabled,
+            },
+            {
+              id: 'transcript',
+              label: t('recording.export.transcript'),
+              run: shareTranscript,
+              disabled: busy || actionsDisabled || loading,
+            },
+          ]}
+        />
       ) : (
-        options
+        <>
+          <Text accessibilityRole="header" style={styles.title}>
+            {t('recording.export.title')}
+          </Text>
+          <Text style={styles.subtitle}>
+            {t('recording.export.description')}
+          </Text>
+          <InlineRecordingExportOptions
+            disabled={busy || actionsDisabled}
+            transcriptDisabled={loading}
+            onAudio={shareAudio}
+            onTranscript={shareTranscript}
+          />
+          <View
+            style={styles.privacyNote}
+            testID="recording-export-privacy-note"
+          >
+            <AppSymbol name="info.circle" color={appColors.secondary} />
+            <Text style={styles.privacyCopy}>
+              {t('recording.export.privacyNote')}
+            </Text>
+          </View>
+          {!loading && !hasTranscript && !error ? (
+            <Text>{t('recording.export.emptyTranscript')}</Text>
+          ) : null}
+        </>
       )}
-      <View style={styles.privacyNote} testID="recording-export-privacy-note">
-        <AppSymbol name="info.circle" color={appColors.secondary} />
-        <Text style={styles.privacyCopy}>
-          {t('recording.export.privacyNote')}
-        </Text>
-      </View>
-      {!loading && !hasTranscript && !error ? (
-        <Text>{t('recording.export.emptyTranscript')}</Text>
-      ) : null}
       {error ? (
         <Text
           accessibilityRole="alert"

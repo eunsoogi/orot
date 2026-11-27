@@ -56,6 +56,13 @@ export const recordingKo = {
   'recording.errors.generic':
     '녹음 상태를 처리하지 못했어요. 다시 시도해 주세요.',
   'recording.transcript.title': '전사 검토',
+  'recording.transcript.detailTitle': '전사',
+  'recording.detail.analysisActions': 'AI 분석',
+  'recording.detail.aiTitle': 'AI로 제목 만들기',
+  'recording.detail.aiTitleSave': '이 제목 저장',
+  'recording.detail.aiTitleUnavailable':
+    '현재 선택한 모델로 이 녹음의 제목을 만들지 못했어요.',
+
   'recording.transcript.recordingSource': '녹음 전사',
   'recording.transcript.expandSegment': '전사 구간 펼치기',
   'recording.transcript.collapseSegment': '전사 구간 접기',
@@ -148,6 +155,7 @@ export const recordingKo = {
   'recording.library.playAudioHint': '상세 화면을 열고 녹음 전체를 재생합니다.',
   'recording.library.playingAudio': '녹음 재생 중…',
   'recording.library.stopAudio': '재생 중지',
+  'recording.library.seekAudio': '재생 위치',
   'recording.library.playbackError': '녹음을 재생하지 못했어요.',
   'recording.library.playbackMissing':
     '녹음 파일을 찾지 못했어요. 백업에서 복원한 뒤 다시 시도해 주세요.',

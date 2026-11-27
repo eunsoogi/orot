@@ -20,7 +20,6 @@ import {
   transcriptEvidenceService,
 } from './transcriptEvidenceService';
 import { transcriptEvidenceStyles as styles } from './TranscriptEvidencePanel.styles';
-
 interface TranscriptEvidencePanelProps {
   recordingSourceId?: string;
   service?: TranscriptEvidenceService;
@@ -31,7 +30,6 @@ interface TranscriptEvidencePanelProps {
   onRequestDelete?: (sourceId: string) => void;
   onInteractionChange?: (state: { busy: boolean; dirty: boolean }) => void;
 }
-
 export default function TranscriptEvidencePanel({
   recordingSourceId,
   service = transcriptEvidenceService,
@@ -49,11 +47,8 @@ export default function TranscriptEvidencePanel({
   const [editingSegmentId, setEditingSegmentId] = useState<string | null>(null);
   const [draft, setDraft] = useState('');
   const [playingSegmentId, setPlayingSegmentId] = useState<string | null>(null);
-  const [collapsedSegmentIds, setCollapsedSegmentIds] = useState<Set<string>>(
-    () => new Set(),
-  );
-
-  // The containing route owns leave confirmation; an unsaved correction must survive ordinary screen updates.
+  const [expanded, setExpanded] = useState(false);
+  const [collapsedIds, setCollapsedIds] = useState(() => new Set<string>());
   const originalText = view?.segments.find(
     segment => segment.id === editingSegmentId,
   )?.text;
@@ -61,13 +56,10 @@ export default function TranscriptEvidencePanel({
   useEffect(() => {
     onInteractionChange?.({ busy, dirty });
   }, [busy, dirty, onInteractionChange]);
-
   async function reload(): Promise<void> {
     const next = await service.load(recordingSourceId);
     setView(next);
   }
-
-  // The parent remounts this preview when its source list changes so deleted text cannot linger.
   useEffect(() => {
     let active = true;
     setLoading(true);
@@ -90,7 +82,6 @@ export default function TranscriptEvidencePanel({
       active = false;
     };
   }, [recordingSourceId, service, automaticTranscriptionStatus]);
-
   async function createTranscript(): Promise<void> {
     if (!view) return;
     setBusy(true);
@@ -104,7 +95,6 @@ export default function TranscriptEvidencePanel({
       setBusy(false);
     }
   }
-
   async function saveCorrection(): Promise<void> {
     if (!editingSegmentId) return;
     setBusy(true);
@@ -120,7 +110,6 @@ export default function TranscriptEvidencePanel({
       setBusy(false);
     }
   }
-
   async function play(segment: TranscriptEvidenceSegment): Promise<void> {
     setPlayingSegmentId(segment.id);
     setError(null);
@@ -132,7 +121,6 @@ export default function TranscriptEvidencePanel({
       setPlayingSegmentId(null);
     }
   }
-
   if (!loading && !view && !error) return null;
   const latest = latestRevisions(view?.segments ?? []);
   const editingSegment = latest.find(
@@ -140,7 +128,12 @@ export default function TranscriptEvidencePanel({
   );
   return (
     <View style={styles.container} testID="transcript-panel">
-      <TranscriptReviewHeader savedDetail={savedDetail} />
+      <TranscriptReviewHeader
+        savedDetail={savedDetail}
+        expanded={expanded}
+        disabled={dirty || busy}
+        toggle={() => setExpanded(value => !value)}
+      />
       {view && onRequestDelete ? (
         <AppButton
           disabled={busy || deletionBusy}
@@ -187,9 +180,11 @@ export default function TranscriptEvidencePanel({
           />
         </>
       ) : null}
-      {view && latest.length > 0 ? (
+      {view && latest.length > 0 && (!savedDetail || expanded) ? (
         <View style={styles.reviewCard}>
-          <TranscriptReviewSummary source={view.source} segments={latest} />
+          {!savedDetail ? (
+            <TranscriptReviewSummary source={view.source} segments={latest} />
+          ) : null}
           {view.staleArtifacts.length > 0 ? (
             <Text style={styles.error} testID="transcript-stale-artifacts">
               {t('recording.transcript.staleArtifacts', {
@@ -211,19 +206,24 @@ export default function TranscriptEvidencePanel({
                   segment={segment}
                   history={history}
                   collapsed={
+                    !savedDetail &&
                     editingSegmentId !== segment.id &&
-                    collapsedSegmentIds.has(segment.id)
+                    collapsedIds.has(segment.id)
                   }
                   busy={busy}
                   playing={playingSegmentId === segment.id}
-                  onToggleCollapsed={() => {
-                    setCollapsedSegmentIds(previous => {
-                      const next = new Set(previous);
-                      if (next.has(segment.id)) next.delete(segment.id);
-                      else next.add(segment.id);
-                      return next;
-                    });
-                  }}
+                  onToggleCollapsed={
+                    savedDetail
+                      ? undefined
+                      : () => {
+                          setCollapsedIds(previous => {
+                            const next = new Set(previous);
+                            if (next.has(segment.id)) next.delete(segment.id);
+                            else next.add(segment.id);
+                            return next;
+                          });
+                        }
+                  }
                   onPlay={() => play(segment)}
                   onEdit={() => {
                     setDraft(segment.text);

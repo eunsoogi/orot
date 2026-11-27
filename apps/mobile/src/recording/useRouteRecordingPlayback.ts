@@ -19,6 +19,13 @@ export function useRouteRecordingPlayback(
         dispatched = true;
         return service.playRange(id, start, end, owner);
       },
+      seekPlayback: service.seekPlayback
+        ? async (id, seekID, position) =>
+            current &&
+            dispatched &&
+            id === sourceId &&
+            (await service.seekPlayback?.(id, seekID, position, owner)) === true
+        : undefined,
       stopPlayback: service.stopPlayback
         ? async () => {
             if (!dispatched) return;

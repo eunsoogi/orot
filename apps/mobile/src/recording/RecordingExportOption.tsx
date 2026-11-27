@@ -1,3 +1,4 @@
+import { t } from '../i18n';
 import { Pressable, View } from 'react-native';
 import { AppSymbol } from '../layout/AppSymbol';
 import { AppText } from '../layout/AppText';
@@ -67,5 +68,41 @@ export default function RecordingExportOption({
         <AppSymbol name="chevron.right" size={15} color={appColors.secondary} />
       </View>
     </Pressable>
+  );
+}
+
+export function InlineRecordingExportOptions({
+  disabled,
+  transcriptDisabled,
+  onAudio,
+  onTranscript,
+}: {
+  disabled: boolean;
+  transcriptDisabled: boolean;
+  onAudio: () => void | Promise<void>;
+  onTranscript: () => void | Promise<void>;
+}) {
+  return (
+    <>
+      <RecordingExportOption
+        kind="audio"
+        title={t('recording.export.audio')}
+        description={t('recording.export.audioDescription')}
+        hint={t('recording.export.audioHint')}
+        disabled={disabled}
+        onPress={onAudio}
+        testID="recording-export-audio"
+      />
+      {/* Re-read on press so a transcript created after this panel mounts stays exportable. */}
+      <RecordingExportOption
+        kind="transcript"
+        title={t('recording.export.transcript')}
+        description={t('recording.export.transcriptDescription')}
+        hint={t('recording.export.transcriptHint')}
+        disabled={disabled || transcriptDisabled}
+        onPress={onTranscript}
+        testID="recording-export-transcript"
+      />
+    </>
   );
 }

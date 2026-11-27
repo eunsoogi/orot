@@ -4,6 +4,7 @@ import { AppSymbol } from '../layout/AppSymbol';
 import { appColors } from '../layout/appColors';
 import { AppText as Text } from '../layout/AppText';
 import { t } from '../i18n';
+import { RecordingPlaybackSeekSlider } from './RecordingPlaybackSeekSlider';
 import { recordingLibraryStyles as styles } from './RecordingLibraryPanel.styles';
 import {
   formatRecordingDuration,
@@ -76,6 +77,7 @@ export default function RecordingPlaybackControls({
     localPlaying ||
     (playbackState.status === 'playing' &&
       playbackState.recordingId === recordingId);
+  const canStop = active && playing && !!playbackService.stopPlayback;
   const canPlay =
     active &&
     !playing &&
@@ -129,13 +131,14 @@ export default function RecordingPlaybackControls({
   }, [autoPlay, onAutoPlayConsumed, playRecording]);
 
   async function stopRecording(): Promise<void> {
-    if (!playbackService.stopPlayback) return;
-    requestGeneration.current += 1;
+    if (!canStop || !playbackService.stopPlayback) return;
+    const generation = ++requestGeneration.current;
     setLocalPlaying(false);
     try {
       await playbackService.stopPlayback();
     } catch (failure) {
-      setError(playbackErrorMessage(failure));
+      if (generation === requestGeneration.current && activeRef.current)
+        setError(playbackErrorMessage(failure));
     }
   }
 
@@ -147,6 +150,9 @@ export default function RecordingPlaybackControls({
       ? playbackState.durationMs
       : (fileDuration ?? durationMs ?? 0);
   const position = activePlayback ? playbackState.positionMs : 0;
+  const seekID = active && activePlayback ? playbackState.seekID : undefined;
+  const seekEnd = playbackState.seekEndMs;
+  const seek = playbackService.seekPlayback;
   const progress =
     activeDuration > 0 ? Math.min(100, (position / activeDuration) * 100) : 0;
   const durationLabel =
@@ -161,19 +167,22 @@ export default function RecordingPlaybackControls({
           accessibilityRole="button"
           accessibilityLabel={
             playing
-              ? t('recording.library.playingAudio')
+              ? t('recording.library.stopAudio')
               : t('recording.library.playAudio')
           }
-          accessibilityState={{ disabled: !canPlay }}
-          disabled={!canPlay}
+          accessibilityState={{ disabled: playing ? !canStop : !canPlay }}
+          disabled={playing ? !canStop : !canPlay}
           onPress={() => {
-            playRecording();
+            if (playing) stopRecording();
+            else playRecording();
           }}
           style={styles.playbackButton}
-          testID="recording-playback-button"
+          testID={
+            playing ? 'recording-playback-stop' : 'recording-playback-button'
+          }
         >
           <AppSymbol
-            name={playing ? 'waveform' : 'play.fill'}
+            name={playing ? 'stop.fill' : 'play.fill'}
             color={appColors.onPrimary}
           />
         </Pressable>
@@ -182,33 +191,36 @@ export default function RecordingPlaybackControls({
             ? t('recording.library.playingAudio')
             : t('recording.library.playAudio')}
         </Text>
-        {playing && playbackService.stopPlayback ? (
-          <Pressable
-            accessibilityRole="button"
-            accessibilityLabel={t('recording.library.stopAudio')}
-            onPress={() => {
-              stopRecording();
-            }}
-            style={styles.playbackButton}
-            testID="recording-playback-stop"
-          >
-            <AppSymbol name="stop.fill" color={appColors.onPrimary} />
-          </Pressable>
-        ) : null}
         <AppSymbol name="waveform" color={appColors.primaryText} />
       </View>
-      <View
-        accessibilityRole="progressbar"
-        accessibilityValue={{
-          min: 0,
-          max: activeDuration,
-          now: Math.min(position, activeDuration),
-        }}
-        style={styles.progressTrack}
-        testID="recording-playback-progress"
-      >
-        <View style={[styles.progressFill, { width: `${progress}%` }]} />
-      </View>
+      {seek &&
+      seekID &&
+      typeof seekEnd === 'number' &&
+      Number.isFinite(seekEnd) &&
+      seekEnd > 0 ? (
+        <RecordingPlaybackSeekSlider
+          key={seekID}
+          maximum={seekEnd}
+          position={position}
+          seek={next => {
+            // No new play call, timer, or optimistic clock: native publishes the actual seek.
+            seek(recordingId, seekID, next).catch(() => undefined);
+          }}
+        />
+      ) : (
+        <View
+          accessibilityRole="progressbar"
+          accessibilityValue={{
+            min: 0,
+            max: activeDuration,
+            now: Math.min(position, activeDuration),
+          }}
+          style={styles.progressTrack}
+          testID="recording-playback-progress"
+        >
+          <View style={[styles.progressFill, { width: `${progress}%` }]} />
+        </View>
+      )}
       <View style={styles.playbackTimes}>
         <Text style={styles.copy} testID="recording-playback-position">
           {formatRecordingDuration(position)}

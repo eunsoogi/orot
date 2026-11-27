@@ -33,6 +33,8 @@ public extension RecordingModule {
                 "status": "playing",
                 "recordingId": playbackRecordingID,
                 "positionMs": max(0, Int((player.currentTime * 1000).rounded())),
+                "seekID": (playbackResult?["seekID"] as? String) ?? "",
+                "seekEndMs": playbackEndMs ?? 0,
                 "durationMs": max(0, Int((player.duration * 1000).rounded())),
             ] as NSDictionary
         } else {
@@ -40,6 +42,16 @@ public extension RecordingModule {
         }
         DispatchQueue.main.async { [weak self] in
             self?.sendEvent(withName: "RecordingPlaybackStateChanged", body: state)
+        }
+    }
+
+    @objc(seekRecordingPlayback:seekID:positionMs:resolver:rejecter:)
+    func seekRecordingPlayback(
+        _ recordingID: String, seekID: String, positionMs: NSNumber,
+        resolver resolve: @escaping RCTPromiseResolveBlock, rejecter _: @escaping RCTPromiseRejectBlock,
+    ) {
+        workQueue.async {
+            resolve(self.seekCurrentPlayback(recordingID, seekID: seekID, position: positionMs.doubleValue))
         }
     }
 

@@ -1,4 +1,4 @@
-import { View } from 'react-native';
+import { Pressable, View } from 'react-native';
 import { materialLibraryStyles } from '../layout/MaterialLibraryRows';
 import { AppSymbol } from '../layout/AppSymbol';
 import { AppText as Text } from '../layout/AppText';
@@ -7,7 +7,31 @@ import { transcriptEvidenceStyles as styles } from './TranscriptEvidencePanel.st
 
 export default function TranscriptReviewHeader({
   savedDetail = false,
-}: { readonly savedDetail?: boolean } = {}) {
+  expanded = false,
+  disabled = false,
+  toggle,
+}: {
+  readonly savedDetail?: boolean;
+  readonly expanded?: boolean;
+  readonly disabled?: boolean;
+  readonly toggle?: () => void;
+} = {}) {
+  if (savedDetail && toggle)
+    return (
+      <Pressable
+        accessibilityRole="button"
+        accessibilityState={{ expanded, disabled }}
+        disabled={disabled}
+        onPress={toggle}
+        style={styles.segmentHeader}
+        testID="recording-detail-transcript-toggle"
+      >
+        <Text style={materialLibraryStyles.heading}>
+          {t('recording.transcript.detailTitle')}
+        </Text>
+        <AppSymbol name={expanded ? 'chevron.up' : 'chevron.down'} />
+      </Pressable>
+    );
   return (
     <>
       <Text
