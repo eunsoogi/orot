@@ -16,7 +16,7 @@ export function withComposedConversationControls(
   timeControls = false,
   multiline = false,
   filterable = false,
-  checklistProse = false,
+  checklistProse: boolean | 'mixed' = false,
 ): TaskResponderContract<GroundedRagAnswer> {
   const sliders = version !== '45';
   const dateControls = version === '47';
@@ -58,6 +58,9 @@ export function withComposedConversationControls(
                 : '') +
               (checklistProse
                 ? ' For an interactive checklist of local CheckBox controls, use one unchecked fallback item in the answer for each: the literal unchecked square and space "☐ " followed by its exact label. Put the items in the same order as the controls, one per line. Do not repeat those items in separate Text components, start checked, or add sending or actions.'
+                : '') +
+              (checklistProse === 'mixed'
+                ? ' Temporary notes, ChoicePickers, or other supported local controls can appear alongside checklist items. They keep their existing local behavior and do not consume fallback lines.'
                 : ''),
           },
         },
@@ -103,6 +106,7 @@ export function withComposedConversationControls(
               candidate,
               ordinary.value.answer,
               plan.controls,
+              checklistProse === 'mixed',
             ),
         );
         return root && bindConversationA2UIComposedControls(root, plan.controls)

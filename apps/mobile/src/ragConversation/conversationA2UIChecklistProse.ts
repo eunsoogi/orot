@@ -13,18 +13,28 @@ export function matchesConversationA2UIChecklist(
   root: ConversationA2UINode,
   answer: string,
   controls: ReadonlyMap<string, ComposedControl>,
+  allowOtherControls = false,
 ): boolean {
   const expected = conversationA2UIFrameProse(answer);
   if (!expected || !controls.size) return false;
   const consumed = new Set<string>();
   let rejected = false;
+  let matchedCheck = false;
   function comparison(node: ConversationA2UINode): ConversationA2UINode {
     const control = controls.get(node.id);
     if (control) {
+      if (node.component !== 'Divider' || consumed.has(node.id)) {
+        rejected = true;
+        return node;
+      }
+      consumed.add(node.id);
+      // Stock controls already project to prose-free slots. Count their
+      // topology but do not let them hide or consume an unchecked item.
+      if (control.kind !== 'check') {
+        if (!allowOtherControls) rejected = true;
+        return node;
+      }
       if (
-        node.component !== 'Divider' ||
-        control.kind !== 'check' ||
-        consumed.has(node.id) ||
         !control.label ||
         control.label.trim() !== control.label ||
         /[\r\n]/u.test(control.label)
@@ -32,7 +42,7 @@ export function matchesConversationA2UIChecklist(
         rejected = true;
         return node;
       }
-      consumed.add(node.id);
+      matchedCheck = true;
       return {
         id: node.id,
         component: 'Text',
@@ -52,6 +62,7 @@ export function matchesConversationA2UIChecklist(
   const corroboratingTree = comparison(root);
   return (
     !rejected &&
+    matchedCheck &&
     consumed.size === controls.size &&
     matchesConversationA2UIProse(corroboratingTree, expected, true)
   );

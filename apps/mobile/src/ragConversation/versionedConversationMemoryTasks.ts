@@ -86,7 +86,7 @@ export function versionedConversationMemoryTasks(
     filterable = false,
     mixedWeights = false,
     folderIcon = false,
-    checklistProse = false,
+    checklistProse: boolean | 'mixed' = false,
   ) =>
     withConversationA2UIReplacement(
       withConversationA2UIPanelCaptions(
@@ -180,14 +180,23 @@ export function versionedConversationMemoryTasks(
       v61: observeConversationA2UIFinalAdmission(
         withPublicWebConversationLayout(v60),
       ),
+      v62: observeConversationA2UIFinalAdmission(
+        withPublicWebConversationLayout(
+          withConversationA2UITabSelectionLifetime(
+            temporaryFormTask(true, true, true, true, true),
+            '60',
+          ),
+          '62',
+        ),
+      ),
     },
     ragConversationTask: observeConversationA2UIFinalAdmission(
       withPublicWebConversationLayout(
         withConversationA2UITabSelectionLifetime(
-          temporaryFormTask(true, true, true, true, true),
+          temporaryFormTask(true, true, true, true, 'mixed'),
           '60',
         ),
-        '62',
+        '63',
       ),
     ),
   };
