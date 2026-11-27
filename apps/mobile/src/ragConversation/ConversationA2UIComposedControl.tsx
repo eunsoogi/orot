@@ -1,3 +1,4 @@
+import type { ConversationA2UITabSelections } from './conversationA2UITabSelectionLifetime';
 import Slider from '@react-native-community/slider';
 import {
   createContext,
@@ -17,6 +18,7 @@ export const ConversationA2UIComposedOwner = createContext<
       surface: string;
       current: () => boolean;
       revision?: number;
+      tabSelections?: ConversationA2UITabSelections;
       reset?: () => void;
     }
   | undefined
@@ -35,6 +37,11 @@ export function ConversationA2UIComposedControl({
       key={owner.surface + ':' + (owner.revision ?? 0)}
       control={control}
       current={owner.current}
+      tabSelections={
+        owner.tabSelections?.resetRevision === owner.revision
+          ? owner.tabSelections
+          : undefined
+      }
     />
   ) : null;
 }
@@ -68,16 +75,32 @@ export function ConversationA2UIComposedReset({ label }: { label: string }) {
 function MountedControl({
   control,
   current,
+  tabSelections,
 }: {
   control: ComposedControl;
   current: () => boolean;
+  tabSelections?: ConversationA2UITabSelections;
 }) {
-  const [checked, setChecked] = useState(false);
+  const mounted = useRef(false);
+  useLayoutEffect(() => {
+    mounted.current = true;
+    return () => {
+      mounted.current = false;
+    };
+  }, []);
+  const owns = () => mounted.current && current();
+  const [checked, setChecked] = useState(
+    () => tabSelections?.read(control) === true,
+  );
   const [text, setText] = useState('');
   const [range, setRange] = useState(
     control.kind === 'slider' ? control.min : 0,
   );
-  const [selected, setSelected] = useState<readonly string[]>([]);
+  const [selected, setSelected] = useState<readonly string[]>(() => {
+    const saved = tabSelections?.read(control);
+    return Array.isArray(saved) ? saved : [];
+  });
+  const pendingSelection = useRef(selected);
   return (
     <View style={styles.control}>
       <AppText allowFontScaling>{control.label}</AppText>
@@ -86,7 +109,9 @@ function MountedControl({
           accessibilityLabel={control.label}
           value={checked}
           onValueChange={next => {
-            if (current() && typeof next === 'boolean') setChecked(next);
+            if (!owns() || typeof next !== 'boolean') return;
+            tabSelections?.write(control, next);
+            setChecked(next);
           }}
         />
       ) : control.kind === 'text' ? (
@@ -153,15 +178,16 @@ function MountedControl({
                 accessibilityState={{ checked: chosen }}
                 style={chosen ? [styles.option, styles.chosen] : styles.option}
                 onPress={() => {
-                  if (!current()) return;
-                  setSelected(previous => {
-                    if (!current()) return previous;
-                    if (previous.includes(option.value))
-                      return previous.filter(value => value !== option.value);
-                    return control.multiple
+                  if (!owns()) return;
+                  const previous = pendingSelection.current;
+                  const next = previous.includes(option.value)
+                    ? previous.filter(value => value !== option.value)
+                    : control.multiple
                       ? [...previous, option.value]
                       : [option.value];
-                  });
+                  pendingSelection.current = next;
+                  tabSelections?.write(control, next);
+                  setSelected(next);
                 }}
               >
                 <AppText allowFontScaling>{option.label}</AppText>

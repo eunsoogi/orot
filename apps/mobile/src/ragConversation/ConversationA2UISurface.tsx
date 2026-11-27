@@ -1,3 +1,7 @@
+import {
+  createConversationA2UITabSelections,
+  watchConversationA2UITabSelections,
+} from './conversationA2UITabSelectionLifetime';
 import { ConversationA2UISurfaceRow } from './ConversationA2UISurfaceRow';
 import {
   ConversationA2UIComposedControl,
@@ -18,7 +22,13 @@ import {
 import { createConversationA2UIModalArbiter } from './conversationA2UIModalArbiter';
 import { conversationA2UIModalFor } from './conversationA2UIModalWire';
 import { conversationA2UIComposedResetLabel } from './conversationA2UIComposedReset';
-import { useCallback, useContext, useMemo, useState } from 'react';
+import {
+  useCallback,
+  useContext,
+  useLayoutEffect,
+  useMemo,
+  useState,
+} from 'react';
 import { useWindowDimensions, View } from 'react-native';
 import { ConversationA2UIHorizontalList } from './ConversationA2UIHorizontalList';
 import { AppText } from '../layout/AppText';
@@ -63,6 +73,23 @@ export function ConversationA2UISurface({
     [owner, root, surface],
   );
   const [revision, setRevision] = useState(0);
+  // Replacing or retiring the exact native owner destroys the panel memory.
+  const tabSelections = useMemo(
+    () =>
+      composed && surface
+        ? createConversationA2UITabSelections(root, revision)
+        : undefined,
+    [composed, root, surface, revision],
+  );
+  useLayoutEffect(() => {
+    if (!owner || !tabSelections) return;
+    return watchConversationA2UITabSelections({
+      selections: tabSelections,
+      isCurrent,
+      subscribe: owner.subscribe,
+      refresh: () => setRevision(previous => previous + 1),
+    });
+  }, [isCurrent, owner, tabSelections]);
   const reset = useCallback(() => {
     if (isCurrent())
       setRevision(previous => (isCurrent() ? previous + 1 : previous));
@@ -74,7 +101,13 @@ export function ConversationA2UISurface({
           <ConversationA2UIComposedOwner.Provider
             value={
               composed && surface
-                ? { surface, current: isCurrent, revision, reset }
+                ? {
+                    surface,
+                    current: isCurrent,
+                    revision,
+                    reset,
+                    tabSelections,
+                  }
                 : undefined
             }
           >

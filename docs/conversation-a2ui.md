@@ -321,3 +321,10 @@ then shows the chosen wall-clock hour and minute. It does not accept
 authored bounds, data-model seeds, actions or time zones. The local form
 owner retires the value on departure or reset; the existing archived reply
 has no picker state or action.
+
+Fresh task v56 retains CheckBox and ChoicePicker selections across tabs
+inside the same accepted local form. Only the selected panel is mounted;
+inactive panels do not expose controls or receive presses. The exact reply's
+Reset button or losing its current owner discards the temporary selections.
+Text, sliders, date and time fields keep their previous per-mount behavior.
+No value or action is stored, supplied to a provider, or restored.
