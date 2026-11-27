@@ -1,7 +1,11 @@
 import type { TaskResponderContract } from '@orot/agent-runtime';
 import { projectConversationA2UIComposedControls } from './conversationA2UIComposedControlFrames';
 import { bindConversationA2UIComposedControls } from './conversationA2UIComposedControlState';
-import { matchesConversationA2UIChecklist } from './conversationA2UIChecklistProse';
+import {
+  conversationA2UIMarkdownChecklistLines,
+  markdownChecklistPrefix,
+  matchesConversationA2UIChecklist,
+} from './conversationA2UIChecklistProse';
 import { acceptConversationA2UIFrameSequence } from './conversationA2UIFrameSequence';
 import {
   allowsOrdinaryA2UI,
@@ -16,7 +20,7 @@ export function withComposedConversationControls(
   timeControls: boolean | 'combined' = false,
   multiline = false,
   filterable: boolean | 'chips' = false,
-  checklistProse: boolean | 'mixed' = false,
+  checklistProse: boolean | 'mixed' | 'markdown' = false,
   numeric = false,
 ): TaskResponderContract<GroundedRagAnswer> {
   const sliders = version !== '45';
@@ -69,8 +73,13 @@ export function withComposedConversationControls(
               (checklistProse
                 ? ' For an interactive checklist of local CheckBox controls, use one unchecked fallback item in the answer for each: the literal unchecked square and space "☐ " followed by its exact label. Put the items in the same order as the controls, one per line. Do not repeat those items in separate Text components, start checked, or add sending or actions.'
                 : '') +
-              (checklistProse === 'mixed'
+              (typeof checklistProse === 'string'
                 ? ' Temporary notes, ChoicePickers, or other supported local controls can appear alongside checklist items. They keep their existing local behavior and do not consume fallback lines.'
+                : '') +
+              (checklistProse === 'markdown' &&
+              !input.resultPartition &&
+              input.evidence.items.length === 0
+                ? ' For an ordinary reply without sources, standard Markdown unchecked task markers - [ ] , + [ ] , and * [ ] also work before the unchanged checkbox label. The original answer and its markup are kept when copied.'
                 : ''),
           },
         },
@@ -96,9 +105,17 @@ export function withComposedConversationControls(
         numeric,
       );
       if (!plan) return ordinary;
+      const allowMarkdown =
+        checklistProse === 'markdown' &&
+        !input.resultPartition &&
+        input.evidence.items.length === 0 &&
+        ordinary.value.answer.split('\n').some(markdownChecklistPrefix);
       if (
         checklistProse &&
-        ordinary.value.answer.split('\n').some(line => line.startsWith('☐ ')) &&
+        (allowMarkdown ||
+          ordinary.value.answer
+            .split('\n')
+            .some(line => line.startsWith('☐ '))) &&
         [...plan.controls.values()].some(control => control.kind === 'check')
       ) {
         // The exact accepted fallback remains authoritative. Do not remove
@@ -110,14 +127,17 @@ export function withComposedConversationControls(
           true,
           true,
           'vertical_align',
-          conversationA2UIFrameProse,
+          allowMarkdown
+            ? conversationA2UIMarkdownChecklistLines
+            : conversationA2UIFrameProse,
           false,
           candidate =>
             matchesConversationA2UIChecklist(
               candidate,
               ordinary.value.answer,
               plan.controls,
-              checklistProse === 'mixed',
+              typeof checklistProse === 'string',
+              allowMarkdown,
             ),
         );
         return root && bindConversationA2UIComposedControls(root, plan.controls)

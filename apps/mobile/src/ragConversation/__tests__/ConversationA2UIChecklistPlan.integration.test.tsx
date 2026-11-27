@@ -17,7 +17,7 @@ import { fixture } from '../testSupport/conversationEnvelopeFixtures';
 import { syntheticPublicLayoutPlan } from '../testSupport/syntheticPublicLayoutPlan';
 import { useConversationPresentationSnapshot } from '../useConversationPresentationSnapshot';
 
-const prompt = '준비물을 실내와 야외 탭으로 나눠 체크할 수 있게 해 줘.';
+const prompt = '실내와 야외에서 필요한 준비물을 알려 줘.';
 const indoor = ['실내', '물병', '수건'];
 const outdoor = ['야외', '모자', '방수 가방'];
 const lines = (panel: readonly string[]) =>
@@ -76,10 +76,13 @@ function frames(action = false, duplicateText = false): JsonValue {
   ];
 }
 
-test('v61 does not reinterpret an exact unchecked item as a checkbox', () => {
+test.each([
+  ['61', answer],
+  ['68', answer.replaceAll('☐ ', '- [ ] ')],
+])('saved v%s does not gain new checklist syntax', (taskVersion, fallback) => {
   const task = restoreConversationTask({
     taskType: ragConversationTask.taskType,
-    taskVersion: '61',
+    taskVersion,
   });
   const input = {
     request: prompt,
@@ -88,17 +91,29 @@ test('v61 does not reinterpret an exact unchecked item as a checkbox', () => {
   };
   expect(
     task?.validateResult(
-      { answerKind: 'conversation', answer, a2uiFrames: frames() },
+      { answerKind: 'conversation', answer: fallback, a2uiFrames: frames() },
       input,
     ),
-  ).toEqual({ status: 'valid', value: { answerKind: 'conversation', answer } });
+  ).toEqual({
+    status: 'valid',
+    value: { answerKind: 'conversation', answer: fallback },
+  });
   expect(JSON.stringify(task?.createResultSchema?.(input, true))).not.toContain(
-    'unchecked fallback item',
+    taskVersion === '61'
+      ? 'unchecked fallback item'
+      : 'standard Markdown unchecked task markers',
   );
 });
 
 test.each([
-  { name: 'exact', answer, offered: true, action: false },
+  { name: 'exact', answer, offered: true, action: false, layout: true },
+  {
+    name: 'Markdown',
+    answer: answer.replaceAll('☐ ', '- [ ] '),
+    offered: true,
+    action: false,
+    layout: true,
+  },
   { name: 'not offered', answer, offered: false, action: false },
   {
     name: 'duplicate',
@@ -198,7 +213,7 @@ test.each([
         );
         const last = store.getSnapshot().sessions[0]?.messages.at(-1);
         expect(last?.content).toBe(scenario.answer);
-        if (scenario.name !== 'exact') {
+        if (!scenario.layout) {
           expect(last?.a2uiPresentation).toBeUndefined();
           expect(screen.queryByRole('tab', { name: '실내' })).toBeNull();
           return;
@@ -206,7 +221,9 @@ test.each([
         const root = last?.a2uiPresentation;
         if (root?.component !== 'Tabs')
           throw new Error('Expected owned native tabs');
-        expect(storeConversationA2UILayout(root, answer)).toBeUndefined();
+        expect(
+          storeConversationA2UILayout(root, scenario.answer),
+        ).toBeUndefined();
         const toggle = () => screen.getByLabelText('물병');
         expect(screen.getAllByText('물병')).toHaveLength(1);
         expect(screen.queryByText('☐ 물병')).toBeNull();
@@ -217,7 +234,7 @@ test.each([
         expect(screen.getByLabelText('모자')).toHaveProp('value', false);
         await fireEvent.press(screen.getByRole('tab', { name: '실내' }));
         expect(toggle()).toHaveProp('value', true);
-        expect(last?.content).toBe(answer);
+        expect(last?.content).toBe(scenario.answer);
         expect(plan.requests).toHaveLength(1);
       } finally {
         await view.unmount();
