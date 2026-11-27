@@ -4,6 +4,7 @@ import type { fixture } from './liveResponsesProtectedFixture';
 
 const expected = [
   'grant_lookup',
+  'owner_reproof',
   'data_open',
   'stock_read',
   'evidence_lookup',
@@ -60,6 +61,7 @@ export function liveCommonTimingFixture() {
           Number(samples().find(([, name]) => name === stage)?.[2]);
         // The protection wait belongs to the original composite interval,
         // but not to the stock tool's awaited search interval.
+        expect(duration('owner_reproof')).toBe(120);
         expect(duration('stock_read')).toBe(75);
         expect(duration('evidence_lookup')).toBe(195);
       } else if (mode === 'wrong-ack') {
