@@ -8,6 +8,8 @@ export const appearanceEditorStyles = StyleSheet.create({
     flexGrow: 1,
     padding: 24,
     gap: 16,
+  },
+  onboardingContent: {
     width: '100%',
     maxWidth: 520,
     alignSelf: 'center',
