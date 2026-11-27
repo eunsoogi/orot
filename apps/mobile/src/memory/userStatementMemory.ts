@@ -14,7 +14,7 @@ function statementFromExplicitRequest(text: string): string | undefined {
 }
 
 /** Shared admission excludes quoted, hypothetical, third-party, private and opted-out claims. */
-function isSafeStatement(text: string): boolean {
+export function isSafeStatement(text: string): boolean {
   if (
     !isEligibleConversationMemorySource(text) ||
     text.length < 8 ||

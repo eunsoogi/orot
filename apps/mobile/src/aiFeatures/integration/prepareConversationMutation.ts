@@ -12,9 +12,18 @@ type Input = Parameters<typeof conversationMutationExecution>[0];
  * already visible archive and selected provider are independently current. */
 export async function prepareConversationMutation(
   signal: AbortSignal,
-  input: Input,
+  unprepared: Input,
 ) {
-  const { observer, selected } = input;
+  const { observer, selected } = unprepared;
+  // Unlike the existing narrow tool, never tell the model to nominate a broad
+  // note before this exact composer has a current separately enrolled grant.
+  const standingAuthoredNote =
+    !signal.aborted &&
+    (await observer?.hasStandingAuthoredNote?.().catch(() => false)) === true;
+  const input = {
+    ...unprepared,
+    standingAuthoredNote: standingAuthoredNote && !signal.aborted,
+  };
   const target = observer?.archivedAnswerMemoryTarget;
   const entry =
     typeof input.remoteMemory === 'object' ? input.remoteMemory : undefined;

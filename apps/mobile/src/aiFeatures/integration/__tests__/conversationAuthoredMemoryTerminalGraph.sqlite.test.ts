@@ -1,6 +1,8 @@
 import {
   interceptAuthoredMemoryCommit,
   standingAuthoredRoutineGraphFixture,
+  standingMemoryModes,
+  standingMemoryUtterance,
 } from '../testSupport/standingAuthoredRoutineGraphFixture';
 import { runMultiAgentWorkflow } from '@orot/agent-runtime';
 import { createManualHistoryRepository } from '@orot/storage';
@@ -9,7 +11,7 @@ import { createConversationArtifactStorage } from '../../../storage/conversation
 import { confirmAuthoredMemoryTerminal } from '../../../storage/conversationAuthoredMemoryTerminal';
 import { saveConversationHealthHistory } from '../../../storage/conversationHealthHistory';
 import { healthContextFixture } from '../testSupport/healthContextPersistenceFixture';
-import { conversationMutationExecution } from '../conversationMutationExecution';
+import { prepareConversationMutation } from '../prepareConversationMutation';
 import { LocalEvidenceReferenceRegistry } from '../evidenceRegistry';
 import { executionOptions } from '../featureServiceExecution';
 import {
@@ -33,9 +35,7 @@ const tests = [
   'locked-in-transaction',
   'wrong-text',
   'wrong-proof',
-  'standing-success',
-  'standing-opted-out',
-  'standing-revoked',
+  ...standingMemoryModes,
 ] as const;
 
 test.each(tests)(
@@ -44,7 +44,7 @@ test.each(tests)(
     const f = await healthContextFixture();
     try {
       const standing = mode.startsWith('standing-');
-      const authored = standing ? '매일 피아노를 연습해요' : statement;
+      const authored = standing ? standingMemoryUtterance(mode) : statement;
       const prompt = standing ? authored : request;
       const storage = createConversationArtifactStorage(f.database);
       await storage.createSession(sessionId, await storage.currentGeneration());
@@ -83,7 +83,7 @@ test.each(tests)(
           signal: AbortSignal,
         ) =>
           (async () => {
-            if (mode === 'standing-revoked') await standingTask?.revoke();
+            if (mode.endsWith('-revoked')) await standingTask?.revoke();
             return saveConversationHealthHistory(database, input, signal);
           })(),
       );
@@ -98,7 +98,7 @@ test.each(tests)(
         mode === 'wrong-text' ? 'A different invented sentence.' : authored,
       );
       const providerId = provider.id;
-      type Mutation = Parameters<typeof conversationMutationExecution>[0];
+      type Mutation = Parameters<typeof prepareConversationMutation>[1];
       const selected = {
         status: 'ready',
         selection: { providerId, modelId },
@@ -117,54 +117,59 @@ test.each(tests)(
         consentPurpose: 'record_conversation',
         tools: [],
       });
-      const mutation = conversationMutationExecution({
-        baseExecution,
-        photo: undefined,
-        photoEvidence: undefined,
-        selected,
-        data: {
-          saveConversationHistory: persist,
-          confirmAuthoredMemoryTerminal: confirm,
-        } as unknown as AiFeatureLocalData,
-        registry,
-        observer: {
-          inputOrigin: 'composer',
-          retentionSession: { id: sessionId, version: 0 },
-          retentionRequestId: requestId,
-          confirmHistorySave: approve,
-          ...(standing
-            ? {
-                authorizeStandingAuthoredMemory:
-                  standingTask?.observer?.authorizeStandingAuthoredMemory ??
-                  (async () => undefined),
-              }
-            : {}),
-          templateProposalOwner: {
-            providerId:
-              mode === 'wrong-proof' ? 'chatgpt-plan:other' : providerId,
-            modelId,
-            current: () => ownerCurrent,
-            recheck: async () => ownerCurrent,
-            watch: dispose => {
-              watching = dispose;
-              return () => {
-                watching = undefined;
-              };
+      const mutation = await prepareConversationMutation(
+        new AbortController().signal,
+        {
+          baseExecution,
+          photo: undefined,
+          photoEvidence: undefined,
+          selected,
+          data: {
+            saveConversationHistory: persist,
+            confirmAuthoredMemoryTerminal: confirm,
+          } as unknown as AiFeatureLocalData,
+          registry,
+          observer: {
+            inputOrigin: 'composer',
+            retentionSession: { id: sessionId, version: 0 },
+            retentionRequestId: requestId,
+            confirmHistorySave: approve,
+            ...(standing
+              ? {
+                  hasStandingAuthoredNote:
+                    standingTask?.observer?.hasStandingAuthoredNote,
+                  authorizeStandingAuthoredMemory:
+                    standingTask?.observer?.authorizeStandingAuthoredMemory ??
+                    (async () => undefined),
+                }
+              : {}),
+            templateProposalOwner: {
+              providerId:
+                mode === 'wrong-proof' ? 'chatgpt-plan:other' : providerId,
+              modelId,
+              current: () => ownerCurrent,
+              recheck: async () => ownerCurrent,
+              watch: dispose => {
+                watching = dispose;
+                return () => {
+                  watching = undefined;
+                };
+              },
             },
           },
+          question: prompt,
+          history: {
+            messages: [],
+            reports: [],
+            references: [],
+            sources: [],
+            priorTurns: [],
+            omitted: false,
+            excludedQuestions: [],
+          },
+          remoteAnswerMemory: true,
         },
-        question: prompt,
-        history: {
-          messages: [],
-          reports: [],
-          references: [],
-          sources: [],
-          priorTurns: [],
-          omitted: false,
-          excludedQuestions: [],
-        },
-        remoteAnswerMemory: true,
-      });
+      );
       const actions =
         'actions' in mutation.execution ? mutation.execution.actions : [];
       if (mode === 'wrong-proof') {
@@ -202,8 +207,7 @@ test.each(tests)(
             ? mutation.execution.confirmTerminalLocalAction
             : undefined,
       });
-      expect(requests).toHaveLength(1);
-      expect(opening).not.toHaveBeenCalled();
+      expect([requests.length, opening.mock.calls.length]).toEqual([1, 0]);
       expect(
         requests[0]?.messages.some(
           message =>
@@ -214,7 +218,7 @@ test.each(tests)(
         expect(JSON.stringify(requests[0])).not.toContain(marker);
       const notes = createManualHistoryRepository(f.database);
       if (standing) expect(approve).not.toHaveBeenCalled();
-      if (mode === 'success' || mode === 'standing-success') {
+      if (mode === 'success' || mode.endsWith('-success')) {
         expect(result).toMatchObject({
           status: 'result',
           citations: [],
@@ -234,9 +238,7 @@ test.each(tests)(
         expect(await notes.list()).toEqual([]);
         expect(confirm).not.toHaveBeenCalled();
         expect(persist).toHaveBeenCalledTimes(
-          mode === 'locked-in-transaction' || mode === 'standing-revoked'
-            ? 1
-            : 0,
+          mode === 'locked-in-transaction' || mode.endsWith('-revoked') ? 1 : 0,
         );
       }
       mutation.disposeAnswerMemory();

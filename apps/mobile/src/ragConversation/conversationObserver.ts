@@ -73,6 +73,8 @@ export type RagConversationObserver = Pick<
     | import('../storage/standingAuthoredMemoryApproval').StandingAuthoredMemoryApproval
     | undefined
   >;
+  /** Pre-dispatch capability advertisement only; the protected writer separately rechecks. */
+  readonly hasStandingAuthoredNote?: () => Promise<boolean>;
   readonly bindOrdinaryMemorySidecar?: (
     operationRunId: string,
     owner: NonNullable<RagConversationObserver['templateProposalOwner']>,

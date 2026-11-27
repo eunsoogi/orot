@@ -1,7 +1,8 @@
 import {
-  isExactStandingAuthoredMemorySentence,
-  type StandingAuthoredMemoryApproval,
-} from '../../storage/standingAuthoredMemoryApproval';
+  authoredMemoryToolDescription,
+  authoredMemoryToolParser,
+} from './conversationAuthoredMemoryToolDescription';
+import type { StandingAuthoredMemoryApproval } from '../../storage/standingAuthoredMemoryApproval';
 import { APPLE_PROVIDER_ID } from '@orot/provider-apple';
 import { observeAnswerMemoryProviderOwner } from './conversationAnswerMemoryProviderOwner';
 import type {
@@ -18,7 +19,6 @@ type ConfirmTerminal = NonNullable<
 >;
 const actionId = 'remember-current-user-statement';
 import type { RagConversationObserver } from '../../ragConversation/service';
-import { exactAuthoredMemorySentence } from '../../storage/authoredMemorySelection';
 import type { AiFeatureLocalData } from './localData';
 
 export function conversationAuthoredMemoryAction(input: {
@@ -26,13 +26,13 @@ export function conversationAuthoredMemoryAction(input: {
   observer?: RagConversationObserver;
   question: string;
   standing?: RagConversationObserver['authorizeStandingAuthoredMemory'];
+  generalStanding?: boolean;
   terminal?: {
     owner: NonNullable<RagConversationObserver['templateProposalOwner']>;
     runId: string;
   };
 }) {
   const { data, observer, question, terminal, standing } = input;
-  // The standing terminal never resumes under the old per-item consent descriptor.
   const actionVersion = standing ? '2' : '1';
   const owner = observer?.retentionSession;
   const requestId = observer?.retentionRequestId;
@@ -85,20 +85,11 @@ export function conversationAuthoredMemoryAction(input: {
     !data.saveConversationHistory
   )
     return result;
-  const exact = standing
-    ? isExactStandingAuthoredMemorySentence
-    : exactAuthoredMemorySentence;
-  const parse = (value: unknown) => {
-    if (
-      !value ||
-      typeof value !== 'object' ||
-      Object.keys(value).length !== 1 ||
-      !('statement' in value) ||
-      !exact(question, value.statement)
-    )
-      return undefined;
-    return { statement: value.statement };
-  };
+  const parse = authoredMemoryToolParser(
+    question,
+    !!standing,
+    input.generalStanding === true,
+  );
   const current = (
     signal: AbortSignal,
     guard?: NonNullable<typeof approved>['guard'],
@@ -148,9 +139,10 @@ export function conversationAuthoredMemoryAction(input: {
     id: actionId,
     version: actionVersion,
     ...(terminal ? { completion: 'host_terminal' as const } : {}),
-    description: standing
-      ? 'Use only to retain one useful standing reply preference or recurring non-sensitive practice directly stated in the current user message. No remember command is required. Copy its exact complete sentence, never prior turns, questions, speculation, quotes, secrets or other categories. Local Settings permission is checked separately. Never claim a save without the host receipt.'
-      : 'Use only when the current user explicitly asks to remember a fact, plan, practice, project, goal or preference they directly state in this same message. Copy exactly one complete factual sentence from the current user message; never copy the request to save, filler, prior replies, quoted text, questions, guesses or credentials. The app displays the exact sentence for local approval. Never claim it was saved without a successful tool result.',
+    description: authoredMemoryToolDescription(
+      Boolean(standing),
+      input.generalStanding === true,
+    ),
     inputSchema: {
       type: 'object',
       properties: {

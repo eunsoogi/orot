@@ -42,6 +42,8 @@ export function SettingsMemoryRoute({
                 <View style={styles.divider} />
                 <SettingsAutomaticMemorySection ownership={ownership} routine />
                 <View style={styles.divider} />
+                <SettingsAutomaticMemorySection ownership={ownership} general />
+                <View style={styles.divider} />
                 <SettingsDailyReportMemorySection ownership={ownership} />
               </View>
             </View>

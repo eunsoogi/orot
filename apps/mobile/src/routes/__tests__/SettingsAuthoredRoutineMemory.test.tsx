@@ -9,14 +9,19 @@ import {
   setGenericPassword,
   STORAGE_TYPE,
 } from 'react-native-keychain';
-import { Alert, View } from 'react-native';
+import { Alert } from 'react-native';
 import { openSqliteTestDatabase } from '../../../../../packages/storage/__tests__/sqliteTestDatabase';
 import {
   authoredRoutineMemoryDeviceOwner,
+  authoredNoteMemoryDeviceOwner,
   captureOrdinaryConversationMemoryAdmission,
 } from '../../storage/ordinaryConversationMemoryDeviceOwner';
 import { openLocalAgentMemoryDatabase } from '../../storage/secureDatabase';
-import { SettingsAutomaticMemorySection } from '../SettingsAutomaticMemorySection';
+import { SettingsMemoryRoute } from '../SettingsMemoryRoute';
+
+jest.mock('../SettingsDailyReportMemorySection', () => ({
+  SettingsDailyReportMemorySection: () => null,
+}));
 
 jest.mock('react-native-keychain', () => ({
   ACCESSIBLE: { WHEN_UNLOCKED_THIS_DEVICE_ONLY: 'device-only' },
@@ -55,12 +60,7 @@ test('the distinct routine switch starts off and does not silently authorize whe
     );
   jest.mocked(openLocalAgentMemoryDatabase).mockResolvedValue(fixture.database);
   try {
-    const component = await render(
-      <View>
-        <SettingsAutomaticMemorySection ownership={owner} />
-        <SettingsAutomaticMemorySection ownership={owner} routine />
-      </View>,
-    );
+    const component = await render(<SettingsMemoryRoute ownership={owner} />);
     try {
       expect(
         (await screen.findByTestId('settings-routine-memory-toggle')).props
@@ -106,6 +106,12 @@ test('the distinct routine switch starts off and does not silently authorize whe
       );
       const granted = await authoredRoutineMemoryDeviceOwner.captureAdmission();
       expect(granted?.scope).toBe('authored-routine');
+      expect(
+        screen.getByTestId('settings-authored-note-memory-toggle').props.value,
+      ).toBe(false);
+      expect(
+        await authoredNoteMemoryDeviceOwner.captureAdmission(),
+      ).toBeUndefined();
       expect(write.mock.lastCall?.[2]).toMatchObject({
         service: consentService,
         accessible: 'device-only',
@@ -126,6 +132,35 @@ test('the distinct routine switch starts off and does not silently authorize whe
       );
       expect(screen.queryByText('습관 자동 저장 꺼짐')).toBeNull();
       expect(granted?.isCurrent()).toBe(false);
+      await fireEvent(
+        screen.getByTestId('settings-authored-note-memory-toggle'),
+        'valueChange',
+        true,
+      );
+      await waitFor(() =>
+        expect(
+          screen.getByTestId('settings-authored-note-memory-toggle').props
+            .value,
+        ).toBe(true),
+      );
+      const general = await authoredNoteMemoryDeviceOwner.captureAdmission();
+      expect(general?.scope).toBe('authored-note');
+      expect(write.mock.lastCall?.[2]).toMatchObject({
+        service: 'com.orot.mobile.authored-note-memory-authority.v1',
+        accessible: 'device-only',
+      });
+      await fireEvent(
+        screen.getByTestId('settings-authored-note-memory-toggle'),
+        'valueChange',
+        false,
+      );
+      await waitFor(() =>
+        expect(
+          screen.getByTestId('settings-authored-note-memory-toggle').props
+            .value,
+        ).toBe(false),
+      );
+      expect(general?.isCurrent()).toBe(false);
       expect(
         (await captureOrdinaryConversationMemoryAdmission())?.isCurrent(),
       ).toBe(true);

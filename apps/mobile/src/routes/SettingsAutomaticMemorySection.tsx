@@ -9,7 +9,10 @@ import { AppText as Text } from '../layout/AppText';
 import { appColors } from '../layout/appColors';
 import type { NavigationRouteOwnership } from '../navigation/navigationRouteContracts';
 
-type MemorySettingsKeys = 'settings.automaticMemory' | 'settings.routineMemory';
+type MemorySettingsKeys =
+  | 'settings.automaticMemory'
+  | 'settings.routineMemory'
+  | 'settings.authoredNoteMemory';
 
 type DeviceModule =
   typeof import('../storage/ordinaryConversationMemoryDeviceOwner');
@@ -39,16 +42,22 @@ const isError = (status: Status) =>
 export function SettingsAutomaticMemorySection({
   ownership,
   routine = false,
+  general = false,
 }: {
   readonly ownership?: NavigationRouteOwnership;
   readonly routine?: boolean;
+  readonly general?: boolean;
 }) {
-  const settingsKey = routine
-    ? 'settings.routineMemory'
-    : 'settings.automaticMemory';
-  const testId = routine
-    ? 'settings-routine-memory'
-    : 'settings-automatic-memory';
+  const settingsKey = general
+    ? 'settings.authoredNoteMemory'
+    : routine
+      ? 'settings.routineMemory'
+      : 'settings.automaticMemory';
+  const testId = general
+    ? 'settings-authored-note-memory'
+    : routine
+      ? 'settings-routine-memory'
+      : 'settings-automatic-memory';
   const [status, setStatus] = useState<Status>('checking');
   const routeOwner = useRef<{
     connection?: Connection;
@@ -75,12 +84,14 @@ export function SettingsAutomaticMemorySection({
           const ports =
             require('../storage/ordinaryConversationMemoryDeviceOwner') as DeviceModule;
           if (!live()) return;
-          const api = routine
-            ? ports.authoredRoutineMemoryDeviceOwner
-            : {
-                openOwner: ports.openOrdinaryConversationMemoryOwner,
-                readSettings: ports.readOrdinaryConversationMemorySettings,
-              };
+          const api = general
+            ? ports.authoredNoteMemoryDeviceOwner
+            : routine
+              ? ports.authoredRoutineMemoryDeviceOwner
+              : {
+                  openOwner: ports.openOrdinaryConversationMemoryOwner,
+                  readSettings: ports.readOrdinaryConversationMemorySettings,
+                };
           const owner = await api.openOwner();
           if (!live()) return;
           const read = () => api.readSettings(owner);
@@ -113,7 +124,7 @@ export function SettingsAutomaticMemorySection({
       if (routeOwner.current === scope) routeOwner.current = null;
       unsubscribe();
     };
-  }, [ownership, routine]);
+  }, [ownership, routine, general]);
 
   const change = (enabled: boolean) => {
     const scope = routeOwner.current;

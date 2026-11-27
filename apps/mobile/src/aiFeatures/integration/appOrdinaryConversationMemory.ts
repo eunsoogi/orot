@@ -8,6 +8,8 @@ export const appOrdinaryConversationMemory: OrdinaryConversationMemoryPort = {
     // async DB lookup; a dynamic import here would open a grant-change gap.
     const owner =
       require('../../storage/ordinaryConversationMemoryDeviceOwner') as typeof import('../../storage/ordinaryConversationMemoryDeviceOwner');
+    if (scope === 'authored-note')
+      return owner.authoredNoteMemoryDeviceOwner.captureAdmission();
     return scope === 'authored-routine'
       ? owner.authoredRoutineMemoryDeviceOwner.captureAdmission()
       : owner.captureOrdinaryConversationMemoryAdmission();

@@ -1,3 +1,4 @@
+import { isWholeStandingAuthoredNote } from '../memory/authoredNoteMemory';
 import type { CapturedOrdinaryConversationMemory } from '../storage/ordinaryConversationMemoryNote';
 import type { LocalConversationMemoryScope } from '../storage/ordinaryConversationMemoryEnrollment';
 import {
@@ -19,22 +20,28 @@ export function createStandingAuthoredMemoryAdmission(input: {
     statement: string,
     signal: AbortSignal,
   ): Promise<StandingAuthoredMemoryApproval | undefined> => {
-    const scope = standingAuthoredMemoryScope(input.question, statement);
+    const narrow = standingAuthoredMemoryScope(input.question, statement);
+    const scopes: LocalConversationMemoryScope[] = narrow ? [narrow] : [];
+    if (isWholeStandingAuthoredNote(input.question, statement))
+      scopes.push('authored-note');
     const eligible = () => !signal.aborted && input.eligible();
-    if (!scope || !eligible()) return;
-    const receipt = await input.lookup(scope);
-    if (
-      !eligible() ||
-      !receipt?.isCurrent() ||
-      (receipt.scope ?? 'reply-preferences') !== scope
-    )
-      return;
-    input.claim();
-    return {
-      scope,
-      generation: receipt.generation,
-      deviceEpoch: receipt.deviceEpoch,
-      current: () => input.current() && !signal.aborted && receipt.isCurrent(),
-    };
+    for (const scope of scopes) {
+      if (!eligible()) return;
+      const receipt = await input.lookup(scope);
+      if (
+        !eligible() ||
+        !receipt?.isCurrent() ||
+        (receipt.scope ?? 'reply-preferences') !== scope
+      )
+        continue;
+      input.claim();
+      return {
+        scope,
+        generation: receipt.generation,
+        deviceEpoch: receipt.deviceEpoch,
+        current: () =>
+          input.current() && !signal.aborted && receipt.isCurrent(),
+      };
+    }
   };
 }
