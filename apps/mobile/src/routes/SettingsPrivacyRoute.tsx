@@ -8,13 +8,20 @@ import { useNavigationLeaveStateRegistration } from '../navigation';
 import { useNavigationEdgeVerticalScroll } from '../navigation/navigationEdgeScroll';
 import { useNavigationContentInset } from '../navigation/useNavigationContentInset';
 import { settingsListColors } from './settingsListColors';
-import { SettingsInformationButton } from './SettingsInformationButton';
+import { SettingsPermissionRow } from './SettingsPermissionRow';
 import { InferenceConsentSettings } from '../agent/execution/InferenceConsentSettings';
+import type { CalendarAutoSyncActions } from '../calendar/useCalendarAutoSync';
+import { SettingsCalendarSyncSection } from './SettingsCalendarSyncSection';
+import { SettingsHealthConnectionSection } from './SettingsHealthConnectionSection';
 
 /** Measures privacy panels while keeping OS-owned permissions and consent scope explicit. */
 export function SettingsPrivacyRoute({
   policy = false,
-}: { readonly policy?: boolean } = {}) {
+  calendarSync,
+}: {
+  readonly policy?: boolean;
+  readonly calendarSync?: CalendarAutoSyncActions;
+} = {}) {
   const navigationInset = useNavigationContentInset();
   // This page owns the scroll viewport; the panels retain their readable inset.
   const edge = useNavigationEdgeVerticalScroll({
@@ -72,29 +79,36 @@ export function SettingsPrivacyRoute({
                   style={styles.section}
                   testID="settings-privacy-permissions"
                 >
-                  <PermissionRow
+                  <SettingsPermissionRow
                     testID="privacy-microphone-information"
                     summary={t('settings.permission.microphone')}
                     title={t('settings.permission.microphoneTitle')}
                   />
-                  <PermissionRow
+                  <SettingsPermissionRow
                     testID="privacy-speech-information"
                     summary={t('settings.permission.speechRecognition')}
                     title={t('settings.permission.speechRecognitionTitle')}
                   />
-                  <PermissionRow
+                  <SettingsPermissionRow
                     detail={t('healthkit.commonObservations.localOnly')}
                     testID="privacy-health-information"
                     summary={t('settings.permission.healthData')}
                     title={t('settings.healthPrivacy')}
                   />
-                  <PermissionRow
+                  <SettingsPermissionRow
                     detail={t('calendar.permissionExplanation')}
                     testID="privacy-calendar-information"
                     summary={t('settings.permission.calendar')}
                     title={t('settings.calendarPrivacy')}
                   />
                 </View>
+                <SettingsHealthConnectionSection />
+                {calendarSync ? (
+                  <SettingsCalendarSyncSection
+                    sync={calendarSync}
+                    mode="permission"
+                  />
+                ) : null}
                 <Pressable
                   accessibilityState={{ disabled: isClearingConsent }}
                   accessibilityRole="button"
@@ -158,29 +172,6 @@ export function SettingsPrivacyRoute({
   );
 }
 
-function PermissionRow({
-  detail,
-  summary,
-  testID,
-  title,
-}: {
-  readonly detail?: string;
-  readonly summary: string;
-  readonly testID: string;
-  readonly title: string;
-}) {
-  return (
-    <View style={[styles.row, styles.permissionRow]}>
-      <Text style={styles.rowTitle}>{title}</Text>
-      <SettingsInformationButton
-        title={title}
-        message={detail ? `${summary}\n\n${detail}` : summary}
-        testID={testID}
-      />
-    </View>
-  );
-}
-
 const styles = StyleSheet.create({
   scrollView: { flex: 1 },
   container: {
@@ -199,17 +190,6 @@ const styles = StyleSheet.create({
     borderWidth: 0,
     paddingHorizontal: 16,
   },
-  row: {
-    minHeight: 48,
-    gap: 8,
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  permissionRow: {
-    borderBottomColor: settingsListColors.separator,
-    borderBottomWidth: StyleSheet.hairlineWidth,
-  },
-  rowTitle: { flex: 1, color: appColors.text, fontSize: 16 },
   externalSection: {
     backgroundColor: settingsListColors.row,
     borderRadius: 18,

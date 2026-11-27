@@ -1,7 +1,10 @@
 import { useLayoutEffect, useRef, useState } from 'react';
 import { Pressable, StyleSheet, Switch } from 'react-native';
 import { t } from '../i18n';
-import { SettingsMemoryControl } from './SettingsMemoryControl';
+import {
+  SettingsMemoryControl,
+  settingsMemorySwitchStyle,
+} from './SettingsMemoryControl';
 import { AppText as Text } from '../layout/AppText';
 import { appColors } from '../layout/appColors';
 import type { NavigationRouteOwnership } from '../navigation/navigationRouteContracts';
@@ -158,6 +161,7 @@ export function SettingsAutomaticMemorySection({
       control={
         available || writing ? (
           <Switch
+            style={settingsMemorySwitchStyle}
             accessibilityLabel={t(`${settingsKey}.title`)}
             testID={`${testId}-toggle`}
             accessibilityState={{ disabled: writing }}

@@ -204,7 +204,7 @@ export const healthkitSettingsKo = {
   'settings.dailyReminder.cancel': '취소',
   'settings.dailyReminder.saveTime': '시간 저장',
   'settings.dailyReminder.enableWithTime': '시간을 저장하고 알림 켜기',
-  'settings.syncStatus.title': '권한 및 동기화 상태',
+  'settings.syncStatus.title': '동기화',
   'settings.syncStatus.healthData': '건강 기록',
   'settings.syncStatus.noSelection':
     '자동 동기화할 건강 기록이 선택되지 않았어요.',

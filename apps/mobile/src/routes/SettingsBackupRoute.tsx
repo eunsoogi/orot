@@ -25,7 +25,6 @@ export function SettingsBackupRoute({
   const edge = useNavigationEdgeVerticalScroll({
     trailingPadding: navigationInset.paddingRight ?? 0,
   });
-  const [settingsError, setSettingsError] = useState(false);
   useNavigationLeaveStateRegistration({
     canLeave: true,
     hasUnsavedChanges: false,
@@ -35,12 +34,6 @@ export function SettingsBackupRoute({
     revision: 0,
     inputRevision: 0,
   });
-
-  function openSystemSettings() {
-    setSettingsError(false);
-    // iOS owns the cloud-backup truth, so this opens its app settings page.
-    return Linking.openSettings().catch(() => setSettingsError(true));
-  }
 
   return (
     <ScrollView
@@ -64,52 +57,64 @@ export function SettingsBackupRoute({
               {t('backup.pageTitle')}
             </Text>
             <Text style={styles.subtitle}>{t('backup.pageDescription')}</Text>
-            <View style={styles.section} testID="settings-backup-status-panel">
-              <Text style={styles.sectionTitle}>
-                {t('backup.localPreparation')}
-              </Text>
-              <BackupStatusRecovery state={state} onRetry={onPrepare} />
-            </View>
-            <View
-              style={styles.section}
-              testID="settings-backup-recovery-panel"
-            >
-              <View style={styles.recoveryStatus}>
-                <Text style={styles.sectionTitle}>
-                  {t('backup.recoveryStatus')}
-                </Text>
-                <Text
-                  style={styles.statusValue}
-                  testID="settings-backup-recovery-state"
-                >
-                  {t('backup.recoveryNotChecked')}
-                </Text>
-              </View>
-              <Text style={styles.body}>{t('backup.icloudGuidance')}</Text>
-              <Pressable
-                accessibilityRole="button"
-                onPress={openSystemSettings}
-                style={styles.settingsAction}
-                testID="backup-open-system-settings"
-              >
-                <Text style={styles.actionTitle}>
-                  {t('backup.openSettings')}
-                </Text>
-                <Text accessibilityElementsHidden style={styles.chevron}>
-                  ›
-                </Text>
-              </Pressable>
-              {settingsError ? (
-                <Text accessibilityRole="alert" style={styles.error}>
-                  {t('settings.openSystemSettingsError')}
-                </Text>
-              ) : null}
-            </View>
+            <SettingsBackupSections state={state} onPrepare={onPrepare} />
           </View>
         }
         testID="settings-backup-layout"
       />
     </ScrollView>
+  );
+}
+
+/** Backup preparation stays app-owned; iCloud recovery stays in iOS Settings. */
+export function SettingsBackupSections({
+  state,
+  onPrepare,
+}: SettingsBackupRouteProps) {
+  const [settingsError, setSettingsError] = useState(false);
+  function openSystemSettings() {
+    setSettingsError(false);
+    return Linking.openSettings().catch(() => setSettingsError(true));
+  }
+  return (
+    <>
+      <View style={styles.section} testID="settings-backup-status-panel">
+        <Text style={styles.sectionTitle}>{t('backup.localPreparation')}</Text>
+        <BackupStatusRecovery state={state} onRetry={onPrepare} />
+      </View>
+      <View style={styles.section} testID="settings-backup-recovery-panel">
+        <View style={styles.recoveryStatus}>
+          <Text style={styles.sectionTitle}>{t('backup.recoveryStatus')}</Text>
+          <Text
+            style={styles.statusValue}
+            testID="settings-backup-recovery-state"
+          >
+            {t('backup.recoveryNotChecked')}
+          </Text>
+        </View>
+        <Text style={styles.body}>{t('backup.icloudGuidance')}</Text>
+        <Pressable
+          accessibilityRole="button"
+          onPress={openSystemSettings}
+          style={styles.settingsAction}
+          testID="backup-open-system-settings"
+        >
+          <Text style={styles.actionTitle}>{t('backup.openSettings')}</Text>
+          <Text accessibilityElementsHidden style={styles.chevron}>
+            ›
+          </Text>
+        </Pressable>
+        {settingsError ? (
+          <Text
+            accessibilityRole="alert"
+            style={styles.error}
+            testID="backup-open-system-settings-error"
+          >
+            {t('settings.openSystemSettingsError')}
+          </Text>
+        ) : null}
+      </View>
+    </>
   );
 }
 

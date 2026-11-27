@@ -38,6 +38,9 @@ export function SettingsMemoryControl({
     </View>
   );
 }
+// React Native's iOS Switch sets alignSelf to flex-start, which overrides the row's alignment.
+export const settingsMemorySwitchStyle = { alignSelf: 'center' } as const;
+
 const styles = StyleSheet.create({
   section: { paddingHorizontal: 16, paddingVertical: 10, gap: 4 },
   row: { minHeight: 44, flexDirection: 'row', alignItems: 'center', gap: 8 },

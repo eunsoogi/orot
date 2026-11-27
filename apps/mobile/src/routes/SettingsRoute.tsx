@@ -7,7 +7,6 @@ import { useNavigationLeaveStateRegistration } from '../navigation';
 import type { SelectedAiResolverOptions } from '../aiFeatures/integration/provider';
 import { NAVIGATION_CONTENT_GAP } from '../navigation/navigationLayout';
 import { SettingsRouteAppInfo, SettingsRouteRow } from './SettingsRouteRows';
-import { settingsListColors } from './settingsListColors';
 import { processDiagnosticWitnessEnabled } from '../providers/processDiagnosticWitness';
 import { ProcessDiagnosticWitnessSection } from './ProcessDiagnosticWitnessSection';
 
@@ -140,15 +139,16 @@ const styles = StyleSheet.create({
     alignSelf: 'center',
     width: '100%',
     maxWidth: 680,
-    gap: 12,
+    gap: 20,
     paddingHorizontal: 20,
-    paddingTop: 12,
+    paddingTop: 24,
     // The outer route scroller already supplies the navigation gap.
     paddingBottom: 28 - NAVIGATION_CONTENT_GAP,
   },
   title: { color: appColors.text, fontSize: 34, fontWeight: '700' },
   list: {
-    backgroundColor: settingsListColors.row,
+    // These groups use the same adaptive card surface as the Records tab.
+    backgroundColor: appColors.surface,
     borderRadius: 20,
     overflow: 'hidden',
   },

@@ -144,13 +144,15 @@ test('production backup route reflows by usable region and retains recovery acti
   const { rerender } = await render(renderApplication());
   await fireEvent.press(screen.getByTestId('settings-open-sync-status'));
   await screen.findByTestId('settings-sync-status-title');
-  await fireEvent.press(screen.getByTestId('settings-open-backup'));
+  expect(screen.queryByTestId('settings-open-backup')).toBeNull();
   await waitFor(() => {
-    expect(controller.getSnapshot().currentRoute.name).toBe('settings-backup');
+    expect(controller.getSnapshot().currentRoute.name).toBe(
+      'settings-sync-status',
+    );
   });
 
   const routeKey = controller.getSnapshot().currentRoute.key;
-  expect(screen.getByTestId('settings-backup-title')).toBeTruthy();
+  expect(screen.getByTestId('settings-sync-status-title')).toBeTruthy();
   expect(
     screen.queryByTestId(`navigation-route-columns-${routeKey}`),
   ).toBeNull();
@@ -180,12 +182,15 @@ test('production backup route reflows by usable region and retains recovery acti
     .spyOn(Linking, 'openSettings')
     .mockRejectedValue(new Error('Settings unavailable'));
   await fireEvent.press(screen.getByTestId('backup-open-system-settings'));
-  expect(await screen.findByRole('alert')).toBeTruthy();
+  expect(
+    await screen.findByTestId('backup-open-system-settings-error'),
+  ).toBeTruthy();
 
   const sensor = screen.getByTestId('navigation-window-geometry-sensor');
   const direction = () =>
-    StyleSheet.flatten(screen.getByTestId('settings-backup-layout').props.style)
-      ?.flexDirection;
+    StyleSheet.flatten(
+      screen.getByTestId('settings-sync-status-layout').props.style,
+    )?.flexDirection;
   await act(async () => {
     Dimensions.set({ window: viewport(900), screen: viewport(900) });
     await fireEvent(sensor, 'geometryChange', {
@@ -196,12 +201,16 @@ test('production backup route reflows by usable region and retains recovery acti
   for (const side of ['primary']) {
     expect(
       StyleSheet.flatten(
-        screen.getByTestId(`settings-backup-layout-${side}`).props.style,
+        screen.getByTestId(`settings-sync-status-layout-${side}`).props.style,
       )?.width,
     ).toBeGreaterThan(320);
   }
-  expect(screen.queryByTestId('settings-backup-layout-secondary')).toBeNull();
-  expect(await screen.findByRole('alert')).toBeTruthy();
+  expect(
+    screen.queryByTestId('settings-sync-status-layout-secondary'),
+  ).toBeNull();
+  expect(
+    await screen.findByTestId('backup-open-system-settings-error'),
+  ).toBeTruthy();
   expect(screen.getByTestId('backup-status-message')).toHaveTextContent(
     t('backup.status.recoveryRequired'),
   );
@@ -213,7 +222,9 @@ test('production backup route reflows by usable region and retains recovery acti
     });
   });
   expect(direction()).toBe('column');
-  expect(await screen.findByRole('alert')).toBeTruthy();
+  expect(
+    await screen.findByTestId('backup-open-system-settings-error'),
+  ).toBeTruthy();
 
   await act(async () => {
     Dimensions.set({
@@ -232,11 +243,7 @@ test('production backup route reflows by usable region and retains recovery acti
     expect(screen.getByTestId('navigation-back')).toBeEnabled(),
   );
   await fireEvent.press(screen.getByTestId('navigation-back'));
-  await waitFor(() =>
-    expect(screen.getByTestId('settings-sync-status-title')).toBeTruthy(),
-  );
-  expect(controller.getSnapshot().currentRoute.name).toBe(
-    'settings-sync-status',
-  );
-  expect(screen.getByTestId('settings-open-backup')).toBeTruthy();
+  await screen.findByTestId('settings-title');
+  expect(controller.getSnapshot().currentRoute.name).toBe('root');
+  expect(screen.queryByTestId('settings-open-backup')).toBeNull();
 });

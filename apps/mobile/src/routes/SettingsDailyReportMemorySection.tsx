@@ -2,7 +2,10 @@ import { useLayoutEffect, useRef, useState } from 'react';
 import { AppState, Switch } from 'react-native';
 import { t } from '../i18n';
 import { AppText } from '../layout/AppText';
-import { SettingsMemoryControl } from './SettingsMemoryControl';
+import {
+  SettingsMemoryControl,
+  settingsMemorySwitchStyle,
+} from './SettingsMemoryControl';
 import type { NavigationRouteOwnership } from '../navigation/navigationRouteContracts';
 
 type Ports = typeof import('../memory/openSavedGeneratedReportReferences');
@@ -116,6 +119,7 @@ export function SettingsDailyReportMemorySection({
       control={
         'enabled' in state ? (
           <Switch
+            style={settingsMemorySwitchStyle}
             testID="settings-daily-report-memory-toggle"
             accessibilityLabel={t('settings.dailyReportMemory.title')}
             disabled={state.kind === 'writing'}

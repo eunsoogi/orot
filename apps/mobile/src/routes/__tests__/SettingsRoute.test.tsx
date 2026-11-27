@@ -75,7 +75,13 @@ test('shows one compact list and preserves each Settings destination', async () 
   ).toBeTruthy();
   expect(screen.queryAllByTestId(/^settings-section-/)).toHaveLength(0);
   expect(screen.queryByText(t('settings.summary'))).toBeNull();
-  expect(screen.getByTestId('settings-destinations')).toBeTruthy();
+  for (const id of ['settings-destinations', 'settings-version-group']) {
+    expect(
+      StyleSheet.flatten(screen.getByTestId(id).props.style),
+    ).toMatchObject({
+      backgroundColor: appColors.surface,
+    });
+  }
   const destinations = within(screen.getByTestId('settings-destinations'));
   expect(
     destinations

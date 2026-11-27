@@ -1,13 +1,18 @@
 import { render, screen, within } from '@testing-library/react-native';
 import { StyleSheet, Switch } from 'react-native';
-import { SettingsMemoryControl } from '../SettingsMemoryControl';
+import {
+  SettingsMemoryControl,
+  settingsMemorySwitchStyle,
+} from '../SettingsMemoryControl';
 
 test('the title, separate info and native switch share the same vertically centered row', async () => {
   await render(
     <SettingsMemoryControl
       title="Test setting"
       description={['Information']}
-      control={<Switch testID="sample-switch" />}
+      control={
+        <Switch testID="sample-switch" style={settingsMemorySwitchStyle} />
+      }
       testID="sample"
     />,
   );
@@ -20,5 +25,7 @@ test('the title, separate info and native switch share the same vertically cente
     'Test setting',
   );
   expect(within(row).getByTestId('sample-info')).toBeVisible();
-  expect(within(row).getByTestId('sample-switch')).toBeVisible();
+  expect(
+    StyleSheet.flatten(within(row).getByTestId('sample-switch').props.style),
+  ).toMatchObject({ alignSelf: 'center' });
 });

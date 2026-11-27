@@ -21,8 +21,8 @@ export const appContentLayoutOwner: NavigationRouteLayoutPolicy<string> = (
   // Appointment entry routes share the screen that measures list and selected-detail panels.
   // Classification measures its overview and candidate panels from usable geometry.
   // The saved library owns a measured list and summary that share that usable geometry.
-  // Sync status measures its status and recovery panels against the actual usable regions.
-  // Health data settings pairs category choices with sync and permission status panels.
+  // Sync measures its status, backup and recovery panels against the actual usable regions.
+  // Health data settings owns its category selection and save controls.
   // Saved analysis and every conversation entry measure their own content inside the full usable lane.
   // Source detail measures its selector and saved-content panels against native usable regions.
   return route.name === 'settings-provider' ||
@@ -36,8 +36,6 @@ export const appContentLayoutOwner: NavigationRouteLayoutPolicy<string> = (
     route.name === 'saved-recordings' ||
     route.name === 'recent-records' ||
     route.name === 'medical-document-detail' ||
-    // Backup status and iCloud recovery guidance use the screen's measured regions as one layout.
-    route.name === 'settings-backup' ||
     route.name === 'visit-questions' ||
     // Literature search measures query and selected-source panels across the usable regions.
     route.name === 'external-evidence' ||

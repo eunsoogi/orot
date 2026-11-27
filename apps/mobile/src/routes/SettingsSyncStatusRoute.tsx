@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Linking, ScrollView, StyleSheet, View } from 'react-native';
+import { ScrollView, StyleSheet, View } from 'react-native';
 import type { HealthKitAutoSyncFeature } from '../healthkit/autoSyncCheckpoint';
 import type { HealthKitAutoSyncResult } from '../healthkit/autoSync';
 import {
@@ -7,14 +7,14 @@ import {
   loadLocalHealthKitAutoSyncStatus,
   syncLocalPreviouslyRequestedHealthKit,
 } from '../healthkit/autoSyncLocal';
-import { appColors } from '../layout/appColors';
+import { AppButton } from '../layout/AppButton';
 import { AdaptiveColumns } from '../layout/AdaptiveColumns';
 import { t } from '../i18n';
 import { useNavigationEdgeVerticalScroll } from '../navigation/navigationEdgeScroll';
 import { useNavigationContentInset } from '../navigation/useNavigationContentInset';
 import { useNavigationLeaveStateRegistration } from '../navigation';
-import { SettingsRouteRow } from './SettingsRouteRows';
-import { settingsListColors } from './settingsListColors';
+import { SettingsBackupSections } from './SettingsBackupRoute';
+import type { BackupPreparationDisplayState } from '../backup/useBackupPreparation';
 import type { CalendarAutoSyncActions } from '../calendar/useCalendarAutoSync';
 import {
   SettingsSyncStatusHealthPanel,
@@ -31,15 +31,15 @@ export function SettingsSyncStatusRoute({
   loadStatus = loadLocalHealthKitAutoSyncStatus,
   retrySync = syncLocalPreviouslyRequestedHealthKit,
   calendarSync,
-  onConfigureHealthData,
-  onOpenBackup,
+  backupState,
+  onPrepareBackup,
 }: {
   readonly loadSelection?: () => Promise<readonly HealthKitAutoSyncFeature[]>;
   readonly loadStatus?: () => Promise<AutoSyncSnapshot>;
   readonly retrySync?: () => Promise<HealthKitAutoSyncResult>;
   readonly calendarSync: CalendarAutoSyncActions;
-  readonly onConfigureHealthData?: () => void;
-  readonly onOpenBackup?: () => void;
+  readonly backupState?: BackupPreparationDisplayState;
+  readonly onPrepareBackup?: () => Promise<void>;
 }) {
   const inset = useNavigationContentInset();
   // This page owns the scroll viewport; the panels retain their readable inset.
@@ -52,8 +52,8 @@ export function SettingsSyncStatusRoute({
   const [snapshot, setSnapshot] = useState<AutoSyncSnapshot>(null);
   const [loadFailed, setLoadFailed] = useState(false);
   const [loaded, setLoaded] = useState(false);
+  const [loadRevision, setLoadRevision] = useState(0);
   const [retrying, setRetrying] = useState(false);
-  const [openSettingsError, setOpenSettingsError] = useState(false);
   const [retryOutcome, setRetryOutcome] = useState<
     HealthKitAutoSyncResult['status'] | null
   >(null);
@@ -64,6 +64,7 @@ export function SettingsSyncStatusRoute({
 
   useEffect(() => {
     let active = true;
+    setLoadFailed(false);
     Promise.all([loadSelection(), loadStatus()])
       .then(([features, status]) => {
         if (!active) return;
@@ -75,7 +76,7 @@ export function SettingsSyncStatusRoute({
     return () => {
       active = false;
     };
-  }, [loadSelection, loadStatus]);
+  }, [loadSelection, loadStatus, loadRevision]);
 
   useNavigationLeaveStateRegistration({
     canLeave: !retrying,
@@ -109,11 +110,6 @@ export function SettingsSyncStatusRoute({
     }
   }
 
-  function openSystemSettings() {
-    setOpenSettingsError(false);
-    Linking.openSettings().catch(() => setOpenSettingsError(true));
-  }
-
   const message = !loaded
     ? t(
         loadFailed
@@ -143,32 +139,31 @@ export function SettingsSyncStatusRoute({
               calendarSync={calendarSync}
               loadFailed={loadFailed}
               message={message}
-              onOpenSystemSettings={openSystemSettings}
               retryReadbackFailed={retryReadbackFailed}
               selected={selected}
               snapshot={snapshot}
             />
+            {loadFailed ? (
+              <AppButton
+                onPress={() => setLoadRevision(value => value + 1)}
+                title={t('appointments.retry')}
+                testID="health-data-status-retry"
+                variant="secondary"
+              />
+            ) : null}
             <SettingsSyncStatusRecoveryPanel
               hasSelection={selected.length > 0}
               loaded={loaded}
-              onConfigureHealthData={onConfigureHealthData}
-              onOpenSystemSettings={openSystemSettings}
               onRetry={() => {
                 retry();
               }}
-              openSettingsError={openSettingsError}
               retrying={retrying}
             />
-            {onOpenBackup ? (
-              <View style={styles.backup}>
-                <SettingsRouteRow
-                  symbol="externaldrive"
-                  title={t('backup.pageTitle')}
-                  onPress={onOpenBackup}
-                  testID="settings-open-backup"
-                  last
-                />
-              </View>
+            {backupState !== undefined && onPrepareBackup ? (
+              <SettingsBackupSections
+                state={backupState}
+                onPrepare={onPrepareBackup}
+              />
             ) : null}
           </View>
         }
@@ -180,15 +175,9 @@ export function SettingsSyncStatusRoute({
 
 const styles = StyleSheet.create({
   scroll: { flex: 1 },
-  backup: {
-    backgroundColor: settingsListColors.row,
-    borderRadius: 18,
-    overflow: 'hidden',
-  },
   pageSections: { gap: 16 },
   container: {
     flexGrow: 1,
-    backgroundColor: appColors.background,
     paddingHorizontal: 20,
     paddingTop: 16,
     paddingBottom: 32,

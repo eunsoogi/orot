@@ -125,7 +125,7 @@ final class SettingsSyncStatusDuoUITests: OrotFailFastTestCase {
         FormUITestConditions.reveal(retry, in: app, scrollID: "settings-sync-status-scroll")
         XCTAssertTrue(retry.isHittable && retry.isEnabled, app.debugDescription)
         // Inspect the retry affordance without starting another HealthKit operation.
-        XCTAssertTrue(node(app, "settings-sync-open-system-settings").exists, app.debugDescription)
+        XCTAssertFalse(node(app, "settings-sync-open-system-settings").exists, app.debugDescription)
     }
 
     @MainActor
