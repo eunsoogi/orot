@@ -211,3 +211,39 @@ test.each(['lock', 'destination replacement'] as const)(
     }
   },
 );
+test('accepted group shows one sending row and immediately releases the exact submitted editor', async () => {
+  const f = await directPhotoComposerFixture({ hold: true });
+  const mounted = await render(f.view);
+  try {
+    jest.mocked(ports.pick).mockResolvedValue([first, second]);
+    await attach();
+    await fireEvent.changeText(
+      screen.getByTestId('rag-conversation-input'),
+      'Original group caption',
+    );
+    expect(screen.getByTestId('rag-conversation-input').props.value).toBe(
+      'Original group caption',
+    );
+    await send();
+    expect(screen.queryByTestId('conversation-photo-consent')).toBeNull();
+    await waitFor(() => expect(f.start).toHaveBeenCalledTimes(1));
+    expect(screen.getByTestId('rag-conversation-input').props.value).toBe('');
+    expect(screen.getAllByText('Original group caption')).toHaveLength(1);
+    expect(screen.getAllByTestId('conversation-sent-photo-image')).toHaveLength(
+      2,
+    );
+    expect(screen.getAllByText(/전송 중/u)).toHaveLength(1);
+    expect(
+      screen.queryByText('사진을 안전하게 전송할 준비를 하고 있어요.'),
+    ).toBeNull();
+    await fireEvent.press(screen.getByTestId('rag-conversation-cancel'));
+    await waitFor(() => expect(f.cancel).toHaveBeenCalledWith('image-request'));
+    expect(screen.getByTestId('rag-conversation-input').props.value).toBe(
+      'Original group caption',
+    );
+    expect(screen.queryByText(/전송 중/u)).toBeNull();
+  } finally {
+    await mounted.unmount();
+    f.close();
+  }
+});

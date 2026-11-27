@@ -51,6 +51,7 @@ export function ConversationDirectPhotoComposer({
     },
     deliveryReady: false,
     groupedPicker: true,
+    sendingInTranscript: true,
     ...(selected
       ? {
           // During a mounted Send, history owns the preview, not the composer.
