@@ -43,17 +43,9 @@ test.each([false, true])(
         const style = Native.StyleSheet.flatten(disclaimer.props.style);
         expect(style.backgroundColor).toBeUndefined();
         expect(style.color).toEqual(appColors.text);
-        const gradient = screen.getByTestId(gradientId, {
-          includeHiddenElements: true,
-        });
-        const solid = screen.queryByTestId(`${gradientId}-opaque`, {
-          includeHiddenElements: true,
-        });
-        expect(Boolean(solid)).toBe(opaque);
-        expect(Native.StyleSheet.flatten(gradient.props.style).top).toBe(
-          opaque ? 0 : -16,
-        );
-        expect(gradient.props.pointerEvents).toBe('none');
+        expect(
+          screen.queryByTestId(gradientId, { includeHiddenElements: true }),
+        ).toBeNull();
       },
     );
   },

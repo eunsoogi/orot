@@ -198,8 +198,7 @@ export const styles = StyleSheet.create({
     fontSize: 12,
     lineHeight: 18,
   },
-  // Let the shared fade provide the backdrop, including its opaque accessibility
-  // fallback. The stronger text token stays legible without a separate plate.
+  // Use the primary foreground token for caution text over the transcript.
   composerDisclaimer: { color: appColors.text },
   error: { color: appColors.danger },
 });
