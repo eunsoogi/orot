@@ -108,12 +108,14 @@ struct RealtimeSocketWrite {
     let text: String
     let isInput: Bool
     let permit: LiveQueuedToolPermit?
+    let managedEventID: String?
     private let isFinalContinuation: Bool
 
-    init(text: String, isInput: Bool, permit: LiveQueuedToolPermit? = nil, isFinalContinuation: Bool = false) {
+    init(text: String, isInput: Bool, permit: LiveQueuedToolPermit? = nil, isFinalContinuation: Bool = false, managedEventID: String? = nil) {
         self.text = text
         self.isInput = isInput
         self.permit = permit
+        self.managedEventID = managedEventID
         self.isFinalContinuation = isFinalContinuation
     }
 
@@ -148,10 +150,30 @@ struct LiveCaptionTerminalQueue {
     }
 }
 
-/// A graceful caption reservation never makes ordinary transport reentrant.
-struct LiveCaptionTerminalState {
+/// Socket-epoch state for graceful caption reservation and an opt-in, bounded
+/// window of handed managed command identities, never output or error content.
+struct LiveSocketOwnedState {
     var prepared: String?
     var completion: ((Bool) -> Void)?
+    private var handedCommands: [(id: String, final: Bool)] = []
+
+    mutating func markHandoff(_ write: RealtimeSocketWrite, recording: Bool) {
+        write.permit?.issued = true
+        guard recording, let id = write.managedEventID else {
+            return
+        }
+        handedCommands.append((id, write.finalResultContinuation))
+        if handedCommands.count > 16 {
+            handedCommands.removeFirst()
+        }
+    }
+
+    func deliver(_ event: [String: Any], report: ((VoiceSystemCallLifecycle.DiagnosticStage) -> Void)?, to receive: (([String: Any]) -> Void)?) {
+        if let report, let stage = liveServerErrorStage(event, handed: handedCommands) {
+            report(stage)
+        }
+        receive?(event)
+    }
 
     mutating func retire() -> ((Bool) -> Void)? {
         defer { self = Self() }
@@ -171,12 +193,14 @@ protocol RealtimeVoiceSocketTask: AnyObject {
 extension URLSessionWebSocketTask: RealtimeVoiceSocketTask {}
 
 final class RealtimeVoiceSocketEndpoint {
+    let reportServerCommand: ((VoiceSystemCallLifecycle.DiagnosticStage) -> Void)?
     private let session: URLSession?
     #if OROT_TESTS && targetEnvironment(simulator)
         private let fixture: (() -> RealtimeVoiceSocketTask)?
     #endif
 
     init() {
+        reportServerCommand = VoiceSystemCallLifecycle.diagnosticsEnabled ? VoiceSystemCallLifecycle.report : nil
         session = URLSession(configuration: .ephemeral, delegate: LiveSocketSessionDelegate(), delegateQueue: nil)
         #if OROT_TESTS && targetEnvironment(simulator)
             fixture = nil
@@ -184,7 +208,8 @@ final class RealtimeVoiceSocketEndpoint {
     }
 
     #if OROT_TESTS && targetEnvironment(simulator)
-        init(networklessTask: @escaping () -> RealtimeVoiceSocketTask) {
+        init(networklessTask: @escaping () -> RealtimeVoiceSocketTask, reportServerCommand: ((VoiceSystemCallLifecycle.DiagnosticStage) -> Void)? = nil) {
+            self.reportServerCommand = reportServerCommand
             session = nil
             fixture = networklessTask
         }

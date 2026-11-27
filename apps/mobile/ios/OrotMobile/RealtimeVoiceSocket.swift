@@ -8,7 +8,7 @@ final class RealtimeVoiceSocket: RealtimeSocketPort {
     private var sending = false
     private var epoch = 0
     private var closing: (sessionID: String, command: String, sent: Bool)?
-    private var captionTerminal = LiveCaptionTerminalState()
+    private var captionTerminal = LiveSocketOwnedState()
     private var closeDeadline: DispatchWorkItem?
     var responsesTransportCurrent: (() -> Bool)?
     var received: (([String: Any]) -> Void)?
@@ -81,7 +81,7 @@ final class RealtimeVoiceSocket: RealtimeSocketPort {
             if receipt != nil, epoch != current || socket !== task || sending || queue.first?.text != message.text || closing != nil || captionTerminal.prepared != nil {
                 return false
             }
-            message.permit?.issued = true
+            captionTerminal.markHandoff(message, recording: endpoint.reportServerCommand != nil)
             sending = true
             let (permit, stamp) = message.continuationTiming(observed: observeContinuationSend != nil)
             task.send(.string(message.text)) { [weak self, weak permit, weak owner = message.permit, wireText = message.text, final = message.finalResultContinuation, requiresWireReceipt = message.permit?.ticket?.requiresWireReceipt == true] error in
@@ -150,7 +150,7 @@ final class RealtimeVoiceSocket: RealtimeSocketPort {
                         self.close(confirmed: confirmed)
                     }
                 } else if self.captionTerminal.prepared == nil {
-                    self.received?(event)
+                    self.captionTerminal.deliver(event, report: self.endpoint.reportServerCommand, to: self.received)
                 }
                 if self.socket === task {
                     self.receive(task, epoch: current)

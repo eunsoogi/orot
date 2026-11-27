@@ -242,7 +242,7 @@ final class LiveQueuedToolPermit {
             }
             guard let data = try? JSONSerialization.data(withJSONObject: frame),
                   let text = String(data: data, encoding: .utf8) else { return nil }
-            writes.append(RealtimeSocketWrite(text: text, isInput: false, permit: self, isFinalContinuation: index == frames.count - 1))
+            writes.append(RealtimeSocketWrite(text: text, isInput: false, permit: self, isFinalContinuation: index == frames.count - 1, managedEventID: eventID))
         }
         return writes
     }
