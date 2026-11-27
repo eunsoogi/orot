@@ -5,6 +5,8 @@ import { AssistantAppearanceProvider } from '../AssistantAppearanceProvider';
 import { appearanceStore } from '../appearanceStore';
 import type { AssistantAppearance } from '../appearance';
 
+jest.unmock('../../appEntry/useStartupMinimumDisplay');
+
 jest.mock('../appearanceStore', () => ({
   appearanceStore: { load: jest.fn(), save: jest.fn() },
 }));
@@ -20,7 +22,12 @@ jest.mock('react-native-safe-area-context', () => {
 const previousWindow = Dimensions.get('window');
 const previousScreen = Dimensions.get('screen');
 
+beforeEach(() => {
+  jest.useFakeTimers();
+});
+
 afterEach(() => {
+  jest.useRealTimers();
   Dimensions.set({ window: previousWindow, screen: previousScreen });
   jest.clearAllMocks();
 });
@@ -89,6 +96,11 @@ test.each([
     expect(appearanceStore.save).not.toHaveBeenCalled();
 
     await act(async () => resolve({ avatar: 'neutral', name: null }));
+    expect(screen.queryByText('준비 완료')).toBeNull();
+    expect(screen.getByTestId('startup-surface')).toBeVisible();
+    await act(() => {
+      jest.advanceTimersByTime(2_000);
+    });
     expect(screen.getByText('준비 완료')).toBeTruthy();
     expect(screen.queryByTestId('startup-surface')).toBeNull();
     expect(appearanceStore.load).toHaveBeenCalledTimes(1);
