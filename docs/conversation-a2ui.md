@@ -354,3 +354,11 @@ are allowed; mixed layouts do not use model data or actions. Compact
 widths and larger text stack the accepted answer in the same order.
 Archive reopening retains the exact read-only grouping without the live
 weights; prior task and archive contracts are unchanged.
+
+Fresh task v60 accepts one decorative Basic Catalog `folder` icon in a
+static read-only reply. It must immediately precede a body Text in its
+own Row or Column, and all answer prose must already match exactly.
+The app draws one bundled native symbol, with no extra accessibility
+description, action, external resource or model data. Reopening the
+reply keeps the archived text and structure without this decoration;
+earlier tasks and stored layout decoders cannot accept the new icon.

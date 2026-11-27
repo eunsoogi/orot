@@ -6,6 +6,7 @@ import {
   acceptConversationA2UIColumnWeights,
   acceptConversationA2UIMixedWeights,
 } from './conversationA2UICardWeightTask';
+import { acceptConversationA2UIFolder } from './conversationA2UIFolder';
 import type { JsonValue } from '@orot/model-runtime';
 import type { TaskResponderContract } from '@orot/agent-runtime';
 import { conversationA2UIFrameLimit } from './conversationA2UI';
@@ -69,6 +70,7 @@ export function withConversationA2UIReplacement(
   previous: TaskResponderContract<GroundedRagAnswer>,
   version: '49' | '50' | '51' | '52' | '53' | '54' | '55' = '49',
   mixedWeights = false,
+  folderIcon = false,
 ): TaskResponderContract<GroundedRagAnswer> {
   return {
     ...previous,
@@ -136,6 +138,9 @@ export function withConversationA2UIReplacement(
                 : '') +
               (mixedWeights
                 ? ' In one static read-only createSurface without a data model, mix weighted Cards and Columns as direct children of the same Row. Use literal weights from 1 to 3; every accepted answer line stays in order.'
+                : '') +
+              (folderIcon
+                ? ' A static read-only createSurface without a data model may include one decorative Icon with literal name "folder". Place it immediately before an accepted body Text within the same Row or Column. Do not add a label, URL, SVG, or action.'
                 : ''),
           },
         },
@@ -186,6 +191,9 @@ export function withConversationA2UIReplacement(
         );
       const root =
         validateFrames(value.a2uiFrames) ??
+        (folderIcon
+          ? acceptConversationA2UIFolder(value.a2uiFrames, validateFrames)
+          : undefined) ??
         (mixedWeights
           ? acceptConversationA2UIMixedWeights(value.a2uiFrames, validateFrames)
           : undefined) ??

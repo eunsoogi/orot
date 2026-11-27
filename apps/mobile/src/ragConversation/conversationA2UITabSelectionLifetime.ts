@@ -87,7 +87,7 @@ export function watchConversationA2UITabSelections(input: {
  * protocol, existing parser and trusted visible answer are unchanged. */
 export function withConversationA2UITabSelectionLifetime(
   previous: TaskResponderContract<GroundedRagAnswer>,
-  version: '56' | '57' | '58' | '59' = '56',
+  version: '56' | '57' | '58' | '59' | '60' = '56',
 ): TaskResponderContract<GroundedRagAnswer> {
   return {
     ...previous,

@@ -4,6 +4,12 @@ export const conversationA2UIIcons = {
   calendarToday: 'calendar',
 } as const;
 
+// Renderer capability is separate from the historical wire/restore allowlist.
+export const conversationA2UIDisplayIcons = {
+  ...conversationA2UIIcons,
+  folder: 'folder',
+} as const;
+
 export type ConversationA2UIStaticLeaf =
   | {
       readonly id: string;
@@ -13,5 +19,5 @@ export type ConversationA2UIStaticLeaf =
   | {
       readonly id: string;
       readonly component: 'Icon';
-      readonly name: keyof typeof conversationA2UIIcons;
+      readonly name: keyof typeof conversationA2UIDisplayIcons;
     };
