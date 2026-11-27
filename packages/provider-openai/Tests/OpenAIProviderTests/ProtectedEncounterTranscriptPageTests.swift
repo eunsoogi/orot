@@ -26,6 +26,25 @@ final class ProtectedEncounterTranscriptPageTests: XCTestCase {
         XCTAssertThrowsError(try ProtectedEncounterTranscriptPage(request: web, accountID: account, accountSubject: subject, selectedModel: model))
     }
 
+    func testDedicatedWirePreservesTheFourExactApprovedRoles() throws {
+        let wire = ProtectedEncounterTranscriptPage.Wire(
+            instruction: "Synthetic instructions",
+            transcript: "Synthetic page\n",
+            citations: "Synthetic citations",
+            schema: "Synthetic schema",
+        )
+        let page = try ProtectedEncounterTranscriptPage(wire: wire, accountID: account,
+                                                        accountSubject: subject, selectedModel: model)
+        XCTAssertEqual(page.request.model, model)
+        XCTAssertEqual(page.request.messages, [
+            .system(wire.instruction), .user(wire.transcript), .user(wire.citations), .user(wire.schema),
+        ])
+        XCTAssertNil(page.request.transportScope)
+        XCTAssertTrue(page.request.tools.isEmpty)
+        XCTAssertTrue(page.claim(accountID: account, accountSubject: subject))
+        XCTAssertFalse(page.claim(accountID: account, accountSubject: subject))
+    }
+
     func testRedirectCallbackNeverSuppliesAReplayRequestAndCannotReplaceBodyStream() throws {
         let transport = ProtectedEncounterHTTPDelegate()
         let session = URLSession(configuration: .ephemeral)
