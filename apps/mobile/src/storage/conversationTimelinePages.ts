@@ -48,15 +48,21 @@ export function conversationTimelinePages(
       const epoch = lease.rows[0]?.opening_epoch;
       // A completed artifact and its tool events form one turn. Requests take precedence over
       // tool timestamps to match the existing restoration order; cards occupy their own key space.
+      // Classify each artifact once before projecting its turn or treatment-card key;
+      // do not carry the potentially large JSON body into the timeline sort.
       const result = await tx.execute(
-        `SELECT * FROM (WITH candidates AS (
-        SELECT a.id, a.created_at, 'turn' AS kind, 1 AS priority FROM conversation_artifacts a WHERE a.session_id = ? AND NOT (${treatmentArtifactPredicate})
+        `SELECT * FROM (WITH artifacts AS MATERIALIZED (
+        SELECT a.id, a.created_at, (${treatmentArtifactPredicate}) AS treatment
+        FROM conversation_artifacts a WHERE a.session_id = ?
+      ), candidates AS (
+        SELECT CASE WHEN treatment THEN 'treatment:' || id ELSE id END AS id,
+          created_at, CASE WHEN treatment THEN 'task' ELSE 'turn' END AS kind, 1 AS priority
+        FROM artifacts
         ${displayOnly ? "UNION ALL SELECT id, created_at, 'turn', 1 FROM conversation_direct_photo_replies WHERE session_id = ?" : ''}
         UNION ALL SELECT message_id, MAX(created_at), 'turn', 2 FROM conversation_tool_events WHERE session_id = ? GROUP BY message_id
         UNION ALL SELECT id, created_at, 'turn', 3 FROM conversation_requests WHERE session_id = ? AND session_version = ? AND (status = 'interrupted' OR (? = 1 AND status = 'completed' AND local_outcome_json IS NOT NULL))
         UNION ALL SELECT id, created_at, 'task', 2 FROM conversation_task_cards WHERE session_id = ?
         UNION ALL SELECT id, created_at, 'task', 3 FROM conversation_voice_end_markers WHERE session_id = ?
-        UNION ALL SELECT 'treatment:' || a.id, a.created_at, 'task', 1 FROM conversation_artifacts a WHERE a.session_id = ? AND (${treatmentArtifactPredicate})
       ), chosen AS (
         SELECT id, created_at, kind, ROW_NUMBER() OVER (PARTITION BY id, kind ORDER BY priority DESC) AS rank FROM candidates
       ) SELECT id, created_at, kind FROM chosen WHERE rank = 1
@@ -69,7 +75,6 @@ export function conversationTimelinePages(
           sessionId,
           version,
           Number(displayOnly),
-          sessionId,
           sessionId,
           sessionId,
           cursor?.createdAt ?? null,

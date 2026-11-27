@@ -97,3 +97,91 @@ test('timeline includes tool-only, interrupted and task entries while selected r
     f.close();
   }
 });
+
+test.each([false, true])(
+  'classifies legacy treatment and malformed artifact metadata once without changing cursor precedence (%s)',
+  async displayOnly => {
+    const f = await healthContextFixture();
+    try {
+      const classify = jest.fn();
+      const database: typeof f.database = {
+        ...f.database,
+        transaction: work =>
+          f.database.transaction(tx =>
+            work({
+              ...tx,
+              async execute(sql, bindings) {
+                if (sql.includes('ROW_NUMBER() OVER (PARTITION BY id, kind')) {
+                  const plan = await tx.execute(`EXPLAIN ${sql}`, bindings);
+                  classify(
+                    plan.rows.filter(
+                      row =>
+                        row.opcode === 'Function' && row.p4 === 'json_type(2)',
+                    ).length,
+                  );
+                }
+                return tx.execute(sql, bindings);
+              },
+            }),
+          ),
+      };
+      const storage = createConversationArtifactStorage(database);
+      const owner = 'classification';
+      await storage.createSession(owner, await storage.currentGeneration());
+      const old = '2026-11-01T00:00:00.000Z';
+      const newTime = '2026-11-02T00:00:00.000Z';
+      for (const [id, body] of [
+        ['legacy-treatment', '{"treatmentContext":null}'],
+        ['uncollided-treatment', '{"treatmentContext":{}}'],
+        ['malformed', '{broken'],
+        ['ordinary', '{}'],
+      ])
+        await f.database.execute(
+          'INSERT INTO conversation_artifacts VALUES (?, ?, ?, ?)',
+          [id!, owner, old, body!],
+        );
+      await f.database.execute(
+        'INSERT INTO conversation_tool_events VALUES (?, ?, ?, ?, ?, ?)',
+        [owner, 'ordinary', newTime, 'run', 'call', '{}'],
+      );
+      await f.database.execute(
+        'INSERT INTO conversation_task_cards (session_id, id, created_at, revision, task_json) VALUES (?, ?, ?, ?, ?)',
+        [owner, 'treatment:legacy-treatment', newTime, 1, '{}'],
+      );
+      const first = await storage.listTimeline(
+        owner,
+        0,
+        undefined,
+        2,
+        displayOnly,
+      );
+      const second = await storage.listTimeline(
+        owner,
+        0,
+        first.nextCursor!,
+        2,
+        displayOnly,
+      );
+      expect([...first.items, ...second.items]).toEqual([
+        {
+          id: 'treatment:legacy-treatment',
+          kind: 'task',
+          createdAt: newTime,
+          version: 0,
+        },
+        { id: 'ordinary', kind: 'turn', createdAt: newTime, version: 0 },
+        {
+          id: 'treatment:uncollided-treatment',
+          kind: 'task',
+          createdAt: old,
+          version: 0,
+        },
+        { id: 'malformed', kind: 'turn', createdAt: old, version: 0 },
+      ]);
+      expect(second.nextCursor).toBeNull();
+      expect(classify.mock.calls).toEqual([[1], [1]]);
+    } finally {
+      f.close();
+    }
+  },
+);
