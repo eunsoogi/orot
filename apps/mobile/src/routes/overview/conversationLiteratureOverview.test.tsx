@@ -157,6 +157,8 @@ test('a completed literature source can be opened while an independent Overview 
       literatureOwner.operationRunId,
       literatureOwner.callId,
       literatureOwner.messageId,
+      undefined,
+      expect.objectContaining({ aborted: false }),
     );
     selectionResult = resolveSource.mock.results[0]!.value.then(() => {
       sourceSettled = true;
