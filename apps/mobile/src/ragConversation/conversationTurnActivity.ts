@@ -1,3 +1,4 @@
+import { conversationToolMetadataPublisher } from './conversationToolMetadataPublisher';
 import { conversationOpeningDelivery } from './conversationOpeningDelivery';
 import { createConversationDeliveryObserver } from './conversationDeliveryObserver';
 import {
@@ -62,6 +63,11 @@ export function createConversationTurnActivity(input: {
       toolMessageId,
     };
   };
+  const publishToolMetadata = conversationToolMetadataPublisher(
+    input,
+    toolMessageId,
+    metadata,
+  );
   const observe = (event: ConversationToolEvent) => {
     const next = mergeConversationToolEvents(events, event);
     // Replayed or reordered events must not repeat source capture or overwrite the terminal record.
@@ -80,24 +86,8 @@ export function createConversationTurnActivity(input: {
           failedCalls.add(key);
         });
     }
-    const session = input.find(input.id);
-    if (!session) return; // A removed in-memory session cannot be revived by a late callback.
-    const pending = session.pendingMessage;
-    input.update(input.id, {
-      ...(pending?.id === input.responseId
-        ? {
-            pendingMessage: {
-              ...pending,
-              ...metadata(pending.withholdHealthBody),
-            },
-          }
-        : {}),
-      messages: session.messages.map(message =>
-        message.toolMessageId === toolMessageId
-          ? { ...message, ...metadata() }
-          : message,
-      ),
-    });
+    // This presentation projection does not affect the durable tool-event queue.
+    const pending = publishToolMetadata();
     if (input.current() && pending?.id === input.responseId && input.activity) {
       const before = input.activity.getSnapshot();
       input.activity.tool(event);
