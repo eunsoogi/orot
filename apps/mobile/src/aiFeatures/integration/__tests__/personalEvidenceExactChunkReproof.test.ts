@@ -1,3 +1,5 @@
+import { createBoundToolSourceRoutes } from '../verifiedBoundToolRead';
+import { preparePersonalSourceByResolver } from '../../../ragConversation/personalToolSourceRoute';
 import {
   createRecordRepository,
   runMigrations,
@@ -162,14 +164,30 @@ test('freshness reads grouped cited identities, never uncited candidates or a pr
     expect(bulk).not.toHaveBeenCalled();
     expect(reads).toBe(2);
 
+    selected.mockClear();
+    reads = 0;
+    const { resolveToolSource } = createBoundToolSourceRoutes(
+      optimized.registry,
+    );
+    const prepare = preparePersonalSourceByResolver.get(resolveToolSource)!;
+    const locator = prepare(optimized.refs[0]!)!;
+    expect(reads).toBe(0);
+    expect(selected).not.toHaveBeenCalled();
+    await expect(locator.read(signal)).resolves.toMatchObject({
+      status: 'available',
+    });
+    expect(selected.mock.calls).toEqual([[[full[0]!], signal]]);
+    expect(reads).toBe(1);
+
     // A caller without the stock exact read registration keeps the old path.
+    reads = 0;
     await expect(
       legacy.registry.readSource(legacy.refs[0]!, signal),
     ).resolves.toMatchObject({
       status: 'available',
     });
     expect(bulk).toHaveBeenCalledTimes(1);
-    expect(reads).toBe(43);
+    expect(reads).toBe(41);
 
     // The document was loaded, but its exact cited row was deleted before the
     // independent selected-chunk proof. The stale snapshot is not returned.
@@ -178,9 +196,7 @@ test('freshness reads grouped cited identities, never uncited candidates or a pr
       await writer.delete('health_observation', full[0]!.id);
       return original(...args);
     });
-    await expect(
-      optimized.registry.readSource(optimized.refs[0]!, signal),
-    ).resolves.toEqual({
+    await expect(locator.read(signal)).resolves.toEqual({
       status: 'missing',
     });
     await writer.delete('encounter', encounter.record.id);

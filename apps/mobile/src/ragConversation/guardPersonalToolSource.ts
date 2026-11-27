@@ -1,4 +1,7 @@
-import { personalSourceCaptures } from './personalToolSourceRoute';
+import {
+  personalSourceCaptures,
+  preparePersonalSourceByResolver,
+} from './personalToolSourceRoute';
 import type { ResolveConversationToolSource } from './ConversationToolEventSources';
 import type { ConversationSessions } from './conversationSessions';
 
@@ -76,6 +79,12 @@ export function guardPersonalToolSource(
       signal: controller.signal,
       current,
       retire,
+      prepare() {
+        if (admitted || !current()) return undefined;
+        const prepared = preparePersonalSourceByResolver.get(resolve)?.(source);
+        if (prepared) admitted = true;
+        return prepared;
+      },
       async admit() {
         if (admitted || !current()) return undefined;
         admitted = true;

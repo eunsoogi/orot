@@ -8,6 +8,7 @@ import type { AiFeatureRouteName } from './aiFeatureNavigation';
 import type { AiFeatureSharedNavigationState } from './AiFeatureSharedNavigationState';
 import type { AiFeatureNavigationStateChange } from './useAiFeatureNavigationState';
 import type { AiFeatureServices } from './featureServices';
+import type { PreparedPersonalSource } from '../../ragConversation/personalToolSourceRoute';
 import type { PendingPersonalSource } from './usePendingPersonalSource';
 import { EvidenceSourceDetailScreen } from './EvidenceSourceDetailScreen';
 import { styles } from './AiFeatureFlow.styles';
@@ -32,7 +33,10 @@ function PendingDetail({
 }: Props & { pending: PendingPersonalSource }) {
   const { lease } = pending;
   const presented = useRef(() => {});
-  const [admitted, setAdmitted] = useState<EvidenceReference>();
+  const [admitted, setAdmitted] = useState<{
+    reference: EvidenceReference;
+    prepared?: PreparedPersonalSource;
+  }>();
   const [unavailable, setUnavailable] = useState(lease.signal.aborted);
   const read = useCallback<AiFeatureServices['readSource']>(
     async (reference, signal) => {
@@ -43,10 +47,10 @@ function PendingDetail({
       lease.signal.addEventListener('abort', retire, { once: true });
       signal.addEventListener('abort', retire, { once: true });
       try {
-        const result = await props.services.readSource(
-          reference,
-          controller.signal,
-        );
+        const result =
+          admitted?.prepared && reference === admitted.reference
+            ? await admitted.prepared.read(controller.signal)
+            : await props.services.readSource(reference, controller.signal);
         return lease.current() && !controller.signal.aborted
           ? result
           : { status: 'unavailable' };
@@ -55,7 +59,7 @@ function PendingDetail({
         signal.removeEventListener('abort', retire);
       }
     },
-    [lease, props.services],
+    [admitted, lease, props.services],
   );
 
   useEffect(() => {
@@ -68,8 +72,10 @@ function PendingDetail({
       const admit = async () => {
         if (!(await presentation.ready) || !lease.current()) return;
         try {
-          const reference = await lease.admit();
-          if (reference && lease.current()) setAdmitted(reference);
+          const prepared = lease.prepare?.();
+          const reference = prepared?.reference ?? (await lease.admit());
+          if (reference && lease.current())
+            setAdmitted({ reference, prepared });
           else revoke();
         } catch {
           revoke();
@@ -94,7 +100,7 @@ function PendingDetail({
     <EvidenceSourceDetailScreen
       onBack={pending.dismiss}
       sheet
-      reference={admitted}
+      reference={admitted.reference}
       readSource={read}
     />
   );

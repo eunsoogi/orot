@@ -1,3 +1,5 @@
+import { createBoundToolSourceRoutes } from '../verifiedBoundToolRead';
+import { preparePersonalSourceByResolver } from '../../../ragConversation/personalToolSourceRoute';
 import { LocalEvidenceReferenceRegistry } from '../evidenceRegistry';
 import { bindConversationToolSource } from '../bindConversationToolSource';
 import { sharedAncestryProfileFixture } from '../testSupport/sharedAncestryProfileFixture';
@@ -163,6 +165,38 @@ test('an unrelated registry cannot borrow exact proof; custom reads and standalo
     await expect(
       f.registry.revalidateEvidence([f.link], f.signal),
     ).resolves.toBe(false);
+  } finally {
+    f.close();
+  }
+});
+
+test('opening a live personal locator does no SQL and leaves both detail proofs intact', async () => {
+  const f = await fixture();
+  try {
+    const { resolveToolSource } = createBoundToolSourceRoutes(f.registry);
+    const prepare = preparePersonalSourceByResolver.get(resolveToolSource)!;
+    const locator = prepare(f.link)!;
+    expect(locator.reference).toEqual(
+      expect.objectContaining({
+        evidenceId: f.link.evidenceId,
+      }),
+    );
+    expect(f.proof).not.toHaveBeenCalled();
+    expect(f.read).not.toHaveBeenCalled();
+    await expect(locator.read(f.signal)).resolves.toBe(f.value);
+    expect(f.proof).toHaveBeenCalledTimes(4);
+    expect(f.read).toHaveBeenCalledTimes(2);
+    expect(f.current).toHaveBeenCalledTimes(2);
+
+    // A retry runs real ownership and source checks, not saved payloads.
+    await f.database.execute(
+      'DELETE FROM conversation_tool_events WHERE call_id = ?',
+      [f.callId],
+    );
+    await expect(locator.read(f.signal)).resolves.toEqual({
+      status: 'unavailable',
+    });
+    expect(f.read).toHaveBeenCalledTimes(2);
   } finally {
     f.close();
   }
