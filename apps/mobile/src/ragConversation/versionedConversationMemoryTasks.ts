@@ -1,3 +1,4 @@
+import { withConversationA2UIOrdinals } from './conversationA2UIOrdinalTask';
 import { withPublicWebConversationLayout } from './conversationA2UIPublicWebLayout';
 import { withConversationA2UITabSelectionLifetime } from './conversationA2UITabSelectionLifetime';
 import { withConversationA2UIReplacement } from './conversationA2UIReplacementTask';
@@ -110,6 +111,13 @@ export function versionedConversationMemoryTasks(
     temporaryFormTask(true, true, true, true),
     '60',
   );
+  const v67 = withPublicWebConversationLayout(
+    withConversationA2UITabSelectionLifetime(
+      temporaryFormTask(true, 'chips', true, 'grouped', 'mixed', true, true),
+      '60',
+    ),
+    '67',
+  );
   return {
     conversationTaskV25,
     conversationTaskV26,
@@ -219,6 +227,7 @@ export function versionedConversationMemoryTasks(
           '65',
         ),
       ),
+      v67: observeConversationA2UIFinalAdmission(v67),
       v66: observeConversationA2UIFinalAdmission(
         withPublicWebConversationLayout(
           withConversationA2UITabSelectionLifetime(
@@ -230,21 +239,7 @@ export function versionedConversationMemoryTasks(
       ),
     },
     ragConversationTask: observeConversationA2UIFinalAdmission(
-      withPublicWebConversationLayout(
-        withConversationA2UITabSelectionLifetime(
-          temporaryFormTask(
-            true,
-            'chips',
-            true,
-            'grouped',
-            'mixed',
-            true,
-            true,
-          ),
-          '60',
-        ),
-        '67',
-      ),
+      withConversationA2UIOrdinals(v67),
     ),
   };
 }

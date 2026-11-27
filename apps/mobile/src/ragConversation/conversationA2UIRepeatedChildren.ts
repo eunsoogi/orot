@@ -3,18 +3,14 @@ import {
   materializeRepeatedText,
   readRepeatedText,
 } from './conversationA2UIRepeatedText';
-import { envelope, readReplacements } from './conversationA2UIRepeatedWire';
-import { conversationA2UIProse } from './conversationA2UIPresentation';
 import {
-  displayText,
-  fail,
-  id,
-  keys,
-  object,
-} from './conversationA2UIWireValues';
+  envelope,
+  readReplacements,
+  readRepeatedRows,
+} from './conversationA2UIRepeatedWire';
+import { fail, id, keys, object } from './conversationA2UIWireValues';
 
 const itemsPath = '/items';
-const maxItems = 12;
 const maxTemplateNodes = 8;
 const maxTemplateDepth = 4;
 const maxGraphNodes = 64;
@@ -26,11 +22,13 @@ function collectTemplate(
   nodes: ReadonlyMap<string, Node>,
   root: string,
   formatted: boolean,
+  ordinal: boolean,
 ) {
   const template = new Map<string, Node>();
   const fields = new Set<string>();
   const bindings = new Map<string, ReturnType<typeof readRepeatedText>>();
   let usesFormat = false;
+  let usesOrdinal = false;
   function visit(nodeId: string, depth: number) {
     const node = nodes.get(nodeId);
     if (
@@ -45,7 +43,9 @@ function collectTemplate(
     if (node.component === 'Text') {
       keys(node, ['id', 'component', 'variant', 'text']);
       if (node.variant !== undefined && node.variant !== 'body') fail();
-      bindings.set(nodeId, readRepeatedText(node.text, formatted, fields));
+      const binding = readRepeatedText(node.text, formatted, fields, ordinal);
+      bindings.set(nodeId, binding);
+      usesOrdinal ||= binding.some(part => 'offset' in part);
       usesFormat ||= Object.hasOwn(object(node.text), '@call');
       return;
     }
@@ -65,25 +65,7 @@ function collectTemplate(
     for (const child of node.children as unknown[]) visit(id(child), depth + 1);
   }
   visit(root, 1);
-  return { template, fields, bindings, usesFormat };
-}
-
-function readRows(raw: unknown, fields: ReadonlySet<string>) {
-  if (!Array.isArray(raw) || !raw.length || raw.length > maxItems) fail();
-  return (raw as unknown[]).map(value => {
-    const row = object(value);
-    if (Object.keys(row).length !== fields.size) fail();
-    const accepted = new Map<string, string>();
-    for (const field of fields) {
-      if (!Object.hasOwn(row, field)) fail();
-      const text = displayText(row[field]);
-      // One field stands for one accepted paragraph. The exact final answer
-      // is still checked against the fully materialized graph downstream.
-      if (conversationA2UIProse(text)?.length !== 1) fail();
-      accepted.set(field, text);
-    }
-    return accepted;
-  });
+  return { template, fields, bindings, usesFormat, usesOrdinal };
 }
 
 function materialize(
@@ -105,7 +87,7 @@ function materialize(
         return {
           ...node,
           id: newId,
-          text: materializeRepeatedText(binding, row),
+          text: materializeRepeatedText(binding, row, index),
         };
       }
       if (node.component === 'Card')
@@ -139,6 +121,7 @@ export function lowerConversationRepeatedChildren(
   raw: unknown,
   composed = false,
   formatted = false,
+  ordinal = false,
 ): readonly string[] | undefined {
   if (!Array.isArray(raw) || !raw.length || raw.length > (composed ? 3 : 2))
     return;
@@ -194,18 +177,20 @@ export function lowerConversationRepeatedChildren(
     const derived = new Map<string, Node>();
     const childLists = new Map<string, string[]>();
     let usesFormat = false;
+    let usesOrdinal = false;
     // Isolate both trees against all declarations and one another before
     // emitting anything that can reach the accepted prose validator.
     for (const [path, { node, root }] of sections) {
-      const selection = collectTemplate(nodes, root, formatted);
+      const selection = collectTemplate(nodes, root, formatted, ordinal);
       const { template, fields, bindings } = selection;
       usesFormat ||= selection.usesFormat;
+      usesOrdinal ||= selection.usesOrdinal;
       for (const name of template.keys()) {
         if (originals.has(name)) fail();
         originals.add(name);
       }
-      let rows = readRows(data[path.slice(1)], fields);
-      if (updates.has(path)) rows = readRows(updates.get(path), fields);
+      let rows = readRepeatedRows(data[path.slice(1)], fields);
+      if (updates.has(path)) rows = readRepeatedRows(updates.get(path), fields);
       childLists.set(
         node.id,
         rows.map((_, index) => `repeat-${index}-${root}`),
@@ -217,6 +202,7 @@ export function lowerConversationRepeatedChildren(
     }
     if (
       (formatted && !usesFormat) ||
+      (ordinal && !usesOrdinal) ||
       nodes.size - originals.size + derived.size > maxGraphNodes
     )
       fail();
