@@ -3,6 +3,8 @@ export const replyNotificationKo = {
   'settings.replyNotification.description':
     '앱을 사용하지 않을 때 저장된 답변과 중단된 AI 작업을 알림으로 받아요. 답변 미리보기에는 민감한 건강 내용이 포함될 수 있으며 중단 알림에는 내용을 표시하지 않아요.',
   'settings.replyNotification.enabled': '답변 알림 받기',
+  'settings.replyNotification.previewRisk':
+    '알림에 민감한 건강 내용이 표시될 수 있어요.',
   'settings.replyNotification.preview': '알림에 답변 내용 표시',
   'settings.replyNotification.denied':
     'iOS 설정에서 알림 권한을 확인해 주세요.',

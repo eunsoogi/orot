@@ -44,7 +44,6 @@ final class DailyReminderDeliveryUITests: XCTestCase {
         app.launch()
         defer { UITestConditions.terminateStandaloneApp(app) }
         try ReminderJourneyObservation.prepareAppearance(app)
-        // A previous reminder tap can restore a detail; unwind it without resetting saved state.
         let settingsTab = app.buttons.matching(identifier: "navigation-tab-settings").firstMatch
         let backAction = app.buttons.matching(identifier: "navigation-back").firstMatch
         let navigationReady = XCTNSPredicateExpectation(predicate: NSPredicate { _, _ in
@@ -59,6 +58,10 @@ final class DailyReminderDeliveryUITests: XCTestCase {
         XCTAssertTrue(settingsAction.control.exists && settingsAction.control.isHittable, app.debugDescription)
         attach(app, name: "daily-reminder-home")
         try NavigationUITestConditions.openTab(app, "settings", markers: ["settings-title"])
+        let notifications = app.buttons["settings-open-notifications"]
+        FormUITestConditions.reveal(notifications, in: app, scrollID: "navigation-route-scroll")
+        notifications.tap()
+        NavigationUITestConditions.route(app, markers: ["settings-notifications-title"])
         let status = UITestConditions.element(app, "settings-daily-reminder-status")
         UITestConditions.scrollTo(status, in: app.scrollViews.firstMatch)
         XCTAssertTrue(UITestConditions.exists(status), app.debugDescription)

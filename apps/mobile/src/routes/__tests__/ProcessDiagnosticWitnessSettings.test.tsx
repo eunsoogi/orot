@@ -26,6 +26,8 @@ function openSettings() {
       onOpenProviderSettings={jest.fn()}
       onOpenAccounts={jest.fn()}
       onOpenPrivacy={jest.fn()}
+      onOpenMemory={jest.fn()}
+      onOpenNotifications={jest.fn()}
       onOpenBackup={jest.fn()}
       onOpenHealthData={jest.fn()}
       onOpenSyncStatus={jest.fn()}

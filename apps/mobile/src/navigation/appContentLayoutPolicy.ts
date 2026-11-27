@@ -51,6 +51,8 @@ export const appContentLayoutOwner: NavigationRouteLayoutPolicy<string> = (
     // The recording review route already measures playback, transcript, and review panels together.
     route.name === 'recording-review' ||
     route.name === 'settings-privacy' ||
+    route.name === 'settings-notifications' ||
+    route.name === 'settings-memory' ||
     route.name === 'settings-sync-status' ||
     route.name === 'disease-hypotheses' ||
     route.name === 'saved-analysis' ||

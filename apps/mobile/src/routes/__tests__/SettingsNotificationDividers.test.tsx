@@ -1,5 +1,6 @@
 import { render, screen } from '@testing-library/react-native';
 import { NativeModules, StyleSheet } from 'react-native';
+import { t } from '../../i18n';
 import { SettingsDailyReminderSection } from '../SettingsDailyReminderSection';
 import { SettingsReplyNotificationSection } from '../SettingsReplyNotificationSection';
 
@@ -28,21 +29,23 @@ test.each(['daily', 'reply'])(
       ),
     );
     expect(
-      screen.getByTestId(
-        kind === 'daily'
-          ? 'settings-daily-reminder-description'
-          : 'settings-reply-notification-description',
+      screen.queryByText(
+        t(
+          kind === 'daily'
+            ? 'settings.dailyReminder.description'
+            : 'settings.replyNotification.description',
+        ),
       ),
-    ).toHaveStyle({ paddingBottom: 12, fontSize: 15 });
+    ).toBeNull();
     const rules = screen.getAllByTestId('settings-notification-divider', {
       includeHiddenElements: true,
     });
-    expect(rules).toHaveLength(2);
+    expect(rules).toHaveLength(1);
     for (const rule of rules) {
       expect(rule).toHaveStyle({
         height: StyleSheet.hairlineWidth,
         alignSelf: 'stretch',
-        marginHorizontal: kind === 'daily' ? 16 : 0,
+        marginHorizontal: 16,
       });
       expect(rule.props.pointerEvents).toBe('none');
       expect(rule.props.accessible).toBe(false);

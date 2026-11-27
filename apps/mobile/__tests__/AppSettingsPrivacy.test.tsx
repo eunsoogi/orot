@@ -4,7 +4,7 @@ import {
   screen,
   waitFor,
 } from '@testing-library/react-native';
-import { Linking } from 'react-native';
+import { Alert, Linking } from 'react-native';
 import App from '../App';
 import { createAppointmentStore } from '../test-helpers/appointmentStore';
 
@@ -27,6 +27,7 @@ test('shows concrete permission guidance and opens the iOS app settings page', a
   const openSettings = jest
     .spyOn(Linking, 'openSettings')
     .mockResolvedValue(undefined);
+  const information = jest.spyOn(Alert, 'alert');
   const store = createAppointmentStore();
   await render(
     <App
@@ -40,9 +41,21 @@ test('shows concrete permission guidance and opens the iOS app settings page', a
   expect(screen.getByTestId('settings-open-backup')).toBeTruthy();
   await fireEvent.press(screen.getByTestId('settings-open-privacy'));
   expect(await screen.findByText('마이크')).toBeTruthy();
-  expect(screen.getByText('전사할 때 요청')).toBeTruthy();
-  expect(screen.getByText('선택한 기록만')).toBeTruthy();
-  expect(screen.getByText('일정을 가져올 때 요청')).toBeTruthy();
+  for (const [title, summary] of [
+    ['음성 인식', '전사할 때 요청'],
+    ['건강 앱', '선택한 기록만'],
+    ['캘린더', '일정을 가져올 때 요청'],
+  ]) {
+    expect(screen.queryByText(summary)).toBeNull();
+    await fireEvent.press(
+      screen.getByRole('button', { name: title + ' 정보' }),
+    );
+    expect(information).toHaveBeenLastCalledWith(
+      title,
+      expect.stringContaining(summary),
+    );
+  }
+  expect(openSettings).not.toHaveBeenCalled();
   expect(screen.queryAllByRole('switch')).toHaveLength(0);
   expect(screen.queryByTestId('navigation-tab-settings')).toBeNull();
   await fireEvent.press(screen.getByTestId('privacy-open-system-settings'));
@@ -57,4 +70,6 @@ test('shows concrete permission guidance and opens the iOS app settings page', a
     expect(screen.getByTestId('settings-title')).toBeTruthy(),
   );
   expect(screen.getByTestId('navigation-tab-settings')).toBeVisible();
+  information.mockRestore();
+  openSettings.mockRestore();
 });

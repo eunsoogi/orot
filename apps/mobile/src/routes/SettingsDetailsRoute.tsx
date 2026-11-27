@@ -7,6 +7,8 @@ import type { BackupPreparationDisplayState } from '../backup/useBackupPreparati
 import type { NavigationRouteActions } from '../navigation/NavigationRouteAdapter';
 import { SettingsAccountsRoute } from './SettingsAccountsRoute';
 import { SettingsBackupRoute } from './SettingsBackupRoute';
+import { SettingsMemoryRoute } from './SettingsMemoryRoute';
+import { SettingsNotificationsRoute } from './SettingsNotificationsRoute';
 import { SettingsPrivacyRoute } from './SettingsPrivacyRoute';
 import { SettingsProviderRoute } from './SettingsProviderRoute';
 import { HealthDataIntegrationRoute } from './HealthDataIntegrationRoute';
@@ -59,7 +61,11 @@ export function SettingsDetailsRoute({
         <SettingsBackupRoute state={backupState} onPrepare={onPrepareBackup} />
       );
     case 'settings-privacy':
-      return <SettingsPrivacyRoute ownership={actions.ownership} />;
+      return <SettingsPrivacyRoute />;
+    case 'settings-notifications':
+      return <SettingsNotificationsRoute />;
+    case 'settings-memory':
+      return <SettingsMemoryRoute ownership={actions.ownership} />;
     case 'settings-health-data':
       return <HealthDataIntegrationRoute />;
     case 'settings-sync-status':
