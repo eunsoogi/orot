@@ -32,6 +32,14 @@ test.each(['contextual', 'exact-local'] as const)(
   'saves the completed Health Summary, never user-authored memory: %s',
   async mode => {
     const f = await setup();
+    // Mirror OP-SQLite's transaction admission on the synchronous test host.
+    const transaction = f.database.transaction.bind(f.database);
+    let idle = Promise.resolve();
+    f.database.transaction = work => {
+      const pending = idle.then(() => transaction(work));
+      idle = pending.catch(() => {});
+      return pending;
+    };
     const before = AppState.currentState;
     AppState.currentState = 'active';
     const restore = installReceiptFixturePlatform(() => {});
