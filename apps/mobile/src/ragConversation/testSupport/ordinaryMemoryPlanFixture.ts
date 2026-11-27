@@ -1,3 +1,5 @@
+import { setConversationEntryForSession } from '../useConversationEntryIntent';
+import type { ConversationSessions } from '../conversationSessions';
 import type { SqlDatabase } from '@orot/storage';
 import { createOrdinaryConversationMemoryEnrollmentStore } from '../../storage/ordinaryConversationMemoryEnrollment';
 import {
@@ -120,4 +122,19 @@ export async function ordinaryMemoryEnrollmentFixture(
         },
   );
   return { enrollment, receipt, capture };
+}
+
+/** Seed the same owned route metadata left by a real Possibilities shortcut. */
+export function seedOrdinaryMemoryDraft(
+  store: ConversationSessions,
+  activeId: number,
+  preference: string,
+  route: 'ordinary' | 'possibilities',
+) {
+  if (route === 'possibilities')
+    setConversationEntryForSession(store, activeId, {
+      intent: 'possibilities',
+      entryKey: 'synthetic-possibilities',
+    });
+  store.setDraft(activeId, preference);
 }
