@@ -17,21 +17,25 @@ import {
   testOrdinaryMemoryOwner,
   ordinaryMemoryPlanFixture,
   ordinaryMemoryEnrollmentFixture,
+  seedOrdinaryMemoryDraft,
 } from '../testSupport/ordinaryMemoryPlanFixture';
 
 const preference = 'For future replies, I prefer concise answers.';
 const at = '2026-11-26T00:00:00.000Z';
 
-test.each([
+const modes = [
   'nominated',
   'omitted',
   'invalid ordinal',
   'retired',
   'opted out',
   'revoked before commit',
-] as const)(
-  'the stock graph and retained SQLite note honor exactly one ordinary nomination: %s',
-  async mode => {
+] as const;
+const routes = ['ordinary', 'possibilities'] as const;
+
+test.each(routes.flatMap(route => modes.map(mode => ({ route, mode }))))(
+  'the stock graph and retained SQLite note honor $route nomination: $mode',
+  async ({ route, mode }) => {
     const f = openSqliteTestDatabase(':memory:');
     let sessions: ReturnType<typeof createConversationSessions> | undefined;
     let committed: Promise<boolean> | undefined;
@@ -101,6 +105,7 @@ test.each([
       ) => {
         if (!signal || !observer)
           throw new Error('Expected a real retained composer owner.');
+        expect(entryContext?.intent ?? 'ordinary').toBe(route);
         const registry = new LocalEvidenceReferenceRegistry();
         type Mutation = Parameters<typeof conversationMutationExecution>[0];
         const selected = {
@@ -128,6 +133,7 @@ test.each([
           data: {} as Mutation['data'],
           question,
           observer,
+          remoteMemory: entryContext ?? true,
           history: {
             messages: [],
             reports: [],
@@ -193,7 +199,7 @@ test.each([
       store.setRootConversationVisible(true);
       await store.synchronizeModel();
       const activeId = store.getSnapshot().activeId;
-      store.setDraft(activeId, preference);
+      seedOrdinaryMemoryDraft(store, activeId, preference, route);
       await store.send(
         activeId,
         entryIntentSender(

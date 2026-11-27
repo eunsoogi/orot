@@ -74,7 +74,8 @@ export function conversationMutationExecution(input: {
     !observer?.expectedVoiceSelection &&
     runId &&
     observer?.inputOrigin === 'composer' &&
-    (!entry || plainAuthoredEntry) &&
+    // A retained unbound Possibilities entry keeps the same authored opt-in.
+    (!entry || plainAuthoredEntry || authoredPossibilityFollowup) &&
     selected.provider.capabilities.toolCalling &&
     ordinaryModelOwner?.providerId === selected.provider.id &&
     ordinaryModelOwner.modelId === selected.modelId &&
