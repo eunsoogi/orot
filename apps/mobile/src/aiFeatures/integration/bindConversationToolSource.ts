@@ -40,11 +40,7 @@ export function bindConversationToolSource(input: {
       input.messageId,
     ] as const;
     const turns = exact
-      ? [
-          timing
-            ? await exact.call(input.storage, ...identity, timing)
-            : await exact.call(input.storage, ...identity),
-        ]
+      ? [await exact.call(input.storage, ...identity, timing, signal)]
       : await input.storage.readToolTurns(
           input.sessionId,
           undefined,
@@ -52,7 +48,9 @@ export function bindConversationToolSource(input: {
           // messages on each side of this selected source read.
           [input.messageId],
           timing,
+          signal,
         );
+    if (signal.aborted) return false;
     for (const turn of turns) {
       if (turn?.messageId !== input.messageId) continue;
       const event = turn.toolEvents.find(

@@ -1,4 +1,4 @@
-import type { SourceOpenTiming } from '../providers/sourceOpenDiagnostic';
+import { boundConversationToolReads } from './boundConversationToolReads';
 import {
   beginToolEventWriteStage,
   observeToolEventTransaction,
@@ -209,41 +209,7 @@ export function createConversationToolEventStorage(
     },
     recoverInterruptedToolEvents: toolEventRecovery(database, ensure),
     readToolTurnsSnapshot: readSnapshot,
-    async readToolCall(
-      sessionId: string,
-      runId: string,
-      callId: string,
-      messageId?: string,
-      timing?: SourceOpenTiming,
-    ) {
-      return (
-        await readSnapshot(
-          sessionId,
-          undefined,
-          messageId ? [messageId] : undefined,
-          true,
-          { runId, callId },
-          timing,
-        )
-      ).items[0];
-    },
-    async readToolTurns(
-      sessionId: string,
-      expectedVersion?: number,
-      selectedIds?: readonly string[],
-      timing?: SourceOpenTiming,
-    ) {
-      return (
-        await readSnapshot(
-          sessionId,
-          expectedVersion,
-          selectedIds,
-          true,
-          undefined,
-          timing,
-        )
-      ).items;
-    },
+    ...boundConversationToolReads(readSnapshot),
   };
   strictReaders.add(storage.readToolTurns);
   return storage;
