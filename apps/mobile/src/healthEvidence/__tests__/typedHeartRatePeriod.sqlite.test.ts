@@ -15,6 +15,8 @@ import { assertSummaryPeriodCurrent } from '../../storage/symptomSummaryPeriods'
 import { HealthObservationSchema } from '@orot/domain';
 import { createRecordRepository, runMigrations } from '@orot/storage';
 import { openSqliteTestDatabase } from '../../../../../packages/storage/__tests__/sqliteTestDatabase';
+import { readTypedHeartRateContext } from '../healthContext/typedHeartRateContext';
+import { ensureHealthContextGeneration } from '../healthContext/generation';
 import { createLocalEvidenceData } from '../localEvidenceData';
 
 const fromInclusive = '2035-01-01T09:00:00Z';
@@ -179,5 +181,67 @@ test('rejects precise periods over 31 days and whole-result coverage over 10,000
     expect(report.limitations).toEqual(['typed_heart_rate_scope_too_large']);
   } finally {
     connection.close();
+  }
+});
+
+test('uses only the enclosing generation pair and still rejects a real mutation', async () => {
+  const { database, close } = openSqliteTestDatabase(':memory:');
+  try {
+    await runMigrations(database);
+    await database.transaction(ensureHealthContextGeneration);
+    const repo = createRecordRepository(database);
+    const id = 'healthkit:restingHeartRate:synthetic';
+    await repo.put(kind, observation(id, 'resting_heart_rate', 61));
+    const scope = {
+      ...window,
+      timeZone: 'UTC',
+      typedHeartRateCategory: 'resting_heart_rate' as const,
+    };
+    await database.execute('PRAGMA temp_store = MEMORY');
+    async function count(mutate: boolean) {
+      let report:
+        Awaited<ReturnType<typeof readTypedHeartRateContext>> | undefined;
+      let generations = 0;
+      let queries = 0;
+      const run = () =>
+        database.transaction(async tx => {
+          report = await readTypedHeartRateContext(
+            {
+              async execute(sql, args) {
+                queries += 1;
+                if (sql.includes('FROM health_context_generation'))
+                  generations += 1;
+                const result = await tx.execute(sql, args);
+                if (mutate && sql.includes('AS row_count'))
+                  await tx.execute(
+                    'DELETE FROM health_observations WHERE id = ?',
+                    [id],
+                  );
+                return result;
+              },
+            },
+            scope,
+          );
+        });
+      if (mutate) {
+        await expect(run()).rejects.toThrow(
+          'Typed heart-rate source changed during aggregation.',
+        );
+      } else {
+        await run();
+        expect(report?.typedHeartRate).toMatchObject({
+          category: 'resting_heart_rate',
+          meanBpm: 61,
+          sampleCount: 1,
+          unit: 'BPM',
+        });
+      }
+      return { generations, queries };
+    }
+    const first = await count(false);
+    await count(true);
+    expect(first).toMatchObject({ generations: 2, queries: 4 });
+  } finally {
+    close();
   }
 });
