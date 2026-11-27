@@ -1,4 +1,4 @@
-import { useCallback } from 'react';
+import { useCallback, useRef } from 'react';
 import { AppState } from 'react-native';
 import type { NavigationRouteActions } from '../../navigation/navigationRouteContracts';
 import type { PersonalSourceLease } from '../../ragConversation/personalToolSourceRoute';
@@ -8,29 +8,33 @@ import { useAiFeatureSharedNavigationState } from './AiFeatureSharedNavigationSt
 
 export type PendingPersonalSource = {
   readonly routeKey: string;
+  readonly instance: number;
   readonly lease: PersonalSourceLease;
+  readonly dismiss: () => void;
 };
 
-/** Only the exact successful push owns this in-memory capability across scene mounts. */
+/** Own the in-place sheet only while the exact visible source route remains current. */
 export function useOpenPendingPersonalSource(
   navigation: NavigationRouteActions<AiFeatureRouteName>,
   originCurrent?: () => boolean,
 ) {
+  const active = useRef<PersonalSourceLease | undefined>(undefined);
+  const nextInstance = useRef(0);
   const { setState, ownPendingPersonalSource } =
     useAiFeatureSharedNavigationState();
   return useCallback(
     (lease: PersonalSourceLease) => {
-      const { name: returnRoute, key: returnKey } = navigation.route;
+      const { name, key: routeKey } = navigation.route;
+      const owner = navigation.ownership;
       if (
-        !isFeatureScreenRoute(returnRoute) ||
+        active.current ||
+        !isFeatureScreenRoute(name) ||
+        !owner?.isCurrent() ||
         originCurrent?.() === false ||
         AppState.currentState !== 'active' ||
         !lease.current()
       )
         return false;
-      const target = navigation.pushOwned?.('source-detail');
-      if (!target || target.signal.aborted) return false;
-      const routeKey = target.route.key;
       const subscription = AppState.addEventListener(
         'change',
         function revokeOnInactive(state) {
@@ -42,36 +46,43 @@ export function useOpenPendingPersonalSource(
         if (observingApp) subscription.remove();
         observingApp = false;
       };
+      const instance = ++nextInstance.current;
+      active.current = lease;
+      let stopOwner = () => {};
       const dispose = () => {
-        target.signal.removeEventListener('abort', onRouteExit);
+        if (active.current === lease) active.current = undefined;
+        stopOwner();
         lease.signal.removeEventListener('abort', removeAppObserver);
         removeAppObserver();
         lease.retire();
       };
-      const onRouteExit = () => {
+      const dismiss = () => {
         release?.();
         dispose();
         setState(current =>
-          current.pendingPersonalSource?.routeKey === routeKey
+          current.pendingPersonalSource?.lease === lease
             ? { ...current, pendingPersonalSource: undefined }
             : current,
         );
       };
       const release = ownPendingPersonalSource(dispose);
       if (!release) return false;
+      stopOwner = owner.subscribe(() => {
+        if (!owner.isCurrent() || originCurrent?.() === false) dismiss();
+      });
       lease.signal.addEventListener('abort', removeAppObserver, { once: true });
-      target.signal.addEventListener('abort', onRouteExit, { once: true });
-      if (lease.signal.aborted || AppState.currentState !== 'active') {
-        removeAppObserver();
-        lease.retire();
+      if (
+        !owner.isCurrent() ||
+        originCurrent?.() === false ||
+        lease.signal.aborted ||
+        AppState.currentState !== 'active'
+      ) {
+        dismiss();
+        return false;
       }
       setState(current => ({
         ...current,
-        pendingPersonalSource: { routeKey, lease },
-        sourceReference: null,
-        sourceOwner: undefined,
-        sourceReturnRoute: returnRoute,
-        sourceReturnRouteKey: returnKey,
+        pendingPersonalSource: { routeKey, instance, lease, dismiss },
       }));
       return true;
     },

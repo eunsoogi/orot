@@ -1,19 +1,20 @@
 import { waitForSourcePresentation } from '../../ragConversation/publicSourcePresentation';
 import { forwardSourceOpenTiming } from '../../providers/sourceOpenDiagnostic';
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { View } from 'react-native';
+import { View, type ViewProps } from 'react-native';
 import type { EvidenceReference } from '@orot/agent-runtime';
-import { AppText } from '../../layout/AppText';
-import { t } from '../../i18n';
 import type { NavigationRouteActions } from '../../navigation/navigationRouteContracts';
 import type { AiFeatureRouteName } from './aiFeatureNavigation';
 import type { AiFeatureSharedNavigationState } from './AiFeatureSharedNavigationState';
-import { useAiFeatureScreenNavigationState } from './useAiFeatureNavigationState';
 import type { AiFeatureNavigationStateChange } from './useAiFeatureNavigationState';
 import type { AiFeatureServices } from './featureServices';
 import type { PendingPersonalSource } from './usePendingPersonalSource';
 import { EvidenceSourceDetailScreen } from './EvidenceSourceDetailScreen';
 import { styles } from './AiFeatureFlow.styles';
+import {
+  PersonalSourceSheet,
+  PersonalSourceSheetStatus,
+} from './PersonalSourceSheet';
 
 type Props = {
   navigation: NavigationRouteActions<AiFeatureRouteName>;
@@ -30,16 +31,6 @@ function PendingDetail({
   ...props
 }: Props & { pending: PendingPersonalSource }) {
   const { lease } = pending;
-  useAiFeatureScreenNavigationState(
-    pending.routeKey,
-    {
-      hasUnsavedChanges: false,
-      isRecording: false,
-      hasOngoingOperation: false,
-    },
-    0,
-    props.onNavigationStateChange,
-  );
   const presented = useRef(() => {});
   const [admitted, setAdmitted] = useState<EvidenceReference>();
   const [unavailable, setUnavailable] = useState(lease.signal.aborted);
@@ -94,48 +85,49 @@ function PendingDetail({
 
   if (!admitted || unavailable || lease.signal.aborted)
     return (
-      <View
-        testID="ai-feature-source-detail"
+      <PersonalSourceSheetStatus
+        unavailable={unavailable || lease.signal.aborted}
         onLayout={() => presented.current()}
-      >
-        <AppText
-          testID={
-            unavailable
-              ? 'ai-feature-source-unavailable'
-              : 'ai-feature-source-loading'
-          }
-        >
-          {t(
-            unavailable
-              ? 'aiFeatures.source.unavailable'
-              : 'aiFeatures.source.loading',
-          )}
-        </AppText>
-      </View>
+      />
     );
   return (
     <EvidenceSourceDetailScreen
-      navigationRouteKey={props.navigation.route.key}
-      onBack={props.onBack}
+      onBack={pending.dismiss}
+      sheet
       reference={admitted}
       readSource={read}
     />
   );
 }
 
+/** Preserve the retained origin without granting it actions or accessibility behind the modal. */
+export function sourceOriginPresentation(
+  covered: boolean,
+  behindSheet: boolean,
+): ViewProps {
+  return {
+    testID: 'ai-feature-screen-content',
+    style: covered ? styles.hiddenFeatureScreen : styles.featureScreen,
+    ...(behindSheet && {
+      accessibilityElementsHidden: true,
+      importantForAccessibility: 'no-hide-descendants',
+      pointerEvents: 'none',
+    }),
+  };
+}
+
 /** A pending sheet has no reference or document until the first admission succeeds. */
 export function PersonalSourceDetail(props: Props) {
   const { sourceDetailOpen, sourceReference, navigation, shared, services } =
     props;
-  if (!sourceDetailOpen) return null;
   const pending = shared.pendingPersonalSource;
   if (pending?.routeKey === navigation.route.key)
     return (
-      <View style={styles.sourceOverlay}>
-        <PendingDetail key={pending.routeKey} pending={pending} {...props} />
-      </View>
+      <PersonalSourceSheet key={pending.instance} close={pending.dismiss}>
+        <PendingDetail pending={pending} {...props} />
+      </PersonalSourceSheet>
     );
-  if (!sourceReference) return null;
+  if (!sourceDetailOpen || !sourceReference) return null;
   return (
     <View style={styles.sourceOverlay}>
       <EvidenceSourceDetailScreen
