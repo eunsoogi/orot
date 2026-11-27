@@ -135,7 +135,7 @@ export function useOwnedColdPhotoPreview(
     owner.signal.addEventListener('abort', retire, { once: true });
     const current = () =>
       !request.signal.aborted && active(owner) && owner.admits(id);
-    void (async () => {
+    (async () => {
       if (!current()) return;
       const result = await owner.read(id, request.signal);
       if (!current()) return;
