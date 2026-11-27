@@ -3,6 +3,7 @@
 export function createConversationInitialPageAdmission() {
   let epoch = 0;
   let held = false;
+  let retired = false;
   const waiters = new Set<() => void>();
   return {
     hold() {
@@ -15,8 +16,12 @@ export function createConversationInitialPageAdmission() {
         for (const wake of waiters) wake();
       };
     },
+    retire() {
+      retired = true;
+      for (const wake of waiters) wake();
+    },
     async wait(signal: AbortSignal): Promise<() => void> {
-      while (held && !signal.aborted) {
+      while (held && !retired && !signal.aborted) {
         await new Promise<void>(resolve => {
           const wake = () => {
             waiters.delete(wake);
@@ -29,7 +34,7 @@ export function createConversationInitialPageAdmission() {
       }
       const admitted = epoch;
       const assertCurrent = () => {
-        if (signal.aborted || held || admitted !== epoch)
+        if (signal.aborted || retired || held || admitted !== epoch)
           throw new Error('Conversation restoration was cancelled.');
       };
       assertCurrent();

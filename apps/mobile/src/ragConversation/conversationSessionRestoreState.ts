@@ -170,6 +170,7 @@ export function createConversationSessionRestoreState(input: {
         : Promise.resolve();
     },
     retry: runWhileCurrent,
+    needsCanonicalRetry: (_id: number) => false,
     loadOlder: async (_id: number, _signal?: AbortSignal) => {},
     async prepareContext(id: number, signal?: AbortSignal) {
       if (signal?.aborted) return false;

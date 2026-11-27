@@ -18,6 +18,7 @@ export function continuousSessionOption(
   | 'prepareWarmSend'
   | 'prepareLocalReportModel'
   | 'captureWarmExecution'
+  | 'prepareSavedHistoryRetry'
   | 'captureTemplateSelection'
 > {
   if (!selectedAi) return {};
@@ -27,6 +28,22 @@ export function continuousSessionOption(
       >
     | undefined;
   return {
+    async prepareSavedHistoryRetry(lease, signal) {
+      const target = previous;
+      if (target?.id !== lease.id || target.version !== lease.version) return;
+      const current = () =>
+        !signal.aborted &&
+        previous === target &&
+        target.selectionCurrent?.() === true;
+      if (!current()) return;
+      const storage = await openStorage();
+      const recheck = async () =>
+        current() &&
+        (await storage.validateWarmLease(target.model, lease, signal)) &&
+        current();
+      if (!(await recheck())) return;
+      return { current, recheck };
+    },
     captureWarmExecution: lease => {
       const target = previous;
       if (

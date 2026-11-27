@@ -36,6 +36,7 @@ export interface ConversationSessionOptions {
     model: { providerId: string; modelId: string };
     selectionCurrent?: () => boolean;
   }>;
+  readonly prepareSavedHistoryRetry?: import('./canonicalHistoryRetry').PrepareSavedHistoryRetry;
   /** A synchronous local owner witness, never permission to dispatch inference. */
   readonly captureWarmExecution?: (lease: {
     id: string;
@@ -223,6 +224,7 @@ export interface ConversationSession {
   readonly unsavedCount?: number;
   readonly retryingSave?: boolean;
   readonly restoreFailed?: boolean;
+  readonly historyRetryPending?: boolean;
   readonly restoring?: boolean;
   readonly savedHistoryDisplay?: readonly import('./conversationSavedHistoryDisplay').SavedHistoryDisplayItem[];
   readonly historyHasMore?: boolean;
