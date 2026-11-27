@@ -11,6 +11,8 @@ import { createConversationSessions } from '../conversationSessions';
 import { Transcript } from '../testSupport/savedHistoryDisplayFixture';
 
 const priorAnswer = '이전 대화에 저장된 답변';
+const highlight = '파란색 물체와 흰 상자';
+const photoAnswer = '사진에는 **' + highlight + '**가 있어요.';
 const date = '2026-10-05T00:00:00.000Z';
 const divider = 'conversation-choices-divider';
 const choices = (
@@ -56,6 +58,7 @@ test.each([1, 2])(
     const fixture = await directPhotoComposerFixture({
       hold: true,
       entryChoices: choices,
+      photoAnswer,
       async seed(storage) {
         const row = {
           id: 'earlier',
@@ -99,7 +102,9 @@ test.each([1, 2])(
         message => message.content === caption,
       );
       await act(() => fixture.completePhoto());
-      await screen.findByText('합성 이미지 설명');
+      expect(await screen.findByText(highlight)).toHaveStyle({
+        fontWeight: '700',
+      });
       expect(screen.getAllByText(caption)).toHaveLength(1);
       expect(screen.queryByText(/전송 중/u)).toBeNull();
       expect(
@@ -109,7 +114,7 @@ test.each([1, 2])(
       const current = currentConversationMessages(fixture.session());
       expect(current.map(message => message.content)).toEqual([
         caption,
-        '합성 이미지 설명',
+        photoAnswer,
       ]);
       expect(current[0]?.id).toBe(before?.id);
       expect(
@@ -123,13 +128,13 @@ test.each([1, 2])(
         priorAnswer,
         divider,
         caption,
-        '합성 이미지 설명',
+        highlight,
       );
       expect(fixture.session().messages).toEqual([]);
       await ui.unmount();
       ui = await render(fixture.renderView());
       expect(screen.getAllByText(caption)).toHaveLength(1);
-      expect(screen.getAllByText('합성 이미지 설명')).toHaveLength(1);
+      expect(screen.getAllByText(highlight)).toHaveLength(1);
       await ui.unmount();
       const reopened = createConversationSessions(fixture.createOptions());
       try {
@@ -137,7 +142,8 @@ test.each([1, 2])(
         ui = await render(
           <Transcript store={reopened} entryChoices={choices} />,
         );
-        expect(await screen.findAllByText('합성 이미지 설명')).toHaveLength(1);
+        expect(await screen.findAllByText(highlight)).toHaveLength(1);
+        expect(screen.getByText(highlight)).toHaveStyle({ fontWeight: '700' });
         expect(screen.getAllByText(caption)).toHaveLength(1);
         expect(
           screen.queryByTestId('conversation-sent-photo-image'),
@@ -147,7 +153,7 @@ test.each([1, 2])(
           JSON.stringify(ui.toJSON()),
           priorAnswer,
           caption,
-          '합성 이미지 설명',
+          highlight,
           divider,
         );
       } finally {
