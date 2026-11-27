@@ -1,3 +1,4 @@
+import { createStandingAuthoredMemoryAdmission } from './standingAuthoredMemoryAdmission';
 import { createOrdinaryMemorySidecar } from './ordinaryMemorySidecar';
 import { localConversationMemoryScope } from '../memory/authoredRoutineMemory';
 import type { LocalConversationMemoryScope } from '../storage/ordinaryConversationMemoryEnrollment';
@@ -56,6 +57,7 @@ export function beginOrdinaryConversationMemoryTask(
   let issued = false;
   let finishing = false;
   let source: OrdinaryConversationCompletionIdentity | undefined;
+  let terminalAdmitted = false;
   let proposed = false;
   let selectedScope = originalScope;
   let toolMode = false;
@@ -73,6 +75,20 @@ export function beginOrdinaryConversationMemoryTask(
   };
   const current = () => active && !signal.aborted;
   return {
+    authorizeStandingAuthoredMemory: createStandingAuthoredMemoryAdmission({
+      question,
+      eligible: () =>
+        Boolean(source) &&
+        current() &&
+        !terminalAdmitted &&
+        !nominated &&
+        !issued,
+      current,
+      lookup: scope => admissions.get(scope),
+      claim: () => {
+        terminalAdmitted = true;
+      },
+    }),
     bindSidecar(
       runId: string,
       owner: NonNullable<
@@ -108,6 +124,7 @@ export function beginOrdinaryConversationMemoryTask(
           if (
             nominated ||
             issued ||
+            terminalAdmitted ||
             !current() ||
             !modelCurrent?.() ||
             toolSignal.aborted ||
@@ -129,7 +146,7 @@ export function beginOrdinaryConversationMemoryTask(
     propose(candidate: ConversationRetentionCandidate) {
       // Accept only the first retained result; retry, partial and alternate
       // typed responses cannot overwrite this live composer witness.
-      if (!current() || !source || issued) return;
+      if (!current() || !source || issued || terminalAdmitted) return;
       issued = true;
       // The bridge proposes mixed text only from an owned composer response.
       // Carry its existing possibilities mode through to the unchanged SQL gate.
@@ -214,23 +231,4 @@ export function beginOrdinaryConversationMemoryTask(
   };
 }
 
-/** Construct source identity only from the successfully admitted protected checkpoint. */
-export function completedMemorySource(
-  input: {
-    sessionId: string;
-    sessionVersion?: number;
-    turnId: string;
-    createdAt: string;
-  },
-  question: string | undefined,
-): OrdinaryConversationCompletionIdentity | undefined {
-  return question !== undefined
-    ? {
-        requestId: input.turnId,
-        sessionId: input.sessionId,
-        sessionVersion: input.sessionVersion ?? 0,
-        question,
-        createdAt: input.createdAt,
-      }
-    : undefined;
-}
+export { completedMemorySource } from './ordinaryConversationCompletionSource';

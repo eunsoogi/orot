@@ -1,5 +1,9 @@
+import {
+  interceptAuthoredMemoryCommit,
+  standingAuthoredRoutineGraphFixture,
+} from '../testSupport/standingAuthoredRoutineGraphFixture';
 import { runMultiAgentWorkflow } from '@orot/agent-runtime';
-import { createManualHistoryRepository, type SqlDatabase } from '@orot/storage';
+import { createManualHistoryRepository } from '@orot/storage';
 import type { GroundedRagAnswer } from '../../../ragConversation/task';
 import { createConversationArtifactStorage } from '../../../storage/conversationArtifactStorage';
 import { confirmAuthoredMemoryTerminal } from '../../../storage/conversationAuthoredMemoryTerminal';
@@ -29,6 +33,9 @@ const tests = [
   'locked-in-transaction',
   'wrong-text',
   'wrong-proof',
+  'standing-success',
+  'standing-opted-out',
+  'standing-revoked',
 ] as const;
 
 test.each(tests)(
@@ -36,6 +43,9 @@ test.each(tests)(
   async mode => {
     const f = await healthContextFixture();
     try {
+      const standing = mode.startsWith('standing-');
+      const authored = standing ? '매일 피아노를 연습해요' : statement;
+      const prompt = standing ? authored : request;
       const storage = createConversationArtifactStorage(f.database);
       await storage.createSession(sessionId, await storage.currentGeneration());
       await storage.startRequest({
@@ -43,8 +53,17 @@ test.each(tests)(
         sessionId,
         sessionVersion: 0,
         createdAt: '2026-11-25T00:00:00.000Z',
-        question: request,
+        question: prompt,
       });
+      const standingTask = standing
+        ? await standingAuthoredRoutineGraphFixture(f.database, mode, {
+            requestId,
+            sessionId,
+            question: prompt,
+            sessionVersion: 0,
+            createdAt: '2026-11-25T00:00:00.000Z',
+          })
+        : undefined;
       let watching: (() => void) | undefined;
       let ownerCurrent = true;
       const retire = () => {
@@ -53,24 +72,7 @@ test.each(tests)(
         // Returning to the same model does not revive the earlier local approval.
         ownerCurrent = true;
       };
-      const database: SqlDatabase = {
-        ...f.database,
-        transaction: work =>
-          f.database.transaction(tx =>
-            work({
-              ...tx,
-              execute: async (sql, bindings) => {
-                const result = await tx.execute(sql, bindings);
-                if (
-                  mode === 'locked-in-transaction' &&
-                  sql.startsWith('INSERT INTO conversation_history_receipts')
-                )
-                  retire();
-                return result;
-              },
-            }),
-          ),
-      };
+      const database = interceptAuthoredMemoryCommit(f.database, mode, retire);
       const approve = jest.fn(async () => {
         if (mode === 'owner-retired') retire();
         return mode !== 'denied';
@@ -79,7 +81,11 @@ test.each(tests)(
         (
           input: Parameters<typeof saveConversationHealthHistory>[1],
           signal: AbortSignal,
-        ) => saveConversationHealthHistory(database, input, signal),
+        ) =>
+          (async () => {
+            if (mode === 'standing-revoked') await standingTask?.revoke();
+            return saveConversationHealthHistory(database, input, signal);
+          })(),
       );
       const confirm = jest.fn(
         (
@@ -89,7 +95,7 @@ test.each(tests)(
       );
       const { provider, requests } = syntheticAuthoredPlan(
         toolId,
-        mode === 'wrong-text' ? 'A different invented sentence.' : statement,
+        mode === 'wrong-text' ? 'A different invented sentence.' : authored,
       );
       const providerId = provider.id;
       type Mutation = Parameters<typeof conversationMutationExecution>[0];
@@ -126,6 +132,13 @@ test.each(tests)(
           retentionSession: { id: sessionId, version: 0 },
           retentionRequestId: requestId,
           confirmHistorySave: approve,
+          ...(standing
+            ? {
+                authorizeStandingAuthoredMemory:
+                  standingTask?.observer?.authorizeStandingAuthoredMemory ??
+                  (async () => undefined),
+              }
+            : {}),
           templateProposalOwner: {
             providerId:
               mode === 'wrong-proof' ? 'chatgpt-plan:other' : providerId,
@@ -140,7 +153,7 @@ test.each(tests)(
             },
           },
         },
-        question: request,
+        question: prompt,
         history: {
           messages: [],
           reports: [],
@@ -166,7 +179,7 @@ test.each(tests)(
       const opening = jest.fn(() => 'No speculative receipt');
       const result = await runMultiAgentWorkflow<GroundedRagAnswer>({
         ...baseExecution,
-        request,
+        request: prompt,
         task: {
           taskType: 'synthetic-authored-terminal',
           taskVersion: '1',
@@ -200,18 +213,20 @@ test.each(tests)(
       for (const marker of [requestId, sessionId, 'local-conversation-memory:'])
         expect(JSON.stringify(requests[0])).not.toContain(marker);
       const notes = createManualHistoryRepository(f.database);
-      if (mode === 'success') {
+      if (standing) expect(approve).not.toHaveBeenCalled();
+      if (mode === 'success' || mode === 'standing-success') {
         expect(result).toMatchObject({
           status: 'result',
           citations: [],
           checkpoint: { terminal: true, committedAction: true },
         });
         expect(mutation.memorySaved()).toBe('saved');
-        expect(approve).toHaveBeenCalledWith(statement, expect.anything());
+        if (!standing)
+          expect(approve).toHaveBeenCalledWith(statement, expect.anything());
         expect(persist).toHaveBeenCalledTimes(1);
         expect(confirm).toHaveBeenCalledTimes(1);
         expect((await notes.list()).map(note => note.details)).toEqual([
-          statement,
+          authored,
         ]);
         expect(await notes.listEvidence()).toEqual([]);
       } else {
@@ -219,7 +234,9 @@ test.each(tests)(
         expect(await notes.list()).toEqual([]);
         expect(confirm).not.toHaveBeenCalled();
         expect(persist).toHaveBeenCalledTimes(
-          mode === 'locked-in-transaction' ? 1 : 0,
+          mode === 'locked-in-transaction' || mode === 'standing-revoked'
+            ? 1
+            : 0,
         );
       }
       mutation.disposeAnswerMemory();

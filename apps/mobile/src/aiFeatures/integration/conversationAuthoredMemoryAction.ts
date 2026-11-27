@@ -1,3 +1,7 @@
+import {
+  isExactStandingAuthoredMemorySentence,
+  type StandingAuthoredMemoryApproval,
+} from '../../storage/standingAuthoredMemoryApproval';
 import { APPLE_PROVIDER_ID } from '@orot/provider-apple';
 import { observeAnswerMemoryProviderOwner } from './conversationAnswerMemoryProviderOwner';
 import type {
@@ -13,7 +17,6 @@ type ConfirmTerminal = NonNullable<
   MultiAgentWorkflowOptions<GroundedRagAnswer>['confirmTerminalLocalAction']
 >;
 const actionId = 'remember-current-user-statement';
-const actionVersion = '1';
 import type { RagConversationObserver } from '../../ragConversation/service';
 import { exactAuthoredMemorySentence } from '../../storage/authoredMemorySelection';
 import type { AiFeatureLocalData } from './localData';
@@ -22,12 +25,15 @@ export function conversationAuthoredMemoryAction(input: {
   data: AiFeatureLocalData;
   observer?: RagConversationObserver;
   question: string;
+  standing?: RagConversationObserver['authorizeStandingAuthoredMemory'];
   terminal?: {
     owner: NonNullable<RagConversationObserver['templateProposalOwner']>;
     runId: string;
   };
 }) {
-  const { data, observer, question, terminal } = input;
+  const { data, observer, question, terminal, standing } = input;
+  // The standing terminal never resumes under the old per-item consent descriptor.
+  const actionVersion = standing ? '2' : '1';
   const owner = observer?.retentionSession;
   const requestId = observer?.retentionRequestId;
   const confirm = observer?.confirmHistorySave;
@@ -46,6 +52,7 @@ export function conversationAuthoredMemoryAction(input: {
         operation?: ConversationActionIdentity;
         signal: AbortSignal;
         guard?: ReturnType<typeof observeAnswerMemoryProviderOwner>;
+        standingApproval?: StandingAuthoredMemoryApproval;
       }
     | undefined;
   let pending:
@@ -70,20 +77,24 @@ export function conversationAuthoredMemoryAction(input: {
     observer.selectedRecordingTranscript ||
     !requestId ||
     !owner ||
-    !confirm ||
+    (!standing && !confirm) ||
+    (standing && !terminal) ||
     (terminal
       ? !terminal.owner.current() || !data.confirmAuthoredMemoryTerminal
       : !model?.isCurrent && !onDeviceOwner?.current()) ||
     !data.saveConversationHistory
   )
     return result;
+  const exact = standing
+    ? isExactStandingAuthoredMemorySentence
+    : exactAuthoredMemorySentence;
   const parse = (value: unknown) => {
     if (
       !value ||
       typeof value !== 'object' ||
       Object.keys(value).length !== 1 ||
       !('statement' in value) ||
-      !exactAuthoredMemorySentence(question, value.statement)
+      !exact(question, value.statement)
     )
       return undefined;
     return { statement: value.statement };
@@ -137,8 +148,9 @@ export function conversationAuthoredMemoryAction(input: {
     id: actionId,
     version: actionVersion,
     ...(terminal ? { completion: 'host_terminal' as const } : {}),
-    description:
-      'Use only when the current user explicitly asks to remember a fact, plan, practice, project, goal or preference they directly state in this same message. Copy exactly one complete factual sentence from the current user message; never copy the request to save, filler, prior replies, quoted text, questions, guesses or credentials. The app displays the exact sentence for local approval. Never claim it was saved without a successful tool result.',
+    description: standing
+      ? 'Use only to retain one useful standing reply preference or recurring non-sensitive practice directly stated in the current user message. No remember command is required. Copy its exact complete sentence, never prior turns, questions, speculation, quotes, secrets or other categories. Local Settings permission is checked separately. Never claim a save without the host receipt.'
+      : 'Use only when the current user explicitly asks to remember a fact, plan, practice, project, goal or preference they directly state in this same message. Copy exactly one complete factual sentence from the current user message; never copy the request to save, filler, prior replies, quoted text, questions, guesses or credentials. The app displays the exact sentence for local approval. Never claim it was saved without a successful tool result.',
     inputSchema: {
       type: 'object',
       properties: {
@@ -165,10 +177,15 @@ export function conversationAuthoredMemoryAction(input: {
         : undefined;
       let keep = false;
       try {
+        if (!current(signal, guard) || (guard && !(await guard.recheck())))
+          return false;
+        const standingApproval = standing
+          ? await standing(parsed.statement, signal)
+          : undefined;
         if (
-          !current(signal, guard) ||
-          (guard && !(await guard.recheck())) ||
-          !(await confirm(parsed.statement, signal)) ||
+          (standing
+            ? !standingApproval?.current()
+            : !(await confirm?.(parsed.statement, signal))) ||
           !current(signal, guard) ||
           (guard && !(await guard.recheck()))
         )
@@ -178,6 +195,7 @@ export function conversationAuthoredMemoryAction(input: {
           signal,
           guard,
           operation: terminal ? operation : undefined,
+          ...(standingApproval ? { standingApproval } : {}),
         };
         keep = true;
         return true;
@@ -211,6 +229,9 @@ export function conversationAuthoredMemoryAction(input: {
             current: () => current(signal, grant.guard),
           },
           ...(grant.operation && { authoredTerminal: grant.operation }),
+          ...(grant.standingApproval
+            ? { standingApproval: grant.standingApproval }
+            : {}),
         };
         const id = await data.saveConversationHistory?.(save, signal);
         if (!id) throw new Error('The approved memory could not be saved.');

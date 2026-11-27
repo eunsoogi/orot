@@ -98,9 +98,35 @@ export function conversationMutationExecution(input: {
       : undefined);
   const terminal =
     authoredOwner && runId ? { owner: authoredOwner, runId } : undefined;
+  const standingLane =
+    observer?.authorizeStandingAuthoredMemory &&
+    observer.inputOrigin === 'composer' &&
+    !observer.protectedLocalInput &&
+    !observer.expectedVoiceSelection &&
+    input.remoteMemory !== false &&
+    (!entry || plainAuthoredEntry || authoredPossibilityFollowup);
+  const ownedLocalTerminal =
+    standingLane &&
+    localModel &&
+    runId &&
+    ordinaryModelOwner?.providerId === selected.provider.id &&
+    ordinaryModelOwner.modelId === selected.modelId &&
+    ordinaryModelOwner.current()
+      ? { owner: ordinaryModelOwner, runId }
+      : undefined;
+  const authoredTerminal = terminal ?? ownedLocalTerminal;
   const authoredMemory =
-    (localModel || terminal) &&
-    conversationAuthoredMemoryAction({ data, observer, question, terminal });
+    (localModel || authoredTerminal) &&
+    (!standingLane || authoredTerminal) &&
+    conversationAuthoredMemoryAction({
+      data,
+      observer,
+      question,
+      terminal: authoredTerminal,
+      ...(standingLane
+        ? { standing: observer.authorizeStandingAuthoredMemory }
+        : {}),
+    });
   const answerMemory =
     (localModel || (allowRemoteAnswer && remoteOwner)) &&
     conversationAnswerMemoryAction({

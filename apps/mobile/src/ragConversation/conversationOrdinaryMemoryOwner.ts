@@ -66,7 +66,30 @@ export function createConversationOrdinaryMemoryOwner(
       const task =
         port &&
         beginOrdinaryConversationMemoryTask(port, question, admissionSignal);
-      if (!task) return;
+      if (!task)
+        return {
+          discard() {},
+          show() {},
+          wrap(
+            _retained: Pick<Turn, 'ordinaryMemorySource'>,
+            observer: Pick<
+              RagConversationObserver,
+              'onRetentionCandidate' | 'onRetentionFailure'
+            >,
+          ) {
+            return {
+              ...observer,
+              authorizeStandingAuthoredMemory: async () => undefined,
+              async onRetentionCandidate(
+                ...args: Parameters<
+                  NonNullable<RagConversationObserver['onRetentionCandidate']>
+                >
+              ) {
+                await observer.onRetentionCandidate?.(...args);
+              },
+            };
+          },
+        };
       draft.set(id, task);
       return {
         discard: () => retire(id, draft, task),
@@ -82,6 +105,8 @@ export function createConversationOrdinaryMemoryOwner(
           return {
             ...observer,
             bindOrdinaryMemorySidecar: task.bindSidecar,
+            authorizeStandingAuthoredMemory:
+              task.authorizeStandingAuthoredMemory,
             async onRetentionCandidate(
               ...[candidate, signal]: Parameters<
                 NonNullable<RagConversationObserver['onRetentionCandidate']>

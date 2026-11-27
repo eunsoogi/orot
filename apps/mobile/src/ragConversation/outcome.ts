@@ -20,6 +20,7 @@ export type RagConversationFailureKind =
   | 'visit_saved_unavailable'
   | 'authored_memory_not_saved'
   | 'answer_memory_not_saved'
+  | 'protected_memory_not_saved'
   | 'budget_exceeded'
   | 'unavailable';
 

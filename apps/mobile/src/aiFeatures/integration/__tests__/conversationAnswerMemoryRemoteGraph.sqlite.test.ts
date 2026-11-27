@@ -26,7 +26,6 @@ const currentQuestion = 'Remember the previous answer.';
 const target = { target: 'previous_completed_answer' };
 const toolId = 'remember-conversation-answer';
 const preflight = { items: [], coverage: [], conflicts: [] };
-
 test('existing remote conversation offers only an opaque target and ends with a local receipt', async () => {
   const box = await healthContextFixture();
   try {
@@ -55,7 +54,6 @@ test('existing remote conversation offers only an opaque target and ends with a 
       question: currentQuestion,
       createdAt: '2026-11-25T00:00:01.000Z',
     });
-
     const generate = jest.fn(async (request: LanguageModelRequest) => {
       expect(
         request.tools?.find(tool => tool.name === toolId)?.inputSchema,
@@ -219,7 +217,6 @@ test('existing remote conversation offers only an opaque target and ends with a 
       checkpoint: { terminal: true, committedAction: true },
     });
     expect(await storage.listSavedConversationAnswers()).toHaveLength(1);
-
     const sendRagMessage = jest.fn();
     const selectedAi = jest.fn(async () => selection);
     const route = createConversationSummaryIntegration({
@@ -238,7 +235,11 @@ test('existing remote conversation offers only an opaque target and ends with a 
       signal,
       observer,
     );
-    expect(protectedReply).toMatchObject({ status: 'answer', citations: [] });
+    expect(protectedReply).toEqual({
+      status: 'failure',
+      kind: 'protected_memory_not_saved',
+      discardUnverifiedDraft: true,
+    });
     expect(sendRagMessage).not.toHaveBeenCalled();
     expect(selectedAi).not.toHaveBeenCalled();
     expect(generate).toHaveBeenCalledTimes(1);
