@@ -5,7 +5,6 @@ extension RootNavigationUITests {
     @MainActor
     func testSettingsLayoutTracksMeasuredDuoSpaceAndLargeText() throws {
         let initialOrientation = XCUIDevice.shared.orientation
-        // Start from a supported baseline instead of assuming Simulator orientation is already established.
         XCUIDevice.shared.orientation = .portrait
         let app = XCUIApplication()
         app.launchArguments = [
@@ -34,7 +33,6 @@ extension RootNavigationUITests {
 
         NavigationUITestConditions.route(app, markers: ["rag-conversation-screen"])
         try NavigationUITestConditions.openTab(app, "settings", markers: ["settings-title"])
-        // The Settings route emits the adaptive geometry used as the rotation baseline.
         let initialWindow = try NavigationGeometryUITestConditions.snapshot(app).window
         let regularTitleHeight = UITestConditions.element(app, "settings-title").frame.height
         try verifySettingsPanels(app)
@@ -103,12 +101,14 @@ extension RootNavigationUITests {
         let app = launch(["-OROT_TEST_UI_GEOMETRY", "YES", "-OROT_TEST_NAVIGATION_OBSERVATION", "YES"])
         defer { app.terminate() }
         try ViewportObservation.openSettings(app, testCase: self)
-        for identifier in ["settings-open-health-data", "settings-open-sync-status", "settings-open-provider", "settings-open-accounts", "settings-open-privacy", "settings-open-backup"] {
+        for identifier in ["settings-open-health-data", "settings-open-sync-status", "settings-open-provider", "settings-open-accounts", "settings-open-privacy", "settings-open-backup", "settings-open-notifications", "settings-open-memory"] {
             let control = app.buttons[identifier]
+            FormUITestConditions.reveal(control, in: app, scrollID: "navigation-route-scroll")
             XCTAssertTrue(control.exists && control.isHittable)
         }
         capture(app, "settings-root-light")
 
+        FormUITestConditions.reveal(app.buttons["settings-open-health-data"], in: app, scrollID: "navigation-route-scroll")
         tap(app, "settings-open-health-data")
         NavigationUITestConditions.route(app, markers: ["health-data-title"])
         let medication = UITestConditions.element(app, "health-data-feature-medications")
@@ -222,7 +222,7 @@ extension RootNavigationUITests {
             )
         }
 
-        for identifier in ["settings-open-health-data", "settings-open-sync-status", "settings-open-provider", "settings-open-accounts", "settings-open-privacy", "settings-open-backup"] {
+        for identifier in ["settings-open-health-data", "settings-open-sync-status", "settings-open-provider", "settings-open-accounts", "settings-open-privacy", "settings-open-backup", "settings-open-notifications", "settings-open-memory"] {
             let control = app.buttons[identifier]
             XCTAssertTrue(control.exists && control.frame.height >= 44)
         }
@@ -234,7 +234,7 @@ extension RootNavigationUITests {
     /// Confirms panel axes, host containment, and clearance from the active navigation rail.
     @MainActor
     private func verifyAdaptivePanels(_ app: XCUIApplication, prefix: String, navigationID: String) throws -> Bool {
-        let ids = prefix == "settings-layout" ? ["settings-section-ai-accounts", "settings-section-app-info"] :
+        let ids = prefix == "settings-layout" ? ["settings-title", "settings-destinations"] :
             prefix == "settings-provider-panels" ? ["settings-provider-local-panel", "settings-provider-connected-panel"] : ["settings-accounts-list", "settings-accounts-actions"]
         let first = UITestConditions.element(app, ids[0]), second = UITestConditions.element(app, ids[1])
         XCTAssertTrue(first.exists && second.exists, app.debugDescription)

@@ -24,6 +24,8 @@ export type AppNavigationRoute =
   | 'settings-accounts'
   | 'settings-backup'
   | 'settings-privacy'
+  | 'settings-notifications'
+  | 'settings-memory'
   | 'settings-health-data'
   | 'settings-sync-status';
 import type { AiFeatureRouteName } from '../aiFeatures/integration/aiFeatureNavigation';

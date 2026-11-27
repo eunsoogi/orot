@@ -5,6 +5,7 @@ import {
   screen,
   waitFor,
 } from '@testing-library/react-native';
+import { t } from '../../i18n';
 import type { ReactNode } from 'react';
 import { Alert, Dimensions, StyleSheet, Text, View } from 'react-native';
 import { NavigationRouteAdapter } from '../../navigation/NavigationRouteAdapter';
@@ -210,4 +211,25 @@ test('uses native privacy regions and retains confirmation, progress, and cleare
       ?.disabled,
   ).toBe(false);
   expect(controller.getSnapshot().currentRoute.name).toBe('settings-privacy');
+});
+
+test('privacy explanations do not change iOS permissions or stored consent', async () => {
+  const alert = jest.spyOn(Alert, 'alert');
+  const reset = jest.mocked(resetInferenceConsentReceipts);
+  reset.mockClear();
+  await render(<SettingsPrivacyRoute />);
+  expect(screen.queryAllByRole('switch')).toHaveLength(0);
+  expect(screen.queryByText(t('settings.permission.microphone'))).toBeNull();
+  await fireEvent.press(
+    screen.getByRole('button', {
+      name: t('settings.informationFor', {
+        title: t('settings.permission.microphoneTitle'),
+      }),
+    }),
+  );
+  expect(alert).toHaveBeenCalledWith(
+    t('settings.permission.microphoneTitle'),
+    t('settings.permission.microphone'),
+  );
+  expect(reset).not.toHaveBeenCalled();
 });

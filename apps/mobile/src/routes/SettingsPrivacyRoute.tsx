@@ -1,4 +1,3 @@
-import { SettingsDailyReportMemorySection } from './SettingsDailyReportMemorySection';
 import { useCallback, useState } from 'react';
 import { Linking, Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import { AppText as Text } from '../layout/AppText';
@@ -8,14 +7,12 @@ import { AdaptiveColumns } from '../layout/AdaptiveColumns';
 import { useNavigationLeaveStateRegistration } from '../navigation';
 import { useNavigationEdgeVerticalScroll } from '../navigation/navigationEdgeScroll';
 import { useNavigationContentInset } from '../navigation/useNavigationContentInset';
-import type { NavigationRouteOwnership } from '../navigation/navigationRouteContracts';
-import { SettingsAutomaticMemorySection } from './SettingsAutomaticMemorySection';
+import { settingsListColors } from './settingsListColors';
+import { SettingsInformationButton } from './SettingsInformationButton';
 import { InferenceConsentSettings } from '../agent/execution/InferenceConsentSettings';
 
 /** Measures privacy panels while keeping OS-owned permissions and consent scope explicit. */
-export function SettingsPrivacyRoute({
-  ownership,
-}: { readonly ownership?: NavigationRouteOwnership } = {}) {
+export function SettingsPrivacyRoute() {
   const navigationInset = useNavigationContentInset();
   // This page owns the scroll viewport; the panels retain their readable inset.
   const edge = useNavigationEdgeVerticalScroll({
@@ -65,41 +62,46 @@ export function SettingsPrivacyRoute({
             </Text>
             <View style={styles.section} testID="settings-privacy-permissions">
               <PermissionRow
+                testID="privacy-microphone-information"
                 summary={t('settings.permission.microphone')}
                 title={t('settings.permission.microphoneTitle')}
               />
               <PermissionRow
+                testID="privacy-speech-information"
                 summary={t('settings.permission.speechRecognition')}
                 title={t('settings.permission.speechRecognitionTitle')}
               />
               <PermissionRow
                 detail={t('healthkit.commonObservations.localOnly')}
+                testID="privacy-health-information"
                 summary={t('settings.permission.healthData')}
                 title={t('settings.healthPrivacy')}
               />
               <PermissionRow
                 detail={t('calendar.permissionExplanation')}
+                testID="privacy-calendar-information"
                 summary={t('settings.permission.calendar')}
                 title={t('settings.calendarPrivacy')}
               />
             </View>
-            <SettingsAutomaticMemorySection ownership={ownership} />
-            <SettingsAutomaticMemorySection ownership={ownership} routine />
-            <SettingsDailyReportMemorySection ownership={ownership} />
             <View
               style={styles.secondaryColumn}
               testID="settings-privacy-external-transfer"
             >
               <View style={styles.externalSection}>
-                <Text style={styles.sectionTitle}>
-                  {t('settings.externalTransfer')}
-                </Text>
-                <Text style={styles.body}>
-                  {t('settings.externalTransferSummary')}
-                </Text>
-                <Text style={styles.detail}>
-                  {t('provider.selection.remotePrivacy')}
-                </Text>
+                <View style={styles.row}>
+                  <Text accessibilityRole="header" style={styles.rowTitle}>
+                    {t('settings.externalTransfer')}
+                  </Text>
+                  <SettingsInformationButton
+                    title={t('settings.externalTransfer')}
+                    message={[
+                      t('settings.externalTransferSummary'),
+                      t('provider.selection.remotePrivacy'),
+                    ].join('\n\n')}
+                    testID="privacy-external-transfer-information"
+                  />
+                </View>
                 <InferenceConsentSettings
                   onClearingChange={handleConsentClearingChange}
                 />
@@ -145,17 +147,22 @@ export function SettingsPrivacyRoute({
 function PermissionRow({
   detail,
   summary,
+  testID,
   title,
 }: {
   readonly detail?: string;
   readonly summary: string;
+  readonly testID: string;
   readonly title: string;
 }) {
   return (
-    <View style={styles.permissionRow}>
+    <View style={[styles.row, styles.permissionRow]}>
       <Text style={styles.rowTitle}>{title}</Text>
-      <Text style={styles.body}>{summary}</Text>
-      {detail ? <Text style={styles.detail}>{detail}</Text> : null}
+      <SettingsInformationButton
+        title={title}
+        message={detail ? `${summary}\n\n${detail}` : summary}
+        testID={testID}
+      />
     </View>
   );
 }
@@ -164,7 +171,7 @@ const styles = StyleSheet.create({
   scrollView: { flex: 1 },
   container: {
     flexGrow: 1,
-    backgroundColor: appColors.background,
+    backgroundColor: settingsListColors.background,
     gap: 20,
     paddingHorizontal: 20,
     paddingTop: 16,
@@ -173,32 +180,34 @@ const styles = StyleSheet.create({
   title: { color: appColors.text, fontSize: 30, fontWeight: '700' },
   pageSections: { gap: 20 },
   section: {
-    backgroundColor: appColors.surface,
+    backgroundColor: settingsListColors.row,
     borderColor: appColors.border,
     borderRadius: 18,
     borderWidth: 0,
     paddingHorizontal: 16,
   },
+  row: {
+    minHeight: 48,
+    gap: 8,
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
   permissionRow: {
-    gap: 5,
-    paddingVertical: 14,
-    borderBottomColor: appColors.border,
+    borderBottomColor: settingsListColors.separator,
     borderBottomWidth: StyleSheet.hairlineWidth,
   },
-  rowTitle: { color: appColors.text, fontSize: 16, fontWeight: '600' },
-  body: { color: appColors.text, fontSize: 14, lineHeight: 21 },
-  detail: { color: appColors.secondary, fontSize: 13, lineHeight: 19 },
+  rowTitle: { flex: 1, color: appColors.text, fontSize: 16 },
   externalSection: {
-    backgroundColor: appColors.surface,
+    backgroundColor: settingsListColors.row,
     borderRadius: 18,
     gap: 8,
-    padding: 16,
+    paddingHorizontal: 16,
+    paddingBottom: 12,
   },
   secondaryColumn: { gap: 12, minWidth: 0 },
-  sectionTitle: { color: appColors.text, fontSize: 16, fontWeight: '600' },
   settingsAction: {
     alignItems: 'center',
-    backgroundColor: appColors.surface,
+    backgroundColor: settingsListColors.row,
     borderRadius: 16,
     flexDirection: 'row',
     justifyContent: 'space-between',

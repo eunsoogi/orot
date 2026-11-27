@@ -1,3 +1,4 @@
+import { SettingsInformationButton } from './SettingsInformationButton';
 import { SettingsNotificationDivider } from './SettingsNotificationDivider';
 import { useState } from 'react';
 import { Pressable, StyleSheet, Switch, View } from 'react-native';
@@ -87,17 +88,17 @@ export function SettingsDailyReminderSection() {
 
   return (
     <View style={styles.section} testID="settings-section-daily-reminders">
-      <Text accessibilityRole="header" style={styles.sectionTitle}>
-        {t('settings.dailyReminder.title')}
-      </Text>
-      <View style={styles.card} testID="settings-daily-reminder-card">
-        <Text
-          style={styles.description}
-          testID="settings-daily-reminder-description"
-        >
-          {t('settings.dailyReminder.description')}
+      <View style={styles.sectionHeading}>
+        <Text accessibilityRole="header" style={styles.sectionTitle}>
+          {t('settings.dailyReminder.title')}
         </Text>
-        <SettingsNotificationDivider inset={16} />
+        <SettingsInformationButton
+          title={t('settings.dailyReminder.title')}
+          message={t('settings.dailyReminder.description')}
+          testID="settings-daily-reminder-info"
+        />
+      </View>
+      <View style={styles.card} testID="settings-daily-reminder-card">
         <View
           style={styles.toggleRow}
           testID="settings-daily-reminder-toggle-row"
@@ -194,11 +195,17 @@ export function SettingsDailyReminderSection() {
 
 const styles = StyleSheet.create({
   section: { gap: 8 },
+  sectionHeading: {
+    alignItems: 'center',
+    flexDirection: 'row',
+    gap: 8,
+    paddingLeft: 16,
+  },
   sectionTitle: {
     color: appColors.secondary,
+    flex: 1,
     fontSize: 14,
     fontWeight: '600',
-    marginBottom: 2,
   },
   card: {
     backgroundColor: appColors.surface,
@@ -206,13 +213,6 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     borderWidth: 0,
     overflow: 'hidden',
-  },
-  description: {
-    color: appColors.secondary,
-    fontSize: 15,
-    paddingBottom: 12,
-    paddingHorizontal: 16,
-    paddingTop: 16,
   },
   toggleRow: {
     alignItems: 'center',

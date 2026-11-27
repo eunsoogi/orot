@@ -1,6 +1,6 @@
 import { act, fireEvent, render, screen } from '@testing-library/react-native';
 import type { ReactNode } from 'react';
-import { Text } from 'react-native';
+import { Alert, Text } from 'react-native';
 import {
   getGenericPassword,
   setGenericPassword,
@@ -17,8 +17,7 @@ import {
   readOrdinaryConversationMemorySettings,
 } from '../../storage/ordinaryConversationMemoryDeviceOwner';
 import { openLocalAgentMemoryDatabase } from '../../storage/secureDatabase';
-import { SettingsPrivacyRoute } from '../SettingsPrivacyRoute';
-
+import { SettingsMemoryRoute } from '../SettingsMemoryRoute';
 jest.mock('react-native-keychain', () => ({
   ACCESSIBLE: { WHEN_UNLOCKED_THIS_DEVICE_ONLY: 'device-only' },
   STORAGE_TYPE: { AES_GCM_NO_AUTH: 'KeystoreAESGCM_NoAuth' },
@@ -43,9 +42,15 @@ jest.mock('react-native-safe-area-context', () => {
       React.createElement(React.Fragment, null, children),
   };
 });
-
+function toggleMemory(value: boolean) {
+  return fireEvent(
+    screen.getByTestId('settings-automatic-memory-toggle'),
+    'valueChange',
+    value,
+  );
+}
 const service = 'com.orot.mobile.ordinary-conversation-memory-authority.v1';
-type Route = 'home' | 'settings-privacy' | 'elsewhere';
+type Route = 'home' | 'settings-memory' | 'elsewhere';
 type Device = Awaited<ReturnType<typeof getGenericPassword>>;
 function deferred() {
   let resolve!: () => void;
@@ -79,8 +84,8 @@ function fixture(
       await render(
         <NavigationRouteAdapter controller={controller}>
           {actions =>
-            actions.route.name === 'settings-privacy' ? (
-              <SettingsPrivacyRoute ownership={actions.ownership} />
+            actions.route.name === 'settings-memory' ? (
+              <SettingsMemoryRoute ownership={actions.ownership} />
             ) : (
               <Text testID={actions.route.name}>{actions.route.name}</Text>
             )
@@ -88,13 +93,12 @@ function fixture(
         </NavigationRouteAdapter>,
       );
       await act(async () => {
-        controller.push('settings-privacy');
+        controller.push('settings-memory');
       });
     },
   };
 }
-
-test('real Privacy route defaults off and grants the separate local-only category only after an explicit tap', async () => {
+test('Memory route defaults off, information is separate, and an explicit switch grants only the local category', async () => {
   const f = fixture();
   try {
     await f.open();
@@ -102,15 +106,28 @@ test('real Privacy route defaults off and grants the separate local-only categor
       await screen.findByText(t('settings.automaticMemory.off')),
     ).toBeTruthy();
     expect(f.write).not.toHaveBeenCalled();
-    expect(screen.getByText(t('settings.automaticMemory.backup'))).toBeTruthy();
-    expect(screen.getByTestId('settings-privacy-permissions')).toBeTruthy();
-    expect(
-      screen.getByTestId('settings-privacy-external-transfer'),
-    ).toBeTruthy();
-    expect(screen.getByTestId('inference-consent-clear')).toBeTruthy();
-    await fireEvent.press(
-      screen.getByTestId('settings-automatic-memory-enable'),
+    expect(screen.getByTestId('settings-memory-title')).toHaveTextContent(
+      t('settings.memory'),
     );
+    expect(screen.getByTestId('settings-memory-controls')).toBeTruthy();
+    expect(screen.getByTestId('settings-routine-memory')).toBeTruthy();
+    expect(screen.getByTestId('settings-daily-report-memory')).toBeTruthy();
+    expect(screen.queryByTestId('inference-consent-clear')).toBeNull();
+    expect(screen.queryByText(t('settings.automaticMemory.backup'))).toBeNull();
+    const info = jest.spyOn(Alert, 'alert').mockImplementation(() => {});
+    try {
+      await fireEvent.press(
+        screen.getByTestId('settings-automatic-memory-info'),
+      );
+      expect(info.mock.lastCall?.slice(0, 2)).toEqual([
+        t('settings.automaticMemory.title'),
+        expect.stringContaining(t('settings.automaticMemory.backup')),
+      ]);
+      expect(f.write).not.toHaveBeenCalled();
+    } finally {
+      info.mockRestore();
+    }
+    await toggleMemory(true);
     expect(
       await screen.findByText(t('settings.automaticMemory.on')),
     ).toBeTruthy();
@@ -118,9 +135,7 @@ test('real Privacy route defaults off and grants the separate local-only categor
     expect(
       f.write.mock.calls.map(([, body]) => JSON.parse(body).status),
     ).toEqual(['suspended', 'active']);
-    await fireEvent.press(
-      screen.getByTestId('settings-automatic-memory-disable'),
-    );
+    await toggleMemory(false);
     expect(
       await screen.findByText(t('settings.automaticMemory.off')),
     ).toBeTruthy();
@@ -131,7 +146,6 @@ test('real Privacy route defaults off and grants the separate local-only categor
     f.close();
   }
 });
-
 test('a logical route change while native enable is held invalidates the attempt and cannot activate it on return', async () => {
   const pending = deferred();
   const entered = deferred();
@@ -143,11 +157,9 @@ test('a logical route change while native enable is held invalidates the attempt
   try {
     await f.open();
     await screen.findByText(t('settings.automaticMemory.off'));
-    await fireEvent.press(
-      screen.getByTestId('settings-automatic-memory-enable'),
-    );
+    await toggleMemory(true);
     await entered.promise;
-    const privacy = f.controller.getSnapshot().currentRoute;
+    const memory = f.controller.getSnapshot().currentRoute;
     await act(async () => {
       f.controller.push('elsewhere');
     });
@@ -157,7 +169,7 @@ test('a logical route change while native enable is held invalidates the attempt
       expect(f.controller.reconcileNativeBack(away.key)).toBe(true);
     });
     // The same logical route returning before the native save resolves must not resurrect the old attempt.
-    expect(f.controller.getSnapshot().currentRoute.key).toBe(privacy.key);
+    expect(f.controller.getSnapshot().currentRoute.key).toBe(memory.key);
     await act(async () => {
       pending.resolve();
       await captureOrdinaryConversationMemoryAdmission();
@@ -167,7 +179,7 @@ test('a logical route change while native enable is held invalidates the attempt
       f.write.mock.calls.map(([, body]) => JSON.parse(body).status),
     ).toEqual(['suspended']);
     await act(async () => {
-      f.controller.replace('settings-privacy');
+      f.controller.replace('settings-memory');
     });
     expect(
       await screen.findByText(t('settings.automaticMemory.off')),
@@ -177,7 +189,6 @@ test('a logical route change while native enable is held invalidates the attempt
     f.close();
   }
 });
-
 test('disable immediately fences old captures but a rejected durable revocation does not display off', async () => {
   const held = deferred();
   const entered = deferred();
@@ -190,15 +201,11 @@ test('disable immediately fences old captures but a rejected durable revocation 
   try {
     await f.open();
     await screen.findByText(t('settings.automaticMemory.off'));
-    await fireEvent.press(
-      screen.getByTestId('settings-automatic-memory-enable'),
-    );
+    await toggleMemory(true);
     await screen.findByText(t('settings.automaticMemory.on'));
     const old = await captureOrdinaryConversationMemoryAdmission();
     expect(old?.isCurrent()).toBe(true);
-    await fireEvent.press(
-      screen.getByTestId('settings-automatic-memory-disable'),
-    );
+    await toggleMemory(false);
     expect(old?.isCurrent()).toBe(false);
     await entered.promise;
     await act(async () => held.resolve());
@@ -206,7 +213,7 @@ test('disable immediately fences old captures but a rejected durable revocation 
       await screen.findByText(t('settings.automaticMemory.disableError')),
     ).toBeTruthy();
     expect(screen.queryByText(t('settings.automaticMemory.off'))).toBeNull();
-    expect(screen.queryByTestId('settings-automatic-memory-enable')).toBeNull();
+    expect(screen.queryByTestId('settings-automatic-memory-toggle')).toBeNull();
     expect(
       await readOrdinaryConversationMemorySettings(
         await openOrdinaryConversationMemoryOwner(),
@@ -220,7 +227,6 @@ test('disable immediately fences old captures but a rejected durable revocation 
     f.close();
   }
 });
-
 test('an unreadable device decision is visible and cannot become an opt-in action', async () => {
   const f = fixture();
   f.device.value = {
@@ -234,7 +240,7 @@ test('an unreadable device decision is visible and cannot become an opt-in actio
     expect(
       await screen.findByText(t('settings.automaticMemory.unavailable')),
     ).toBeTruthy();
-    expect(screen.queryByTestId('settings-automatic-memory-enable')).toBeNull();
+    expect(screen.queryByTestId('settings-automatic-memory-toggle')).toBeNull();
     expect(f.write).not.toHaveBeenCalled();
   } finally {
     f.close();

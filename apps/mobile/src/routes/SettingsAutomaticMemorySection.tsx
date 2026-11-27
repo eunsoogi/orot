@@ -1,6 +1,7 @@
 import { useLayoutEffect, useRef, useState } from 'react';
-import { Pressable, StyleSheet, View } from 'react-native';
+import { Pressable, StyleSheet, Switch } from 'react-native';
 import { t } from '../i18n';
+import { SettingsMemoryControl } from './SettingsMemoryControl';
 import { AppText as Text } from '../layout/AppText';
 import { appColors } from '../layout/appColors';
 import type { NavigationRouteOwnership } from '../navigation/navigationRouteContracts';
@@ -143,14 +144,31 @@ export function SettingsAutomaticMemorySection({
   };
 
   const displayStatus = ownership ? status : 'unavailable';
+  const writing = displayStatus === 'enabling' || displayStatus === 'disabling';
+  const available = displayStatus === 'on' || displayStatus === 'off';
   return (
-    <View style={styles.card} testID={testId}>
-      <Text accessibilityRole="header" style={styles.title}>
-        {t(`${settingsKey}.title`)}
-      </Text>
-      <Text style={styles.body}>{t(`${settingsKey}.description`)}</Text>
-      <Text style={styles.body}>{t(`${settingsKey}.retention`)}</Text>
-      <Text style={styles.body}>{t(`${settingsKey}.backup`)}</Text>
+    <SettingsMemoryControl
+      title={t(`${settingsKey}.title`)}
+      description={[
+        t(`${settingsKey}.description`),
+        t(`${settingsKey}.retention`),
+        t(`${settingsKey}.backup`),
+      ]}
+      testID={testId}
+      control={
+        available || writing ? (
+          <Switch
+            accessibilityLabel={t(`${settingsKey}.title`)}
+            testID={`${testId}-toggle`}
+            disabled={writing}
+            value={displayStatus === 'on' || displayStatus === 'disabling'}
+            onValueChange={next => {
+              if (available && next !== (displayStatus === 'on')) change(next);
+            }}
+          />
+        ) : undefined
+      }
+    >
       <Text
         accessibilityRole={isError(displayStatus) ? 'alert' : undefined}
         accessibilityLiveRegion="polite"
@@ -162,16 +180,7 @@ export function SettingsAutomaticMemorySection({
       {displayStatus === 'unavailable' && routeOwner.current?.connection ? (
         <Text style={styles.body}>{t(`${settingsKey}.recovery`)}</Text>
       ) : null}
-      {displayStatus === 'off' ? (
-        <MemoryAction
-          settingsKey={settingsKey}
-          testId={testId}
-          action="enable"
-          onPress={() => change(true)}
-        />
-      ) : null}
-      {displayStatus === 'on' ||
-      (isError(displayStatus) && routeOwner.current?.connection) ? (
+      {isError(displayStatus) && routeOwner.current?.connection ? (
         <MemoryAction
           settingsKey={settingsKey}
           testId={testId}
@@ -187,7 +196,7 @@ export function SettingsAutomaticMemorySection({
           onPress={() => routeOwner.current?.refresh()}
         />
       ) : null}
-    </View>
+    </SettingsMemoryControl>
   );
 }
 
@@ -197,7 +206,7 @@ function MemoryAction({
   testId,
   onPress,
 }: {
-  readonly action: 'enable' | 'disable' | 'retry';
+  readonly action: 'disable' | 'retry';
   readonly settingsKey: MemorySettingsKeys;
   readonly testId: string;
   readonly onPress: () => void;
@@ -215,13 +224,6 @@ function MemoryAction({
 }
 
 const styles = StyleSheet.create({
-  card: {
-    backgroundColor: appColors.surface,
-    borderRadius: 18,
-    gap: 8,
-    padding: 16,
-  },
-  title: { color: appColors.text, fontSize: 16, fontWeight: '600' },
   body: { color: appColors.secondary, fontSize: 14, lineHeight: 21 },
   action: { justifyContent: 'center', minHeight: 44 },
   actionText: { color: appColors.primary, fontSize: 15, fontWeight: '600' },
