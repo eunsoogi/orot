@@ -362,3 +362,14 @@ The app draws one bundled native symbol, with no extra accessibility
 description, action, external resource or model data. Reopening the
 reply keeps the archived text and structure without this decoration;
 earlier tasks and stored layout decoders cannot accept the new icon.
+
+Fresh task v61 also admits native read-only layouts for ordinary Conversation
+replies grounded exclusively in the approved current public-web sources.
+The model's tab titles and every panel item must match the existing accepted
+answer in order. Citations remain app-owned outside the layout, and the
+app's public-web disclosure stays visible regardless of the active panel.
+No model action or remote asset is allowed. Cited replies continue to
+reopen with the stored prose and original sources, not a retained layout.
+Private evidence, templates, partial results and unmatched or omitted UI
+frames keep the existing fallback. Earlier tasks retain their original
+admission.
