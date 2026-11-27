@@ -123,12 +123,12 @@ export function createLiveCommonHealthPort(input: {
           observed = call;
           retained = undefined;
           const connect = async () => {
-            if (
-              !owns(call) ||
-              !(await input.protectedDataAvailable()) ||
-              !owns(call)
-            )
-              return;
+            if (!owns(call)) return;
+            // This protected owner check precedes SQL/data opening and is not
+            // part of the stock evidence read or the serialized tool queue.
+            const ownerReproof = startLiveCommonHealthTiming('owner_reproof');
+            if (!(await input.protectedDataAvailable()) || !owns(call)) return;
+            ownerReproof();
             const dataOpen = startLiveCommonHealthTiming('data_open');
             const data = await input.openData();
             if (!owns(call)) return;
