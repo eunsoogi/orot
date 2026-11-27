@@ -11,6 +11,7 @@ import type { EvidenceSourceReadResult } from '../evidenceRegistry';
 import type { AiFeatureFlowScreenProps } from '../AiFeatureFlowScreenTypes';
 import { AiFeatureRoute } from '../AiFeatureRoute';
 import { t } from '../../../i18n';
+import { navigationText } from '../../../i18n/navigation';
 
 jest.mock(
   'react-native-safe-area-context',
@@ -143,6 +144,21 @@ test.each([320, 852])(
       animationType: 'slide',
       allowSwipeDismissal: true,
     });
+    expect(screen.queryByText(navigationText.close.label)).toBeNull();
+    const grabber = screen.getByRole('button', {
+      name: navigationText.close.accessibilityLabel,
+    });
+    expect(grabber).toHaveStyle({
+      alignSelf: 'center',
+      width: 44,
+      height: 44,
+    });
+    expect(
+      screen.getByTestId('conversation-personal-source-grabber'),
+    ).toHaveStyle({
+      width: 36,
+      height: 5,
+    });
     expect(screen.getByTestId('ai-feature-source-loading')).toBeVisible();
     expect(screen.queryByText('Synthetic selected source')).toBeNull();
     expect(mockServices.readSource).not.toHaveBeenCalled();
@@ -171,30 +187,39 @@ test.each([320, 852])(
     expect(mockResolve).not.toHaveBeenCalled();
     expect(screen.queryByText('private-opaque-id')).toBeNull();
     expect(screen.queryByTestId('ai-feature-source-selection')).toBeNull();
-    await fireEvent.press(
-      screen.getByTestId('conversation-personal-source-close'),
-    );
+    await fireEvent.press(grabber);
     expect(screen.queryByTestId(sheetId)).toBeNull();
     expect(f.signal.aborted).toBe(true);
     expect(chip()).toBeVisible();
+    expect(chip()).toBeEnabled();
   },
 );
 
-test('native dismissal retires held personal admission, and its late result never reads or paints', async () => {
-  const f = holdAdmission();
-  await render(
-    <AiFeatureRoute initialRoute="rag-conversation" onBack={jest.fn()} />,
-  );
-  await fireEvent.press(chip());
-  const sheet = await screen.findByTestId(sheetId);
-  await fireEvent(screen.getByTestId('ai-feature-source-detail'), 'layout');
-  expect(f.admit).toHaveBeenCalledTimes(1);
-  await fireEvent(sheet, 'requestClose');
-  expect(f.signal.aborted).toBe(true);
-  await act(() => f.finish(reference));
-  expect(mockServices.readSource).not.toHaveBeenCalled();
-  expect(screen.queryByTestId(sheetId)).toBeNull();
-});
+test.each(['requestClose', 'accessibilityEscape'] as const)(
+  '%s retires held personal admission, and its late result never reads or paints',
+  async event => {
+    const f = holdAdmission();
+    await render(
+      <AiFeatureRoute initialRoute="rag-conversation" onBack={jest.fn()} />,
+    );
+    await fireEvent.press(chip());
+    const sheet = await screen.findByTestId(sheetId);
+    await fireEvent(screen.getByTestId('ai-feature-source-detail'), 'layout');
+    expect(f.admit).toHaveBeenCalledTimes(1);
+    const target =
+      event === 'requestClose'
+        ? sheet
+        : screen.getByRole('button', {
+            name: navigationText.close.accessibilityLabel,
+          });
+    await fireEvent(target, event);
+    expect(f.signal.aborted).toBe(true);
+    await act(() => f.finish(reference));
+    expect(mockServices.readSource).not.toHaveBeenCalled();
+    expect(screen.queryByTestId(sheetId)).toBeNull();
+    expect(chip()).toBeEnabled();
+  },
+);
 
 test.each(['denied', 'lock'] as const)(
   '%s switches neutral progress to unavailable in the same closable sheet',
