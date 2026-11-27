@@ -216,7 +216,7 @@ function acquireEpoch(owner: SqlDatabase, independent: boolean) {
 }
 export function awaitIndependentReadSettlement(
   owner: SqlDatabase,
-  timeoutMs: number,
+  timeoutMs: number | undefined,
   signal?: AbortSignal,
 ): Promise<boolean> {
   return readSettlement(
@@ -235,7 +235,7 @@ export function awaitIndependentReadSettlementResult(
 }
 function readSettlement<R>(
   owner: SqlDatabase,
-  timeoutMs: number,
+  timeoutMs: number | undefined,
   signal: AbortSignal | undefined,
   result: (outcome: ReadSettlement) => R,
 ) {

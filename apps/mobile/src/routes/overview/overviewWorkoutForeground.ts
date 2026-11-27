@@ -1,4 +1,6 @@
 import { confirmOverviewWorkoutProtection } from './overviewWorkoutProtection';
+import type { WorkoutChoiceReceipt } from './earlyWorkoutChoice';
+import type { acquireIndependentReadEpoch } from '../../storage/protectedReadEpoch';
 import type { conversationExecutionNative } from '../../ragConversation/conversationExecutionNative';
 
 type Protection = NonNullable<ReturnType<typeof conversationExecutionNative>>;
@@ -8,8 +10,17 @@ export type WorkoutForegroundOwner = {
   settled?: boolean;
   interrupted?: boolean;
   reconfirming?: boolean;
+  recovering?: boolean;
   usable?: () => boolean;
   recover?: () => Promise<void>;
+};
+
+export type OverviewWorkoutReadOwner = WorkoutForegroundOwner & {
+  abort: AbortController;
+  epoch?: ReturnType<typeof acquireIndependentReadEpoch>;
+  stopExpiry?: () => void;
+  staleStartup?: boolean;
+  receipt?: WorkoutChoiceReceipt;
 };
 
 export function createOverviewWorkoutForeground<
@@ -44,7 +55,11 @@ export function createOverviewWorkoutForeground<
       inactiveSince === undefined ? 0 : Date.now() - inactiveSince;
     inactiveSince = undefined;
     const existing = owner();
-    if (existing && (pausedFor > 5_000 || existing.usable?.() === false)) {
+    if (
+      existing &&
+      (pausedFor > 5_000 ||
+        (!existing.recovering && existing.usable?.() === false))
+    ) {
       // A retired snapshot is not an empty or denied result. The parent
       // selection may still be revalidating before its successor can start.
       retire(false);
