@@ -109,7 +109,7 @@ export function createDailyReportCalendarWindow(
 
 /** Occurrence selects the local day; ingestion time only limits what existed at the cutoff. */
 export function dailyReportSourceRecordIsAvailable(
-  record: DailyReportSourceRecord,
+  record: Omit<DailyReportSourceRecord, 'revision'>,
   context: DailyReportCalendarWindow,
 ): boolean {
   if (
