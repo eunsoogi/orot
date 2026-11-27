@@ -1,5 +1,4 @@
 import { useMemo, type ComponentProps } from 'react';
-import { ConversationPhotoConsentSurface } from './ConversationPhotoConsentSurface';
 import { ConversationComposer } from './ConversationComposer';
 import { useConversationDirectPhoto } from './useConversationDirectPhoto';
 import type {
@@ -73,20 +72,17 @@ export function ConversationDirectPhotoComposer({
       : {}),
   };
   return (
-    <>
-      <ConversationComposer
-        {...composer}
-        photo={photoOverride}
-        trailingAction={
-          renderTrailingAction?.(selected) ?? composer.trailingAction
-        }
-        busy={composer.busy || Boolean(sending)}
-        onSteer={sending ? undefined : composer.onSteer}
-        onCancel={sending ? direct.remove : composer.onCancel}
-        onSend={selected ? direct.send : composer.onSend}
-        preflightError={message ?? composer.preflightError}
-      />
-      <ConversationPhotoConsentSurface controller={direct.groupReview} />
-    </>
+    <ConversationComposer
+      {...composer}
+      photo={photoOverride}
+      trailingAction={
+        renderTrailingAction?.(selected) ?? composer.trailingAction
+      }
+      busy={composer.busy || Boolean(sending)}
+      onSteer={sending ? undefined : composer.onSteer}
+      onCancel={sending ? direct.remove : composer.onCancel}
+      onSend={selected ? direct.send : composer.onSend}
+      preflightError={message ?? composer.preflightError}
+    />
   );
 }

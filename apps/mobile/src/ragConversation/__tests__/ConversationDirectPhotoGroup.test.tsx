@@ -1,3 +1,6 @@
+import { openSavedWebSettingsFixture } from '../../providers/selection/testSupport/SavedWebSearchRoundTrip.fixture';
+import { resolveSettingsConsentOwner } from '../../agent/execution/settingsConsentOwner';
+import { createDirectPhotoSettingsAuthorization } from '../conversationDirectPhotoAuthorization';
 import { createConversationSessions } from '../conversationSessions';
 import { Transcript } from '../testSupport/savedHistoryDisplayFixture';
 import { AppState } from 'react-native';
@@ -8,7 +11,7 @@ import {
   fireEvent,
   render,
   screen,
-  within,
+  waitFor,
 } from '@testing-library/react-native';
 import { syntheticDirectJPEG } from '../../aiFeatures/integration/testSupport/directPhotoSendFixture';
 import { conversationDirectPhotoPorts as ports } from '../conversationDirectPhotoPorts';
@@ -49,6 +52,7 @@ afterEach(() => {
   AppState.currentState = previousPhase;
   protectionListeners.clear();
 });
+beforeEach(() => jest.clearAllMocks());
 const first = syntheticDirectJPEG;
 const second = '/9j/C//Z';
 const third = '/9j/DP/Z';
@@ -56,58 +60,92 @@ const photos = [second, first, third];
 const attach = () =>
   fireEvent.press(screen.getByRole('button', { name: '사진 첨부' }));
 const send = () => fireEvent.press(screen.getByTestId('rag-conversation-send'));
-const approve = () =>
-  fireEvent.press(screen.getByRole('button', { name: '동의하고 계속' }));
 
-test('reviews the exact ordered surviving thumbnails and sends one typed image group', async () => {
-  const f = await directPhotoComposerFixture();
-  try {
-    jest.mocked(ports.pick).mockResolvedValue(photos);
-    const mounted = await render(f.view);
-    await act(() => f.store.setDraft(f.session().id, '합성 사진 비교'));
-    await attach();
-    expect(screen.getAllByTestId('conversation-photo-preview')).toHaveLength(3);
-    await fireEvent.press(
-      screen.getAllByRole('button', { name: '첨부 사진 제거' })[1]!,
-    );
-    await send();
-    expect(f.start).not.toHaveBeenCalled();
-    expect(
-      screen.getByText('미리보기 순서대로 사진 2장과 입력한 질문을 보내요.'),
-    ).toBeTruthy();
-    expect(
-      within(screen.getByTestId('conversation-photo-consent')).getAllByText(
-        /Synthetic image model/,
-      ),
-    ).not.toHaveLength(0);
-    await approve();
-    expect(await screen.findByText('합성 이미지 설명')).toBeTruthy();
-    expect(f.start).toHaveBeenCalledTimes(1);
-    expect(f.start.mock.calls[0]?.[2]).toEqual({
-      model: 'gpt-6.2-sol',
-      directPhoto: { text: '합성 사진 비교', jpegBase64s: [second, third] },
+test.each([1, 2])(
+  'sends %i ordered surviving photos using only the real Settings grant',
+  async count => {
+    const f = await directPhotoComposerFixture();
+    const owner = (await ports.authorization())!;
+    const settings = openSavedWebSettingsFixture(owner.selected);
+    const authorize = createDirectPhotoSettingsAuthorization({
+      resolveOwner: resolveSettingsConsentOwner,
+      readGrant: settings.reloaded.read,
     });
-    expect(f.ordinary).not.toHaveBeenCalled();
-    expect(screen.getAllByTestId('conversation-sent-photo-image')).toHaveLength(
-      2,
-    );
-    expect(JSON.stringify(f.session().savedHistoryDisplay)).not.toContain(
-      second,
-    );
-    await mounted.unmount();
-    const reopened = createConversationSessions(f.createOptions());
-    await reopened.attachExisting('selected', 0, '2026-10-05T00:00:00.000Z');
-    await render(<Transcript store={reopened} />);
-    expect(await screen.findByText('합성 이미지 설명')).toBeTruthy();
-    expect(screen.queryByTestId('conversation-sent-photo-image')).toBeNull();
-    expect(f.start).toHaveBeenCalledTimes(1);
-  } finally {
-    f.close();
-  }
-});
+    jest.mocked(ports.grant).mockImplementation(authorize);
+    try {
+      const selector = await render(settings.selectionView());
+      await fireEvent.press(selector.getByTestId('provider-option-0'));
+      const confirm = selector.getByTestId('provider-selection-confirm');
+      await waitFor(() => expect(confirm).toBeEnabled());
+      await fireEvent.press(confirm);
+      expect(
+        await selector.findByTestId('inference-disclosure-scope'),
+      ).toHaveTextContent(/선택한 사진 최대 세 장/);
+      await fireEvent.press(
+        await selector.findByTestId('inference-disclosure-allow'),
+      );
+      await waitFor(() => expect(settings.commit).toHaveBeenCalledTimes(1));
+      await selector.unmount();
 
-test('keeps a settled group on a picker cancellation or malformed normalization and refuses cancelled review', async () => {
-  const f = await directPhotoComposerFixture();
+      jest.mocked(ports.pick).mockResolvedValue(photos);
+      const mounted = await render(f.view);
+      await act(() => f.store.setDraft(f.session().id, '합성 사진 비교'));
+      await attach();
+      expect(screen.getAllByTestId('conversation-photo-preview')).toHaveLength(
+        3,
+      );
+      await fireEvent.press(
+        screen.getAllByRole('button', { name: '첨부 사진 제거' })[1]!,
+      );
+      if (count === 1)
+        await fireEvent.press(
+          screen.getAllByRole('button', { name: '첨부 사진 제거' })[1]!,
+        );
+      await send();
+      expect(screen.queryByTestId('conversation-photo-consent')).toBeNull();
+      expect(await screen.findByText('합성 이미지 설명')).toBeTruthy();
+      expect(f.start).toHaveBeenCalledTimes(1);
+      expect(f.start.mock.calls[0]?.[2]).toEqual({
+        model: 'gpt-6.2-sol',
+        directPhoto: {
+          text: '합성 사진 비교',
+          ...(count === 1
+            ? { jpegBase64: second }
+            : { jpegBase64s: [second, third] }),
+        },
+      });
+      expect(f.ordinary).not.toHaveBeenCalled();
+      expect(
+        screen.getAllByTestId('conversation-sent-photo-image'),
+      ).toHaveLength(count);
+      expect(JSON.stringify(f.session().savedHistoryDisplay)).not.toContain(
+        second,
+      );
+      await act(() => settings.authority.revoke());
+      jest.mocked(ports.pick).mockResolvedValue(photos.slice(0, count));
+      await attach();
+      await send();
+      expect(
+        await screen.findByText(/사진 전송에 동의하지 않았거나/),
+      ).toBeTruthy();
+      expect(screen.queryByTestId('conversation-photo-consent')).toBeNull();
+      expect(f.start).toHaveBeenCalledTimes(1);
+      await mounted.unmount();
+      const reopened = createConversationSessions(f.createOptions());
+      await reopened.attachExisting('selected', 0, '2026-10-05T00:00:00.000Z');
+      await render(<Transcript store={reopened} />);
+      expect(await screen.findByText('합성 이미지 설명')).toBeTruthy();
+      expect(screen.queryByTestId('conversation-sent-photo-image')).toBeNull();
+      expect(f.start).toHaveBeenCalledTimes(1);
+    } finally {
+      settings.sql.close();
+      f.close();
+    }
+  },
+);
+
+test('keeps a settled group on a picker cancellation or malformed normalization and refuses a send without a Settings grant', async () => {
+  const f = await directPhotoComposerFixture({ granted: false });
   try {
     jest
       .mocked(ports.pick)
@@ -122,8 +160,10 @@ test('keeps a settled group on a picker cancellation or malformed normalization 
     expect(screen.getByText(/사진을 준비할 수 없어요/)).toBeTruthy();
     expect(screen.getAllByTestId('conversation-photo-preview')).toHaveLength(3);
     await send();
-    expect(screen.getByTestId('conversation-photo-consent')).toBeTruthy();
-    await fireEvent.press(screen.getByRole('button', { name: '취소' }));
+    expect(
+      await screen.findByText(/사진 전송에 동의하지 않았거나/),
+    ).toBeTruthy();
+    expect(screen.queryByTestId('conversation-photo-consent')).toBeNull();
     expect(f.start).not.toHaveBeenCalled();
     expect(f.ordinary).not.toHaveBeenCalled();
   } finally {
@@ -147,26 +187,24 @@ test('does not allow an unsupported selected model to review or send a group', a
 });
 
 test.each(['lock', 'destination replacement'] as const)(
-  '%s while reviewing retires the whole group and prevents dispatch',
+  '%s while Settings authorization is pending prevents group dispatch',
   async reason => {
-    const f = await directPhotoComposerFixture();
+    const f = await directPhotoComposerFixture({ holdGrant: true });
     try {
       jest.mocked(ports.pick).mockResolvedValue(photos);
       await render(f.view);
       await attach();
       await send();
-      const staleApprove = screen.getByRole('button', {
-        name: '동의하고 계속',
-      });
+      await waitFor(() => expect(ports.grant).toHaveBeenCalled());
       await act(() => {
         if (reason === 'lock') {
           for (const notify of protectionListeners)
             notify({ kind: 'protectedData', available: false });
         } else f.retire();
+        f.release();
       });
       expect(screen.queryByTestId('conversation-photo-consent')).toBeNull();
       expect(screen.queryByTestId('conversation-photo-preview')).toBeNull();
-      await fireEvent.press(staleApprove);
       expect(f.start).not.toHaveBeenCalled();
     } finally {
       f.close();

@@ -3,7 +3,6 @@ import { useCallback, useRef, useState } from 'react';
 import { sendReviewedDirectPhotoGroup } from './sendReviewedDirectPhotoGroup';
 import { chatGPTPlanDirectPhoto } from '@orot/provider-openai';
 import { t } from '../i18n';
-import { createConversationPhotoConsentController } from './conversationPhotoConsentController';
 import { beginDirectPhotoPresentation } from './directPhotoPresentation';
 import { conversationDirectPhotoPorts as native } from './conversationDirectPhotoPorts';
 import { useDirectPhotoDraftLifecycle } from './useDirectPhotoDraftLifecycle';
@@ -26,7 +25,6 @@ export function useConversationDirectPhoto(
   ports = native,
 ) {
   const publish = useDirectPhotoPublisher();
-  const [groupReview] = useState(createConversationPhotoConsentController);
   const [state, setState] = useState<State>({});
   const active = useRef<AbortController | null>(null);
   const owner = useRef(isEntryCurrent);
@@ -179,7 +177,6 @@ export function useConversationDirectPhoto(
         images,
         prompt,
         controller,
-        groupReview,
         admitted,
         approved: revealPending,
       });
@@ -230,7 +227,6 @@ export function useConversationDirectPhoto(
     }
   };
   return {
-    groupReview,
     available: ports.hasPicker(),
     state: (ownsDraftRoute?.() ?? true) && !paused.current ? state : {},
     pick: () => pick().catch(() => {}),
