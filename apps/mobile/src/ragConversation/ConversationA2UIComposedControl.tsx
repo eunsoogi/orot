@@ -1,3 +1,4 @@
+import { ConversationA2UIComposedChoice } from './ConversationA2UIComposedChoice';
 import type { ConversationA2UITabSelections } from './conversationA2UITabSelectionLifetime';
 import Slider from '@react-native-community/slider';
 import {
@@ -17,6 +18,7 @@ export const ConversationA2UIComposedOwner = createContext<
   | {
       surface: string;
       current: () => boolean;
+      subscribe?: (listener: () => void) => () => void;
       revision?: number;
       tabSelections?: ConversationA2UITabSelections;
       reset?: () => void;
@@ -37,6 +39,7 @@ export function ConversationA2UIComposedControl({
       key={owner.surface + ':' + (owner.revision ?? 0)}
       control={control}
       current={owner.current}
+      subscribe={owner.subscribe}
       tabSelections={
         owner.tabSelections?.resetRevision === owner.revision
           ? owner.tabSelections
@@ -75,10 +78,12 @@ export function ConversationA2UIComposedReset({ label }: { label: string }) {
 function MountedControl({
   control,
   current,
+  subscribe,
   tabSelections,
 }: {
   control: ComposedControl;
   current: () => boolean;
+  subscribe?: (listener: () => void) => () => void;
   tabSelections?: ConversationA2UITabSelections;
 }) {
   const mounted = useRef(false);
@@ -96,11 +101,6 @@ function MountedControl({
   const [range, setRange] = useState(
     control.kind === 'slider' ? control.min : 0,
   );
-  const [selected, setSelected] = useState<readonly string[]>(() => {
-    const saved = tabSelections?.read(control);
-    return Array.isArray(saved) ? saved : [];
-  });
-  const pendingSelection = useRef(selected);
   return (
     <View style={styles.control}>
       <AppText allowFontScaling>{control.label}</AppText>
@@ -171,37 +171,12 @@ function MountedControl({
           }}
         />
       ) : (
-        <View
-          accessibilityRole={control.multiple ? undefined : 'radiogroup'}
-          accessibilityLabel={control.label}
-        >
-          {control.options.map(option => {
-            const chosen = selected.includes(option.value);
-            return (
-              <Pressable
-                key={option.value}
-                accessibilityLabel={option.label}
-                accessibilityRole={control.multiple ? 'checkbox' : 'radio'}
-                accessibilityState={{ checked: chosen }}
-                style={chosen ? [styles.option, styles.chosen] : styles.option}
-                onPress={() => {
-                  if (!owns()) return;
-                  const previous = pendingSelection.current;
-                  const next = previous.includes(option.value)
-                    ? previous.filter(value => value !== option.value)
-                    : control.multiple
-                      ? [...previous, option.value]
-                      : [option.value];
-                  pendingSelection.current = next;
-                  tabSelections?.write(control, next);
-                  setSelected(next);
-                }}
-              >
-                <AppText allowFontScaling>{option.label}</AppText>
-              </Pressable>
-            );
-          })}
-        </View>
+        <ConversationA2UIComposedChoice
+          control={control}
+          owns={owns}
+          subscribe={subscribe}
+          tabSelections={tabSelections}
+        />
       )}
     </View>
   );

@@ -337,3 +337,11 @@ leaving the panel, or Reset discards the note, which never enters the
 accepted answer, Copy, the archive or a provider request. Authored values,
 other new input variants, and actions are still rejected. Earlier response
 versions keep the original single-line input contract.
+
+Fresh task v58 accepts literal ChoicePicker `filterable: true` for local
+search across admitted option labels. The case-insensitive query never
+selects or clears an option, and typed text never enters Copy, the accepted
+answer, storage, or a model request. A panel change, Reset or owner loss
+discards the query; selection keeps its existing temporary lifetime.
+Authored queries, bound filter flags and actions are not supported.
+Earlier versions retain their original grammar.

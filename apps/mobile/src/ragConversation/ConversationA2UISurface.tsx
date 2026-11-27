@@ -104,6 +104,7 @@ export function ConversationA2UISurface({
                 ? {
                     surface,
                     current: isCurrent,
+                    subscribe: owner?.subscribe,
                     revision,
                     reset,
                     tabSelections,

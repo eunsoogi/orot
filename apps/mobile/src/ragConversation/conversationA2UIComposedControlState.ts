@@ -10,6 +10,7 @@ export type ComposedControl = Readonly<
       kind: 'choice';
       label: string;
       multiple: boolean;
+      filterable?: true;
       options: readonly Readonly<{ label: string; value: string }>[];
     }
 >;
