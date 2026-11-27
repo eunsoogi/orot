@@ -1,6 +1,5 @@
 import {
   directPhotoPermission,
-  legacyDirectPhotoConsentScope,
   isDirectPhotoConsentScope,
   isExactDirectPhotoPermission,
 } from './directPhotoConsentScope';
@@ -181,8 +180,7 @@ export function isCatalogDomainPermission(
         (known.policyVersion === value.policyVersion ||
           (known.purpose === directPhotoPermission.purpose &&
             known.policyVersion === directPhotoPermission.policyVersion &&
-            value.policyVersion ===
-              legacyDirectPhotoConsentScope.policyVersion)),
+            isDirectPhotoConsentScope(value.purpose, value.policyVersion))),
     )
   );
 }

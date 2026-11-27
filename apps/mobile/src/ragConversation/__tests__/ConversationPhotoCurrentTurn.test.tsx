@@ -76,6 +76,11 @@ test.each([1, 2])(
       },
     });
     const caption = '첨부 사진을 비교해 줘.';
+    const authorize = jest.mocked(ports.grant).getMockImplementation()!;
+    jest.mocked(ports.grant).mockImplementation(async (...args) => {
+      const grant = await authorize(...args);
+      return grant ? { ...grant, retainAuthoredCaption: true } : grant;
+    });
     const preview =
       count === 1 ? syntheticDirectJPEG : [syntheticDirectJPEG, '/9j/C//Z'];
     jest.mocked(ports.pick).mockResolvedValue(preview);
@@ -133,9 +138,15 @@ test.each([1, 2])(
           <Transcript store={reopened} entryChoices={choices} />,
         );
         expect(await screen.findAllByText('합성 이미지 설명')).toHaveLength(1);
+        expect(screen.getAllByText(caption)).toHaveLength(1);
+        expect(
+          screen.queryByTestId('conversation-sent-photo-image'),
+        ).toBeNull();
+        expect(reopened.getSnapshot().sessions[0]?.messages).toEqual([]);
         expectOrder(
           JSON.stringify(ui.toJSON()),
           priorAnswer,
+          caption,
           '합성 이미지 설명',
           divider,
         );

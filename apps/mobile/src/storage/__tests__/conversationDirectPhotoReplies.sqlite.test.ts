@@ -16,9 +16,10 @@ import { createConversationArtifactStorage } from '../conversationArtifactStorag
 const id = 'photo-reply:' + '1'.repeat(32);
 const createdAt = '2026-10-05T00:00:00.000Z';
 const text = 'Synthetic description of a selected paper drawing.';
-const reply = { id, createdAt, text };
+const authoredCaption = '  Synthetic authored caption.  ';
+const reply = { id, createdAt, text, authoredCaption };
 
-test('restart displays only photo marker and bounded reply under the exact lease, and Hide/Undo/permanent deletion is durable', async () => {
+test('restart displays only the caption, photo marker and bounded reply under the exact lease, and Hide/Undo/permanent deletion is durable', async () => {
   const root = mkdtempSync(join(tmpdir(), 'orot-direct-photo-'));
   const path = join(root, 'records.sqlite');
   let connection = openSqliteTestDatabase(path);
@@ -51,7 +52,7 @@ test('restart displays only photo marker and bounded reply under the exact lease
         id,
         createdAt,
         sessionId: 'owned',
-        question: '',
+        question: authoredCaption,
         status: 'complete',
         answer: text,
         directPhoto: true,
@@ -65,7 +66,7 @@ test('restart displays only photo marker and bounded reply under the exact lease
         kind: 'answer',
         id,
         createdAt,
-        question: '',
+        question: authoredCaption,
         answer: text,
         directPhoto: true,
       },
@@ -98,7 +99,13 @@ test('restart displays only photo marker and bounded reply under the exact lease
         )
       ).rows,
     ).toEqual([
-      { id, created_at: createdAt, session_id: 'owned', reply_text: text },
+      {
+        id,
+        created_at: createdAt,
+        session_id: 'owned',
+        reply_text: text,
+        authored_caption: authoredCaption,
+      },
     ]);
     expect(await store.hideSession('owned', 0)).toBe(1);
     await expect(read(0)).rejects.toThrow('Conversation is unavailable.');

@@ -7,6 +7,8 @@ import {
   directPhotoScopePayload,
   legacyDirectPhotoConsentScope,
   legacyDirectPhotoScopePayload,
+  previousGroupDirectPhotoConsentScope,
+  previousGroupDirectPhotoScopePayload,
 } from '../agent/execution/directPhotoConsentScope';
 import { operationRunId } from '../aiFeatures/integration/featureRunIdentity';
 import type { SelectedAiResolution } from '../aiFeatures/integration/provider';
@@ -32,33 +34,46 @@ export function createDirectPhotoSettingsAuthorization(
       ![1, 2, 3].includes(imageCount)
     )
       return null;
-    const requestFor = (legacy: boolean): OutboundProcessingRequest =>
+    const requestFor = (
+      consentScope: OutboundProcessingRequest['consentScope'],
+      payload: OutboundProcessingRequest['payload'],
+    ): OutboundProcessingRequest =>
       Object.freeze({
         operationRunId: operationRunId(),
         providerId: selected.provider.id,
         modelId: selected.modelId,
         recipient: selected.recipient,
         remoteProcessing: true,
-        consentScope: legacy
-          ? legacyDirectPhotoConsentScope
-          : directPhotoConsentScope,
+        consentScope,
         allowedScope: unsetImages,
-        payload: legacy
-          ? legacyDirectPhotoScopePayload
-          : directPhotoScopePayload,
+        payload,
         signal,
       });
-    let request = requestFor(false);
+    let request = requestFor(directPhotoConsentScope, directPhotoScopePayload);
+    let retainAuthoredCaption: true | undefined = true;
     const approved = async (value: OutboundProcessingRequest) =>
       (await consent.authorize(value)) === 'authorized' &&
       consent.isAuthorizationCurrent?.(value) === true;
     if (!(await approved(request))) {
-      // Only the unchanged single-image route may use the old exact grant.
-      if (signal.aborted || imageCount !== 1) return null;
-      request = requestFor(true);
-      if (!(await approved(request))) return null;
+      // Existing grants keep their original transfer; only the newly
+      // disclosed policy allows the question to be put in protected history.
+      retainAuthoredCaption = undefined;
+      if (signal.aborted) return null;
+      request = requestFor(
+        previousGroupDirectPhotoConsentScope,
+        previousGroupDirectPhotoScopePayload,
+      );
+      if (!(await approved(request))) {
+        if (signal.aborted || imageCount !== 1) return null;
+        request = requestFor(
+          legacyDirectPhotoConsentScope,
+          legacyDirectPhotoScopePayload,
+        );
+        if (!(await approved(request))) return null;
+      }
     }
     return {
+      ...(retainAuthoredCaption ? { retainAuthoredCaption } : {}),
       current: () => consent.isAuthorizationCurrent?.(request) === true,
       subscribe: (listener: () => void) =>
         consent.subscribeAuthorizationInvalidation!(request, listener),

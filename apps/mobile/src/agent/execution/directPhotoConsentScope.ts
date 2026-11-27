@@ -4,15 +4,22 @@ import type { ProviderSelectionOption } from '../../providers/selection/types';
 import type { SettingsConsentPermission } from './settingsConsentGrant';
 
 /** Raw photo pixels are neither OCR, model history, nor general record evidence. */
+const previousGroupPolicyVersion =
+  'selected-inline-photo-group-with-local-reply-v3';
 const legacyPolicyVersion = 'selected-inline-image-with-local-reply-v2';
 
 export const directPhotoConsentScope = Object.freeze({
   purpose: 'conversation_direct_photo',
-  policyVersion: 'selected-inline-photo-group-with-local-reply-v3',
+  policyVersion: 'selected-inline-photo-group-with-local-caption-v4',
   dataCategories: Object.freeze([
     'selected_photo_image',
     'selected_photo_question',
   ]),
+});
+
+export const previousGroupDirectPhotoConsentScope = Object.freeze({
+  ...directPhotoConsentScope,
+  policyVersion: previousGroupPolicyVersion,
 });
 
 export const legacyDirectPhotoConsentScope = Object.freeze({
@@ -34,6 +41,9 @@ const scopePayload = (policyVersion: string) =>
 export const directPhotoScopePayload = scopePayload(
   directPhotoConsentScope.policyVersion,
 );
+export const previousGroupDirectPhotoScopePayload = scopePayload(
+  previousGroupPolicyVersion,
+);
 export const legacyDirectPhotoScopePayload = scopePayload(legacyPolicyVersion);
 
 export function isDirectPhotoPlanPair(providerId: string, modelId: string) {
@@ -53,6 +63,7 @@ export function isDirectPhotoConsentScope(purpose: unknown, policy: unknown) {
   return (
     purpose === directPhotoConsentScope.purpose &&
     (policy === directPhotoConsentScope.policyVersion ||
+      policy === previousGroupPolicyVersion ||
       policy === legacyPolicyVersion)
   );
 }

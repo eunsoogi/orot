@@ -5,6 +5,7 @@ export type DirectPhotoReply = {
   readonly id: string;
   readonly createdAt: string;
   readonly text: string;
+  readonly authoredCaption?: string;
 };
 const photoId = /^photo-reply:[0-9a-f]{32}$/;
 const owned = `SELECT s.id FROM conversation_artifact_sessions s
@@ -29,7 +30,15 @@ export function isDirectPhotoReplyText(value: unknown): value is string {
 export async function setupDirectPhotoReplies(tx: SqlExecutor) {
   await tx.execute(`CREATE TABLE IF NOT EXISTS conversation_direct_photo_replies (
     id TEXT NOT NULL PRIMARY KEY, session_id TEXT NOT NULL,
-    created_at TEXT NOT NULL, reply_text TEXT NOT NULL)`);
+    created_at TEXT NOT NULL, reply_text TEXT NOT NULL, authored_caption TEXT)`);
+  // An older reply cannot attest its user's caption; leave it NULL.
+  const columns = await tx.execute(
+    'PRAGMA table_info(conversation_direct_photo_replies)',
+  );
+  if (!columns.rows.some(column => column.name === 'authored_caption'))
+    await tx.execute(
+      'ALTER TABLE conversation_direct_photo_replies ADD COLUMN authored_caption TEXT',
+    );
   await tx.execute(`CREATE INDEX IF NOT EXISTS conversation_direct_photo_replies_timeline
     ON conversation_direct_photo_replies (session_id, created_at DESC, id DESC)`);
   // Always purge, including on connections with foreign_keys disabled.
@@ -59,7 +68,10 @@ export function createDirectPhotoReplyWriter(
     reply: DirectPhotoReply,
     current: () => boolean,
   ) => {
-    const { id, createdAt, text } = reply;
+    const { id, createdAt, text, authoredCaption } = reply;
+    const caption = isDirectPhotoReplyText(authoredCaption)
+      ? authoredCaption
+      : null;
     if (
       !photoId.test(id) ||
       !validDate(createdAt) ||
@@ -78,10 +90,10 @@ export function createDirectPhotoReplyWriter(
         // Put the owner predicate in the INSERT itself so an intervening same-connection
         // Hide/Delete cannot leave a newly inserted orphan after the purge trigger ran.
         const inserted = await tx.execute(
-          `INSERT INTO conversation_direct_photo_replies (id, session_id, created_at, reply_text)
-           SELECT ?, owner.id, ?, ? FROM (${owned}) owner
+          `INSERT INTO conversation_direct_photo_replies (id, session_id, created_at, reply_text, authored_caption)
+           SELECT ?, owner.id, ?, ?, ? FROM (${owned}) owner
            WHERE NOT EXISTS (SELECT 1 FROM conversation_deleted_artifacts d WHERE d.id = ?)`,
-          [id, createdAt, text, sessionId, version, id],
+          [id, createdAt, text, caption, sessionId, version, id],
         );
         if (inserted.rowsAffected !== 1) return;
         const remaining = await tx.execute(
@@ -122,7 +134,7 @@ async function readDirectPhotoReplyPresentations(
   const candidates = ids.filter(id => photoId.test(id));
   if (!candidates.length) return [];
   const { rows } = await tx.execute(
-    `SELECT p.id, p.created_at, p.reply_text FROM conversation_direct_photo_replies p
+    `SELECT p.id, p.created_at, p.reply_text, p.authored_caption FROM conversation_direct_photo_replies p
      JOIN json_each(?) j ON j.value = p.id WHERE p.session_id = ?
      AND NOT EXISTS (SELECT 1 FROM conversation_deleted_artifacts d WHERE d.id = p.id)
      AND NOT EXISTS (SELECT 1 FROM conversation_invalid_parents d WHERE d.id = p.id)`,
@@ -138,7 +150,9 @@ async function readDirectPhotoReplyPresentations(
             id: row.id,
             sessionId,
             createdAt: row.created_at,
-            question: '',
+            question: isDirectPhotoReplyText(row.authored_caption)
+              ? row.authored_caption
+              : '',
             status: 'complete' as const,
             answer: row.reply_text,
             directPhoto: true as const,
