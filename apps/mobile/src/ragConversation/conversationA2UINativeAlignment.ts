@@ -2,6 +2,7 @@ import { a2uiSurfaceStyles } from './conversationA2UISurfaceStyles';
 import {
   conversationA2UICardWeight,
   conversationA2UIColumnWeight,
+  conversationA2UILiveMixedRowWeight,
 } from './conversationA2UICardWeightTask';
 import type { ConversationA2UINode } from './conversationA2UI';
 import type { ViewStyle } from 'react-native';
@@ -60,7 +61,7 @@ export function a2uiWeightedRow(nodes: readonly ConversationA2UINode[]) {
   // Keep the old Text-only weight threshold. When a live Card weight enables
   // this new layout, every Card must preserve the same interior text width.
   const width = content.some(
-    node => conversationA2UICardWeight(node) !== undefined,
+    node => node.component === 'Card' && explicitRowWeight(node) !== undefined,
   )
     ? Math.max(
         ...content.map((node, index) => {
@@ -80,5 +81,7 @@ export function a2uiChildRowWeight(node: ConversationA2UINode): number {
 function explicitRowWeight(node: ConversationA2UINode) {
   return node.component === 'Text'
     ? node.weight
-    : (conversationA2UICardWeight(node) ?? conversationA2UIColumnWeight(node));
+    : (conversationA2UICardWeight(node) ??
+        conversationA2UIColumnWeight(node) ??
+        conversationA2UILiveMixedRowWeight(node));
 }

@@ -8,8 +8,15 @@ import type { GroundedRagAnswer } from './task';
 import { isObject } from './taskHistory';
 
 type WeightOwner = 'Card' | 'Column';
+type WeightProjection = WeightOwner | 'mixed';
 
 const weights = new WeakMap<ConversationA2UINode, number>();
+// Mixed proportions are a live grouping hint. Do not feed individual weights
+// into the older card-only archive and reopen a misleading half-weighted row.
+const mixedWeights = new WeakMap<ConversationA2UINode, number>();
+export const conversationA2UILiveMixedRowWeight = (
+  node: ConversationA2UINode,
+) => mixedWeights.get(node);
 export const conversationA2UICardWeight = (node: ConversationA2UINode) =>
   node.component === 'Card' ? weights.get(node) : undefined;
 export const conversationA2UIColumnWeight = (node: ConversationA2UINode) =>
@@ -26,7 +33,7 @@ export function markConversationA2UICardWeight(
 
 /** Strip only the selected pinned container's weight before the previous exact graph and
  * prose verifier, then bind each weight to an accepted direct Row child. */
-function closedWeightedFrame(raw: unknown, owner: WeightOwner) {
+function closedWeightedFrame(raw: unknown, owner: WeightProjection) {
   if (!Array.isArray(raw) || raw.length !== 1) return;
   const frame: unknown = raw[0];
   if (typeof frame !== 'string' || frame.length > conversationA2UIFrameLimit)
@@ -37,14 +44,16 @@ function closedWeightedFrame(raw: unknown, owner: WeightOwner) {
     const surface = message.createSurface;
     if (
       !Array.isArray(surface.components) ||
-      (owner === 'Column' && Object.hasOwn(surface, 'dataModel'))
+      (owner !== 'Card' && Object.hasOwn(surface, 'dataModel'))
     )
       return;
     const selected = new Map<string, number>();
     const components = (surface.components as unknown[]).map(node => {
       if (
         !isObject(node) ||
-        node.component !== owner ||
+        (owner === 'mixed'
+          ? node.component !== 'Card' && node.component !== 'Column'
+          : node.component !== owner) ||
         !Object.hasOwn(node, 'weight')
       )
         return node;
@@ -149,4 +158,42 @@ export function acceptConversationA2UIColumnWeights(
   if (!projected) return;
   const root = validateLowered([projected.wire]);
   if (root && bindWeights(root, projected.selected, 'Column')) return root;
+}
+
+/** Verify every projected weight belongs to one accepted Row before marking
+ * any native node. A cross-row or single-kind map is not a mixed layout. */
+export function acceptConversationA2UIMixedWeights(
+  frames: unknown,
+  validateLowered: (frames: unknown) => ConversationA2UINode | undefined,
+) {
+  const projected = closedWeightedFrame(frames, 'mixed');
+  if (!projected) return;
+  const root = validateLowered([projected.wire]);
+  if (!root) return;
+  const admitted = new Map<ConversationA2UINode, number>();
+  let mixedRows = 0;
+  function visit(node: ConversationA2UINode) {
+    if (node.component === 'Row') {
+      const candidates = node.children.filter(child =>
+        projected.selected.has(child.id),
+      );
+      if (
+        candidates.some(child => child.component === 'Card') &&
+        candidates.some(child => child.component === 'Column')
+      ) {
+        mixedRows++;
+        for (const child of candidates)
+          admitted.set(child, projected.selected.get(child.id)!);
+      }
+    }
+    if (node.component === 'Tabs') {
+      for (const tab of node.tabs) visit(tab.child);
+    } else if ('children' in node) {
+      for (const child of node.children) visit(child);
+    }
+  }
+  visit(root);
+  if (mixedRows !== 1 || admitted.size !== projected.selected.size) return;
+  for (const [node, weight] of admitted) mixedWeights.set(node, weight);
+  return root;
 }
