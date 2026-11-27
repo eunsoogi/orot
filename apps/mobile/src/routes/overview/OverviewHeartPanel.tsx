@@ -17,6 +17,8 @@ import { formatOverviewMetricValue } from './metricFormatting';
 import { OverviewWorkoutHeartRateCard } from './OverviewWorkoutHeartRateCard';
 import { overviewMetricStyles as overview } from './overviewMetricStyles';
 
+import { useOverviewHeartFirstLayout } from './useOverviewHeartFirstLayout';
+
 export function groupOverviewCardSelection(
   selection: readonly OverviewMetricChoice[],
 ) {
@@ -47,12 +49,19 @@ function HeartReadingValue({
   metric,
   value,
   state,
+  focused = false,
 }: {
   readonly metric: HeartReading;
+  readonly focused?: boolean;
   readonly value?: OverviewMetricProjection;
   readonly state: State;
 }) {
   const primary = metric === 'heartRate';
+  const onTextLayout = useOverviewHeartFirstLayout(
+    'ordinary',
+    primary && focused,
+    !!value && state === 'ready',
+  );
   const range =
     primary && value?.days.find(day => day.date === value.latest.date)?.range;
 
@@ -68,6 +77,7 @@ function HeartReadingValue({
       <View style={!primary && styles.readingLine}>
         <Text style={overview.cardTitle}>{title(metric)}</Text>
         <Text
+          onTextLayout={onTextLayout}
           accessibilityLabel={
             value
               ? [amount, t('chart.source', { source: value.source })].join(', ')
@@ -127,6 +137,7 @@ export function OverviewHeartPanel({
       </View>
       <HeartReadingValue
         metric="heartRate"
+        focused={focused}
         value={metrics.heartRate}
         state={state}
       />
