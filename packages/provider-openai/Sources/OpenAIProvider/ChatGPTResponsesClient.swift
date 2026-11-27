@@ -51,9 +51,46 @@ public extension ChatGPTOAuthClient {
         throw ChatGPTResponsesError.interrupted
     }
 
+    /// Native-only transport seam. The app must prove the same selected page
+    /// immediately before admission and independently validate candidate evidence.
+    internal func generateProtectedEncounterPage(
+        _ page: ProtectedEncounterTranscriptPage,
+        for account: ChatGPTAccountAccess,
+        admitted: @Sendable () async -> Bool,
+    ) async throws -> ChatGPTResponsesResult {
+        guard account.hasDirectPlanAccess,
+              page.claim(accountID: account.issuedClientID, accountSubject: account.subject),
+              await admitted()
+        else { throw ChatGPTResponsesError.invalidRequest }
+        try Task.checkCancellation()
+        let saved = try await sessionManager.accountWithFreshAccessToken(issuedClientID: account.issuedClientID)
+        guard saved.issuedClientID == account.issuedClientID, saved.subject == account.subject,
+              saved.hasDirectPlanAccess, let token = saved.credentials?.accessToken,
+              await admitted()
+        else { throw ChatGPTResponsesError.invalidRequest }
+        try Task.checkCancellation()
+        let events = try await openResponseStream(page.request, accessToken: token, protectedEncounterPage: true)
+        for try await event in events {
+            try Task.checkCancellation()
+            switch event {
+            case .toolCall:
+                throw ChatGPTResponsesError.invalidRequest
+            case let .completed(result):
+                guard result.toolCalls.isEmpty, result.webSearch == nil, await admitted()
+                else { throw ChatGPTResponsesError.invalidRequest }
+                try Task.checkCancellation()
+                return ChatGPTResponsesResult(text: result.text, usage: result.usage)
+            default:
+                continue
+            }
+        }
+        throw ChatGPTResponsesError.interrupted
+    }
+
     private func openResponseStream(
         _ input: ChatGPTResponsesRequest,
         accessToken: String,
+        protectedEncounterPage: Bool = false,
     ) async throws -> AsyncThrowingStream<ChatGPTResponsesEvent, Error> {
         let request = try ChatGPTResponsesRequestBuilder.build(input, accessToken: accessToken)
         try Task.checkCancellation()
@@ -61,7 +98,9 @@ public extension ChatGPTOAuthClient {
         let response: URLResponse
         let body: AsyncThrowingStream<Data, Error>
         do {
-            if input.containsDirectPhoto {
+            if protectedEncounterPage {
+                (response, body) = try await responsesTransport.streamProtectedEncounterPage(for: request)
+            } else if input.containsDirectPhoto {
                 (response, body) = try await responsesTransport.streamDirectPhoto(for: request)
             } else {
                 (response, body) = try await responsesTransport.stream(for: request)
@@ -77,7 +116,7 @@ public extension ChatGPTOAuthClient {
             throw ChatGPTResponsesError.transportUnavailable
         }
 
-        if input.containsDirectPhoto {
+        if input.containsDirectPhoto || protectedEncounterPage {
             try DirectPhotoHTTPBoundary.validate(response)
         }
         guard let httpResponse = response as? HTTPURLResponse else {

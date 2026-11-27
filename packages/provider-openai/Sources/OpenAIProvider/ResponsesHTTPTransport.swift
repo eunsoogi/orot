@@ -2,10 +2,16 @@ import Foundation
 
 protocol ChatGPTResponsesHTTPTransport: Sendable {
     func stream(for request: URLRequest) async throws -> (URLResponse, AsyncThrowingStream<Data, Error>)
+    func streamProtectedEncounterPage(for request: URLRequest) async throws -> (URLResponse, AsyncThrowingStream<Data, Error>)
     func streamDirectPhoto(for request: URLRequest) async throws -> (URLResponse, AsyncThrowingStream<Data, Error>)
 }
 
 extension ChatGPTResponsesHTTPTransport {
+    /// Never fall through to an ordinary transport that can redirect POST.
+    func streamProtectedEncounterPage(for _: URLRequest) async throws -> (URLResponse, AsyncThrowingStream<Data, Error>) {
+        throw ChatGPTResponsesError.transportUnavailable
+    }
+
     /// Other transports must explicitly implement the protected photo route;
     /// never fall through to their ordinary request and redirect behavior.
     func streamDirectPhoto(for _: URLRequest) async throws -> (URLResponse, AsyncThrowingStream<Data, Error>) {
@@ -48,6 +54,31 @@ struct URLSessionChatGPTResponsesHTTPTransport: ChatGPTResponsesHTTPTransport {
             if redirect.refused {
                 throw ChatGPTResponsesError.invalidHTTPResponse
             }
+            throw error
+        }
+    }
+
+    func streamProtectedEncounterPage(for request: URLRequest) async throws -> (URLResponse, AsyncThrowingStream<Data, Error>) {
+        guard request.url == ChatGPTResponsesRequestBuilder.endpoint, request.url?.scheme == "https",
+              request.httpMethod == "POST", request.httpBody != nil, request.httpBodyStream == nil
+        else { throw ChatGPTResponsesError.invalidHTTPResponse }
+        try Task.checkCancellation()
+        let delegate = ProtectedEncounterHTTPDelegate()
+        let configuration = URLSessionConfiguration.ephemeral
+        configuration.urlCache = nil
+        configuration.httpCookieStorage = nil
+        configuration.httpShouldSetCookies = false
+        configuration.urlCredentialStorage = nil
+        configuration.requestCachePolicy = .reloadIgnoringLocalCacheData
+        configuration.waitsForConnectivity = false
+        let pageSession = URLSession(configuration: configuration, delegate: delegate, delegateQueue: nil)
+        do {
+            let (bytes, response) = try await pageSession.bytes(for: request)
+            try Task.checkCancellation()
+            try DirectPhotoHTTPBoundary.validate(response)
+            return (response, Self.chunks(bytes, ownedSession: pageSession))
+        } catch {
+            pageSession.invalidateAndCancel()
             throw error
         }
     }
@@ -110,5 +141,33 @@ final class DirectPhotoNoRedirectDelegate: NSObject, URLSessionTaskDelegate, @un
         lock.withLock { redirectRefused = true }
         completionHandler(nil)
         task.cancel()
+    }
+}
+
+
+/// Refuse redirect, authentication resend, and body-stream re-creation. Neither
+/// a refusal nor a transport error causes the app to start another request.
+final class ProtectedEncounterHTTPDelegate: NSObject, URLSessionTaskDelegate, @unchecked Sendable {
+    func urlSession(_: URLSession, task: URLSessionTask,
+                    willPerformHTTPRedirection _: HTTPURLResponse, newRequest _: URLRequest,
+                    completionHandler: @escaping @Sendable (URLRequest?) -> Void)
+    {
+        completionHandler(nil)
+        task.cancel()
+    }
+
+    func urlSession(_: URLSession, task _: URLSessionTask,
+                    didReceive challenge: URLAuthenticationChallenge,
+                    completionHandler: @escaping @Sendable (URLSession.AuthChallengeDisposition, URLCredential?) -> Void)
+    {
+        // Keep standard TLS trust verification; refuse HTTP authentication resend.
+        completionHandler(challenge.protectionSpace.authenticationMethod == NSURLAuthenticationMethodServerTrust
+            ? .performDefaultHandling : .cancelAuthenticationChallenge, nil)
+    }
+
+    func urlSession(_: URLSession, task _: URLSessionTask,
+                    needNewBodyStream completionHandler: @escaping @Sendable (InputStream?) -> Void)
+    {
+        completionHandler(nil)
     }
 }
