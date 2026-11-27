@@ -73,9 +73,10 @@ it('never transmits or silently saves an explicitly local memory command', async
   expect(f.save).not.toHaveBeenCalled();
   expect(
     await f.sendRagMessage(memoryQuestion, [], controller.signal, session),
-  ).toMatchObject({
-    status: 'answer',
-    answer: expect.stringContaining('저장하지 않았어요'),
+  ).toEqual({
+    status: 'failure',
+    kind: 'protected_memory_not_saved',
+    discardUnverifiedDraft: true,
   });
   expect(f.save).not.toHaveBeenCalled();
   expect(f.downstream).not.toHaveBeenCalled();

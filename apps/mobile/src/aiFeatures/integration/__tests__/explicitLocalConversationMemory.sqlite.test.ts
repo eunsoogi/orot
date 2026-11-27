@@ -191,9 +191,10 @@ it('a previously local-only typed summary never sends or falsely claims a save',
       intent: 'health-summary',
       entryKey: 'synthetic-summary',
     });
-    expect(local).toMatchObject({
-      status: 'answer',
-      answer: expect.stringContaining('저장하지 않았어요'),
+    expect(local).toEqual({
+      status: 'failure',
+      kind: 'protected_memory_not_saved',
+      discardUnverifiedDraft: true,
     });
     expect(downstream).not.toHaveBeenCalled();
     expect(select).not.toHaveBeenCalled();
