@@ -64,16 +64,16 @@ async function prepare({
     return;
   const { call } = source;
   const resultProjection = startLiveCommonHealthTiming('result_projection');
-  const payload = canonicalLiveHealthPayload(source.batch);
+  const projected = canonicalLiveHealthPayload(source.batch);
   if (
-    !payload ||
+    !projected ||
     !hasMatchingEvidence(
       result.result,
-      payload.items.map(item => item.evidenceId),
+      projected.payload.items.map(item => item.evidenceId),
     )
   )
     return;
-  const serialized = JSON.stringify(payload);
+  const { payload, serialized } = projected;
   if (!liveStockHealthCatalog.acceptsResult(call.name, serialized)) return;
   resultProjection();
   const request: LanguageModelRequest = {
