@@ -1,3 +1,7 @@
+import { createElement } from 'react';
+import { render, screen } from '@testing-library/react-native';
+import RecordingLibraryPanel from '../RecordingLibraryPanel';
+import { createRecordingLibraryService } from '../recordingLibraryService';
 import { APPLE_PROVIDER_ID } from '@orot/provider-apple';
 import {
   providerSuccess,
@@ -129,7 +133,31 @@ test.each([
     if (scenario === 'locked')
       for (const handler of handlers)
         handler({ kind: 'protectedData', available: false });
-    expect(await result?.save()).toBe(scenario === 'save');
+    if (scenario === 'save') {
+      const service = createRecordingLibraryService({
+        loadRepository: async () => repo,
+        audioDeletion: {
+          reconcile: async () => {},
+          stage: async () => {},
+          restore: async () => {},
+          commit: async () => {},
+        },
+      });
+      const oldList = await render(
+        createElement(RecordingLibraryPanel, { service }),
+      );
+      expect(await screen.findByText(source.title!)).toBeVisible();
+      oldList.unmount();
+      expect(await result?.save()).toBe(true);
+      const reopened = await render(
+        createElement(RecordingLibraryPanel, { service }),
+      );
+      expect(await screen.findByText('가벼운 운동 상담')).toBeVisible();
+      expect(screen.queryByText(source.title!)).toBeNull();
+      reopened.unmount();
+    } else {
+      expect(await result?.save()).toBe(false);
+    }
     expect(await result?.save()).toBe(false);
     if (scenario !== 'deleted source')
       expect((await repo.get('source_record', source.id))?.title).toBe(

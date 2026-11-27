@@ -3,7 +3,6 @@ import { providerSuccess } from '@orot/model-runtime';
 import { reviewCopy } from '../strings';
 import { act, fireEvent, render, screen } from '@testing-library/react-native';
 import type { ReactNode } from 'react';
-import { startSavedRecordingAnalysis } from '../__fixtures__/startSavedRecordingAnalysis';
 import { RecordingReviewRoute } from '../../routes/RecordingReviewRoute';
 import { resolveSelectedAiProvider } from '../../aiFeatures/integration/provider';
 import { harness, fixture } from '../__fixtures__/longReviewHarness';
@@ -71,6 +70,15 @@ jest.mock('../../storage/secureDatabase', () => ({
   openLocalStorage: jest.fn(),
   openLocalAgentMemoryDatabase: jest.fn(),
 }));
+jest.mock('../../providers/selection/options', () => ({
+  ...jest.requireActual('../../providers/selection/options'),
+  loadAppleSelectionOption: jest.fn(async () => {
+    const { createAppleSelectionOption } = jest.requireActual(
+      '../../providers/selection/options',
+    ) as typeof import('../../providers/selection/options');
+    return createAppleSelectionOption('modelNotReady');
+  }),
+}));
 jest.mock('../../aiFeatures/integration/provider', () => ({
   resolveSelectedAiProvider: jest.fn(),
 }));
@@ -109,7 +117,9 @@ test('retiring the recording route stops a held selected model lookup before ext
     <RecordingReviewRoute reviewService={service} routeOwner={owner} />,
   );
   try {
-    await startSavedRecordingAnalysis();
+    const start = await screen.findByTestId('encounter-start');
+    expect(screen.queryByTestId('recording-analysis-menu')).toBeNull();
+    await fireEvent.press(start);
     await entered;
     await act(async () => {
       valid = false;
@@ -133,7 +143,9 @@ test('a current recording route gets reviewable proposals from the selected fake
     />,
   );
   try {
-    await startSavedRecordingAnalysis();
+    const start = await screen.findByTestId('encounter-start');
+    expect(screen.queryByTestId('recording-analysis-menu')).toBeNull();
+    await fireEvent.press(start);
     await screen.findByTestId('encounter-save');
     expect(calls()).toBe(2);
     expect(await fixture.rows()).toEqual([]);

@@ -1,6 +1,7 @@
 import type { NavigationRouteOwnership } from '../navigation/navigationRouteContracts';
 import { useEffect, useLayoutEffect, useMemo, useState } from 'react';
 import { StyleSheet, View } from 'react-native';
+import { useRecordingTitleEligibility } from '../recording/useRecordingTitleEligibility';
 import { useRecordingTitleProposal } from '../recording/useRecordingTitleProposal';
 import { AppText } from '../layout/AppText';
 import { EncounterReviewActions } from './EncounterReviewActions';
@@ -47,6 +48,11 @@ export function EncounterReviewPanel({
   );
   const { consent, disclosureSheet } = useInferenceConsent();
   const title = useRecordingTitleProposal(sourceId, routeOwner, onTitleSaved);
+  const titleEligible = useRecordingTitleEligibility(
+    sourceId,
+    routeOwner,
+    Boolean(onTitleSaved),
+  );
   const busy = ['loading', 'running', 'saving'].includes(state.status);
   const reviewable = hasPendingEncounterCandidates(state);
   const [activeController, setActiveController] =
@@ -132,11 +138,13 @@ export function EncounterReviewPanel({
       <EncounterReviewActions
         status={state.status}
         titleAction={
-          onTitleSaved && routeOwner
+          routeOwner && titleEligible()
             ? {
                 sourceId,
                 owner: routeOwner,
-                run: title.start,
+                run: async () => {
+                  if (titleEligible()) await title.start();
+                },
                 disabled: disabled || title.busy || title.draft,
               }
             : undefined
