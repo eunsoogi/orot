@@ -22,7 +22,10 @@ final class NavigationDockedKeyboard: NSObject {
         self.guideFrame = guideFrame
         super.init()
         let center = NotificationCenter.default
-        for name in [UIResponder.keyboardWillChangeFrameNotification, UIResponder.keyboardDidChangeFrameNotification, UIResponder.keyboardWillHideNotification] {
+        for name in [
+            UIResponder.keyboardWillChangeFrameNotification, UIResponder.keyboardDidChangeFrameNotification,
+            UIResponder.keyboardWillShowNotification, UIResponder.keyboardDidShowNotification, UIResponder.keyboardWillHideNotification,
+        ] {
             center.addObserver(self, selector: #selector(keyboardChanged), name: name, object: nil)
         }
         for name in [UIWindow.didBecomeKeyNotification, UIWindow.didResignKeyNotification] {
@@ -108,7 +111,17 @@ final class NavigationDockedKeyboard: NSObject {
             evidence = .hidden
         } else {
             guard let value = note.userInfo?[UIResponder.keyboardFrameEndUserInfoKey] as? NSValue else { return }
-            evidence = .screen(value.cgRectValue)
+            let screenFrame = value.cgRectValue
+            // Dismissal may finish with a non-docking frame while the guide is stale.
+            // Only a new show or a positively projected dock can supersede that hide.
+            if case .hidden = evidence,
+               note.name != UIResponder.keyboardWillShowNotification,
+               note.name != UIResponder.keyboardDidShowNotification,
+               Self.overlap(window.convert(screenFrame, from: screen.coordinateSpace), in: window.bounds) == nil
+            {
+                return
+            }
+            evidence = .screen(screenFrame)
         }
         changed?()
     }
@@ -131,8 +144,15 @@ final class NavigationDockedKeyboard: NSObject {
             guard let screen = expected.windowScene?.screen else { return nil }
             let frame = expected.convert(screenFrame, from: screen.coordinateSpace)
             let overlap = Self.overlap(frame, in: expected.bounds)
-            diagnostics.observe("frame", overlap == nil ? "notification-miss" : "notification-overlap")
-            return overlap
+            if let overlap {
+                diagnostics.observe("frame", "notification-overlap")
+                return overlap
+            }
+            // A screen notification need not project into this window's dock. The
+            // local guide can still prove the overlap; a known hide never uses it.
+            let fallback = enabled ? guide : dockedGuide(in: expected)
+            diagnostics.observe("frame", fallback == nil ? "notification-miss" : "guide-overlap")
+            return fallback
         case .unknown:
             let fallback = enabled ? guide : dockedGuide(in: expected)
             diagnostics.observe("frame", fallback == nil ? "unknown-no-dock" : "guide-overlap")
