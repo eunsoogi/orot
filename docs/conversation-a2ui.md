@@ -390,3 +390,10 @@ unchecked fallback lines, and other local controls consume no answer
 text. Their owner, limits, reset, and no-storage/no-send behavior stay
 unchanged. The accepted answer remains the original prose, and older
 responder versions keep their existing contract.
+
+Fresh ordinary task v64 supports the Basic Catalog’s number TextField as
+a temporary signed decimal editor. It starts empty, uses the existing
+256-character text limit, and can accept a decimal point or comma. Values
+remain local to the owned panel; no model value, action, archive, or
+submission can use them. Other TextField variants and earlier task
+contracts remain unchanged.

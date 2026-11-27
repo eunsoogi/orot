@@ -121,7 +121,6 @@ function prose() {
 }
 
 test.each([
-  proposal('number'),
   proposal('obscured'),
   proposal('longText', { action: { event: { name: 'send' } } }),
   proposal('longText', { value: 'preloaded text' }),
