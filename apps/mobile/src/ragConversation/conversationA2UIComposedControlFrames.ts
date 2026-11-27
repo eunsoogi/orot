@@ -23,7 +23,10 @@ function pathFor(raw: unknown) {
   const parts = binding(ref['@path']);
   return '/' + parts.join('/');
 }
-function controlFor(value: Record<string, unknown>): ComposedControl {
+function controlFor(
+  value: Record<string, unknown>,
+  timeControls: boolean,
+): ComposedControl {
   const base = ['id', 'component', 'label', 'value'];
   const caption = label(value.label);
   switch (value.component) {
@@ -66,6 +69,14 @@ function controlFor(value: Record<string, unknown>): ComposedControl {
       return { kind: 'slider', label: caption, min, max, steps };
     }
     case 'DateTimeInput': {
+      if (
+        timeControls &&
+        value.enableTime === true &&
+        (value.enableDate === undefined || value.enableDate === false)
+      ) {
+        keys(value, [...base, 'enableDate', 'enableTime']);
+        return { kind: 'time', label: caption };
+      }
       keys(value, [...base, 'enableDate', 'enableTime', 'min', 'max']);
       if (
         value.enableDate !== true ||
@@ -116,6 +127,7 @@ export function projectConversationA2UIComposedControls(
   raw: unknown,
   sliders = false,
   dateControls = false,
+  timeControls = false,
 ) {
   if (
     !Array.isArray(raw) ||
@@ -166,7 +178,7 @@ export function projectConversationA2UIComposedControls(
           return node;
         }
         const path = pathFor(node.value);
-        const control = controlFor(node);
+        const control = controlFor(node, timeControls);
         fields.set(componentId, { path, control });
         return { id: componentId, component: 'Divider' };
       });
@@ -186,10 +198,15 @@ export function projectConversationA2UIComposedControls(
         fail();
       used.set(path, control);
     }
-    // Numeric and date controls never project any authored model data.
+    // Numeric, date and time controls never project any authored model data.
     // Reject correlated seeds even when they address a parent or child pointer.
     for (const [path, control] of used) {
-      if (control.kind !== 'slider' && control.kind !== 'date') continue;
+      if (
+        control.kind !== 'slider' &&
+        control.kind !== 'date' &&
+        control.kind !== 'time'
+      )
+        continue;
       const namespace = binding(path)[0]!;
       if (
         initialData.some(data => Object.hasOwn(data, namespace)) ||

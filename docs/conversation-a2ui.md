@@ -313,3 +313,11 @@ app-owned reset event with empty context restores this bubble's fields
 to their initial values on an explicit tap. Lost or inactive owners
 cannot reset another reply. No event, field values, or action authority
 goes to the provider or the archive. Older contracts remain unchanged.
+
+Fresh ordinary task v55 also supports a temporary time-only DateTimeInput.
+Use a distinct local binding, enableTime: true, and omit enableDate or set
+it to false. The field stays empty until explicit native confirmation and
+then shows the chosen wall-clock hour and minute. It does not accept
+authored bounds, data-model seeds, actions or time zones. The local form
+owner retires the value on departure or reset; the existing archived reply
+has no picker state or action.
