@@ -1,6 +1,6 @@
 import { dailyReportLiveCommit } from './dailyReportLiveCommit';
 import { persistDailyReportCandidate } from './dailyReportCandidatePersistence';
-import { conversationReceiptSelection as observeSelection } from './conversationReceiptSelection';
+import { selectDailyReportProvider } from './dailyReportProviderSelection';
 import { withDailyReportOpening as openingFor } from './dailyReportOpening';
 import { selectCurrentDailyReportFacts } from './dailyReportCurrentSelection';
 import { reportModelClaims } from './dailyReportModelAnalysis';
@@ -11,10 +11,6 @@ import { createDailyReportContext } from '../../healthEvidence/healthContext/dai
 import type { DailyReportCalendarResult } from '../../healthEvidence/healthContext/dailyReportWindow';
 import { providerDiagnostic } from '../../providers/diagnostics';
 import { validateDailyReportCompletion } from '../../storage/dailyReportValidation';
-import {
-  resolveSelectedAiProvider as resolveAi,
-  type SelectedAiResolution,
-} from './provider';
 import { dailyReportFacts } from './dailyReportFacts';
 import { dailyReportAnalysis, reportObservations } from './dailyReportAnalysis';
 import { fingerprint } from './evidenceUtils';
@@ -29,32 +25,18 @@ export async function generateDailyReportWithCalendar(
   request: DailyReportServiceRequest,
   calendar: Extract<DailyReportCalendarResult, { status: 'ready' }>,
   external?: Awaited<ReturnType<typeof prepareReportCalendar>>,
+  providerSelection = () => selectDailyReportProvider(input, request),
 ) {
   const fail = (code: DailyReportFailureCode) => {
     if (!input.deadlineContext.timedOut)
       providerDiagnostic('daily_report', 'workflow', failureOutcome(code));
     return { status: 'failed' as const, code };
   };
-  input.deadlineContext.stage = 'provider_selection';
-  providerDiagnostic('daily_report', 'selection', 'started');
-  let selected: SelectedAiResolution;
-  try {
-    selected = observeSelection(
-      await (input.resolveSelected ?? resolveAi)(),
-      request.observer,
-    );
-  } catch {
-    if (request.signal.aborted) return fail('cancelled');
-    providerDiagnostic('daily_report', 'selection', 'unavailable');
-    return fail('provider_unavailable');
-  }
-  if (request.signal.aborted) return fail('cancelled');
-  input.deadlineContext.stage = 'workflow';
-  if (selected.status !== 'ready') {
-    providerDiagnostic('daily_report', 'selection', 'unavailable');
-    return fail('provider_unavailable');
-  }
-  providerDiagnostic('daily_report', 'selection', 'completed');
+  const resolved = await providerSelection();
+  if (request.signal.aborted || resolved.status === 'cancelled')
+    return fail('cancelled');
+  if (resolved.status !== 'ready') return fail('provider_unavailable');
+  let selected = resolved;
   type Snapshot = Awaited<
     ReturnType<NonNullable<typeof input.data.readDailyReportSnapshot>>
   >;
