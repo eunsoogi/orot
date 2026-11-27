@@ -1,5 +1,7 @@
-import { useState } from 'react';
+import { useContext, useState } from 'react';
 import type { LayoutChangeEvent, StyleProp, ViewStyle } from 'react-native';
+import { ConversationTranscriptTrailingLane } from './ConversationWorkspaceContext';
+import { useNavigationContentFrame } from '../navigation/navigationContentFrame';
 import { useNavigationEdgeVerticalScroll } from '../navigation/navigationEdgeScroll';
 import { styles } from './ConversationScreen.styles';
 import { styles as historyStyles } from './ConversationHistoryLayout.styles';
@@ -13,16 +15,31 @@ function useConversationOwnedEdgeScroll({
   indicatorTop,
   indicatorBottom,
   testID,
+  isTranscript = false,
 }: {
   readonly style?: StyleProp<ViewStyle>;
   readonly content: StyleProp<ViewStyle>;
   readonly indicatorTop?: number;
   readonly indicatorBottom?: number;
   readonly testID?: string;
+  readonly isTranscript?: boolean;
 }) {
   const [ownerWidth, setOwnerWidth] = useState(0);
+  const trailingLane = useContext(ConversationTranscriptTrailingLane);
+  const frame = useNavigationContentFrame();
+  const route = frame?.availableContentFrame;
+  // Match both the actual transcript width and the physical right end of
+  // its measured workspace. Side panes never receive this exception.
+  const ownsTrailing =
+    isTranscript &&
+    trailingLane &&
+    trailingLane.frame === frame &&
+    route &&
+    Math.abs(trailingLane.right - (route.x + route.width)) <= 1 &&
+    ownerWidth > 0 &&
+    Math.abs(ownerWidth - trailingLane.width) <= 1;
   const edge = useNavigationEdgeVerticalScroll({
-    ownerWidth,
+    ownerWidth: ownsTrailing ? undefined : ownerWidth,
     indicatorTop,
     indicatorBottom,
   });
@@ -48,6 +65,7 @@ export function useTranscriptEdgeScroll(bottomInset: number, compact: boolean) {
   const composerInset = useFloatingComposerInset();
   return useConversationOwnedEdgeScroll({
     style: styles.history,
+    isTranscript: true,
     content: {
       paddingTop: identityInset,
       paddingBottom: bottomInset + composerInset + (compact ? 0 : 20),
