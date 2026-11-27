@@ -1,5 +1,6 @@
 import { providerSelectionStore } from '../../providers/selection/keychainSelectionStore';
 import { providerSuccess } from '@orot/model-runtime';
+import { startStockSavedRecordingAnalysis } from '../__fixtures__/startStockSavedRecordingAnalysis';
 import { reviewCopy } from '../strings';
 import { act, fireEvent, render, screen } from '@testing-library/react-native';
 import type { ReactNode } from 'react';
@@ -70,15 +71,6 @@ jest.mock('../../storage/secureDatabase', () => ({
   openLocalStorage: jest.fn(),
   openLocalAgentMemoryDatabase: jest.fn(),
 }));
-jest.mock('../../providers/selection/options', () => ({
-  ...jest.requireActual('../../providers/selection/options'),
-  loadAppleSelectionOption: jest.fn(async () => {
-    const { createAppleSelectionOption } = jest.requireActual(
-      '../../providers/selection/options',
-    ) as typeof import('../../providers/selection/options');
-    return createAppleSelectionOption('modelNotReady');
-  }),
-}));
 jest.mock('../../aiFeatures/integration/provider', () => ({
   resolveSelectedAiProvider: jest.fn(),
 }));
@@ -117,9 +109,7 @@ test('retiring the recording route stops a held selected model lookup before ext
     <RecordingReviewRoute reviewService={service} routeOwner={owner} />,
   );
   try {
-    const start = await screen.findByTestId('encounter-start');
-    expect(screen.queryByTestId('recording-analysis-menu')).toBeNull();
-    await fireEvent.press(start);
+    await startStockSavedRecordingAnalysis();
     await entered;
     await act(async () => {
       valid = false;
@@ -143,9 +133,7 @@ test('a current recording route gets reviewable proposals from the selected fake
     />,
   );
   try {
-    const start = await screen.findByTestId('encounter-start');
-    expect(screen.queryByTestId('recording-analysis-menu')).toBeNull();
-    await fireEvent.press(start);
+    await startStockSavedRecordingAnalysis();
     await screen.findByTestId('encounter-save');
     expect(calls()).toBe(2);
     expect(await fixture.rows()).toEqual([]);

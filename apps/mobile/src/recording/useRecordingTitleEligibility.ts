@@ -37,28 +37,27 @@ export function useRecordingTitleEligibility(
         AppState.currentState === 'active' &&
         owner.isCurrent() &&
         selected();
-      void (async () => {
-        try {
-          const choice = await providerSelectionStore.load();
-          if (
-            !current() ||
-            choice?.providerId !== APPLE_PROVIDER_ID ||
-            choice.modelId !== APPLE_FOUNDATION_MODEL_SELECTION_ID
-          )
-            return;
-          const option = await loadAppleSelectionOption();
-          if (
-            current() &&
-            option.provider.id === choice.providerId &&
-            option.modelId === choice.modelId &&
-            option.privacyBoundary === 'on-device' &&
-            option.availability.status === 'available'
-          )
-            setProof({ sourceId, owner, current });
-        } catch {
-          // Unresolved settings or availability cannot displace the ordinary analysis actions.
-        }
-      })();
+      const checkAvailability = async () => {
+        const choice = await providerSelectionStore.load();
+        if (
+          !current() ||
+          choice?.providerId !== APPLE_PROVIDER_ID ||
+          choice.modelId !== APPLE_FOUNDATION_MODEL_SELECTION_ID
+        )
+          return;
+        const option = await loadAppleSelectionOption();
+        if (
+          current() &&
+          option.provider.id === choice.providerId &&
+          option.modelId === choice.modelId &&
+          option.privacyBoundary === 'on-device' &&
+          option.availability.status === 'available'
+        )
+          setProof({ sourceId, owner, current });
+      };
+      checkAvailability().catch(() => {
+        // An unavailable proof leaves the ordinary analysis controls in place.
+      });
     };
     const stopSelection = providerSelectionStore.subscribeChanges(refresh);
     const stopOwner = owner.subscribe(refresh);
