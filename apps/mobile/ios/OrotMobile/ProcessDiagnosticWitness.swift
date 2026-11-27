@@ -55,6 +55,20 @@ final class ProcessDiagnosticWitness: @unchecked Sendable {
     private var launch = false
     private var bridge = false
     private var receipts: [String] = []
+    private enum HeartLayoutRow: String { case ordinary, workout }
+    private var heartLayoutCounts: [HeartLayoutRow: Int] = [:]
+
+    private func recordHeartFirstLayout(stage: String, outcome: String) {
+        guard outcome == "laid_out", let row = HeartLayoutRow(rawValue: stage) else { return }
+        lock.lock()
+        let count = heartLayoutCounts[row, default: 0]
+        if count < 16 {
+            heartLayoutCounts[row] = count + 1
+        }
+        lock.unlock()
+        guard count < 16 else { return }
+        NSLog("OROT_PROVIDER_DIAGNOSTIC layer=js feature=overview_heart_first_layout stage=%@ outcome=laid_out", row.rawValue)
+    }
 
     func markLaunch() {
         lock.lock()
@@ -115,6 +129,10 @@ final class ProcessDiagnosticWitness: @unchecked Sendable {
     }
 
     func acceptAndContinueJS(feature: String, stage: String, outcome: String) -> Bool {
+        if feature == "overview_heart_first_layout" {
+            recordHeartFirstLayout(stage: stage, outcome: outcome)
+            return false
+        }
         if feature == "voice_caption" {
             if let line = Self.voiceCaptionCloseLine(stage: stage, outcome: outcome) {
                 NSLog("%@", line)

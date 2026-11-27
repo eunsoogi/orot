@@ -6,6 +6,8 @@ import { AppText as Text } from '../../layout/AppText';
 import { overviewMetricStyles as styles } from './overviewMetricStyles';
 import { useOverviewWorkoutPeriodHeartRate } from './useOverviewWorkoutPeriodHeartRate';
 
+import { useOverviewHeartFirstLayout } from './useOverviewHeartFirstLayout';
+
 /** Shows the period mean directly, weighted by actual associated quantities, not workouts. */
 export function OverviewWorkoutHeartRateCard({
   width,
@@ -33,6 +35,11 @@ export function OverviewWorkoutHeartRateCard({
     selectionWitness,
     readSavedSelection,
   );
+  const onTextLayout = useOverviewHeartFirstLayout(
+    'workout',
+    active && !!embedded && readSavedSelection,
+    state.status === 'available',
+  );
   return (
     <View
       style={[
@@ -55,6 +62,7 @@ export function OverviewWorkoutHeartRateCard({
               ? styles.heartSupportingNumber
               : styles.detail)
           }
+          onTextLayout={onTextLayout}
           accessibilityRole="status"
           accessibilityLabel={
             state.status === 'available'
