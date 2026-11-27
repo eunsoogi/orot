@@ -27,7 +27,7 @@ const bind = {
   args: { value: '방문 ${@index(offset: 1)}: ${name} · ${duration}' },
 };
 
-function objectFrame(text: JsonValue = bind, items = rows) {
+function objectFrame(text: JsonValue = bind, items = rows): JsonValue {
   return {
     version: '1.0',
     createSurface: {
