@@ -22,8 +22,15 @@ final class OrotProviderDiagnostics: NSObject {
         guard ProcessDiagnosticWitness.current?.acceptAndContinueJS(feature: feature, stage: stage, outcome: outcome) == true, !WorkoutPeriodDiagnostics.handleJS(feature, stage: stage, outcome: outcome) else { return }
         if ["live_health", "report_calendar_daily", "report_calendar_conversation"].contains(feature) {
             // Never accept text, request identifiers, source identities, or provider/audio payloads.
-            let stages = feature == "live_health" ? ["grant_lookup", "owner_reproof", "local_confirmation", "data_open", "stock_read", "evidence_lookup",
-                          "result_projection", "result_confirmation", "source_reproof", "native_handoff", "admission_queue"] : ["admission", "proof", "other"]
+            let stages: [String]
+            if feature == "live_health" {
+                stages = [
+                    "grant_lookup", "owner_reproof", "local_confirmation", "data_open", "stock_read", "evidence_lookup",
+                    "result_projection", "result_confirmation", "source_reproof", "native_handoff", "admission_queue",
+                ]
+            } else {
+                stages = ["admission", "proof", "other"]
+            }
             guard stages.contains(stage), let elapsed = Int(outcome), (0 ... 300_000).contains(elapsed),
                   String(elapsed) == outcome else { return }
             NSLog("OROT_PROVIDER_DIAGNOSTIC layer=app feature=%@ stage=%@ elapsed_ms=%d", feature, stage, elapsed)

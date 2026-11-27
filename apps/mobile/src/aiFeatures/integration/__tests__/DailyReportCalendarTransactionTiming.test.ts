@@ -85,6 +85,12 @@ test.each([
       const originalNativeRead = calendar.bridge.listEventsInRange;
       jest.mocked(createCalendarBridge).mockReturnValue({
         ...calendar.bridge,
+        requestAccessAndListUpcomingEvents: async () => {
+          throw new Error('Unexpected calendar access prompt');
+        },
+        findEvent: async () => {
+          throw new Error('Unexpected single-event lookup');
+        },
         listEventsInRange: async (...args) => {
           if (block) {
             entered.release();
