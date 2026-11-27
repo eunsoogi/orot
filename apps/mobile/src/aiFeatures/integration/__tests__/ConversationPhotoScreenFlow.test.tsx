@@ -96,8 +96,10 @@ test('the real screen holds image pixels until Settings consent and saves only i
 
     await send();
     await waitFor(() => expect(fixture.start).toHaveBeenCalledTimes(1));
+    const requestId = fixture.start.mock.calls[0]?.[0];
+    expect(requestId).toMatch(/^photo-reply:[a-f0-9]{32}$/);
     expect(fixture.start).toHaveBeenCalledWith(
-      'image-request',
+      requestId,
       'synthetic-owner',
       {
         model: 'gpt-6.2-sol',
@@ -135,6 +137,7 @@ test('the real screen holds image pixels until Settings consent and saves only i
     );
     expect(saved.rows).toEqual([
       expect.objectContaining({
+        id: requestId,
         question: '',
         answer: '합성 이미지 설명',
         directPhoto: true,
