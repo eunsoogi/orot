@@ -168,22 +168,21 @@ export function acceptConversationA2UIMixedWeights(
 ) {
   const projected = closedWeightedFrame(frames, 'mixed');
   if (!projected) return;
-  const root = validateLowered([projected.wire]);
+  const { wire, selected } = projected;
+  const root = validateLowered([wire]);
   if (!root) return;
   const admitted = new Map<ConversationA2UINode, number>();
   let mixedRows = 0;
   function visit(node: ConversationA2UINode) {
     if (node.component === 'Row') {
-      const candidates = node.children.filter(child =>
-        projected.selected.has(child.id),
-      );
+      const candidates = node.children.filter(child => selected.has(child.id));
       if (
         candidates.some(child => child.component === 'Card') &&
         candidates.some(child => child.component === 'Column')
       ) {
         mixedRows++;
         for (const child of candidates)
-          admitted.set(child, projected.selected.get(child.id)!);
+          admitted.set(child, selected.get(child.id)!);
       }
     }
     if (node.component === 'Tabs') {
@@ -193,7 +192,7 @@ export function acceptConversationA2UIMixedWeights(
     }
   }
   visit(root);
-  if (mixedRows !== 1 || admitted.size !== projected.selected.size) return;
+  if (mixedRows !== 1 || admitted.size !== selected.size) return;
   for (const [node, weight] of admitted) mixedWeights.set(node, weight);
   return root;
 }

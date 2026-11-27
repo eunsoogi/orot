@@ -1,4 +1,5 @@
 import type { TaskResponderInput } from '@orot/agent-runtime';
+import type { JsonValue } from '@orot/model-runtime';
 import { fireEvent, render, screen } from '@testing-library/react-native';
 import { StyleSheet } from 'react-native';
 import { ConversationA2UISurface } from '../ConversationA2UISurface';
@@ -33,7 +34,11 @@ const input = {
   context: [],
   evidence: { items: [], coverage: [], conflicts: [] },
 } as TaskResponderInput;
-function proposal(weight: unknown = 2, separate = false, data = false) {
+function proposal(
+  weight: JsonValue = 2,
+  separate = false,
+  data = false,
+): { answerKind: string; answer: string; a2uiFrames: JsonValue[] } {
   return {
     answerKind: 'conversation',
     answer,
