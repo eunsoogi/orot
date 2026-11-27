@@ -8,12 +8,26 @@ type Stage =
   | 'epoch'
   | 'cohort'
   | 'reproof'
-  | 'bridge';
+  | 'bridge'
+  | 'decode'
+  | 'finalproof'
+  | 'settlement';
+export type WorkoutDecodeRejection =
+  | 'cancelled'
+  | 'native_unavailable'
+  | 'payload_invalid'
+  | 'cohort_mismatch'
+  | 'window_mismatch'
+  | 'statistics_invalid'
+  | 'timestamps_invalid'
+  | 'membership_invalid';
 type Outcome =
+  | WorkoutDecodeRejection
+  | 'available'
+  | 'unavailable'
   | 'started'
   | 'completed'
   | 'failed'
-  | 'cancelled'
   | 'skipped'
   | 'missing'
   | 'empty';
@@ -43,6 +57,16 @@ export function workoutReadDiagnostics(route: Route) {
   };
   return {
     report,
+    settlement<
+      T extends { status: 'available' | 'unavailable' | 'emptyVisible' },
+    >(state: T, observed = true): T {
+      if (observed)
+        report(
+          'settlement',
+          state.status === 'emptyVisible' ? 'empty' : state.status,
+        );
+      return state;
+    },
     observe<T>(
       stage: Stage,
       attempt: () => Promise<T>,

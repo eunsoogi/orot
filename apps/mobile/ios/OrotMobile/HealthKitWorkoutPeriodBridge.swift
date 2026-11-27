@@ -199,12 +199,26 @@ enum WorkoutPeriodDiagnostics {
     static func handleJS(_ feature: String, stage: String, outcome: String) -> Bool {
         guard feature == "workout_period" else { return false }
         let parts = stage.split(separator: "_", omittingEmptySubsequences: false)
-        guard enabled, parts.count == 2,
-              ["records", "overview", "shared"].contains(String(parts[0])),
-              ["route", "protection", "database", "epoch", "cohort", "reproof", "bridge"].contains(String(parts[1])),
-              ["started", "completed", "failed", "cancelled", "skipped", "missing", "empty"].contains(outcome)
+        guard enabled, parts.count == 2, approvedOutcome(route: parts[0], stage: parts[1], outcome: outcome)
         else { return true }
         NSLog("OROT_PROVIDER_DIAGNOSTIC layer=js feature=workout_period stage=%@ outcome=%@", stage, outcome)
         return true
+    }
+
+    private static func approvedOutcome(route: Substring, stage: Substring, outcome: String) -> Bool {
+        switch (route, stage) {
+        case ("shared", "decode"):
+            ["cancelled", "available", "empty", "native_unavailable", "payload_invalid",
+             "cohort_mismatch", "window_mismatch", "statistics_invalid", "timestamps_invalid", "membership_invalid"].contains(outcome)
+        case ("shared", "finalproof"):
+            ["started", "completed", "failed", "cancelled"].contains(outcome)
+        case ("overview", "settlement"):
+            ["available", "empty", "unavailable", "cancelled"].contains(outcome)
+        case ("records", _), ("overview", _), ("shared", _):
+            ["route", "protection", "database", "epoch", "cohort", "reproof", "bridge"].contains(String(stage))
+                && ["started", "completed", "failed", "cancelled", "skipped", "missing", "empty"].contains(outcome)
+        default:
+            false
+        }
     }
 }
