@@ -114,13 +114,9 @@ export function useConversationHistoryPresentation(input: {
       ),
     [saved, messages, directPhoto, input.sessionId],
   );
-  const followMessages = useMemo(
-    () => presentDirectPhotos(messages, directPhoto, input.sessionId, true),
-    [directPhoto, input.sessionId, messages],
-  );
   useConversationHistoryUserTurnFollow(
     input.sessionId ?? null,
-    followMessages,
+    messages,
     input.followsBottom,
     input.expectedOffset,
     input.pendingMessage &&

@@ -58,8 +58,6 @@ export type SavedHistoryDisplayItem = {
   readonly row: SavedHistoryDisplayRow;
   readonly questionId: number;
   readonly answerId: number;
-  /** Mount-only ordering for a newly saved local photo among current live turns. */
-  readonly afterLiveId?: number;
 };
 
 /** Keep row identity through older prepends and never replace an already mounted live turn. */
@@ -84,7 +82,9 @@ export function savedHistoryTranscript(
   live: readonly DisplayMessage[],
 ): readonly DisplayMessage[] {
   if (!saved.length) return live;
-  const liveIds = new Set(live.map(message => message.toolMessageId));
+  const liveIds = new Set(
+    live.map(message => message.toolMessageId ?? message.directPhotoTurnId),
+  );
   const rejectedOpenings = new Map<string, DisplayMessage['initialResponse']>();
   for (const message of live)
     if (message.rejectedOpeningTurnId && message.initialResponse)
@@ -93,8 +93,7 @@ export function savedHistoryTranscript(
         message.initialResponse,
       );
   const historical: DisplayMessage[] = [];
-  const mounted: { after: number; messages: DisplayMessage[] }[] = [];
-  for (const { row, questionId, answerId, afterLiveId } of saved) {
+  for (const { row, questionId, answerId } of saved) {
     if (liveIds.has(row.id)) continue;
     const shown = rejectedOpenings.get(row.id);
     // Keep the live pair only when it is the exact archived opening.
@@ -177,18 +176,9 @@ export function savedHistoryTranscript(
           : {}),
       });
     }
-    if (afterLiveId === undefined) historical.push(...messages);
-    else mounted.push({ after: afterLiveId, messages });
+    historical.push(...messages);
   }
-  let index = 0;
-  for (const message of live) {
-    while (mounted[index] && message.id > mounted[index]!.after)
-      historical.push(...mounted[index++]!.messages);
-    historical.push(message);
-  }
-  for (; index < mounted.length; index++)
-    historical.push(...mounted[index]!.messages);
-  return historical;
+  return [...historical, ...live];
 }
 
 /** Never paint another route, pending account owner, or replaced lease's retained prose. */

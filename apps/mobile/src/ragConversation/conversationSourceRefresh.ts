@@ -33,6 +33,7 @@ export function refreshConversationSources(input: {
     const restrict = (session: ConversationSession) => ({
       historyLoading: false,
       savedHistoryDisplay: undefined,
+      currentDisplayMessages: undefined,
       historyLoadFailed: session.historyLoading || session.historyLoadFailed,
       messages: filterHealthDerivedMessages(session.messages, deletedIds).map(
         message => ({ ...message, steeringInstructions: undefined }),
@@ -111,6 +112,7 @@ export function refreshConversationSources(input: {
     update(session.id, {
       messages: [],
       savedHistoryDisplay: undefined,
+      currentDisplayMessages: undefined,
       taskCards: [],
       title: createEmptyConversation(session.id).title,
       pendingMessage: null,

@@ -74,21 +74,27 @@ export async function performDirectPhotoSend(input: {
   };
   setState(publish ? { sending: true } : { images, sending: true });
   let presentation: ReturnType<typeof beginDirectPhotoPresentation>;
+  let pending = false;
   const revealPending = () => {
-    presentation ??= beginDirectPhotoPresentation(
+    if (pending) return true;
+    if (!retain.start(prompt)) return false;
+    pending = true;
+    presentation = beginDirectPhotoPresentation(
       publish ? present : undefined,
       controller.signal,
       sessionId,
       retain.id,
-      prompt,
       images,
     );
+    return true;
   };
   if (images.length === 1) revealPending();
   const stop = () => {
     if (transfer ? !retain.current() : !ownsPrompt()) controller.abort();
   };
   const unsubscribeOwner = store.subscribe(stop);
+  const removePending = () => retain.cancel();
+  controller.signal.addEventListener('abort', removePending, { once: true });
   try {
     const authorization = await ports.authorization();
     if (!ownsPrompt()) return;
@@ -176,7 +182,7 @@ export async function performDirectPhotoSend(input: {
           controller.abort();
           return false;
         }
-        revealPending();
+        if (!revealPending()) return false;
         if (lease?.current() && frame) {
           transfer = owner.accept(frame, controller);
           if (transfer) publish?.({ retireRequestId: retain.id });
@@ -222,6 +228,8 @@ export async function performDirectPhotoSend(input: {
     if (owns()) setState({ images, message: unavailable });
   } finally {
     unsubscribeOwner();
+    controller.signal.removeEventListener('abort', removePending);
+    if (!committed) removePending();
     stopObservingUnleased?.();
     transfer?.close();
     lease?.close();

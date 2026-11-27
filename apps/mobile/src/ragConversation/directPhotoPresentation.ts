@@ -4,9 +4,6 @@ import type { DisplayMessage } from './conversationDisplayMessage';
 export type DirectPhotoPresentation = Readonly<{
   sessionId: number;
   requestId: string;
-  displayId: number;
-  submittedAt: string;
-  prompt: string;
   preview: string;
   previews?: readonly string[];
   pending: boolean;
@@ -16,14 +13,10 @@ export type PublishDirectPhoto = (
   value: DirectPhotoPresentation | { readonly retireRequestId: string } | null,
 ) => void;
 
-let nextDisplayId = Number.MAX_SAFE_INTEGER;
-
-/** This display-only ID comes from the high end of the safe-integer range,
- * apart from increasing live IDs and negative restored-history IDs. */
+/** A preview decorates an existing live row without assigning a new transcript identity. */
 function createDirectPhotoPresentation(
   sessionId: number,
   requestId: string,
-  prompt: string,
   image: string | readonly string[],
 ): DirectPhotoPresentation {
   const previews = (typeof image === 'string' ? [image] : image).map(
@@ -32,9 +25,6 @@ function createDirectPhotoPresentation(
   return {
     sessionId,
     requestId,
-    displayId: nextDisplayId--,
-    submittedAt: new Date().toISOString(),
-    prompt,
     preview: previews[0]!,
     ...(previews.length > 1 ? { previews: Object.freeze(previews) } : {}),
     pending: true,
@@ -51,7 +41,7 @@ function presentDirectPhoto(
     message =>
       message.role === 'user' &&
       message.photoAttached &&
-      message.voiceTimelineOrder?.id === photo.requestId,
+      message.directPhotoTurnId === photo.requestId,
   );
   const preview = {
     directPhotoPreviewData: photo.preview,
@@ -59,23 +49,9 @@ function presentDirectPhoto(
   };
   if (user)
     return messages.map(message =>
-      message === user
-        ? { ...message, id: photo.displayId, ...preview }
-        : message,
+      message === user ? { ...message, ...preview } : message,
     );
-  if (!photo.pending) return messages;
-  return [
-    ...messages,
-    {
-      id: photo.displayId,
-      role: 'user',
-      content: photo.prompt,
-      photoAttached: true,
-      delivery: { submittedAt: photo.submittedAt },
-      deliveryPending: true,
-      ...preview,
-    },
-  ];
+  return messages;
 }
 
 /** A pending display is retired immediately by abort, even if the provider is still settling. */
@@ -84,16 +60,10 @@ export function beginDirectPhotoPresentation(
   signal: AbortSignal,
   sessionId: number,
   requestId: string,
-  prompt: string,
   image: string | readonly string[],
 ) {
   if (!publish || signal.aborted) return;
-  const photo = createDirectPhotoPresentation(
-    sessionId,
-    requestId,
-    prompt,
-    image,
-  );
+  const photo = createDirectPhotoPresentation(sessionId, requestId, image);
   let saved = false;
   const retire = () => publish({ retireRequestId: requestId });
   signal.addEventListener('abort', retire, { once: true });
@@ -102,7 +72,7 @@ export function beginDirectPhotoPresentation(
     complete() {
       if (signal.aborted) return;
       saved = true;
-      publish({ ...photo, prompt: '', pending: false });
+      publish({ ...photo, pending: false });
     },
     dispose(current: boolean) {
       signal.removeEventListener('abort', retire);
@@ -138,13 +108,9 @@ export function presentDirectPhotos(
   messages: readonly DisplayMessage[],
   photos: readonly DirectPhotoPresentation[],
   sessionId: number | undefined,
-  pendingOnly = false,
 ): readonly DisplayMessage[] {
   return photos.reduce(
-    (prior, photo) =>
-      pendingOnly && !photo.pending
-        ? prior
-        : presentDirectPhoto(prior, photo, sessionId),
+    (prior, photo) => presentDirectPhoto(prior, photo, sessionId),
     messages,
   );
 }

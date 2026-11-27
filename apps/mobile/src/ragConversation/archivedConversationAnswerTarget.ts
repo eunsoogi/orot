@@ -1,3 +1,4 @@
+import { currentConversationMessages } from './currentConversationMessages';
 import type { DisplayMessage } from './ConversationMessage';
 import type { ConversationSession } from './conversationSessionTypes';
 import {
@@ -49,7 +50,7 @@ export function archivedConversationAnswerTarget(input: {
   priorRetainedAnswerId?: string;
 }): ArchivedConversationAnswerTarget | null | undefined {
   const { session } = input;
-  const previous = session.messages.filter(
+  const previous = currentConversationMessages(session).filter(
     message => message.id !== input.currentUserId,
   );
   // Do not let the retained-history collector skip over a newer visible row
@@ -102,7 +103,7 @@ export function archivedConversationAnswerTarget(input: {
         return false;
       const shown = visibleSavedHistoryDisplay(latest);
       if (!shown?.includes(displayed)) return false;
-      const beforeRequest = latest.messages.filter(
+      const beforeRequest = currentConversationMessages(latest).filter(
         message => message.id !== input.currentUserId,
       );
       return (

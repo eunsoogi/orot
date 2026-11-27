@@ -1,9 +1,10 @@
-import { useSyncExternalStore } from 'react';
+import { type ReactNode, useSyncExternalStore } from 'react';
 import { runMigrations, type SqlDatabase } from '@orot/storage';
 import { openSqliteTestDatabase } from '../../../../../packages/storage/__tests__/sqliteTestDatabase';
 import { createConversationArtifactStorage } from '../../storage/conversationArtifactStorage';
 import { conversationSavedHistoryDisplayOption } from '../../aiFeatures/integration/conversationSavedHistoryDisplayOption';
 import { ConversationHistory } from '../ConversationHistory';
+import { currentConversationMessages } from '../currentConversationMessages';
 import { conversationHistoryRecoveryProps } from '../conversationHistoryRecoveryProps';
 import { createConversationSessionRetention } from '../conversationSessionRetention';
 import type { ConversationSessions } from '../conversationSessions';
@@ -94,13 +95,20 @@ export async function fixture(
   return { f, storage, reader, retention, strict, forbidden };
 }
 
-export function Transcript({ store }: { store: ConversationSessions }) {
+export function Transcript({
+  store,
+  entryChoices,
+}: {
+  store: ConversationSessions;
+  entryChoices?: ReactNode;
+}) {
   const snapshot = useSyncExternalStore(store.subscribe, store.getSnapshot);
   const session = snapshot.sessions.find(row => row.id === snapshot.activeId)!;
   return (
     <ConversationHistory
       {...conversationHistoryRecoveryProps(session, store)}
-      messages={session.messages}
+      messages={currentConversationMessages(session)}
+      entryChoices={entryChoices}
       sessionId={session.id}
       pendingMessage={null}
       error={session.error}

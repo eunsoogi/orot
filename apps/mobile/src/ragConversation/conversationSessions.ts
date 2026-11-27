@@ -153,7 +153,7 @@ export function createConversationSessions(
     }),
     resumeCold: requests.resumeCold,
     steer: requests.steer,
-    ...photoSurface.retain(restoration),
+    ...photoSurface.retain(find, update, requests.reserveUserMessageId),
     attachExisting,
     loadHistory,
     loadOlderHistory: restoration.loadOlder,

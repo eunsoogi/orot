@@ -1,7 +1,6 @@
 import {
   prependSavedHistoryDisplay,
   type ReadSavedHistoryDisplay,
-  type SavedHistoryDisplayRow,
 } from './conversationSavedHistoryDisplay';
 import type { ConversationHistoryReaderOwner } from './conversationHistoryPage';
 import type { ConversationSession } from './conversationSessionTypes';
@@ -118,22 +117,6 @@ export function createOwnedSavedHistoryDisplay(input: {
           owner.displayAdmission = undefined;
           owner.initialAdmission = undefined;
         }
-      });
-    },
-    publishDirectPhoto(id: number, row: SavedHistoryDisplayRow) {
-      const session = input.find(id);
-      if (!session || session.quarantined || session.restoring) return;
-      const existing = session.savedHistoryDisplay ?? [];
-      if (existing.some(item => item.row.id === row.id)) return;
-      const afterLiveId = session.messages.reduce(
-        (max, item) => Math.max(max, item.id),
-        0,
-      );
-      input.update(id, {
-        savedHistoryDisplay: [
-          ...existing,
-          { row, afterLiveId, questionId: --nextId, answerId: --nextId },
-        ],
       });
     },
     invalidate(owner: ConversationHistoryReaderOwner) {

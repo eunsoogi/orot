@@ -3,7 +3,7 @@ import {
   type ChatGPTPlanNativeBridge,
   type ChatGPTPlanNativeEvent,
 } from '@orot/provider-openai';
-import { useSyncExternalStore } from 'react';
+import { type ReactNode, useSyncExternalStore } from 'react';
 import { runMigrations } from '@orot/storage';
 import { createOrdinaryConversationMemoryEnrollmentStore } from '../../storage/ordinaryConversationMemoryEnrollment';
 import { saveOrdinaryConversationMemoryNote } from '../../storage/ordinaryConversationMemoryNote';
@@ -32,6 +32,8 @@ export async function directPhotoComposerFixture({
   isEntryCurrent = () => true,
   ownsDraftRoute,
   enableOrdinaryMemory = false,
+  seed,
+  entryChoices,
 }: {
   supported?: boolean;
   hold?: boolean;
@@ -41,11 +43,16 @@ export async function directPhotoComposerFixture({
   isEntryCurrent?: () => boolean;
   ownsDraftRoute?: () => boolean;
   enableOrdinaryMemory?: boolean;
+  seed?: (
+    storage: ReturnType<typeof createConversationArtifactStorage>,
+  ) => Promise<void>;
+  entryChoices?: ReactNode;
 } = {}) {
   const f = openSqliteTestDatabase(':memory:');
   await runMigrations(f.database);
   const storage = createConversationArtifactStorage(f.database);
   await storage.createSession('selected', await storage.currentGeneration());
+  await seed?.(storage);
   const enrollment = createOrdinaryConversationMemoryEnrollmentStore(
     f.database,
   );
@@ -196,7 +203,7 @@ export async function directPhotoComposerFixture({
         ownerKey={store.directPhotoDrafts}
         available
       >
-        <Transcript store={store} />
+        <Transcript store={store} entryChoices={entryChoices} />
         <ConversationSteeringComposer
           store={store}
           session={active}
