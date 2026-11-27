@@ -9,6 +9,7 @@ export interface DisplayMessage extends RagConversationMessage {
   readonly archivedVisitBookmark?: import('../storage/archivedVisitBookmarkIdentity').ArchivedVisitBookmarkMarker;
   /** Rendering marker for an already admitted saved Possibility artifact. */
   readonly committedPossibilityOriginal?: true;
+  readonly committedPossibilityCreatedAt?: string;
   readonly savedPossibilityNarrative?: true;
   /** App-owned terminal clarification and its question are for display only. */
   readonly localClarification?: true;

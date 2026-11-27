@@ -26,7 +26,9 @@ export function conversationHealthSummaryBookmarkAction(
   observer?: RagConversationObserver,
   expectedRunId?: string,
 ) {
-  const bookmark = observer?.reportBookmark;
+  const ordinary = observer?.reportBookmark;
+  const possibility = !ordinary ? observer?.possibilityBookmark : undefined;
+  const bookmark = ordinary ?? possibility;
   const confirm = observer?.confirmHistorySave;
   const owner = observer?.retentionSession;
   let committed = false;
@@ -40,22 +42,35 @@ export function conversationHealthSummaryBookmarkAction(
     owner.version !== bookmark.lease.version ||
     observer.inputOrigin !== 'composer' ||
     observer.photoInput ||
-    observer.selectedRecordingTranscript
+    observer.selectedRecordingTranscript ||
+    (possibility && (!expectedRunId || observer.expectedVoiceSelection))
   )
     return {
       actions: [] as LocalActionTool[],
       committed: () => false,
       confirmTerminal: undefined,
     };
-  const daily = bookmark.kind === 'daily-report';
-  const target = daily ? 'preceding_daily_report' : 'preceding_health_summary';
-  const report = daily ? 'daily report' : 'health summary';
+  const daily = ordinary?.kind === 'daily-report';
+  const target = daily
+    ? 'preceding_daily_report'
+    : possibility
+      ? 'preceding_possibilities_report'
+      : 'preceding_health_summary';
+  const report = daily
+    ? 'daily report'
+    : possibility
+      ? 'disease possibilities report'
+      : 'health summary';
   const current = (signal: AbortSignal) =>
     !signal.aborted &&
     bookmark.current() &&
     observer.expectedConversationModel?.isCurrent?.() !== false;
   const terminal = Boolean(expectedRunId);
-  const toolId = daily ? 'remember-daily-report' : 'remember-health-summary';
+  const toolId = daily
+    ? 'remember-daily-report'
+    : possibility
+      ? 'remember-possibilities-report'
+      : 'remember-health-summary';
   const version = terminal ? '2' : '1';
   let pending:
     | {
@@ -121,11 +136,15 @@ export function conversationHealthSummaryBookmarkAction(
         )
           return false;
         if (
+          (possibility && !(await possibility.confirmProtected())) ||
+          !current(signal) ||
           !(await confirm(
             t(
               daily
                 ? 'savedMemory.generatedReportDaily'
-                : 'savedMemory.generatedReportHealthSummary',
+                : possibility
+                  ? 'savedMemory.bookmarkDiseasePossibilities'
+                  : 'savedMemory.generatedReportHealthSummary',
             ),
             signal,
           )) ||
@@ -156,23 +175,38 @@ export function conversationHealthSummaryBookmarkAction(
           lease: bookmark.lease,
           current: () => current(signal),
         };
-        const saved = daily
-          ? await storage.bookmarkDailyReport({
+        const saved = possibility
+          ? await storage.bookmarkConversationPossibility({
               ...parameters,
-              ...(bookmark.confirmProtection && bookmark.displayedReport
-                ? {
-                    displayedReport: bookmark.displayedReport,
-                    confirmArchivedProtection: bookmark.confirmProtection,
-                  }
-                : {}),
+              createdAt: possibility.createdAt,
+              confirmProtected: possibility.confirmProtected,
             })
-          : await storage.bookmarkHealthSummary(parameters);
+          : daily
+            ? await storage.bookmarkDailyReport({
+                ...parameters,
+                ...(ordinary?.confirmProtection && ordinary?.displayedReport
+                  ? {
+                      displayedReport: ordinary?.displayedReport,
+                      confirmArchivedProtection: ordinary?.confirmProtection,
+                    }
+                  : {}),
+              })
+            : await storage.bookmarkHealthSummary(parameters);
         if (!saved) throw new Error('The original report is unavailable.');
         if (grant.operation) {
           pending = {
             signal,
             operation: grant.operation,
             readback: async () => {
+              if (possibility)
+                return storage.readBookmarkedConversationPossibility(
+                  bookmark.artifactId,
+                  {
+                    current: parameters.current,
+                    confirmProtected: possibility.confirmProtected,
+                    expected: possibility,
+                  },
+                );
               if (!daily)
                 return storage.readSavedHealthSummaryReference(
                   bookmark.artifactId,
@@ -183,7 +217,7 @@ export function conversationHealthSummaryBookmarkAction(
                 parameters.current,
               );
               const displayed =
-                bookmark.confirmProtection && bookmark.displayedReport;
+                ordinary?.confirmProtection && ordinary?.displayedReport;
               return (
                 original &&
                 (!displayed ||
