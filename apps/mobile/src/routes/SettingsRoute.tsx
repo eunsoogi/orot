@@ -140,9 +140,9 @@ const styles = StyleSheet.create({
     alignSelf: 'center',
     width: '100%',
     maxWidth: 680,
-    gap: 12,
+    gap: 20,
     paddingHorizontal: 20,
-    paddingTop: 12,
+    paddingTop: 24,
     // The outer route scroller already supplies the navigation gap.
     paddingBottom: 28 - NAVIGATION_CONTENT_GAP,
   },

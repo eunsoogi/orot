@@ -25,7 +25,6 @@ jest.mock('react-native-safe-area-context', () => {
 
 test.each([
   ['settings-accounts', false],
-  ['settings-backup', false],
   ['settings-health-data', false],
   ['settings-sync-status', false],
 ] as const)(

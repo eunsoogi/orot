@@ -6,7 +6,6 @@ import type { AiFeatureServiceDependencies } from '../aiFeatures/integration/fea
 import type { BackupPreparationDisplayState } from '../backup/useBackupPreparation';
 import type { NavigationRouteActions } from '../navigation/NavigationRouteAdapter';
 import { SettingsAccountsRoute } from './SettingsAccountsRoute';
-import { SettingsBackupRoute } from './SettingsBackupRoute';
 import { SettingsMemoryRoute } from './SettingsMemoryRoute';
 import { SettingsNotificationsRoute } from './SettingsNotificationsRoute';
 import { SettingsPrivacyRoute } from './SettingsPrivacyRoute';
@@ -56,12 +55,8 @@ export function SettingsDetailsRoute({
           serviceDependencies={serviceDependencies}
         />
       );
-    case 'settings-backup':
-      return (
-        <SettingsBackupRoute state={backupState} onPrepare={onPrepareBackup} />
-      );
     case 'settings-privacy':
-      return <SettingsPrivacyRoute />;
+      return <SettingsPrivacyRoute calendarSync={calendarSync} />;
     case 'settings-privacy-policy':
       return <SettingsPrivacyRoute policy />;
     case 'settings-notifications':
@@ -74,8 +69,8 @@ export function SettingsDetailsRoute({
       return (
         <SettingsSyncStatusRoute
           calendarSync={calendarSync}
-          onConfigureHealthData={() => actions.push('settings-health-data')}
-          onOpenBackup={() => actions.push('settings-backup')}
+          backupState={backupState}
+          onPrepareBackup={onPrepareBackup}
         />
       );
     default:

@@ -224,7 +224,6 @@ export function AppRouteContent({
       );
     case 'settings-accounts':
     case 'settings-provider':
-    case 'settings-backup':
     case 'settings-privacy':
     case 'settings-privacy-policy':
     case 'settings-notifications':

@@ -57,17 +57,14 @@ test('health settings only lends its full measured panel, without moving save or
   await render(
     page(
       <HealthDataIntegrationScreen
-        integrationStatus={null}
         loadFailed={false}
         loaded
         notice={null}
         onRetryLoad={jest.fn()}
-        onRetryStatus={jest.fn()}
         onSave={onSave}
         onToggle={onToggle}
         saving={false}
         selected={new Set(['sleep'])}
-        statusLoadFailed={false}
       />,
     ),
   );
