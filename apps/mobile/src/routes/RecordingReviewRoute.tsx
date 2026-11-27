@@ -47,6 +47,10 @@ export function RecordingReviewRoute({
   const [review, setReview] = useState({ busy: false, dirty: false });
   const [autoPlayConsumed, setAutoPlayConsumed] = useState(false);
   const [deleteBusy, setDeleteBusy] = useState(false);
+  const [generatedTitle, setGeneratedTitle] = useState<{
+    id: string;
+    value: string;
+  }>();
   const selectedSource =
     !selection?.recentRouteKey || selection.recentRouteKey === routeKey
       ? selection?.summary.source
@@ -125,7 +129,9 @@ export function RecordingReviewRoute({
             accessibilityRole="header"
             testID="recording-detail-title"
           >
-            {source.title ?? t('recording.library.untitled')}
+            {(generatedTitle?.id === source.id
+              ? generatedTitle.value
+              : source.title) ?? t('recording.library.untitled')}
           </AppText>
         ) : null}
 
@@ -186,8 +192,14 @@ export function RecordingReviewRoute({
                     exportBusy ||
                     deleteBusy
                   }
+
                   onInteractionChange={setReview}
                   routeOwner={routeOwner}
+                  onTitleSaved={
+                    focused && routeOwner
+                      ? value => setGeneratedTitle({ id: source.id, value })
+                      : undefined
+                  }
                   service={reviewService}
                 />
                 <RecordingExportPanel

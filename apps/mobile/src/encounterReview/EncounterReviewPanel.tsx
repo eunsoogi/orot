@@ -1,6 +1,8 @@
 import type { NavigationRouteOwnership } from '../navigation/navigationRouteContracts';
 import { useEffect, useLayoutEffect, useMemo, useState } from 'react';
 import { StyleSheet, View } from 'react-native';
+import { useRecordingTitleEligibility } from '../recording/useRecordingTitleEligibility';
+import { useRecordingTitleProposal } from '../recording/useRecordingTitleProposal';
 import { AppText } from '../layout/AppText';
 import { EncounterReviewActions } from './EncounterReviewActions';
 import { materialLibraryStyles } from '../layout/MaterialLibraryRows';
@@ -22,11 +24,13 @@ export function EncounterReviewPanel({
   disabled,
   onInteractionChange,
   routeOwner,
+  onTitleSaved,
   service = localEncounterReviewService,
 }: {
   sourceId: string;
   disabled: boolean;
   routeOwner?: NavigationRouteOwnership;
+  onTitleSaved?: (title: string) => void;
   onInteractionChange: (state: { busy: boolean; dirty: boolean }) => void;
   service?: EncounterReviewService;
 }) {
@@ -43,6 +47,12 @@ export function EncounterReviewPanel({
     [sourceId, service, routeOwner],
   );
   const { consent, disclosureSheet } = useInferenceConsent();
+  const title = useRecordingTitleProposal(sourceId, routeOwner, onTitleSaved);
+  const titleEligible = useRecordingTitleEligibility(
+    sourceId,
+    routeOwner,
+    Boolean(onTitleSaved),
+  );
   const busy = ['loading', 'running', 'saving'].includes(state.status);
   const reviewable = hasPendingEncounterCandidates(state);
   const [activeController, setActiveController] =
@@ -79,8 +89,11 @@ export function EncounterReviewPanel({
     };
   }, [controller, owner]);
   useEffect(() => {
-    onInteractionChange({ busy, dirty: reviewable });
-  }, [busy, reviewable, onInteractionChange]);
+    onInteractionChange({
+      busy: busy || title.busy,
+      dirty: reviewable || title.draft,
+    });
+  }, [busy, reviewable, title.busy, title.draft, onInteractionChange]);
   if (activeController !== controller) return null;
   const pending = state.status === 'pending' ? state.pending : undefined;
   return (
@@ -119,13 +132,25 @@ export function EncounterReviewPanel({
           pending={pending}
           state={state}
           controller={controller}
-          disabled={disabled}
+          disabled={disabled || title.busy || title.draft}
         />
       ) : null}
       <EncounterReviewActions
         status={state.status}
+        titleAction={
+          routeOwner && titleEligible()
+            ? {
+                sourceId,
+                owner: routeOwner,
+                run: async () => {
+                  if (titleEligible()) await title.start();
+                },
+                disabled: disabled || title.busy || title.draft,
+              }
+            : undefined
+        }
         hasPending={reviewable}
-        disabled={disabled}
+        disabled={disabled || title.busy || title.draft}
         saveDisabled={
           disabled ||
           !state.selected.length ||
@@ -140,6 +165,7 @@ export function EncounterReviewPanel({
         onRestore={() => controller.restore()}
         onCancel={() => controller.cancel()}
       />
+      {title.view}
       {disclosureSheet}
     </View>
   );
