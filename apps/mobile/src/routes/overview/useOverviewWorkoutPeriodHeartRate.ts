@@ -96,10 +96,8 @@ export function useOverviewWorkoutPeriodHeartRate(
       const window = overviewWorkoutReadWindow(previous?.period);
       const { period, currentWindow } = window;
       const cohortFence = overviewWorkoutCohortFence(previous?.cohort);
-      const target: ReadOwner = {
-        abort: new AbortController(),
-        receipt: startup,
-      };
+      const abort = new AbortController();
+      const target: ReadOwner = { abort, receipt: startup };
       task = target;
       target.stopExpiry = admission.expireProvisional(
         startup,
@@ -122,7 +120,7 @@ export function useOverviewWorkoutPeriodHeartRate(
         if (!current(target) || (previous && database !== previous.database))
           return;
         target.epoch = acquireIndependentReadEpoch(database);
-        const { signal } = target.abort;
+        const { signal } = abort;
         const awaitWriter = () =>
           awaitIndependentReadSettlement(database, writerBudgetMs, signal);
         if (!target.epoch) {
