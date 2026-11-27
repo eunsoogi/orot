@@ -15,6 +15,8 @@ export interface DisplayMessage extends RagConversationMessage {
   readonly localClarification?: true;
   /** A retained photo reply is prose, never an actionable report or image. */
   readonly directPhotoReply?: true;
+  /** Display-only candidate key, never evidence of image enrollment or bytes. */
+  readonly archivedDirectPhotoId?: string;
   /** Live display-only identity: never include either photo message in provider history. */
   readonly directPhotoTurnId?: string;
   readonly archivedCitationTarget?: import('./useArchivedCitationOpen').ArchivedCitationTarget;

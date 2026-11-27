@@ -14,6 +14,7 @@ import {
   type PublishDirectPhoto,
 } from './directPhotoPresentation';
 
+import { OwnedColdPhotoDisplayContext } from './ownedColdPhotoDisplay';
 import { acceptedPhotoPresentation } from './acceptedPhotoPresentation';
 
 const noAccepted = () => null;
@@ -34,6 +35,7 @@ export function DirectPhotoPresentationScope({
   readonly ownerKey?: object;
   readonly children: ReactNode;
 }) {
+  const coldOwner = useContext(OwnedColdPhotoDisplayContext);
   const [value, setValue] = useState(empty);
   const accepted = ownerKey && acceptedPhotoPresentation(ownerKey);
   const outgoing = useSyncExternalStore(
@@ -72,7 +74,19 @@ export function DirectPhotoPresentationScope({
   }, [available, sessionId]);
   return (
     <Publish.Provider value={publish}>
-      <Value.Provider value={displayed}>{children}</Value.Provider>
+      <Value.Provider value={displayed}>
+        {/* The screen gate only narrows an existing protected reader. It must
+            not mint one from the archived row or the outgoing preview owner. */}
+        <OwnedColdPhotoDisplayContext.Provider
+          value={
+            available && coldOwner?.sessionId === sessionId
+              ? coldOwner
+              : undefined
+          }
+        >
+          {children}
+        </OwnedColdPhotoDisplayContext.Provider>
+      </Value.Provider>
     </Publish.Provider>
   );
 }

@@ -47,7 +47,7 @@ export function ConversationTranscriptMessages({
   readonly onLayout: ComponentProps<typeof ReplyMessageContainer>['onLayout'];
   readonly messageProps: Omit<
     ComponentProps<typeof ConversationMessage>,
-    'message' | 'copyScope' | 'verifiedA2UI'
+    'message' | 'copyScope' | 'verifiedA2UI' | 'coldPhotoSessionId'
   > & { readonly copyingAllowed?: boolean };
 }) {
   const { copyingAllowed, ...renderMessage } = messageProps;
@@ -117,6 +117,7 @@ export function ConversationTranscriptMessages({
         }
         beforeAnswer={bubbleRows(before)}
         {...renderMessage}
+        coldPhotoSessionId={sessionId}
         verifiedA2UI={
           message.archivedA2UIPresentation
             ? {

@@ -8,7 +8,7 @@ import { HostedConversationJumpToLatest } from './HostedConversationJumpToLatest
 import { useFloatingComposerInset } from './FloatingComposerSurface';
 import { followConversationLatest } from './followConversationLatest';
 import { useSeparatedConversationActivity } from './ConversationWorkspaceContext';
-import { projectTranscript } from './conversationBubblePaint';
+import { useOwnedColdPhotoTranscript } from './ownedColdPhotoDisplay';
 import { useEffect, useRef, type ComponentRef } from 'react';
 import { ScrollView, View } from 'react-native';
 import { styles } from './ConversationScreen.styles';
@@ -111,7 +111,11 @@ export function ConversationHistory({
     expectedOffset,
     geometry: scrollGeometry,
   });
-  const transcript = projectTranscript(visibleMessages, separatedActivity);
+  const transcript = useOwnedColdPhotoTranscript(
+    visibleMessages,
+    separatedActivity,
+    sessionId,
+  );
   const window = useConversationTranscriptWindow({
     hasMore: historyHasMore,
     loading: historyLoading,
