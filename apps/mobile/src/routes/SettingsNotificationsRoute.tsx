@@ -6,7 +6,6 @@ import { appColors } from '../layout/appColors';
 import { useNavigationLeaveStateRegistration } from '../navigation';
 import { NAVIGATION_CONTENT_GAP } from '../navigation/navigationLayout';
 import { NavigationRouteScrollView } from '../navigation/NavigationRouteScrollView';
-import { settingsListColors } from './settingsListColors';
 import { SettingsDailyReminderSection } from './SettingsDailyReminderSection';
 import { SettingsReplyNotificationSection } from './SettingsReplyNotificationSection';
 
