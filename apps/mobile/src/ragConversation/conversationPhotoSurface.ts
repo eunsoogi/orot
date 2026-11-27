@@ -1,3 +1,4 @@
+import { retireAcceptedPhotoPresentation } from './acceptedPhotoPresentation';
 import type { ConversationSessionOptions } from './conversationSessionTypes';
 import { createConversationDirectPhotoRetention } from './conversationDirectPhotoRetention';
 import { createDirectPhotoDraftOwner } from './directPhotoDraftOwner';
@@ -21,6 +22,7 @@ export function conversationPhotoSurface(
   return {
     ...surface,
     clear(dispose = false) {
+      retireAcceptedPhotoPresentation(surface.directPhotoDrafts);
       surface.photoConsent.dispose();
       surface.photoDrafts.clear().catch(() => {});
       if (dispose) surface.directPhotoDrafts.dispose();

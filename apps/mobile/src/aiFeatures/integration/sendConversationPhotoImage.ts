@@ -29,6 +29,8 @@ export function createConversationPhotoImageSend(input: {
   readonly signal: AbortSignal;
   /** Must combine attachment generation, ownership, live credential and exact selection. */
   readonly isCurrent: () => boolean;
+  /** Optional exact locally-owned handoff, sampled immediately before native start. */
+  readonly beforeNativeStart?: () => boolean;
   /** Subscribe to attachment, selection and credential invalidations while native work is active. */
   readonly subscribeInvalidation: (listener: () => void) => () => void;
   readonly confirm: (
@@ -40,6 +42,7 @@ export function createConversationPhotoImageSend(input: {
     selected,
     signal: ownerSignal,
     isCurrent,
+    beforeNativeStart,
     confirm,
     subscribeInvalidation,
   } = input;
@@ -116,6 +119,7 @@ export function createConversationPhotoImageSend(input: {
           : { jpegBase64s: jpegBase64 }),
         signal,
         isCurrent: current,
+        beforeNativeStart,
       });
       if (!current()) return { status: 'cancelled' };
       return text ? { status: 'answer', text } : { status: 'unavailable' };

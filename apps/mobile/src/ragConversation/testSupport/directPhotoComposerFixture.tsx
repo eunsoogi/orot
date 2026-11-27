@@ -100,17 +100,18 @@ export async function directPhotoComposerFixture({
   let releaseGrant: () => void = () => {};
   let current = true;
   type Start = NonNullable<ChatGPTPlanNativeBridge['startPhotoResponse']>;
+  const publishReply = (requestId: string) => {
+    listener?.({
+      requestId,
+      type: 'response_started',
+      responseId: 'synthetic-response',
+    });
+    listener?.({ requestId, type: 'text_delta', text: '합성 이미지 설명' });
+    listener?.({ requestId, type: 'completed', text: '합성 이미지 설명' });
+  };
   const start = jest.fn<ReturnType<Start>, Parameters<Start>>(
     async requestId => {
-      if (!hold) {
-        listener?.({
-          requestId,
-          type: 'response_started',
-          responseId: 'synthetic-response',
-        });
-        listener?.({ requestId, type: 'text_delta', text: '합성 이미지 설명' });
-        listener?.({ requestId, type: 'completed', text: '합성 이미지 설명' });
-      }
+      if (!hold) publishReply(requestId);
     },
   );
   const ordinary = jest.fn(async () => {});
@@ -190,7 +191,11 @@ export async function directPhotoComposerFixture({
       item => item.id === snapshot.activeId,
     )!;
     return (
-      <DirectPhotoPresentationScope sessionId={active.id} available>
+      <DirectPhotoPresentationScope
+        sessionId={active.id}
+        ownerKey={store.directPhotoDrafts}
+        available
+      >
         <Transcript store={store} />
         <ConversationSteeringComposer
           store={store}
@@ -214,7 +219,7 @@ export async function directPhotoComposerFixture({
     optedIn: permission?.enabled === true,
     memoryCapture,
     memorySave,
-    close() {
+    close: () => {
       store.dispose();
       f.close();
     },
@@ -225,6 +230,7 @@ export async function directPhotoComposerFixture({
     ordinary,
     cancel,
     release: () => releaseGrant(),
+    completePhoto: () => publishReply('image-request'),
     retire() {
       current = false;
       invalidate?.();

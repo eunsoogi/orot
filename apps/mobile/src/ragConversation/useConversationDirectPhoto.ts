@@ -1,10 +1,8 @@
-import { captureDirectPhotoPrompt } from './captureDirectPhotoPrompt';
 import { pickDirectPhotoGroup } from './pickDirectPhotoGroup';
-import { useCallback, useRef } from 'react';
-import { sendReviewedDirectPhotoGroup } from './sendReviewedDirectPhotoGroup';
-import { chatGPTPlanDirectPhoto } from '@orot/provider-openai';
+import { acceptedPhotoPresentation } from './acceptedPhotoPresentation';
+import { performDirectPhotoSend } from './performDirectPhotoSend';
+import { useCallback, useRef, useSyncExternalStore } from 'react';
 import { t } from '../i18n';
-import { beginDirectPhotoPresentation } from './directPhotoPresentation';
 import { conversationDirectPhotoPorts as native } from './conversationDirectPhotoPorts';
 import { useDirectPhotoDraftLifecycle } from './useDirectPhotoDraftLifecycle';
 import { useDirectPhotoPublisher } from './DirectPhotoPresentationScope';
@@ -12,7 +10,7 @@ import type {
   ConversationSession,
   ConversationSessions,
 } from './conversationSessionTypes';
-/** One app session owns idle pixels; only the attached lease may retain reply prose. */
+/** Idle pixels and an already-admitted outgoing photo have distinct app owners. */
 export function useConversationDirectPhoto(
   session: ConversationSession,
   store: ConversationSessions,
@@ -24,12 +22,25 @@ export function useConversationDirectPhoto(
   const owner = useRef(isEntryCurrent);
   owner.current = isEntryCurrent;
   const { id: sessionId } = session;
+  const accepted = acceptedPhotoPresentation(store.directPhotoDrafts);
+  const outgoing = useSyncExternalStore(
+    accepted.subscribe,
+    accepted.getSnapshot,
+  );
+  const acceptedHere = outgoing?.sessionId === sessionId;
+  const interruption = useSyncExternalStore(
+    accepted.subscribe,
+    accepted.getInterruption,
+  );
   const ownsDraftRoute = isEntryCurrent?.routeOwnsDraft ?? isEntryCurrent;
   const clear = useCallback(() => {
-    active.current?.abort();
-    active.current = null;
+    // Clearing a mounted draft must not retire a separately admitted request.
+    if (accepted.getSnapshot()?.sessionId !== sessionId) {
+      active.current?.abort();
+      active.current = null;
+    }
     publish?.(null);
-  }, [publish]);
+  }, [accepted, publish, sessionId]);
   const {
     state,
     setState,
@@ -46,6 +57,7 @@ export function useConversationDirectPhoto(
     const snapshot = store.getSnapshot();
     const live = snapshot.sessions.find(item => item.id === sessionId);
     return (
+      !accepted.getSnapshot() &&
       visible.current &&
       !paused.current &&
       (!owner.current || owner.current()) &&
@@ -73,6 +85,7 @@ export function useConversationDirectPhoto(
   const pick = async () => {
     const action = begin();
     if (!action) return;
+    accepted.clearInterruption(sessionId);
     const previous = state.images;
     setState({ picking: true });
     try {
@@ -92,128 +105,32 @@ export function useConversationDirectPhoto(
     if (!state.images) return;
     const action = begin();
     if (!action) return;
-    const { controller, owns } = action;
-    const images = state.images;
-    const submission = captureDirectPhotoPrompt(store, sessionId);
-    const { prompt } = submission;
-    const unavailable = t('ragConversation.photo.imageUnavailable');
-    const retain = store.retainDirectPhoto(sessionId);
-    if (!retain) {
-      active.current = null;
-      setState({ images, message: unavailable });
-      return;
-    }
-    const ownsPrompt = () => owns() && submission.current();
-    let committed = false;
-    setState(publish ? { sending: true } : { images, sending: true });
-    let presentation: ReturnType<typeof beginDirectPhotoPresentation>;
-    const revealPending = () => {
-      presentation ??= beginDirectPhotoPresentation(
-        publish,
-        controller.signal,
-        sessionId,
-        retain.id,
-        prompt,
-        images,
-      );
-    };
-    if (images.length === 1) revealPending();
-    const stop = () => {
-      if (!ownsPrompt()) controller.abort();
-    };
-    const unsubscribeOwner = store.subscribe(stop);
-    try {
-      const authorization = await ports.authorization();
-      if (!ownsPrompt()) return;
-      if (
-        !authorization ||
-        !chatGPTPlanDirectPhoto(authorization.selected.provider)
-      ) {
-        setState({
-          images,
-          message: t('ragConversation.photo.imageUnsupported'),
-        });
-        return;
-      }
-      const grant = await ports.grant(
-        authorization.selected,
-        controller.signal,
-        images.length,
-      );
-      if (!ownsPrompt() || !authorization.current()) {
-        controller.abort();
-        return;
-      }
-      if (!grant || !grant.current()) {
-        setState({
-          images,
-          message: t('ragConversation.photo.imageSettingsRequired'),
-        });
-        return;
-      }
-      const admitted = () =>
-        ownsPrompt() &&
-        retain.current() &&
-        authorization.current() &&
-        grant.current();
-      const result = await sendReviewedDirectPhotoGroup({
-        authorization,
-        grant,
-        images,
-        prompt,
-        controller,
-        admitted,
-        approved() {
-          if (!submission.accept()) controller.abort();
-          else revealPending();
-        },
-      });
-      if (!admitted()) {
-        controller.abort();
-        return;
-      }
-      if (result.status === 'answer') {
-        // Never keep transport bytes or retry an ambiguous local write.
-        const saved =
-          !images.some(image => result.text.includes(image)) &&
-          (await retain.commit(result.text, admitted).catch(() => false));
-        if (!admitted()) {
-          controller.abort();
-          return;
-        }
-        unsubscribeOwner();
-        committed = saved;
-        if (saved) presentation?.complete();
-        setState(
-          saved
-            ? {}
-            : { message: t('ragConversation.photo.imageReplyNotSaved') },
-        );
-      } else {
-        setState({
-          images,
-          ...(result.status === 'unsupported' || result.status === 'unavailable'
-            ? { message: unavailable }
-            : {}),
-        });
-      }
-    } catch {
-      if (owns()) setState({ images, message: unavailable });
-    } finally {
-      unsubscribeOwner();
-      if (!committed && current()) submission.restore();
-      presentation?.dispose(active.current === controller);
-      if (active.current === controller) {
-        active.current = null;
-        // A retired request must release its pixels without changing newer state.
-        if (visible.current && (controller.signal.aborted || !current()))
-          setState({});
-      }
-    }
+    await performDirectPhotoSend({
+      action,
+      images: state.images,
+      publish,
+      sessionId,
+      ports,
+      store,
+      current,
+      visible: () => visible.current && active.current === action.controller,
+      setState: next => {
+        if (visible.current && active.current === action.controller)
+          setState(next);
+      },
+      retired: controller => {
+        if (active.current === controller) active.current = null;
+      },
+    });
   };
+  const display: typeof state = acceptedHere
+    ? { sending: true }
+    : interruption === sessionId
+      ? { message: t('ragConversation.photo.imageInterrupted') }
+      : state;
   return {
     available: ports.hasPicker(),
-    state,
+    state: display,
     pick: () => pick().catch(() => {}),
     send: () => send().catch(() => {}),
     removeAt(index: number) {
@@ -222,6 +139,8 @@ export function useConversationDirectPhoto(
       setState({ images: images.length ? Object.freeze(images) : undefined });
     },
     remove() {
+      if (accepted.stop(sessionId)) return;
+      accepted.clearInterruption(sessionId);
       discard();
       active.current?.abort();
       active.current = null;

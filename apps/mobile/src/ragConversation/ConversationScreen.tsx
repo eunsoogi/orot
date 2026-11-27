@@ -132,6 +132,7 @@ export function ConversationScreen({
           isEntryCurrent={isEntryCurrent}
           routeKey={navigationRouteKey}
           photoPresentationAllowed={canPaint}
+          photoOwnerKey={store.directPhotoDrafts}
           composer={
             <ConversationSteeringComposer
               {...composer}

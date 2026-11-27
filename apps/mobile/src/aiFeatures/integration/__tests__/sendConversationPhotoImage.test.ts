@@ -174,3 +174,26 @@ test('a native refusal never switches models or falls back to text', async () =>
   expect(f.startPhotoResponse).toHaveBeenCalledTimes(1);
   expect(f.ordinaryStart).not.toHaveBeenCalled();
 });
+
+test.each(['reject', 'retire'] as const)(
+  'an exact pre-native handoff cannot bypass the stock current fence: %s',
+  async mode => {
+    const f = setupPhotoSend();
+    const handoff = jest.fn(() => {
+      if (mode === 'reject') return false;
+      f.retire();
+      return true;
+    });
+    await expect(
+      createConversationPhotoImageSend({
+        ...f.input,
+        beforeNativeStart: handoff,
+      })(),
+    ).resolves.toEqual({
+      status: mode === 'reject' ? 'unavailable' : 'cancelled',
+    });
+    expect(handoff).toHaveBeenCalledTimes(1);
+    expect(f.startPhotoResponse).not.toHaveBeenCalled();
+    expect(f.ordinaryStart).not.toHaveBeenCalled();
+  },
+);
