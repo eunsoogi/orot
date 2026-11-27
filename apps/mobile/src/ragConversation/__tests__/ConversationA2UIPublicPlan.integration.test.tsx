@@ -166,6 +166,33 @@ test.each(scenarios)(
           'a2uiFrames',
         );
         expect(plan.requests[0]).not.toHaveProperty('responseFormat');
+        const publicDecisions = report.mock.calls.filter(
+          calls =>
+            calls[1] === 'conversation_a2ui_public_proposal' ||
+            calls[1] === 'conversation_a2ui_public_publication',
+        );
+        if (mode !== 'unknown citation') {
+          expect(publicDecisions).toEqual([
+            [
+              'rag',
+              'conversation_a2ui_public_proposal',
+              mode === 'valid'
+                ? 'a2ui_admitted'
+                : mode === 'missing frames'
+                  ? 'a2ui_no_frames'
+                  : 'a2ui_invalid_frames',
+            ],
+            [
+              'rag',
+              'conversation_a2ui_public_publication',
+              mode === 'valid' ? 'a2ui_published' : 'a2ui_no_proposal',
+            ],
+          ]);
+        } else {
+          expect(
+            publicDecisions.some(call => call[2] === 'a2ui_published'),
+          ).toBe(false);
+        }
         const last = store.getSnapshot().sessions[0]?.messages.at(-1);
         if (mode === 'unknown citation') {
           expect(last?.citations ?? []).toEqual([]);

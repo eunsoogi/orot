@@ -1,3 +1,4 @@
+import { reportConversationA2UIPublicDecision } from './conversationA2UIFinalDiagnostic';
 import type {
   EvidenceReference,
   TaskResponderContract,
@@ -95,6 +96,15 @@ export function withPublicWebConversationLayout(
         true,
       );
       if (root) layouts.set(result.value, { root, evidence });
+      const frames = normalized.a2uiFrames;
+      reportConversationA2UIPublicDecision(
+        'conversation_a2ui_public_proposal',
+        root
+          ? 'a2ui_admitted'
+          : frames === undefined || (Array.isArray(frames) && !frames.length)
+            ? 'a2ui_no_frames'
+            : 'a2ui_invalid_frames',
+      );
       return result;
     },
   };
@@ -108,15 +118,30 @@ export function publishPublicWebConversationLayout(
   notice: string,
 ): ConversationA2UINode | undefined {
   const proposal = layouts.get(answer);
+  if (!proposal) {
+    reportConversationA2UIPublicDecision(
+      'conversation_a2ui_public_publication',
+      'a2ui_no_proposal',
+    );
+    return;
+  }
   if (
-    !proposal ||
     !citations.length ||
     !citations.every(reference => {
       const key = publicEvidenceKey(reference);
       return key !== undefined && proposal.evidence.has(key);
     })
-  )
+  ) {
+    reportConversationA2UIPublicDecision(
+      'conversation_a2ui_public_publication',
+      'a2ui_citation_mismatch',
+    );
     return;
+  }
+  reportConversationA2UIPublicDecision(
+    'conversation_a2ui_public_publication',
+    'a2ui_published',
+  );
   return {
     id: 'orot:public-layout',
     component: 'Column',
