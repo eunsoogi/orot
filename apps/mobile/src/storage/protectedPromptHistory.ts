@@ -23,6 +23,16 @@ const visible = `NOT EXISTS (SELECT 1 FROM conversation_deleted_artifacts d WHER
  AND NOT EXISTS (SELECT 1 FROM json_each(${document}, '$.sources') source
    WHERE json_type(source.value, '$.scope.window.typedHeartRateCategory') IS NOT NULL)`;
 
+/** Apply the same committed text scope before limiting the implicit window.
+ * A retained legacy partial has no request checkpoint to reject it earlier. */
+const eligibleText = `${visible}
+ AND json_extract(${document}, '$.id')=a.id
+ AND json_extract(${document}, '$.sessionId')=a.session_id
+ AND json_extract(${document}, '$.createdAt')=a.created_at
+ AND json_extract(${document}, '$.status')='complete'
+ AND json_type(${document}, '$.submittedInput') IS NULL
+ AND json_type(${document}, '$.treatmentContext') IS NULL`;
+
 export function createProtectedPromptHistory(
   database: SqlExecutor,
   ensure: () => Promise<void>,
@@ -42,7 +52,7 @@ export function createProtectedPromptHistory(
       const { rows } = await database.execute(
         `SELECT * FROM (WITH owner AS (${owner}), wanted(id) AS (SELECT value FROM json_each(?)), recent AS (
           SELECT a.id FROM conversation_artifacts a JOIN owner o ON o.id=a.session_id
-          WHERE ${visible} AND ? = 1 AND NOT EXISTS (SELECT 1 FROM wanted)
+          WHERE ${eligibleText} AND ? = 1 AND NOT EXISTS (SELECT 1 FROM wanted)
           ORDER BY a.created_at DESC, a.id DESC LIMIT 4
         ), selected AS (
           SELECT id FROM recent
@@ -52,13 +62,7 @@ export function createProtectedPromptHistory(
             json_extract(${document}, '$.answer') AS answer
           FROM selected v JOIN conversation_artifacts a ON a.id=v.id
           JOIN owner o ON o.id=a.session_id
-          WHERE ${visible}
-            AND json_extract(${document}, '$.id')=a.id
-            AND json_extract(${document}, '$.sessionId')=a.session_id
-            AND json_extract(${document}, '$.createdAt')=a.created_at
-            AND json_extract(${document}, '$.status')='complete'
-            AND json_type(${document}, '$.submittedInput') IS NULL
-            AND json_type(${document}, '$.treatmentContext') IS NULL
+          WHERE ${eligibleText}
         )
         SELECT r.id, r.created_at, r.question, r.answer FROM owner o
         LEFT JOIN text_rows r ON 1 ORDER BY r.created_at ASC, r.id ASC)`,
