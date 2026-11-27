@@ -19,6 +19,7 @@ export function openOpSqliteFileQueue() {
   const handle = new DatabaseSync(filename);
   const events: { event: string; at: number }[] = [];
   const mark = (event: string) => events.push({ event, at: performance.now() });
+  let afterControl: ((query: string) => void) | undefined;
   let afterSubmit: ((query: string) => void) | undefined;
   let beforeWorker: ((query: string) => Promise<void>) | undefined;
   let tail = Promise.resolve();
@@ -30,8 +31,12 @@ export function openOpSqliteFileQueue() {
   }
   const native = {
     executeSync(query: string, bindings?: SqlValue[]) {
-      if (/^(BEGIN|COMMIT|ROLLBACK)/.test(query)) mark(query);
-      return executeSync(query, bindings);
+      if (!/^(BEGIN|COMMIT|ROLLBACK)/.test(query))
+        return executeSync(query, bindings);
+      mark(query);
+      const result = executeSync(query, bindings);
+      afterControl?.(query);
+      return result;
     },
     execute(query: string, bindings?: SqlValue[]) {
       const aggregate = query.includes('WITH days(date, from_key, to_key)');
@@ -97,6 +102,9 @@ export function openOpSqliteFileQueue() {
     mark,
     delayWorker(callback?: (query: string) => Promise<void>) {
       beforeWorker = callback;
+    },
+    observeControl(callback?: (query: string) => void) {
+      afterControl = callback;
     },
     observeSubmit(callback?: (query: string) => void) {
       afterSubmit = callback;

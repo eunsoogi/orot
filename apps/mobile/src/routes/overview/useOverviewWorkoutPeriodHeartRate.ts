@@ -30,7 +30,8 @@ import {
   subscribeLocalSourceDeletion,
 } from '../../storage/localDataClearEvents';
 import {
-  acquireIndependentReadEpoch,
+  acquireWorkoutReadEpoch,
+  hasPendingStepAnchors,
   awaitIndependentReadSettlement,
 } from '../../storage/protectedReadEpoch';
 const unavailable = { status: 'unavailable' } as const;
@@ -124,11 +125,9 @@ export function useOverviewWorkoutPeriodHeartRate(
           current(target) &&
           currentWindow() &&
           storage.isCurrentLocalAgentMemoryDatabase(database);
-        // A different writer can enter while the last settlement is being
-        // re-proved. An absent epoch is not a failed workout read: wait on
-        // that writer's own settlement without retiring this route owner.
+        // Wait for the owning writer without falsely retiring this read.
         while (ownsScope()) {
-          target.epoch = acquireIndependentReadEpoch(database);
+          target.epoch = acquireWorkoutReadEpoch(database);
           if (target.epoch) break;
           if (!(await awaitWriter()) || !(await confirm(target)))
             return trace.report('epoch', 'failed');
@@ -173,6 +172,9 @@ export function useOverviewWorkoutPeriodHeartRate(
         const usableResult = !!result && result.status !== 'unavailable';
         while (usableResult && phase() === 'inactive') {
           if (!(await confirm(target))) return;
+        }
+        while (admitted() && hasPendingStepAnchors(database)) {
+          if (!(await awaitWriter()) || !(await confirm(target))) return;
         }
         if (!admitted()) {
           if (!nativeUnavailable) await target.recover();
