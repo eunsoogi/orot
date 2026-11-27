@@ -12,8 +12,9 @@ export const recordingLibraryStyles = StyleSheet.create({
     gap: 12,
   },
   pageTitle: { fontSize: 30, lineHeight: 39 },
+  swipeActionSlot: { flex: 1, justifyContent: 'center', paddingHorizontal: 8 },
   swipeDelete: {
-    flex: 1,
+    borderRadius: 12,
     minHeight: 44,
     alignItems: 'center',
     justifyContent: 'center',
@@ -25,11 +26,10 @@ export const recordingLibraryStyles = StyleSheet.create({
     fontWeight: '700',
     textAlign: 'center',
   },
-  // Keep the row and heading in one readable lane without exceeding a compact viewport.
+  // The route provides the native usable width; the list adds no separate cap.
   libraryLane: {
     alignSelf: 'center',
     width: '100%',
-    maxWidth: 440,
     minWidth: 0,
     gap: 12,
   },
@@ -50,7 +50,7 @@ export const recordingLibraryStyles = StyleSheet.create({
   summaryActionRow: { alignItems: 'center', flexDirection: 'row', gap: 8 },
   summaryAction: {
     alignItems: 'center',
-    flexShrink: 1,
+    flex: 1,
     minWidth: 0,
     flexDirection: 'row',
     gap: 8,
@@ -65,23 +65,8 @@ export const recordingLibraryStyles = StyleSheet.create({
     borderRadius: 22,
     overflow: 'hidden',
   },
-  summaryIcon: {
-    alignItems: 'center',
-    justifyContent: 'center',
-    width: 36,
-    height: 36,
-    flexShrink: 0,
-    borderRadius: 10,
-    backgroundColor: appColors.primarySoft,
-  },
-  summaryText: { flexShrink: 1, minWidth: 0, gap: 2 },
+  summaryText: { flex: 1, minWidth: 0, gap: 2 },
   summaryTitle: { color: appColors.text, fontSize: 16, fontWeight: '700' },
-  summaryMetadata: {
-    alignItems: 'center',
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 8,
-  },
   reviewBadge: {
     borderRadius: 999,
     paddingHorizontal: 10,

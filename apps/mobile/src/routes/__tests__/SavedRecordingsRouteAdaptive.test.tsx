@@ -80,7 +80,7 @@ afterEach(() => {
   jest.restoreAllMocks();
 });
 
-test('keeps a single bounded recording list as native route geometry changes', async () => {
+test('keeps a single usable-width recording list as native route geometry changes', async () => {
   const controller = createNavigationController<AppNavigationRoute>('root');
   const service = createLibraryService();
 
@@ -161,7 +161,8 @@ test('keeps a single bounded recording list as native route geometry changes', a
   const lane = StyleSheet.flatten(
     screen.getByTestId('recording-library-lane').props.style,
   );
-  expect(lane).toMatchObject({ width: '100%', maxWidth: 440, minWidth: 0 });
+  expect(lane).toMatchObject({ width: '100%', minWidth: 0 });
+  expect(lane.maxWidth).toBeUndefined();
   expect(screen.queryByTestId('saved-recordings-selection-summary')).toBeNull();
   await fireEvent(sensor, 'geometryChange', {
     nativeEvent: geometry(900, true),
