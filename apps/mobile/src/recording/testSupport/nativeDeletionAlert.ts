@@ -1,4 +1,4 @@
-import { act } from '@testing-library/react-native';
+import { act, fireEvent, screen } from '@testing-library/react-native';
 import { Alert } from 'react-native';
 
 type AlertButton = { readonly style?: string; readonly onPress?: () => void };
@@ -26,5 +26,13 @@ export async function confirmNativeDeletion(
   await act(async () => {
     pressNativeDeletionButton(alert, 'destructive');
     await Promise.resolve();
+  });
+}
+
+/** VoiceOver's row action requests the same native confirmation as the visible swipe button. */
+export async function requestLibraryRowDeletion(sourceId: string) {
+  const row = await screen.findByTestId(`recording-details-${sourceId}`);
+  await fireEvent(row, 'accessibilityAction', {
+    nativeEvent: { actionName: 'delete' },
   });
 }

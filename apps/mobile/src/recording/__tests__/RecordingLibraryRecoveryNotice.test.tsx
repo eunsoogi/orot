@@ -1,9 +1,10 @@
-import { act, fireEvent, render, screen } from '@testing-library/react-native';
+import { act, render, screen } from '@testing-library/react-native';
 import RecordingLibraryPanel from '../RecordingLibraryPanel';
 import { savedSource } from '../recordingScreenSupport';
 import {
   confirmNativeDeletion,
   mockNativeDeletionAlert,
+  requestLibraryRowDeletion,
 } from '../testSupport/nativeDeletionAlert';
 
 test('a current reconciliation clears a superseded cleanup notice after a newer read failed', async () => {
@@ -26,10 +27,8 @@ test('a current reconciliation clears a superseded cleanup notice after a newer 
     <RecordingLibraryPanel service={service} refreshKey="before" />,
   );
   try {
-    await screen.findByTestId(`recording-delete-${savedSource.id}`);
-    await fireEvent.press(
-      screen.getByTestId(`recording-delete-${savedSource.id}`),
-    );
+    await screen.findByTestId(`recording-details-${savedSource.id}`);
+    await requestLibraryRowDeletion(savedSource.id);
     await confirmNativeDeletion(alert);
     expect(screen.getByTestId('recording-delete-cleanup-pending')).toBeTruthy();
     await view.rerender(
@@ -74,10 +73,8 @@ test('failed deletion retains its error and busy ownership until its recovery re
   };
   await render(<RecordingLibraryPanel service={service} onBusyChange={busy} />);
   try {
-    await screen.findByTestId(`recording-delete-${savedSource.id}`);
-    await fireEvent.press(
-      screen.getByTestId(`recording-delete-${savedSource.id}`),
-    );
+    await screen.findByTestId(`recording-details-${savedSource.id}`);
+    await requestLibraryRowDeletion(savedSource.id);
     await confirmNativeDeletion(alert);
     expect(screen.getByTestId('recording-delete-error')).toBeTruthy();
     expect(busy).toHaveBeenLastCalledWith(true);

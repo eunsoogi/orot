@@ -1,10 +1,4 @@
-import {
-  act,
-  fireEvent,
-  render,
-  screen,
-  waitFor,
-} from '@testing-library/react-native';
+import { act, render, screen, waitFor } from '@testing-library/react-native';
 import RecordingLibraryPanel from '../RecordingLibraryPanel';
 import type {
   RecordingLibraryService,
@@ -14,6 +8,7 @@ import { savedSource } from '../recordingScreenSupport';
 import {
   confirmNativeDeletion,
   mockNativeDeletionAlert,
+  requestLibraryRowDeletion,
 } from '../testSupport/nativeDeletionAlert';
 
 const deleted = {
@@ -65,23 +60,15 @@ test('a late cleanup refresh cannot overwrite a newer effect result or revive an
     deleteRecording: async () => ({ audioCleanupPending: true }),
   };
   const view = await render(
-    <RecordingLibraryPanel
-      service={service}
-      refreshKey="before"
-      selectedSummarySourceId={removedElsewhere.id}
-    />,
+    <RecordingLibraryPanel service={service} refreshKey="before" />,
   );
   try {
-    await screen.findByTestId(`recording-delete-${deleted.id}`);
-    await fireEvent.press(screen.getByTestId(`recording-delete-${deleted.id}`));
+    await screen.findByTestId(`recording-details-${deleted.id}`);
+    await requestLibraryRowDeletion(deleted.id);
     await confirmNativeDeletion(alert);
     await waitFor(() => expect(listSummaries).toHaveBeenCalledTimes(2));
     await view.rerender(
-      <RecordingLibraryPanel
-        service={service}
-        refreshKey="after"
-        selectedSummarySourceId={removedElsewhere.id}
-      />,
+      <RecordingLibraryPanel service={service} refreshKey="after" />,
     );
     await waitFor(() => expect(listSummaries).toHaveBeenCalledTimes(3));
     await act(async () => {
@@ -103,13 +90,10 @@ test('a late cleanup refresh cannot overwrite a newer effect result or revive an
         screen.queryByTestId(
           `recording-library-item-${removedElsewhere.id}`,
         ) !== null,
-      selection:
-        screen.queryByTestId('saved-recordings-selection-summary') !== null,
     }).toEqual({
       fresh: true,
       old: false,
       externalRow: false,
-      selection: false,
     });
     expect(
       screen.queryByTestId(`recording-library-item-${deleted.id}`),

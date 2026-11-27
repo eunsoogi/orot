@@ -1,3 +1,4 @@
+import { useEffect, useState } from 'react';
 import { View } from 'react-native';
 import { GlassIconButton } from '../layout/GlassIconButton';
 import { AppText as Text } from '../layout/AppText';
@@ -30,6 +31,26 @@ export default function RecordingLibraryList({
   readonly onNewRecording?: () => void;
   readonly onRetry?: () => void;
 }) {
+  const [revealedId, setRevealedId] = useState<string | null>(null);
+  useEffect(() => {
+    if (
+      revealedId !== null &&
+      (disabled || !recordings.some(item => item.source.id === revealedId))
+    ) {
+      setRevealedId(null);
+    }
+  }, [disabled, recordings, revealedId]);
+  const changeReveal = (sourceId: string, revealed: boolean) => {
+    setRevealedId(previous => {
+      if (revealed) return sourceId;
+      return previous === sourceId ? null : previous;
+    });
+  };
+  const runRowAction = (action: () => void) => {
+    if (disabled) return;
+    setRevealedId(null);
+    action();
+  };
   const label = t('recording.start');
   const hasDock = useNavigationRouteActions(
     onNewRecording
@@ -47,7 +68,7 @@ export default function RecordingLibraryList({
       : [],
   );
   return (
-    <>
+    <View style={styles.libraryLane} testID="recording-library-lane">
       <View style={styles.libraryHeading}>
         <Text
           accessibilityRole="header"
@@ -106,13 +127,17 @@ export default function RecordingLibraryList({
               key={summary.source.id}
               summary={summary}
               disabled={disabled}
-              onOpen={() => onOpen(summary.source.id)}
-              onPlay={() => onOpen(summary.source.id, true)}
-              onDelete={() => onDelete(summary.source)}
+              onOpen={() => runRowAction(() => onOpen(summary.source.id))}
+              onPlay={() => runRowAction(() => onOpen(summary.source.id, true))}
+              revealed={revealedId === summary.source.id}
+              onRevealedChange={revealed =>
+                changeReveal(summary.source.id, revealed)
+              }
+              onDelete={() => runRowAction(() => onDelete(summary.source))}
             />
           ))}
         </View>
       ) : null}
-    </>
+    </View>
   );
 }
