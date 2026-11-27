@@ -9,12 +9,13 @@ export function isAdmittedConversationA2UIFolder(node: unknown): boolean {
   return node !== null && typeof node === 'object' && admittedFolders.has(node);
 }
 
-/** Lower one known literal to the existing inert icon for graph validation.
+/** Lower the bounded known literal to the existing inert icon for graph validation.
  * Restore the native name only when its exact reachable slot directly
  * precedes accepted text in the same Row or Column. */
 export function acceptConversationA2UIFolder(
   raw: unknown,
   validateLowered: (frames: unknown) => ConversationA2UINode | undefined,
+  limit: 1 | 3 = 1,
 ): ConversationA2UINode | undefined {
   if (!Array.isArray(raw) || raw.length !== 1) return;
   const wire: unknown = raw[0];
@@ -30,7 +31,7 @@ export function acceptConversationA2UIFolder(
       Object.hasOwn(surface, 'dataModel')
     )
       return;
-    let folderId: string | undefined;
+    const folderIds = new Set<string>();
     const components = (surface.components as unknown[]).map(node => {
       if (
         !isObject(node) ||
@@ -38,13 +39,17 @@ export function acceptConversationA2UIFolder(
         node.name !== 'folder'
       )
         return node;
-      if (folderId !== undefined || typeof node.id !== 'string')
+      if (
+        typeof node.id !== 'string' ||
+        folderIds.size >= limit ||
+        folderIds.has(node.id)
+      )
         throw new Error('Unsupported folder icon.');
-      folderId = node.id;
+      folderIds.add(node.id);
       // Forward all other fields to the unchanged whitelist validator.
       return { ...node, name: 'info' };
     });
-    if (folderId === undefined) return;
+    if (!folderIds.size) return;
     const root = validateLowered([
       JSON.stringify({
         ...message,
@@ -53,7 +58,7 @@ export function acceptConversationA2UIFolder(
     ]);
     if (!root) return;
 
-    let promoted = false;
+    const promoted = new Set<string>();
     function visit(node: ConversationA2UINode): ConversationA2UINode {
       if (node.component === 'Tabs')
         return {
@@ -66,14 +71,14 @@ export function acceptConversationA2UIFolder(
         children: node.children.map((child, index) => {
           if (
             (node.component === 'Row' || node.component === 'Column') &&
-            child.id === folderId &&
+            folderIds.has(child.id) &&
             child.component === 'Icon'
           ) {
             const next = node.children[index + 1];
             if (next?.component === 'Text' && next.variant === 'body') {
               const folder: ConversationA2UINode = { ...child, name: 'folder' };
               admittedFolders.add(folder);
-              promoted = true;
+              promoted.add(child.id);
               return folder;
             }
           }
@@ -82,7 +87,7 @@ export function acceptConversationA2UIFolder(
       };
     }
     const decorated = visit(root);
-    return promoted ? decorated : undefined;
+    return promoted.size === folderIds.size ? decorated : undefined;
   } catch {
     // The optional layout is untrusted; the original answer stays readable.
     return undefined;

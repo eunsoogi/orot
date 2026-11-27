@@ -85,7 +85,7 @@ export function versionedConversationMemoryTasks(
     multiline = false,
     filterable: boolean | 'chips' = false,
     mixedWeights = false,
-    folderIcon = false,
+    folderIcon: boolean | 'grouped' = false,
     checklistProse: boolean | 'mixed' = false,
     numeric = false,
     combinedDateTime = false,
@@ -219,14 +219,31 @@ export function versionedConversationMemoryTasks(
           '65',
         ),
       ),
+      v66: observeConversationA2UIFinalAdmission(
+        withPublicWebConversationLayout(
+          withConversationA2UITabSelectionLifetime(
+            temporaryFormTask(true, 'chips', true, true, 'mixed', true, true),
+            '60',
+          ),
+          '66',
+        ),
+      ),
     },
     ragConversationTask: observeConversationA2UIFinalAdmission(
       withPublicWebConversationLayout(
         withConversationA2UITabSelectionLifetime(
-          temporaryFormTask(true, 'chips', true, true, 'mixed', true, true),
+          temporaryFormTask(
+            true,
+            'chips',
+            true,
+            'grouped',
+            'mixed',
+            true,
+            true,
+          ),
           '60',
         ),
-        '66',
+        '67',
       ),
     ),
   };
