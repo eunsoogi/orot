@@ -19,13 +19,11 @@ import { withWriteTypedFingerprints } from './writeTypedFingerprintScope';
 
 /** Pinned OP-SQLite rolls back a rejected COMMIT before propagating its error.
  * Require exact engine code 5, not LOCKED, an extended BUSY code or broad text. */
+const commitBusyError =
+  /^(?:Exception in HostFunction: )?\[op-sqlite\] SQLite error code: 5, description: /;
+
 function isCommitBusy(error: unknown) {
-  return (
-    error instanceof Error &&
-    /^(?:Exception in HostFunction: )?\[op-sqlite\] SQLite error code: 5, description: /.test(
-      error.message,
-    )
-  );
+  return error instanceof Error && commitBusyError.test(error.message);
 }
 
 /** Keep validation, dependency indexes and completion in the same transaction.
