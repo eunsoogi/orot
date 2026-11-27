@@ -59,12 +59,16 @@ function scene(compact: boolean) {
 test('retains only the passive profile backdrop with compact and wide composers', async () => {
   let width = 390;
   const window = Dimensions.get('window');
+  // The Jest RN host supplies this prototype method; the public View type does not.
+  const measurable = View as unknown as {
+    prototype: {
+      measureInWindow: (
+        callback: (x: number, y: number, width: number, height: number) => void,
+      ) => void;
+    };
+  };
   const measurement = jest
-    .spyOn(
-      (View as unknown as { prototype: Pick<View, 'measureInWindow'> })
-        .prototype,
-      'measureInWindow',
-    )
+    .spyOn(measurable.prototype, 'measureInWindow')
     .mockImplementation(callback => callback(0, 0, width, 800));
   Dimensions.set({ window: { ...window, fontScale: 1 } });
   try {
