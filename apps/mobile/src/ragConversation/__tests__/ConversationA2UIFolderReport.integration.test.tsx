@@ -159,3 +159,90 @@ test('folder cannot rescue a mismatched accepted answer', () => {
     value: { answerKind: 'conversation', answer: reversed },
   });
 });
+
+function groupedProposal(
+  parent: JsonValue[] = ['folder', 'title', 'more', 'body'],
+) {
+  const result = proposal('folder', parent);
+  const surface = result.a2uiFrames[0] as {
+    createSurface: { components: JsonValue[] };
+  };
+  surface.createSurface.components.push({
+    id: 'more',
+    component: 'Icon',
+    name: 'folder',
+  });
+  return result;
+}
+
+test('the current ordinary response renders two independently attached group decorations in reading order', async () => {
+  const result = ragConversationTask.validateResult(groupedProposal(), input);
+  if (result.status !== 'valid' || !result.value.a2uiPresentation)
+    throw new Error(
+      'The model-authored grouped layout fell back to plain text',
+    );
+  const root = result.value.a2uiPresentation;
+  const ui = await render(<ConversationA2UISurface root={root} />);
+  try {
+    const tree = JSON.stringify(ui.toJSON());
+    expect(tree.match(/"symbolName":"folder"/g)).toHaveLength(2);
+    expect(tree.indexOf(title)).toBeLessThan(tree.indexOf(body));
+    expect(ui.queryByRole('image')).toBeNull();
+    expect(ui.queryByRole('button')).toBeNull();
+    expect(result.value.answer).toBe(answer);
+    expect(storeConversationA2UILayout(root, answer)).toEqual({
+      version: 2,
+      tree: ['Card', ['Column', 0, 0]],
+    });
+  } finally {
+    await ui.unmount();
+  }
+});
+
+test('v66 retains one-icon grammar; v67 rejects any unowned group adornment', () => {
+  const old = restoreConversationTask({
+    taskType: ragConversationTask.taskType,
+    taskVersion: '66',
+  });
+  expect(old?.validateResult(groupedProposal(), input)).toEqual(plain);
+  expect(old?.validateResult(proposal(), input).status).toBe('valid');
+  expect(
+    ragConversationTask.validateResult(
+      groupedProposal(['folder', 'title', 'body', 'more']),
+      input,
+    ),
+  ).toEqual(plain);
+  expect(
+    ragConversationTask.validateResult(
+      groupedProposal(['folder', 'title', 'body']),
+      input,
+    ),
+  ).toEqual(plain);
+});
+
+test.each([3, 4])(
+  'grouped decorations obey the exact count limit: %i',
+  count => {
+    const children = Array.from({ length: count }, (_, i) => [
+      { id: 'folder-' + i, component: 'Icon', name: 'folder' },
+      { id: 'text-' + i, component: 'Text', text: 'Synthetic group ' + i },
+    ]);
+    const value = proposal();
+    value.answer = children.map(([, line]) => line!.text).join('\n');
+    const surface = value.a2uiFrames[0] as {
+      createSurface: { components: JsonValue[] };
+    };
+    surface.createSurface.components = [
+      {
+        id: 'root',
+        component: 'Column',
+        children: children.flat().map(item => item.id),
+      },
+      ...children.flat(),
+    ];
+    const result = ragConversationTask.validateResult(value, input);
+    if (result.status !== 'valid') throw new Error('Expected original answer');
+    expect(Boolean(result.value.a2uiPresentation)).toBe(count === 3);
+    expect(result.value.answer).toBe(value.answer);
+  },
+);

@@ -70,7 +70,7 @@ export function withConversationA2UIReplacement(
   previous: TaskResponderContract<GroundedRagAnswer>,
   version: '49' | '50' | '51' | '52' | '53' | '54' | '55' = '49',
   mixedWeights = false,
-  folderIcon = false,
+  folderIcon: boolean | 'grouped' = false,
 ): TaskResponderContract<GroundedRagAnswer> {
   return {
     ...previous,
@@ -139,9 +139,11 @@ export function withConversationA2UIReplacement(
               (mixedWeights
                 ? ' In one static read-only createSurface without a data model, mix weighted Cards and Columns as direct children of the same Row. Use literal weights from 1 to 3; every accepted answer line stays in order.'
                 : '') +
-              (folderIcon
-                ? ' A static read-only createSurface without a data model may include one decorative Icon with literal name "folder". Place it immediately before an accepted body Text within the same Row or Column. Do not add a label, URL, SVG, or action.'
-                : ''),
+              (folderIcon === 'grouped'
+                ? ' A static read-only createSurface without a data model may include up to three decorative Icons with literal name "folder". Place each immediately before a different accepted body Text within the same Row or Column. Do not add a label, URL, SVG, or action.'
+                : folderIcon
+                  ? ' A static read-only createSurface without a data model may include one decorative Icon with literal name "folder". Place it immediately before an accepted body Text within the same Row or Column. Do not add a label, URL, SVG, or action.'
+                  : ''),
           },
         },
       };
@@ -192,7 +194,11 @@ export function withConversationA2UIReplacement(
       const root =
         validateFrames(value.a2uiFrames) ??
         (folderIcon
-          ? acceptConversationA2UIFolder(value.a2uiFrames, validateFrames)
+          ? acceptConversationA2UIFolder(
+              value.a2uiFrames,
+              validateFrames,
+              folderIcon === 'grouped' ? 3 : 1,
+            )
           : undefined) ??
         (mixedWeights
           ? acceptConversationA2UIMixedWeights(value.a2uiFrames, validateFrames)
