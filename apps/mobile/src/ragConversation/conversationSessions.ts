@@ -35,11 +35,13 @@ export function createConversationSessions(
   const listeners = createConversationListeners();
   let disposed = false;
   const epoch = { lifecycle: 0, selection: 0 };
-  const photoSurface = conversationPhotoSurface(options);
+  const activePhotoId = () => !disposed && snapshot.activeId;
+  const photoSurface = conversationPhotoSurface(options, activePhotoId);
   const apply = (next: S.ConversationSnapshot | null) => {
     if (!next) return;
     if (next.activeId !== snapshot.activeId) epoch.selection++;
     snapshot = next;
+    photoSurface.directPhotoDrafts.revalidate();
     listeners.emit();
   };
   const update = (
@@ -151,7 +153,7 @@ export function createConversationSessions(
     }),
     resumeCold: requests.resumeCold,
     steer: requests.steer,
-    ...photoSurface.retain(restoration, () => !disposed && snapshot.activeId),
+    ...photoSurface.retain(restoration),
     attachExisting,
     loadHistory,
     loadOlderHistory: restoration.loadOlder,
@@ -181,6 +183,7 @@ export function createConversationSessions(
       disposed: () => disposed,
     }),
     remove: (id: number) => {
+      photoSurface.directPhotoDrafts.retire(id);
       taskState.invalidateVoiceEnd(id);
       dispatch.cancelBeforeSend(id);
       return removal.remove(id);
@@ -212,15 +215,13 @@ export function createConversationSessions(
     },
     invalidateAll() {
       if (disposed) return;
-      photoSurface.photoConsent.dispose();
-      photoSurface.photoDrafts.clear().catch(() => {});
+      photoSurface.clear();
       disposeRequestOwnership();
       removal.invalidate();
       apply(initialConversationSnapshot(empty()));
     },
     dispose() {
-      photoSurface.photoConsent.dispose();
-      photoSurface.photoDrafts.clear().catch(() => {});
+      photoSurface.clear(true);
       disposed = true;
       listeners.dispose();
       disposeRequestOwnership();

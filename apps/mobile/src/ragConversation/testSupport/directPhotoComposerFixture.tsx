@@ -183,7 +183,7 @@ export async function directPhotoComposerFixture({
     const snapshot = store.getSnapshot();
     return snapshot.sessions.find(item => item.id === snapshot.activeId)!;
   };
-  const view = (
+  const renderView = () => (
     <DirectPhotoPresentationScope sessionId={session().id} available>
       <Transcript store={store} />
       <ConversationSteeringComposer
@@ -206,9 +206,13 @@ export async function directPhotoComposerFixture({
     optedIn: permission?.enabled === true,
     memoryCapture,
     memorySave,
-    close: f.close,
+    close() {
+      store.dispose();
+      f.close();
+    },
     session,
-    view,
+    view: renderView(),
+    renderView,
     start,
     ordinary,
     cancel,

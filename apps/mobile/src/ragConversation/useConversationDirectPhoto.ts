@@ -11,13 +11,7 @@ import type {
   ConversationSession,
   ConversationSessions,
 } from './conversationSessionTypes';
-type State = {
-  images?: readonly string[];
-  picking?: true;
-  sending?: true;
-  message?: string;
-};
-/** The composer owns transient pixels; only the attached lease may retain reply prose. */
+/** One app session owns idle pixels; only the attached lease may retain reply prose. */
 export function useConversationDirectPhoto(
   session: ConversationSession,
   store: ConversationSessions,
@@ -25,7 +19,6 @@ export function useConversationDirectPhoto(
   ports = native,
 ) {
   const publish = useDirectPhotoPublisher();
-  const [state, setState] = useState<State>({});
   const active = useRef<AbortController | null>(null);
   const owner = useRef(isEntryCurrent);
   owner.current = isEntryCurrent;
@@ -36,25 +29,17 @@ export function useConversationDirectPhoto(
     active.current = null;
     publish?.(null);
   }, [publish]);
-  const suspend = useCallback(() => {
-    clear();
-    setState({});
-  }, [clear]);
   const {
+    state,
+    setState,
     mounted: visible,
     paused,
     discard,
   } = useDirectPhotoDraftLifecycle({
-    ownerKey: store,
+    owner: store.directPhotoDrafts,
     sessionId,
     routeVisible: ownsDraftRoute?.() ?? true,
-    suspend,
     release: clear,
-    ownsDraft: () =>
-      (ownsDraftRoute?.() ?? true) &&
-      store.getSnapshot().activeId === sessionId,
-    settledImage: () => (active.current ? undefined : state.images),
-    restore: images => setState({ images }),
   });
   const current = () => {
     const snapshot = store.getSnapshot();
@@ -228,7 +213,7 @@ export function useConversationDirectPhoto(
   };
   return {
     available: ports.hasPicker(),
-    state: (ownsDraftRoute?.() ?? true) && !paused.current ? state : {},
+    state,
     pick: () => pick().catch(() => {}),
     send: () => send().catch(() => {}),
     removeAt(index: number) {
