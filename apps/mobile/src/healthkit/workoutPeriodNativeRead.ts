@@ -89,7 +89,7 @@ export async function readWorkoutPeriodHeartRate(
     const {
       sampleCount,
       minimum,
-      mean,
+      mean: nativeMean,
       maximum,
       firstSampleAtMs,
       lastSampleAtMs,
@@ -103,12 +103,11 @@ export async function readWorkoutPeriodHeartRate(
       !Number.isSafeInteger(sampleCount) ||
       sampleCount < 1 ||
       typeof minimum !== 'number' ||
-      typeof mean !== 'number' ||
+      typeof nativeMean !== 'number' ||
       typeof maximum !== 'number' ||
-      ![minimum, mean, maximum].every(Number.isFinite) ||
+      ![minimum, nativeMean, maximum].every(Number.isFinite) ||
       minimum <= 0 ||
-      minimum > mean ||
-      mean > maximum ||
+      minimum > maximum ||
       typeof firstSampleAtMs !== 'number' ||
       typeof lastSampleAtMs !== 'number' ||
       !Number.isSafeInteger(firstSampleAtMs) ||
@@ -119,6 +118,12 @@ export async function readWorkoutPeriodHeartRate(
       typeof membershipRevision !== 'string' ||
       !/^v1:[0-9a-f]{64}$/u.test(membershipRevision)
     )
+      return unavailable;
+    // The native compensated aggregate divides its rounded sum by count.
+    // An exact in-range average may land just outside the measured boundary;
+    // correct only machine-scale error, never a materially different value.
+    const mean = Math.min(maximum, Math.max(minimum, nativeMean));
+    if (Math.abs(nativeMean - mean) > Math.abs(mean) * Number.EPSILON)
       return unavailable;
     const days =
       recordsMonthChart &&
