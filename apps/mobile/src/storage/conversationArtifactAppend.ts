@@ -1,3 +1,4 @@
+import { reportCalendarTransaction } from './reportCalendarTransactionTiming';
 import type { SqlDatabase } from '@orot/storage';
 import { readConversationGeneration } from './conversationGeneration';
 import {
@@ -32,6 +33,8 @@ export function createConversationArtifactAppend(
   database: SqlDatabase,
   ensure: () => Promise<void>,
 ) {
+  const transaction = (work: Parameters<SqlDatabase['transaction']>[0]) =>
+    reportCalendarTransaction(database, 'report_calendar_conversation', work);
   async function attempt(
     serialize: () => string,
     signal: AbortSignal | undefined,
@@ -50,7 +53,7 @@ export function createConversationArtifactAppend(
         await createSymptomSummaryStorage(database).prepareRetentionGuards();
       assertConversationNotCancelled(signal);
       diagnostic?.advance('admission');
-      await database.transaction(async tx => {
+      await transaction(async tx => {
         diagnostic?.advance('authority');
         let callbackOutcome: 'completed' | 'failed' = 'completed';
         try {

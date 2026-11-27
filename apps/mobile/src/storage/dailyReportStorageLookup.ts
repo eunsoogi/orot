@@ -1,4 +1,8 @@
 import {
+  beginReportCalendarProof,
+  reportCalendarTransaction,
+} from './reportCalendarTransactionTiming';
+import {
   DailyReportIdentitySchema,
   type DailyReportIdentity,
 } from '@orot/domain';
@@ -23,6 +27,8 @@ export function dailyReportStorageLookup(
   ensure: () => Promise<void>,
   calendarReader?: ReportCalendarReader,
 ) {
+  const transaction = (work: Parameters<SqlDatabase['transaction']>[0]) =>
+    reportCalendarTransaction(database, 'report_calendar_daily', work);
   return async function lookup(
     identity: DailyReportIdentity,
     signal?: AbortSignal,
@@ -36,7 +42,7 @@ export function dailyReportStorageLookup(
     try {
       await ensure();
       let value: unknown;
-      await database.transaction(async tx => {
+      await transaction(async tx => {
         const head = (
           await tx.execute(
             'SELECT active_run_id, revision, deleted FROM daily_report_heads WHERE identity_key = ?',
@@ -82,11 +88,19 @@ export function dailyReportStorageLookup(
           lineage,
           manualHistory,
         );
-        lease.current = await acquireReportCalendarGuard(
-          checked.context,
-          calendarReader,
-          signal,
+        const calendarTiming = beginReportCalendarProof(
+          tx,
+          !!checked.context.systemCalendar,
         );
+        try {
+          lease.current = await acquireReportCalendarGuard(
+            checked.context,
+            calendarReader,
+            signal,
+          );
+        } finally {
+          calendarTiming?.();
+        }
         if (signal?.aborted) {
           value = { status: 'error' };
           return;
