@@ -126,9 +126,17 @@ export function versionedConversationMemoryTasks(
       v53: observeConversationA2UIFinalAdmission(
         withConversationA2UIReplacement(replacementBase, '53'),
       ),
+      v54: observeConversationA2UIFinalAdmission(
+        withConversationA2UIReplacement(replacementBase, '54'),
+      ),
     },
     ragConversationTask: observeConversationA2UIFinalAdmission(
-      withConversationA2UIReplacement(replacementBase, '54'),
+      withConversationA2UIReplacement(
+        withConversationA2UIPanelCaptions(
+          withComposedConversationControls(conversationTaskV44, '47', true),
+        ),
+        '55',
+      ),
     ),
   };
 }

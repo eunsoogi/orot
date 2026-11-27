@@ -64,7 +64,7 @@ function normalizeObjectFrames(value: JsonValue): JsonValue {
  * surface. Previously supported contracts and action permissions stay intact. */
 export function withConversationA2UIReplacement(
   previous: TaskResponderContract<GroundedRagAnswer>,
-  version: '49' | '50' | '51' | '52' | '53' | '54' = '49',
+  version: '49' | '50' | '51' | '52' | '53' | '54' | '55' = '49',
 ): TaskResponderContract<GroundedRagAnswer> {
   return {
     ...previous,
@@ -78,7 +78,8 @@ export function withConversationA2UIReplacement(
             version === '51' ||
               version === '52' ||
               version === '53' ||
-              version === '54',
+              version === '54' ||
+              version === '55',
           )
         : undefined;
     },
@@ -95,7 +96,8 @@ export function withConversationA2UIReplacement(
         version === '51' ||
         version === '52' ||
         version === '53' ||
-        version === '54';
+        version === '54' ||
+        version === '55';
       const description = useObjectFrames
         ? frames.description.replace(
             'Use an ordered array of JSON message strings',
@@ -116,13 +118,16 @@ export function withConversationA2UIReplacement(
             description:
               description +
               ' One atomic updateComponents may change a ready layout, such as replacing a Card and its Column wrapper with a Row of the same exact Text leaves. Detached structural wrappers must be unchanged, already owned by this surface, and never reused; no text, title, or controls may be detached. Keep every accepted answer line in reading order.' +
-              (version === '52' || version === '53' || version === '54'
+              (version === '52' ||
+              version === '53' ||
+              version === '54' ||
+              version === '55'
                 ? ' Read-only horizontal Lists accept literal cross-axis align: start, center, end, or stretch. No justify, style objects, binding or actions.'
                 : '') +
-              (version === '53' || version === '54'
+              (version === '53' || version === '54' || version === '55'
                 ? ' For a read-only grouped comparison, each Column directly under a Row may use literal weight 1–3 in one static createSurface without a data model.'
                 : '') +
-              (version === '54'
+              (version === '54' || version === '55'
                 ? ' A single native Button can reset the temporary controls in its own final createSurface. Bind its child to one short exact accepted Text line and its action to {"event":{"name":"orot:reset-local-draft","context":{}}}. No data model, other action, or agent event.'
                 : ''),
           },
@@ -142,7 +147,7 @@ export function withConversationA2UIReplacement(
       )
         return accepted;
       const reset =
-        version === '54' &&
+        (version === '54' || version === '55') &&
         projectConversationA2UIComposedReset(value.a2uiFrames);
       if (reset) {
         const form = previous.validateResult(
@@ -163,7 +168,10 @@ export function withConversationA2UIReplacement(
           true,
           true,
           true,
-          version === '52' || version === '53' || version === '54'
+          version === '52' ||
+            version === '53' ||
+            version === '54' ||
+            version === '55'
             ? 'cross_align'
             : 'vertical_align',
           conversationA2UIFrameProse,
@@ -171,7 +179,7 @@ export function withConversationA2UIReplacement(
         );
       const root =
         validateFrames(value.a2uiFrames) ??
-        (version === '53' || version === '54'
+        (version === '53' || version === '54' || version === '55'
           ? acceptConversationA2UIColumnWeights(
               value.a2uiFrames,
               validateFrames,

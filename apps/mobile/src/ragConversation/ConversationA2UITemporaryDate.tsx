@@ -6,18 +6,15 @@ import { appColors } from '../layout/appColors';
 import { AppText } from '../layout/AppText';
 import { canonicalConversationDraftDate } from './canonicalConversationDraftDate';
 
-/** A neutral bubble-local date draft; it has no access to calendars or model requests. */
-export function ConversationA2UITemporaryDate({
-  label,
-  min,
-  max,
-  current,
-}: {
-  readonly label: string;
-  readonly min: string;
-  readonly max: string;
-  readonly current: () => boolean;
-}) {
+/** Bubble-local drafts have no access to calendars or model requests. */
+export function ConversationA2UITemporaryDate(
+  props: { readonly label: string; readonly current: () => boolean } & (
+    | { readonly mode?: 'date'; readonly min: string; readonly max: string }
+    | { readonly mode: 'time' }
+  ),
+) {
+  const { label, current } = props;
+  const time = props.mode === 'time';
   const [value, setValue] = useState<string>();
   const [picker, setPicker] = useState<number>();
   const [preview, setPreview] = useState<string>();
@@ -29,8 +26,19 @@ export function ConversationA2UITemporaryDate({
     setPicker(undefined);
     setPreview(undefined);
   };
-  const shown = value ?? t('ragConversation.a2ui.chooseDate');
-  const date = (day: string) => new Date(day + 'T00:00:00.000Z');
+  const shown =
+    value ??
+    t(
+      time
+        ? 'ragConversation.a2ui.chooseTime'
+        : 'ragConversation.a2ui.chooseDate',
+    );
+  // UTC is only an internal anchor for the picker. The accepted time is
+  // a floating HH:mm value, never a date, offset, or scheduled instant.
+  const date = (slot: string) =>
+    new Date(
+      time ? '2000-01-01T' + slot + ':00.000Z' : slot + 'T00:00:00.000Z',
+    );
   return (
     <>
       <Pressable
@@ -42,7 +50,7 @@ export function ConversationA2UITemporaryDate({
           if (!current()) return;
           if (picker !== undefined) close();
           else {
-            setPreview(value ?? min);
+            setPreview(value ?? (time ? '00:00' : props.min));
             setPicker(++generation.current);
           }
         }}
@@ -52,13 +60,18 @@ export function ConversationA2UITemporaryDate({
       {picker !== undefined && preview ? (
         <>
           <DateTimePicker
-            testID="conversation-a2ui-local-date-picker"
+            testID={
+              time
+                ? 'conversation-a2ui-local-time-picker'
+                : 'conversation-a2ui-local-date-picker'
+            }
             accessibilityLabel={label}
-            display="inline"
-            mode="date"
+            display={time ? 'spinner' : 'inline'}
+            mode={time ? 'time' : 'date'}
             timeZoneName="UTC"
-            minimumDate={date(min)}
-            maximumDate={date(max)}
+            {...(time
+              ? {}
+              : { minimumDate: date(props.min), maximumDate: date(props.max) })}
             value={date(preview)}
             onValueChange={(_, selected) => {
               if (
@@ -67,10 +80,20 @@ export function ConversationA2UITemporaryDate({
                 !Number.isFinite(selected.getTime())
               )
                 return;
+              if (time) {
+                const two = (part: number) => String(part).padStart(2, '0');
+                setPreview(
+                  two(selected.getUTCHours()) +
+                    ':' +
+                    two(selected.getUTCMinutes()),
+                );
+                return;
+              }
               const day = canonicalConversationDraftDate(
                 selected.toISOString().slice(0, 10),
               );
-              if (day === undefined || day < min || day > max) return;
+              if (day === undefined || day < props.min || day > props.max)
+                return;
               setPreview(day);
             }}
             onDismiss={() => {
@@ -87,7 +110,11 @@ export function ConversationA2UITemporaryDate({
             }}
           >
             <AppText allowFontScaling>
-              {t('ragConversation.a2ui.confirmDate')}
+              {t(
+                time
+                  ? 'ragConversation.a2ui.confirmTime'
+                  : 'ragConversation.a2ui.confirmDate',
+              )}
             </AppText>
           </Pressable>
         </>

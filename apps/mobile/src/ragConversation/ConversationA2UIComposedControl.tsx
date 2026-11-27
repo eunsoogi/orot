@@ -107,6 +107,12 @@ function MountedControl({
         />
       ) : control.kind === 'date' ? (
         <ConversationA2UITemporaryDate {...control} current={current} />
+      ) : control.kind === 'time' ? (
+        <ConversationA2UITemporaryDate
+          mode="time"
+          label={control.label}
+          current={current}
+        />
       ) : control.kind === 'slider' ? (
         <Slider
           accessible

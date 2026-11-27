@@ -144,3 +144,93 @@ test('the historical v46 does not admit freshly available date controls', () => 
     value: { answerKind: 'conversation', answer },
   });
 });
+
+const timeOnly = {
+  label: '가상 독서 시간',
+  enableDate: false,
+  enableTime: true,
+  min: undefined,
+  max: undefined,
+  value: { '@path': '/form/practice/time' },
+};
+
+test('the mounted time-only field keeps wall-clock time local until confirmation', async () => {
+  const accepted = ragConversationTask.validateResult(
+    proposal(timeOnly),
+    input,
+  );
+  if (accepted.status !== 'valid' || !accepted.value.a2uiPresentation)
+    throw new Error('Expected the pinned time-only DateTimeInput');
+  const root = accepted.value.a2uiPresentation;
+  let active = true;
+  let notify: (() => void) | undefined;
+  const ui = await render(
+    <ConversationA2UILocalDraftOwner.Provider
+      value={{
+        surface: candidate =>
+          active && candidate === root ? 'synthetic:time-only' : undefined,
+        subscribe(listener) {
+          notify = listener;
+          return () => {};
+        },
+      }}
+    >
+      <ConversationMessageText
+        content={answer}
+        user={false}
+        verifiedA2UI={root}
+      />
+    </ConversationA2UILocalDraftOwner.Provider>,
+  );
+  const opener = () => screen.getByRole('button', { name: /가상 독서 시간/ });
+  expect(opener()).toHaveTextContent('시간 선택');
+  await fireEvent.press(opener());
+  const picker = screen.getByTestId('conversation-a2ui-local-time-picker');
+  expect(picker).toHaveProp('mode', 'time');
+  expect(picker).toHaveProp('timeZoneName', 'UTC');
+  expect(picker.props.minimumDate).toBeUndefined();
+  await fireEvent(
+    picker,
+    'valueChange',
+    {},
+    new Date('2046-02-03T16:47:59.000Z'),
+  );
+  expect(opener()).toHaveTextContent('시간 선택');
+  await fireEvent.press(screen.getByRole('button', { name: '이 시간 선택' }));
+  expect(opener()).toHaveTextContent('16:47');
+  expect(storeConversationA2UILayout(root, answer)).toBeUndefined();
+  await act(() => {
+    active = false;
+    notify?.();
+  });
+  expect(screen.queryByRole('button', { name: /가상 독서 시간/ })).toBeNull();
+  expect(screen.getByText(answer)).toBeVisible();
+  await act(() => {
+    active = true;
+    notify?.();
+  });
+  expect(opener()).toHaveTextContent('시간 선택');
+  await ui.unmount();
+});
+
+test('time-only rejects published-but-unsupported options and remains closed in the older contract', () => {
+  const legacy = restoreConversationTask({
+    taskType: ragConversationTask.taskType,
+    taskVersion: '54',
+  });
+  const fallback = {
+    status: 'valid',
+    value: { answerKind: 'conversation', answer },
+  };
+  expect(legacy?.validateResult(proposal(timeOnly), input)).toEqual(fallback);
+  for (const invalid of [
+    proposal({ ...timeOnly, enableDate: true }),
+    proposal({ ...timeOnly, min: '08:00:00Z' }),
+    proposal({ ...timeOnly, value: '08:00' }),
+    proposal(timeOnly, { path: '/form/practice', value: { time: '08:00' } }),
+    proposal({ ...timeOnly, action: { event: { name: 'schedule' } } }),
+  ])
+    expect(ragConversationTask.validateResult(invalid, input)).toEqual(
+      fallback,
+    );
+});

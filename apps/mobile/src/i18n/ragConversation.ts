@@ -8,6 +8,8 @@ import { voiceConversationKo } from './voiceConversationKo';
 export const ragConversationKo = {
   'ragConversation.a2ui.chooseDate': '날짜 선택',
   'ragConversation.a2ui.confirmDate': '이 날짜 선택',
+  'ragConversation.a2ui.chooseTime': '시간 선택',
+  'ragConversation.a2ui.confirmTime': '이 시간 선택',
   'ragConversation.jumpLatest': '최신 메시지로 이동',
   ...voiceConversationKo,
   ...conversationHistoryPagingKo,

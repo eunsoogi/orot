@@ -8,6 +8,7 @@ import type { GroundedRagAnswer } from './task';
 export function withComposedConversationControls(
   legacy: TaskResponderContract<GroundedRagAnswer>,
   version: '45' | '46' | '47' = '45',
+  timeControls = false,
 ): TaskResponderContract<GroundedRagAnswer> {
   const sliders = version !== '45';
   const dateControls = version === '47';
@@ -37,6 +38,9 @@ export function withComposedConversationControls(
                 : '') +
               (dateControls
                 ? ' A temporary DateTimeInput may choose a date without scheduling it. Use a distinct local value pointer, plain label, enableDate:true, no enableTime, and literal ISO YYYY-MM-DD min/max between 1900-01-01 and 2100-12-31 with min before max. It starts empty; no seeds, actions, or calendar access.'
+                : '') +
+              (timeControls
+                ? ' A temporary time-only DateTimeInput may select a wall-clock time without scheduling. Use enableTime:true, omit enableDate or set it to false, provide a distinct local value pointer and a literal label. Omit bounds, model seeds, actions and time zones.'
                 : ''),
           },
         },
@@ -56,6 +60,7 @@ export function withComposedConversationControls(
         value.a2uiFrames,
         sliders,
         dateControls,
+        timeControls,
       );
       if (!plan) return ordinary;
       const result = legacy.validateResult(
