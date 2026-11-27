@@ -17,7 +17,13 @@ export async function encounterConflicts(
         record.concept,
       ),
   );
-  const medications = await writer.list('medication_assertion');
+  // An assertion is a conflict source only for a medication candidate. A
+  // plan preview/save must not depend on successfully decoding unrelated rows.
+  const medications = candidates.some(
+    candidate => candidate.kind === 'medication',
+  )
+    ? await writer.list('medication_assertion')
+    : [];
   const conflicts: EncounterConflict[] = [];
   for (const candidate of candidates) {
     const concept =
