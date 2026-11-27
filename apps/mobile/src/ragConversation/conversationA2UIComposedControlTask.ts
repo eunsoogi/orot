@@ -17,6 +17,7 @@ export function withComposedConversationControls(
   multiline = false,
   filterable = false,
   checklistProse: boolean | 'mixed' = false,
+  numeric = false,
 ): TaskResponderContract<GroundedRagAnswer> {
   const sliders = version !== '45';
   const dateControls = version === '47';
@@ -53,6 +54,9 @@ export function withComposedConversationControls(
               (multiline
                 ? ' TextField also accepts variant "longText" for a multiline local input. Keep the same plain label and distinct value pointer. It starts empty, never submits, and accepts at most 256 characters; omit any data-model value or action for that field.'
                 : '') +
+              (numeric
+                ? ' TextField also supports variant "number" for a temporary, empty quantity. It accepts signed decimal input with the same length limit as other local text fields. Use a distinct local value pointer. Do not preload it or add an action.'
+                : '') +
               (filterable
                 ? ' ChoicePicker may set literal filterable:true to add local case-insensitive search over option labels. Keep option values and selections unchanged by filtering. Do not supply a query, filter binding, or action.'
                 : '') +
@@ -83,6 +87,7 @@ export function withComposedConversationControls(
         timeControls,
         multiline,
         filterable,
+        numeric,
       );
       if (!plan) return ordinary;
       if (

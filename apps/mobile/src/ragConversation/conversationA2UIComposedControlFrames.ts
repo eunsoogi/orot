@@ -29,6 +29,7 @@ function controlFor(
   timeControls: boolean,
   multiline: boolean,
   filterable: boolean,
+  numeric: boolean,
 ): ComposedControl {
   const base = ['id', 'component', 'label', 'value'];
   const caption = label(value.label);
@@ -40,11 +41,13 @@ function controlFor(
       keys(value, [...base, 'variant', 'placeholder']);
       const variant = value.variant === undefined ? 'shortText' : value.variant;
       const longText = multiline && variant === 'longText';
-      if (!longText && variant !== 'shortText') fail();
+      const numberField = numeric && variant === 'number';
+      if (!longText && !numberField && variant !== 'shortText') fail();
       return {
         kind: 'text',
         label: caption,
         ...(longText ? { multiline: true } : {}),
+        ...(numberField ? { numeric: true } : {}),
         ...(value.placeholder === undefined
           ? {}
           : { placeholder: label(value.placeholder) }),
@@ -118,6 +121,7 @@ export function projectConversationA2UIComposedControls(
   timeControls = false,
   multiline = false,
   filterable = false,
+  numeric = false,
 ) {
   if (
     !Array.isArray(raw) ||
@@ -168,7 +172,13 @@ export function projectConversationA2UIComposedControls(
           return node;
         }
         const path = pathFor(node.value);
-        const control = controlFor(node, timeControls, multiline, filterable);
+        const control = controlFor(
+          node,
+          timeControls,
+          multiline,
+          filterable,
+          numeric,
+        );
         fields.set(componentId, { path, control });
         return { id: componentId, component: 'Divider' };
       });
@@ -194,7 +204,7 @@ export function projectConversationA2UIComposedControls(
         control.kind !== 'slider' &&
         control.kind !== 'date' &&
         control.kind !== 'time' &&
-        !(control.kind === 'text' && control.multiline)
+        !(control.kind === 'text' && (control.multiline || control.numeric))
       )
         continue;
       const namespace = binding(path)[0]!;

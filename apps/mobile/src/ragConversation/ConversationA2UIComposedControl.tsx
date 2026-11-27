@@ -8,7 +8,14 @@ import {
   useRef,
   useState,
 } from 'react';
-import { Pressable, StyleSheet, Switch, TextInput, View } from 'react-native';
+import {
+  Platform,
+  Pressable,
+  StyleSheet,
+  Switch,
+  TextInput,
+  View,
+} from 'react-native';
 import { AppText } from '../layout/AppText';
 import { appColors } from '../layout/appColors';
 import { ConversationA2UITemporaryDate } from './ConversationA2UITemporaryDate';
@@ -120,6 +127,11 @@ function MountedControl({
           autoComplete="off"
           autoCorrect={false}
           maxLength={256}
+          keyboardType={
+            control.numeric && Platform.OS === 'ios'
+              ? 'numbers-and-punctuation'
+              : undefined
+          }
           multiline={control.multiline}
           submitBehavior={control.multiline ? 'newline' : undefined}
           spellCheck={false}
@@ -131,8 +143,9 @@ function MountedControl({
           placeholder={control.placeholder}
           onChangeText={next => {
             if (
-              (control.multiline ? owns() : current()) &&
-              typeof next === 'string'
+              (control.multiline || control.numeric ? owns() : current()) &&
+              typeof next === 'string' &&
+              (!control.numeric || /^[+−-]?[0-9]*(?:[.,][0-9]*)?$/.test(next))
             )
               setText(next.slice(0, 256));
           }}

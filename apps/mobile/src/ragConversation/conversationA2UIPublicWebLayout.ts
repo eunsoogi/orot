@@ -36,7 +36,7 @@ function publicEvidenceKey(reference: EvidenceReference): string | undefined {
  * carry a read-only proposal to the terminal citation boundary. */
 export function withPublicWebConversationLayout(
   previous: TaskResponderContract<GroundedRagAnswer>,
-  version: '61' | '62' | '63' = '61',
+  version: '61' | '62' | '63' | '64' = '61',
 ): TaskResponderContract<GroundedRagAnswer> {
   return {
     ...previous,
