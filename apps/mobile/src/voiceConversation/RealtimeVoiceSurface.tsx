@@ -6,6 +6,10 @@ import { VoiceConversationControl } from './VoiceConversationControl';
 import type { RealtimeTranscript } from './nativeRealtimeVoice';
 import type { VoiceState } from './voiceTurn';
 
+function renderCallIdentity(compact: boolean) {
+  return <VoiceCallIdentity compact={compact} />;
+}
+
 /** Keep stop reachable through the native voice overlay. */
 export function RealtimeVoiceSurface({
   visible,
@@ -39,6 +43,7 @@ export function RealtimeVoiceSurface({
       <VoiceConversationScreen
         key={state.identity?.turnId ?? 'idle'}
         manualFinish={false}
+        fixedLiveLayout={model === liveModel}
         visible={visible}
         onDismiss={onDismiss}
         phase={state.phase}
@@ -52,7 +57,7 @@ export function RealtimeVoiceSurface({
           role: item.role,
           text: item.text,
         }))}
-        identity={<VoiceCallIdentity />}
+        identity={renderCallIdentity}
         onEnd={stop}
         onMute={mute}
         onResume={resume}

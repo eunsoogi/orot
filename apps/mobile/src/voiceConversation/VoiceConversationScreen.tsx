@@ -1,5 +1,5 @@
 import { NavigationModal } from '../navigation/NavigationModal';
-import type { ReactNode } from 'react';
+import { Fragment, type ReactNode } from 'react';
 import { Pressable, StyleSheet, View } from 'react-native';
 import SafeAreaLayout from '../layout/SafeAreaLayout';
 import { AppText } from '../layout/AppText';
@@ -8,6 +8,10 @@ import { appColors } from '../layout/appColors';
 import { t } from '../i18n';
 import type { VoicePhase } from './voiceTurn';
 import { VoiceActivityIndicator } from './VoiceActivityIndicator';
+import {
+  fixedVoiceCallStyles,
+  useFixedVoiceCallFrame,
+} from './useFixedVoiceCallFrame';
 import {
   VoiceTranscriptViewport,
   type VoiceTranscriptLine,
@@ -30,12 +34,13 @@ export function VoiceConversationScreen({
   onInterrupt,
   manualInterrupt = false,
   manualFinish = true,
+  fixedLiveLayout = false,
 }: {
   visible: boolean;
   phase: VoicePhase;
   status: string;
   audioOwnerId?: string;
-  identity?: ReactNode;
+  identity?: ReactNode | ((compact: boolean) => ReactNode);
   pipeline?: string | null;
   transcript?: readonly VoiceTranscriptLine[];
   onEnd: () => void;
@@ -47,8 +52,12 @@ export function VoiceConversationScreen({
   manualInterrupt?: boolean;
   onInterrupt?: () => void;
   manualFinish?: boolean;
+  fixedLiveLayout?: boolean;
 }) {
   const muted = phase === 'stopped' || phase === 'ended';
+  const layout = useFixedVoiceCallFrame(fixedLiveLayout);
+  const { compact } = layout;
+  const Focus = fixedLiveLayout ? View : Fragment;
   const action = (
     label: string,
     press: () => void,
@@ -61,10 +70,20 @@ export function VoiceConversationScreen({
       accessibilityRole="button"
       accessibilityLabel={label}
       onPress={press}
-      style={symbol ? styles.callAction : styles.button}
+      style={
+        symbol
+          ? [styles.callAction, compact && fixedVoiceCallStyles.compactAction]
+          : styles.button
+      }
     >
       {symbol ? (
-        <View style={[styles.controlDisc, danger && styles.end]}>
+        <View
+          style={[
+            styles.controlDisc,
+            compact && fixedVoiceCallStyles.compactDisc,
+            danger && styles.end,
+          ]}
+        >
           <AppSymbol
             name={symbol}
             size={28}
@@ -72,34 +91,38 @@ export function VoiceConversationScreen({
           />
         </View>
       ) : null}
-      <AppText style={styles.label}>{label}</AppText>
+      <AppText
+        maxFontSizeMultiplier={fixedLiveLayout ? 2 : undefined}
+        style={styles.label}
+      >
+        {label}
+      </AppText>
     </Pressable>
   );
-  return (
-    <NavigationModal
-      visible={visible}
-      presentationStyle="fullScreen"
-      onRequestClose={onEnd}
-      onDismiss={onDismiss}
-    >
-      <SafeAreaLayout
-        scrollable
-        scrollTestID="voice-call-screen"
-        scrollContentStyle={styles.content}
+  const content = (
+    <>
+      <AppText maxFontSizeMultiplier={2} style={styles.note}>
+        {manualFinish
+          ? t('realtimeDisplay.deviceTitle')
+          : t('realtimeDisplay.realtimeTitle')}
+      </AppText>
+      <View
+        style={[styles.center, compact && fixedVoiceCallStyles.compactCenter]}
       >
-        <AppText maxFontSizeMultiplier={2} style={styles.note}>
-          {manualFinish
-            ? t('realtimeDisplay.deviceTitle')
-            : t('realtimeDisplay.realtimeTitle')}
-        </AppText>
-        <View style={styles.center}>
-          <View style={styles.identity}>{identity}</View>
+        <Focus {...layout.focusProps}>
+          <View style={styles.identity}>
+            {typeof identity === 'function' ? identity(compact) : identity}
+          </View>
           <VoiceActivityIndicator
             visible={visible}
             phase={phase}
             callId={audioOwnerId}
           />
-          <AppText accessibilityLiveRegion="polite" style={styles.status}>
+          <AppText
+            accessibilityLiveRegion="polite"
+            maxFontSizeMultiplier={fixedLiveLayout ? 2 : undefined}
+            style={styles.status}
+          >
             {muted ? t('ragConversation.voice.muted') : status}
           </AppText>
           {pipeline === null ? null : (
@@ -107,8 +130,10 @@ export function VoiceConversationScreen({
               {pipeline ?? t('ragConversation.voice.localPipeline')}
             </AppText>
           )}
-          <VoiceTranscriptViewport lines={transcript ?? []} />
-        </View>
+        </Focus>
+        <VoiceTranscriptViewport lines={transcript ?? []} />
+      </View>
+      {(!fixedLiveLayout || manualFinish || manualInterrupt) && (
         <View style={styles.actions}>
           {manualFinish &&
             phase === 'listening' &&
@@ -126,32 +151,60 @@ export function VoiceConversationScreen({
               'voice-call-interrupt',
             )}
         </View>
-        <View style={styles.actions}>
-          {muted
-            ? action(
-                t('ragConversation.voice.resume'),
-                onResume,
-                'voice-call-resume',
-                false,
-                'mic',
-              )
-            : phase !== 'cleaning' &&
-              phase !== 'error' &&
-              action(
-                t('ragConversation.voice.mute'),
-                onMute,
-                'voice-call-mute',
-                false,
-                'mic.slash',
-              )}
-          {action(
-            t('ragConversation.voice.endCall'),
-            onEnd,
-            'voice-call-end',
-            true,
-            'phone.down.fill',
-          )}
-        </View>
+      )}
+      <View
+        style={[styles.actions, compact && fixedVoiceCallStyles.compactActions]}
+      >
+        {muted
+          ? action(
+              t('ragConversation.voice.resume'),
+              onResume,
+              'voice-call-resume',
+              false,
+              'mic',
+            )
+          : phase !== 'cleaning' &&
+            phase !== 'error' &&
+            action(
+              t('ragConversation.voice.mute'),
+              onMute,
+              'voice-call-mute',
+              false,
+              'mic.slash',
+            )}
+        {action(
+          t('ragConversation.voice.endCall'),
+          onEnd,
+          'voice-call-end',
+          true,
+          'phone.down.fill',
+        )}
+      </View>
+    </>
+  );
+  return (
+    <NavigationModal
+      visible={visible}
+      presentationStyle="fullScreen"
+      onRequestClose={onEnd}
+      onDismiss={onDismiss}
+    >
+      <SafeAreaLayout
+        scrollable={!fixedLiveLayout}
+        scrollTestID="voice-call-screen"
+        scrollContentStyle={styles.content}
+      >
+        {fixedLiveLayout ? (
+          <View
+            testID="voice-call-screen"
+            style={layout.contentStyle}
+            onLayout={layout.onLayout}
+          >
+            {content}
+          </View>
+        ) : (
+          content
+        )}
       </SafeAreaLayout>
     </NavigationModal>
   );
