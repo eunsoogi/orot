@@ -81,9 +81,12 @@ export function AppearanceEditor({
     >
       <SafeAreaLayout
         scrollable
-        outerScrollIndicator={initial !== undefined}
+        horizontalScrollContent={initial !== undefined}
         scrollTestID="assistant-appearance-scroll"
-        scrollContentStyle={styles.content}
+        scrollContentStyle={[
+          styles.content,
+          !initial && styles.onboardingContent,
+        ]}
       >
         <AppText accessibilityRole="header" style={styles.title}>
           {t(

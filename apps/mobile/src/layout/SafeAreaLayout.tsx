@@ -1,5 +1,6 @@
 import type { ReactNode } from 'react';
 import {
+  I18nManager,
   ScrollView,
   StyleSheet,
   View,
@@ -10,6 +11,7 @@ import {
   SafeAreaProvider,
   SafeAreaView,
   useSafeAreaInsets,
+  useSafeAreaFrame,
 } from 'react-native-safe-area-context';
 import { navigationPhysicalRightLayout } from '../navigation/navigationEdgeScroll';
 import { NAVIGATION_CONTENT_GAP } from '../navigation/navigationLayout';
@@ -20,6 +22,8 @@ interface SafeAreaLayoutProps {
   scrollable?: boolean;
   /** A standalone owner can lend its physical right safe area to the indicator only. */
   outerScrollIndicator?: boolean;
+  /** Let a portrait modal use the horizontal lane below its protected top region. */
+  horizontalScrollContent?: boolean;
   scrollContentStyle?: StyleProp<ViewStyle>;
   scrollTestID?: string;
 }
@@ -28,19 +32,33 @@ interface SafeAreaLayoutProps {
 export default function SafeAreaLayout(props: SafeAreaLayoutProps) {
   return (
     <SafeAreaProvider style={styles.fill}>
-      <SafeAreaContent {...props} />
+      {props.scrollable && props.horizontalScrollContent ? (
+        <HorizontalContent {...props} />
+      ) : (
+        <SafeAreaContent {...props} />
+      )}
     </SafeAreaProvider>
   );
+}
+
+function HorizontalContent(props: SafeAreaLayoutProps) {
+  const { width, height } = useSafeAreaFrame();
+  // In landscape a real side obstruction may extend below the top safe area.
+  // Keep those insets inside the scroll canvas; do not shrink its viewport.
+  const reserveSides = width <= 0 || height <= 0 || width >= height;
+  return <SafeAreaContent {...props} reserveSides={reserveSides} />;
 }
 
 function SafeAreaContent({
   children,
   scrollable = false,
   outerScrollIndicator = false,
+  horizontalScrollContent = false,
+  reserveSides = true,
   scrollContentStyle,
   scrollTestID = 'safe-area-scroll',
-}: SafeAreaLayoutProps) {
-  const { bottom, right } = useSafeAreaInsets();
+}: SafeAreaLayoutProps & { reserveSides?: boolean }) {
+  const { bottom, left, right } = useSafeAreaInsets();
   const content = StyleSheet.flatten(scrollContentStyle);
   const endGap =
     content?.paddingBottom ??
@@ -58,16 +76,23 @@ function SafeAreaContent({
   // This native modal has its own safe area, not the navigation shell's lane.
   // Put the readable right inset outside the centered editor so its width and
   // keyboard-safe bottom gap are identical before and after viewport expansion.
-  const edge = outerScrollIndicator
-    ? navigationPhysicalRightLayout(0, right).contentStyle
-    : undefined;
+  const edge = horizontalScrollContent
+    ? {
+        paddingStart: reserveSides ? (I18nManager.isRTL ? right : left) : 0,
+        paddingEnd: reserveSides ? (I18nManager.isRTL ? left : right) : 0,
+      }
+    : outerScrollIndicator
+      ? navigationPhysicalRightLayout(0, right).contentStyle
+      : undefined;
   return (
     <SafeAreaView
       edges={
         scrollable
-          ? outerScrollIndicator
-            ? ['top', 'left']
-            : ['top', 'right', 'left']
+          ? horizontalScrollContent
+            ? ['top']
+            : outerScrollIndicator
+              ? ['top', 'left']
+              : ['top', 'right', 'left']
           : ['top', 'right', 'bottom', 'left']
       }
       style={styles.fill}
