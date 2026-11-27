@@ -17,11 +17,11 @@ import XCTest
                 let settled = expectation(description: "first correctly settled exact transport")
                 var outcomes = [Bool]()
                 f.settle(first) { outcomes.append($0); settled.fulfill() }
-                await f.drainMain()
+                await f.task.drainMain()
                 XCTAssertEqual(f.task.frames, ["function-first"])
                 let outputReceipt = f.task.completions.removeFirst()
                 outputReceipt(nil)
-                await f.drainMain()
+                await f.task.drainMain()
                 XCTAssertEqual(f.task.frames, ["function-first", "response.create"])
                 XCTAssertTrue(outcomes.isEmpty)
                 let oldContinuation = f.task.completions.removeFirst()
@@ -37,7 +37,7 @@ import XCTest
                 }
 
                 outputReceipt(nil) // Stale callback cannot acknowledge the next queue item.
-                await f.drainMain()
+                await f.task.drainMain()
                 XCTAssertTrue(outcomes.isEmpty)
                 oldContinuation(nil)
                 await fulfillment(of: [settled], timeout: 1)
@@ -56,13 +56,13 @@ import XCTest
                 XCTAssertNotEqual(first, second)
                 let secondSettled = expectation(description: "second correctly settled exact transport")
                 f.settle(second) { outcomes.append($0); secondSettled.fulfill() }
-                await f.drainMain()
+                await f.task.drainMain()
                 oldContinuation(nil) // Already consumed, cannot remove second's pending output.
-                await f.drainMain()
+                await f.task.drainMain()
                 XCTAssertEqual(f.task.frames, ["function-first", "response.create", "function-second"])
                 XCTAssertEqual(outcomes, [true])
                 f.task.completions.removeFirst()(nil)
-                await f.drainMain()
+                await f.task.drainMain()
                 XCTAssertEqual(outcomes, [true])
                 f.task.completions.removeFirst()(nil)
                 await fulfillment(of: [secondSettled], timeout: 1)
@@ -73,7 +73,7 @@ import XCTest
 
         @MainActor
         func testCommonV3SameDelegationRequiresEachExactContinuationEcho() async throws {
-            for mode in ["matched", "missing-created", "foreign-item", "missing-terminal", "function-replay", "early", "stop", "ordinary-no-echo", "ordinary-wrong-echo"] {
+            for mode in ["matched", "missing-created", "foreign-item", "missing-terminal", "function-replay", "early", "early-send-failure", "early-stop", "early-wrong-echo", "early-foreign-delegation", "early-no-echo", "early-mixed-wrong-echo", "early-mixed-no-echo", "early-mixed-foreign", "stop", "ordinary-no-echo", "ordinary-wrong-echo"] {
                 let f = try CommonV3RepeatFixture()
                 defer { f.close() }
                 let first = expectation(description: "first tool admitted")
@@ -84,30 +84,37 @@ import XCTest
                 let settled = expectation(description: "exact first socket receipt")
                 var accepted: Bool?
                 f.settle(firstChallenge) { accepted = $0; settled.fulfill() }
-                await f.drainMain()
+                await f.task.drainMain()
                 f.task.completions.removeFirst()(nil)
-                await f.drainMain()
+                await f.task.drainMain()
                 let command = try XCTUnwrap(f.task.continuation)
                 let acknowledge = f.task.completions.removeFirst()
-                if mode != "early" {
+                if !mode.hasPrefix("early") {
                     acknowledge(nil)
                     await fulfillment(of: [settled], timeout: 1)
                     XCTAssertEqual(accepted, true)
                 }
 
                 let next = expectation(description: "only fully correlated same-delegation response is admitted")
-                next.isInverted = mode != "matched"
+                let acceptsContinuation = mode == "matched" || mode == "early"
+                next.isInverted = !acceptsContinuation
                 f.onRequest = { next.fulfill() }
                 if mode == "stop" {
                     f.close()
                 }
-                f.continueFirst(command, mode)
-                if mode == "early" {
-                    acknowledge(nil)
+                await f.continueFirst(command, mode)
+                if mode.hasPrefix("early") {
+                    if ["early", "early-stop", "early-send-failure"].contains(mode) || mode.hasPrefix("early-mixed-") {
+                        XCTAssertNil(accepted)
+                    }
+                    if mode == "early-stop" {
+                        f.close()
+                    }
+                    acknowledge(mode == "early-send-failure" ? URLError(.networkConnectionLost) : nil)
                     await fulfillment(of: [settled], timeout: 1)
-                    XCTAssertEqual(accepted, false)
+                    XCTAssertEqual(accepted, acceptsContinuation || mode.hasPrefix("early-mixed-"))
                 }
-                await fulfillment(of: [next], timeout: mode == "matched" ? 1 : 0.1)
+                await fulfillment(of: [next], timeout: acceptsContinuation ? 1 : 0.1)
                 XCTAssertEqual(f.task.frames, ["function-first", "response.create"])
                 if mode.hasPrefix("ordinary-") {
                     let later = expectation(description: "independent fresh delegation still admitted")
@@ -115,14 +122,17 @@ import XCTest
                     f.delegate("later", offset: 15)
                     await fulfillment(of: [later], timeout: 1)
                 }
-                if mode == "matched" {
+                if acceptsContinuation {
+                    f.socket.send(["type": "session.input_audio.append", "audio": "AAAA"])
+                    XCTAssertEqual(f.task.frames.popLast(), "session.input_audio.append")
+                    try f.task.receiveMicReceipt()
                     let nextChallenge = try XCTUnwrap(f.challenge)
                     XCTAssertNotEqual(nextChallenge, firstChallenge)
                     let second = expectation(description: "second exact wire receipt")
                     f.settle(nextChallenge) { XCTAssertTrue($0); second.fulfill() }
-                    await f.drainMain()
+                    await f.task.drainMain()
                     f.task.completions.removeFirst()(nil)
-                    await f.drainMain()
+                    await f.task.drainMain()
                     f.task.completions.removeFirst()(nil)
                     await fulfillment(of: [second], timeout: 1)
                     XCTAssertEqual(f.task.frames, ["function-first", "response.create", "function-more", "response.create"])
@@ -159,8 +169,10 @@ import XCTest
             }
             let registry = try XCTUnwrap(LiveNativeToolRegistry(admission: admission))
             XCTAssertNotNil(registry.configuration(for: admission))
+            XCTAssertTrue(socket.admitResponsesTransport(admission.backendAllowed))
             socket.open(model: "gpt-live-1.1", key: "synthetic")
             XCTAssertNotNil(transport.acknowledge(owner))
+            socket.received = { [weak self] in self?.submit($0) }
             bridge = LiveResponsesToolBridge(admission: admission, registry: registry) { [weak socket] in
                 if socket?.discardManagedToolFrames() == true {
                     socket?.close()
@@ -182,25 +194,40 @@ import XCTest
             receive("-completed", ["type": "response.completed", "response": ["id": response, "status": "completed"]])
         }
 
-        func continueFirst(_ command: String, _ mode: String) {
-            func nested(_ suffix: String, _ event: [String: Any], echo: String?) {
+        func continueFirst(_ command: String, _ mode: String) async {
+            func nested(_ suffix: String, _ event: [String: Any], echo: String?) async {
                 var frame: [String: Any] = ["type": "response.event", "event_id": "more-" + suffix,
-                                            "delegation_id": "delegation-first", "event": event]
+                                            "delegation_id": mode == "early-foreign-delegation" || (mode == "early-mixed-foreign" && suffix == "mixed") ? "foreign-delegation" : "delegation-first", "event": event]
                 frame["client_event_id"] = echo
-                submit(frame)
+                if mode.hasPrefix("early") {
+                    task.push(frame)
+                    await task.drainMain()
+                } else {
+                    submit(frame)
+                }
             }
             let item: [String: Any] = ["type": "function_call", "call_id": mode == "function-replay" ? "function-first" : "function-more",
                                        "name": "local-health-context", "arguments": "{}"]
-            nested("created", ["type": "response.created", "response": ["id": "response-more"]],
-                   echo: ["missing-created", "ordinary-no-echo"].contains(mode) ? nil : mode == "ordinary-wrong-echo" ? "foreign-command" : command)
-            if !mode.hasPrefix("ordinary-") {
-                nested("item", ["type": "response.output_item.done", "item": item],
-                       echo: mode == "foreign-item" ? "foreign-command" : command)
+            await nested("created", ["type": "response.created", "response": ["id": "response-more"]],
+                         echo: ["missing-created", "ordinary-no-echo", "early-no-echo"].contains(mode) ? nil : ["ordinary-wrong-echo", "early-wrong-echo"].contains(mode) ? "foreign-command" : command)
+            if mode.hasPrefix("early"), !task.canReceive {
+                return
             }
-            nested("done", ["type": "response.completed", "response": ["id": "response-more", "status": "completed"]],
-                   echo: mode == "missing-terminal" || mode.hasPrefix("ordinary-") ? nil : command)
+            if mode.hasPrefix("early-mixed-") {
+                await nested("mixed", ["type": "response.output_item.done", "item": item], echo: mode == "early-mixed-no-echo" ? nil : mode == "early-mixed-foreign" ? command : "foreign-command")
+                guard task.canReceive else { return }
+            }
+            if !mode.hasPrefix("ordinary-") {
+                await nested("item", ["type": "response.output_item.done", "item": item],
+                             echo: mode == "foreign-item" ? "foreign-command" : command)
+            }
+            if mode.hasPrefix("early"), !task.canReceive {
+                return
+            }
+            await nested("done", ["type": "response.completed", "response": ["id": "response-more", "status": "completed"]],
+                         echo: mode == "missing-terminal" || mode.hasPrefix("ordinary-") ? nil : command)
             if mode.hasPrefix("ordinary-") {
-                nested("relabel", ["type": "response.created", "response": ["id": "response-more"]], echo: command)
+                await nested("relabel", ["type": "response.created", "response": ["id": "response-more"]], echo: command)
             }
         }
 
@@ -216,35 +243,8 @@ import XCTest
             transport.settleBridge(callId: owner.callID, challenge: challenge, exact: output, completion: got)
         }
 
-        func drainMain() async {
-            // Actual socket callback and bridge submission each have a bounded main hop.
-            for _ in 0 ..< 3 {
-                await withCheckedContinuation { (step: CheckedContinuation<Void, Never>) in
-                    DispatchQueue.main.async { step.resume() }
-                }
-            }
-        }
-
         func close() {
             bridge?.retire(); transport.retire(); socket.close()
         }
-    }
-
-    private final class CommonV3HeldSocketTask: RealtimeVoiceSocketTask {
-        var completions: [@Sendable (Error?) -> Void] = []
-        var frames: [String] = []
-        var continuation: String?
-        func resume() {}
-        func send(_ message: URLSessionWebSocketTask.Message, completionHandler: @escaping @Sendable (Error?) -> Void) {
-            let frame = RealtimeVoiceSocket.decodeSocketEvent(message)
-            if frame?["type"] as? String == "response.create" {
-                continuation = frame?["event_id"] as? String
-            }
-            frames.append((frame?["item"] as? [String: Any])?["call_id"] as? String ?? frame?["type"] as? String ?? "invalid")
-            completions.append(completionHandler)
-        }
-
-        func receive(completionHandler _: @escaping @Sendable (Result<URLSessionWebSocketTask.Message, Error>) -> Void) {}
-        func cancel(with _: URLSessionWebSocketTask.CloseCode, reason _: Data?) {}
     }
 #endif

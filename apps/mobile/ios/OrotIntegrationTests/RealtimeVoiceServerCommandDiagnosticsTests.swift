@@ -175,4 +175,53 @@ import XCTest
             }
         }
     }
+
+    final class CommonV3HeldSocketTask: RealtimeVoiceSocketTask {
+        var completions: [@Sendable (Error?) -> Void] = []
+        var frames: [String] = []
+        var continuation: String?
+        private var receiveFrame: (@Sendable (Result<URLSessionWebSocketTask.Message, Error>) -> Void)?
+        var canReceive: Bool {
+            receiveFrame != nil
+        }
+
+        func resume() {}
+        func send(_ message: URLSessionWebSocketTask.Message, completionHandler: @escaping @Sendable (Error?) -> Void) {
+            let frame = RealtimeVoiceSocket.decodeSocketEvent(message)
+            if frame?["type"] as? String == "response.create" {
+                continuation = frame?["event_id"] as? String
+            }
+            frames.append((frame?["item"] as? [String: Any])?["call_id"] as? String ?? frame?["type"] as? String ?? "invalid")
+            completions.append(completionHandler)
+        }
+
+        func receive(completionHandler: @escaping @Sendable (Result<URLSessionWebSocketTask.Message, Error>) -> Void) {
+            receiveFrame = completionHandler
+        }
+
+        @MainActor
+        func drainMain() async {
+            // Actual socket callback and bridge submission each have a bounded main hop.
+            for _ in 0 ..< 3 {
+                await withCheckedContinuation { (step: CheckedContinuation<Void, Never>) in
+                    DispatchQueue.main.async { step.resume() }
+                }
+            }
+        }
+
+        func receiveMicReceipt() throws {
+            let receipt = try XCTUnwrap(completions.first)
+            completions.removeFirst()
+            receipt(nil)
+        }
+
+        func push(_ event: [String: Any]) {
+            let handler = receiveFrame
+            receiveFrame = nil
+            guard let handler, let data = try? JSONSerialization.data(withJSONObject: event) else { XCTFail("Expected a current receiver"); return }
+            handler(.success(.data(data)))
+        }
+
+        func cancel(with _: URLSessionWebSocketTask.CloseCode, reason _: Data?) {}
+    }
 #endif

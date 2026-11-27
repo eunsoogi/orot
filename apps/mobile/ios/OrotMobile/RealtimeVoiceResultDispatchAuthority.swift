@@ -20,7 +20,11 @@ final class LiveNativeResultDispatchAuthority: @unchecked Sendable {
         let call: String
         let challenge: String
         let resultKind: ResultKind
-        let requiresWireReceipt: Bool
+        let continuationDelegation: String?
+        var requiresWireReceipt: Bool {
+            continuationDelegation != nil
+        }
+
         private var phase = Phase.pending
         private struct Resolver: @unchecked Sendable { let call: (Bool) -> Void }
         private var completion: Resolver?
@@ -28,11 +32,11 @@ final class LiveNativeResultDispatchAuthority: @unchecked Sendable {
         private var deadline: DispatchWorkItem?
         private var deadlineAt: DispatchTime?
 
-        fileprivate init(call: String, challenge: String, resultKind: ResultKind, requiresWireReceipt: Bool) {
+        fileprivate init(call: String, challenge: String, resultKind: ResultKind, continuationDelegation: String?) {
             self.call = call
             self.challenge = challenge
             self.resultKind = resultKind
-            self.requiresWireReceipt = requiresWireReceipt
+            self.continuationDelegation = continuationDelegation
         }
 
         func claim() -> Bool {
@@ -149,13 +153,13 @@ final class LiveNativeResultDispatchAuthority: @unchecked Sendable {
     }
 
     /// Common V3 owns a separate authority instance and can mint only the stock canonical result ticket.
-    func beginV3Canonical(call: String, challenge: String, current: () -> Bool) -> Ticket? {
+    func beginV3Canonical(call: String, challenge: String, delegation: String, current: () -> Bool) -> Ticket? {
         guard current() else { return nil }
-        return install(call: call, challenge: challenge, resultKind: .canonicalHealth, requiresWireReceipt: true)
+        return install(call: call, challenge: challenge, resultKind: .canonicalHealth, continuationDelegation: delegation)
     }
 
-    private func install(call: String, challenge: String, resultKind: ResultKind, requiresWireReceipt: Bool = false) -> Ticket {
-        let next = Ticket(call: call, challenge: challenge, resultKind: resultKind, requiresWireReceipt: requiresWireReceipt)
+    private func install(call: String, challenge: String, resultKind: ResultKind, continuationDelegation: String? = nil) -> Ticket {
+        let next = Ticket(call: call, challenge: challenge, resultKind: resultKind, continuationDelegation: continuationDelegation)
         lock.lock()
         let old = current
         current = next
