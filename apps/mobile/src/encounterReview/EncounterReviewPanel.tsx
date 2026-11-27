@@ -135,8 +135,8 @@ export function EncounterReviewPanel({
           )
         }
         onStart={() => controller.start(consent)}
-        onSave={() => controller.decide('approve')}
-        onDeny={() => controller.decide('deny')}
+        onSave={() => pending && controller.decide('approve', pending)}
+        onDeny={() => pending && controller.decide('deny', pending)}
         onRestore={() => controller.restore()}
         onCancel={() => controller.cancel()}
       />

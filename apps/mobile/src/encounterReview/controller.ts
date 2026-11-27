@@ -155,8 +155,22 @@ export class EncounterReviewController {
       ),
     );
   }
-  edit(id: string, field: 'text' | 'dosageInstruction', text: string) {
-    if (this.busy || this.state.status !== 'pending') return;
+  /** Candidate IDs repeat across generations. A rendered gesture may only
+   * target the exact presented snapshot, even if a checkpoint is reread. */
+  private ownsPending(expected: EncounterPending | undefined) {
+    return (
+      !this.busy &&
+      this.state.status === 'pending' &&
+      this.state.pending === expected
+    );
+  }
+  edit(
+    id: string,
+    field: 'text' | 'dosageInstruction',
+    text: string,
+    expected = this.state.pending,
+  ) {
+    if (!this.ownsPending(expected)) return;
     this.set({
       ...this.state,
       candidates: this.state.candidates.map(candidate =>
@@ -167,8 +181,8 @@ export class EncounterReviewController {
       ),
     });
   }
-  toggle(id: string) {
-    if (this.busy || this.state.status !== 'pending') return;
+  toggle(id: string, expected = this.state.pending) {
+    if (!this.ownsPending(expected)) return;
     this.set({
       ...this.state,
       selected: this.state.selected.includes(id)
@@ -176,9 +190,9 @@ export class EncounterReviewController {
         : [...this.state.selected, id],
     });
   }
-  decide(decision: 'approve' | 'deny') {
+  decide(decision: 'approve' | 'deny', expected = this.state.pending) {
     if (
-      this.busy ||
+      !this.ownsPending(expected) ||
       !this.dirty ||
       !this.state.pending ||
       (decision === 'approve' && !this.state.selected.length)

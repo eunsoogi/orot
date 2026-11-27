@@ -69,8 +69,10 @@ export function EncounterCandidatePages({
             pending={pending}
             divider={index < candidates.length - 1}
             selected={state.selected.includes(candidate.id)}
-            onToggle={() => controller.toggle(candidate.id)}
-            onEdit={(field, text) => controller.edit(candidate.id, field, text)}
+            onToggle={() => controller.toggle(candidate.id, pending)}
+            onEdit={(field, text) =>
+              controller.edit(candidate.id, field, text, pending)
+            }
           />
         ))}
       </MaterialLibraryRows>
