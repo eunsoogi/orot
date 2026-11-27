@@ -90,7 +90,9 @@ export function InlineRecordingExportOptions({
         description={t('recording.export.audioDescription')}
         hint={t('recording.export.audioHint')}
         disabled={disabled}
-        onPress={onAudio}
+        onPress={() => {
+          onAudio();
+        }}
         testID="recording-export-audio"
       />
       {/* Re-read on press so a transcript created after this panel mounts stays exportable. */}
@@ -100,7 +102,9 @@ export function InlineRecordingExportOptions({
         description={t('recording.export.transcriptDescription')}
         hint={t('recording.export.transcriptHint')}
         disabled={disabled || transcriptDisabled}
-        onPress={onTranscript}
+        onPress={() => {
+          onTranscript();
+        }}
         testID="recording-export-transcript"
       />
     </>

@@ -3,6 +3,7 @@ import { providerSuccess } from '@orot/model-runtime';
 import { reviewCopy } from '../strings';
 import { act, fireEvent, render, screen } from '@testing-library/react-native';
 import type { ReactNode } from 'react';
+import { startSavedRecordingAnalysis } from '../__fixtures__/startSavedRecordingAnalysis';
 import { RecordingReviewRoute } from '../../routes/RecordingReviewRoute';
 import { resolveSelectedAiProvider } from '../../aiFeatures/integration/provider';
 import { harness, fixture } from '../__fixtures__/longReviewHarness';
@@ -108,8 +109,7 @@ test('retiring the recording route stops a held selected model lookup before ext
     <RecordingReviewRoute reviewService={service} routeOwner={owner} />,
   );
   try {
-    await screen.findByTestId('encounter-start');
-    await fireEvent.press(screen.getByTestId('encounter-start'));
+    await startSavedRecordingAnalysis();
     await entered;
     await act(async () => {
       valid = false;
@@ -133,8 +133,7 @@ test('a current recording route gets reviewable proposals from the selected fake
     />,
   );
   try {
-    await screen.findByTestId('encounter-start');
-    await fireEvent.press(screen.getByTestId('encounter-start'));
+    await startSavedRecordingAnalysis();
     await screen.findByTestId('encounter-save');
     expect(calls()).toBe(2);
     expect(await fixture.rows()).toEqual([]);

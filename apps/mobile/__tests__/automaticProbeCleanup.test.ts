@@ -2,6 +2,7 @@ jest.mock('../src/storage/secureDatabase', () => ({
   openLocalStorage: jest.fn(),
 }));
 jest.mock('../src/recording/nativeRecordingBridge', () => ({
+  nativeRecordingBridge: { playRange: jest.fn() },
   installSyntheticTranscriptionRecording: jest.fn(),
   removeSyntheticTranscriptionRecording: jest.fn(),
 }));
