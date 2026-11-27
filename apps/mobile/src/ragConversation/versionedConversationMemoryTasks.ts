@@ -123,9 +123,12 @@ export function versionedConversationMemoryTasks(
       v52: observeConversationA2UIFinalAdmission(
         withConversationA2UIReplacement(replacementBase, '52'),
       ),
+      v53: observeConversationA2UIFinalAdmission(
+        withConversationA2UIReplacement(replacementBase, '53'),
+      ),
     },
     ragConversationTask: observeConversationA2UIFinalAdmission(
-      withConversationA2UIReplacement(replacementBase, '53'),
+      withConversationA2UIReplacement(replacementBase, '54'),
     ),
   };
 }

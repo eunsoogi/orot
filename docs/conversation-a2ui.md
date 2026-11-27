@@ -305,3 +305,11 @@ read-only createSurface without a data model. Wide layouts use the weights;
 compact or enlarged-text layouts use the existing natural stack and preserve
 all accepted prose. The existing archive keeps the grouping without this
 live weight. Earlier versions, actions, and data access are unchanged.
+
+Fresh ordinary task v54 can compose one Basic Catalog Button with a short
+literal Text child that also appears in the accepted answer. In a single
+final createSurface with temporary controls and no data model, the exact
+app-owned reset event with empty context restores this bubble's fields
+to their initial values on an explicit tap. Lost or inactive owners
+cannot reset another reply. No event, field values, or action authority
+goes to the provider or the archive. Older contracts remain unchanged.
