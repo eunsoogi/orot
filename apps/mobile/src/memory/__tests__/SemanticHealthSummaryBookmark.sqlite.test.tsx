@@ -8,6 +8,11 @@ import {
 import { Alert, AppState } from 'react-native';
 import { conversationSavedHistoryDisplayOption } from '../../aiFeatures/integration/conversationSavedHistoryDisplayOption';
 import { window } from '../../aiFeatures/integration/testSupport/healthContextPersistenceFixture';
+import {
+  providerSuccess,
+  type LanguageModelRequest,
+} from '@orot/model-runtime';
+import { runRagConversationTurn } from '../../ragConversation/service';
 import { createRagConversationService } from '../../aiFeatures/integration/ragConversationService';
 import {
   apple,
@@ -27,6 +32,14 @@ test.each(['contextual', 'exact-local'] as const)(
   'saves the completed Health Summary, never user-authored memory: %s',
   async mode => {
     const f = await setup();
+    // Mirror OP-SQLite's transaction admission on the synchronous test host.
+    const transaction = f.database.transaction.bind(f.database);
+    let idle = Promise.resolve();
+    f.database.transaction = work => {
+      const pending = idle.then(() => transaction(work));
+      idle = pending.catch(() => {});
+      return pending;
+    };
     const before = AppState.currentState;
     AppState.currentState = 'active';
     const restore = installReceiptFixturePlatform(() => {});
@@ -45,15 +58,44 @@ test.each(['contextual', 'exact-local'] as const)(
         modelId: summary.modelId,
         healthSummary: { summaryId: summary.id, window },
       });
-      const retained = jest.mocked(openSavedGeneratedReportReferences);
-      retained.mockResolvedValue(f.storage);
+      const readback = jest.fn(f.storage.readSavedHealthSummaryReference);
+      jest.mocked(openSavedGeneratedReportReferences).mockResolvedValue({
+        ...f.storage,
+        readSavedHealthSummaryReference: readback,
+      });
+      const generate = jest.fn(async (request: LanguageModelRequest) => {
+        const offered = request.tools?.find(
+          tool => tool.name === 'remember-health-summary',
+        );
+        expect(offered).toBeDefined();
+        expect(JSON.stringify(request)).not.toContain(reply.id);
+        return providerSuccess({
+          text: 'Untrusted model confirmation',
+          finishReason: 'tool_calls' as const,
+          toolCalls: [
+            {
+              id: 'semantic-summary-bookmark',
+              name: 'remember-health-summary',
+              arguments: { target: 'preceding_health_summary' },
+            },
+          ],
+        });
+      });
       const authorize = jest.fn(async () => 'authorized' as const);
       const model = { providerId: apple.provider.id, modelId: apple.modelId };
       const selectedAi = async () => ({
         status: 'ready' as const,
         selection: model,
         option: apple,
-        provider: apple.provider,
+        provider: {
+          ...apple.provider,
+          generate,
+          capabilities: {
+            ...apple.provider.capabilities,
+            streaming: false,
+            toolCalling: true,
+          },
+        },
         modelId: apple.modelId,
         recipient: 'Synthetic device',
         remoteProcessing: false,
@@ -65,7 +107,6 @@ test.each(['contextual', 'exact-local'] as const)(
       });
       const consent = { authorize };
       const observedTarget = jest.fn();
-      const observedExecution = jest.fn();
       const observedOutcome = jest.fn();
       const run = createRagConversationService({
         selectedAi,
@@ -74,37 +115,7 @@ test.each(['contextual', 'exact-local'] as const)(
         externalEvidence: { search },
         registry,
         loadLocalData,
-        async ragRunner(options, invocation) {
-          const action = options.workflow.actions?.find(
-            item => item.id === 'remember-health-summary',
-          );
-          const signal = invocation?.signal;
-          observedExecution(
-            action ? 'offered' : 'not offered',
-            Boolean(signal),
-          );
-          if (!action || !signal)
-            throw new Error('Local summary action is unavailable.');
-          const input = { target: 'preceding_health_summary' };
-          expect(
-            action.parseInput({ ...input, artifactId: 'untrusted' }),
-          ).toBeUndefined();
-          const authorized = await action.authorize(input, signal);
-          observedExecution(authorized ? 'authorized' : 'not authorized');
-          expect(authorized).toBe(true);
-          await action.execute({
-            input,
-            signal,
-            operationRunId: 'synthetic-run',
-            operationKey: 'synthetic-action',
-          });
-          observedExecution('executed');
-          return {
-            status: 'answer',
-            answer: 'Untrusted model confirmation',
-            citations: [],
-          };
-        },
+        ragRunner: runRagConversationTurn,
       });
       const { sendRagMessage } = createConversationSummaryIntegration({
         consent,
@@ -183,16 +194,14 @@ test.each(['contextual', 'exact-local'] as const)(
             ),
           );
           expect(observedTarget).not.toHaveBeenCalled();
-          expect(observedExecution).not.toHaveBeenCalled();
+          expect(generate).not.toHaveBeenCalled();
+          expect(readback).not.toHaveBeenCalled();
           expect(confirmHistorySave).not.toHaveBeenCalled();
         } else {
           await waitFor(() => expect(observedOutcome).toHaveBeenCalledTimes(1));
           expect(observedTarget).toHaveBeenCalledWith(reply.id);
-          expect(observedExecution.mock.calls).toEqual([
-            ['offered', true],
-            ['authorized'],
-            ['executed'],
-          ]);
+          expect(generate).toHaveBeenCalledTimes(1);
+          expect(readback).toHaveBeenCalledWith(reply.id, expect.any(Function));
           expect(observedOutcome).toHaveBeenCalledWith(
             expect.objectContaining({
               status: 'answer',

@@ -54,7 +54,7 @@ export function conversationHealthSummaryBookmarkAction(
     !signal.aborted &&
     bookmark.current() &&
     observer.expectedConversationModel?.isCurrent?.() !== false;
-  const terminal = daily && Boolean(expectedRunId);
+  const terminal = Boolean(expectedRunId);
   const toolId = daily ? 'remember-daily-report' : 'remember-health-summary';
   const version = terminal ? '2' : '1';
   let pending:
@@ -173,6 +173,11 @@ export function conversationHealthSummaryBookmarkAction(
             signal,
             operation: grant.operation,
             readback: async () => {
+              if (!daily)
+                return storage.readSavedHealthSummaryReference(
+                  bookmark.artifactId,
+                  parameters.current,
+                );
               const original = await storage.readSavedGeneratedReportReference(
                 bookmark.artifactId,
                 parameters.current,
