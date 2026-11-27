@@ -21,23 +21,30 @@ export function createConversationPageHydration(
   ownerData = input.data,
 ) {
   const active = new Set<string>();
-  // Native ownership cannot be proved by the database graph. Keep the entire
-  // affected subtree on its old strict path rather than infer native freshness.
-  const eligible = (id: string, path = new Set<string>()): boolean => {
+  // Classification is structural and lasts only for this immutable database
+  // snapshot. Actual native and source proof still runs on every hydration.
+  const eligibility = new Map<string, boolean>();
+  const visiting = new Set<string>();
+  const eligible = (id: string): boolean => {
+    const prior = eligibility.get(id);
+    if (prior !== undefined) return prior;
+    if (visiting.has(id)) return false;
     const value = ancestry.get(id);
     if (
       !value ||
-      path.has(id) ||
       value.submittedInput ||
       value.treatmentContext ||
       value.sources.some(isConversationPhotoSource)
-    )
+    ) {
+      eligibility.set(id, false);
       return false;
-    path.add(id);
+    }
+    visiting.add(id);
     const result = value.sources
       .filter(isGeneratedConversationSource)
-      .every(source => eligible(source.id, path));
-    path.delete(id);
+      .every(source => eligible(source.id));
+    visiting.delete(id);
+    eligibility.set(id, result);
     return result;
   };
   type Result = Awaited<ReturnType<typeof restoreConversationArtifactSnapshot>>;

@@ -28,6 +28,7 @@ test.each([
     (_, i) => `${dag ? 'dag-' : ''}turn-${i}`,
   );
   const graph = await f.storage.readManyWithAncestry(ids);
+  const snapshotLookup = jest.spyOn(graph.ancestry, 'get');
   const execute = f.database.execute.bind(f.database);
   const transaction = f.database.transaction.bind(f.database);
   let aggregateSql = 0;
@@ -63,6 +64,10 @@ test.each([
     expect(Object.values(reads).reduce((a, b) => a + b, 0)).toBe(
       dag ? 2 ** count - 1 : (count * (count + 1)) / 2,
     );
+    const hydrated = Object.values(reads).reduce((a, b) => a + b, 0);
+    // One actual snapshot read per hydration, plus one structural eligibility
+    // check per distinct parent. Source reads remain independently live.
+    expect(snapshotLookup.mock.calls.length).toBe(hydrated + count - 1);
     expect(reads['summary-0']).toBe(dag ? 2 ** (count - 1) : count);
     console.info(
       JSON.stringify({ count, dag, reads, aggregateSql, transactions }),
