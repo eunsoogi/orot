@@ -19,6 +19,7 @@ const dataText = 'Synthetic ninth line only.';
 export async function harness(
   count = 9,
   lane: 'local' | 'pcc' | 'unsupported' = 'local',
+  invalidFinalEvidence?: 'wrong-quote' | 'locked',
 ) {
   const remote = lane !== 'local';
   const choice =
@@ -92,6 +93,10 @@ export async function harness(
           : calls === 2
             ? [final]
             : [];
+      if (invalidFinalEvidence === 'locked' && included.includes(final))
+        listeners.forEach(listener =>
+          listener({ kind: 'protectedData', available: false }),
+        );
       return providerSuccess({
         text: JSON.stringify({
           type: 'result',
@@ -105,7 +110,10 @@ export async function harness(
                   segmentId: segment.id,
                   startOffset: 0,
                   endOffset: dataText.length,
-                  quote: dataText,
+                  quote:
+                    invalidFinalEvidence && segment === final
+                      ? 'Unsupported synthetic quote.'
+                      : dataText,
                 },
               ],
             })),

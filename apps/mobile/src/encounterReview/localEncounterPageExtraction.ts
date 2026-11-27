@@ -61,6 +61,7 @@ export async function prepareLocalEncounterExtraction(input: {
       sourceId: read.sourceId,
       signal: read.signal,
       selectionCurrent: current,
+      reportInvalidCandidates: true,
       pages,
       progress: input.progress,
       extract: encounterPageModel({

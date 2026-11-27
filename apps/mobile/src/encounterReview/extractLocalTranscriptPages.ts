@@ -7,6 +7,7 @@ import type {
   EncounterCandidate,
   EncounterTranscript,
 } from '@orot/agent-runtime';
+import { InvalidEncounterCandidates } from '../agent/encounter/extraction';
 import type { openLocalTranscriptPages } from './localTranscriptPages';
 
 type Pages = Awaited<ReturnType<typeof openLocalTranscriptPages>>;
@@ -15,6 +16,7 @@ type Options = {
   readonly signal: AbortSignal;
   readonly selectionCurrent: () => boolean;
   readonly pages: Pages;
+  readonly reportInvalidCandidates?: true;
   readonly progress?: (completed: number) => void;
   readonly extract: (
     batch: EncounterTranscript,
@@ -30,7 +32,10 @@ type Result =
       readonly segments: ReturnType<typeof encounterReferences>;
       readonly candidates: EncounterCandidate[];
     }
-  | { readonly status: 'empty' | 'unavailable' | 'cancelled' };
+  | {
+      readonly status:
+        'empty' | 'unavailable' | 'cancelled' | 'invalid-candidates';
+    };
 
 // This is a per-invocation width, not a limit on the recording.
 const batchSize = 8;
@@ -128,7 +133,13 @@ export async function extractLocalTranscriptPages(
       if (page.done) return interrupted();
     }
     return interrupted();
-  } catch {
+  } catch (error) {
+    if (
+      input.reportInvalidCandidates &&
+      error instanceof InvalidEncounterCandidates &&
+      (await current())
+    )
+      return { status: 'invalid-candidates' };
     return interrupted();
   } finally {
     pages.dispose();

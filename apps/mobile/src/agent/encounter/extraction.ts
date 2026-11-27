@@ -11,6 +11,8 @@ import type {
 } from '@orot/agent-runtime';
 import type { JsonValue } from '@orot/model-runtime';
 
+export class InvalidEncounterCandidates extends Error {}
+
 export type EncounterModelOptions = Pick<
   MultiAgentWorkflowOptions<EncounterCandidate[]>,
   'provider' | 'execution' | 'consent' | 'store'
@@ -180,7 +182,9 @@ export async function extractEncounterCandidates(input: {
     } catch {
       /* Evidence must not replace the original extraction failure. */
     }
-    throw new Error(
+    const ExtractionFailure =
+      result.status === 'invalid_output' ? InvalidEncounterCandidates : Error;
+    throw new ExtractionFailure(
       'Encounter extraction did not produce validated candidates.',
     );
   }

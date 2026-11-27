@@ -16,7 +16,8 @@ export type ReviewResult =
         | 'selection-required'
         | 'consent-denied'
         | 'transcript-too-long'
-        | 'review-capacity';
+        | 'review-capacity'
+        | 'invalid-candidates';
     };
 export interface EncounterReviewService {
   diagnostics?: ReviewDiagnostics;
