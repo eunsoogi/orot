@@ -23,7 +23,7 @@ export async function readOverviewWorkoutChoicePeriod(
   if (owner.readSavedSelection) {
     const preference = await loadOverviewMetricSelectionProof(owner.repository);
     if (!owner.current() || !preference.selection.includes('heartRate'))
-      return { result: undefined, stale: false };
+      return { result: undefined, stale: false, nativeUnavailable: false };
   }
   let stale = false;
   if (startup) {
@@ -34,7 +34,11 @@ export async function readOverviewWorkoutChoicePeriod(
       owner.confirm,
     );
     if (status !== 'current')
-      return { result: undefined, stale: status === 'stale' };
+      return {
+        result: undefined,
+        stale: status === 'stale',
+        nativeUnavailable: false,
+      };
   }
   const read = await readOwnedWorkoutPeriod(period, {
     ...owner,

@@ -18,10 +18,12 @@ export type ReadSettlement =
  * native or JS work can alter the same guard in a subsequent microtask. */
 export function settleKnownIndependentRead<R>(
   owner: SettlementOwner,
-  timeoutMs: number,
+  timeoutMs: number | undefined,
   signal: AbortSignal | undefined,
   result: (outcome: ReadSettlement) => R,
 ): Promise<R> {
+  if (timeoutMs === undefined && !signal)
+    return Promise.resolve(result('cancelled'));
   const refusal = () =>
     signal?.aborted
       ? 'cancelled'
@@ -44,7 +46,12 @@ export function settleKnownIndependentRead<R>(
     };
     const settled = () => finish(refusal() ?? 'settled');
     const cancelled = () => finish('cancelled');
-    const timer = setTimeout(() => finish('wait_expired'), timeoutMs);
+    // A mounted owner with an abort and its own lifetime boundary can wait for
+    // actual writer settlement rather than turn a timeout into data failure.
+    const timer =
+      timeoutMs === undefined
+        ? undefined
+        : setTimeout(() => finish('wait_expired'), timeoutMs);
     listeners.add(settled);
     signal?.addEventListener('abort', cancelled, { once: true });
   });
