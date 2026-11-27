@@ -50,6 +50,8 @@ export interface DailyReportServiceInput {
   readonly now: () => string;
   readonly createRunId: () => string;
   readonly resolveSelected?: () => Promise<SelectedAiResolution>;
+  /** Positive, non-secret native selection ownership for concurrent preparation. */
+  readonly captureSelectionCurrent?: () => (() => boolean) | undefined;
   readonly timeoutMs?: number | null;
   readonly isWarmDayCurrent?: (
     identity: import('@orot/domain').DailyReportIdentity,

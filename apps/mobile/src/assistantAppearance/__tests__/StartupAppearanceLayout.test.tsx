@@ -53,12 +53,11 @@ test.each([
       </AssistantAppearanceProvider>,
     );
     expect(screen.queryByText('준비 완료')).toBeNull();
-    expect(screen.getByRole('header', { name: '오롯' })).toBeTruthy();
-    expect(screen.queryByText('설정을 불러오는 중')).toBeNull();
     expect(
-      screen.getByRole('progressbar', { name: '오롯 시작 중' }).props
-        .accessibilityState,
+      screen.getByRole('header', { name: '오롯' }).props.accessibilityState,
     ).toEqual({ busy: true });
+    expect(screen.queryByRole('progressbar')).toBeNull();
+    expect(screen.queryByText('설정을 불러오는 중')).toBeNull();
     const outer = screen.getByTestId('startup-surface');
     const ornament = screen.getByTestId('startup-decoration', {
       includeHiddenElements: true,
@@ -84,9 +83,9 @@ test.each([
     });
     expect(outer.parent?.type).not.toBe('View');
     expect(readable.props.edges).toBeUndefined();
-    expect(readable.props.contentInsetAdjustmentBehavior).toBe('never');
-    expect(readable.props.automaticallyAdjustContentInsets).toBe(false);
-    expect(readable.props.contentContainerStyle).toMatchObject({
+    expect(readable.type).toBe('View');
+    expect(StyleSheet.flatten(readable.props.style)).toMatchObject({
+      flex: 1,
       alignItems: 'center',
       justifyContent: 'center',
     });

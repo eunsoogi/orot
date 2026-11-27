@@ -131,7 +131,7 @@ test.each([
         emit({ kind: 'phase' });
       });
       if (mode === 'denied' || mode === 'single-denied') {
-        expect(f.cancel).toHaveBeenCalledWith('image-request');
+        expect(f.cancel).toHaveBeenCalledWith(f.requestId());
       } else {
         expect(f.cancel).not.toHaveBeenCalled();
       }
@@ -146,7 +146,7 @@ test.each([
       if (mode === 'owner-dispose') {
         await act(() => f.store.dispose());
         await waitFor(() =>
-          expect(f.cancel).toHaveBeenCalledWith('image-request'),
+          expect(f.cancel).toHaveBeenCalledWith(f.requestId()),
         );
         expect(end).toHaveBeenCalledTimes(1);
         return;
@@ -175,7 +175,7 @@ test.each([
         );
         await fireEvent.press(screen.getByTestId('rag-conversation-cancel'));
         await waitFor(() =>
-          expect(f.cancel).toHaveBeenCalledWith('image-request'),
+          expect(f.cancel).toHaveBeenCalledWith(f.requestId()),
         );
         expect(screen.queryByText(/전송 중/u)).toBeNull();
         expect(screen.getByTestId('rag-conversation-input').props.value).toBe(
@@ -197,7 +197,7 @@ test.each([
           screen.queryByTestId('conversation-sent-photo-image'),
         ).toBeNull();
         if (mode !== 'terminal-unproved')
-          expect(f.cancel).toHaveBeenCalledWith('image-request');
+          expect(f.cancel).toHaveBeenCalledWith(f.requestId());
         expect(screen.queryByText('합성 이미지 설명')).toBeNull();
         expect(Boolean(screen.queryByText('사진 전송이 중단됐어요.'))).toBe(
           mode === 'expiry' || mode === 'single-denied',

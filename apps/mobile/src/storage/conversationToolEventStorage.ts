@@ -191,7 +191,14 @@ export function createConversationToolEventStorage(
             JSON.stringify(merged),
           ],
         );
-        if (!old || (old.status === 'started' && event.status !== 'started'))
+        // Readers already treat missing lineage as empty. Keep the started
+        // event and its policy marker, but avoid writing a redundant empty row.
+        const omitEmptyStart =
+          !old && event.status === 'started' && lineage.sources.length === 0;
+        if (
+          !omitEmptyStart &&
+          (!old || (old.status === 'started' && event.status !== 'started'))
+        )
           await tx.execute(
             'INSERT OR REPLACE INTO conversation_tool_lineage (session_id, run_id, call_id, sources_json) VALUES (?, ?, ?, ?)',
             [

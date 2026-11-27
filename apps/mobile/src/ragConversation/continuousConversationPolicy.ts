@@ -1,7 +1,12 @@
 import { admittedDisplayLease } from './conversationSavedHistoryDisplay';
+import {
+  createCanonicalHistoryRetry,
+  type CanonicalRetryStore,
+} from './canonicalHistoryRetry';
 import { createConversationWarmAdmission } from './conversationWarmAdmission';
 import {
   createConversationRootRestoreOwnership,
+  createRootRestoreVisibility,
   ownedArchiveRestore,
 } from './conversationRootRestoreOwnership';
 import {
@@ -16,11 +21,9 @@ import type {
   ConversationSession,
   ConversationSessionOptions,
 } from './conversationSessionTypes';
-
-/** App-level policy, not a new transcript store. Existing restore/retention fences remain authoritative.
- * A selection failure blocks dispatch instead of starting an apparently empty conversation. */
+/** Block dispatch on selection failure rather than starting an apparently empty conversation. */
 export function continuousConversationPolicy<
-  T extends ContinuousConversationStore,
+  T extends ContinuousConversationStore & CanonicalRetryStore,
 >(
   store: T,
   options: ConversationSessionOptions,
@@ -37,6 +40,11 @@ export function continuousConversationPolicy<
   const holdArchive = Boolean(options.readSavedHistoryDisplay);
   const activeRestoration = () =>
     activeRestoringConversation(store.getSnapshot(), options.retention);
+  const cancelSelection = () => {
+    ++epoch;
+    controller?.abort();
+    pending = undefined;
+  };
   const abandonInitial = (recover = false) => {
     const target = rootRestore.target;
     if (!target) return undefined;
@@ -44,9 +52,7 @@ export function continuousConversationPolicy<
     const active = recover ? activeRestoration() : undefined;
     interrupted = active && model ? { ...active, model } : undefined;
     rootRestore.clear();
-    ++epoch;
-    controller?.abort();
-    pending = undefined;
+    cancelSelection();
     update(id, { modelSelectionPending: false });
     return store.toolSourceSessionId(id) === target.id ? id : undefined;
   };
@@ -79,6 +85,7 @@ export function continuousConversationPolicy<
         : undefined;
     update(activeId, {
       modelSelectionPending: true,
+      modelSelectionFailed: false,
       modelSelectionKeepsDisplay: Boolean(keepDisplay),
     });
     const run = async () => {
@@ -132,7 +139,6 @@ export function continuousConversationPolicy<
           interrupted = undefined;
           if (existing.id !== activeId) store.cancel(activeId);
           store.select(existing.id);
-
           update(activeId, {
             modelSelectionPending: false,
             modelSelectionFailed: false,
@@ -167,15 +173,19 @@ export function continuousConversationPolicy<
   };
   const restartInitial = () =>
     synchronizeModel(true, 'restart-interrupted-initial-page');
-  const resumeRootRestore = () =>
-    rootRestore.reconcile({
-      resolve: options.continuousSession!,
-      attached: ({ id, version }) => {
-        const active = activeRestoration();
-        return active?.lease.id === id && active.lease.version === version;
-      },
-      restart: restartInitial,
-    });
+  const { resume: resumeRootRestore, setVisible: setRootConversationVisible } =
+    createRootRestoreVisibility(
+      rootRestore,
+      options.continuousSession!,
+      activeRestoration,
+      restartInitial,
+      () => Boolean(interrupted && !pending),
+    );
+  const retireSelection = () => {
+    rootRestore.clear();
+    interrupted = undefined;
+    cancelSelection();
+  };
   const ready = conversationSelectionReady({
     enabled,
     snapshot: store.getSnapshot,
@@ -184,16 +194,15 @@ export function continuousConversationPolicy<
     disposed: () => disposed,
     cancel() {
       rootRestore.clear();
-      ++epoch;
-      controller?.abort();
-      pending = undefined;
+      cancelSelection();
       update(store.getSnapshot().activeId, { modelSelectionPending: false });
     },
   });
+  const selectionEpoch = () => (pending || disposed ? -1 : epoch);
   const warm = createConversationWarmAdmission(
     store,
     options,
-    () => (pending || disposed ? -1 : epoch),
+    selectionEpoch,
     ready,
     update,
   );
@@ -201,15 +210,14 @@ export function continuousConversationPolicy<
     ...store,
     continuous: enabled,
     synchronizeModel,
-    setRootConversationVisible(visible: boolean) {
-      rootRestore.setVisible(visible);
-      // A leave and return can land in one React batch without a scene effect.
-      if (visible)
-        (
-          resumeRootRestore() ??
-          (interrupted && !pending ? restartInitial() : undefined)
-        )?.catch(() => {});
-    },
+    retryRestore: createCanonicalHistoryRetry(
+      store,
+      options,
+      rootRestore.captureVisibility,
+      selectionEpoch,
+      update,
+    ),
+    setRootConversationVisible,
     cancel(id: number) {
       if (store.getSnapshot().activeId === id) abandonInitial();
       store.cancel(id);
@@ -230,20 +238,12 @@ export function continuousConversationPolicy<
     prepareSend: warm.prepare,
     bindSender: warm.binder(() => (enabled ? model : undefined)),
     invalidateAll() {
-      rootRestore.clear();
-      interrupted = undefined;
-      ++epoch;
-      controller?.abort();
-      pending = undefined;
+      retireSelection();
       store.invalidateAll();
     },
     dispose() {
-      rootRestore.clear();
-      interrupted = undefined;
       disposed = true;
-      ++epoch;
-      controller?.abort();
-      pending = undefined;
+      retireSelection();
       store.dispose();
     },
   };

@@ -57,7 +57,7 @@ test('an image without text traverses the attached composer and only the dedicat
   expect(screen.queryByTestId('conversation-photo-consent')).toBeNull();
   expect(await screen.findByText('합성 이미지 설명')).toBeTruthy();
   expect(f.start).toHaveBeenCalledTimes(1);
-  expect(f.start).toHaveBeenCalledWith('image-request', 'synthetic-owner', {
+  expect(f.start).toHaveBeenCalledWith(f.requestId(), 'synthetic-owner', {
     model: 'gpt-6.2-sol',
     directPhoto: { text: '', jpegBase64: syntheticDirectJPEG },
   });
@@ -83,7 +83,7 @@ test('opted-in automatic memory excludes a direct photo and its authored prefere
   await attach();
   await send();
   expect(await screen.findByText('합성 이미지 설명')).toBeTruthy();
-  expect(f.start).toHaveBeenCalledWith('image-request', 'synthetic-owner', {
+  expect(f.start).toHaveBeenCalledWith(f.requestId(), 'synthetic-owner', {
     model: 'gpt-6.2-sol',
     directPhoto: { text: authored, jpegBase64: syntheticDirectJPEG },
   });
@@ -159,7 +159,7 @@ test('Stop cancels the sole native image request and clears its transient previe
   await waitFor(() => expect(f.start).toHaveBeenCalledTimes(1));
   expect(screen.getByText(/전송 중/)).toBeTruthy();
   await fireEvent.press(screen.getByTestId('rag-conversation-cancel'));
-  await waitFor(() => expect(f.cancel).toHaveBeenCalledWith('image-request'));
+  await waitFor(() => expect(f.cancel).toHaveBeenCalledWith(f.requestId()));
   expect(screen.queryByText(/전송 중/)).toBeNull();
   expect(screen.queryByTestId('conversation-photo-preview')).toBeNull();
   expect(f.ordinary).not.toHaveBeenCalled();

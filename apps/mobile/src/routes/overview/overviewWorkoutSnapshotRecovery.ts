@@ -7,10 +7,10 @@ import type {
 export type OverviewWorkoutRecovery = {
   readonly database: SqlDatabase;
   readonly period: WorkoutPeriod;
-  readonly cohort: readonly PeriodWorkout[];
+  readonly cohort?: readonly PeriodWorkout[];
 };
 
-/** Retry only a dispatched, precisely unchanged cohort. A guarded reimport
+/** When a cohort was observed, require its precise membership again. A guarded reimport
  * must not silently authorize a different workout in this request. */
 export function overviewWorkoutCohortFence(
   previous?: readonly PeriodWorkout[],

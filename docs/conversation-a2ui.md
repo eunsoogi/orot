@@ -411,3 +411,21 @@ options appear as wrapping native selection pills. Omission or `"checkbox"`
 keeps the vertical layout. Single and multiple selection, optional filtering,
 the original answer, and retirement rules are unchanged. Labels and selections
 are not sent or archived; no action, link, or external binding is introduced.
+
+Fresh ordinary task v67 can repeat the bundled decorative Basic Catalog
+`folder` icon up to three times within one static read-only reply.
+Each icon must immediately precede a different accepted body Text in its own
+Row or Column. If any placement is invalid, the whole optional layout falls
+back to the unchanged answer. The icons are not accessible actions or images,
+and are omitted on archive reopening. Earlier versions keep their existing
+grammar; no model data, remote assets or actions are added.
+
+Fresh ordinary source-free task v68 supports the pinned collection-local
+`@index` system function inside an existing final repeated Text `formatString`.
+For example, `Step ${@index(offset: 1)}: ${title}` adds numbers from the owning
+collection order, not a property supplied by the model. Omitting `offset`
+starts at zero. Only a literal finite offset is accepted; the complete
+materialized text still must match the accepted answer in order. Whole-array
+replacements use their final order. Provisional surfaces, v67 and earlier,
+and sourced replies do not gain this function. Existing archives retain only
+eligible static layout/prose, not function expressions or array data.

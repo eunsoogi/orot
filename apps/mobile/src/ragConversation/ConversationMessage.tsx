@@ -9,7 +9,10 @@ import { useConversationMessageEvidence } from './useConversationMessageEvidence
 import type { EvidenceReference } from '@orot/agent-runtime';
 import { AppButton } from '../layout/AppButton';
 import { AppText as Text } from '../layout/AppText';
-import { ConversationMessageText } from './ConversationMessageText';
+import {
+  ConversationMessageText,
+  conversationAssistantTextFormat,
+} from './ConversationMessageText';
 import { ConversationSentPhoto } from './ConversationSentPhoto';
 import { useOwnedColdPhotoPreview } from './ownedColdPhotoDisplay';
 import { ConversationPreviousOutputs } from './ConversationPreviousOutputs';
@@ -199,11 +202,7 @@ export function ConversationMessage({
               onLinkError={markdownLinkError}
               staticText={message.savedHistoryDisplayOnly}
               selectable={copyMenus === undefined}
-              allowReport={
-                !(message.directPhotoReply || message.streaming) &&
-                !message.incomplete &&
-                !message.historyUnavailable
-              }
+              assistantFormat={conversationAssistantTextFormat(message)}
               testID={conversationMessageBodyTestID(message)}
             />
           ) : null}

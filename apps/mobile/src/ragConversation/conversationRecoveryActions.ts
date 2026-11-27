@@ -23,6 +23,7 @@ export function conversationRecoveryActions(input: {
     readExplicitPriorVoiceContext:
       options.retention?.readExplicitPriorVoiceContext,
     refreshRecovery: recoveryFor(options, find, update, disposed),
+    hasTaskRestore: taskRefresh.has,
     retryRestore: (id: number, signal?: AbortSignal) =>
       disposed()
         ? Promise.resolve()

@@ -178,7 +178,7 @@ test.each([
         return (
           <ConversationA2UILocalDraftOwner.Provider value={owner}>
             <ConversationMessageText
-              allowReport
+              assistantFormat="report-capable"
               content={text}
               user={false}
               verifiedA2UI={root}

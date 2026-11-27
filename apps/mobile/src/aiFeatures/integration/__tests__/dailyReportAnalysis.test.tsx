@@ -31,6 +31,7 @@ test('severe readings lead, all historical and plan citations survive compositio
   expect(claims[0]).toEqual({
     ...dailyReportGuidance(values, sources as never)[0],
     section: 'priority',
+    focus: 'takeaway',
   });
   expect(claims[0]!.text).toContain('119');
   expect(claims.find(item => item.section === 'history')).toEqual({

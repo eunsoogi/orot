@@ -168,7 +168,7 @@ test.each(['absent', 'cancelled'] as const)(
   },
 );
 
-test('a taken dose selected by the model appears once and retains distinctly attributed extra evidence', () => {
+test('a taken dose stays in retained detail with distinct attribution, never in the primary takeaway', () => {
   const values = [dose('taken')];
   const sources = sourcesFor(values);
   const action = summarize(values)[0]!;
@@ -189,7 +189,7 @@ test('a taken dose selected by the model appears once and retains distinctly att
     [],
     [sameAction, modelDuplicate],
   );
-  expect(result).toEqual([
+  expect(result.filter(item => !item.focus)).toEqual([
     { ...action, section: 'actions' },
     {
       section: 'model',
@@ -197,6 +197,10 @@ test('a taken dose selected by the model appears once and retains distinctly att
       sourceReferences: [extraRef],
     },
   ]);
+  expect(result.filter(item => item.focus).map(item => item.focus)).toEqual([
+    'takeaway',
+  ]);
+  expect(result.find(item => item.focus)?.text).not.toBe(action.text);
   const observed = { ...action, text: '원본 복용 기록' };
   expect(
     reportObservations([observed, { ...action, role: 'guidance' }], [], [1]),

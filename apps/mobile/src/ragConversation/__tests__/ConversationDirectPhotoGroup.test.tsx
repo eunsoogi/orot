@@ -237,7 +237,7 @@ test('accepted group shows one sending row and immediately releases the exact su
       screen.queryByText('사진을 안전하게 전송할 준비를 하고 있어요.'),
     ).toBeNull();
     await fireEvent.press(screen.getByTestId('rag-conversation-cancel'));
-    await waitFor(() => expect(f.cancel).toHaveBeenCalledWith('image-request'));
+    await waitFor(() => expect(f.cancel).toHaveBeenCalledWith(f.requestId()));
     expect(screen.getByTestId('rag-conversation-input').props.value).toBe(
       'Original group caption',
     );

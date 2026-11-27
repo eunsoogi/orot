@@ -34,6 +34,7 @@ export async function directPhotoComposerFixture({
   enableOrdinaryMemory = false,
   seed,
   entryChoices,
+  photoAnswer = '합성 이미지 설명',
 }: {
   supported?: boolean;
   hold?: boolean;
@@ -47,6 +48,7 @@ export async function directPhotoComposerFixture({
     storage: ReturnType<typeof createConversationArtifactStorage>,
   ) => Promise<void>;
   entryChoices?: ReactNode;
+  photoAnswer?: string;
 } = {}) {
   const f = openSqliteTestDatabase(':memory:');
   await runMigrations(f.database);
@@ -113,8 +115,8 @@ export async function directPhotoComposerFixture({
       type: 'response_started',
       responseId: 'synthetic-response',
     });
-    listener?.({ requestId, type: 'text_delta', text: '합성 이미지 설명' });
-    listener?.({ requestId, type: 'completed', text: '합성 이미지 설명' });
+    listener?.({ requestId, type: 'text_delta', text: photoAnswer });
+    listener?.({ requestId, type: 'completed', text: photoAnswer });
   };
   const start = jest.fn<ReturnType<Start>, Parameters<Start>>(
     async requestId => {
@@ -144,7 +146,6 @@ export async function directPhotoComposerFixture({
       displayName: 'Synthetic image model',
       supportsDirectPhoto: supported,
     },
-    requestIDFactory: () => 'image-request',
   });
   jest.mocked(ports.pick).mockResolvedValue(syntheticDirectJPEG);
   jest.mocked(ports.authorization).mockResolvedValue({
@@ -237,7 +238,8 @@ export async function directPhotoComposerFixture({
     ordinary,
     cancel,
     release: () => releaseGrant(),
-    completePhoto: () => publishReply('image-request'),
+    requestId: () => start.mock.lastCall?.[0],
+    completePhoto: (id = start.mock.lastCall?.[0] ?? '') => publishReply(id),
     retire() {
       current = false;
       invalidate?.();

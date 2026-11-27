@@ -151,6 +151,7 @@ export function createConversationSessions(
       taskRefresh,
       disposed: () => disposed,
     }),
+    needsCanonicalRetry: restoration.needsCanonicalRetry,
     resumeCold: requests.resumeCold,
     steer: requests.steer,
     ...photoSurface.retain(find, update, requests.reserveUserMessageId),

@@ -137,6 +137,7 @@ export async function performDirectPhotoSend(input: {
       images,
       prompt,
       controller,
+      localReplyId: retain.id,
       admitted,
       backgroundCurrent: () =>
         transfer?.current() === true && lease?.current() === true,

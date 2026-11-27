@@ -33,6 +33,24 @@ export type ConversationHistoryReaderOwner = {
   nextId: number;
   displayAdmission?: () => boolean;
   initialAdmission?: ConversationInitialPageAdmission;
+  readonly canonicalInitial?: boolean;
   controller?: AbortController;
   flight?: Promise<void>;
 };
+
+/** Keep the canonical marker after a failed flight so a later retry cannot bypass fresh admission. */
+export function createHistoryReaderOwner(
+  durableId: string,
+  displayAdmission?: () => boolean,
+  initialAdmission?: ConversationInitialPageAdmission,
+): ConversationHistoryReaderOwner {
+  return {
+    durableId,
+    displayAdmission,
+    initialAdmission,
+    canonicalInitial: Boolean(initialAdmission),
+    initialized: false,
+    exhausted: false,
+    nextId: 0,
+  };
+}

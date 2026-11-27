@@ -26,6 +26,8 @@ export function createConversationPhotoImageSend(input: {
   readonly jpegBase64?: string;
   readonly jpegBase64s?: readonly string[];
   readonly prompt: string;
+  /** Local conversation identity, not part of the outgoing provider envelope. */
+  readonly localReplyId?: string;
   readonly signal: AbortSignal;
   /** Must combine attachment generation, ownership, live credential and exact selection. */
   readonly isCurrent: () => boolean;
@@ -40,6 +42,7 @@ export function createConversationPhotoImageSend(input: {
 }): () => Promise<Outcome> {
   const {
     selected,
+    localReplyId,
     signal: ownerSignal,
     isCurrent,
     beforeNativeStart,
@@ -118,6 +121,7 @@ export function createConversationPhotoImageSend(input: {
           ? { jpegBase64: jpegBase64[0]! }
           : { jpegBase64s: jpegBase64 }),
         signal,
+        localReplyId,
         isCurrent: current,
         beforeNativeStart,
       });

@@ -1,3 +1,4 @@
+import { dailyReportMainClaims } from './dailyReportFocus';
 import { DailyReportAnalysis } from './DailyReportAnalysisSection';
 import { View, StyleSheet } from 'react-native';
 import { useLayoutEffect, useRef, useState } from 'react';
@@ -7,6 +8,7 @@ import { AppButton } from '../../layout/AppButton';
 import { formatDateTime, t } from '../../i18n';
 import { dailyReportEmptyActivity } from './dailyReportEmptyActivity';
 import { DailyReportCoverage } from './DailyReportCoverage';
+import { dailyReportCoverageMeaning } from './dailyReportCoverageMeaning';
 import { dailyReportCoverageCounts } from './dailyReportCoverageCounts';
 import { DailyReportSourceLinks } from './DailyReportSourceLinks';
 import type { createDailyReportFeature } from './dailyReportFeature';
@@ -47,6 +49,15 @@ export function DailyReportSavedSection({
     };
   }, [saved.runId, saved.revision]);
   const { timeZone } = saved.context.identity;
+  const claims = saved.report.supportedContext;
+  const primary = dailyReportMainClaims(claims);
+  const focused = primary !== claims;
+  const coverage =
+    focused && !showEvidence
+      ? saved.report.coverage.filter(item =>
+          ['stale', 'failed'].includes(dailyReportCoverageMeaning(item)),
+        )
+      : saved.report.coverage;
   const sourceCounts = dailyReportCoverageCounts(
     saved.context.sourceSnapshot?.records,
   );
@@ -68,11 +79,14 @@ export function DailyReportSavedSection({
           ),
         })}
       </AppText>
-      <DailyReportAnalysis claims={saved.report.supportedContext} />
+      <DailyReportAnalysis claims={primary} />
       <AppText accessibilityRole="header">
         {t('dailyReport.observations')}
       </AppText>
-      {dailyReportEmptyActivity(saved.report.coverage).map(text => (
+      {(!focused || showEvidence
+        ? dailyReportEmptyActivity(saved.report.coverage)
+        : []
+      ).map(text => (
         <AppText key={text}>{text}</AppText>
       ))}
       <AppButton
@@ -87,16 +101,21 @@ export function DailyReportSavedSection({
       />
       {/* Retained report wording is immutable: never rewrite an older medical
           claim with today's formatter or silently regenerate its assessment. */}
+      {showEvidence && primary !== claims ? (
+        <DailyReportAnalysis claims={claims.filter(item => !item.focus)} />
+      ) : null}
       {showEvidence
         ? saved.report.observations.map((item, index) => (
             <AppText key={index}>{item.text}</AppText>
           ))
         : null}
-      <DailyReportCoverage
-        coverage={saved.report.coverage}
-        sourceCounts={sourceCounts}
-        timeZone={timeZone}
-      />
+      {!focused || showEvidence || coverage.length ? (
+        <DailyReportCoverage
+          coverage={coverage}
+          sourceCounts={sourceCounts}
+          timeZone={timeZone}
+        />
+      ) : null}
       {onOpenSource ? (
         <DailyReportSourceLinks
           identity={saved.context.identity}

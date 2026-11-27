@@ -29,6 +29,7 @@ export async function readOwnedWorkoutPeriod(
   requireVisiblePeriodMatch = false,
 ) {
   const scope = Object.freeze({ ...period });
+  let nativeUnavailable = false;
   type OwnedRead = { result: WorkoutPeriodResult; cohortKey?: string };
   const read = async (): Promise<OwnedRead | undefined> => {
     const current = () => !owner.signal.aborted && owner.current();
@@ -67,6 +68,8 @@ export async function readOwnedWorkoutPeriod(
           ? { requireVisiblePeriodMatch: true }
           : undefined,
       );
+      // Settlement may be superseded, but an actual native rejection is not a writer wait.
+      nativeUnavailable = result.status === 'unavailable';
       if (cohortKey !== undefined && result.status === 'available') {
         // The native digest attests HealthKit participants; it cannot attest
         // the original protected SQL membership across the native await.
@@ -106,7 +109,7 @@ export async function readOwnedWorkoutPeriod(
       owner.current()
     );
   };
-  return { result, reprove };
+  return { result, reprove, nativeUnavailable };
 }
 
 /** Candidate local proof for an explicitly scoped Conversation workout read.

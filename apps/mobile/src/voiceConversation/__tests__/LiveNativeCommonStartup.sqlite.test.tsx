@@ -119,6 +119,8 @@ test.each([
       photoDrafts: { get: () => ({ status: 'empty' }) },
     } as unknown as ConversationVoiceProps['store'];
     const onSend = jest.fn();
+    const stringify =
+      mode === 'valid' ? jest.spyOn(JSON, 'stringify') : undefined;
     try {
       await audio.seed({ audio: true, tool: false, wrongRecipient: false });
       const result = await render(
@@ -183,6 +185,13 @@ test.each([
             ).toHaveBeenCalledTimes(1),
           );
           const { id, challenge } = assertFakeLiveCommonResult(native);
+          if (stringify) {
+            const wire =
+              native.settleLiveCommonConversationResult.mock.calls[0]?.[2];
+            const { results } = stringify.mock;
+            const matches = results.filter(entry => entry.value === wire);
+            expect(matches.length).toBe(2);
+          }
           if (queued)
             await assertFakeLiveCommonSuccessor({
               mode,
@@ -232,6 +241,7 @@ test.each([
         await result.unmount();
       }
     } finally {
+      stringify?.mockRestore();
       timings.restore();
       audio.close();
       storage.close();

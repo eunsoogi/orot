@@ -1,6 +1,6 @@
 import type { EvidenceBatch } from '@orot/agent-runtime';
 import { healthContextToolDefinition } from '../conversationTools/healthContextToolDefinition';
-import { jsonByteLength } from '../aiFeatures/integration/evidenceUtils';
+import { utf8ByteLength } from '../aiFeatures/integration/evidenceUtils';
 
 /** Existing canonical transfer body. No complete source row, native identity,
  * transcript or unrelated registry item crosses this projection. */
@@ -19,5 +19,8 @@ export function canonicalLiveHealthPayload(batch: EvidenceBatch) {
       content,
     })),
   };
-  return jsonByteLength(payload) <= 8192 ? payload : undefined;
+  const serialized = JSON.stringify(payload);
+  return utf8ByteLength(serialized) <= 8192
+    ? { payload, serialized }
+    : undefined;
 }

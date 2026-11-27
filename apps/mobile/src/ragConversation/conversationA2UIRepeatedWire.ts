@@ -1,6 +1,9 @@
 import { conversationA2UIFrameLimit } from './conversationA2UI';
-import { draftA2UISurfaceId } from './conversationA2UIPresentation';
-import { fail, keys, object } from './conversationA2UIWireValues';
+import {
+  conversationA2UIProse,
+  draftA2UISurfaceId,
+} from './conversationA2UIPresentation';
+import { displayText, fail, keys, object } from './conversationA2UIWireValues';
 
 // Only the exact owned surface and operation may contribute template values.
 export function envelope(
@@ -36,4 +39,23 @@ export function readReplacements(
     replacements.set(path, update.value);
   }
   return replacements;
+}
+
+const maxItems = 12;
+export function readRepeatedRows(raw: unknown, fields: ReadonlySet<string>) {
+  if (!Array.isArray(raw) || !raw.length || raw.length > maxItems) fail();
+  return (raw as unknown[]).map(value => {
+    const row = object(value);
+    if (Object.keys(row).length !== fields.size) fail();
+    const accepted = new Map<string, string>();
+    for (const field of fields) {
+      if (!Object.hasOwn(row, field)) fail();
+      const text = displayText(row[field]);
+      // One field stands for one accepted paragraph. The exact final answer
+      // is still checked against the fully materialized graph downstream.
+      if (conversationA2UIProse(text)?.length !== 1) fail();
+      accepted.set(field, text);
+    }
+    return accepted;
+  });
 }

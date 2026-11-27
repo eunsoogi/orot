@@ -1,7 +1,7 @@
 import {
   createOverviewWorkoutForeground,
   confirmProtection,
-  type WorkoutForegroundOwner,
+  type OverviewWorkoutReadOwner,
 } from './overviewWorkoutForeground';
 import { useLayoutEffect, useState } from 'react';
 import {
@@ -33,31 +33,24 @@ import {
   acquireIndependentReadEpoch,
   awaitIndependentReadSettlement,
 } from '../../storage/protectedReadEpoch';
-type State = WorkoutPeriodResult | { status: 'loading' };
 const unavailable = { status: 'unavailable' } as const;
 const loading = { status: 'loading' } as const;
-const writerBudgetMs = 2_500;
 const trace = workoutReadDiagnostics('overview');
-type ReadOwner = WorkoutForegroundOwner & {
-  abort: AbortController;
-  epoch?: ReturnType<typeof acquireIndependentReadEpoch>;
-  stopExpiry?: () => void;
-  staleStartup?: boolean;
-  receipt?: WorkoutChoiceReceipt;
-};
 export function useOverviewWorkoutPeriodHeartRate(
   active: boolean,
   selectionEpoch?: number | null,
   startupWorkoutChoice?: WorkoutChoiceReceipt,
   selectionWitness?: string | null,
   readSavedSelection = false,
-): State {
+) {
   const admission = useOverviewWorkoutSelectionAdmission(
     selectionEpoch,
     startupWorkoutChoice,
     selectionWitness,
   );
-  const [state, setState] = useState<State>(unavailable);
+  const [state, setState] = useState<WorkoutPeriodResult | typeof loading>(
+    unavailable,
+  );
   useLayoutEffect(() => {
     const native = active ? conversationExecutionNative() : null;
     if (!native?.bridgeAvailable) {
@@ -67,7 +60,7 @@ export function useOverviewWorkoutPeriodHeartRate(
     }
     const phase = () => native.currentPhase?.() ?? 'unknown';
     let mounted = true;
-    let task: ReadOwner | undefined;
+    let task: OverviewWorkoutReadOwner | undefined;
     let boundary: ReturnType<typeof setTimeout> | undefined;
     function dropTask(showUnavailable = true) {
       const retired = task;
@@ -85,18 +78,21 @@ export function useOverviewWorkoutPeriodHeartRate(
       boundary = undefined;
       dropTask(showUnavailable);
     }
-    const current = (target: ReadOwner) =>
+    const current = (target: OverviewWorkoutReadOwner) =>
       mounted && task === target && !target.abort.signal.aborted;
     const probe = createWorkoutProtectionProbe();
     const confirm = confirmProtection(current, phase, probe, native);
-    async function start(rechecks = 2, previous?: OverviewWorkoutRecovery) {
+    async function start(
+      retryInterrupted = true,
+      previous?: OverviewWorkoutRecovery,
+    ) {
       if (!mounted || task || phase() !== 'active' || !admission.mayStart())
         return;
       const startup = admission.startup();
       const window = overviewWorkoutReadWindow(previous?.period);
       const { period, currentWindow } = window;
       const cohortFence = overviewWorkoutCohortFence(previous?.cohort);
-      const target: ReadOwner = {
+      const target: OverviewWorkoutReadOwner = {
         abort: new AbortController(),
         receipt: startup,
       };
@@ -121,31 +117,48 @@ export function useOverviewWorkoutPeriodHeartRate(
         );
         if (!current(target) || (previous && database !== previous.database))
           return;
-        target.epoch = acquireIndependentReadEpoch(database);
         const { signal } = target.abort;
         const awaitWriter = () =>
-          awaitIndependentReadSettlement(database, writerBudgetMs, signal);
-        if (!target.epoch) {
-          if (
-            !(await awaitWriter()) ||
-            !(await confirm(target)) ||
-            !storage.isCurrentLocalAgentMemoryDatabase(database)
-          )
-            return trace.report('epoch', 'failed');
-          target.epoch = acquireIndependentReadEpoch(database);
-        }
+          awaitIndependentReadSettlement(database, undefined, signal);
         const ownsScope = () =>
           current(target) &&
           currentWindow() &&
           storage.isCurrentLocalAgentMemoryDatabase(database);
+        // A different writer can enter while the last settlement is being
+        // re-proved. An absent epoch is not a failed workout read: wait on
+        // that writer's own settlement without retiring this route owner.
+        while (ownsScope()) {
+          target.epoch = acquireIndependentReadEpoch(database);
+          if (target.epoch) break;
+          if (!(await awaitWriter()) || !(await confirm(target)))
+            return trace.report('epoch', 'failed');
+        }
         const admitted = () => ownsScope() && target.epoch?.current() === true;
         target.usable = admitted;
-        if (!admitted()) return trace.report('epoch', 'cancelled');
         let observedCohort: Parameters<typeof cohortFence.admit>[0] | undefined;
-        const { result, stale } = await readOverviewWorkoutChoicePeriod(
-          startup,
-          period,
-          {
+        target.recover = async () => {
+          const cohort =
+            cohortFence.dispatched() ?? observedCohort ?? previous?.cohort;
+          if (target.recovering || !ownsScope()) return;
+          target.recovering = true;
+          setState(loading);
+          const replacement = await canReacquireOverviewWorkoutSnapshot(
+            target.epoch?.current(),
+            () => ownsScope() && /^(active|inactive)$/.test(phase()),
+            awaitWriter,
+            () => confirm(target),
+          );
+          if (replacement) {
+            dropTask(false);
+            start(false, { database, period, cohort });
+          }
+        };
+        if (!admitted()) {
+          trace.report('epoch', 'cancelled');
+          return await target.recover();
+        }
+        const { result, stale, nativeUnavailable } =
+          await readOverviewWorkoutChoicePeriod(startup, period, {
             repository: createRecordRepository(database),
             signal,
             current: admitted,
@@ -155,31 +168,16 @@ export function useOverviewWorkoutPeriodHeartRate(
               observedCohort = cohort;
             },
             admitNativeCohort: cohortFence.admit,
-          },
-        );
+          });
         target.staleStartup = stale || (!!startup && !admitted());
-        target.recover = async () => {
-          const dispatched = cohortFence.dispatched();
-          const cohort = dispatched ?? observedCohort;
-          if (
-            cohort &&
-            rechecks > (dispatched ? 1 : 0) &&
-            (await canReacquireOverviewWorkoutSnapshot(
-              target.epoch?.current(),
-              () => ownsScope() && phase() === 'active',
-              awaitWriter,
-              () => confirm(target),
-            ))
-          ) {
-            dropTask(false);
-            start(dispatched ? 0 : rechecks - 1, { database, period, cohort });
-          }
-        };
         const usableResult = !!result && result.status !== 'unavailable';
         while (usableResult && phase() === 'inactive') {
           if (!(await confirm(target))) return;
         }
-        if (!admitted()) return await target.recover();
+        if (!admitted()) {
+          if (!nativeUnavailable) await target.recover();
+          return;
+        }
         if (startup && !admission.holds(startup)) {
           target.staleStartup = true;
           return;
@@ -188,15 +186,15 @@ export function useOverviewWorkoutPeriodHeartRate(
         target.settled = usableResult;
         if (target.settled) {
           setState(trace.settlement(result));
-        } else if (rechecks > 1 && target.interrupted) {
+        } else if (retryInterrupted && target.interrupted) {
           dropTask(false);
-          start(0);
+          start(false);
         }
       } catch {
       } finally {
         if (current(target) && !target.settled) {
           dropTask(!target.staleStartup);
-          if (startup && admission.startup() !== startup) start(0);
+          if (startup && admission.startup() !== startup) start(false);
         }
       }
     }

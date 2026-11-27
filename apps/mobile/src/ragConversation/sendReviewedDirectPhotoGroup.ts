@@ -13,6 +13,7 @@ export function sendReviewedDirectPhotoGroup(input: {
   readonly grant: NonNullable<Awaited<ReturnType<Ports['grant']>>>;
   readonly images: readonly string[];
   readonly prompt: string;
+  readonly localReplyId: string;
   readonly controller: AbortController;
   readonly admitted: () => boolean;
   readonly prepare: () => boolean | Promise<boolean>;
@@ -24,6 +25,7 @@ export function sendReviewedDirectPhotoGroup(input: {
     grant,
     images,
     prompt,
+    localReplyId,
     controller,
     admitted,
     prepare,
@@ -56,6 +58,7 @@ export function sendReviewedDirectPhotoGroup(input: {
     selected: authorization.selected,
     jpegBase64s: images,
     prompt,
+    localReplyId,
     signal: controller.signal,
     isCurrent: () => admitted() && (active() || backgroundCurrent?.() === true),
     // Transfer the scene owner only at the synchronous handoff to the

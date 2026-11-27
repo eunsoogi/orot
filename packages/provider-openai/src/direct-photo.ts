@@ -11,6 +11,8 @@ export type ApprovedPhoto = Readonly<{
   jpegBase64?: string;
   jpegBase64s?: readonly string[];
   signal: AbortSignal;
+  /** Correlates the native photo ticket to its owning local reply; never provider input. */
+  localReplyId?: string;
   /** Synchronous exact request/selection/credential fence at native admission. */
   isCurrent: () => boolean;
   /** Optional app-owned state handoff after the last JavaScript ownership check. */
@@ -45,6 +47,7 @@ export function registerChatGPTPlanDirectPhoto(
     jpegBase64,
     jpegBase64s,
     signal,
+    localReplyId,
     isCurrent,
     beforeNativeStart,
   }) => {
@@ -54,6 +57,7 @@ export function registerChatGPTPlanDirectPhoto(
       !isCurrent() ||
       text.length > 4000 ||
       !photos ||
+      (localReplyId !== undefined && !/^photo-reply:[0-9a-f]{32}$/.test(localReplyId)) ||
       (jpegBase64s && jpegBase64 !== undefined)
     )
       return null;
@@ -77,7 +81,7 @@ export function registerChatGPTPlanDirectPhoto(
     const stream = cancellableStream(
       createChatGPTPlanStream(
         { ...options, bridge: transport },
-        nextRequestID,
+        localReplyId === undefined ? nextRequestID : () => localReplyId,
         { messages: [{ role: 'user', content: '' }] },
         new CompletedContinuationCache(),
       ),

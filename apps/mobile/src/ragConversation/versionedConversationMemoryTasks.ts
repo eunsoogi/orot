@@ -1,3 +1,4 @@
+import { withConversationA2UIOrdinals } from './conversationA2UIOrdinalTask';
 import { withPublicWebConversationLayout } from './conversationA2UIPublicWebLayout';
 import { withConversationA2UITabSelectionLifetime } from './conversationA2UITabSelectionLifetime';
 import { withConversationA2UIReplacement } from './conversationA2UIReplacementTask';
@@ -85,7 +86,7 @@ export function versionedConversationMemoryTasks(
     multiline = false,
     filterable: boolean | 'chips' = false,
     mixedWeights = false,
-    folderIcon = false,
+    folderIcon: boolean | 'grouped' = false,
     checklistProse: boolean | 'mixed' = false,
     numeric = false,
     combinedDateTime = false,
@@ -109,6 +110,13 @@ export function versionedConversationMemoryTasks(
   const v60 = withConversationA2UITabSelectionLifetime(
     temporaryFormTask(true, true, true, true),
     '60',
+  );
+  const v67 = withPublicWebConversationLayout(
+    withConversationA2UITabSelectionLifetime(
+      temporaryFormTask(true, 'chips', true, 'grouped', 'mixed', true, true),
+      '60',
+    ),
+    '67',
   );
   return {
     conversationTaskV25,
@@ -219,15 +227,19 @@ export function versionedConversationMemoryTasks(
           '65',
         ),
       ),
+      v67: observeConversationA2UIFinalAdmission(v67),
+      v66: observeConversationA2UIFinalAdmission(
+        withPublicWebConversationLayout(
+          withConversationA2UITabSelectionLifetime(
+            temporaryFormTask(true, 'chips', true, true, 'mixed', true, true),
+            '60',
+          ),
+          '66',
+        ),
+      ),
     },
     ragConversationTask: observeConversationA2UIFinalAdmission(
-      withPublicWebConversationLayout(
-        withConversationA2UITabSelectionLifetime(
-          temporaryFormTask(true, 'chips', true, true, 'mixed', true, true),
-          '60',
-        ),
-        '66',
-      ),
+      withConversationA2UIOrdinals(v67),
     ),
   };
 }

@@ -50,8 +50,20 @@ export async function loadSelectedOverviewSnapshot(
   signal: AbortSignal,
 ): Promise<SelectedOverviewSnapshot> {
   if (signal.aborted) throw new Error('Overview metric read was cancelled.');
-  await database.execute('PRAGMA temp_store = MEMORY');
-  return readOverviewMetricSnapshot(database, signal, tx =>
-    readSelectedOverviewProjection(tx, now),
+  // TEMP storage is connection-local. Check its actual configuration without
+  // resubmitting a writer-classified setter on every warm fallback.
+  const memoryOnly = await database
+    .execute('SELECT temp_store FROM pragma_temp_store')
+    .then(
+      result => result.rows.length === 1 && result.rows[0]?.temp_store === 2,
+    )
+    .catch(() => false);
+  if (signal.aborted) throw new Error('Overview metric read was cancelled.');
+  if (!memoryOnly) await database.execute('PRAGMA temp_store = MEMORY');
+  return readOverviewMetricSnapshot(
+    database,
+    signal,
+    tx => readSelectedOverviewProjection(tx, now),
+    true,
   );
 }
