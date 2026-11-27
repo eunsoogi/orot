@@ -25,7 +25,7 @@ export function useDirectPhotoDraftLifecycle({
   readonly owner: ReturnType<typeof createDirectPhotoDraftOwner>;
   readonly sessionId: number;
   readonly routeVisible: boolean;
-  readonly release: () => void;
+  readonly release: (sceneLeaving: boolean) => void;
 }) {
   const [interaction, setInteraction] = useState<State>({});
   const mounted = useRef(false);
@@ -42,22 +42,25 @@ export function useDirectPhotoDraftLifecycle({
     }
   };
   const discard = () => owner.clear(sessionId);
-  const suspend = useCallback(() => {
-    release();
-    setInteraction({});
-  }, [release]);
+  const suspend = useCallback(
+    (sceneLeaving: boolean) => {
+      release(sceneLeaving);
+      setInteraction({});
+    },
+    [release],
+  );
   useEffect(() => {
     mounted.current = true;
-    const interrupt = owner.interrupt(suspend);
+    const interrupt = owner.interrupt(() => suspend(false));
     owner.connect();
     return () => {
       mounted.current = false;
       interrupt();
-      release();
+      release(true);
     };
   }, [owner, release, sessionId, suspend]);
   useEffect(() => {
-    if (!routeVisible) suspend();
+    if (!routeVisible) suspend(true);
   }, [routeVisible, suspend]);
 
   const state: State = routeVisible

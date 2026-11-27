@@ -1,3 +1,4 @@
+import { AppState } from 'react-native';
 import { pickDirectPhotoGroup } from './pickDirectPhotoGroup';
 import { acceptedPhotoPresentation } from './acceptedPhotoPresentation';
 import { performDirectPhotoSend } from './performDirectPhotoSend';
@@ -33,14 +34,26 @@ export function useConversationDirectPhoto(
     accepted.getInterruption,
   );
   const ownsDraftRoute = isEntryCurrent?.routeOwnsDraft ?? isEntryCurrent;
-  const clear = useCallback(() => {
-    // Clearing a mounted draft must not retire a separately admitted request.
-    if (accepted.getSnapshot()?.sessionId !== sessionId) {
-      active.current?.abort();
-      active.current = null;
-    }
-    publish?.(null);
-  }, [accepted, publish, sessionId]);
+  const clear = useCallback(
+    (sceneLeaving: boolean) => {
+      // Only a separately admitted lease can outlive the scene. An unleased
+      // request is cancelled and may expose an interruption, never a pending row.
+      if (accepted.getSnapshot()?.sessionId !== sessionId) {
+        const controller = active.current;
+        if (
+          controller &&
+          (sceneLeaving ||
+            AppState.currentState === 'inactive' ||
+            AppState.currentState === 'background')
+        )
+          accepted.interruptUnleased(controller);
+        controller?.abort();
+        active.current = null;
+      }
+      publish?.(null);
+    },
+    [accepted, publish, sessionId],
+  );
   const {
     state,
     setState,
