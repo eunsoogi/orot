@@ -201,12 +201,14 @@ test('a completed literature source can be opened while an independent Overview 
     expect(link).toBeVisible();
     expect(call.mock.calls.length).toBeGreaterThanOrEqual(2);
     for (const owned of call.mock.calls) {
-      expect(owned).toEqual([
+      expect(owned.slice(0, 5)).toEqual([
         literatureOwner.sessionId,
         literatureOwner.operationRunId,
         literatureOwner.callId,
         literatureOwner.messageId,
+        undefined,
       ]);
+      expect(owned[5]?.aborted).toBe(false);
     }
     expect(selectedCallSetup).toEqual([]);
     expect(browser).not.toHaveBeenCalled();
