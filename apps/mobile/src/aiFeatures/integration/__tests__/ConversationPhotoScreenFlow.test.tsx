@@ -112,19 +112,35 @@ test('the real screen holds image pixels until Settings consent and saves only i
       items: [],
       nextCursor: null,
     });
+    const active = store
+      .getSnapshot()
+      .sessions.find(session => session.id === first);
+    expect(screen.getAllByText('합성 질문')).toHaveLength(1);
+    expect(active?.messages).toEqual([]);
+    expect(active?.savedHistoryDisplay).toEqual([]);
     expect(
-      store
-        .getSnapshot()
-        .sessions.find(session => session.id === first)
-        ?.savedHistoryDisplay?.map(item => item.row),
+      active?.currentDisplayMessages?.map(message => [
+        message.role,
+        message.content,
+      ]),
     ).toEqual([
+      ['user', '합성 질문'],
+      ['assistant', '합성 이미지 설명'],
+    ]);
+    // Read protected storage, not the mounted transcript, to prove what was saved.
+    const saved = await options.readSavedHistoryDisplay!(
+      'selected',
+      0,
+      new AbortController().signal,
+    );
+    expect(saved.rows).toEqual([
       expect.objectContaining({
-        // Only the approved answer and photo marker are saved, not the typed prompt.
         question: '',
         answer: '합성 이미지 설명',
         directPhoto: true,
       }),
     ]);
+    expect(JSON.stringify(saved.rows)).not.toContain(syntheticDirectJPEG);
     await view.unmount();
   } finally {
     fixture.close();
