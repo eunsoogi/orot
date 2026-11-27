@@ -405,3 +405,9 @@ mounted control. Optional exact RFC 3339 instant bounds are supported at
 JavaScript Date precision; model seeds, scheduling, outbound events, and
 archive restoration remain unsupported. Date-only and time-only behavior
 and earlier task contracts are unchanged.
+
+Fresh ordinary task v66 supports literal ChoicePicker `displayStyle: "chips"`:
+options appear as wrapping native selection pills. Omission or `"checkbox"`
+keeps the vertical layout. Single and multiple selection, optional filtering,
+the original answer, and retirement rules are unchanged. Labels and selections
+are not sent or archived; no action, link, or external binding is introduced.

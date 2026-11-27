@@ -15,7 +15,7 @@ export function withComposedConversationControls(
   version: '45' | '46' | '47' = '45',
   timeControls: boolean | 'combined' = false,
   multiline = false,
-  filterable = false,
+  filterable: boolean | 'chips' = false,
   checklistProse: boolean | 'mixed' = false,
   numeric = false,
 ): TaskResponderContract<GroundedRagAnswer> {
@@ -62,6 +62,9 @@ export function withComposedConversationControls(
                 : '') +
               (filterable
                 ? ' ChoicePicker may set literal filterable:true to add local case-insensitive search over option labels. Keep option values and selections unchanged by filtering. Do not supply a query, filter binding, or action.'
+                : '') +
+              (filterable === 'chips'
+                ? ' Use literal displayStyle "chips" on ChoicePicker for selectable pills that wrap, or omit it or use "checkbox" for the default vertical choices. Selection and filtering stay local.'
                 : '') +
               (checklistProse
                 ? ' For an interactive checklist of local CheckBox controls, use one unchecked fallback item in the answer for each: the literal unchecked square and space "☐ " followed by its exact label. Put the items in the same order as the controls, one per line. Do not repeat those items in separate Text components, start checked, or add sending or actions.'

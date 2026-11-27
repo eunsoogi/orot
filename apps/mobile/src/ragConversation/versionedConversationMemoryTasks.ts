@@ -83,7 +83,7 @@ export function versionedConversationMemoryTasks(
   const replacementBase = withConversationA2UIPanelCaptions(captionBase);
   const temporaryFormTask = (
     multiline = false,
-    filterable = false,
+    filterable: boolean | 'chips' = false,
     mixedWeights = false,
     folderIcon = false,
     checklistProse: boolean | 'mixed' = false,
@@ -210,14 +210,23 @@ export function versionedConversationMemoryTasks(
           '64',
         ),
       ),
+      v65: observeConversationA2UIFinalAdmission(
+        withPublicWebConversationLayout(
+          withConversationA2UITabSelectionLifetime(
+            temporaryFormTask(true, true, true, true, 'mixed', true, true),
+            '60',
+          ),
+          '65',
+        ),
+      ),
     },
     ragConversationTask: observeConversationA2UIFinalAdmission(
       withPublicWebConversationLayout(
         withConversationA2UITabSelectionLifetime(
-          temporaryFormTask(true, true, true, true, 'mixed', true, true),
+          temporaryFormTask(true, 'chips', true, true, 'mixed', true, true),
           '60',
         ),
-        '65',
+        '66',
       ),
     ),
   };
