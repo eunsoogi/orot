@@ -2,7 +2,10 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import type { HostInstance } from 'react-native';
 import { AppState, useWindowDimensions } from 'react-native';
 import { useNavigationGeometry } from '../navigation/NavigationGeometryProvider';
-import { useNavigationContentFrame } from '../navigation/navigationContentFrame';
+import {
+  useNavigationContentFrame,
+  type NavigationContentFrame,
+} from '../navigation/navigationContentFrame';
 import { observeNavigationTest } from '../navigation/navigationTestObservation';
 import { useNavigationOcclusion } from '../navigation/useNavigationContentInset';
 import { conversationWorkspaceOcclusion } from './conversationWorkspaceOcclusion';
@@ -37,6 +40,8 @@ export function useConversationWorkspaceBounds(routeKey?: string) {
   };
   const latestLimits = useRef<Limits>(limits);
   latestLimits.current = limits;
+  const latestFrame = useRef(shared);
+  latestFrame.current = shared;
   const ref = useRef<HostInstance | null>(null);
   const [bounds, setBounds] = useState<{
     x: number;
@@ -44,6 +49,7 @@ export function useConversationWorkspaceBounds(routeKey?: string) {
     width: number;
     height: number;
     limits: Limits;
+    edgeFrame: NavigationContentFrame | null;
   } | null>(null);
   const measurementSequence = useRef(0);
   const appState = useRef(AppState.currentState);
@@ -52,6 +58,7 @@ export function useConversationWorkspaceBounds(routeKey?: string) {
       return;
     const sequence = ++measurementSequence.current;
     const requestedLimits = latestLimits.current;
+    const requestedFrame = latestFrame.current;
     ref.current?.measureInWindow((x, y, measuredWidth, measuredHeight) => {
       // A later layout owns its measurement even when bridge callbacks complete out of order.
       if (sequence !== measurementSequence.current) return;
@@ -83,6 +90,7 @@ export function useConversationWorkspaceBounds(routeKey?: string) {
         return previous &&
           previous.limits.width === requestedLimits.width &&
           previous.limits.height === requestedLimits.height &&
+          previous.edgeFrame === requestedFrame &&
           Math.abs(previous.x - x) < 0.5 &&
           Math.abs(previous.width - measuredWidth) < 0.5 &&
           Math.abs(previous.y - y) < 0.5 &&
@@ -94,6 +102,7 @@ export function useConversationWorkspaceBounds(routeKey?: string) {
               width: measuredWidth,
               height: measuredHeight,
               limits: requestedLimits,
+              edgeFrame: requestedFrame,
             };
       });
     });
@@ -188,5 +197,32 @@ export function useConversationWorkspaceBounds(routeKey?: string) {
     topGutter: plan.top,
     width: plan.visible ? plan.activityWidth : plan.transcriptWidth,
   });
-  return { ref, measure, plan, profileVisualLift, workspaceOcclusion };
+  // A narrower transcript is still the trailing scroll owner when the real
+  // measured workspace ends at the route's content edge after reflow.
+  const trailingLane =
+    shared &&
+    bounds &&
+    bounds.edgeFrame === shared &&
+    bounds.limits.width === limits.width &&
+    bounds.limits.height === limits.height &&
+    plan.transcriptWidth > 0
+      ? {
+          frame: shared,
+          right:
+            hostBounds.x +
+            plan.leading +
+            plan.activityWidth +
+            plan.gap +
+            plan.transcriptWidth,
+          width: plan.transcriptWidth,
+        }
+      : undefined;
+  return {
+    ref,
+    measure,
+    plan,
+    profileVisualLift,
+    workspaceOcclusion,
+    trailingLane,
+  };
 }

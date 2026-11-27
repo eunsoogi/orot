@@ -15,7 +15,10 @@ import { t } from '../i18n';
 import type { ConversationSession } from './conversationSessionTypes';
 import type { ConversationHistoryProps } from './ConversationHistoryProps';
 import { ConversationToolEvents } from './ConversationToolEvents';
-import { SeparatedConversationActivity } from './ConversationWorkspaceContext';
+import {
+  ConversationTranscriptTrailingLane,
+  SeparatedConversationActivity,
+} from './ConversationWorkspaceContext';
 import { useConversationWorkspaceBounds } from './useConversationWorkspaceBounds';
 
 import { conversationComposerDisabled } from './conversationComposerDisabled';
@@ -38,8 +41,14 @@ type Props = {
 
 /** Stable presentation wrappers preserve transcript, composer and session across reflow. */
 export function ConversationWorkspace(props: Props) {
-  const { ref, measure, plan, profileVisualLift, workspaceOcclusion } =
-    useConversationWorkspaceBounds(props.routeKey);
+  const {
+    ref,
+    measure,
+    plan,
+    profileVisualLift,
+    workspaceOcclusion,
+    trailingLane,
+  } = useConversationWorkspaceBounds(props.routeKey);
   return (
     <View
       ref={ref}
@@ -106,7 +115,11 @@ export function ConversationWorkspace(props: Props) {
                       <ConversationA2UILocalDraftOwner.Provider
                         value={props.localDraftOwner}
                       >
-                        {props.children}
+                        <ConversationTranscriptTrailingLane.Provider
+                          value={trailingLane}
+                        >
+                          {props.children}
+                        </ConversationTranscriptTrailingLane.Provider>
                       </ConversationA2UILocalDraftOwner.Provider>
                     </FloatingComposerSurface>
                   </DirectPhotoPresentationScope>
