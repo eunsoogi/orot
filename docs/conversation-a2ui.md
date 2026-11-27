@@ -429,3 +429,13 @@ materialized text still must match the accepted answer in order. Whole-array
 replacements use their final order. Provisional surfaces, v67 and earlier,
 and sourced replies do not gain this function. Existing archives retain only
 eligible static layout/prose, not function expressions or array data.
+
+Fresh ordinary source-free task v69 can bind an existing native CheckBox
+to its exact unchecked Markdown fallback line as well as to the existing
+square marker. A single literal `- [ ] `, `+ [ ] ` or `* [ ] ` prefix and
+the identical label must match the corresponding owned control. The
+whole answer still matches in order. Checked markers, extra markup,
+reordering, and Markdown lines used as ordinary Text or tab titles are
+not admitted as checkboxes. Copy retains the original answer, and the
+controls still do not send actions or transfer to the archive. Prior
+requests keep their original syntax and behavior.

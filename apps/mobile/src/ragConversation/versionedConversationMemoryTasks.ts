@@ -1,4 +1,4 @@
-import { withConversationA2UIOrdinals } from './conversationA2UIOrdinalTask';
+import { recentConversationLayoutTasks } from './recentConversationLayoutTasks';
 import { withPublicWebConversationLayout } from './conversationA2UIPublicWebLayout';
 import { withConversationA2UITabSelectionLifetime } from './conversationA2UITabSelectionLifetime';
 import { withConversationA2UIReplacement } from './conversationA2UIReplacementTask';
@@ -87,7 +87,7 @@ export function versionedConversationMemoryTasks(
     filterable: boolean | 'chips' = false,
     mixedWeights = false,
     folderIcon: boolean | 'grouped' = false,
-    checklistProse: boolean | 'mixed' = false,
+    checklistProse: boolean | 'mixed' | 'markdown' = false,
     numeric = false,
     combinedDateTime = false,
   ) =>
@@ -111,13 +111,7 @@ export function versionedConversationMemoryTasks(
     temporaryFormTask(true, true, true, true),
     '60',
   );
-  const v67 = withPublicWebConversationLayout(
-    withConversationA2UITabSelectionLifetime(
-      temporaryFormTask(true, 'chips', true, 'grouped', 'mixed', true, true),
-      '60',
-    ),
-    '67',
-  );
+  const recent = recentConversationLayoutTasks(temporaryFormTask);
   return {
     conversationTaskV25,
     conversationTaskV26,
@@ -227,7 +221,8 @@ export function versionedConversationMemoryTasks(
           '65',
         ),
       ),
-      v67: observeConversationA2UIFinalAdmission(v67),
+      v67: recent.v67,
+      v68: recent.v68,
       v66: observeConversationA2UIFinalAdmission(
         withPublicWebConversationLayout(
           withConversationA2UITabSelectionLifetime(
@@ -238,8 +233,6 @@ export function versionedConversationMemoryTasks(
         ),
       ),
     },
-    ragConversationTask: observeConversationA2UIFinalAdmission(
-      withConversationA2UIOrdinals(v67),
-    ),
+    ragConversationTask: recent.current,
   };
 }

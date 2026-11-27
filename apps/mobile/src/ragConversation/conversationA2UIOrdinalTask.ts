@@ -20,10 +20,11 @@ const allowsOrdinals = (input: TaskResponderInput) =>
  * surface and exact accepted answer to the existing terminal validator. */
 export function withConversationA2UIOrdinals(
   previous: TaskResponderContract<GroundedRagAnswer>,
+  version: '68' | '69' = '68',
 ): TaskResponderContract<GroundedRagAnswer> {
   return {
     ...previous,
-    taskVersion: '68',
+    taskVersion: version,
     createResultSchema(input, jsonPrompt) {
       const schema =
         previous.createResultSchema?.(input, jsonPrompt) ??
