@@ -58,7 +58,7 @@ final class ProtectedEncounterTranscriptPage: @unchecked Sendable {
                 .system(wire.instruction), .user(wire.transcript), .user(wire.citations), .user(wire.schema),
             ]),
             accountID: accountID, accountSubject: accountSubject, selectedModel: selectedModel,
-            dedicatedWire: true
+            dedicatedWire: true,
         )
     }
 
