@@ -11,6 +11,25 @@ import {
 import { todayIdentity } from '../aiFeatures/integration/dailyReportTodayIdentity';
 import type { TreatmentConversationSender } from '../treatmentContext/treatmentConversationSender';
 
+function currentVisitCard(session?: ConversationSession) {
+  const message = session?.messages
+    .slice()
+    .reverse()
+    .find(item => item.role === 'assistant');
+  if (
+    !message?.retainedTurnId ||
+    !message.visitQuestions ||
+    message.restoredHistory ||
+    message.savedHistoryDisplayOnly ||
+    message.visitQuestions.restoredFromSnapshot ||
+    message.incomplete ||
+    message.completion === 'partial' ||
+    message.visitQuestionsUnavailable
+  )
+    return undefined;
+  return message;
+}
+
 const pendingVisits = new WeakMap<
   ConversationSessions,
   Map<
@@ -139,6 +158,7 @@ export function sendConversationMessage(
   ) {
     // The day and entry owner belong to the send, never to the model output or a delayed response.
     const today = todayIdentity();
+    const priorVisit = prepare ? currentVisitCard(session) : undefined;
     return store.send(
       id,
       allowWarmConversationSender((question, history, signal, observer) =>
@@ -147,11 +167,22 @@ export function sendConversationMessage(
           modelTemplateAdmission: {
             today,
             prepareVisit: prepare,
+            ...(priorVisit && priorVisit.visitQuestions
+              ? {
+                  visitFollowup: {
+                    appointmentId: priorVisit.visitQuestions.appointment.id,
+                  },
+                }
+              : {}),
             current: () =>
               !signal?.aborted &&
               (isEntryCurrent?.() ?? true) &&
               store.getSnapshot().activeId === id &&
-              conversationEntryForSession(store, id) === selectedAtSend,
+              conversationEntryForSession(store, id) === selectedAtSend &&
+              (!priorVisit ||
+                currentVisitCard(
+                  store.getSnapshot().sessions.find(item => item.id === id),
+                ) === priorVisit),
           },
         }),
       ),

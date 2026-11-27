@@ -86,6 +86,8 @@ export type RagConversationObserver = Pick<
   readonly modelTemplateAdmission?: {
     readonly current: () => boolean;
     readonly today: import('@orot/domain').DailyReportIdentity | null;
+    /** Local only; the model never receives this appointment ID. */
+    readonly visitFollowup?: { readonly appointmentId: string };
     readonly prepareVisit?: import('./ConversationScreenProps').ConversationScreenProps['prepareVisitQuestions'];
   };
   readonly templateProposalOwner?: import('./conversationTemplateOwner').ConversationTemplateOwner;

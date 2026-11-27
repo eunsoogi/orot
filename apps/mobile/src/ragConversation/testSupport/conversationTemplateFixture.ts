@@ -7,13 +7,16 @@ export function scriptedTemplateSender(
   send: ConversationScreenProps['onSend'],
   decide: (
     question: string,
+    admission: NonNullable<
+      import('../conversationObserver').RagConversationObserver['modelTemplateAdmission']
+    >,
   ) => ConversationTemplateProposal | Promise<ConversationTemplateProposal>,
 ): ConversationScreenProps['onSend'] {
   return async (question, history, signal, observer, context) => {
     const admission = observer?.modelTemplateAdmission;
     if (!admission || observer.photoInput)
       return send(question, history, signal, observer, context);
-    const choice = await decide(question);
+    const choice = await decide(question, admission);
     if (signal?.aborted || !admission.current())
       return { status: 'failure', kind: 'cancelled' };
     const target = conversationTemplateTarget(choice, admission, true);

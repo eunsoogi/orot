@@ -9,6 +9,14 @@ export function conversationTemplateTarget(
   canCreateDaily: boolean,
 ): ConversationEntryContext | undefined {
   switch (intent) {
+    case 'visit-questions-followup':
+      return admission.prepareVisit && admission.visitFollowup
+        ? {
+            intent: 'visit-questions',
+            entryKey: 'model-visit-questions',
+            appointmentId: admission.visitFollowup.appointmentId,
+          }
+        : undefined;
     case 'visit-questions':
       return admission.prepareVisit
         ? { intent, entryKey: 'model-visit-questions' }
