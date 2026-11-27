@@ -382,3 +382,11 @@ duplicated or reordered content keeps the original plain reply. Toggling
 still only changes current local state, and the original fallback and Copy
 do not change. No data is sent, stored, or reactivated when reopening a
 reply. The public sourced v61 branch keeps its read-only semantics.
+
+Fresh ordinary task v63 can combine exact checklist items with other
+already supported temporary controls, such as a notes field and a choice
+in separate panels of one reply. CheckBoxes still consume their exact
+unchecked fallback lines, and other local controls consume no answer
+text. Their owner, limits, reset, and no-storage/no-send behavior stay
+unchanged. The accepted answer remains the original prose, and older
+responder versions keep their existing contract.
