@@ -328,3 +328,12 @@ inactive panels do not expose controls or receive presses. The exact reply's
 Reset button or losing its current owner discards the temporary selections.
 Text, sliders, date and time fields keep their previous per-mount behavior.
 No value or action is stored, supplied to a provider, or restored.
+
+Fresh task v57 supports the Basic Catalog's `longText` TextField for a
+temporary multiline note. It uses the same distinct local binding and
+accessible label, starts empty, and accepts up to 256 UTF-16 code units.
+Return inserts a newline rather than submitting anything. Ownership loss,
+leaving the panel, or Reset discards the note, which never enters the
+accepted answer, Copy, the archive or a provider request. Authored values,
+other new input variants, and actions are still rejected. Earlier response
+versions keep the original single-line input contract.

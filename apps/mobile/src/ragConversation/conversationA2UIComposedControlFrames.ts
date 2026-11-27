@@ -26,6 +26,7 @@ function pathFor(raw: unknown) {
 function controlFor(
   value: Record<string, unknown>,
   timeControls: boolean,
+  multiline: boolean,
 ): ComposedControl {
   const base = ['id', 'component', 'label', 'value'];
   const caption = label(value.label);
@@ -33,16 +34,20 @@ function controlFor(
     case 'CheckBox':
       keys(value, base);
       return { kind: 'check', label: caption };
-    case 'TextField':
+    case 'TextField': {
       keys(value, [...base, 'variant', 'placeholder']);
-      if (value.variant !== undefined && value.variant !== 'shortText') fail();
+      const variant = value.variant === undefined ? 'shortText' : value.variant;
+      const longText = multiline && variant === 'longText';
+      if (!longText && variant !== 'shortText') fail();
       return {
         kind: 'text',
         label: caption,
+        ...(longText ? { multiline: true } : {}),
         ...(value.placeholder === undefined
           ? {}
           : { placeholder: label(value.placeholder) }),
       };
+    }
     case 'Slider': {
       keys(value, [...base, 'min', 'max', 'steps']);
       const min = value.min === undefined ? 0 : value.min;
@@ -128,6 +133,7 @@ export function projectConversationA2UIComposedControls(
   sliders = false,
   dateControls = false,
   timeControls = false,
+  multiline = false,
 ) {
   if (
     !Array.isArray(raw) ||
@@ -178,7 +184,7 @@ export function projectConversationA2UIComposedControls(
           return node;
         }
         const path = pathFor(node.value);
-        const control = controlFor(node, timeControls);
+        const control = controlFor(node, timeControls, multiline);
         fields.set(componentId, { path, control });
         return { id: componentId, component: 'Divider' };
       });
@@ -198,13 +204,13 @@ export function projectConversationA2UIComposedControls(
         fail();
       used.set(path, control);
     }
-    // Numeric, date and time controls never project any authored model data.
-    // Reject correlated seeds even when they address a parent or child pointer.
+    // Reject authored data for these controls, including parent/child seeds.
     for (const [path, control] of used) {
       if (
         control.kind !== 'slider' &&
         control.kind !== 'date' &&
-        control.kind !== 'time'
+        control.kind !== 'time' &&
+        !(control.kind === 'text' && control.multiline)
       )
         continue;
       const namespace = binding(path)[0]!;
