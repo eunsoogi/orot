@@ -3,7 +3,7 @@ import { createConversationA2UITabSelections } from '../conversationA2UITabSelec
 import { act, fireEvent, render, screen } from '@testing-library/react-native';
 import { ConversationA2UISurface } from '../ConversationA2UISurface';
 import { conversationA2UICatalog } from '../conversationA2UI';
-import { ConversationA2UILocalDraftOwner } from '../ConversationA2UILocalDraftOwner';
+import { ConversationA2UILocalDraftOwner } from '../conversationA2UILocalDraftOwner';
 import { storeConversationA2UILayout } from '../conversationA2UIArchive';
 import { localA2UIDraftResetAction } from '../conversationA2UILocalDraft';
 import { restoreConversationTask } from '../conversationTaskVersions';
