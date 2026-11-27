@@ -96,9 +96,9 @@ test('formats the saved wall-clock time in the app locale and keeps picker field
 test('starts from the saved opt-in state without asking for permission on entry', async () => {
   await render(<SettingsDailyReminderSection />);
 
-  expect(
-    await screen.findByText(t('settings.dailyReminder.disabled')),
-  ).toBeTruthy();
+  await waitFor(() =>
+    expect(screen.queryByTestId('settings-daily-reminder-status')).toBeNull(),
+  );
   expect(native.read).toHaveBeenCalledTimes(1);
   expect(native.reconcile).toHaveBeenCalledTimes(1);
   expect(native.save).not.toHaveBeenCalled();
@@ -195,7 +195,7 @@ test('canceling the time picker leaves the saved setting unchanged', async () =>
 
   expect(native.save).not.toHaveBeenCalled();
   expectReminderSwitchState(false);
-  expect(screen.getByText(t('settings.dailyReminder.disabled'))).toBeTruthy();
+  expect(screen.queryByText(t('settings.dailyReminder.disabled'))).toBeNull();
 });
 
 test('disabling a saved reminder preserves its time in the native preference', async () => {
@@ -217,9 +217,9 @@ test('disabling a saved reminder preserves its time in the native preference', a
       minute: 40,
     }),
   );
-  expect(
-    await screen.findByText(t('settings.dailyReminder.disabled')),
-  ).toBeTruthy();
+  await waitFor(() =>
+    expect(screen.queryByTestId('settings-daily-reminder-status')).toBeNull(),
+  );
   expect(native.save).toHaveBeenCalledTimes(1);
   expectReminderSwitchState(false);
 });
@@ -243,7 +243,8 @@ test('changing the time while reminders are off keeps them disabled', async () =
       minute: 15,
     }),
   );
-  expect(
-    await screen.findByText(t('settings.dailyReminder.disabled')),
-  ).toBeTruthy();
+  await waitFor(() =>
+    expect(screen.queryByTestId('settings-daily-reminder-status')).toBeNull(),
+  );
+  expectReminderSwitchState(false);
 });

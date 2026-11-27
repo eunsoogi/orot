@@ -85,6 +85,8 @@ extension RootNavigationUITests {
     @MainActor
     private func openBackupSettings(_ app: XCUIApplication) throws {
         try NavigationUITestConditions.openTab(app, "settings", markers: ["settings-title"])
+        tap(app, "settings-open-sync-status")
+        FormUITestConditions.reveal(app.buttons["settings-open-backup"], in: app, scrollID: "settings-sync-status-scroll")
         tap(app, "settings-open-backup")
         NavigationUITestConditions.route(app, markers: ["settings-backup-title"])
     }

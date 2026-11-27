@@ -13,6 +13,8 @@ import { t } from '../i18n';
 import { useNavigationEdgeVerticalScroll } from '../navigation/navigationEdgeScroll';
 import { useNavigationContentInset } from '../navigation/useNavigationContentInset';
 import { useNavigationLeaveStateRegistration } from '../navigation';
+import { SettingsRouteRow } from './SettingsRouteRows';
+import { settingsListColors } from './settingsListColors';
 import type { CalendarAutoSyncActions } from '../calendar/useCalendarAutoSync';
 import {
   SettingsSyncStatusHealthPanel,
@@ -30,12 +32,14 @@ export function SettingsSyncStatusRoute({
   retrySync = syncLocalPreviouslyRequestedHealthKit,
   calendarSync,
   onConfigureHealthData,
+  onOpenBackup,
 }: {
   readonly loadSelection?: () => Promise<readonly HealthKitAutoSyncFeature[]>;
   readonly loadStatus?: () => Promise<AutoSyncSnapshot>;
   readonly retrySync?: () => Promise<HealthKitAutoSyncResult>;
   readonly calendarSync: CalendarAutoSyncActions;
   readonly onConfigureHealthData?: () => void;
+  readonly onOpenBackup?: () => void;
 }) {
   const inset = useNavigationContentInset();
   // This page owns the scroll viewport; the panels retain their readable inset.
@@ -155,6 +159,17 @@ export function SettingsSyncStatusRoute({
               openSettingsError={openSettingsError}
               retrying={retrying}
             />
+            {onOpenBackup ? (
+              <View style={styles.backup}>
+                <SettingsRouteRow
+                  symbol="externaldrive"
+                  title={t('backup.pageTitle')}
+                  onPress={onOpenBackup}
+                  testID="settings-open-backup"
+                  last
+                />
+              </View>
+            ) : null}
           </View>
         }
         testID="settings-sync-status-layout"
@@ -165,6 +180,11 @@ export function SettingsSyncStatusRoute({
 
 const styles = StyleSheet.create({
   scroll: { flex: 1 },
+  backup: {
+    backgroundColor: settingsListColors.row,
+    borderRadius: 18,
+    overflow: 'hidden',
+  },
   pageSections: { gap: 16 },
   container: {
     flexGrow: 1,

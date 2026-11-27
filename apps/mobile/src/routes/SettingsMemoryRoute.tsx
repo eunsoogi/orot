@@ -52,7 +52,7 @@ export function SettingsMemoryRoute({
   );
 }
 const styles = StyleSheet.create({
-  background: { flexGrow: 1, backgroundColor: settingsListColors.background },
+  background: { flexGrow: 1 },
   page: {
     flexGrow: 1,
     alignSelf: 'center',

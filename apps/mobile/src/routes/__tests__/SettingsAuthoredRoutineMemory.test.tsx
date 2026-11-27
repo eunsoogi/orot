@@ -1,4 +1,9 @@
-import { fireEvent, render, screen } from '@testing-library/react-native';
+import {
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+} from '@testing-library/react-native';
 import {
   getGenericPassword,
   setGenericPassword,
@@ -57,7 +62,10 @@ test('the distinct routine switch starts off and does not silently authorize whe
       </View>,
     );
     try {
-      expect(await screen.findByText('습관 자동 저장 꺼짐')).toBeTruthy();
+      expect(
+        (await screen.findByTestId('settings-routine-memory-toggle')).props
+          .value,
+      ).toBe(false);
       expect(screen.getByText('대화에서 기억 자동 저장')).toBeTruthy();
       expect(
         screen.queryByText(/읽기나 공부처럼 직접 말한 일부 반복 습관/),
@@ -74,8 +82,14 @@ test('the distinct routine switch starts off and does not silently authorize whe
         'valueChange',
         true,
       );
-      expect(await screen.findByText('켜짐')).toBeTruthy();
-      expect(screen.getByText('습관 자동 저장 꺼짐')).toBeTruthy();
+      await waitFor(() =>
+        expect(
+          screen.getByTestId('settings-automatic-memory-toggle').props.value,
+        ).toBe(true),
+      );
+      expect(
+        screen.getByTestId('settings-routine-memory-toggle').props.value,
+      ).toBe(false);
       expect(
         await authoredRoutineMemoryDeviceOwner.captureAdmission(),
       ).toBeUndefined();
@@ -85,7 +99,11 @@ test('the distinct routine switch starts off and does not silently authorize whe
         'valueChange',
         true,
       );
-      expect(await screen.findByText('습관 자동 저장 켜짐')).toBeTruthy();
+      await waitFor(() =>
+        expect(
+          screen.getByTestId('settings-routine-memory-toggle').props.value,
+        ).toBe(true),
+      );
       const granted = await authoredRoutineMemoryDeviceOwner.captureAdmission();
       expect(granted?.scope).toBe('authored-routine');
       expect(write.mock.lastCall?.[2]).toMatchObject({
@@ -101,7 +119,12 @@ test('the distinct routine switch starts off and does not silently authorize whe
         'valueChange',
         false,
       );
-      expect(await screen.findByText('습관 자동 저장 꺼짐')).toBeTruthy();
+      await waitFor(() =>
+        expect(
+          screen.getByTestId('settings-routine-memory-toggle').props.value,
+        ).toBe(false),
+      );
+      expect(screen.queryByText('습관 자동 저장 꺼짐')).toBeNull();
       expect(granted?.isCurrent()).toBe(false);
       expect(
         (await captureOrdinaryConversationMemoryAdmission())?.isCurrent(),

@@ -5,7 +5,7 @@ export const healthkitSettingsKo = {
   'settings.integrations': '연동',
   'settings.healthData': '건강 데이터',
   'settings.healthDataSummary': '앱을 열 때 자동으로 동기화해요.',
-  'settings.syncStatus': '권한 및 동기화 상태',
+  'settings.syncStatus': '동기화',
   'settings.syncStatusSummary': '문제가 있으면 상태를 확인하고 다시 시도해요.',
   'settings.otherSettings': '기타 설정',
   'settings.dataManagement': '데이터 관리',

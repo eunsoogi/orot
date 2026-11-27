@@ -13,6 +13,7 @@ interface SettingsRouteRowProps {
   readonly testID: string;
   readonly title: string;
   readonly symbol: string;
+  readonly last?: boolean;
   readonly tone?: SettingsRowTone;
 }
 
@@ -23,6 +24,7 @@ export function SettingsRouteRow({
   title,
   symbol,
   tone = 'blue',
+  last = false,
 }: SettingsRouteRowProps) {
   return (
     <Pressable
@@ -33,7 +35,7 @@ export function SettingsRouteRow({
       style={({ pressed }) => [styles.row, pressed && styles.pressed]}
     >
       <SettingsRouteIcon symbol={symbol} tone={tone} />
-      <View style={styles.rowContent}>
+      <View style={[styles.rowContent, last && styles.noSeparator]}>
         <Text style={styles.rowTitle}>{title}</Text>
         <AppSymbol name="chevron.right" size={12} color={appColors.secondary} />
       </View>
@@ -129,5 +131,6 @@ const styles = StyleSheet.create({
     borderBottomColor: settingsListColors.separator,
     borderBottomWidth: StyleSheet.hairlineWidth,
   },
+  noSeparator: { borderBottomWidth: 0 },
   rowTitle: { flex: 1, minWidth: 0, color: appColors.text, fontSize: 16 },
 });
