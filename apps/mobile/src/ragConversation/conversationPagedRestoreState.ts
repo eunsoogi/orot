@@ -1,3 +1,4 @@
+import { createHistoryReaderOwner } from './conversationHistoryPage';
 import { createOwnedSavedHistoryDisplay } from './loadOwnedSavedHistoryDisplay';
 import {
   joinConversationHistoryFlight,
@@ -13,6 +14,7 @@ import type {
 import { conversationRestoredMessages } from './conversationRestoredMessages';
 import { getRagConversationCopy } from './copy';
 import { t } from '../i18n';
+import { unfinishedCanonical } from './canonicalHistoryRetry';
 export function createConversationPagedRestoreState(
   input: {
     read: ReadConversationHistoryPage;
@@ -178,14 +180,10 @@ export function createConversationPagedRestoreState(
       initialAdmission?: ConversationInitialPageAdmission,
     ) {
       forget(id);
-      owners.set(id, {
-        durableId,
-        displayAdmission,
-        initialAdmission,
-        initialized: false,
-        exhausted: false,
-        nextId: 0,
-      });
+      owners.set(
+        id,
+        createHistoryReaderOwner(durableId, displayAdmission, initialAdmission),
+      );
       input.update(id, { historyHasMore: false, historyLoadFailed: false });
       await load(id, signal);
     },
@@ -201,6 +199,7 @@ export function createConversationPagedRestoreState(
     retryInitial: (id: number, durableId: string, signal: AbortSignal) =>
       load(id, signal, durableId),
     retry: load,
+    needsCanonicalRetry: (id: number) => unfinishedCanonical(owners.get(id)),
     loadOlder: load,
     async prepareContext(id: number, signal?: AbortSignal) {
       const planned = planPlainHistoryForSend(id, signal);

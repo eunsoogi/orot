@@ -55,12 +55,14 @@ export function conversationHistoryRecoveryProps(
     restoringHistory: Boolean(
       active &&
       !session.quarantined &&
-      !session.restoreFailed &&
-      !session.modelSelectionFailed &&
-      (session.restoring || resolvingInitialHistory),
+      (session.historyRetryPending ||
+        (!session.restoreFailed &&
+          !session.modelSelectionFailed &&
+          (session.restoring || resolvingInitialHistory))),
     ),
     restoring:
       !active ||
+      session.historyRetryPending ||
       session.restoring ||
       session.quarantined ||
       session.modelSelectionPending,
@@ -69,7 +71,9 @@ export function conversationHistoryRecoveryProps(
     historyLoadFailed: session.historyLoadFailed,
     onLoadOlderHistory: (signal?: AbortSignal) =>
       store.loadOlderHistory(session.id, signal),
-    restoreFailed: session.restoreFailed || session.modelSelectionFailed,
+    restoreFailed:
+      !session.historyRetryPending &&
+      (session.restoreFailed || session.modelSelectionFailed),
     onRetryRestore: () => {
       if (session.modelSelectionFailed)
         store.synchronizeModel(true).catch(() => {});

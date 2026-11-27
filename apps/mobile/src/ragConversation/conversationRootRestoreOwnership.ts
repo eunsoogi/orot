@@ -12,6 +12,7 @@ const targetCurrent = (target: Target) => target.selectionCurrent?.() === true;
 /** The app owns root tab visibility independently of mounted scenes and app background. */
 export function createConversationRootRestoreOwnership() {
   let visible: boolean | undefined;
+  let visibilityEpoch = 0;
   let active:
     | {
         readonly target: Target;
@@ -29,6 +30,7 @@ export function createConversationRootRestoreOwnership() {
     check = undefined;
   };
   const clear = () => {
+    active?.admission.retire();
     active = undefined;
     stopCheck();
   };
@@ -40,7 +42,12 @@ export function createConversationRootRestoreOwnership() {
     get target() {
       return active?.target;
     },
+    captureVisibility() {
+      const epoch = visibilityEpoch;
+      return () => visible === true && epoch === visibilityEpoch;
+    },
     setVisible(next: boolean) {
+      if (visible !== next) visibilityEpoch++;
       visible = next;
       if (!next) {
         stopCheck();
@@ -52,6 +59,7 @@ export function createConversationRootRestoreOwnership() {
         return undefined;
       const admission = createConversationInitialPageAdmission();
       const owner: NonNullable<typeof active> = { target, signal, admission };
+      active?.admission.retire();
       active = owner;
       if (!visible) owner.release = admission.hold();
       return {
@@ -200,5 +208,33 @@ export function ownedArchiveRestore(input: {
           admission,
         ),
       ),
+  };
+}
+
+/** Root visibility can change before React effects run; reconcile the same retained target. */
+export function createRootRestoreVisibility(
+  root: ReturnType<typeof createConversationRootRestoreOwnership>,
+  resolve: Resolve,
+  activeRestoration: () =>
+    { lease: { id: string; version: number } } | undefined,
+  restart: () => Promise<void>,
+  needsRestart: () => boolean,
+) {
+  const resume = () =>
+    root.reconcile({
+      resolve,
+      attached: ({ id, version }) => {
+        const active = activeRestoration();
+        return active?.lease.id === id && active.lease.version === version;
+      },
+      restart,
+    });
+  return {
+    resume,
+    setVisible(visible: boolean) {
+      root.setVisible(visible);
+      if (visible)
+        (resume() ?? (needsRestart() ? restart() : undefined))?.catch(() => {});
+    },
   };
 }
