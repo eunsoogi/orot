@@ -93,6 +93,7 @@ extension RealtimeVoiceLifecycleTests {
                 try call.stop("fixture-call")
             }
         }
+        try await assertFreshSpeechDiscriminatesPartialToolResultRetirement()
     }
 
     func testManagedReadNeverStartsOnNullOrMismatchedDelegationAndLateResultCannotCrossStop() async throws {
