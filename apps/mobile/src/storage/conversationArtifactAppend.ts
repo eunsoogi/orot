@@ -17,21 +17,32 @@ import { withWritePeriodCalculations } from './writePeriodCalculationScope';
 import { beginConversationSave } from './conversationSaveDiagnostic';
 import { withWriteTypedFingerprints } from './writeTypedFingerprintScope';
 
+/** Pinned OP-SQLite rolls back a rejected COMMIT before propagating its error.
+ * Require exact engine code 5, not LOCKED, an extended BUSY code or broad text. */
+const commitBusyError =
+  /^(?:Exception in HostFunction: )?\[op-sqlite\] SQLite error code: 5, description: /;
+
+function isCommitBusy(error: unknown) {
+  return error instanceof Error && commitBusyError.test(error.message);
+}
+
 /** Keep validation, dependency indexes and completion in the same transaction.
  * The diagnostic brackets only the existing work and never admits or repairs it. */
 export function createConversationArtifactAppend(
   database: SqlDatabase,
   ensure: () => Promise<void>,
 ) {
-  return async function append(
-    value: ConversationArtifact,
-    signal?: AbortSignal,
-    expectedSessionVersion = 0,
-  ) {
+  async function attempt(
+    serialize: () => string,
+    signal: AbortSignal | undefined,
+    expectedSessionVersion: number,
+    canRetry: boolean,
+  ): Promise<void> {
+    let reachedCommit = false;
     const diagnostic = beginConversationSave();
     try {
       await ensure();
-      const serialized = JSON.stringify(value);
+      const serialized = serialize();
       const decoded = decodeConversationArtifact(serialized);
       if (!decoded) throw new Error('The conversation output cannot be saved.');
       // Install the parent lifecycle guards without materializing unrelated summary rows.
@@ -123,13 +134,39 @@ export function createConversationArtifactAppend(
           throw error;
         } finally {
           // Callback end is not commit. The outer await below includes driver settlement.
+          reachedCommit = callbackOutcome === 'completed';
           diagnostic?.advance('settlement', callbackOutcome);
         }
       });
       diagnostic?.finish('completed');
     } catch (error) {
       diagnostic?.finish('failed');
+      if (
+        canRetry &&
+        reachedCommit &&
+        signal &&
+        !signal.aborted &&
+        isCommitBusy(error)
+      ) {
+        // Reprove the exact same request and all its sources after a rolled-back commit.
+        await attempt(serialize, signal, expectedSessionVersion, false);
+        return;
+      }
       throw error;
     }
+  }
+  return function append(
+    value: ConversationArtifact,
+    signal?: AbortSignal,
+    expectedSessionVersion = 0,
+  ) {
+    let serialized: string | undefined;
+    // No new model work and never a different candidate after a transient write.
+    return attempt(
+      () => (serialized ??= JSON.stringify(value)),
+      signal,
+      expectedSessionVersion,
+      true,
+    );
   };
 }
