@@ -138,14 +138,21 @@ export async function persistEncounterApproval(
       const evidenceIds: string[] = [];
       for (const [index, evidence] of candidate.evidence.entries()) {
         const segment = segments[index];
+        // EvidenceSpan trims outer whitespace. Narrow the already-verified
+        // UTF-16 range to the same normalized text so the link stays exact.
+        const quote = evidence.quote.trim();
+        const startOffset =
+          evidence.startOffset +
+          evidence.quote.length -
+          evidence.quote.trimStart().length;
         // Text offsets address this exact transcript revision; the paired locator retains its recording time range.
         for (const [suffix, locator] of [
           [
             'text',
             {
               kind: 'text_range' as const,
-              startOffset: evidence.startOffset,
-              endOffset: evidence.endOffset,
+              startOffset,
+              endOffset: startOffset + quote.length,
             },
           ],
           [
@@ -160,7 +167,7 @@ export async function persistEncounterApproval(
             ...metadata,
             id: evidenceId,
             sourceRecordId: pending.sourceId,
-            text: evidence.quote,
+            text: quote,
             locator,
             provenance: {
               ...metadata.provenance,
