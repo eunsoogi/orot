@@ -20,6 +20,7 @@ export const conversationAttachmentKo = {
     '사진을 안전하게 보관할 수 없어요. 기기 상태를 확인하고 다시 시도해 주세요.',
   'ragConversation.photo.pickerUnavailable':
     '사진 선택기를 사용할 수 없어요. 잠시 후 다시 시도해 주세요.',
+  'ragConversation.photo.imageInterrupted': '사진 전송이 중단됐어요.',
   'ragConversation.photo.retryCleanup': '임시 사진 정리 다시 시도',
   'ragConversation.photo.cleanupFailed':
     '이전 임시 사진을 정리하지 못했어요. 다시 시도해 주세요.',

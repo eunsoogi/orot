@@ -6,6 +6,7 @@ import {
   useEffect,
   useRef,
   useState,
+  useSyncExternalStore,
 } from 'react';
 import {
   updateDirectPhotoPresentations,
@@ -13,6 +14,10 @@ import {
   type PublishDirectPhoto,
 } from './directPhotoPresentation';
 
+import { acceptedPhotoPresentation } from './acceptedPhotoPresentation';
+
+const noAccepted = () => null;
+const noSubscription = () => () => {};
 const empty: readonly DirectPhotoPresentation[] = [];
 const Value = createContext(empty);
 const Publish = createContext<PublishDirectPhoto | undefined>(undefined);
@@ -21,13 +26,31 @@ const Publish = createContext<PublishDirectPhoto | undefined>(undefined);
 export function DirectPhotoPresentationScope({
   sessionId,
   available,
+  ownerKey,
   children,
 }: {
   readonly sessionId: number;
   readonly available: boolean;
+  readonly ownerKey?: object;
   readonly children: ReactNode;
 }) {
   const [value, setValue] = useState(empty);
+  const accepted = ownerKey && acceptedPhotoPresentation(ownerKey);
+  const outgoing = useSyncExternalStore(
+    accepted?.subscribe ?? noSubscription,
+    accepted?.getSnapshot ?? noAccepted,
+  );
+  const currentRows =
+    available && value.every(row => row.sessionId === sessionId)
+      ? value
+      : empty;
+  const displayed =
+    available && outgoing?.sessionId === sessionId
+      ? [
+          ...currentRows.filter(item => item.requestId !== outgoing.requestId),
+          outgoing,
+        ]
+      : currentRows;
   const owner = useRef({ available, sessionId });
   owner.current = { available, sessionId };
   const publish = useCallback<PublishDirectPhoto>(event => {
@@ -49,15 +72,7 @@ export function DirectPhotoPresentationScope({
   }, [available, sessionId]);
   return (
     <Publish.Provider value={publish}>
-      <Value.Provider
-        value={
-          available && value.every(row => row.sessionId === sessionId)
-            ? value
-            : empty
-        }
-      >
-        {children}
-      </Value.Provider>
+      <Value.Provider value={displayed}>{children}</Value.Provider>
     </Publish.Provider>
   );
 }

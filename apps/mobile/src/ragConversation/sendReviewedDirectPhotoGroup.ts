@@ -15,7 +15,9 @@ export function sendReviewedDirectPhotoGroup(input: {
   readonly prompt: string;
   readonly controller: AbortController;
   readonly admitted: () => boolean;
-  readonly approved: () => void;
+  readonly prepare: () => boolean | Promise<boolean>;
+  readonly atNativeStart: () => boolean;
+  readonly backgroundCurrent?: () => boolean;
 }) {
   const {
     authorization,
@@ -24,7 +26,9 @@ export function sendReviewedDirectPhotoGroup(input: {
     prompt,
     controller,
     admitted,
-    approved,
+    prepare,
+    atNativeStart,
+    backgroundCurrent,
   } = input;
   const protection =
     images.length > 1 ? conversationExecutionNative() : undefined;
@@ -53,7 +57,11 @@ export function sendReviewedDirectPhotoGroup(input: {
     jpegBase64s: images,
     prompt,
     signal: controller.signal,
-    isCurrent: () => admitted() && active(),
+    isCurrent: () => admitted() && (active() || backgroundCurrent?.() === true),
+    // Transfer the scene owner only at the synchronous handoff to the
+    // existing exact sender, never across a pending protection probe.
+    beforeNativeStart: () =>
+      active() && admitted() && atNativeStart() && active() && admitted(),
     subscribeInvalidation(listener) {
       const revoke = () => {
         controller.abort();
@@ -78,8 +86,16 @@ export function sendReviewedDirectPhotoGroup(input: {
         !active()
       )
         return false;
-      approved();
-      return true;
+      // Opening the optional lease awaited native work. No new delivery may
+      // start from a stale lock/phase witness, even if a lease was granted.
+      return (
+        (await prepare()) &&
+        active() &&
+        (await confirmProtection()) &&
+        !signal.aborted &&
+        admitted() &&
+        active()
+      );
     },
   })();
 }

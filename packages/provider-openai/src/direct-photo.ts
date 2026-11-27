@@ -13,6 +13,8 @@ export type ApprovedPhoto = Readonly<{
   signal: AbortSignal;
   /** Synchronous exact request/selection/credential fence at native admission. */
   isCurrent: () => boolean;
+  /** Optional app-owned state handoff after the last JavaScript ownership check. */
+  beforeNativeStart?: () => boolean;
 }>;
 
 export type DirectPhotoSender = (input: ApprovedPhoto) => Promise<string | null>;
@@ -38,7 +40,14 @@ export function registerChatGPTPlanDirectPhoto(
   const model = options.model.slug;
   // Reuse cancellation and stream validation, not the generic text/tools transport.
   // The real bridge receives only one photo envelope, never a placeholder prompt.
-  const send: DirectPhotoSender = async ({ text, jpegBase64, jpegBase64s, signal, isCurrent }) => {
+  const send: DirectPhotoSender = async ({
+    text,
+    jpegBase64,
+    jpegBase64s,
+    signal,
+    isCurrent,
+    beforeNativeStart,
+  }) => {
     const photos = captureDirectPhotoGroup(jpegBase64s ?? [jpegBase64]);
     if (
       signal.aborted ||
@@ -54,7 +63,8 @@ export function registerChatGPTPlanDirectPhoto(
     );
     const transport = {
       startResponse(id: string) {
-        if (!current()) return Promise.reject(new Error('Photo owner changed.'));
+        if (!current() || beforeNativeStart?.() === false || !current())
+          return Promise.reject(new Error('Photo owner changed.'));
         return startPhotoResponse.call(bridge, id, account, {
           model,
           directPhoto: photo,
