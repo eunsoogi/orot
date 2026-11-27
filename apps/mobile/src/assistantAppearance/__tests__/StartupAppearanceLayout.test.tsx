@@ -55,10 +55,9 @@ test.each([
     expect(screen.queryByText('준비 완료')).toBeNull();
     expect(screen.getByRole('header', { name: '오롯' })).toBeTruthy();
     expect(screen.queryByText('설정을 불러오는 중')).toBeNull();
-    expect(
-      screen.getByRole('progressbar', { name: '오롯 시작 중' }).props
-        .accessibilityState,
-    ).toEqual({ busy: true });
+    const progress = screen.getByRole('progressbar');
+    expect(progress.props.accessibilityLabel).toBeUndefined();
+    expect(progress.props.accessibilityState).toEqual({ busy: true });
     const outer = screen.getByTestId('startup-surface');
     const ornament = screen.getByTestId('startup-decoration', {
       includeHiddenElements: true,

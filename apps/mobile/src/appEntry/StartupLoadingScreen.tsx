@@ -117,7 +117,6 @@ export function StartupLoadingScreen() {
               accessible
               accessibilityRole="progressbar"
               accessibilityState={{ busy: true }}
-              accessibilityLabel={t('assistantAppearance.startupProgress')}
             >
               <ActivityIndicator color={appColors.primaryText} />
             </View>

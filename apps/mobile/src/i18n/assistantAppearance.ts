@@ -1,6 +1,5 @@
 export const assistantAppearanceKo = {
   'assistantAppearance.defaultName': '비서',
-  'assistantAppearance.startupProgress': '오롯 시작 중',
   'assistantAppearance.loadError': '비서 설정을 불러오지 못했어요.',
   'assistantAppearance.retry': '다시 시도',
   'assistantAppearance.welcome': '함께할 비서를 골라주세요',
