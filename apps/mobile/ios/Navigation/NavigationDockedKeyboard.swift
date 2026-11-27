@@ -12,6 +12,7 @@ final class NavigationDockedKeyboard: NSObject {
     private var evidence = Evidence.unknown
     private var probe: LayoutProbe?
     private var generation = 0
+    private var diagnostics = NavigationDockedKeyboardDiagnostics()
     private let guideFrame: @MainActor (UIView, UIWindow) -> CGRect
     var changed: (() -> Void)?
 
@@ -84,6 +85,20 @@ final class NavigationDockedKeyboard: NSObject {
     }
 
     @objc private func keyboardChanged(_ note: Notification) {
+        if NavigationDockedKeyboardDiagnostics.enabled {
+            let source = note.object as? UIScreen
+            let owner = window.flatMap { $0.isKeyWindow ? $0.windowScene?.screen : nil }
+            let ownership = if owner == nil {
+                "no-key-owner"
+            } else if note.userInfo?[UIResponder.keyboardIsLocalUserInfoKey] as? Bool == false {
+                "nonlocal"
+            } else if let source {
+                source === owner ? "same-screen" : "foreign-screen"
+            } else {
+                "unspecified"
+            }
+            diagnostics.observe("notification", ownership)
+        }
         guard let window, window.isKeyWindow, let screen = window.windowScene?.screen,
               (note.object as? UIScreen).map({ $0 === screen }) ?? true,
               (note.userInfo?[UIResponder.keyboardIsLocalUserInfoKey] as? Bool) != false
@@ -99,21 +114,38 @@ final class NavigationDockedKeyboard: NSObject {
     }
 
     func frame(in expected: UIWindow) -> CGRect? {
-        guard expected === window, expected.isKeyWindow else { return nil }
+        guard expected === window, expected.isKeyWindow else {
+            diagnostics.observe("frame", "no-key-owner")
+            return nil
+        }
+        let enabled = NavigationDockedKeyboardDiagnostics.enabled
+        let guide = enabled ? dockedGuide(in: expected) : nil
+        if enabled {
+            diagnostics.observe("guide", guide == nil ? "not-docked" : "docked")
+        }
         switch evidence {
         case .hidden:
+            diagnostics.observe("frame", "hidden")
             return nil
         case let .screen(screenFrame):
             guard let screen = expected.windowScene?.screen else { return nil }
             let frame = expected.convert(screenFrame, from: screen.coordinateSpace)
-            return Self.overlap(frame, in: expected.bounds)
+            let overlap = Self.overlap(frame, in: expected.bounds)
+            diagnostics.observe("frame", overlap == nil ? "notification-miss" : "notification-overlap")
+            return overlap
         case .unknown:
-            guard let root = fullRoot(in: expected), !root.keyboardLayoutGuide.followsUndockedKeyboard else { return nil }
-            // UIKit reports just the home-indicator safe area when undocked or hidden.
-            let frame = guideFrame(root, expected)
-            guard frame.height > root.safeAreaInsets.bottom + 1 else { return nil }
-            return Self.overlap(frame, in: expected.bounds)
+            let fallback = enabled ? guide : dockedGuide(in: expected)
+            diagnostics.observe("frame", fallback == nil ? "unknown-no-dock" : "guide-overlap")
+            return fallback
         }
+    }
+
+    private func dockedGuide(in expected: UIWindow) -> CGRect? {
+        guard let root = fullRoot(in: expected), !root.keyboardLayoutGuide.followsUndockedKeyboard else { return nil }
+        // UIKit reports just the home-indicator safe area when undocked or hidden.
+        let frame = guideFrame(root, expected)
+        guard frame.height > root.safeAreaInsets.bottom + 1 else { return nil }
+        return Self.overlap(frame, in: expected.bounds)
     }
 
     private func fullRoot(in window: UIWindow) -> UIView? {
@@ -145,6 +177,51 @@ final class NavigationDockedKeyboard: NSObject {
                 scheduled = false
                 changed?()
             }
+        }
+    }
+}
+
+/// Only launch-opted, bounded facts leave the keyboard owner; never its frame or identity.
+struct NavigationDockedKeyboardDiagnostics {
+    static let enabled = ProcessInfo.processInfo.arguments.contains("-OROT_CONVERSATION_KEYBOARD_DIAGNOSTICS")
+    private static let launchBudget = LaunchBudget()
+    private var seen: [String: String] = [:]
+    private var remaining = 24
+
+    mutating func observe(_ stage: String, _ outcome: String) {
+        guard Self.enabled, remaining > 0, seen[stage] != outcome, Self.launchBudget.consume()
+        else { return }
+        seen[stage] = outcome
+        remaining -= 1
+        NSLog("OROT_CONVERSATION_KEYBOARD stage=%@ outcome=%@", stage, outcome)
+    }
+
+    static func addingFlag(to constants: [AnyHashable: Any]) -> [AnyHashable: Any] {
+        var values = constants
+        values["conversationKeyboardEnabled"] = enabled
+        return values
+    }
+
+    static func reportJS(_ feature: String, _ stage: String, _ outcome: String) -> Bool {
+        guard feature == "navigation", stage == "conversation_keyboard_clip" else { return false }
+        if enabled, ["no-native-frame", "clipped", "already-above", "disjoint", "collapsed"].contains(outcome),
+           launchBudget.consume()
+        {
+            NSLog("OROT_CONVERSATION_KEYBOARD stage=clip outcome=%@", outcome)
+        }
+        return true
+    }
+
+    private final class LaunchBudget: @unchecked Sendable {
+        private let lock = NSLock()
+        private var remaining = 48
+
+        func consume() -> Bool {
+            lock.lock()
+            defer { lock.unlock() }
+            guard remaining > 0 else { return false }
+            remaining -= 1
+            return true
         }
     }
 }

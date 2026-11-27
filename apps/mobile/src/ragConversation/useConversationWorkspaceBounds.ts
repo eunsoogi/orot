@@ -9,7 +9,10 @@ import {
 import { observeNavigationTest } from '../navigation/navigationTestObservation';
 import { useNavigationOcclusion } from '../navigation/useNavigationContentInset';
 import { conversationWorkspaceOcclusion } from './conversationWorkspaceOcclusion';
-import { clipConversationToKeyboard } from './conversationKeyboardClip';
+import {
+  clipConversationToKeyboard,
+  useReportConversationKeyboardClip,
+} from './conversationKeyboardClip';
 import { conversationHingeLayout } from './conversationHingeLayout';
 import { conversationProfileVisualLift } from './conversationWorkspaceLayout';
 
@@ -155,10 +158,20 @@ export function useConversationWorkspaceBounds(routeKey?: string) {
         width: Math.min(fallback?.width ?? width, limits.width),
         height: Math.min(fallback?.height ?? height, limits.height),
       };
-  const plan = clipConversationToKeyboard(
-    conversationHingeLayout(geometry, hostBounds, fontScale, shared !== null),
+  const panel = conversationHingeLayout(
+    geometry,
     hostBounds,
-    geometry?.dockedKeyboardFrame,
+    fontScale,
+    shared !== null,
+  );
+  const keyboard = geometry?.dockedKeyboardFrame;
+  const plan = clipConversationToKeyboard(panel, hostBounds, keyboard);
+  useReportConversationKeyboardClip(
+    routeKey !== undefined,
+    panel,
+    plan,
+    hostBounds.y,
+    keyboard,
   );
   const workspaceOcclusion = conversationWorkspaceOcclusion(
     occlusion,
