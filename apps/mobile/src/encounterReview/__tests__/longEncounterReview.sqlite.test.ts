@@ -1,3 +1,5 @@
+import { resolveSelectedAiProvider } from '../../aiFeatures/integration/provider';
+import { providerSelectionStore } from '../../providers/selection/keychainSelectionStore';
 import {
   notifyLocalDataCleared,
   notifyLocalSourceDeleted,
@@ -202,3 +204,44 @@ test.each(['selected recording deletion', 'local clear'] as const)(
     }
   },
 );
+
+test('a held long review cannot borrow a later selection epoch with the same model', async () => {
+  const f = await harness();
+  let epoch = 0;
+  jest.spyOn(providerSelectionStore, 'liveWitness').mockImplementation(() => {
+    const initial = epoch;
+    return () => initial === epoch;
+  });
+  const resolve = jest.mocked(resolveSelectedAiProvider);
+  const selected = await resolve();
+  let entered!: () => void;
+  let release!: () => void;
+  const running = new Promise<void>(done => {
+    entered = done;
+  });
+  const held = new Promise<void>(done => {
+    release = done;
+  });
+  resolve.mockImplementationOnce(async () => {
+    entered();
+    await held;
+    return selected;
+  });
+  try {
+    const old = f.controller.start(consent);
+    await running;
+    // Selection changed away and back; resolving now returns the same ID and a fresh owner.
+    epoch += 2;
+    release();
+    await old;
+    expect(f.controller.state.status).toBe('unavailable');
+    expect(f.calls()).toBe(0);
+    expect(await fixture.rows()).toEqual([]);
+    await f.controller.start(consent);
+    expect(f.controller.state.status).toBe('pending');
+    expect(f.calls()).toBe(2);
+  } finally {
+    release();
+    f.controller.dispose();
+  }
+});

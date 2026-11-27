@@ -1,3 +1,4 @@
+import { matchesLocalEncounterSelection } from './localEncounterSelection';
 import { admitRemoteLongEncounter } from './remoteLongEncounterAdmission';
 import {
   encounterCanonical,
@@ -69,22 +70,27 @@ export function createLongEncounterReview(
           : undefined;
       if (signal.aborted || lifetime.aborted) return { status: 'cancelled' };
       if (!local && !remote) return { status: 'unavailable' };
-      const selected = local ? await resolve() : null;
+      // The resolved owner may belong to a newer selection of the same model.
+      // Keep the Settings epoch captured before the initial read for this Start.
+      const selected = local && selectionCurrent?.() ? await resolve() : null;
+      if (signal.aborted || lifetime.aborted) return { status: 'cancelled' };
+      if (local && !selectionCurrent?.()) return { status: 'unavailable' };
       if (selected && selected.status !== 'ready')
         return { status: selected.status };
       const witness = remote ?? selected?.onDeviceSelectionWitness;
+      const current = () =>
+        (!local || selectionCurrent?.() === true) &&
+        witness?.isCurrent() === true;
       if (
-        !witness?.isCurrent() ||
-        (selected &&
-          (selected.remoteProcessing || selected.modelId !== choice.modelId))
+        !witness ||
+        !current() ||
+        (selected && !matchesLocalEncounterSelection(selected, choice))
       )
         return { status: 'unavailable' };
       const native = conversationExecutionNative();
       const prior = owners.get(sourceId);
       prior?.lease.dispose();
-      const lease = watchEncounterNativeAdmission(native, lifetime, () =>
-        witness.isCurrent(),
-      );
+      const lease = watchEncounterNativeAdmission(native, lifetime, current);
       if (!lease) return { status: 'unavailable' };
       const operation: Owner = { lease, reviewIsCurrent: remote?.isCurrent };
       owners.set(sourceId, operation);
@@ -102,7 +108,7 @@ export function createLongEncounterReview(
       );
       try {
         unsubscribeSelection = witness.subscribe(() => {
-          if (!witness.isCurrent()) lease.dispose();
+          if (!current()) lease.dispose();
         });
         if (lease.signal.aborted) unsubscribeSelection();
         if (!(await lease.confirm()) || signal.aborted)
@@ -120,8 +126,7 @@ export function createLongEncounterReview(
           sourceId,
           signal: lease.signal,
           native,
-          ownerCurrent: () =>
-            !signal.aborted && !lifetime.aborted && witness.isCurrent(),
+          ownerCurrent: () => !signal.aborted && !lifetime.aborted && current(),
         };
         const result = remote
           ? await remote.extract(
@@ -182,7 +187,7 @@ export function createLongEncounterReview(
           if (
             (await dataVersion()) !== version ||
             !epoch.current() ||
-            !witness.isCurrent() ||
+            !current() ||
             lease.signal.aborted
           )
             return { status: 'unavailable' };
