@@ -224,7 +224,6 @@ test('time-only rejects published-but-unsupported options and remains closed in 
   };
   expect(legacy?.validateResult(proposal(timeOnly), input)).toEqual(fallback);
   for (const invalid of [
-    proposal({ ...timeOnly, enableDate: true }),
     proposal({ ...timeOnly, min: '08:00:00Z' }),
     proposal({ ...timeOnly, value: '08:00' }),
     proposal(timeOnly, { path: '/form/practice', value: { time: '08:00' } }),

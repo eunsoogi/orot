@@ -1,3 +1,4 @@
+import { ConversationA2UITemporaryDateTime } from './ConversationA2UITemporaryDateTime';
 import { ConversationA2UIComposedChoice } from './ConversationA2UIComposedChoice';
 import type { ConversationA2UITabSelections } from './conversationA2UITabSelectionLifetime';
 import Slider from '@react-native-community/slider';
@@ -152,6 +153,8 @@ function MountedControl({
         />
       ) : control.kind === 'date' ? (
         <ConversationA2UITemporaryDate {...control} current={current} />
+      ) : control.kind === 'datetime' ? (
+        <ConversationA2UITemporaryDateTime {...control} current={owns} />
       ) : control.kind === 'time' ? (
         <ConversationA2UITemporaryDate
           mode="time"

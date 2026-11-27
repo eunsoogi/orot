@@ -397,3 +397,11 @@ a temporary signed decimal editor. It starts empty, uses the existing
 remain local to the owned panel; no model value, action, archive, or
 submission can use them. Other TextField variants and earlier task
 contracts remain unchanged.
+
+Fresh ordinary task v65 can compose a single combined date-and-time picker.
+It opens an empty temporary value under the current panel owner, displays
+the device’s local date and time, and uses an ISO timestamp only in that
+mounted control. Optional exact RFC 3339 instant bounds are supported at
+JavaScript Date precision; model seeds, scheduling, outbound events, and
+archive restoration remain unsupported. Date-only and time-only behavior
+and earlier task contracts are unchanged.

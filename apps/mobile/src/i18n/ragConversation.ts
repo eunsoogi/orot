@@ -9,6 +9,8 @@ export const ragConversationKo = {
   'ragConversation.a2ui.filterChoices': '{label} 검색',
   'ragConversation.a2ui.noMatchingChoice': '일치하는 선택지가 없어요.',
   'ragConversation.a2ui.chooseDate': '날짜 선택',
+  'ragConversation.a2ui.chooseDateTime': '날짜와 시간 선택',
+  'ragConversation.a2ui.confirmDateTime': '이 날짜와 시간 선택',
   'ragConversation.a2ui.confirmDate': '이 날짜 선택',
   'ragConversation.a2ui.chooseTime': '시간 선택',
   'ragConversation.a2ui.confirmTime': '이 시간 선택',
