@@ -1,7 +1,6 @@
 import {
   Platform,
   PlatformColor,
-  ScrollView,
   StyleSheet,
   useColorScheme,
   useWindowDimensions,
@@ -83,7 +82,7 @@ function StartupMark({ size }: { size: number }) {
 }
 
 /** Center the startup lockup in the full React root, not the inset frame.
- * The centered artwork remains clear of OS overlays without shifting when they move. */
+ * A static root prevents startup swipes or overscroll from moving the mark. */
 export function StartupLoadingScreen() {
   const { width, height } = useWindowDimensions();
   const landscape = height < 500 && width >= 400;
@@ -92,14 +91,7 @@ export function StartupLoadingScreen() {
   return (
     <View style={styles.surface} testID="startup-surface">
       <StartupBackdrop />
-      <ScrollView
-        style={styles.fill}
-        contentContainerStyle={styles.center}
-        contentInsetAdjustmentBehavior="never"
-        automaticallyAdjustContentInsets={false}
-        showsVerticalScrollIndicator={false}
-        testID="startup-readable-area"
-      >
+      <View style={styles.center} testID="startup-readable-area">
         <View
           style={[styles.lockup, landscape && styles.wideLockup]}
           testID="startup-lockup"
@@ -113,16 +105,15 @@ export function StartupLoadingScreen() {
             {t('app.welcome.title')}
           </AppText>
         </View>
-      </ScrollView>
+      </View>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  fill: { flex: 1 },
   surface: { flex: 1, backgroundColor: launchBackground, overflow: 'hidden' },
   center: {
-    flexGrow: 1,
+    flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
     paddingHorizontal: 24,

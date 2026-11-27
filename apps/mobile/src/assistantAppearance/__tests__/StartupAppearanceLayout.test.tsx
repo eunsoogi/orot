@@ -83,9 +83,9 @@ test.each([
     });
     expect(outer.parent?.type).not.toBe('View');
     expect(readable.props.edges).toBeUndefined();
-    expect(readable.props.contentInsetAdjustmentBehavior).toBe('never');
-    expect(readable.props.automaticallyAdjustContentInsets).toBe(false);
-    expect(readable.props.contentContainerStyle).toMatchObject({
+    expect(readable.type).toBe('View');
+    expect(StyleSheet.flatten(readable.props.style)).toMatchObject({
+      flex: 1,
       alignItems: 'center',
       justifyContent: 'center',
     });
