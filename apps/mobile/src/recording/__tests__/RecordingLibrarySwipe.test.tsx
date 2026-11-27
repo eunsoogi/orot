@@ -132,7 +132,7 @@ test('only a released horizontal swipe reveals Delete; even a full swipe never r
   expect(deleteAction(first.id)).toBeNull();
 });
 
-test('tapping the revealed action and the accessibility action use the same exact confirmation', async () => {
+test('tapping Delete after swipe or accessibility reveal uses the same exact confirmation', async () => {
   const service = library();
   const alert = mockNativeDeletionAlert();
   await render(<RecordingLibraryPanel service={service} />);
@@ -172,7 +172,12 @@ test('busy state removes an open reveal and disarms the accessibility alternativ
   );
   expect(deleteAction(first.id)).toBeNull();
   expect(await gesture(first.id, -140)).toBe(false);
-  await requestLibraryRowDeletion(first.id);
+  const details = screen.getByTestId(`recording-details-${first.id}`);
+  expect(details.props.accessibilityActions).toBeUndefined();
+  await fireEvent(details, 'accessibilityAction', {
+    nativeEvent: { actionName: 'delete' },
+  });
+  expect(deleteAction(first.id)).toBeNull();
   expect(alert).not.toHaveBeenCalled();
   expect(service.deleteRecording).not.toHaveBeenCalled();
 
