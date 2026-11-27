@@ -39,7 +39,6 @@ test.each(faults)(
   'file SQLite separates write and bind failures: %s',
   verifyBindingFault,
 );
-
 async function verifyBindingFault(fault: (typeof faults)[number]) {
   const directory = mkdtempSync(join(tmpdir(), 'orot-research-bind-'));
   const path = join(directory, 'records.sqlite');
@@ -164,7 +163,7 @@ async function verifyBindingFault(fault: (typeof faults)[number]) {
       if (fault === 'none') expect(session.error).not.toBe(warning);
       else expect(session.error).toBe(warning);
       const durable = await connection.database.execute(
-        'SELECT e.call_id, e.event_json, l.sources_json FROM conversation_tool_events e JOIN conversation_tool_lineage l USING (session_id, run_id, call_id)',
+        'SELECT e.call_id, e.event_json, l.sources_json FROM conversation_tool_events e LEFT JOIN conversation_tool_lineage l USING (session_id, run_id, call_id)',
       );
       expect(durable.rows).toHaveLength(2);
       for (const [index, event] of completed.entries()) {
@@ -173,8 +172,9 @@ async function verifyBindingFault(fault: (typeof faults)[number]) {
         expect(JSON.parse(String(row?.event_json)).status).toBe(
           terminal ? 'completed' : 'started',
         );
-        expect(JSON.parse(String(row?.sources_json))).toHaveLength(
-          terminal ? event.sources.length : 0,
+        const sources = row?.sources_json;
+        expect(sources && JSON.parse(String(sources)).length).toBe(
+          terminal ? event.sources.length : null,
         );
         const available = await registry.resolveToolSource(
           event.sources[0]!,
