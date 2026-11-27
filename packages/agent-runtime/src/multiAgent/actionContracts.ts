@@ -22,6 +22,10 @@ export function isNonresumableActionPhase(
   return (
     saved.terminal ||
     saved.phase === 'complete' ||
+    // A host sidecar depends on an ephemeral composer witness, never a checkpoint.
+    !!actions?.some(
+      (action) => action.id === saved.selectedToolId && action.completion === 'host_sidecar',
+    ) ||
     // Neither cold approval nor in-flight terminal writes reenter the graph.
     (saved.phase === 'local_action' &&
       !!actions?.some((action) => action.id === saved.selectedToolId && isTerminalAction(action)))
@@ -36,8 +40,8 @@ export interface LocalActionTool {
   readonly version: string;
   readonly description: string;
   readonly inputSchema: JsonObject;
-  /** Return an app-owned terminal result, never a model-visible tool result. */
-  readonly completion?: 'host_terminal';
+  /** Host terminal ends the graph; sidecar returns a closed non-committed status. */
+  readonly completion?: 'host_terminal' | 'host_sidecar';
   parseInput(value: unknown): JsonObject | undefined;
   authorize(
     input: JsonObject,
@@ -66,7 +70,7 @@ export interface LocalActionTool {
     readonly operationRunId: string;
     readonly operationKey: string;
     readonly signal: AbortSignal;
-  }): Promise<EvidenceBatch>;
+  }): Promise<EvidenceBatch & { readonly sidecarStatus?: 'staged' | 'ignored' }>;
 }
 
 /** Checkpoints bind the exact action contract, never a persisted permission grant. */
@@ -102,8 +106,8 @@ export function validLocalActions(
           typeof action.authorize === 'function' &&
           typeof action.execute === 'function' &&
           (action.completion === undefined ||
-            (action.completion === 'host_terminal' &&
-              typeof confirm === 'function' &&
+            ((action.completion === 'host_sidecar' ||
+              (action.completion === 'host_terminal' && typeof confirm === 'function')) &&
               action.recover === undefined &&
               action.recoverResult === undefined)),
       ))

@@ -66,6 +66,21 @@ export function conversationMutationExecution(input: {
     !entry.reportRequest &&
     observer?.inputOrigin === 'composer';
   const plainAuthoredEntry = untargetedComposerEntry && !entry.reportRequest;
+  const ordinaryModelOwner = observer?.templateProposalOwner;
+  const ordinaryMemorySidecar =
+    !photo &&
+    !observer?.selectedRecordingTranscript &&
+    !observer?.protectedLocalInput &&
+    !observer?.expectedVoiceSelection &&
+    runId &&
+    observer?.inputOrigin === 'composer' &&
+    (!entry || plainAuthoredEntry) &&
+    selected.provider.capabilities.toolCalling &&
+    ordinaryModelOwner?.providerId === selected.provider.id &&
+    ordinaryModelOwner.modelId === selected.modelId &&
+    ordinaryModelOwner.current()
+      ? observer.bindOrdinaryMemorySidecar?.(runId, ordinaryModelOwner)
+      : undefined;
   const allowRemoteAnswer =
     input.remoteAnswerMemory ||
     input.remoteMemory === true ||
@@ -139,6 +154,7 @@ export function conversationMutationExecution(input: {
         }
       : {}),
     actions: [
+      ...(ordinaryMemorySidecar ? [ordinaryMemorySidecar] : []),
       ...(!observer?.protectedLocalInput && !priorAuthored
         ? conversationHistoryAction({
             data,

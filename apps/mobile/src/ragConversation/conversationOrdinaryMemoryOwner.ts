@@ -81,11 +81,16 @@ export function createConversationOrdinaryMemoryOwner(
           if (source) task.attach(source);
           return {
             ...observer,
-            async onRetentionCandidate(candidate, signal) {
+            bindOrdinaryMemorySidecar: task.bindSidecar,
+            async onRetentionCandidate(
+              ...[candidate, signal]: Parameters<
+                NonNullable<RagConversationObserver['onRetentionCandidate']>
+              >
+            ) {
               await observer.onRetentionCandidate?.(candidate, signal);
               task.propose(candidate);
             },
-          } satisfies typeof observer;
+          };
         },
         show() {
           if (draft.get(id) !== task) return;

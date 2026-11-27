@@ -1,3 +1,4 @@
+import { finishLocalSidecar } from './localSidecarAction';
 import { executionLimit } from './executionLimits';
 import { exceedsEvidenceCapacity } from './evidenceCapacity';
 import { AuthorizationPaused, isAuthorizationPaused } from './journaledModelCall';
@@ -15,7 +16,6 @@ import {
 } from './runtimeContext';
 import type { RuntimeContext } from './runtimeContext';
 import type { WorkflowState } from './state';
-
 /** A separate checkpointed action node keeps mutations out of read-only search.
  * Pending dispatch is never resumable; only the domain's committed receipt can
  * prove a result. No grant is serialized and cancellation is checked before dispatch.
@@ -70,8 +70,9 @@ export function createActionNodes<TResult>(context: RuntimeContext<TResult>) {
         return completeState();
       }
       if (terminal) terminalClaimed = true;
+      const sidecar = tool.completion === 'host_sidecar';
       const approval =
-        context.options.checkpointer && context.options.operationJournal?.loadPrepared
+        !sidecar && context.options.checkpointer && context.options.operationJournal?.loadPrepared
           ? context.pause?.approvalSignal(context.signal)
           : undefined;
       const approvalSignal = approval?.signal ?? context.signal;
@@ -121,13 +122,12 @@ export function createActionNodes<TResult>(context: RuntimeContext<TResult>) {
           canceled(context);
           return completeState();
         }
-        await context.options.beforeLocalAction?.(state, approvalSignal);
+        if (!sidecar) await context.options.beforeLocalAction?.(state, approvalSignal);
         if (context.signal.aborted || approvalSignal.aborted) {
           canceled(context);
           return completeState();
         }
-        // Await the transaction even after cancellation; do not race an uncertain write
-        // with another attempt. The domain also checks cancellation inside its transaction.
+        // Await a possible transaction even after cancellation; never race an uncertain write.
         context.activeToolEvent = {
           version: 1,
           operationRunId: state.operationRunId,
@@ -149,6 +149,7 @@ export function createActionNodes<TResult>(context: RuntimeContext<TResult>) {
           operationKey: state.pendingOperation.operationKey,
           signal: approvalSignal,
         });
+        if (tool.completion === 'host_sidecar') return finishLocalSidecar(context, batch);
         if (terminal && confirmTerminal && terminalInput !== undefined) {
           if (context.signal.aborted || approvalSignal.aborted) {
             canceled(context);

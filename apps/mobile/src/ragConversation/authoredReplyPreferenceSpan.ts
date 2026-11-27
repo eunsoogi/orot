@@ -13,7 +13,7 @@ import type { GroundedRagAnswer } from './task';
 
 /** Bound selection to separable current prose. This does not select useful
  * text or infer a category; unsafe or quoted context cannot donate a span. */
-function segments(value: string): readonly string[] {
+export function authoredMemorySegments(value: string): readonly string[] {
   if (
     value.length > 900 ||
     !isEligibleConversationMemorySource(value) ||
@@ -32,7 +32,7 @@ function segments(value: string): readonly string[] {
 }
 
 export function canProposeReplyPreferenceSpan(value: string): boolean {
-  return segments(value).length !== 0;
+  return authoredMemorySegments(value).length !== 0;
 }
 
 /** The model must select a complete, unambiguous verbatim segment. Reuse
@@ -43,7 +43,8 @@ export function validateReplyPreferenceSpan(
 ): string | undefined {
   if (typeof selected !== 'string' || !isProactiveMemoryStatement(selected))
     return undefined;
-  return segments(current).filter(segment => segment === selected).length === 1
+  return authoredMemorySegments(current).filter(segment => segment === selected)
+    .length === 1
     ? selected
     : undefined;
 }
@@ -58,7 +59,8 @@ export function validateAuthoredRoutineSpan(
     !isAuthoredRoutineMemoryStatement(selected)
   )
     return undefined;
-  return segments(current).filter(segment => segment === selected).length === 1
+  return authoredMemorySegments(current).filter(segment => segment === selected)
+    .length === 1
     ? selected
     : undefined;
 }
