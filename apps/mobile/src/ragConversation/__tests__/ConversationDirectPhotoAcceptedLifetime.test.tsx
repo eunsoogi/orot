@@ -30,7 +30,7 @@ test.each([
   'expiry',
   'lock',
   'denied',
-  'single-no-lease',
+  'single-denied',
   'user-stop',
   'owner-reset',
   'grant-replaced',
@@ -46,7 +46,9 @@ test.each([
       .mockResolvedValue(true);
     AppState.currentState = 'active';
     const subscribers = new Set<(e: ConversationExecutionEvent) => void>();
-    const begin = jest.fn(async () => mode !== 'denied');
+    const begin = jest.fn(
+      async () => mode !== 'denied' && mode !== 'single-denied',
+    );
     const end = jest.fn();
     const work = jest.fn();
     let protectedNow: boolean | null = true;
@@ -89,7 +91,7 @@ test.each([
     jest
       .mocked(ports.pick)
       .mockResolvedValue(
-        mode === 'single-no-lease'
+        mode === 'single-denied'
           ? syntheticDirectJPEG
           : [syntheticDirectJPEG, '/9j/C//Z'],
       );
@@ -117,18 +119,18 @@ test.each([
         return;
       }
       await waitFor(() => expect(f.start).toHaveBeenCalledTimes(1));
-      expect(begin).toHaveBeenCalledTimes(mode === 'single-no-lease' ? 0 : 1);
+      expect(begin).toHaveBeenCalledTimes(1);
       expect(work).not.toHaveBeenCalled();
       expect(screen.getAllByText(/전송 중/u)).toHaveLength(1);
       expect(
         screen.getAllByTestId('conversation-sent-photo-image'),
-      ).toHaveLength(mode === 'single-no-lease' ? 1 : 2);
+      ).toHaveLength(mode === 'single-denied' ? 1 : 2);
       await view.unmount();
       await act(() => {
         AppState.currentState = 'background';
         emit({ kind: 'phase' });
       });
-      if (mode === 'denied' || mode === 'single-no-lease') {
+      if (mode === 'denied' || mode === 'single-denied') {
         expect(f.cancel).toHaveBeenCalledWith('image-request');
       } else {
         expect(f.cancel).not.toHaveBeenCalled();
@@ -198,13 +200,13 @@ test.each([
           expect(f.cancel).toHaveBeenCalledWith('image-request');
         expect(screen.queryByText('합성 이미지 설명')).toBeNull();
         expect(Boolean(screen.queryByText('사진 전송이 중단됐어요.'))).toBe(
-          mode === 'expiry',
+          mode === 'expiry' || mode === 'single-denied',
         );
       }
       expect(f.start).toHaveBeenCalledTimes(1);
       expect(f.ordinary).not.toHaveBeenCalled();
       expect(end).toHaveBeenCalledTimes(
-        mode === 'denied' || mode === 'single-no-lease' ? 0 : 1,
+        mode === 'denied' || mode === 'single-denied' ? 0 : 1,
       );
     } finally {
       await next?.unmount();

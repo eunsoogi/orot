@@ -63,6 +63,7 @@ export async function performDirectPhotoSend(input: {
   let transfer: ReturnType<typeof owner.accept>;
   let lease: Awaited<ReturnType<typeof openAcceptedPhotoExecution>>;
   let frame: DirectPhotoPresentation | undefined;
+  let stopObservingUnleased: (() => void) | undefined;
   const present: PublishDirectPhoto = event => {
     if (event && 'sessionId' in event && event.pending) frame = event;
     if (
@@ -134,9 +135,10 @@ export async function performDirectPhotoSend(input: {
       backgroundCurrent: () =>
         transfer?.current() === true && lease?.current() === true,
       async prepare() {
-        if (images.length > 1 && publish)
+        const adapter = publish ? conversationExecutionNative() : undefined;
+        if (publish)
           lease = await openAcceptedPhotoExecution({
-            adapter: conversationExecutionNative(),
+            adapter,
             requestId: retain.id,
             signal: controller.signal,
             foregroundOwner: () => ownsPrompt() && requestOwner(),
@@ -146,10 +148,31 @@ export async function performDirectPhotoSend(input: {
               if (!controller.signal.aborted) controller.abort();
             },
           });
-        return ownsPrompt() && requestOwner();
+        // Single-photo foreground delivery has no mandatory group protection probe.
+        // If it acquired a lease, require an exact fresh native proof before transfer.
+        if (images.length === 1 && adapter?.bridgeAvailable) {
+          const safe = lease
+            ? await lease.recheck()
+            : await adapter.protectedDataAvailable().catch(() => false);
+          if (
+            safe !== true ||
+            AppState.currentState !== 'active' ||
+            (adapter.currentPhase && adapter.currentPhase() !== 'active')
+          ) {
+            controller.abort();
+            return false;
+          }
+        }
+        return ownsPrompt() && requestOwner() && (!lease || lease.current());
       },
       atNativeStart() {
-        if (!ownsPrompt() || !requestOwner() || !submission.accept()) {
+        const sessionCanStart = () =>
+          ownsPrompt() &&
+          requestOwner() &&
+          AppState.currentState !== 'inactive' &&
+          AppState.currentState !== 'background' &&
+          (!lease || (AppState.currentState === 'active' && lease.current()));
+        if (!sessionCanStart() || !submission.accept() || !sessionCanStart()) {
           controller.abort();
           return false;
         }
@@ -159,6 +182,8 @@ export async function performDirectPhotoSend(input: {
           if (transfer) publish?.({ retireRequestId: retain.id });
           else lease.close();
         }
+        if (images.length === 1 && publish && !transfer)
+          stopObservingUnleased = owner.observeUnleased(sessionId, controller);
         return admitted();
       },
     });
@@ -197,6 +222,7 @@ export async function performDirectPhotoSend(input: {
     if (owns()) setState({ images, message: unavailable });
   } finally {
     unsubscribeOwner();
+    stopObservingUnleased?.();
     transfer?.close();
     lease?.close();
     if (!committed && current() && AppState.currentState === 'active')

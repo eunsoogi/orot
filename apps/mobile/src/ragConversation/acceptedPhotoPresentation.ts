@@ -13,6 +13,7 @@ const byOwner = new WeakMap<
 >();
 function createAcceptedPhotoPresentation() {
   let entry: Entry | null = null;
+  let unleased: { sessionId: number; token: AbortController } | null = null;
   let interruption: number | null = null;
   const listeners = new Set<() => void>();
   const notify = () => {
@@ -34,6 +35,20 @@ function createAcceptedPhotoPresentation() {
       if (entry?.token !== token) return;
       interruption = entry.photo.sessionId;
       token.abort();
+    },
+    // Remember only the exact started unleased request identity. It never owns
+    // a sending row or pixels outside its scene; a real interruption can explain its disappearance.
+    observeUnleased(sessionId: number, token: AbortController) {
+      unleased = { sessionId, token };
+      return () => {
+        if (unleased?.token === token) unleased = null;
+      };
+    },
+    interruptUnleased(token: AbortController) {
+      if (unleased?.token !== token || token.signal.aborted) return;
+      interruption = unleased.sessionId;
+      unleased = null;
+      notify();
     },
     getSnapshot: () => entry?.photo ?? null,
     subscribe(listener: () => void) {
@@ -66,7 +81,10 @@ function createAcceptedPhotoPresentation() {
     },
     stopAll() {
       const current = entry;
+      const local = unleased?.token;
+      unleased = null;
       interruption = null;
+      local?.abort();
       if (current) current.token.abort();
       else notify();
     },
