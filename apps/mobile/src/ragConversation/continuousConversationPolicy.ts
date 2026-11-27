@@ -79,6 +79,7 @@ export function continuousConversationPolicy<
         : undefined;
     update(activeId, {
       modelSelectionPending: true,
+      modelSelectionFailed: false,
       modelSelectionKeepsDisplay: Boolean(keepDisplay),
     });
     const run = async () => {
@@ -132,7 +133,6 @@ export function continuousConversationPolicy<
           interrupted = undefined;
           if (existing.id !== activeId) store.cancel(activeId);
           store.select(existing.id);
-
           update(activeId, {
             modelSelectionPending: false,
             modelSelectionFailed: false,
