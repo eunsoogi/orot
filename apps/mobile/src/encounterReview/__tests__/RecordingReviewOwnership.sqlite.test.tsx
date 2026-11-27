@@ -1,3 +1,4 @@
+import { providerSelectionStore } from '../../providers/selection/keychainSelectionStore';
 import { providerSuccess } from '@orot/model-runtime';
 import { reviewCopy } from '../strings';
 import { act, fireEvent, render, screen } from '@testing-library/react-native';
@@ -207,6 +208,39 @@ test('foreground does not replay a held page and the same recording can restart 
     await screen.findByTestId('encounter-save');
     expect(calls()).toBe(2);
     expect(screen.getByText('Synthetic ninth line only.')).toBeTruthy();
+    expect(await fixture.rows()).toEqual([]);
+  } finally {
+    await view.unmount();
+  }
+});
+
+test('a long saved recording distinguishes missing selection from unsupported transport and can start once selected', async () => {
+  const { calls, service } = await harness(9, 'local');
+  jest
+    .mocked(providerSelectionStore.load)
+    .mockResolvedValueOnce(null)
+    .mockResolvedValueOnce({
+      providerId: 'chatgpt-plan:synthetic:choice',
+      modelId: 'synthetic-remote',
+    });
+  const view = await render(<RecordingReviewRoute reviewService={service} />);
+  try {
+    const start = async () =>
+      fireEvent.press(await screen.findByTestId('encounter-start'));
+    await start();
+    await screen.findByText(reviewCopy['selection-required']);
+    expect(screen.queryByTestId('encounter-save')).toBeNull();
+    expect(calls()).toBe(0);
+    expect(await fixture.rows()).toEqual([]);
+
+    await start();
+    await screen.findByText(reviewCopy['transcript-too-long']);
+    expect(calls()).toBe(0);
+    expect(await fixture.rows()).toEqual([]);
+
+    await start();
+    expect(await screen.findByTestId('encounter-save')).toBeTruthy();
+    expect(calls()).toBe(2);
     expect(await fixture.rows()).toEqual([]);
   } finally {
     await view.unmount();
