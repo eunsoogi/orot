@@ -14,7 +14,21 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
         }
     }
 
+    private var encounterProtectionGeneration = UUID()
+    private var encounterProtectionDenied = false
+
+    /// Local transcript review needs continuity, not a fresh Boolean after unlock.
+    func currentEncounterProtectionGeneration(in application: UIApplication) -> String? {
+        guard !encounterProtectionDenied, application.isProtectedDataAvailable,
+              application.applicationState == .active
+        else { return nil }
+        return encounterProtectionGeneration.uuidString.lowercased()
+    }
+
     func applicationProtectedDataWillBecomeUnavailable(_: UIApplication) {
+        // Retire before consulting any window or depending on a React listener.
+        encounterProtectionDenied = true
+        encounterProtectionGeneration = UUID()
         guard let window, let scene = window.windowScene,
               let delegate = scene.delegate as? SceneDelegate
         else { return }
@@ -22,6 +36,7 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
     }
 
     func applicationProtectedDataDidBecomeAvailable(_: UIApplication) {
+        encounterProtectionDenied = false
         guard let window, let scene = window.windowScene,
               let delegate = scene.delegate as? SceneDelegate
         else { return }

@@ -22,13 +22,15 @@ function messageForAccess(access: CalendarAccessState): string {
   }
 }
 
-/** Keeps permission detail and recovery controls in Settings so Schedule stays focused. */
+/** Separates OS permission actions from the calendar sync checkpoint and refresh. */
 export function SettingsCalendarSyncSection({
   sync,
   onOpenSystemSettings,
+  mode,
 }: {
   readonly sync: CalendarAutoSyncActions;
-  readonly onOpenSystemSettings: () => void;
+  readonly onOpenSystemSettings?: () => void;
+  readonly mode: 'permission' | 'sync';
 }) {
   const [requestingAccess, setRequestingAccess] = useState(false);
   const status = sync.loading
@@ -52,16 +54,20 @@ export function SettingsCalendarSyncSection({
       <Text style={styles.sectionTitle}>
         {t('settings.syncStatus.calendar')}
       </Text>
-      <Text style={styles.note} testID="settings-calendar-permission-note">
-        {t('calendar.permissionExplanation')}
-      </Text>
+      {mode === 'permission' ? (
+        <Text style={styles.note} testID="settings-calendar-permission-note">
+          {t('calendar.permissionExplanation')}
+        </Text>
+      ) : null}
       <Text
         accessibilityLiveRegion="polite"
         accessibilityRole={sync.error ? 'alert' : undefined}
         style={sync.error ? styles.error : styles.message}
         testID="settings-calendar-sync-message"
       >
-        {status}
+        {mode === 'permission' || sync.access === 'fullAccess' || sync.loading
+          ? status
+          : t('settings.syncStatus.calendar.notChecked')}
       </Text>
       {sync.error ? (
         <Text
@@ -72,7 +78,7 @@ export function SettingsCalendarSyncSection({
           {t('settings.syncStatus.calendar.error')}
         </Text>
       ) : null}
-      {sync.updatedAt ? (
+      {mode === 'sync' && sync.updatedAt ? (
         <Text
           style={styles.timestamp}
           testID="settings-calendar-sync-updated-at"
@@ -82,7 +88,7 @@ export function SettingsCalendarSyncSection({
           })}
         </Text>
       ) : null}
-      {sync.access !== 'fullAccess' ? (
+      {mode === 'permission' && sync.access !== 'fullAccess' ? (
         <AppButton
           accessibilityState={{ busy: requestingAccess }}
           disabled={requestingAccess}
@@ -97,20 +103,24 @@ export function SettingsCalendarSyncSection({
           }
         />
       ) : null}
-      <AppButton
-        accessibilityState={{ busy: sync.loading }}
-        disabled={sync.loading || sync.access !== 'fullAccess'}
-        onPress={() => {
-          sync.refresh();
-        }}
-        testID="settings-calendar-refresh"
-        title={
-          sync.loading
-            ? t('settings.syncStatus.calendar.refreshing')
-            : t('settings.syncStatus.calendar.refresh')
-        }
-      />
-      {sync.access === 'denied' || sync.access === 'restricted' ? (
+      {mode === 'sync' ? (
+        <AppButton
+          accessibilityState={{ busy: sync.loading }}
+          disabled={sync.loading || sync.access !== 'fullAccess'}
+          onPress={() => {
+            sync.refresh();
+          }}
+          testID="settings-calendar-refresh"
+          title={
+            sync.loading
+              ? t('settings.syncStatus.calendar.refreshing')
+              : t('settings.syncStatus.calendar.refresh')
+          }
+        />
+      ) : null}
+      {mode === 'permission' &&
+      onOpenSystemSettings &&
+      (sync.access === 'denied' || sync.access === 'restricted') ? (
         <AppButton
           onPress={onOpenSystemSettings}
           testID="settings-calendar-open-system-settings"

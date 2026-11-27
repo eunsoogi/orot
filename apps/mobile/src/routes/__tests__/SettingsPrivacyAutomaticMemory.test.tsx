@@ -1,4 +1,10 @@
-import { act, fireEvent, render, screen } from '@testing-library/react-native';
+import {
+  act,
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+} from '@testing-library/react-native';
 import type { ReactNode } from 'react';
 import { Alert, Text } from 'react-native';
 import {
@@ -42,12 +48,13 @@ jest.mock('react-native-safe-area-context', () => {
       React.createElement(React.Fragment, null, children),
   };
 });
-function toggleMemory(value: boolean) {
-  return fireEvent(
-    screen.getByTestId('settings-automatic-memory-toggle'),
-    'valueChange',
-    value,
+const memoryToggle = 'settings-automatic-memory-toggle';
+const waitForMemoryValue = (value: boolean) =>
+  waitFor(() =>
+    expect(screen.getByTestId(memoryToggle)).toHaveProp('value', value),
   );
+function toggleMemory(value: boolean) {
+  return fireEvent(screen.getByTestId(memoryToggle), 'valueChange', value);
 }
 const service = 'com.orot.mobile.ordinary-conversation-memory-authority.v1';
 type Route = 'home' | 'settings-memory' | 'elsewhere';
@@ -102,14 +109,11 @@ test('Memory route defaults off, information is separate, and an explicit switch
   const f = fixture();
   try {
     await f.open();
-    expect(
-      await screen.findByText(t('settings.automaticMemory.off')),
-    ).toBeTruthy();
+    await waitForMemoryValue(false);
     expect(f.write).not.toHaveBeenCalled();
-    expect(screen.getByTestId('settings-memory-title')).toHaveTextContent(
-      t('settings.memory'),
-    );
-    expect(screen.getByTestId('settings-memory-controls')).toBeTruthy();
+    expect(screen.getByText(t('settings.memory'))).toBeVisible();
+    expect(screen.queryByText(t('settings.automaticMemory.off'))).toBeNull();
+    expect(screen.queryByText(t('settings.routineMemory.off'))).toBeNull();
     expect(screen.getByTestId('settings-routine-memory')).toBeTruthy();
     expect(screen.getByTestId('settings-daily-report-memory')).toBeTruthy();
     expect(screen.queryByTestId('inference-consent-clear')).toBeNull();
@@ -128,17 +132,14 @@ test('Memory route defaults off, information is separate, and an explicit switch
       info.mockRestore();
     }
     await toggleMemory(true);
-    expect(
-      await screen.findByText(t('settings.automaticMemory.on')),
-    ).toBeTruthy();
+    await waitForMemoryValue(true);
+    expect(screen.queryByText(t('settings.automaticMemory.on'))).toBeNull();
     expect(await captureOrdinaryConversationMemoryAdmission()).toBeDefined();
     expect(
       f.write.mock.calls.map(([, body]) => JSON.parse(body).status),
     ).toEqual(['suspended', 'active']);
     await toggleMemory(false);
-    expect(
-      await screen.findByText(t('settings.automaticMemory.off')),
-    ).toBeTruthy();
+    await waitForMemoryValue(false);
     expect(await captureOrdinaryConversationMemoryAdmission()).toBeUndefined();
     expect(JSON.parse(f.write.mock.lastCall![1]).status).toBe('revoked');
     expect(resetInferenceConsentReceipts).not.toHaveBeenCalled();
@@ -156,9 +157,13 @@ test('a logical route change while native enable is held invalidates the attempt
   });
   try {
     await f.open();
-    await screen.findByText(t('settings.automaticMemory.off'));
+    await waitForMemoryValue(false);
     await toggleMemory(true);
     await entered.promise;
+    expect(
+      await screen.findByText(t('settings.automaticMemory.enabling')),
+    ).toBeVisible();
+    expect(screen.getByTestId(memoryToggle)).toHaveProp('value', false);
     const memory = f.controller.getSnapshot().currentRoute;
     await act(async () => {
       f.controller.push('elsewhere');
@@ -181,9 +186,7 @@ test('a logical route change while native enable is held invalidates the attempt
     await act(async () => {
       f.controller.replace('settings-memory');
     });
-    expect(
-      await screen.findByText(t('settings.automaticMemory.off')),
-    ).toBeTruthy();
+    await waitForMemoryValue(false);
   } finally {
     pending.resolve();
     f.close();
@@ -200,9 +203,9 @@ test('disable immediately fences old captures but a rejected durable revocation 
   });
   try {
     await f.open();
-    await screen.findByText(t('settings.automaticMemory.off'));
+    await waitForMemoryValue(false);
     await toggleMemory(true);
-    await screen.findByText(t('settings.automaticMemory.on'));
+    await waitForMemoryValue(true);
     const old = await captureOrdinaryConversationMemoryAdmission();
     expect(old?.isCurrent()).toBe(true);
     await toggleMemory(false);
@@ -212,8 +215,7 @@ test('disable immediately fences old captures but a rejected durable revocation 
     expect(
       await screen.findByText(t('settings.automaticMemory.disableError')),
     ).toBeTruthy();
-    expect(screen.queryByText(t('settings.automaticMemory.off'))).toBeNull();
-    expect(screen.queryByTestId('settings-automatic-memory-toggle')).toBeNull();
+    expect(screen.queryByTestId(memoryToggle)).toBeNull();
     expect(
       await readOrdinaryConversationMemorySettings(
         await openOrdinaryConversationMemoryOwner(),

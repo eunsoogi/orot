@@ -1,5 +1,10 @@
 import { NativeModules, StyleSheet } from 'react-native';
-import { fireEvent, render, screen } from '@testing-library/react-native';
+import {
+  fireEvent,
+  render,
+  screen,
+  within,
+} from '@testing-library/react-native';
 import { appColors } from '../../layout/appColors';
 import { t } from '../../i18n';
 import { SettingsRoute } from '../SettingsRoute';
@@ -24,7 +29,7 @@ test('shows the installed application version supplied by native metadata', asyn
         onOpenPrivacy={jest.fn()}
         onOpenMemory={jest.fn()}
         onOpenNotifications={jest.fn()}
-        onOpenBackup={jest.fn()}
+        onOpenPrivacyPolicy={jest.fn()}
         onOpenHealthData={jest.fn()}
         onOpenSyncStatus={jest.fn()}
       />,
@@ -47,7 +52,7 @@ test('shows one compact list and preserves each Settings destination', async () 
   const onOpenProviderSettings = jest.fn();
   const onOpenAccounts = jest.fn();
   const onOpenPrivacy = jest.fn();
-  const onOpenBackup = jest.fn();
+  const onOpenPrivacyPolicy = jest.fn();
   const onOpenMemory = jest.fn();
   const onOpenNotifications = jest.fn();
   await render(
@@ -59,7 +64,7 @@ test('shows one compact list and preserves each Settings destination', async () 
       onOpenPrivacy={onOpenPrivacy}
       onOpenMemory={onOpenMemory}
       onOpenNotifications={onOpenNotifications}
-      onOpenBackup={onOpenBackup}
+      onOpenPrivacyPolicy={onOpenPrivacyPolicy}
       onOpenHealthData={onOpenHealthData}
       onOpenSyncStatus={onOpenSyncStatus}
     />,
@@ -70,7 +75,27 @@ test('shows one compact list and preserves each Settings destination', async () 
   ).toBeTruthy();
   expect(screen.queryAllByTestId(/^settings-section-/)).toHaveLength(0);
   expect(screen.queryByText(t('settings.summary'))).toBeNull();
-  expect(screen.getByTestId('settings-destinations')).toBeTruthy();
+  for (const id of ['settings-destinations', 'settings-version-group']) {
+    expect(
+      StyleSheet.flatten(screen.getByTestId(id).props.style),
+    ).toMatchObject({
+      backgroundColor: appColors.surface,
+    });
+  }
+  const destinations = within(screen.getByTestId('settings-destinations'));
+  expect(
+    destinations
+      .getAllByRole('button')
+      .slice(-3)
+      .map(row => row.props.accessibilityLabel),
+  ).toEqual(['권한', '동기화', '개인정보 처리 방침']);
+  expect(destinations.queryByTestId('settings-app-info')).toBeNull();
+  expect(
+    within(screen.getByTestId('settings-version-group')).getByTestId(
+      'settings-app-info',
+    ),
+  ).toBeTruthy();
+  expect(destinations.queryByTestId('settings-open-backup')).toBeNull();
   expect(screen.queryByTestId('settings-daily-reminder-switch')).toBeNull();
   expect(screen.queryAllByRole('switch')).toHaveLength(0);
   expect(screen.getByText('AI 제공자와 모델')).toBeTruthy();
@@ -88,8 +113,8 @@ test('shows one compact list and preserves each Settings destination', async () 
       t('provider.selection.chatGPTAccountsConnected', { count: 1 }),
     ),
   ).toBeNull();
-  expect(screen.getByText('개인정보 및 권한')).toBeTruthy();
-  expect(screen.getByText('백업과 복구')).toBeTruthy();
+  expect(screen.getByText('권한')).toBeTruthy();
+  expect(screen.getByText('개인정보 처리 방침')).toBeTruthy();
   expect(
     StyleSheet.flatten(screen.getByTestId('settings-app-info-icon').props.style)
       ?.backgroundColor,
@@ -105,7 +130,7 @@ test('shows one compact list and preserves each Settings destination', async () 
     'settings-open-provider',
     'settings-open-accounts',
     'settings-open-privacy',
-    'settings-open-backup',
+    'settings-open-privacy-policy',
     'settings-open-memory',
     'settings-open-notifications',
   ];
@@ -119,7 +144,7 @@ test('shows one compact list and preserves each Settings destination', async () 
   expect(onOpenProviderSettings).toHaveBeenCalledTimes(1);
   expect(onOpenAccounts).toHaveBeenCalledTimes(1);
   expect(onOpenPrivacy).toHaveBeenCalledTimes(1);
-  expect(onOpenBackup).toHaveBeenCalledTimes(1);
+  expect(onOpenPrivacyPolicy).toHaveBeenCalledTimes(1);
   expect(onOpenMemory).toHaveBeenCalledTimes(1);
   expect(onOpenNotifications).toHaveBeenCalledTimes(1);
 });

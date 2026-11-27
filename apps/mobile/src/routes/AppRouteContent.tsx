@@ -121,7 +121,7 @@ export function AppRouteContent({
             onOpenNotifications={() => actions.push('settings-notifications')}
             onOpenMemory={() => actions.push('settings-memory')}
             onOpenPrivacy={() => actions.push('settings-privacy')}
-            onOpenBackup={() => actions.push('settings-backup')}
+            onOpenPrivacyPolicy={() => actions.push('settings-privacy-policy')}
             onOpenHealthData={() => actions.push('settings-health-data')}
             onOpenSyncStatus={() => actions.push('settings-sync-status')}
           />
@@ -225,8 +225,8 @@ export function AppRouteContent({
       );
     case 'settings-accounts':
     case 'settings-provider':
-    case 'settings-backup':
     case 'settings-privacy':
+    case 'settings-privacy-policy':
     case 'settings-notifications':
     case 'settings-memory':
     case 'settings-health-data':

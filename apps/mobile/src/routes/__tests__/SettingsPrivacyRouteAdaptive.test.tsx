@@ -6,6 +6,7 @@ import {
   waitFor,
 } from '@testing-library/react-native';
 import { t } from '../../i18n';
+import { appColors } from '../../layout/appColors';
 import type { ReactNode } from 'react';
 import { Alert, Dimensions, StyleSheet, Text, View } from 'react-native';
 import { NavigationRouteAdapter } from '../../navigation/NavigationRouteAdapter';
@@ -125,8 +126,8 @@ test('uses native privacy regions and retains confirmation, progress, and cleare
       controller={controller}
     >
       {actions =>
-        actions.route.name === 'settings-privacy' ? (
-          <SettingsPrivacyRoute />
+        actions.route.name === 'settings-privacy-policy' ? (
+          <SettingsPrivacyRoute policy />
         ) : (
           <Text testID="home-route">Home</Text>
         )
@@ -134,7 +135,7 @@ test('uses native privacy regions and retains confirmation, progress, and cleare
     </NavigationRouteAdapter>,
   );
   await act(async () => {
-    controller.push('settings-privacy');
+    controller.push('settings-privacy-policy');
   });
 
   expect(typeof appContentLayoutOwner).toBe('function');
@@ -148,8 +149,16 @@ test('uses native privacy regions and retains confirmation, progress, and cleare
       `navigation-route-columns-${controller.getSnapshot().currentRoute.key}`,
     ),
   ).toBeNull();
-  expect(screen.getByTestId('settings-privacy-permissions')).toBeTruthy();
-  expect(screen.getByTestId('settings-privacy-external-transfer')).toBeTruthy();
+  for (const id of [
+    'settings-privacy-policy-summary',
+    'settings-privacy-external-transfer',
+  ]) {
+    expect(
+      StyleSheet.flatten(screen.getByTestId(id).props.style),
+    ).toMatchObject({
+      backgroundColor: appColors.surface,
+    });
+  }
   expect(columnsAxis()).toBe('column');
 
   await fireEvent(
@@ -180,15 +189,14 @@ test('uses native privacy regions and retains confirmation, progress, and cleare
       ?.disabled,
   ).toBe(true);
   expect(screen.getByTestId('inference-consent-clearing')).toBeTruthy();
-  expect(
-    screen.getByTestId('privacy-open-system-settings').props.accessibilityState
-      ?.disabled,
-  ).toBe(true);
+  expect(screen.queryByTestId('privacy-open-system-settings')).toBeNull();
 
   await act(async () => {
     expect(await controller.requestBack()).toBe(false);
   });
-  expect(controller.getSnapshot().currentRoute.name).toBe('settings-privacy');
+  expect(controller.getSnapshot().currentRoute.name).toBe(
+    'settings-privacy-policy',
+  );
 
   measuredBounds.set('settings-privacy-columns-host', { x: 24, width: 552 });
   await act(async () => {
@@ -210,7 +218,9 @@ test('uses native privacy regions and retains confirmation, progress, and cleare
     screen.getByTestId('inference-consent-clear').props.accessibilityState
       ?.disabled,
   ).toBe(false);
-  expect(controller.getSnapshot().currentRoute.name).toBe('settings-privacy');
+  expect(controller.getSnapshot().currentRoute.name).toBe(
+    'settings-privacy-policy',
+  );
 });
 
 test('privacy explanations do not change iOS permissions or stored consent', async () => {

@@ -66,7 +66,18 @@ final class NavigationViewportFrameIntegrationTests: OrotFailFastTestCase {
         let unchangedViewport = snapshot?["viewportBounds"] as? [String: Double]
         XCTAssertEqual(unchangedViewport?["height"], 420)
 
-        guide = CGRect(x: 100, y: 220, width: 400, height: 200)
+        let center = NotificationCenter.default
+        let undocked = CGRect(x: 100, y: 220, width: 400, height: 200)
+        let nonDockingScreenFrame = window.convert(undocked, to: scene.screen.coordinateSpace)
+        let frameInfo: [AnyHashable: Any] = [
+            UIResponder.keyboardIsLocalUserInfoKey: true,
+            UIResponder.keyboardFrameEndUserInfoKey: NSValue(cgRect: nonDockingScreenFrame),
+        ]
+        center.post(name: UIResponder.keyboardDidChangeFrameNotification, object: scene.screen, userInfo: frameInfo)
+        let recovered = try XCTUnwrap(snapshot?["dockedKeyboardFrame"] as? [String: Double])
+        XCTAssertEqual(recovered, frame, "An unusable screen projection does not suppress positive window-local proof")
+
+        guide = undocked
         sensor.setNeedsLayout()
         sensor.layoutIfNeeded()
         XCTAssertNil(snapshot?["dockedKeyboardFrame"], "Undocked overlap never clips the composer")
@@ -77,10 +88,13 @@ final class NavigationViewportFrameIntegrationTests: OrotFailFastTestCase {
         XCTAssertNil(snapshot?["dockedKeyboardFrame"], "Home safe area is not the keyboard")
 
         guide = docked
-        let center = NotificationCenter.default
         center.post(name: UIResponder.keyboardWillHideNotification, object: scene.screen,
                     userInfo: [UIResponder.keyboardIsLocalUserInfoKey: true])
         XCTAssertNil(snapshot?["dockedKeyboardFrame"], "A known dismissal beats a stale guide")
+        center.post(name: UIResponder.keyboardDidChangeFrameNotification, object: scene.screen, userInfo: frameInfo)
+        XCTAssertNil(snapshot?["dockedKeyboardFrame"], "A trailing undocked notification cannot revive the old guide")
+        center.post(name: UIResponder.keyboardWillShowNotification, object: scene.screen, userInfo: frameInfo)
+        XCTAssertEqual(snapshot?["dockedKeyboardFrame"] as? [String: Double], frame, "A fresh show may recover from the local guide")
         let unrelated = UIWindow(windowScene: scene)
         XCTAssertNil(keyboard.frame(in: unrelated), "A foreign window cannot borrow guide evidence")
         sensor.removeFromSuperview()

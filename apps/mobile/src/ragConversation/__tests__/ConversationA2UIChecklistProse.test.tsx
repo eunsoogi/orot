@@ -110,3 +110,41 @@ test.each([
     false,
   );
 });
+
+test.each(['- [ ] ', '+ [ ] ', '* [ ] '])(
+  'native checklist admits the unchanged Markdown marker %s only when enabled',
+  prefix => {
+    const { root, controls } = fixture();
+    const fallback = checklist.replace('☐ ', prefix);
+    expect(matchesConversationA2UIChecklist(root, fallback, controls)).toBe(
+      false,
+    );
+    expect(
+      matchesConversationA2UIChecklist(root, fallback, controls, true, true),
+    ).toBe(true);
+  },
+);
+
+test.each([
+  '- [x] Notebook',
+  '- [ ] notebook',
+  '- [ ] **Notebook**',
+  '- [ ] [Notebook](https://example.invalid)',
+  '- [ ]  Notebook',
+  '- [ ] Notebook\n- [ ] Notebook',
+  '☐ Notebook\n- [ ] Choose a page',
+])(
+  'never normalizes a checked, conflicting or non-control Markdown line',
+  replacement => {
+    const { root, controls } = fixture();
+    expect(
+      matchesConversationA2UIChecklist(
+        root,
+        checklist.replace('☐ Notebook', replacement),
+        controls,
+        true,
+        true,
+      ),
+    ).toBe(false);
+  },
+);

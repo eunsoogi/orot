@@ -2,6 +2,7 @@ import { NativeModules } from 'react-native';
 
 type Stage =
   | 'grant_lookup'
+  | 'owner_reproof'
   | 'admission_queue'
   | 'data_open'
   | 'stock_read'

@@ -42,6 +42,8 @@ export function SettingsMemoryRoute({
                 <View style={styles.divider} />
                 <SettingsAutomaticMemorySection ownership={ownership} routine />
                 <View style={styles.divider} />
+                <SettingsAutomaticMemorySection ownership={ownership} general />
+                <View style={styles.divider} />
                 <SettingsDailyReportMemorySection ownership={ownership} />
               </View>
             </View>
@@ -52,7 +54,7 @@ export function SettingsMemoryRoute({
   );
 }
 const styles = StyleSheet.create({
-  background: { flexGrow: 1, backgroundColor: settingsListColors.background },
+  background: { flexGrow: 1 },
   page: {
     flexGrow: 1,
     alignSelf: 'center',

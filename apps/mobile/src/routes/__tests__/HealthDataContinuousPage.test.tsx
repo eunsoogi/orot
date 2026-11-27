@@ -20,29 +20,21 @@ jest.mock('../../navigation/useNavigationContentInset', () => ({
   },
 }));
 
-// One page includes every choice, recovery action, permission boundary and final action.
+// One page includes every choice, recovery action and final action.
 test('keeps all HealthData content and recovery controls in one vertical owner', async () => {
   const onRetryLoad = jest.fn();
-  const onRetryStatus = jest.fn();
   const onSave = jest.fn();
   const onToggle = jest.fn();
   await render(
     <HealthDataIntegrationScreen
-      integrationStatus={{
-        availability: 'available',
-        lastSync: { status: 'retryable', updatedAt: '2026-10-27T00:00:00Z' },
-        statusLoadFailed: true,
-      }}
       loadFailed
       loaded
       notice={{ status: 'selection_save_failed' }}
       onRetryLoad={onRetryLoad}
-      onRetryStatus={onRetryStatus}
       onSave={onSave}
       onToggle={onToggle}
       saving={false}
       selected={new Set(['sleep'])}
-      statusLoadFailed
     />,
   );
 
@@ -66,24 +58,13 @@ test('keeps all HealthData content and recovery controls in one vertical owner',
   ]) {
     expect(content.getByTestId(`health-data-feature-${feature}`)).toBeTruthy();
   }
-  for (const identifier of [
-    'title',
-    'connection-status',
-    'permission-status',
-    'last-sync-status',
-    'last-sync-time',
-    'load-error',
-    'status-load-error',
-    'status',
-  ]) {
+  for (const identifier of ['title', 'load-error', 'status']) {
     expect(content.getByTestId(`health-data-${identifier}`)).toBeTruthy();
   }
   await fireEvent.press(content.getByTestId('health-data-feature-heartRate'));
   await fireEvent.press(content.getByTestId('health-data-load-retry'));
-  await fireEvent.press(content.getByTestId('health-data-status-retry'));
   await fireEvent.press(content.getByTestId('health-data-save'));
   expect(onToggle).toHaveBeenCalledWith('heartRate');
   expect(onRetryLoad).toHaveBeenCalledTimes(1);
-  expect(onRetryStatus).toHaveBeenCalledTimes(1);
   expect(onSave).toHaveBeenCalledTimes(1);
 });

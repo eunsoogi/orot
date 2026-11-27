@@ -72,12 +72,9 @@ test('shows saved sync state and refreshes it after an explicit retry', async ()
   expect(screen.getByTestId('settings-sync-status-message')).toHaveTextContent(
     '마지막 동기화 중 문제가 있었어요. 권한과 저장소 상태를 확인한 뒤 다시 시도해 주세요.',
   );
-  expect(
-    screen.getByTestId('settings-calendar-permission-note'),
-  ).toHaveTextContent(/캘린더를 수정하거나 삭제하지 않아요\./u);
+  expect(screen.queryByTestId('settings-calendar-permission-note')).toBeNull();
+  expect(screen.queryByTestId('settings-calendar-request-access')).toBeNull();
   expect(requestAccess).not.toHaveBeenCalled();
-  await fireEvent.press(screen.getByTestId('settings-calendar-request-access'));
-  expect(requestAccess).toHaveBeenCalledTimes(1);
   await fireEvent.press(screen.getByTestId('settings-sync-retry'));
 
   expect(retrySync).toHaveBeenCalledTimes(1);

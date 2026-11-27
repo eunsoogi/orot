@@ -12,7 +12,7 @@ type SavedSyncSnapshot = {
   readonly updatedAt: string;
 } | null;
 
-/** Keeps saved HealthKit status, attempted categories, and calendar permission detail together. */
+/** Keeps saved HealthKit status, attempted categories, and calendar synchronization together. */
 export function SettingsSyncStatusHealthPanel({
   selected,
   message,
@@ -21,7 +21,6 @@ export function SettingsSyncStatusHealthPanel({
   loadFailed,
   retryReadbackFailed,
   calendarSync,
-  onOpenSystemSettings,
 }: {
   readonly selected: readonly HealthKitAutoSyncFeature[];
   readonly message: string;
@@ -30,7 +29,6 @@ export function SettingsSyncStatusHealthPanel({
   readonly loadFailed: boolean;
   readonly retryReadbackFailed: boolean;
   readonly calendarSync: CalendarAutoSyncActions;
-  readonly onOpenSystemSettings: () => void;
 }) {
   return (
     <View style={styles.panel} testID="settings-sync-status-primary">
@@ -43,7 +41,7 @@ export function SettingsSyncStatusHealthPanel({
       </Text>
       <View style={styles.card}>
         <Text style={styles.sectionTitle}>
-          {t('settings.syncStatus.healthData')}
+          {t('settings.healthData.lastSync')}
         </Text>
         {selected.length > 0 ? (
           <Text
@@ -95,10 +93,7 @@ export function SettingsSyncStatusHealthPanel({
           </Text>
         ) : null}
       </View>
-      <SettingsCalendarSyncSection
-        sync={calendarSync}
-        onOpenSystemSettings={onOpenSystemSettings}
-      />
+      <SettingsCalendarSyncSection sync={calendarSync} mode="sync" />
     </View>
   );
 }
@@ -108,18 +103,12 @@ export function SettingsSyncStatusRecoveryPanel({
   loaded,
   hasSelection,
   retrying,
-  openSettingsError,
-  onConfigureHealthData,
   onRetry,
-  onOpenSystemSettings,
 }: {
   readonly loaded: boolean;
   readonly hasSelection: boolean;
   readonly retrying: boolean;
-  readonly openSettingsError: boolean;
-  readonly onConfigureHealthData?: () => void;
   readonly onRetry: () => void;
-  readonly onOpenSystemSettings: () => void;
 }) {
   return (
     <View style={styles.panel} testID="settings-sync-status-secondary">
@@ -127,14 +116,6 @@ export function SettingsSyncStatusRecoveryPanel({
         <Text style={styles.sectionTitle}>
           {t('settings.syncStatus.recovery')}
         </Text>
-        {onConfigureHealthData ? (
-          <AppButton
-            onPress={onConfigureHealthData}
-            testID="settings-sync-open-health-data"
-            title={t('settings.healthData')}
-            variant="secondary"
-          />
-        ) : null}
         <AppButton
           accessibilityState={{ busy: retrying }}
           disabled={!loaded || !hasSelection || retrying}
@@ -146,17 +127,6 @@ export function SettingsSyncStatusRecoveryPanel({
               : t('settings.syncStatus.retry')
           }
         />
-        <AppButton
-          onPress={onOpenSystemSettings}
-          testID="settings-sync-open-system-settings"
-          title={t('settings.syncStatus.openSettings')}
-          variant="secondary"
-        />
-        {openSettingsError ? (
-          <Text accessibilityRole="alert" style={styles.error}>
-            {t('settings.syncStatus.openSettingsError')}
-          </Text>
-        ) : null}
       </View>
     </View>
   );

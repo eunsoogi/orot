@@ -79,22 +79,44 @@ export default function RecordingLibrarySummaryRow({
   return (
     <TrailingSwipeAction
       action={
-        <Pressable
-          accessibilityRole="button"
-          accessibilityLabel={deleteLabel}
-          onPress={onDelete}
-          style={styles.swipeDelete}
-          testID={`recording-delete-${source.id}`}
+        <View
+          style={styles.swipeActionSlot}
+          testID={`recording-delete-slot-${source.id}`}
         >
-          <Text style={styles.swipeDeleteText}>{deleteLabel}</Text>
-        </Pressable>
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel={deleteLabel}
+            disabled={disabled || !revealed}
+            onPress={onDelete}
+            style={styles.swipeDelete}
+            testID={`recording-delete-${source.id}`}
+          >
+            <Text style={styles.swipeDeleteText}>
+              {t('recording.library.confirmDelete')}
+            </Text>
+          </Pressable>
+        </View>
       }
       disabled={disabled}
       revealed={revealed}
       onRevealedChange={onRevealedChange}
       testID={`recording-library-item-${source.id}`}
     >
-      <View style={[styles.item, styles.summaryActionRow]}>
+      <View
+        style={[styles.item, styles.summaryActionRow]}
+        testID={`recording-row-content-${source.id}`}
+      >
+        <GlassIconButton
+          accessibilityRole="button"
+          accessibilityLabel={t('recording.library.playAudio')}
+          accessibilityHint={t('recording.library.playAudioHint')}
+          accessibilityState={{ disabled }}
+          disabled={disabled}
+          onPress={onPlay}
+          style={styles.listPlaybackButton}
+          testID={`recording-playback-list-button-${source.id}`}
+          symbolName="play.fill"
+        />
         <Pressable
           accessibilityRole="button"
           accessibilityLabel={[title, recordedAt, duration, review]
@@ -107,45 +129,44 @@ export default function RecordingLibrarySummaryRow({
           }
           onAccessibilityAction={event => {
             if (!disabled && event.nativeEvent.actionName === 'delete')
-              onDelete();
+              onRevealedChange(true);
           }}
           disabled={disabled}
           onPress={onOpen}
           style={styles.summaryAction}
           testID={`recording-details-${source.id}`}
         >
-          <View style={styles.summaryIcon}>
-            <AppSymbol name="waveform" color={appColors.primaryText} />
-          </View>
           <View style={styles.summaryText}>
             <Text style={styles.summaryTitle}>{title}</Text>
-            <View style={styles.summaryMetadata}>
-              <Text style={styles.copy}>{recordedAt}</Text>
-              <Text style={styles.copy}>{duration}</Text>
-            </View>
+            <Text
+              style={styles.copy}
+              testID={`recording-row-date-${source.id}`}
+            >
+              {recordedAt}
+            </Text>
+            <Text
+              style={styles.copy}
+              testID={`recording-row-duration-${source.id}`}
+            >
+              {duration}
+            </Text>
             {review ? (
               <View style={reviewStyle(summary)}>
                 <Text style={reviewTextStyle(summary)}>{review}</Text>
               </View>
             ) : null}
           </View>
-          <AppSymbol
-            name="chevron.right"
-            size={16}
-            color={appColors.secondary}
-          />
+          <View
+            testID={`recording-row-chevron-${source.id}`}
+            accessible={false}
+          >
+            <AppSymbol
+              name="chevron.right"
+              size={16}
+              color={appColors.secondary}
+            />
+          </View>
         </Pressable>
-        <GlassIconButton
-          accessibilityRole="button"
-          accessibilityLabel={t('recording.library.playAudio')}
-          accessibilityHint={t('recording.library.playAudioHint')}
-          accessibilityState={{ disabled }}
-          disabled={disabled}
-          onPress={onPlay}
-          style={styles.listPlaybackButton}
-          testID={`recording-playback-list-button-${source.id}`}
-          symbolName="play.fill"
-        />
       </View>
     </TrailingSwipeAction>
   );

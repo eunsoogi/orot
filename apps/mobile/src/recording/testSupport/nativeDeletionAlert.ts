@@ -29,10 +29,13 @@ export async function confirmNativeDeletion(
   });
 }
 
-/** VoiceOver's row action requests the same native confirmation as the visible swipe button. */
+/** VoiceOver reveals the trailing control; only pressing it requests confirmation. */
 export async function requestLibraryRowDeletion(sourceId: string) {
   const row = await screen.findByTestId(`recording-details-${sourceId}`);
   await fireEvent(row, 'accessibilityAction', {
     nativeEvent: { actionName: 'delete' },
   });
+  await fireEvent.press(
+    await screen.findByTestId(`recording-delete-${sourceId}`),
+  );
 }

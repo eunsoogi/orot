@@ -7,7 +7,6 @@ import { useNavigationLeaveStateRegistration } from '../navigation';
 import type { SelectedAiResolverOptions } from '../aiFeatures/integration/provider';
 import { NAVIGATION_CONTENT_GAP } from '../navigation/navigationLayout';
 import { SettingsRouteAppInfo, SettingsRouteRow } from './SettingsRouteRows';
-import { settingsListColors } from './settingsListColors';
 import { processDiagnosticWitnessEnabled } from '../providers/processDiagnosticWitness';
 import { ProcessDiagnosticWitnessSection } from './ProcessDiagnosticWitnessSection';
 
@@ -17,7 +16,7 @@ interface SettingsRouteProps {
   readonly onOpenProviderSettings: () => void;
   readonly onOpenAccounts: () => void;
   readonly onOpenPrivacy: () => void;
-  readonly onOpenBackup: () => void;
+  readonly onOpenPrivacyPolicy: () => void;
   readonly onOpenHealthData: () => void;
   readonly onOpenSyncStatus: () => void;
   readonly onOpenNotifications: () => void;
@@ -29,7 +28,7 @@ export function SettingsRoute({
   onOpenProviderSettings,
   onOpenAccounts,
   onOpenPrivacy,
-  onOpenBackup,
+  onOpenPrivacyPolicy,
   onOpenHealthData,
   onOpenSyncStatus,
   onOpenNotifications,
@@ -81,24 +80,11 @@ export function SettingsRoute({
                 testID="settings-open-health-data"
               />
               <SettingsRouteRow
-                symbol="arrow.triangle.2.circlepath"
-                title={t('settings.syncStatus')}
-                onPress={onOpenSyncStatus}
-                testID="settings-open-sync-status"
-              />
-              <SettingsRouteRow
                 symbol="bell.fill"
                 tone="pink"
                 title={t('settings.notifications')}
                 onPress={onOpenNotifications}
                 testID="settings-open-notifications"
-              />
-              <SettingsRouteRow
-                symbol="checkmark.shield"
-                tone="green"
-                title={t('settings.permissions')}
-                onPress={onOpenPrivacy}
-                testID="settings-open-privacy"
               />
               <SettingsRouteRow
                 symbol="bookmark.fill"
@@ -108,11 +94,28 @@ export function SettingsRoute({
                 testID="settings-open-memory"
               />
               <SettingsRouteRow
-                symbol="externaldrive"
-                title={t('backup.pageTitle')}
-                onPress={onOpenBackup}
-                testID="settings-open-backup"
+                symbol="checkmark.shield"
+                tone="green"
+                title={t('settings.permissions')}
+                onPress={onOpenPrivacy}
+                testID="settings-open-privacy"
               />
+              <SettingsRouteRow
+                symbol="arrow.triangle.2.circlepath"
+                title={t('settings.syncStatus')}
+                onPress={onOpenSyncStatus}
+                testID="settings-open-sync-status"
+              />
+              <SettingsRouteRow
+                symbol="hand.raised.fill"
+                tone="neutral"
+                title={t('settings.privacyPolicy')}
+                onPress={onOpenPrivacyPolicy}
+                testID="settings-open-privacy-policy"
+                last
+              />
+            </View>
+            <View style={styles.list} testID="settings-version-group">
               <SettingsRouteAppInfo version={version} />
               {processDiagnosticWitnessEnabled() ? (
                 <ProcessDiagnosticWitnessSection />
@@ -131,21 +134,21 @@ const styles = StyleSheet.create({
   container: {
     flexGrow: 1,
     minWidth: 0,
-    backgroundColor: settingsListColors.background,
   },
   panel: {
     alignSelf: 'center',
     width: '100%',
     maxWidth: 680,
-    gap: 12,
+    gap: 20,
     paddingHorizontal: 20,
-    paddingTop: 12,
+    paddingTop: 24,
     // The outer route scroller already supplies the navigation gap.
     paddingBottom: 28 - NAVIGATION_CONTENT_GAP,
   },
   title: { color: appColors.text, fontSize: 34, fontWeight: '700' },
   list: {
-    backgroundColor: settingsListColors.row,
+    // These groups use the same adaptive card surface as the Records tab.
+    backgroundColor: appColors.surface,
     borderRadius: 20,
     overflow: 'hidden',
   },

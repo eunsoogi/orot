@@ -13,7 +13,6 @@ describe('settings provider layout ownership', () => {
     expect(ownerFor({ key: 'provider', name: 'settings-provider' })).toBe(
       'screen',
     );
-    expect(ownerFor({ key: 'backup', name: 'settings-backup' })).toBe('screen');
     expect(ownerFor({ key: 'sync', name: 'settings-sync-status' })).toBe(
       'screen',
     );

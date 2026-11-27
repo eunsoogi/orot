@@ -197,9 +197,6 @@ test('uses accessible controls and keeps reminder card spacing', async () => {
     screen.getByTestId('settings-daily-reminder-toggle-label-target').props
       .style,
   );
-  const statusContent = StyleSheet.flatten(
-    screen.getByTestId('settings-daily-reminder-status-content').props.style,
-  );
 
   expect(toggle.props.accessibilityRole).toBe('switch');
   expect(toggle.props.accessibilityLabel).toBe(
@@ -222,11 +219,8 @@ test('uses accessible controls and keeps reminder card spacing', async () => {
     paddingHorizontal: 16,
   });
   expect(labelTarget).toMatchObject({ flex: 1, minHeight: 44 });
-  expect(statusContent).toMatchObject({
-    gap: 4,
-    paddingHorizontal: 16,
-    paddingTop: 12,
-    paddingBottom: 16,
-  });
+  expect(
+    screen.queryByTestId('settings-daily-reminder-status-content'),
+  ).toBeNull();
   expect(card?.backgroundColor).toBe(appColors.surface);
 });

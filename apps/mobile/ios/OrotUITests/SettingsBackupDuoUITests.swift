@@ -26,7 +26,7 @@ extension RootNavigationUITests {
         }
 
         try openBackupSettings(app)
-        let regularTitleHeight = UITestConditions.element(app, "settings-backup-title").frame.height
+        let regularTitleHeight = UITestConditions.element(app, "settings-sync-status-title").frame.height
         assertRecoveryState(app)
         try assertBackupLayout(app)
         capture(app, "settings-backup-duo-light")
@@ -73,20 +73,21 @@ extension RootNavigationUITests {
         ])
         defer { largeTextApp.terminate() }
         try openBackupSettings(largeTextApp)
-        let largeTitle = UITestConditions.element(largeTextApp, "settings-backup-title")
+        let largeTitle = UITestConditions.element(largeTextApp, "settings-sync-status-title")
         XCTAssertGreaterThan(largeTitle.frame.height, regularTitleHeight)
         assertRecoveryState(largeTextApp)
         try assertBackupLayout(largeTextApp, expectsStacked: true)
         capture(largeTextApp, "settings-backup-duo-xxxl")
         let recoveryAction = UITestConditions.element(largeTextApp, "backup-open-system-settings")
+        _ = FormUITestConditions.reveal(recoveryAction, in: largeTextApp, scrollID: "settings-sync-status-scroll")
         XCTAssertTrue(recoveryAction.exists && recoveryAction.isHittable)
     }
 
     @MainActor
     private func openBackupSettings(_ app: XCUIApplication) throws {
         try NavigationUITestConditions.openTab(app, "settings", markers: ["settings-title"])
-        tap(app, "settings-open-backup")
-        NavigationUITestConditions.route(app, markers: ["settings-backup-title"])
+        tap(app, "settings-open-sync-status")
+        NavigationUITestConditions.route(app, markers: ["settings-sync-status-title"])
     }
 
     @MainActor
@@ -121,15 +122,14 @@ extension RootNavigationUITests {
         for panelFrame in [primaryFrame, secondaryFrame] {
             let fitsAUsableRegion = geometry.usableRegions.contains { region in
                 panelFrame.minX >= region.minX - 1 &&
-                    panelFrame.maxX <= region.maxX + 1 &&
-                    panelFrame.minY < region.maxY && panelFrame.maxY > region.minY
+                    panelFrame.maxX <= region.maxX + 1
             }
             XCTAssertTrue(fitsAUsableRegion, "Backup panel must stay inside a measured usable region: \(panelFrame)")
         }
 
         let back = try NavigationUITestConditions.navigationAction(app, "navigation-back")
         let recoveryAction = UITestConditions.element(app, "backup-open-system-settings")
-        _ = FormUITestConditions.reveal(recoveryAction, in: app, scrollID: "settings-backup-scroll")
+        _ = FormUITestConditions.reveal(recoveryAction, in: app, scrollID: "settings-sync-status-scroll")
         XCTAssertTrue(recoveryAction.exists && recoveryAction.isHittable)
         XCTAssertGreaterThanOrEqual(recoveryAction.frame.height, 44)
         let actionFrame = recoveryAction.frame

@@ -1,4 +1,5 @@
-/* global describe, expect, it */
+import { settingsListColors } from '../../routes/settingsListColors';
+import { appColors } from '../appColors';
 
 const { appColorPalettes } = require('../appColors') as {
   appColorPalettes?: {
@@ -8,6 +9,17 @@ const { appColorPalettes } = require('../appColors') as {
 };
 
 describe('shared app color palettes', () => {
+  it('uses true black only for the dark canvas', () => {
+    expect(appColorPalettes?.dark.background).toBe('#000000');
+    expect(appColorPalettes?.light.background).toBe('#f2f4f6');
+    expect(appColorPalettes?.dark.surface).toBe('#1c222a');
+    expect(appColorPalettes?.light.surface).toBe('#ffffff');
+  });
+
+  it('shares the app canvas with the Settings list rather than overriding it', () => {
+    expect(settingsListColors.background).toBe(appColors.background);
+  });
+
   it('provides readable surfaces, text, and primary actions in both appearances', () => {
     // System appearance changes must update the shared tokens with accessible pairs.
     expect(appColorPalettes).toBeDefined();
