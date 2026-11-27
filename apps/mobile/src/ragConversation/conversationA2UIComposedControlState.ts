@@ -10,6 +10,7 @@ export type ComposedControl = Readonly<
       numeric?: true;
     }
   | { kind: 'time'; label: string }
+  | { kind: 'datetime'; label: string; min?: number; max?: number }
   | { kind: 'date'; label: string; min: string; max: string }
   | { kind: 'slider'; label: string; min: number; max: number; steps: number }
   | {

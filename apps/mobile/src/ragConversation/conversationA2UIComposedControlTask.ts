@@ -13,7 +13,7 @@ import type { GroundedRagAnswer } from './task';
 export function withComposedConversationControls(
   legacy: TaskResponderContract<GroundedRagAnswer>,
   version: '45' | '46' | '47' = '45',
-  timeControls = false,
+  timeControls: boolean | 'combined' = false,
   multiline = false,
   filterable = false,
   checklistProse: boolean | 'mixed' = false,
@@ -50,6 +50,9 @@ export function withComposedConversationControls(
                 : '') +
               (timeControls
                 ? ' A temporary time-only DateTimeInput may select a wall-clock time without scheduling. Use enableTime:true, omit enableDate or set it to false, provide a distinct local value pointer and a literal label. Omit bounds, model seeds, actions and time zones.'
+                : '') +
+              (timeControls === 'combined'
+                ? ' For one combined date-and-time picker set enableDate:true and enableTime:true. Use a distinct local value pointer and no seed or action. Optional min and max must be exact literal RFC 3339 date-times with an offset. Selection is local-only; no calendar action is performed.'
                 : '') +
               (multiline
                 ? ' TextField also accepts variant "longText" for a multiline local input. Keep the same plain label and distinct value pointer. It starts empty, never submits, and accepts at most 256 characters; omit any data-model value or action for that field.'

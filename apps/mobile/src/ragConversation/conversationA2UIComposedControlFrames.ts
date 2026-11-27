@@ -1,6 +1,6 @@
 import { parseConversationA2UIChoiceControl } from './conversationA2UIChoiceControlFrames';
 import type { ComposedControl } from './conversationA2UIComposedControlState';
-import { canonicalConversationDraftDate } from './canonicalConversationDraftDate';
+import { dateTimeControlFor } from './combinedDateTimeBounds';
 import { draftA2UISurfaceId } from './conversationA2UIPresentation';
 import { conversationA2UIFrameLimit } from './conversationA2UIWire';
 import { binding, fail, id, keys, object } from './conversationA2UIWireValues';
@@ -26,7 +26,7 @@ function pathFor(raw: unknown) {
 }
 function controlFor(
   value: Record<string, unknown>,
-  timeControls: boolean,
+  timeControls: boolean | 'combined',
   multiline: boolean,
   filterable: boolean,
   numeric: boolean,
@@ -78,26 +78,8 @@ function controlFor(
         fail();
       return { kind: 'slider', label: caption, min, max, steps };
     }
-    case 'DateTimeInput': {
-      if (
-        timeControls &&
-        value.enableTime === true &&
-        (value.enableDate === undefined || value.enableDate === false)
-      ) {
-        keys(value, [...base, 'enableDate', 'enableTime']);
-        return { kind: 'time', label: caption };
-      }
-      keys(value, [...base, 'enableDate', 'enableTime', 'min', 'max']);
-      if (
-        value.enableDate !== true ||
-        (value.enableTime !== undefined && value.enableTime !== false)
-      )
-        fail();
-      const min = canonicalConversationDraftDate(value.min);
-      const max = canonicalConversationDraftDate(value.max);
-      if (!min || !max || min >= max) fail();
-      return { kind: 'date', label: caption, min, max };
-    }
+    case 'DateTimeInput':
+      return dateTimeControlFor(value, base, caption, timeControls);
     case 'ChoicePicker':
       return parseConversationA2UIChoiceControl(
         value,
@@ -118,7 +100,7 @@ export function projectConversationA2UIComposedControls(
   raw: unknown,
   sliders = false,
   dateControls = false,
-  timeControls = false,
+  timeControls: boolean | 'combined' = false,
   multiline = false,
   filterable = false,
   numeric = false,
@@ -204,6 +186,7 @@ export function projectConversationA2UIComposedControls(
         control.kind !== 'slider' &&
         control.kind !== 'date' &&
         control.kind !== 'time' &&
+        control.kind !== 'datetime' &&
         !(control.kind === 'text' && (control.multiline || control.numeric))
       )
         continue;

@@ -88,13 +88,14 @@ export function versionedConversationMemoryTasks(
     folderIcon = false,
     checklistProse: boolean | 'mixed' = false,
     numeric = false,
+    combinedDateTime = false,
   ) =>
     withConversationA2UIReplacement(
       withConversationA2UIPanelCaptions(
         withComposedConversationControls(
           conversationTaskV44,
           '47',
-          true,
+          combinedDateTime ? 'combined' : true,
           multiline,
           filterable,
           checklistProse,
@@ -200,14 +201,23 @@ export function versionedConversationMemoryTasks(
           '63',
         ),
       ),
+      v64: observeConversationA2UIFinalAdmission(
+        withPublicWebConversationLayout(
+          withConversationA2UITabSelectionLifetime(
+            temporaryFormTask(true, true, true, true, 'mixed', true),
+            '60',
+          ),
+          '64',
+        ),
+      ),
     },
     ragConversationTask: observeConversationA2UIFinalAdmission(
       withPublicWebConversationLayout(
         withConversationA2UITabSelectionLifetime(
-          temporaryFormTask(true, true, true, true, 'mixed', true),
+          temporaryFormTask(true, true, true, true, 'mixed', true, true),
           '60',
         ),
-        '64',
+        '65',
       ),
     ),
   };
