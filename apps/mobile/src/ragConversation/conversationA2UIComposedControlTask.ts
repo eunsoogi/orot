@@ -1,7 +1,12 @@
 import type { TaskResponderContract } from '@orot/agent-runtime';
 import { projectConversationA2UIComposedControls } from './conversationA2UIComposedControlFrames';
 import { bindConversationA2UIComposedControls } from './conversationA2UIComposedControlState';
-import { allowsOrdinaryA2UI } from './conversationA2UIPresentation';
+import { matchesConversationA2UIChecklist } from './conversationA2UIChecklistProse';
+import { acceptConversationA2UIFrameSequence } from './conversationA2UIFrameSequence';
+import {
+  allowsOrdinaryA2UI,
+  conversationA2UIFrameProse,
+} from './conversationA2UIPresentation';
 import { isObject } from './taskHistory';
 import type { GroundedRagAnswer } from './task';
 
@@ -11,6 +16,7 @@ export function withComposedConversationControls(
   timeControls = false,
   multiline = false,
   filterable = false,
+  checklistProse = false,
 ): TaskResponderContract<GroundedRagAnswer> {
   const sliders = version !== '45';
   const dateControls = version === '47';
@@ -49,6 +55,9 @@ export function withComposedConversationControls(
                 : '') +
               (filterable
                 ? ' ChoicePicker may set literal filterable:true to add local case-insensitive search over option labels. Keep option values and selections unchanged by filtering. Do not supply a query, filter binding, or action.'
+                : '') +
+              (checklistProse
+                ? ' For an interactive checklist of local CheckBox controls, use one unchecked fallback item in the answer for each: the literal unchecked square and space "☐ " followed by its exact label. Put the items in the same order as the controls, one per line. Do not repeat those items in separate Text components, start checked, or add sending or actions.'
                 : ''),
           },
         },
@@ -73,6 +82,36 @@ export function withComposedConversationControls(
         filterable,
       );
       if (!plan) return ordinary;
+      if (
+        checklistProse &&
+        ordinary.value.answer.split('\n').some(line => line.startsWith('☐ ')) &&
+        [...plan.controls.values()].some(control => control.kind === 'check')
+      ) {
+        // The exact accepted fallback remains authoritative. Do not remove
+        // or normalize a line to make the native graph fit the reply.
+        const root = acceptConversationA2UIFrameSequence(
+          plan.frames,
+          ordinary.value.answer,
+          true,
+          true,
+          true,
+          'vertical_align',
+          conversationA2UIFrameProse,
+          false,
+          candidate =>
+            matchesConversationA2UIChecklist(
+              candidate,
+              ordinary.value.answer,
+              plan.controls,
+            ),
+        );
+        return root && bindConversationA2UIComposedControls(root, plan.controls)
+          ? {
+              ...ordinary,
+              value: { ...ordinary.value, a2uiPresentation: root },
+            }
+          : ordinary;
+      }
       const result = legacy.validateResult(
         { ...value, a2uiFrames: plan.frames },
         input,

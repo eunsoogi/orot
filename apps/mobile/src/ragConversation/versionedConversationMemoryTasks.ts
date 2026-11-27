@@ -86,6 +86,7 @@ export function versionedConversationMemoryTasks(
     filterable = false,
     mixedWeights = false,
     folderIcon = false,
+    checklistProse = false,
   ) =>
     withConversationA2UIReplacement(
       withConversationA2UIPanelCaptions(
@@ -95,6 +96,7 @@ export function versionedConversationMemoryTasks(
           true,
           multiline,
           filterable,
+          checklistProse,
         ),
       ),
       '55',
@@ -175,9 +177,18 @@ export function versionedConversationMemoryTasks(
         ),
       ),
       v60: observeConversationA2UIFinalAdmission(v60),
+      v61: observeConversationA2UIFinalAdmission(
+        withPublicWebConversationLayout(v60),
+      ),
     },
     ragConversationTask: observeConversationA2UIFinalAdmission(
-      withPublicWebConversationLayout(v60),
+      withPublicWebConversationLayout(
+        withConversationA2UITabSelectionLifetime(
+          temporaryFormTask(true, true, true, true, true),
+          '60',
+        ),
+        '62',
+      ),
     ),
   };
 }

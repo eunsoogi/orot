@@ -373,3 +373,12 @@ reopen with the stored prose and original sources, not a retained layout.
 Private evidence, templates, partial results and unmatched or omitted UI
 frames keep the existing fallback. Earlier tasks retain their original
 admission.
+
+Fresh ordinary task v62 lets model-authored temporary CheckBoxes display
+their exact unchecked fallback lines as native switches. Each switch owns
+one answer line of `☐ ` and its literal label; tab titles, ordinary text
+and controls must still consume the full answer in order. Unmatched,
+duplicated or reordered content keeps the original plain reply. Toggling
+still only changes current local state, and the original fallback and Copy
+do not change. No data is sent, stored, or reactivated when reopening a
+reply. The public sourced v61 branch keeps its read-only semantics.

@@ -92,6 +92,7 @@ export function acceptConversationA2UIFrameSequence(
   allowListDirection: boolean | 'vertical_align' | 'cross_align' = false,
   readProse = conversationA2UIFrameProse,
   allowStructuralRetirement = false,
+  matchProse = matchesConversationA2UIProse,
 ): ConversationA2UINode | undefined {
   if (!Array.isArray(raw) || !raw.length || raw.length > maxFinalFrames)
     return undefined;
@@ -119,8 +120,7 @@ export function acceptConversationA2UIFrameSequence(
     staged = next;
   }
   const root = staged?.root;
-  if (!root || !matchesConversationA2UIProse(root, content, allowStaticCatalog))
-    return undefined;
+  if (!root || !matchProse(root, content, allowStaticCatalog)) return undefined;
   return root;
 }
 
