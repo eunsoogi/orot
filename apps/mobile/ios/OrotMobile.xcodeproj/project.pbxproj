@@ -14,6 +14,7 @@
 		B8A130BD6D51CFCE98120101 /* ClassificationResultScrollingUITestConditions.swift in Sources */ = {isa = PBXBuildFile; fileRef = B8A130BD6D51CFCE98120102 /* ClassificationResultScrollingUITestConditions.swift */; };
 		CE1131000000000000000003 /* RealtimeVoiceSystemLifecycleTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = CE1131000000000000000004 /* RealtimeVoiceSystemLifecycleTests.swift */; };
 		1DD94C0E2B5E4357867104F3 /* RealtimeVoiceForegroundAdmissionTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 38FDBD8EBE1E431FA693CBDF /* RealtimeVoiceForegroundAdmissionTests.swift */; };
+		AFB9B185D3C9E2288105F883 /* WorkoutAssociatedParentPairTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 65ED5276A4C0989081D52B51 /* WorkoutAssociatedParentPairTests.swift */; };
 		CE2068000000000000000001 /* RealtimeVoiceConnectingCueTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = CE2068000000000000000002 /* RealtimeVoiceConnectingCueTests.swift */; };
 		CB1180000000000000000005 /* RealtimeVoiceToolLifecycleTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = CB1180000000000000000006 /* RealtimeVoiceToolLifecycleTests.swift */; };
 		CB1180000000000000000015 /* RealtimeVoiceManagedResponsesTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = CB1180000000000000000016 /* RealtimeVoiceManagedResponsesTests.swift */; };
@@ -359,6 +360,7 @@
 		E16A00000000000000000006 /* HealthKitWorkoutHeartRate.swift in Sources */ = {isa = PBXBuildFile; fileRef = E16A00000000000000000017 /* HealthKitWorkoutHeartRate.swift */; };
 		E16A00000000000000000030 /* WorkoutPeriodQuantityAccumulator.swift in Sources */ = {isa = PBXBuildFile; fileRef = E16A00000000000000000031 /* WorkoutPeriodQuantityAccumulator.swift */; };
 		E16A00000000000000000032 /* WorkoutPeriodHealthKitProducer.swift in Sources */ = {isa = PBXBuildFile; fileRef = E16A00000000000000000033 /* WorkoutPeriodHealthKitProducer.swift */; };
+		4A80738F332E96432C2B4794 /* WorkoutAssociatedParentPair.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1816B72619B465FBD581D834 /* WorkoutAssociatedParentPair.swift */; };
 		E16A00000000000000000034 /* HealthKitWorkoutPeriodBridge.swift in Sources */ = {isa = PBXBuildFile; fileRef = E16A00000000000000000035 /* HealthKitWorkoutPeriodBridge.swift */; };
 		E16A00000000000000000003 /* HealthKitModule.swift in Sources */ = {isa = PBXBuildFile; fileRef = E16A00000000000000000012 /* HealthKitModule.swift */; };
 		E16A00000000000000000004 /* HealthKitModule.m in Sources */ = {isa = PBXBuildFile; fileRef = E16A00000000000000000013 /* HealthKitModule.m */; };
@@ -469,6 +471,7 @@
 		B8A130BD6D51CFCE98120102 /* ClassificationResultScrollingUITestConditions.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = ClassificationResultScrollingUITestConditions.swift; sourceTree = "<group>"; };
 		CE1131000000000000000004 /* RealtimeVoiceSystemLifecycleTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RealtimeVoiceSystemLifecycleTests.swift; sourceTree = "<group>"; };
 		38FDBD8EBE1E431FA693CBDF /* RealtimeVoiceForegroundAdmissionTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RealtimeVoiceForegroundAdmissionTests.swift; sourceTree = "<group>"; };
+		65ED5276A4C0989081D52B51 /* WorkoutAssociatedParentPairTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WorkoutAssociatedParentPairTests.swift; sourceTree = "<group>"; };
 		CE2068000000000000000002 /* RealtimeVoiceConnectingCueTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RealtimeVoiceConnectingCueTests.swift; sourceTree = "<group>"; };
 		CB1180000000000000000006 /* RealtimeVoiceToolLifecycleTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RealtimeVoiceToolLifecycleTests.swift; sourceTree = "<group>"; };
 		CB1180000000000000000016 /* RealtimeVoiceManagedResponsesTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RealtimeVoiceManagedResponsesTests.swift; sourceTree = "<group>"; };
@@ -826,6 +829,7 @@
 		E16A00000000000000000017 /* HealthKitWorkoutHeartRate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = HealthKitWorkoutHeartRate.swift; path = OrotMobile/HealthKitWorkoutHeartRate.swift; sourceTree = "<group>"; };
 		E16A00000000000000000031 /* WorkoutPeriodQuantityAccumulator.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = WorkoutPeriodQuantityAccumulator.swift; path = OrotMobile/WorkoutPeriodQuantityAccumulator.swift; sourceTree = "<group>"; };
 		E16A00000000000000000033 /* WorkoutPeriodHealthKitProducer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = WorkoutPeriodHealthKitProducer.swift; path = OrotMobile/WorkoutPeriodHealthKitProducer.swift; sourceTree = "<group>"; };
+		1816B72619B465FBD581D834 /* WorkoutAssociatedParentPair.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = WorkoutAssociatedParentPair.swift; path = OrotMobile/WorkoutAssociatedParentPair.swift; sourceTree = "<group>"; };
 		E16A00000000000000000035 /* HealthKitWorkoutPeriodBridge.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = HealthKitWorkoutPeriodBridge.swift; path = OrotMobile/HealthKitWorkoutPeriodBridge.swift; sourceTree = "<group>"; };
 		E16A00000000000000000012 /* HealthKitModule.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = HealthKitModule.swift; path = OrotMobile/HealthKitModule.swift; sourceTree = "<group>"; };
 		E16A00000000000000000013 /* HealthKitModule.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; name = HealthKitModule.m; path = OrotMobile/HealthKitModule.m; sourceTree = "<group>"; };
@@ -1012,6 +1016,7 @@
 				E16A00000000000000000017 /* HealthKitWorkoutHeartRate.swift */,
 				E16A00000000000000000031 /* WorkoutPeriodQuantityAccumulator.swift */,
 				E16A00000000000000000033 /* WorkoutPeriodHealthKitProducer.swift */,
+				1816B72619B465FBD581D834 /* WorkoutAssociatedParentPair.swift */,
 				E16A00000000000000000035 /* HealthKitWorkoutPeriodBridge.swift */,
 				E16A00000000000000000012 /* HealthKitModule.swift */,
 				395605C47A4A72CC7137804F /* HealthKitReadAuthorization.swift */,
@@ -1209,6 +1214,7 @@
 			children = (
 				CE1131000000000000000004 /* RealtimeVoiceSystemLifecycleTests.swift */,
 				38FDBD8EBE1E431FA693CBDF /* RealtimeVoiceForegroundAdmissionTests.swift */,
+				65ED5276A4C0989081D52B51 /* WorkoutAssociatedParentPairTests.swift */,
 				CE2068000000000000000002 /* RealtimeVoiceConnectingCueTests.swift */,
 				CB1180000000000000000006 /* RealtimeVoiceToolLifecycleTests.swift */,
 				CB1180000000000000000016 /* RealtimeVoiceManagedResponsesTests.swift */,
@@ -1842,6 +1848,7 @@
 				E16A00000000000000000006 /* HealthKitWorkoutHeartRate.swift in Sources */,
 				E16A00000000000000000030 /* WorkoutPeriodQuantityAccumulator.swift in Sources */,
 				E16A00000000000000000032 /* WorkoutPeriodHealthKitProducer.swift in Sources */,
+				4A80738F332E96432C2B4794 /* WorkoutAssociatedParentPair.swift in Sources */,
 				E16A00000000000000000034 /* HealthKitWorkoutPeriodBridge.swift in Sources */,
 				E16A00000000000000000003 /* HealthKitModule.swift in Sources */,
 				88FB7164A1DEA04EF469C5FB /* HealthKitReadAuthorization.swift in Sources */,
@@ -2115,6 +2122,7 @@
 			files = (
 				CE1131000000000000000003 /* RealtimeVoiceSystemLifecycleTests.swift in Sources */,
 				1DD94C0E2B5E4357867104F3 /* RealtimeVoiceForegroundAdmissionTests.swift in Sources */,
+				AFB9B185D3C9E2288105F883 /* WorkoutAssociatedParentPairTests.swift in Sources */,
 				CE2068000000000000000001 /* RealtimeVoiceConnectingCueTests.swift in Sources */,
 				CB1180000000000000000005 /* RealtimeVoiceToolLifecycleTests.swift in Sources */,
 				CB1180000000000000000015 /* RealtimeVoiceManagedResponsesTests.swift in Sources */,

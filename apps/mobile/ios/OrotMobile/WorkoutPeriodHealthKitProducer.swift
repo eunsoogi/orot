@@ -9,7 +9,7 @@ import UIKit
 enum WorkoutPeriodHealthKitProducer {
     typealias Accumulator = WorkoutPeriodQuantityAccumulator
 
-    struct OwnedWorkout {
+    struct OwnedWorkout: Sendable {
         let id: UUID
         let start: Date
         let end: Date
@@ -30,6 +30,12 @@ enum WorkoutPeriodHealthKitProducer {
         case available(Witness)
     }
 
+    private struct ParentScope: Sendable {
+        let workout: HKWorkout
+        let clipped: Accumulator.Window
+        let sourceBundle: String
+    }
+
     private static let maxWorkouts = 512
     private static let maxParents = 8192
     private static let maxQuantities = 200_000
@@ -42,7 +48,7 @@ enum WorkoutPeriodHealthKitProducer {
         completeCohort: [OwnedWorkout],
         timeZone: TimeZone? = nil,
         requireVisiblePeriodMatch: Bool = false,
-        isCurrent: @MainActor () -> Bool,
+        isCurrent: @escaping @MainActor () -> Bool,
     ) async -> Outcome {
         let started = DispatchTime.now()
         let deadline = started + .seconds(15)
@@ -85,48 +91,51 @@ enum WorkoutPeriodHealthKitProducer {
             var singletons: [UUID: HKQuantitySample] = [:]
             var digestParts: [String] = []
             var memberships = 0
-            for imported in completeCohort {
-                guard active(), let workout = byID[imported.id],
-                      sameSavedInstant(workout.startDate, imported.start),
-                      sameSavedInstant(workout.endDate, imported.end),
-                      workout.sourceRevision.source.bundleIdentifier == imported.sourceBundle
-                else { return .unavailable }
-                let start = max(period.start, workout.startDate)
-                let end = min(period.end, workout.endDate)
-                guard start < end else { return .unavailable }
-                let clipped = Accumulator.Window(start: start, end: end)
-                digestParts.append(digest([workout.uuid.uuidString, imported.sourceBundle,
-                                           dateKey(workout.startDate), dateKey(workout.endDate)]))
-                // Overlap narrows an already-associated parent only; it never establishes membership.
-                let scope = NSCompoundPredicate(andPredicateWithSubpredicates: [
-                    HKQuery.predicateForObjects(from: workout),
-                    HKQuery.predicateForSamples(withStart: start, end: end, options: []),
-                ])
-                let parents = try await HKSampleQueryDescriptor(
-                    predicates: [.quantitySample(type: heartRate, predicate: scope)],
-                    sortDescriptors: [], limit: maxParents + 1,
-                ).result(for: store)
-                guard active(), parents.count <= maxParents,
-                      parents.count <= maxMemberships - memberships
-                else { return .unavailable }
-                memberships += parents.count
-                for sample in parents {
-                    let identity = sourceDigest(sample)
-                    guard let route = Accumulator.retrievalRoute(quantityCount: sample.count),
-                          parentCounts[sample.uuid].map({ $0 == sample.count }) ?? true,
-                          parentSource[sample.uuid].map({ $0 == identity }) ?? true
-                    else { return .unavailable }
-                    if route == .singleton {
-                        singletons[sample.uuid] = sample
+            try await WorkoutAssociatedParentPair.forEach(
+                completeCohort, active: active,
+                prepare: { imported in
+                    guard active(), let workout = byID[imported.id],
+                          sameSavedInstant(workout.startDate, imported.start),
+                          sameSavedInstant(workout.endDate, imported.end),
+                          workout.sourceRevision.source.bundleIdentifier == imported.sourceBundle
+                    else { throw WorkoutAssociatedParentPair.Stopped.retired }
+                    let start = max(period.start, workout.startDate)
+                    let end = min(period.end, workout.endDate)
+                    guard start < end else { throw WorkoutAssociatedParentPair.Stopped.retired }
+                    let clipped = Accumulator.Window(start: start, end: end)
+                    return ParentScope(workout: workout, clipped: clipped, sourceBundle: imported.sourceBundle)
+                }, read: { scope in
+                    try await WorkoutAssociatedParentPair.healthKitParents(
+                        of: scope.workout, start: scope.clipped.start, end: scope.clipped.end,
+                        type: heartRate, limit: maxParents + 1, store: store,
+                    )
+                }, consume: { scope, parents in
+                    let workout = scope.workout
+                    let clipped = scope.clipped
+                    digestParts.append(digest([workout.uuid.uuidString, scope.sourceBundle,
+                                               dateKey(workout.startDate), dateKey(workout.endDate)]))
+                    guard active(), parents.count <= maxParents,
+                          parents.count <= maxMemberships - memberships
+                    else { throw WorkoutAssociatedParentPair.Stopped.retired }
+                    memberships += parents.count
+                    for sample in parents {
+                        let identity = sourceDigest(sample)
+                        guard let route = Accumulator.retrievalRoute(quantityCount: sample.count),
+                              parentCounts[sample.uuid].map({ $0 == sample.count }) ?? true,
+                              parentSource[sample.uuid].map({ $0 == identity }) ?? true
+                        else { throw WorkoutAssociatedParentPair.Stopped.retired }
+                        if route == .singleton {
+                            singletons[sample.uuid] = sample
+                        }
+                        parentCounts[sample.uuid] = sample.count
+                        parentSource[sample.uuid] = identity
+                        parentWindows[sample.uuid, default: []].insert(clipped)
+                        digestParts.append(digest([workout.uuid.uuidString, sample.uuid.uuidString, identity,
+                                                   dateKey(clipped.start), dateKey(clipped.end), String(sample.count)]))
                     }
-                    parentCounts[sample.uuid] = sample.count
-                    parentSource[sample.uuid] = identity
-                    parentWindows[sample.uuid, default: []].insert(clipped)
-                    digestParts.append(digest([workout.uuid.uuidString, sample.uuid.uuidString, identity,
-                                               dateKey(clipped.start), dateKey(clipped.end), String(sample.count)]))
-                }
-                guard parentCounts.count <= maxParents else { return .unavailable }
-            }
+                    guard parentCounts.count <= maxParents else { throw WorkoutAssociatedParentPair.Stopped.retired }
+                },
+            )
             WorkoutPeriodDiagnostics.report(.associatedParentsRead, since: started)
             guard active() else { return .unavailable }
             guard !parentCounts.isEmpty else { return .emptyVisible }
@@ -147,7 +156,7 @@ enum WorkoutPeriodHealthKitProducer {
             func accept(_ parent: HKQuantitySample, start: Date, end: Date, bpm: Double, route: Accumulator.RetrievalRoute) -> Bool {
                 guard active(), seen < expected, parent.quantityType == heartRate,
                       Accumulator.retrievalRoute(quantityCount: parent.count) == route,
-                      let windows = parentWindows[parent.uuid], parentCountMatches(parent, parentCounts),
+                      let windows = parentWindows[parent.uuid], parentCounts[parent.uuid] == parent.count,
                       let source = parentSource[parent.uuid]
                 else { return false }
                 if verifiedSources.insert(parent.uuid).inserted, source != sourceDigest(parent) {
@@ -206,10 +215,6 @@ enum WorkoutPeriodHealthKitProducer {
         } catch {
             return .unavailable
         }
-    }
-
-    private static func parentCountMatches(_ sample: HKQuantitySample, _ counts: [UUID: Int]) -> Bool {
-        counts[sample.uuid] == sample.count
     }
 
     private static func dateKey(_ date: Date) -> String {
