@@ -28,6 +28,7 @@ jest.mock(
 const mockSettings = jest.fn();
 const mockAuthorize = jest.fn();
 const mockOpenData = jest.fn();
+const mockProtection = jest.fn(async () => true);
 jest.mock('../../voiceSettings/voiceSettingsStore', () => ({
   voiceSettingsStore: { subscribe: () => () => {} },
 }));
@@ -46,7 +47,7 @@ jest.mock('../../voiceSettings/liveConversationToolsAuthorization', () => ({
 jest.mock('../../ragConversation/conversationExecutionNative', () => ({
   conversationExecutionNative: () => ({
     bridgeAvailable: true,
-    protectedDataAvailable: async () => true,
+    protectedDataAvailable: mockProtection,
     subscribe: () => () => {},
   }),
 }));
@@ -77,6 +78,7 @@ test.each([
     const audio = openLiveAudioSettingsFixture();
     const storage = await protectedFixture();
     const timings = liveCommonTimingFixture();
+    timings.instrument(mode, mockProtection, storage.read);
     mockOpenData.mockReset().mockResolvedValue(await storage.openData());
     mockAuthorize.mockReset().mockImplementation(async () => {
       if (mode === 'source-denied') storage.revokeDbOwner();

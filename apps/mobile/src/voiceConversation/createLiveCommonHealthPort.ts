@@ -159,6 +159,7 @@ export function createLiveCommonHealthPort(input: {
                 evidenceRead = startLiveCommonHealthTiming('evidence_lookup');
                 return selection.beforeRead(...args);
               },
+              startStockRead: () => startLiveCommonHealthTiming('stock_read'),
               didRead(id, result) {
                 if (id === call.name && owns(call)) {
                   retained = { call, data, batch: result, registry };

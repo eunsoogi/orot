@@ -1,9 +1,11 @@
 import { waitFor } from '@testing-library/react-native';
 import { AppState, NativeModules, Platform } from 'react-native';
+import type { fixture } from './liveResponsesProtectedFixture';
 
 const expected = [
   'grant_lookup',
   'data_open',
+  'stock_read',
   'evidence_lookup',
   'result_projection',
   'result_confirmation',
@@ -26,6 +28,22 @@ export function liveCommonTimingFixture() {
   AppState.currentState = 'active';
   NativeModules.OrotProviderDiagnostics = { enabled: true, report };
   return {
+    instrument(
+      mode: string,
+      protection: jest.Mock<Promise<boolean>, []>,
+      stockRead: Awaited<ReturnType<typeof fixture>>['read'],
+    ) {
+      protection.mockImplementation(async () => {
+        if (mode === 'valid') elapsed += 110;
+        return true;
+      });
+      if (mode !== 'valid') return;
+      const read = stockRead.getMockImplementation()!;
+      stockRead.mockImplementationOnce(async (...args) => {
+        elapsed += 70;
+        return read(...args);
+      });
+    },
     holdQueue() {
       expect(
         report.mock.calls.some(([, stage]) => stage === 'admission_queue'),
@@ -38,10 +56,19 @@ export function liveCommonTimingFixture() {
       const stages = () => samples().map(([, stage]) => stage);
       if (mode === 'valid') {
         await waitFor(() => expect(stages()).toEqual(expected));
+        const duration = (stage: string) =>
+          Number(samples().find(([, name]) => name === stage)?.[2]);
+        // The protection wait belongs to the original composite interval,
+        // but not to the stock tool's awaited search interval.
+        expect(duration('stock_read')).toBe(75);
+        expect(duration('evidence_lookup')).toBe(195);
+      } else if (mode === 'wrong-ack') {
+        expect(stages()).not.toContain('stock_read');
+        expect(stages()).not.toContain('native_handoff');
       } else if (mode === 'stop-in-queue') {
         // Stop releases the pending native result without a completed handoff.
         expect(stages()).toEqual(expected.slice(0, -1));
-      } else if (mode === 'source-denied' || mode === 'wrong-ack') {
+      } else if (mode === 'source-denied') {
         expect(stages()).not.toContain('native_handoff');
       }
       const queue = samples().filter(
