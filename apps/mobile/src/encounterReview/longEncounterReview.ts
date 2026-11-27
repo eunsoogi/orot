@@ -46,12 +46,12 @@ export function createLongEncounterReview(
       const selectionCurrent = providerSelectionStore.liveWitness();
       const choice = await providerSelectionStore.load();
       if (signal.aborted || lifetime.aborted) return { status: 'cancelled' };
+      if (!choice) return { status: 'selection-required' };
       // The native PCC adapter admits one app call per page. Leave the existing
       // short-only remote transports untouched until their replay boundary is proved.
       if (
-        !choice ||
-        (choice.providerId !== APPLE_PROVIDER_ID &&
-          choice.providerId !== APPLE_PCC_PROVIDER_ID)
+        choice.providerId !== APPLE_PROVIDER_ID &&
+        choice.providerId !== APPLE_PCC_PROVIDER_ID
       )
         return { status: 'transcript-too-long' };
       const local = choice.providerId === APPLE_PROVIDER_ID;
