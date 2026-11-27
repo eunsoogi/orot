@@ -71,7 +71,9 @@ final class OpenAIProviderRequestRegistry {
         case terminal(Terminal)
 
         var isTerminal: Bool {
-            if case .terminal = self { return true }
+            if case .terminal = self {
+                return true
+            }
             return false
         }
 
@@ -95,7 +97,9 @@ final class OpenAIProviderRequestRegistry {
 
         func deliver(_ enqueue: () -> Void) {
             lock.withLock {
-                if !retired { enqueue() }
+                if !retired {
+                    enqueue()
+                }
             }
         }
     }
