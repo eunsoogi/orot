@@ -1,3 +1,4 @@
+import { NativeModules } from 'react-native';
 import { APPLE_PCC_PROVIDER_ID, APPLE_PROVIDER_ID } from '@orot/provider-apple';
 import { APPLE_PCC_MODEL_ID } from '../../providers/selection/privateCloudCompute';
 import { providerSuccess } from '@orot/model-runtime';
@@ -12,7 +13,11 @@ import { EncounterReviewController } from '../controller';
 import { createEncounterReviewService } from '../service';
 
 export const fixture = sqliteReviewFixture();
-afterEach(() => jest.restoreAllMocks());
+const originalExecution = NativeModules.ConversationExecutionModule;
+afterEach(() => {
+  NativeModules.ConversationExecutionModule = originalExecution;
+  jest.restoreAllMocks();
+});
 export const recordingId = sourceId + ':long-route';
 const dataText = 'Synthetic ninth line only.';
 
@@ -20,6 +25,7 @@ export async function harness(
   count = 9,
   lane: 'local' | 'pcc' | 'unsupported' = 'local',
   invalidFinalEvidence?: 'wrong-quote' | 'locked',
+  beforeFirstModelReply?: () => Promise<void>,
 ) {
   const remote = lane !== 'local';
   const choice =
@@ -56,6 +62,11 @@ export async function harness(
       NonNullable<ReturnType<typeof conversationExecutionNative>>['subscribe']
     >[0]
   >();
+  const generation = jest.fn<Promise<unknown>, []>();
+  generation.mockResolvedValue('b918f3c1-a8c2-4cd0-ae33-3d1381452e31');
+  NativeModules.ConversationExecutionModule = {
+    encounterProtectedDataGeneration: generation,
+  };
   jest.mocked(conversationExecutionNative).mockReturnValue({
     bridgeAvailable: true,
     currentPhase: () => 'active',
@@ -86,6 +97,7 @@ export async function harness(
     },
     async generate() {
       calls++;
+      if (calls === 1) await beforeFirstModelReply?.();
       if (calls > Math.ceil(count / 8)) throw new Error('No model replay.');
       const included =
         count > 32
@@ -152,6 +164,7 @@ export async function harness(
   );
   return {
     controller,
+    generation,
     final,
     repository,
     calls: () => calls,

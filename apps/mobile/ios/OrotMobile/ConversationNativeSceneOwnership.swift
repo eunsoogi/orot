@@ -166,6 +166,15 @@ extension ConversationExecutionModule {
         resolve(UIApplication.shared.isProtectedDataAvailable)
     }
 
+    @objc(encounterProtectedDataGeneration:rejecter:)
+    func encounterProtectedDataGeneration(_ resolve: RCTPromiseResolveBlock, reject _: RCTPromiseRejectBlock) {
+        let application = UIApplication.shared
+        guard let delegate = application.delegate as? AppDelegate,
+              let generation = delegate.currentEncounterProtectionGeneration(in: application)
+        else { resolve(NSNull()); return }
+        resolve(generation)
+    }
+
     @objc(processIdentity:rejecter:)
     func processIdentity(_ resolve: RCTPromiseResolveBlock, reject _: RCTPromiseRejectBlock) {
         // Recovery assumes the single iOS application process, not an extension or

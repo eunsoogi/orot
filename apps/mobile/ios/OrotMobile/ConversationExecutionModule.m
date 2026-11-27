@@ -30,4 +30,6 @@ RCT_EXTERN_METHOD(signalBackgroundFailure : (NSString *)token)
 #endif
 RCT_EXTERN_METHOD(protectedDataAvailable : (RCTPromiseResolveBlock)
                       resolve rejecter : (RCTPromiseRejectBlock)reject)
+RCT_EXTERN_METHOD(encounterProtectedDataGeneration : (RCTPromiseResolveBlock)
+                      resolve rejecter : (RCTPromiseRejectBlock)reject)
 @end
