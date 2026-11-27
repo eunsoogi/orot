@@ -13,7 +13,6 @@ import {
 } from '../conversationA2UIArchive';
 import { restoreConversationTask } from '../conversationTaskVersions';
 import { ragConversationTask } from '../task';
-
 const title = '보고서에 포함할 항목';
 const body = '준비물과 다음 순서를 확인해요.';
 const answer = [title, body].join('\n');
@@ -22,7 +21,6 @@ const input = {
   context: [],
   evidence: { items: [], coverage: [], conflicts: [] },
 } as TaskResponderInput;
-
 function proposal(
   name: JsonValue = 'folder',
   group: JsonValue[] = ['folder', 'title', 'body'],
@@ -223,12 +221,16 @@ test('v66 retains one-icon grammar; v67 rejects any unowned group adornment', ()
 test.each([3, 4])(
   'grouped decorations obey the exact count limit: %i',
   count => {
-    const children = Array.from({ length: count }, (_, i) => [
-      { id: 'folder-' + i, component: 'Icon', name: 'folder' },
-      { id: 'text-' + i, component: 'Text', text: 'Synthetic group ' + i },
-    ]);
+    const children = Array.from({ length: count }, (_, i) => ({
+      folder: { id: 'folder-' + i, component: 'Icon', name: 'folder' },
+      line: {
+        id: 'text-' + i,
+        component: 'Text',
+        text: 'Synthetic group ' + i,
+      },
+    }));
     const value = proposal();
-    value.answer = children.map(([, line]) => line!.text).join('\n');
+    value.answer = children.map(({ line }) => line.text).join('\n');
     const surface = value.a2uiFrames[0] as {
       createSurface: { components: JsonValue[] };
     };
@@ -236,9 +238,9 @@ test.each([3, 4])(
       {
         id: 'root',
         component: 'Column',
-        children: children.flat().map(item => item.id),
+        children: children.flatMap(({ folder, line }) => [folder.id, line.id]),
       },
-      ...children.flat(),
+      ...children.flatMap(({ folder, line }): JsonValue[] => [folder, line]),
     ];
     const result = ragConversationTask.validateResult(value, input);
     if (result.status !== 'valid') throw new Error('Expected original answer');
