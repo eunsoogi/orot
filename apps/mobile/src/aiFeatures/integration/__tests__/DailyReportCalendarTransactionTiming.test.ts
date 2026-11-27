@@ -26,14 +26,9 @@ function gate() {
   return { wait, release };
 }
 
-test.each([
-  ['daily-reuse', true],
-  ['ordinary-linked-reply', true],
-  ['daily-reuse', false],
-  ['ordinary-linked-reply', false],
-] as const)(
-  'the stock %s path brackets one Calendar proof without logging by default (%s)',
-  async (mode, enabled) => {
+test.each([true, false])(
+  'an ordinary linked reply holds the Calendar proof and logs only when enabled (%s)',
+  async enabled => {
     const f = openOpSqliteFileQueue();
     const entered = gate();
     const held = gate();
@@ -122,10 +117,7 @@ test.each([
           submitted.release();
           return transaction(work);
         });
-      const firstQuery =
-        mode === 'daily-reuse'
-          ? 'SELECT active_run_id, revision, deleted FROM daily_report_heads'
-          : 'SELECT id FROM conversation_deleted_artifacts';
+      const firstQuery = 'SELECT id FROM conversation_deleted_artifacts';
       f.delayWorker(async query => {
         if (query.startsWith(firstQuery)) {
           enteredSql.release();
@@ -134,30 +126,23 @@ test.each([
       });
       const count = f.events.filter(e => e.event === 'COMMIT;').length;
       block = true;
-      const active =
-        mode === 'daily-reuse'
-          ? run(reportRequest()).then(result => {
-              if (result.status !== 'reused')
-                throw new Error(JSON.stringify(result));
-              expect(result.report).toEqual(first.report);
-            })
-          : conversations.append({
-              id: 'synthetic-reply',
-              sessionId: 'synthetic-session',
-              createdAt: '2035-01-01T12:01:00.000Z',
-              providerId: 'synthetic-provider',
-              modelId: 'synthetic-model',
-              question: 'Synthetic follow-up',
-              answer: 'Synthetic reply',
-              status: 'complete',
-              sources: [],
-              citations: [],
-              dailyReport: {
-                identity: first.context.identity,
-                runId: first.runId,
-                revision: 1,
-              },
-            });
+      const active = conversations.append({
+        id: 'synthetic-reply',
+        sessionId: 'synthetic-session',
+        createdAt: '2035-01-01T12:01:00.000Z',
+        providerId: 'synthetic-provider',
+        modelId: 'synthetic-model',
+        question: 'Synthetic follow-up',
+        answer: 'Synthetic reply',
+        status: 'complete',
+        sources: [],
+        citations: [],
+        dailyReport: {
+          identity: first.context.identity,
+          runId: first.runId,
+          revision: 1,
+        },
+      });
       pending = active;
       const awaitGate = (wait: Promise<void>) =>
         Promise.race([
@@ -201,10 +186,7 @@ test.each([
       ticks += 80;
       held.release();
       await active;
-      const feature =
-        mode === 'daily-reuse'
-          ? 'report_calendar_daily'
-          : 'report_calendar_conversation';
+      const feature = 'report_calendar_conversation';
       expect(observed()).toEqual(
         enabled
           ? [
@@ -214,11 +196,10 @@ test.each([
             ]
           : [],
       );
-      if (mode === 'ordinary-linked-reply')
-        expect(
-          (await f.database.execute('SELECT id FROM conversation_artifacts'))
-            .rows,
-        ).toEqual([{ id: 'synthetic-reply' }]);
+      expect(
+        (await f.database.execute('SELECT id FROM conversation_artifacts'))
+          .rows,
+      ).toEqual([{ id: 'synthetic-reply' }]);
       expect(generate).toHaveBeenCalledTimes(1);
       expect(first.context.systemCalendar).toBeDefined();
       await other;
