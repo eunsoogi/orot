@@ -4,6 +4,7 @@ type Stage =
   | 'grant_lookup'
   | 'admission_queue'
   | 'data_open'
+  | 'stock_read'
   | 'evidence_lookup'
   | 'result_projection'
   | 'result_confirmation'

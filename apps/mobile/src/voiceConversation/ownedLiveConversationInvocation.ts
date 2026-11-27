@@ -29,6 +29,7 @@ export function bindOwnedLiveConversationInvocation(input: {
     request: EvidenceSearchRequest,
     tool: OwnedConversationReadTool,
   ) => Promise<boolean | CurrentConversationRead>;
+  readonly startStockRead?: () => () => void;
   readonly didRead?: (id: string, result: EvidenceBatch) => void;
 }): readonly EvidenceSearchTool[] | undefined {
   if (input.current() !== true) return;
@@ -79,9 +80,15 @@ export function bindOwnedLiveConversationInvocation(input: {
           const mayRead = () =>
             owns() && (proof === true || (proof !== false && proof.current()));
           if (!mayRead()) return { status: 'consent_required' as const };
+          // Isolate the stock search (including evidence construction) from
+          // the earlier owner/protection proof. Report only a current read.
+          const stockRead = input.startStockRead?.();
           const result = await tool.search(...args);
           if (!mayRead()) return { status: 'consent_required' as const };
-          if (!('status' in result)) input.didRead?.(id, result);
+          if (!('status' in result)) {
+            stockRead?.();
+            input.didRead?.(id, result);
+          }
           return mayRead() ? result : { status: 'consent_required' as const };
         },
       },
