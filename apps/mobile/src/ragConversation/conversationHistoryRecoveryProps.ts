@@ -1,3 +1,4 @@
+import { hasConversationFooter } from './conversationRecoveryDraft';
 import { readSelectedVoiceQuote } from './readSelectedVoiceQuote';
 import { visibleSavedHistoryDisplay } from './conversationSavedHistoryDisplay';
 import type {
@@ -30,6 +31,8 @@ export function conversationHistoryRecoveryProps(
     store.toolSourceSessionId?.(session.id) === null &&
     !session.preparingSend;
   return {
+    entryChoicesMayEnd:
+      !session.pendingMessage && !hasConversationFooter(session),
     savedHistoryDisplay: visibleSavedHistoryDisplay(session, active),
     voiceEndCards: session.taskCards
       ?.filter(card => card.task.kind === 'voice_end')

@@ -1,10 +1,11 @@
+import { ConversationChoiceBoundary } from './ConversationQuickChoices';
 import { ConversationVoiceEndMarker } from './ConversationVoiceEndMarker';
 import { conversationVoiceEndPlacement } from './conversationVoiceEndPlacement';
 import { ConversationActivityBubble } from './ConversationActivityBubble';
 import { ConversationTranscriptEntranceScope } from './ConversationTranscriptEntranceScope';
 import { conversationBubbleKey } from './conversationBubbleEntrances';
 import { ConversationMessageReceipt } from './ConversationMessageReceipt';
-import { Fragment, type ComponentProps, type ReactNode } from 'react';
+import { type ComponentProps, type ReactNode } from 'react';
 import { View } from 'react-native';
 import { styles } from './ConversationScreen.styles';
 import {
@@ -71,7 +72,15 @@ export function ConversationTranscriptMessages({
   // Restored and current markers may share a slot, but not a side of the divider.
   const choices =
     entryChoices == null ? null : (
-      <Fragment key="conversation-entry-choices">{entryChoices}</Fragment>
+      <ConversationChoiceBoundary.Provider
+        key="conversation-entry-choices"
+        value={Boolean(
+          (availableMessages ?? messages)[0]?.restoredHistory ||
+          voiceEndCards?.some(card => card.liveAfterMessageId === undefined),
+        )}
+      >
+        {entryChoices}
+      </ConversationChoiceBoundary.Provider>
     );
   const rows: ReactNode[] = [];
   messages.forEach((message, position) => {
