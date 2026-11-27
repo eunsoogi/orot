@@ -85,6 +85,12 @@ test.each([
       const originalNativeRead = calendar.bridge.listEventsInRange;
       jest.mocked(createCalendarBridge).mockReturnValue({
         ...calendar.bridge,
+        requestEventAccess: async () => {
+          throw new Error('Unexpected calendar access request');
+        },
+        listUpcomingEvents: async () => {
+          throw new Error('Unexpected unrestricted upcoming-events read');
+        },
         requestAccessAndListUpcomingEvents: async () => {
           throw new Error('Unexpected calendar access prompt');
         },
