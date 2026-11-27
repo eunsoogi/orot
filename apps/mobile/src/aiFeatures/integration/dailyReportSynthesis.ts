@@ -20,6 +20,7 @@ export function dailyReportSynthesis(
   values: readonly LocalHealthEvidenceRecord[],
   sources: readonly DailyReportSourceRecord[],
   selected: readonly number[],
+  focus = false,
 ): Claim[] {
   if (!values.length) return [];
   if (values.length !== sources.length)
@@ -153,7 +154,8 @@ export function dailyReportSynthesis(
       Number(b.some(x => selected.includes(x.index))) -
       Number(a.some(x => selected.includes(x.index))),
   );
-  for (const group of ranked.slice(0, 3)) {
+  for (const group of focus ? ranked : ranked.slice(0, 3)) {
+    if (focus && result.length >= 3) break;
     group.sort((a, b) => compareTimestamps(a.at, b.at));
     const first = group[0]!;
     const last = group[group.length - 1]!;
@@ -174,6 +176,7 @@ export function dailyReportSynthesis(
         ]),
       );
     } else if (!group.every(item => item.pointMeasurement)) {
+      if (focus) continue;
       result.push(
         claim(t('dailySynthesis.interval', { value0: first.concept }), indexes),
       );
@@ -181,6 +184,7 @@ export function dailyReportSynthesis(
       first.at !== last.at &&
       compareTimestamps(first.at, last.at) !== 0
     ) {
+      if (focus && first.amount === last.amount) continue;
       const valuesText =
         first.amount === last.amount
           ? t('dailySynthesis.same', {

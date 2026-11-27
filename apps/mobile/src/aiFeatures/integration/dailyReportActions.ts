@@ -6,10 +6,14 @@ import { t } from '../../i18n';
 
 /** Interpret explicit statuses together, not inferred causes or clinical adherence.
  * All claims stay bound to the immutable snapshot and its deletion lineage. */
-export function dailyReportActions(
+export function dailyReportActionCandidates(
   values: readonly LocalHealthEvidenceRecord[],
   sources: readonly DailyReportSourceRecord[],
-): DailyReportOutput['supportedContext'] {
+): Array<
+  DailyReportOutput['supportedContext'][number] & {
+    role: 'exception' | 'routine' | 'follow_up';
+  }
+> {
   if (!values.length) return [];
   const claim = (text: string, indexes: number[]) => ({
     text,
@@ -27,7 +31,7 @@ export function dailyReportActions(
   const doses = values.flatMap((item, index) =>
     item.kind === 'dose_event' ? [{ record: item.record, index }] : [],
   );
-  const result: DailyReportOutput['supportedContext'] = [];
+  const result: ReturnType<typeof dailyReportActionCandidates> = [];
   const missed = doses.filter(
     ({ record }) =>
       record.eventKind === 'missed' ||
@@ -64,12 +68,13 @@ export function dailyReportActions(
             text: t(key),
           })
         : t(key);
-      result.push(
-        claim(text, [
+      result.push({
+        ...claim(text, [
           ...items.map(item => item.index),
           ...linked.map(item => item.index),
         ]),
-      );
+        role: key === 'dailyReport.context.doseTaken' ? 'routine' : 'exception',
+      });
     }
   }
   const visits = values.flatMap((item, index) =>
@@ -86,7 +91,10 @@ export function dailyReportActions(
   // Do not turn missing appointments into proof there is no care plan, or an old
   // active flag into a current assessment. Existing visit advice avoids duplication.
   if (symptoms.length && !visits.length) {
-    result.push(claim(t('dailyReport.context.symptomFollowUp'), symptoms));
+    result.push({
+      ...claim(t('dailyReport.context.symptomFollowUp'), symptoms),
+      role: 'follow_up',
+    });
   }
   if (visits.length) {
     const key = symptoms.length
@@ -96,15 +104,30 @@ export function dailyReportActions(
         : visits.every(item => item.record.status === 'completed')
           ? 'dailyReport.context.visitCompleted'
           : 'dailyReport.context.visitOnly';
-    result.push(
-      claim(t(key), [
+    result.push({
+      ...claim(t(key), [
         ...visits.map(item => item.index),
         ...symptoms,
         ...doses.map(item => item.index),
       ]),
-    );
+      role:
+        symptoms.length ||
+        missed.length ||
+        unknown.length ||
+        visits.some(item => item.record.status !== 'completed')
+          ? 'follow_up'
+          : 'routine',
+    });
   }
   return result;
+}
+
+export function dailyReportActions(
+  ...args: Parameters<typeof dailyReportActionCandidates>
+): DailyReportOutput['supportedContext'] {
+  return dailyReportActionCandidates(...args).map(
+    ({ text, sourceReferences }) => ({ text, sourceReferences }),
+  );
 }
 
 /** Keep urgent guidance first, then observed patterns and cross-domain actions. */

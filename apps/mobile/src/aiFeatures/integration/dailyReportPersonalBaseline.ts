@@ -104,6 +104,9 @@ export function dailyReportPersonalBaseline(
       {
         text,
         modelText: text,
+        ...(display(current) !== display(prior)
+          ? { materialComparison: true as const }
+          : {}),
         sourceReferences: sources
           .filter(
             source =>

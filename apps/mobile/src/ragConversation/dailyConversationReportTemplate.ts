@@ -4,6 +4,9 @@ import { t } from '../i18n';
 export function dailyConversationReportHeadings() {
   return [
     t('dailyReport.supportedContext'),
+    t('dailyReport.focus.takeaway'),
+    t('dailyReport.focus.change'),
+    t('dailyReport.focus.follow_up'),
     t('dailyReport.analysis.priority'),
     t('dailyReport.analysis.actions'),
     t('dailyReport.analysis.history'),

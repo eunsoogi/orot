@@ -151,12 +151,13 @@ test('real Daily shortcut separates lookup, dispatch, verified receipt and visib
     });
     await waitFor(() => expect(outgoing()).toHaveTextContent(/읽음/));
     mark('mounted-read');
-    expect(screen.queryByText('오늘 기록의 흐름')).toBeNull();
+    const heading = '오늘의 핵심';
+    expect(screen.queryByText(heading)).toBeNull();
     expect(stages()).not.toContain('final-output');
     await act(async () => completion.release());
 
-    const heading = '오늘 기록의 흐름';
     expect(await screen.findByText(heading)).toBeVisible();
+    expect(screen.queryByText('오늘 기록의 흐름')).toBeNull();
 
     await waitFor(async () =>
       expect(await feature.storage().listCompletionIdentities()).toHaveLength(

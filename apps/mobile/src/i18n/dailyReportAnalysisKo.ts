@@ -1,5 +1,10 @@
 /** Section titles describe evidence roles, never an overall normal/abnormal verdict. */
 export const dailyReportAnalysisKo = {
+  'dailyReport.focus.takeaway': '오늘의 핵심',
+  'dailyReport.focus.change': '눈여겨볼 변화와 예외',
+  'dailyReport.focus.follow_up': '다음에 확인할 일',
+  'dailyReport.analysis.routineTakeaway':
+    '오늘 기록을 확인했어요. 따로 요약할 변화나 예외는 선별하지 않았어요.',
   'dailyReport.analysis.ongoingCoverage':
     '증상 자료에는 이전에 시작되어 지속 중으로 기록된 항목도 포함돼요. 오늘 새로 발생한 증상 수나 현재 상태 확인을 뜻하지 않아요.',
 

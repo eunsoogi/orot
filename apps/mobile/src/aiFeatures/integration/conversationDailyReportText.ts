@@ -1,3 +1,7 @@
+import {
+  dailyReportFocusHeading,
+  dailyReportMainClaims,
+} from './dailyReportFocus';
 import { dailyReportCoverageMeaning } from './dailyReportCoverageMeaning';
 import {
   sourceLabel,
@@ -42,22 +46,28 @@ export function dailyReportPresentation(
   }
   let claims: string[] = [];
   let heading = t('dailyReport.supportedContext');
-  for (const [index, claim] of saved.report.supportedContext.entries()) {
+  const primary = dailyReportMainClaims(saved.report.supportedContext);
+  for (const [index, claim] of primary.entries()) {
     if (
-      claim.section &&
-      claim.section !== saved.report.supportedContext[index - 1]?.section
+      (claim.focus && claim.focus !== primary[index - 1]?.focus) ||
+      (!claim.focus &&
+        claim.section &&
+        claim.section !== primary[index - 1]?.section)
     ) {
       add(heading, claims);
-      heading = t(`dailyReport.analysis.${claim.section}`);
+      heading = claim.focus
+        ? dailyReportFocusHeading(claim.focus)
+        : t(`dailyReport.analysis.${claim.section!}`);
       claims = [];
     }
     claims.push(claim.text);
   }
   add(heading, claims);
-  add(t('dailyReport.observations'), [
-    ...dailyReportEmptyActivity(saved.report.coverage),
-    ...saved.report.observations.map(item => item.text),
-  ]);
+  if (primary === saved.report.supportedContext)
+    add(t('dailyReport.observations'), [
+      ...dailyReportEmptyActivity(saved.report.coverage),
+      ...saved.report.observations.map(item => item.text),
+    ]);
   add(t('dailyReport.suggestedQuestions'), saved.report.followUpQuestions);
   add(t('dailyReport.coverage.attention'), coverage);
 
