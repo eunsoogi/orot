@@ -1,3 +1,5 @@
+import { providerSelectionStore } from '../../providers/selection/keychainSelectionStore';
+import { chatGPTCredentialMutation } from '../../providers/chatGPTConsentIdentity';
 import { isSettingsOnlyExecutionConsent } from '../../agent/execution/useInferenceConsent';
 import { createDailyReportRecoveryActions } from './dailyReportRecoveryActions';
 import { createDailyReportIdentity } from '@orot/domain';
@@ -111,6 +113,14 @@ export function createDailyReportFeature(
                   dependencies.createOperationRunId ?? operationRunId,
                 resolveSelected: () =>
                   resolveSelectedAiProvider(dependencies.selectedAi),
+                captureSelectionCurrent: dependencies.selectedAi
+                  ? undefined
+                  : () => {
+                      const selected = providerSelectionStore.liveWitness();
+                      const credential = chatGPTCredentialMutation.capture();
+                      if (selected && credential)
+                        return () => selected() && credential();
+                    },
               },
               deadlineContext,
             );

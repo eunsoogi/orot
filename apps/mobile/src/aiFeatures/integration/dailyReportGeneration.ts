@@ -1,5 +1,6 @@
 import { createDailyReportDispatchAuthority } from './dailyReportDispatchAuthority';
 import { prepareReportCalendar } from './dailyReportSystemCalendar';
+import { selectDailyReportProvider } from './dailyReportProviderSelection';
 import { generateDailyReportWithCalendar } from './dailyReportGenerationRun';
 import type {
   DailyReportRunInput,
@@ -19,6 +20,23 @@ export async function generateDailyReport(
 ) {
   const dispatchAuthority = createDailyReportDispatchAuthority();
   let external: Awaited<ReturnType<typeof prepareReportCalendar>> | undefined;
+  // The optional local calendar read does not authorize provider selection.
+  // Keep all source processing and model dispatch behind both results.
+  const capture =
+    request.scope.sourceIds || request.signal.aborted
+      ? undefined
+      : input.captureSelectionCurrent?.();
+  const earlySelection = capture?.()
+    ? selectDailyReportProvider(input, request, capture)
+    : undefined;
+  const selection = async () => {
+    if (!earlySelection || !capture?.())
+      return selectDailyReportProvider(input, request);
+    const candidate = await earlySelection;
+    // A settings change during the calendar read invalidates this result.
+    // Use the original late resolver then; never reuse stale model credentials.
+    return capture() ? candidate : selectDailyReportProvider(input, request);
+  };
   try {
     if (!request.scope.sourceIds && !request.signal.aborted) {
       try {
@@ -36,6 +54,7 @@ export async function generateDailyReport(
       request,
       calendar,
       external,
+      selection,
     );
   } finally {
     dispatchAuthority.dispose();
