@@ -1,5 +1,5 @@
 import { useLayoutEffect, useRef, useState } from 'react';
-import { View } from 'react-native';
+import { StyleSheet, View } from 'react-native';
 import { AppText } from '../layout/AppText';
 import { AppButton } from '../layout/AppButton';
 import { t } from '../i18n';
@@ -91,7 +91,7 @@ export function useRecordingTitleProposal(
     draft: !!proposal,
     view:
       proposal || error ? (
-        <View style={{ gap: 8 }}>
+        <View style={styles.draft}>
           {error ? (
             <AppText accessibilityRole="alert">
               {t('recording.detail.aiTitleUnavailable')}
@@ -120,3 +120,5 @@ export function useRecordingTitleProposal(
       ) : null,
   };
 }
+
+const styles = StyleSheet.create({ draft: { gap: 8 } });

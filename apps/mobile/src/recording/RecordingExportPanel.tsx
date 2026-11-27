@@ -93,7 +93,7 @@ export default function RecordingExportPanel({
   }, [recordingSourceId]);
 
   useEffect(() => {
-    let active = true;
+    let loadCurrent = true;
     setLoading(true);
     setView(null);
     setError(null);
@@ -101,17 +101,17 @@ export default function RecordingExportPanel({
       .load(recordingSourceId)
       .then(
         next => {
-          if (active) setView(next);
+          if (loadCurrent) setView(next);
         },
         () => {
-          if (active) setError('load');
+          if (loadCurrent) setError('load');
         },
       )
       .finally(() => {
-        if (active) setLoading(false);
+        if (loadCurrent) setLoading(false);
       });
     return () => {
-      active = false;
+      loadCurrent = false;
     };
   }, [recordingSourceId, transcriptService]);
 

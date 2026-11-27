@@ -71,7 +71,7 @@ export function RecordingDetailActionMenu({
         const selected = latest.current.find(
           item => item.id === entries[index]?.id,
         );
-        if (selected && !selected.disabled) void selected.run();
+        if (selected && !selected.disabled) selected.run();
       },
     );
   };
