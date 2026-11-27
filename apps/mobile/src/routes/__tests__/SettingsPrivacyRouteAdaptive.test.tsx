@@ -6,6 +6,7 @@ import {
   waitFor,
 } from '@testing-library/react-native';
 import { t } from '../../i18n';
+import { appColors } from '../../layout/appColors';
 import type { ReactNode } from 'react';
 import { Alert, Dimensions, StyleSheet, Text, View } from 'react-native';
 import { NavigationRouteAdapter } from '../../navigation/NavigationRouteAdapter';
@@ -148,8 +149,16 @@ test('uses native privacy regions and retains confirmation, progress, and cleare
       `navigation-route-columns-${controller.getSnapshot().currentRoute.key}`,
     ),
   ).toBeNull();
-  expect(screen.getByTestId('settings-privacy-policy-summary')).toBeTruthy();
-  expect(screen.getByTestId('settings-privacy-external-transfer')).toBeTruthy();
+  for (const id of [
+    'settings-privacy-policy-summary',
+    'settings-privacy-external-transfer',
+  ]) {
+    expect(
+      StyleSheet.flatten(screen.getByTestId(id).props.style),
+    ).toMatchObject({
+      backgroundColor: appColors.surface,
+    });
+  }
   expect(columnsAxis()).toBe('column');
 
   await fireEvent(
