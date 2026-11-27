@@ -38,7 +38,7 @@ test('pages the complete local review without silently selecting off-screen rows
   expect(screen.getByTestId('encounter-candidate-32')).toBeTruthy();
   expect(screen.queryByTestId('encounter-candidates-next')).toBeNull();
   await fireEvent.press(screen.getByTestId('encounter-select-candidate-32'));
-  expect(toggle).toHaveBeenCalledWith('candidate-32');
+  expect(toggle).toHaveBeenCalledWith('candidate-32', pending);
   await view.rerender(renderPage(['candidate-32']));
   expect(screen.getByTestId('encounter-select-candidate-32')).toHaveProp(
     'accessibilityState',
