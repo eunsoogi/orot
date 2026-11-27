@@ -177,7 +177,12 @@ export function createSavedConversationPossibilityReference(
       input: Pick<
         ConversationPossibilityOriginalInput,
         'current' | 'confirmProtected'
-      >,
+      > & {
+        readonly expected?: Pick<
+          ConversationPossibilityOriginalInput,
+          'createdAt' | 'lease'
+        >;
+      },
     ) {
       const current = () => input.current() && isCurrentDatabase(database);
       try {
@@ -203,6 +208,10 @@ export function createSavedConversationPossibilityReference(
           typeof row.session_id !== 'string' ||
           typeof row.session_version !== 'number' ||
           typeof row.created_at !== 'string' ||
+          (input.expected &&
+            (row.created_at !== input.expected.createdAt ||
+              row.session_id !== input.expected.lease.id ||
+              row.session_version !== input.expected.lease.version)) ||
           !current()
         )
           return null;

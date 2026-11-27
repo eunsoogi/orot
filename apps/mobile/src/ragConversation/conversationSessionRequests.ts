@@ -216,7 +216,7 @@ export function createConversationSessionRequests(
           retainedTurnId:
             request.committed && retained ? retained.toolMessageId : undefined,
           retentionUnavailable: Boolean(retained && !request.committed),
-          openingOwnerId: retained?.toolMessageId,
+          retainedRequest: retained,
           restorePromptToComposer: request.restorePromptToComposer,
           find,
           update,

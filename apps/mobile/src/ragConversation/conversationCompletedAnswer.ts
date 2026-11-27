@@ -15,7 +15,10 @@ export function conversationCompletedAnswer(input: {
   userMessageId: number;
   restorePromptToComposer: boolean;
   retainedTurnId?: string;
-  openingOwnerId?: string;
+  retainedRequest?: Readonly<{
+    toolMessageId: string;
+    requestCreatedAt: string;
+  }>;
   retentionUnavailable?: boolean;
   dailyReport?: ConversationSession['dailyReport'];
   copy: { noEvidence: string; insufficient: string };
@@ -77,7 +80,7 @@ export function conversationCompletedAnswer(input: {
         content: '',
         initialResponse: opening,
         // Pair only the already visible opening with its identical archive row.
-        rejectedOpeningTurnId: input.openingOwnerId,
+        rejectedOpeningTurnId: input.retainedRequest?.toolMessageId,
         incomplete: true,
       });
     update(id, { pendingMessage: null, messages });
@@ -152,7 +155,11 @@ export function conversationCompletedAnswer(input: {
                 ? { dailyReport: outcome.dailyReport }
                 : {}),
               ...(input.retainedTurnId && outcome.committedPossibilityOriginal
-                ? { committedPossibilityOriginal: true as const }
+                ? {
+                    committedPossibilityOriginal: true as const,
+                    committedPossibilityCreatedAt:
+                      input.retainedRequest?.requestCreatedAt,
+                  }
                 : {}),
               citations: outcome.citations,
               ...(!input.retentionUnavailable &&

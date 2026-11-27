@@ -132,7 +132,8 @@ export function conversationMutationExecution(input: {
               : offer.toolId === priorAuthored?.action.id
                 ? priorAuthored.confirmTerminal(offer)
                 : offer.toolId === 'remember-daily-report' ||
-                    offer.toolId === 'remember-health-summary'
+                    offer.toolId === 'remember-health-summary' ||
+                    offer.toolId === 'remember-possibilities-report'
                   ? confirmReport?.(offer)
                   : confirmAnswer?.(offer),
         }

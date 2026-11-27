@@ -1,3 +1,4 @@
+import { watchSavedReportNativeProtection } from '../generatedReports/savedReportNativeProtection';
 import type { ConversationScreenProps } from './ConversationScreenProps';
 import type { ConversationSessions } from './conversationSessions';
 import {
@@ -21,6 +22,14 @@ export interface BoundReportBookmark {
   readonly displayedReport?: import('../storage/dailyReportMemoryBookmark').DailyReportBookmarkTarget;
   readonly confirmProtection?: () => Promise<boolean>;
 }
+
+export type BoundPossibilityBookmark = Readonly<{
+  artifactId: string;
+  createdAt: string;
+  lease: BoundReportBookmark['lease'];
+  current: () => boolean;
+  confirmProtected: () => Promise<boolean>;
+}>;
 
 function latestReportCandidate(store: ConversationSessions, sessionId: number) {
   const session = store
@@ -62,6 +71,7 @@ function latestReportCandidate(store: ConversationSessions, sessionId: number) {
         healthSummary: last.healthSummary,
         dailyReport: last.dailyReport,
         committedPossibilityOriginal: last.committedPossibilityOriginal,
+        committedPossibilityCreatedAt: last.committedPossibilityCreatedAt,
       };
   return candidate || undefined;
 }
@@ -107,18 +117,52 @@ export function semanticReportBookmarkSender(
   send: ConversationScreenProps['onSend'],
 ) {
   const report = latestReportArtifact(store, sessionId);
-  const lease = report && store.savedReportLease(sessionId);
-  if (!report || !lease) return { send, close: () => {} };
+  const live = !report ? latestReportCandidate(store, sessionId) : undefined;
+  const possibility =
+    live &&
+    'committedPossibilityOriginal' in live &&
+    live.committedPossibilityOriginal &&
+    live.id &&
+    live.committedPossibilityCreatedAt
+      ? { artifactId: live.id, createdAt: live.committedPossibilityCreatedAt }
+      : undefined;
+  const lease = (report || possibility) && store.savedReportLease(sessionId);
+  if (!lease) return { send, close: () => {} };
   const owner = captureReportBookmarkOwner({
     store,
     sessionId,
     current,
     allowOwnSend: true,
   });
-  const target: BoundReportBookmark = {
+  const target: BoundReportBookmark | undefined = report && {
     ...report,
     lease,
     current: owner.current,
+  };
+  let stopProtection: (() => void) | undefined;
+  const bindPossibility = (signal: AbortSignal) => {
+    if (!possibility) return;
+    const stillVisible = () =>
+      owner.current() &&
+      !!store
+        .getSnapshot()
+        .sessions.find(row => row.id === sessionId)
+        ?.messages.some(
+          message =>
+            message.retainedTurnId === possibility.artifactId &&
+            message.committedPossibilityOriginal &&
+            message.committedPossibilityCreatedAt === possibility.createdAt,
+        );
+    if (!stillVisible()) return;
+    const native = watchSavedReportNativeProtection(signal, owner.close);
+    if (!native) return;
+    stopProtection = native.dispose;
+    return {
+      ...possibility,
+      lease,
+      current: () => stillVisible() && native.current(),
+      confirmProtected: native.confirm,
+    } satisfies BoundPossibilityBookmark;
   };
   const withTarget: ConversationScreenProps['onSend'] = (
     question,
@@ -126,24 +170,35 @@ export function semanticReportBookmarkSender(
     signal,
     observer,
     context,
-  ) =>
-    send(
+  ) => {
+    if (
+      observer?.inputOrigin !== 'composer' ||
+      observer.photoInput ||
+      observer.selectedRecordingTranscript ||
+      signal?.aborted ||
+      !owner.current()
+    )
+      return send(question, history, signal, observer, context);
+    const possibilityBookmark = signal && bindPossibility(signal);
+    return send(
       question,
       history,
       signal,
-      observer?.inputOrigin === 'composer' &&
-        !observer.photoInput &&
-        !observer.selectedRecordingTranscript &&
-        !signal?.aborted &&
-        target.current()
+      target
         ? { ...observer, reportBookmark: target }
-        : observer,
+        : possibilityBookmark
+          ? { ...observer, possibilityBookmark }
+          : observer,
       context,
     );
+  };
   return {
     send: isWarmConversationSender(send)
       ? allowWarmConversationSender(withTarget)
       : withTarget,
-    close: owner.close,
+    close() {
+      stopProtection?.();
+      owner.close();
+    },
   };
 }
