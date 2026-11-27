@@ -13,6 +13,8 @@ const DailyReportSourceReferenceSchema = z.strictObject({
 const DailyReportClaimSchema = z.strictObject({
   text: NonEmptyTextSchema,
   sourceReferences: z.array(DailyReportSourceReferenceSchema).min(1),
+  // Only new reports add a primary presentation; older saved prose stays intact.
+  focus: z.enum(['takeaway', 'change', 'follow_up']).optional(),
   // Optional display grouping preserves legacy claims and never changes evidence.
   section: z
     .enum(['priority', 'actions', 'history', 'patterns', 'plans', 'limits', 'model'])

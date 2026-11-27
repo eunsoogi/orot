@@ -2,7 +2,11 @@ import { isRecordedWorkout } from '../../healthEvidence/healthContext/dailyRepor
 import type { DailyReportOutput, DailyReportSourceRecord } from '@orot/domain';
 import type { LocalHealthEvidenceRecord } from '../../healthEvidence/localEvidenceQueries';
 import { dailyReportGuidance } from './dailyReportGuidance';
-import { dailyReportActions } from './dailyReportActions';
+import { dailyReportActionCandidates } from './dailyReportActions';
+import {
+  applyDailyReportFocus,
+  composeDailyReportFocus,
+} from './dailyReportFocus';
 import { dailyReportSynthesis } from './dailyReportSynthesis';
 import type { ProjectedReportModelClaim } from './dailyReportModelAnalysis';
 import { t } from '../../i18n';
@@ -17,7 +21,7 @@ export function dailyReportAnalysis(
   values: readonly LocalHealthEvidenceRecord[],
   sources: readonly DailyReportSourceRecord[],
   selected: readonly number[],
-  history: readonly Claim[],
+  history: readonly (Claim & { materialComparison?: boolean })[],
   plans: readonly Claim[],
   generated: readonly ProjectedReportModelClaim[] = [],
   sleep: readonly Claim[] = [],
@@ -32,7 +36,11 @@ export function dailyReportAnalysis(
       section: name,
     }));
   const priority = dailyReportGuidance(values, sources);
-  const actions = dailyReportActions(values, sources);
+  const candidates = dailyReportActionCandidates(values, sources);
+  const actions = candidates.map(({ text, sourceReferences }) => ({
+    text,
+    sourceReferences,
+  }));
   const reviewed = new Set([...priority, ...actions].map(item => item.text));
   const modelSelected = generated.filter(
     item => item.kind === 'action' && reviewed.has(item.text),
@@ -86,20 +94,32 @@ export function dailyReportAnalysis(
         },
       ]
     : [];
-  return [
-    ...reviewedSection(priority, 'priority'),
-    ...section([...recorded, ...sleep], 'patterns'),
-    ...section(
-      generated.filter(
-        item => item.kind !== 'action' || !reviewed.has(item.text),
+  return applyDailyReportFocus(
+    [
+      ...reviewedSection(priority, 'priority'),
+      ...section([...recorded, ...sleep], 'patterns'),
+      ...section(
+        generated.filter(
+          item => item.kind !== 'action' || !reviewed.has(item.text),
+        ),
+        'model',
       ),
-      'model',
-    ),
-    ...reviewedSection(actions, 'actions'),
-    ...section(history, 'history'),
-    ...section(dailyReportSynthesis(values, sources, selected), 'patterns'),
-    ...section(plans, 'plans'),
-  ];
+      ...reviewedSection(actions, 'actions'),
+      ...section(history, 'history'),
+      ...section(dailyReportSynthesis(values, sources, selected), 'patterns'),
+      ...section(plans, 'plans'),
+    ],
+    composeDailyReportFocus({
+      priority,
+      candidates,
+      comparisons: [
+        ...history.filter(item => item.materialComparison === true),
+        ...dailyReportSynthesis(values, sources, selected, true),
+      ],
+      generated,
+      firstSource: sources[0],
+    }),
+  );
 }
 
 /** Reviewed guidance owns its own section, even if the model picks it as a highlight. */
