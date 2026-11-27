@@ -1,3 +1,4 @@
+import { currentConversationMessages } from './currentConversationMessages';
 import { watchSavedReportNativeProtection } from '../generatedReports/savedReportNativeProtection';
 import type { ConversationScreenProps } from './ConversationScreenProps';
 import type { ConversationSessions } from './conversationSessions';
@@ -46,9 +47,10 @@ function latestReportCandidate(store: ConversationSessions, sessionId: number) {
   if (session.savedHistoryDisplay && !savedDisplay) return;
   // Use the same order as the displayed transcript: a newly saved local
   // photo can follow a live report even though it resides in the archive list.
-  const last = savedHistoryTranscript(savedDisplay ?? [], session.messages).at(
-    -1,
-  );
+  const last = savedHistoryTranscript(
+    savedDisplay ?? [],
+    currentConversationMessages(session),
+  ).at(-1);
   if (
     !last ||
     last.role !== 'assistant' ||

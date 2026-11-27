@@ -70,13 +70,7 @@ test('an image without text traverses the attached composer and only the dedicat
     items: [],
     nextCursor: null,
   });
-  expect(f.session().savedHistoryDisplay?.map(item => item.row)).toEqual([
-    expect.objectContaining({
-      answer: '합성 이미지 설명',
-      question: '',
-      directPhoto: true,
-    }),
-  ]);
+  expect(f.session().savedHistoryDisplay).toEqual([]);
 });
 
 test('opted-in automatic memory excludes a direct photo and its authored preference', async () => {

@@ -174,7 +174,7 @@ export function ConversationScreen({
               providerSelection,
             )}
             steeringInstructions={session.steeringInstructions}
-            messages={projectQuickChoice(session)}
+            messages={projectQuickChoice(session, canPaint)}
             pendingMessage={pendingMessage}
             error={preflightError ? '' : error}
             unsavedCount={session.unsavedCount}

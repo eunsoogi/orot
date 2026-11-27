@@ -1,3 +1,4 @@
+import { currentConversationMessages } from './currentConversationMessages';
 import { Alert } from 'react-native';
 import { t } from '../i18n';
 import { openSavedGeneratedReportReferences } from '../memory/openSavedGeneratedReportReferences';
@@ -23,7 +24,10 @@ const pending = new WeakMap<ConversationSessions, Set<number>>();
 function visibleTail(session: ConversationSession) {
   const saved = visibleSavedHistoryDisplay(session);
   if (session.savedHistoryDisplay && !saved) return;
-  return savedHistoryTranscript(saved ?? [], session.messages).at(-1);
+  return savedHistoryTranscript(
+    saved ?? [],
+    currentConversationMessages(session),
+  ).at(-1);
 }
 
 /** One whole-message command is local to the composer. Cold marker-only rows

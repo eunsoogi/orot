@@ -28,17 +28,21 @@ export function conversationPhotoSurface(
       if (dispose) surface.directPhotoDrafts.dispose();
       else surface.directPhotoDrafts.retire();
     },
-    retain(restoration: {
-      readonly publishDirectPhoto: Parameters<
+    retain(
+      find: Parameters<
         typeof createConversationDirectPhotoRetention
-      >[1];
-    }) {
+      >[1]['find'],
+      update: Parameters<
+        typeof createConversationDirectPhotoRetention
+      >[1]['update'],
+      nextId: () => number,
+    ) {
       // Expose only the public photo controls; the local writer still binds the active session.
       return {
         ...surface,
         retainDirectPhoto: createConversationDirectPhotoRetention(
           options,
-          restoration.publishDirectPhoto,
+          { find, update, nextId },
           id => activeId() === id,
         ),
       };

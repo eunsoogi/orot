@@ -1,4 +1,5 @@
 import type { DisplayMessage } from './conversationDisplayMessage';
+import { currentConversationMessages } from './currentConversationMessages';
 import type { ConversationSession } from './conversationSessionTypes';
 
 export type PreparingQuickChoice = Readonly<{
@@ -36,8 +37,10 @@ export function confirmedQuickChoiceId(
 /** View-only projection: the pending user line cannot appear in prompt history or retention. */
 export function projectQuickChoice(
   session: ConversationSession,
+  active = true,
 ): readonly DisplayMessage[] {
-  const { messages, preparingQuickChoice: preview } = session;
+  const messages = currentConversationMessages(session, active);
+  const { preparingQuickChoice: preview } = session;
   return !session.preparingSend ||
     !preview ||
     messages.some(row => row.id === preview.id)

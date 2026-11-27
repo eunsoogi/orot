@@ -195,6 +195,8 @@ export interface ConversationSession {
   readonly draft: string;
   readonly draftEditRevision?: number;
   readonly messages: readonly DisplayMessage[];
+  /** Current display-only turns are never read by inference, tools or Memory. */
+  readonly currentDisplayMessages?: readonly DisplayMessage[];
   readonly pendingMessage: {
     readonly sourceOwner?: import('../aiFeatures/integration/coldConversationSourceResolvers').ColdConversationSourceOwner;
     initialResponse?: DisplayMessage['initialResponse'];

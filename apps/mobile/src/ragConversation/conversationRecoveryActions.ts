@@ -90,6 +90,7 @@ export function conversationRecoveryActions(input: {
         restoreFailed: true,
         messages: [],
         savedHistoryDisplay: undefined,
+        currentDisplayMessages: undefined,
         taskCards: [],
         steeringInstructions: [],
         steeringAvailable: false,

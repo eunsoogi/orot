@@ -61,6 +61,7 @@ export function undoRetainedConversation(
   const session = {
     ...deleted.session,
     messages: [],
+    currentDisplayMessages: undefined,
     error: '',
     quarantined: false,
   };

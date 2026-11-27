@@ -169,7 +169,6 @@ export function createConversationSessionRestoreState(input: {
         ? runWhileCurrent(id, signal)
         : Promise.resolve();
     },
-    publishDirectPhoto: undefined,
     retry: runWhileCurrent,
     loadOlder: async (_id: number, _signal?: AbortSignal) => {},
     async prepareContext(id: number, signal?: AbortSignal) {

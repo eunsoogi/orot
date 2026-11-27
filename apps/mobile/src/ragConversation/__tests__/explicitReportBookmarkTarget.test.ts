@@ -124,19 +124,13 @@ test.each([true, false])(
         },
       },
     ] as unknown as Session['messages'];
-    const savedHistoryDisplay: Session['savedHistoryDisplay'] = [
+    const currentDisplayMessages: Session['currentDisplayMessages'] = [
       {
-        afterLiveId: photoAfterReport ? 10 : 9,
-        questionId: 20,
-        answerId: 21,
-        row: {
-          id: 'synthetic-photo',
-          createdAt: '2035-01-01T00:00:00Z',
-          kind: 'answer',
-          directPhoto: true,
-          question: 'Synthetic image question.',
-          answer: 'Synthetic image answer.',
-        },
+        id: photoAfterReport ? 20 : 9,
+        role: 'assistant',
+        directPhotoReply: true,
+        directPhotoTurnId: 'synthetic-photo',
+        content: 'Synthetic image answer.',
       },
     ];
     jest.spyOn(store, 'getSnapshot').mockReturnValue({
@@ -144,7 +138,7 @@ test.each([true, false])(
       sessions: snapshot.sessions.map(row => ({
         ...row,
         messages,
-        savedHistoryDisplay,
+        currentDisplayMessages,
       })),
     });
     const save = jest.fn(async () => true);

@@ -84,7 +84,7 @@ test('the rounded attachment precedes the separate authored text bubble', async 
   }
 });
 
-test('an exact already-owned preview can join a saved photo reply but never another session or old marker', async () => {
+test('an exact already-owned preview decorates only its current outgoing row', async () => {
   const uri = 'data:image/jpeg;base64,c3ludGhldGlj';
   const createdAt = '2026-11-26T03:00:00.000Z';
   const id = 'photo-reply:0123456789abcdef0123456789abcdef';
@@ -108,17 +108,28 @@ test('an exact already-owned preview can join a saved photo reply but never anot
   const preview = {
     sessionId: 1,
     requestId: id,
-    displayId: 9,
-    submittedAt: createdAt,
-    prompt: '',
     preview: uri,
     pending: false,
   };
-  const draw = (sessionId: number, hasImage: boolean, requestId = id) => (
+  const current: DisplayMessage[] = [
+    {
+      id: 9,
+      role: 'user',
+      content: '',
+      photoAttached: true,
+      directPhotoTurnId: id,
+    },
+  ];
+  const draw = (
+    sessionId: number,
+    hasImage: boolean,
+    requestId = id,
+    restored = false,
+  ) => (
     <>
       {projectTranscript(
         presentDirectPhotos(
-          stored,
+          restored ? stored : current,
           hasImage ? [{ ...preview, requestId }] : [],
           sessionId,
         ),
@@ -144,7 +155,7 @@ test('an exact already-owned preview can join a saved photo reply but never anot
     expect(screen.queryByTestId('conversation-sent-photo-image')).toBeNull();
     await ui.rerender(draw(1, true, 'another-owner'));
     expect(screen.queryByTestId('conversation-sent-photo-image')).toBeNull();
-    await ui.rerender(draw(1, false));
+    await ui.rerender(draw(1, true, id, true));
     expect(screen.queryByTestId('conversation-sent-photo-image')).toBeNull();
     expect(screen.queryByText(t('ragConversation.photo.message'))).toBeNull();
     expect(screen.getByText('합성 답변')).toBeVisible();
