@@ -7,3 +7,9 @@ jest.mock('../src/assistantAppearance/appearanceStore', () => ({
     clear: jest.fn(async () => {}),
   },
 }));
+
+// Most app suites start after the visual startup minimum. Its dedicated test
+// unmocks the hook and drives the real 2-second timer deterministically.
+jest.mock('../src/appEntry/useStartupMinimumDisplay', () => ({
+  useStartupMinimumDisplay: () => false,
+}));

@@ -10,6 +10,7 @@ import {
 import type { ComponentType, ReactNode } from 'react';
 import { View } from 'react-native';
 import { StartupLoadingScreen } from '../appEntry/StartupLoadingScreen';
+import { useStartupMinimumDisplay } from '../appEntry/useStartupMinimumDisplay';
 import { AppButton } from '../layout/AppButton';
 import { AppText } from '../layout/AppText';
 import SafeAreaLayout from '../layout/SafeAreaLayout';
@@ -54,6 +55,11 @@ export function AssistantAppearanceProvider({
   const [lastConfigured, setLastConfigured] =
     useState<AssistantAppearance | null>(null);
   const [revision, setRevision] = useState(0);
+  // Only the initial committed splash has a minimum; a failure is shown
+  // immediately and a user-initiated retry reuses the normal loading gate.
+  const holdingStartup = useStartupMinimumDisplay(
+    revision === 0 && state.status !== 'error',
+  );
   useEffect(() => {
     let current = true;
     appearanceStore
@@ -87,7 +93,8 @@ export function AssistantAppearanceProvider({
       visibleValue ? { value: visibleValue, ready, canEnter, edit } : null,
     [visibleValue, ready, canEnter, edit],
   );
-  if (state.status === 'loading') return <StartupLoadingScreen />;
+  if (state.status === 'loading' || holdingStartup)
+    return <StartupLoadingScreen />;
   if (state.status === 'error')
     return (
       <SafeAreaLayout>
