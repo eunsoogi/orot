@@ -9,6 +9,7 @@ export function withComposedConversationControls(
   legacy: TaskResponderContract<GroundedRagAnswer>,
   version: '45' | '46' | '47' = '45',
   timeControls = false,
+  multiline = false,
 ): TaskResponderContract<GroundedRagAnswer> {
   const sliders = version !== '45';
   const dateControls = version === '47';
@@ -41,6 +42,9 @@ export function withComposedConversationControls(
                 : '') +
               (timeControls
                 ? ' A temporary time-only DateTimeInput may select a wall-clock time without scheduling. Use enableTime:true, omit enableDate or set it to false, provide a distinct local value pointer and a literal label. Omit bounds, model seeds, actions and time zones.'
+                : '') +
+              (multiline
+                ? ' TextField also accepts variant "longText" for a multiline local input. Keep the same plain label and distinct value pointer. It starts empty, never submits, and accepts at most 256 characters; omit any data-model value or action for that field.'
                 : ''),
           },
         },
@@ -61,6 +65,7 @@ export function withComposedConversationControls(
         sliders,
         dateControls,
         timeControls,
+        multiline,
       );
       if (!plan) return ordinary;
       const result = legacy.validateResult(

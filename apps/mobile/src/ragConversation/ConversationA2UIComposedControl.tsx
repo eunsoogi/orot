@@ -120,13 +120,20 @@ function MountedControl({
           autoComplete="off"
           autoCorrect={false}
           maxLength={256}
+          multiline={control.multiline}
+          submitBehavior={control.multiline ? 'newline' : undefined}
           spellCheck={false}
           textContentType="none"
           value={text}
-          style={styles.field}
+          style={
+            control.multiline ? [styles.field, styles.multiline] : styles.field
+          }
           placeholder={control.placeholder}
           onChangeText={next => {
-            if (current() && typeof next === 'string')
+            if (
+              (control.multiline ? owns() : current()) &&
+              typeof next === 'string'
+            )
               setText(next.slice(0, 256));
           }}
         />
@@ -207,6 +214,13 @@ const styles = StyleSheet.create({
     paddingHorizontal: 12,
     borderRadius: 8,
     backgroundColor: appColors.primarySoft,
+  },
+  // Leave a visible note area without growing the bubble unbounded.
+  multiline: {
+    minHeight: 88,
+    maxHeight: 180,
+    paddingVertical: 10,
+    textAlignVertical: 'top',
   },
   slider: { alignSelf: 'stretch', minHeight: 44 },
   option: { minHeight: 44, paddingHorizontal: 12, justifyContent: 'center' },

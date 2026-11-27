@@ -80,12 +80,18 @@ export function versionedConversationMemoryTasks(
     '47',
   );
   const replacementBase = withConversationA2UIPanelCaptions(captionBase);
-  const timeTask = withConversationA2UIReplacement(
-    withConversationA2UIPanelCaptions(
-      withComposedConversationControls(conversationTaskV44, '47', true),
-    ),
-    '55',
-  );
+  const temporaryFormTask = (multiline = false) =>
+    withConversationA2UIReplacement(
+      withConversationA2UIPanelCaptions(
+        withComposedConversationControls(
+          conversationTaskV44,
+          '47',
+          true,
+          multiline,
+        ),
+      ),
+      '55',
+    );
   return {
     conversationTaskV25,
     conversationTaskV26,
@@ -136,10 +142,13 @@ export function versionedConversationMemoryTasks(
       v54: observeConversationA2UIFinalAdmission(
         withConversationA2UIReplacement(replacementBase, '54'),
       ),
-      v55: observeConversationA2UIFinalAdmission(timeTask),
+      v55: observeConversationA2UIFinalAdmission(temporaryFormTask()),
+      v56: observeConversationA2UIFinalAdmission(
+        withConversationA2UITabSelectionLifetime(temporaryFormTask()),
+      ),
     },
     ragConversationTask: observeConversationA2UIFinalAdmission(
-      withConversationA2UITabSelectionLifetime(timeTask),
+      withConversationA2UITabSelectionLifetime(temporaryFormTask(true), '57'),
     ),
   };
 }
