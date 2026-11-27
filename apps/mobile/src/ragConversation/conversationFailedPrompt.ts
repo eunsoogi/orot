@@ -29,6 +29,7 @@ export function conversationFailureReporter(
     if (
       kind === 'validation_failed' ||
       kind === 'provider_refused' ||
+      kind === 'protected_memory_not_saved' ||
       (typeof failure !== 'string'
         ? conversationEvidenceRejectsDraft(failure)
         : kind === 'stale_evidence')
@@ -40,6 +41,7 @@ export function conversationFailureReporter(
       // Other failures still retain independently reviewed, non-receipt text.
       if (
         kind !== 'answer_memory_not_saved' &&
+        kind !== 'protected_memory_not_saved' &&
         pending &&
         !pending.withholdHealthBody &&
         opening &&

@@ -12,8 +12,8 @@ export const historyDisplayKo = {
   'historyDisplay.refusedConversationMemory':
     '기억에 저장하지 않았어요. 비밀 정보나 보고서·답변을 가리키는 대신 기억할 내용을 직접 적어 주세요.',
   'historyDisplay.answerMemoryTitle': '대화에서 저장한 AI 답변',
-  'historyDisplay.answerMemoryDeviceOnly':
-    '기억에 저장하지 않았어요. 이 요청은 기기 내 Apple Intelligence에서만 처리할 수 있어요.',
+  'historyDisplay.protectedMemoryNotSaved':
+    '기억에 저장하지 않았어요. 보호된 대화 내용은 선택한 모델에 보내지 않았어요.',
   'historyDisplay.authoredMemoryNotSaved':
     '이 메시지에서 선택한 내용을 기억에 저장하지 않았어요.',
   'historyDisplay.answerMemoryNotSaved':
