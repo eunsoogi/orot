@@ -31,19 +31,23 @@ test.each(['same-owner', 'revoked', 'replaced'] as const)(
       release = resolve;
     });
     let writer: Promise<unknown> | undefined;
-    databaseCurrent.mockImplementationOnce(database => {
-      // Admit a real guarded writer (which invalidates the independent epoch)
-      // synchronously during the route's first owner check after acquiring it.
-      lane.statements.mockImplementationOnce(async (...input) => {
-        const result = await execute(...input);
-        await gate;
-        return result;
+    // Pass the pre-acquisition owner check. The next check has a captured
+    // epoch to supersede; a writer admitted before acquisition would only delay it.
+    databaseCurrent
+      .mockImplementationOnce(witness)
+      .mockImplementationOnce(database => {
+        // Admit a real guarded writer (which invalidates the independent epoch)
+        // synchronously during the route's first owner check after acquiring it.
+        lane.statements.mockImplementationOnce(async (...input) => {
+          const result = await execute(...input);
+          await gate;
+          return result;
+        });
+        writer = database.execute(
+          'UPDATE health_observations SET ingested_at = ingested_at',
+        );
+        return witness(database);
       });
-      writer = database.execute(
-        'UPDATE health_observations SET ingested_at = ingested_at',
-      );
-      return witness(database);
-    });
     const ui = await render(
       <OverviewWorkoutHeartRateCard active width={300} />,
     );

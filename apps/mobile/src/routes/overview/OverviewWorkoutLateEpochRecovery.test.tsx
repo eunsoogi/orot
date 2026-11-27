@@ -36,11 +36,15 @@ test.each([
     let owner: SqlDatabase | undefined;
     const pending: Promise<unknown>[] = [];
     const mutation = 'UPDATE health_observations SET ingested_at = ingested_at';
-    databaseCurrent.mockImplementationOnce(database => {
-      owner = database;
-      if (mode !== 'held') pending.push(database.execute(mutation));
-      return witness(database);
-    });
+    // Pass the pre-acquisition owner check. The next check has a captured
+    // epoch to supersede; a writer admitted before acquisition would only delay it.
+    databaseCurrent
+      .mockImplementationOnce(witness)
+      .mockImplementationOnce(database => {
+        owner = database;
+        if (mode !== 'held') pending.push(database.execute(mutation));
+        return witness(database);
+      });
 
     let release!: () => void;
     const held = new Promise<void>(resolve => {
