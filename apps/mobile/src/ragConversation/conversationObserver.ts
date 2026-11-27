@@ -65,6 +65,14 @@ export type RagConversationObserver = Pick<
     signal: AbortSignal,
   ) => Promise<boolean>;
   /** Opt-in is from the composer dispatch, never inferred from typed route or model output. */
+  /** Exact standing local enrollment for a fresh human composer, not model policy. */
+  readonly authorizeStandingAuthoredMemory?: (
+    statement: string,
+    signal: AbortSignal,
+  ) => Promise<
+    | import('../storage/standingAuthoredMemoryApproval').StandingAuthoredMemoryApproval
+    | undefined
+  >;
   readonly bindOrdinaryMemorySidecar?: (
     operationRunId: string,
     owner: NonNullable<RagConversationObserver['templateProposalOwner']>,

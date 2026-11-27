@@ -1,4 +1,8 @@
 import {
+  isExactStandingAuthoredMemorySentence,
+  standingAuthoredMemoryIsCurrent,
+} from './standingAuthoredMemoryApproval';
+import {
   localConversationMemoryIdPrefix,
   readManualHistoryEntry,
   type SqlDatabase,
@@ -34,6 +38,9 @@ export async function confirmAuthoredMemoryTerminal(
 ): Promise<boolean> {
   const op = input.authoredTerminal;
   const approved = input.approvedCurrentSentence;
+  const exact = input.standingApproval
+    ? isExactStandingAuthoredMemorySentence
+    : exactAuthoredMemorySentence;
   const current = () => !signal.aborted && approved?.current() === true;
   if (
     !op ||
@@ -43,7 +50,7 @@ export async function confirmAuthoredMemoryTerminal(
     input.approvedSource ||
     !approved ||
     !current() ||
-    !exactAuthoredMemorySentence(input.question, approved.statement)
+    !exact(input.question, approved.statement)
   )
     return false;
   const id = localConversationMemoryIdPrefix + input.requestId;
@@ -84,6 +91,17 @@ export async function confirmAuthoredMemoryTerminal(
       [id],
     );
     if (newer.rows.length || !current()) return;
+    if (
+      input.standingApproval &&
+      !(await standingAuthoredMemoryIsCurrent(
+        tx,
+        input.question,
+        approved.statement,
+        input.standingApproval,
+      ))
+    )
+      return;
+    if (!current() || input.standingApproval?.current() === false) return;
     tx.commit();
     confirmed = true;
   });
