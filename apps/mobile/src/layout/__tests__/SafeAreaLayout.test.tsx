@@ -3,6 +3,7 @@ import type { StyleProp, ViewStyle } from 'react-native';
 import { Text, StyleSheet, Keyboard } from 'react-native';
 import { fireEvent, render } from '@testing-library/react-native';
 import SafeAreaLayout from '../SafeAreaLayout';
+import { appColors } from '../appColors';
 import { AppearanceEditor } from '../../assistantAppearance/AppearanceEditor';
 
 jest.mock('../../navigation/NavigationModal', () => ({
@@ -57,9 +58,9 @@ test('applies every screen edge to the route root', async () => {
     </SafeAreaLayout>,
   );
 
-  expect(getByTestId('safe-area-root').props.accessibilityHint).toBe(
-    'top,right,bottom,left',
-  );
+  const root = getByTestId('safe-area-root');
+  expect(root.props.accessibilityHint).toBe('top,right,bottom,left');
+  expect(root).toHaveStyle({ backgroundColor: appColors.background });
 });
 
 test('configures keyboard-aware scrolling for overflowing route content', async () => {
@@ -121,9 +122,9 @@ test('lets an explicitly standalone scroll viewport own the physical right edge 
     const view = await render(page());
     const scroll = view.getByTestId('safe-area-scroll');
     const editable = view.getByTestId('editable');
-    expect(view.getByTestId('safe-area-root').props.accessibilityHint).toBe(
-      'top,left',
-    );
+    const root = view.getByTestId('safe-area-root');
+    expect(root.props.accessibilityHint).toBe('top,left');
+    expect(root).toHaveStyle({ backgroundColor: appColors.background });
     expect(scroll.props.automaticallyAdjustsScrollIndicatorInsets).toBe(false);
     expect(scroll.props.automaticallyAdjustKeyboardInsets).toBe(true);
     expect(scroll.props.scrollIndicatorInsets).toEqual({
