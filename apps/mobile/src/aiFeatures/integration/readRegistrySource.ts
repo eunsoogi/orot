@@ -21,7 +21,10 @@ export async function readRegistrySource(
     const current = await readers().readSource(signal);
     if (current.status !== 'available') return current;
     if (signal.aborted) return { status: 'unavailable' };
-    if (!(await readers().validate(signal, validationContext()))) {
+    const selected = readers();
+    if (
+      !(await selected.validate(signal, validationContext([selected.validate])))
+    ) {
       const latest = await readers().readSource(signal);
       return latest.status === 'missing' || latest.status === 'unavailable'
         ? latest

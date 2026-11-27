@@ -140,6 +140,49 @@ test('freshness reads grouped cited identities, never uncited candidates or a pr
     ).toBe(false);
     expect(reads).toBe(1);
     terminate = undefined;
+    // The user opens an unbound live tool source and independently loads its
+    // detail. Each must reprove the exact cited chunk, not all loaded candidates.
+    selected.mockClear();
+    bulk.mockClear();
+    reads = 0;
+    const first = await optimized.registry.resolveToolSource(
+      optimized.refs[0]!,
+      signal,
+    );
+    expect(first).toBeDefined();
+    await expect(
+      optimized.registry.readSource(first!, signal),
+    ).resolves.toMatchObject({
+      status: 'available',
+    });
+    expect(selected.mock.calls).toEqual([
+      [[full[0]!], signal],
+      [[full[0]!], signal],
+    ]);
+    expect(bulk).not.toHaveBeenCalled();
+    expect(reads).toBe(2);
+
+    // A caller without the stock exact read registration keeps the old path.
+    await expect(
+      legacy.registry.readSource(legacy.refs[0]!, signal),
+    ).resolves.toMatchObject({
+      status: 'available',
+    });
+    expect(bulk).toHaveBeenCalledTimes(1);
+    expect(reads).toBe(43);
+
+    // The document was loaded, but its exact cited row was deleted before the
+    // independent selected-chunk proof. The stale snapshot is not returned.
+    const original = selected.getMockImplementation()!;
+    selected.mockImplementationOnce(async (...args) => {
+      await writer.delete('health_observation', full[0]!.id);
+      return original(...args);
+    });
+    await expect(
+      optimized.registry.readSource(optimized.refs[0]!, signal),
+    ).resolves.toEqual({
+      status: 'missing',
+    });
     await writer.delete('encounter', encounter.record.id);
     expect(
       await optimized.registry.revalidateEvidence(optimized.refs, signal),
