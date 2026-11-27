@@ -1,3 +1,8 @@
+import {
+  isExactStandingAuthoredMemorySentence,
+  standingAuthoredMemoryIsCurrent,
+  type StandingAuthoredMemoryApproval,
+} from './standingAuthoredMemoryApproval';
 import { exactAuthoredMemorySentence } from './authoredMemorySelection';
 import { enqueueManualHistoryMemory } from './userStatementMemoryJobs';
 import {
@@ -35,6 +40,7 @@ export interface ConversationHistorySave {
   readonly localOnly?: true;
   readonly operation?: ConversationActionIdentity;
   readonly authoredTerminal?: ConversationActionIdentity;
+  readonly standingApproval?: StandingAuthoredMemoryApproval;
   readonly approvedCurrentSentence?: {
     readonly statement: string;
     readonly current: () => boolean;
@@ -66,6 +72,9 @@ export async function saveConversationHealthHistory(
       ? conversationHistoryIntent(input.question)
       : legacyConversationHistoryIntent(input.question));
   const prior = input.approvedSource?.protectedPrior;
+  const exact = input.standingApproval
+    ? isExactStandingAuthoredMemorySentence
+    : exactAuthoredMemorySentence;
   if (
     (prior &&
       (!input.operation ||
@@ -73,6 +82,7 @@ export async function saveConversationHealthHistory(
         !input.localOnly ||
         input.requestId === input.approvedSource?.requestId ||
         !prior.current())) ||
+    (input.standingApproval && !input.authoredTerminal) ||
     (input.authoredTerminal &&
       (!input.localOnly ||
         !input.approvedCurrentSentence ||
@@ -82,14 +92,25 @@ export async function saveConversationHealthHistory(
     (input.approvedCurrentSentence &&
       (!input.localOnly ||
         !input.approvedCurrentSentence.current() ||
-        !exactAuthoredMemorySentence(input.question, details))) ||
+        !exact(input.question, details))) ||
     !details ||
     !isEligibleConversationMemorySource(details)
   )
     throw new Error('An explicit history save command is required.');
   let result = '';
   await database.transaction(async tx => {
-    if (signal.aborted) throw new Error('History save cancelled.');
+    const standingCurrent = () =>
+      standingAuthoredMemoryIsCurrent(
+        tx,
+        input.question,
+        details,
+        input.standingApproval,
+      );
+    if (
+      signal.aborted ||
+      (input.standingApproval && !(await standingCurrent()))
+    )
+      throw new Error('History save cancelled.');
     await validateConversationHistorySource(tx, input, details);
     await tx.execute(
       'CREATE TABLE IF NOT EXISTS conversation_history_receipts ' +
@@ -167,8 +188,11 @@ export async function saveConversationHealthHistory(
         throw new Error('Previously saved history was corrected.');
       if (input.authoredTerminal || prior) {
         await validateConversationHistorySource(tx, input, details);
+        if (input.standingApproval && !(await standingCurrent()))
+          throw new Error('History save cancelled.');
         if (
           signal.aborted ||
+          input.standingApproval?.current() === false ||
           (prior ? !prior.current() : !input.approvedCurrentSentence?.current())
         )
           throw new Error('History save cancelled.');
@@ -210,6 +234,9 @@ export async function saveConversationHealthHistory(
       await validateConversationHistorySource(tx, input, details);
     if (
       signal.aborted ||
+      (input.standingApproval && !(await standingCurrent())) ||
+      signal.aborted ||
+      input.standingApproval?.current() === false ||
       prior?.current() === false ||
       input.approvedCurrentSentence?.current() === false
     )

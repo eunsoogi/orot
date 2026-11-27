@@ -1,10 +1,18 @@
 import {
+  beginReportCalendarProof,
+  reportCalendarTransaction,
+} from './reportCalendarTransactionTiming';
+import {
   DailyReportIdentitySchema,
   type DailyReportIdentity,
 } from '@orot/domain';
-import type { SqlDatabase, ManualHistoryRepository } from '@orot/storage';
+import type {
+  SqlDatabase,
+  SqlExecutor,
+  ManualHistoryRepository,
+} from '@orot/storage';
 import {
-  acquireReportCalendarGuard,
+  openReportCalendarCandidate,
   type ReportCalendarReader,
 } from '../aiFeatures/integration/dailyReportSystemCalendar';
 import { validateDailyReportCompletion } from './dailyReportValidation';
@@ -16,113 +24,174 @@ import {
 import { visibleSummary } from './symptomSummaryQuarantine';
 import type { DailyReportLookup } from './dailyReportStorageTypes';
 
-/** Keep native event invalidation live until the validated SQLite snapshot is returned. */
+async function selectActiveReport(tx: SqlExecutor, key: string) {
+  const head = (
+    await tx.execute(
+      'SELECT active_run_id, revision, deleted FROM daily_report_heads WHERE identity_key = ?',
+      [key],
+    )
+  ).rows[0];
+  if (!head) return { status: 'missing' as const };
+  if (head.deleted === 1 || typeof head.active_run_id !== 'string')
+    return { status: 'deleted' as const };
+  const row = (
+    await tx.execute(
+      `SELECT r.result_json, EXISTS (SELECT 1 FROM conversation_invalid_summaries i WHERE i.id = r.id) AS invalid FROM symptom_summary_runs r WHERE r.id = ? AND ${visibleSummary}`,
+      [head.active_run_id],
+    )
+  ).rows[0];
+  if (!row || typeof row.result_json !== 'string')
+    return { status: 'deleted' as const };
+  if (typeof head.revision !== 'number') return { status: 'error' as const };
+  return {
+    status: 'candidate' as const,
+    runId: head.active_run_id,
+    revision: head.revision,
+    raw: row.result_json,
+    invalid: row.invalid === 1,
+  };
+}
+
+type CalendarCandidate = NonNullable<
+  Awaited<ReturnType<typeof openReportCalendarCandidate>>
+>;
+
+/** Native Calendar sampling does not occupy the shared database queue before
+ * the exact saved report has been readmitted. The last proof still does. */
 export function dailyReportStorageLookup(
   database: SqlDatabase,
   manualHistory: ManualHistoryRepository,
   ensure: () => Promise<void>,
   calendarReader?: ReportCalendarReader,
 ) {
+  const transaction = (work: Parameters<SqlDatabase['transaction']>[0]) =>
+    reportCalendarTransaction(database, 'report_calendar_daily', work);
   return async function lookup(
     identity: DailyReportIdentity,
     signal?: AbortSignal,
-  ) {
-    if (signal?.aborted) return { status: 'error' as const };
+  ): Promise<DailyReportLookup> {
+    if (signal?.aborted) return { status: 'error' };
     const parsed = DailyReportIdentitySchema.safeParse(identity);
-    if (!parsed.success) return { status: 'error' as const };
-    const lease: {
-      current: Awaited<ReturnType<typeof acquireReportCalendarGuard>>;
-    } = { current: null };
+    if (!parsed.success) return { status: 'error' };
+    const key = parsed.data.key;
+    const lease: { current: CalendarCandidate | null } = { current: null };
     try {
       await ensure();
-      let value: unknown;
-      await database.transaction(async tx => {
-        const head = (
-          await tx.execute(
-            'SELECT active_run_id, revision, deleted FROM daily_report_heads WHERE identity_key = ?',
-            [parsed.data.key],
-          )
-        ).rows[0];
-        if (!head) {
-          value = { status: 'missing' };
+      let result: DailyReportLookup = { status: 'error' };
+      const state: { finish?: () => Promise<void> } = {};
+      await transaction(async tx => {
+        if (signal?.aborted) return;
+        const chosen = await selectActiveReport(tx, key);
+        if (chosen.status !== 'candidate') {
+          result = chosen;
           return;
         }
-        if (head.deleted === 1 || typeof head.active_run_id !== 'string') {
-          value = { status: 'deleted' };
-          return;
-        }
-        const row = (
-          await tx.execute(
-            `SELECT r.result_json, EXISTS (SELECT 1 FROM conversation_invalid_summaries i WHERE i.id = r.id) AS invalid FROM symptom_summary_runs r WHERE r.id = ? AND ${visibleSummary}`,
-            [head.active_run_id],
-          )
-        ).rows[0];
-        if (!row || typeof row.result_json !== 'string') {
-          value = { status: 'deleted' };
-          return;
-        }
-        const saved = JSON.parse(row.result_json);
+        const saved = JSON.parse(chosen.raw);
         const checked = validateDailyReportCompletion(saved.context, {
           status: 'completed',
           report: saved.report,
         });
         const lineage =
           checked && parseDailyReportLineage(checked.context, saved.lineage);
-        if (
-          !checked ||
-          !lineage ||
-          checked.context.identity.key !== parsed.data.key
-        ) {
-          value = { status: 'error' };
+        if (!checked || !lineage || checked.context.identity.key !== key)
           return;
-        }
-        const sourceStatus = await dailyReportSourcesChanged(
-          tx,
-          row.invalid === 1,
-          lineage,
-          manualHistory,
-        );
-        lease.current = await acquireReportCalendarGuard(
-          checked.context,
-          calendarReader,
-          signal,
-        );
-        if (signal?.aborted) {
-          value = { status: 'error' };
-          return;
-        }
-        if (sourceStatus !== 'current' || !lease.current?.isCurrent()) {
-          await invalidateDailyReportRun(tx, head.active_run_id);
-          value = {
-            status: 'stale',
-            runId: head.active_run_id,
-            revision: head.revision,
-            sourceStatus: sourceStatus === 'deleted' ? 'deleted' : 'stale',
+        const binding = checked.context.systemCalendar;
+        const readmitted = async (owner: SqlExecutor) => {
+          const current = await selectActiveReport(owner, key);
+          if (current.status === 'deleted') result = current;
+          // Never authorize a replacement revision using the old lease.
+          return current.status === 'candidate' &&
+            current.runId === chosen.runId &&
+            current.revision === chosen.revision &&
+            current.raw === chosen.raw
+            ? current
+            : undefined;
+        };
+        const finish = async (owner: SqlExecutor, invalid: boolean) => {
+          if (signal?.aborted) return;
+          let calendarCurrent = !binding;
+          if (binding && !invalid && lease.current) {
+            const proof = beginReportCalendarProof(owner, true);
+            try {
+              calendarCurrent =
+                (await lease.current.revalidate(signal)) &&
+                lease.current.isCurrent();
+            } finally {
+              proof?.();
+            }
+            if (signal?.aborted) return;
+            // The installed driver permits direct same-connection dispatch
+            // while a transaction callback waits. Readmit after the native
+            // await, before any retained source can become publishable.
+            const current = await readmitted(owner);
+            if (!current) return;
+            invalid = current.invalid;
+          }
+          if (signal?.aborted) return;
+          const sourceStatus = await dailyReportSourcesChanged(
+            owner,
+            invalid,
+            lineage,
+            manualHistory,
+          );
+          if (signal?.aborted) return;
+          if (binding && !lease.current?.isCurrent()) calendarCurrent = false;
+          if (sourceStatus !== 'current' || !calendarCurrent) {
+            await invalidateDailyReportRun(owner, chosen.runId);
+            result = {
+              status: 'stale',
+              runId: chosen.runId,
+              revision: chosen.revision,
+              sourceStatus: sourceStatus === 'deleted' ? 'deleted' : 'stale',
+            };
+            return;
+          }
+          result = {
+            status: 'saved',
+            runId: chosen.runId,
+            revision: chosen.revision,
+            lineage,
+            ...checked,
           };
+        };
+        if (!binding || chosen.invalid) {
+          await finish(tx, chosen.invalid);
           return;
         }
-        value = {
-          status: 'saved',
-          runId: head.active_run_id,
-          revision: head.revision,
-          lineage,
-          ...checked,
+        state.finish = async () => {
+          lease.current = await openReportCalendarCandidate(
+            binding,
+            calendarReader,
+            signal,
+          );
+          if (signal?.aborted) return;
+          await transaction(async final => {
+            const current = await readmitted(final);
+            if (!current) return;
+            await finish(final, current.invalid);
+          });
         };
       });
-      if (signal?.aborted) return { status: 'error' as const };
-      const result = value as DailyReportLookup;
-      if (result.status === 'saved' && !(lease.current?.isCurrent() ?? false)) {
-        await invalidateDailyReportRun(database, result.runId);
+      if (signal?.aborted) return { status: 'error' };
+      await state.finish?.();
+      if (signal?.aborted) return { status: 'error' };
+      const completed = result as DailyReportLookup;
+      if (
+        completed.status === 'saved' &&
+        completed.context.systemCalendar &&
+        !lease.current?.isCurrent()
+      ) {
+        await invalidateDailyReportRun(database, completed.runId);
         return {
-          status: 'stale' as const,
-          runId: result.runId,
-          revision: result.revision,
-          sourceStatus: 'stale' as const,
+          status: 'stale',
+          runId: completed.runId,
+          revision: completed.revision,
+          sourceStatus: 'stale',
         };
       }
-      return result;
+      return completed;
     } catch {
-      return { status: 'error' as const };
+      return { status: 'error' };
     } finally {
       lease.current?.dispose();
     }

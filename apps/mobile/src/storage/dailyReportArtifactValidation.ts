@@ -1,3 +1,4 @@
+import { beginReportCalendarProof } from './reportCalendarTransactionTiming';
 import { RetainedSourceInvalidError } from '../aiFeatures/integration/retainedSourceError';
 import { acquireReportCalendarGuard } from '../aiFeatures/integration/dailyReportSystemCalendar';
 import { invalidateDailyReportRun } from './dailyReportInvalidation';
@@ -38,7 +39,16 @@ export async function validateDailyReportArtifact(
     return null;
   const lineage = parseDailyReportLineage(checked.context, raw.lineage);
   if (!lineage) return null;
-  const guard = await acquireReportCalendarGuard(checked.context);
+  const acquisition = beginReportCalendarProof(
+    tx,
+    !!checked.context.systemCalendar,
+  );
+  let guard;
+  try {
+    guard = await acquireReportCalendarGuard(checked.context);
+  } finally {
+    acquisition?.();
+  }
   if (!guard) {
     await invalidateDailyReportRun(tx, id);
     return null;
@@ -53,7 +63,17 @@ export async function validateDailyReportArtifact(
       })),
       history,
     );
-    if (!(await guard.revalidate()) || !guard.isCurrent()) {
+    const proof = beginReportCalendarProof(
+      tx,
+      !!checked.context.systemCalendar,
+    );
+    let current: boolean;
+    try {
+      current = (await guard.revalidate()) && guard.isCurrent();
+    } finally {
+      proof?.();
+    }
+    if (!current) {
       await invalidateDailyReportRun(tx, id);
       return null;
     }
