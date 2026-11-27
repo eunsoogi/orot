@@ -1,7 +1,6 @@
 import { AppState } from 'react-native';
 import { conversationExecutionNative } from './conversationExecutionNative';
 import { createConversationPhotoImageSend } from '../aiFeatures/integration/sendConversationPhotoImage';
-import type { createConversationPhotoConsentController } from './conversationPhotoConsentController';
 import type { conversationDirectPhotoPorts } from './conversationDirectPhotoPorts';
 
 type Ports = typeof conversationDirectPhotoPorts;
@@ -15,9 +14,6 @@ export function sendReviewedDirectPhotoGroup(input: {
   readonly images: readonly string[];
   readonly prompt: string;
   readonly controller: AbortController;
-  readonly groupReview: ReturnType<
-    typeof createConversationPhotoConsentController
-  >;
   readonly admitted: () => boolean;
   readonly approved: () => void;
 }) {
@@ -27,7 +23,6 @@ export function sendReviewedDirectPhotoGroup(input: {
     images,
     prompt,
     controller,
-    groupReview,
     admitted,
     approved,
   } = input;
@@ -71,27 +66,9 @@ export function sendReviewedDirectPhotoGroup(input: {
         stopGrant();
       };
     },
-    // Single-image keeps its existing Settings grant; only a group requests
-    // a fresh decision over this exact snapshot and destination.
-    confirm: async (decision, signal) => {
+    // The exact Settings image grant is the only consent for a stock photo send.
+    confirm: async (_decision, signal) => {
       if (!grant.current() || !(await confirmProtection())) return false;
-      if (
-        images.length > 1 &&
-        !(await groupReview.confirm(
-          {
-            providerName: decision.providerName,
-            modelId: decision.modelName,
-            recipient: decision.recipient,
-            remoteProcessing: true,
-            includesPrompt: decision.includesPrompt,
-            reviewedImageGroup: Object.freeze(
-              images.map(image => 'data:image/jpeg;base64,' + image),
-            ),
-          },
-          signal,
-        ))
-      )
-        return false;
       if (
         signal.aborted ||
         !admitted() ||
