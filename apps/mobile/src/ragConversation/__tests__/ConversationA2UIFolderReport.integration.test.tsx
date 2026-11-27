@@ -2,6 +2,7 @@ import type { TaskResponderInput } from '@orot/agent-runtime';
 import type { JsonValue } from '@orot/model-runtime';
 import { render } from '@testing-library/react-native';
 import { ConversationA2UISurface } from '../ConversationA2UISurface';
+import { restoreArchivedConversationRichText } from '../archivedConversationRichTextLayout';
 import {
   conversationA2UICatalog,
   type ConversationA2UINode,
@@ -109,6 +110,18 @@ test('older v59 reply and persisted archive cannot authorize folder', () => {
       answer,
     ),
   ).toBeUndefined();
+  expect(
+    restoreArchivedConversationRichText(
+      { version: 9, tree: ['Column', ['Icon', 'folder'], 1, 0] },
+      ['**' + title + '**', body].join('\n'),
+    ),
+  ).toBeUndefined();
+  expect(
+    restoreArchivedConversationRichText(
+      { version: 9, tree: ['Column', ['Icon', 'info'], 1, 0] },
+      ['**' + title + '**', body].join('\n'),
+    ),
+  ).toBeDefined();
   const unapproved: ConversationA2UINode = {
     id: 'root',
     component: 'Column',

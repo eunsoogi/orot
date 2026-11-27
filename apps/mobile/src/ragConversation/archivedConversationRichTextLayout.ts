@@ -1,7 +1,8 @@
 import type { ConversationA2UINode } from './conversationA2UI';
 import { conversationA2UIModalFor } from './conversationA2UIModalWire';
 import { conversationA2UILocalDraftFor } from './conversationA2UILocalDraftFrames';
-import { conversationA2UIIcons } from './conversationA2UIStaticCatalog';
+import type { conversationA2UIIcons } from './conversationA2UIStaticCatalog';
+import { isIcon } from './conversationA2UIArchiveShape';
 import { conversationA2UIProse } from './conversationA2UIPresentation';
 import {
   conversationA2UIRichText,
@@ -61,7 +62,8 @@ export function storeArchivedConversationRichText(
           return;
         return conversationA2UIRichText(node) ? 1 : 0;
       case 'Icon':
-        return ['Icon', node.name];
+        // A live renderer icon is not necessarily part of the v9 archive catalog.
+        return isIcon(node.name) ? ['Icon', node.name] : undefined;
       case 'Divider':
         return ['Divider', node.axis];
       case 'Tabs': {
@@ -121,17 +123,9 @@ export function restoreArchivedConversationRichText(
     const [component, ...items] = raw;
     if (component === 'Icon') {
       const [name] = items;
-      if (
-        items.length !== 1 ||
-        typeof name !== 'string' ||
-        !Object.hasOwn(conversationA2UIIcons, name)
-      )
-        return;
-      return {
-        id,
-        component,
-        name: name as keyof typeof conversationA2UIIcons,
-      };
+      return items.length === 1 && isIcon(name)
+        ? { id, component, name }
+        : undefined;
     }
     if (component === 'Divider') {
       const [axis] = items;
