@@ -3,6 +3,8 @@ import {
   directPhotoScopePayload,
   legacyDirectPhotoConsentScope,
   legacyDirectPhotoScopePayload,
+  previousGroupDirectPhotoConsentScope,
+  previousGroupDirectPhotoScopePayload,
   isDirectPhotoPlanPair,
   isDirectPhotoConsentScope,
   isExactDirectPhotoPermission,
@@ -169,7 +171,10 @@ export function settingsGrantCoversRequest(
       request.payload ===
         (scope.policyVersion === legacyDirectPhotoConsentScope.policyVersion
           ? legacyDirectPhotoScopePayload
-          : directPhotoScopePayload) &&
+          : scope.policyVersion ===
+              previousGroupDirectPhotoConsentScope.policyVersion
+            ? previousGroupDirectPhotoScopePayload
+            : directPhotoScopePayload) &&
       isDirectPhotoPlanPair(identity.providerId, identity.modelId) &&
       isExactDirectPhotoPermission({
         ...scope,

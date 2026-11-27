@@ -205,7 +205,14 @@ export async function performDirectPhotoSend(input: {
       // Never keep transport bytes or retry an ambiguous local write.
       const saved =
         !images.some(image => result.text.includes(image)) &&
-        (await retain.commit(result.text, admitted).catch(() => false));
+        (await retain
+          .commit(
+            result.text,
+            admitted,
+            grant.retainAuthoredCaption === true &&
+              !images.some(image => prompt.includes(image)),
+          )
+          .catch(() => false));
       if (!admitted()) {
         controller.abort();
         return;

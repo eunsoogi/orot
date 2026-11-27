@@ -45,6 +45,7 @@ export function createConversationDirectPhotoRetention(
     );
     let pendingId: number | undefined;
     let replyId: number | undefined;
+    let authoredCaption: string | undefined;
     let consumed = false;
     const ownsPending = () =>
       live
@@ -59,6 +60,8 @@ export function createConversationDirectPhotoRetention(
       start(prompt: string) {
         if (!current() || pendingId !== undefined) return false;
         const session = live.find(sessionId)!;
+        // Freeze the authored draft, never later editor text or the provider's reply.
+        authoredCaption = prompt;
         pendingId = live.nextId();
         replyId = live.nextId();
         live.update(sessionId, {
@@ -86,14 +89,21 @@ export function createConversationDirectPhotoRetention(
           ),
         });
       },
-      async commit(text: string, admitted: () => boolean) {
+      async commit(text: string, admitted: () => boolean, keepCaption = false) {
         const ownsReply = () => current() && ownsPending() && admitted();
         if (consumed || !ownsReply()) return false;
         consumed = true;
         await write(
           lease.id,
           lease.version,
-          { id, createdAt: new Date().toISOString(), text },
+          {
+            id,
+            createdAt: new Date().toISOString(),
+            text,
+            ...(keepCaption && authoredCaption !== undefined
+              ? { authoredCaption }
+              : {}),
+          },
           ownsReply,
         );
         if (!ownsReply()) return false;

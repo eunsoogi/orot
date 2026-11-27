@@ -11,6 +11,7 @@ import { publicEvidenceFixture } from '../../../aiFeatures/integration/testSuppo
 import {
   directPhotoPermission,
   legacyDirectPhotoConsentScope,
+  previousGroupDirectPhotoConsentScope,
 } from '../../../agent/execution/directPhotoConsentScope';
 import { resolveSettingsConsentOwner } from '../../../agent/execution/settingsConsentOwner';
 import { saveModelSettingsConsent } from '../../../agent/execution/saveModelSettingsConsent';
@@ -149,31 +150,44 @@ test.each(['Settings', 'joint Calendar', 'non-Settings picker'] as const)(
             approved,
           );
         }
-        const legacyOnly = createDirectPhotoSettingsAuthorization({
-          resolveOwner: resolveSettingsConsentOwner,
-          async readGrant(slot, domain) {
-            const grant = await reloaded.read(slot, domain);
-            return (
-              grant && {
-                ...grant,
-                permissions: grant.permissions.map(permission =>
-                  permission.purpose === directPhotoPermission.purpose
-                    ? {
-                        ...permission,
-                        policyVersion:
-                          legacyDirectPhotoConsentScope.policyVersion,
-                      }
-                    : permission,
-                ),
-              }
-            );
-          },
-        });
+        const olderGrant = (policyVersion: string) =>
+          createDirectPhotoSettingsAuthorization({
+            resolveOwner: resolveSettingsConsentOwner,
+            async readGrant(slot, domain) {
+              const grant = await reloaded.read(slot, domain);
+              return (
+                grant && {
+                  ...grant,
+                  permissions: grant.permissions.map(permission =>
+                    permission.purpose === directPhotoPermission.purpose
+                      ? {
+                          ...permission,
+                          policyVersion,
+                        }
+                      : permission,
+                  ),
+                }
+              );
+            },
+          });
+        const legacyOnly = olderGrant(
+          legacyDirectPhotoConsentScope.policyVersion,
+        );
+        const groupOnly = olderGrant(
+          previousGroupDirectPhotoConsentScope.policyVersion,
+        );
         expect((await legacyOnly(current, signal))?.current()).toBe(true);
+        expect(
+          (await legacyOnly(current, signal))?.retainAuthoredCaption,
+        ).toBeUndefined();
+        const groupProof = await groupOnly(current, signal, 3);
+        expect(groupProof?.current()).toBe(true);
+        expect(groupProof?.retainAuthoredCaption).toBeUndefined();
         await expect(legacyOnly(current, signal, 2)).resolves.toBeNull();
         expect((await authorize(current, signal, 2))?.current()).toBe(true);
         const proof = await authorize(current, signal);
         expect(proof?.current()).toBe(true);
+        expect(proof?.retainAuthoredCaption).toBe(true);
         await expect(
           authorize(
             { ...current, recipient: 'wrong synthetic recipient' },
