@@ -1,3 +1,4 @@
+import { withPublicWebConversationLayout } from './conversationA2UIPublicWebLayout';
 import { withConversationA2UITabSelectionLifetime } from './conversationA2UITabSelectionLifetime';
 import { withConversationA2UIReplacement } from './conversationA2UIReplacementTask';
 import { withConversationA2UIPanelCaptions } from './conversationA2UIPanelCaptionTask';
@@ -100,6 +101,10 @@ export function versionedConversationMemoryTasks(
       mixedWeights,
       folderIcon,
     );
+  const v60 = withConversationA2UITabSelectionLifetime(
+    temporaryFormTask(true, true, true, true),
+    '60',
+  );
   return {
     conversationTaskV25,
     conversationTaskV26,
@@ -169,12 +174,10 @@ export function versionedConversationMemoryTasks(
           '59',
         ),
       ),
+      v60: observeConversationA2UIFinalAdmission(v60),
     },
     ragConversationTask: observeConversationA2UIFinalAdmission(
-      withConversationA2UITabSelectionLifetime(
-        temporaryFormTask(true, true, true, true),
-        '60',
-      ),
+      withPublicWebConversationLayout(v60),
     ),
   };
 }

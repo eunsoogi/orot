@@ -43,7 +43,7 @@ const promptFrameItems = (includeVersion: boolean) => ({
 
 // Text-only model transport can emit the published frame as an object rather
 // than double-escaping it. Normalization does not interpret any A2UI operation.
-function normalizeObjectFrames(value: JsonValue): JsonValue {
+export function normalizeA2UIObjectFrames(value: JsonValue): JsonValue {
   if (!isObject(value)) return value;
   const frames = value.a2uiFrames;
   if (!Array.isArray(frames) || frames.length > 12 || !frames.some(isObject))
@@ -148,7 +148,7 @@ export function withConversationA2UIReplacement(
     },
     validateResult(value, input) {
       if (version !== '49' && allowsOrdinaryA2UI(input))
-        value = normalizeObjectFrames(value);
+        value = normalizeA2UIObjectFrames(value);
       const accepted = previous.validateResult(value, input);
       if (
         accepted.status !== 'valid' ||
