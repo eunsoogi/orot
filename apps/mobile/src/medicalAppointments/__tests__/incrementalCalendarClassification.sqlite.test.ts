@@ -1,6 +1,3 @@
-import { mkdtempSync, rmSync } from 'node:fs';
-import { tmpdir } from 'node:os';
-import { join } from 'node:path';
 import {
   createAppointmentRepository,
   createRecordRepository,
@@ -9,13 +6,20 @@ import {
 import { openSqliteTestDatabase } from '../../../../../packages/storage/__tests__/sqliteTestDatabase';
 import { input, makeProvider } from '../classificationWorkflowTestFixtures';
 import { classifyCalendarEventsIncrementally } from '../incrementalCalendarClassification';
-
 import {
   key,
   record,
   native,
   provider,
 } from '../testSupport/incrementalCalendarFixtures';
+
+// Jest supplies Node primitives without enabling Node globals for the iOS app.
+const { mkdtempSync, rmSync } = require('node:fs') as {
+  mkdtempSync(prefix: string): string;
+  rmSync(path: string, options: { recursive: true; force: true }): void;
+};
+const { tmpdir } = require('node:os') as { tmpdir(): string };
+const { join } = require('node:path') as { join(...parts: string[]): string };
 
 test('SQLite restart reuses excluded and included recurring occurrences with zero model or consent; edited and new only are sent', async () => {
   const root = mkdtempSync(join(tmpdir(), 'orot-calendar-cache-reopen-'));
@@ -81,7 +85,6 @@ test('SQLite restart reuses excluded and included recurring occurrences with zer
     ]);
     expect(afterRestart).not.toHaveBeenCalled();
     expect(two.consent.authorize).not.toHaveBeenCalled();
-
     const edited = {
       ...first,
       classificationWitness: { occurrence: key(1), revision: key(21) },
