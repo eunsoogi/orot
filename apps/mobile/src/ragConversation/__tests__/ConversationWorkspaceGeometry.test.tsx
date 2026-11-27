@@ -113,6 +113,7 @@ test.each([402, 951])(
         if (!frame || typeof frame === 'string')
           throw new Error('Missing conversation frame');
         const style = StyleSheet.flatten<ViewStyle>(frame.props.style);
+        if (!style) throw new Error('Missing conversation frame style');
         return Number(style.marginTop) + Number(style.height);
       };
 
