@@ -35,6 +35,12 @@ final class SettingsPrivacyDuoUITests: OrotFailFastTestCase {
             XCTAssertTrue(app.staticTexts[title].exists)
         }
         XCTAssertEqual(app.switches.count, 0, "Permission rows describe iOS-owned controls")
+        try NavigationUITestConditions.tapNavigation(app, "navigation-back")
+        NavigationUITestConditions.route(app, markers: ["settings-title"])
+        let policy = UITestConditions.element(app, "settings-open-privacy-policy")
+        UITestConditions.scrollTo(policy, in: app)
+        policy.tap()
+        NavigationUITestConditions.route(app, markers: ["settings-privacy-policy-title"])
         try verifyPrivacyPanels(app)
 
         let clear = UITestConditions.element(app, "inference-consent-clear")
@@ -83,7 +89,7 @@ final class SettingsPrivacyDuoUITests: OrotFailFastTestCase {
     private func verifyPrivacyPanels(_ app: XCUIApplication) throws {
         let scroll = UITestConditions.element(app, "settings-privacy-scroll")
         let columns = UITestConditions.element(app, "settings-privacy-columns")
-        let primary = UITestConditions.element(app, "settings-privacy-permissions")
+        let primary = UITestConditions.element(app, "settings-privacy-policy-summary")
         let secondary = UITestConditions.element(app, "settings-privacy-external-transfer")
         XCTAssertTrue(UITestConditions.exists(scroll))
         XCTAssertTrue(UITestConditions.exists(columns))
@@ -99,7 +105,7 @@ final class SettingsPrivacyDuoUITests: OrotFailFastTestCase {
         XCTAssertTrue(contentFrame.contains(secondaryFrame))
         let stacked = abs(primaryFrame.minX - secondaryFrame.minX) <= 1 &&
             primaryFrame.maxY <= secondaryFrame.minY + 1
-        XCTAssertTrue(stacked, "Permission and transfer sections must share one vertical page")
+        XCTAssertTrue(stacked, "Policy and consent sections must share one vertical page")
 
         let navigation = try NavigationUITestConditions.navigationAction(app, "navigation-tab-settings")
         XCTAssertTrue(navigation.control.isSelected)

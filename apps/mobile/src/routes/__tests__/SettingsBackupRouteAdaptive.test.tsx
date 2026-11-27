@@ -142,6 +142,8 @@ test('production backup route reflows by usable region and retains recovery acti
   );
 
   const { rerender } = await render(renderApplication());
+  await fireEvent.press(screen.getByTestId('settings-open-sync-status'));
+  await screen.findByTestId('settings-sync-status-title');
   await fireEvent.press(screen.getByTestId('settings-open-backup'));
   await waitFor(() => {
     expect(controller.getSnapshot().currentRoute.name).toBe('settings-backup');
@@ -231,8 +233,10 @@ test('production backup route reflows by usable region and retains recovery acti
   );
   await fireEvent.press(screen.getByTestId('navigation-back'));
   await waitFor(() =>
-    expect(screen.getByTestId('settings-title')).toBeTruthy(),
+    expect(screen.getByTestId('settings-sync-status-title')).toBeTruthy(),
   );
-  expect(controller.getSnapshot().currentRoute.name).toBe('root');
+  expect(controller.getSnapshot().currentRoute.name).toBe(
+    'settings-sync-status',
+  );
   expect(screen.getByTestId('settings-open-backup')).toBeTruthy();
 });

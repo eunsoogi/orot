@@ -97,7 +97,7 @@ extension RootNavigationUITests {
         XCTAssertGreaterThan(UITestConditions.element(app, "settings-title").frame.height, regularTitleHeight)
         try verifySettingsPanels(app, expectsStacked: true)
         try NavigationUITestConditions.scrollToBottom(app, "navigation-route-scroll")
-        XCTAssertTrue(UITestConditions.element(app, "settings-open-backup").isHittable)
+        XCTAssertTrue(UITestConditions.element(app, "settings-open-privacy-policy").isHittable)
         capture(app, "settings-duo-portrait-large-text")
     }
 }

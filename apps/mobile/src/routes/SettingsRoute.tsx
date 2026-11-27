@@ -17,7 +17,7 @@ interface SettingsRouteProps {
   readonly onOpenProviderSettings: () => void;
   readonly onOpenAccounts: () => void;
   readonly onOpenPrivacy: () => void;
-  readonly onOpenBackup: () => void;
+  readonly onOpenPrivacyPolicy: () => void;
   readonly onOpenHealthData: () => void;
   readonly onOpenSyncStatus: () => void;
   readonly onOpenNotifications: () => void;
@@ -29,7 +29,7 @@ export function SettingsRoute({
   onOpenProviderSettings,
   onOpenAccounts,
   onOpenPrivacy,
-  onOpenBackup,
+  onOpenPrivacyPolicy,
   onOpenHealthData,
   onOpenSyncStatus,
   onOpenNotifications,
@@ -81,24 +81,11 @@ export function SettingsRoute({
                 testID="settings-open-health-data"
               />
               <SettingsRouteRow
-                symbol="arrow.triangle.2.circlepath"
-                title={t('settings.syncStatus')}
-                onPress={onOpenSyncStatus}
-                testID="settings-open-sync-status"
-              />
-              <SettingsRouteRow
                 symbol="bell.fill"
                 tone="pink"
                 title={t('settings.notifications')}
                 onPress={onOpenNotifications}
                 testID="settings-open-notifications"
-              />
-              <SettingsRouteRow
-                symbol="checkmark.shield"
-                tone="green"
-                title={t('settings.permissions')}
-                onPress={onOpenPrivacy}
-                testID="settings-open-privacy"
               />
               <SettingsRouteRow
                 symbol="bookmark.fill"
@@ -108,11 +95,28 @@ export function SettingsRoute({
                 testID="settings-open-memory"
               />
               <SettingsRouteRow
-                symbol="externaldrive"
-                title={t('backup.pageTitle')}
-                onPress={onOpenBackup}
-                testID="settings-open-backup"
+                symbol="checkmark.shield"
+                tone="green"
+                title={t('settings.permissions')}
+                onPress={onOpenPrivacy}
+                testID="settings-open-privacy"
               />
+              <SettingsRouteRow
+                symbol="arrow.triangle.2.circlepath"
+                title={t('settings.syncStatus')}
+                onPress={onOpenSyncStatus}
+                testID="settings-open-sync-status"
+              />
+              <SettingsRouteRow
+                symbol="hand.raised.fill"
+                tone="neutral"
+                title={t('settings.privacyPolicy')}
+                onPress={onOpenPrivacyPolicy}
+                testID="settings-open-privacy-policy"
+                last
+              />
+            </View>
+            <View style={styles.list} testID="settings-version-group">
               <SettingsRouteAppInfo version={version} />
               {processDiagnosticWitnessEnabled() ? (
                 <ProcessDiagnosticWitnessSection />
@@ -131,7 +135,6 @@ const styles = StyleSheet.create({
   container: {
     flexGrow: 1,
     minWidth: 0,
-    backgroundColor: settingsListColors.background,
   },
   panel: {
     alignSelf: 'center',

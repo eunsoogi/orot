@@ -48,7 +48,6 @@ export function SettingsNotificationsRoute() {
 const styles = StyleSheet.create({
   page: {
     flexGrow: 1,
-    backgroundColor: settingsListColors.background,
   },
   content: {
     alignSelf: 'center',

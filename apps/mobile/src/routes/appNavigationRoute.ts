@@ -24,6 +24,7 @@ export type AppNavigationRoute =
   | 'settings-accounts'
   | 'settings-backup'
   | 'settings-privacy'
+  | 'settings-privacy-policy'
   | 'settings-notifications'
   | 'settings-memory'
   | 'settings-health-data'

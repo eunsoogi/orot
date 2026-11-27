@@ -160,6 +160,7 @@ export function SettingsAutomaticMemorySection({
           <Switch
             accessibilityLabel={t(`${settingsKey}.title`)}
             testID={`${testId}-toggle`}
+            accessibilityState={{ disabled: writing }}
             disabled={writing}
             value={displayStatus === 'on' || displayStatus === 'disabling'}
             onValueChange={next => {
@@ -169,14 +170,16 @@ export function SettingsAutomaticMemorySection({
         ) : undefined
       }
     >
-      <Text
-        accessibilityRole={isError(displayStatus) ? 'alert' : undefined}
-        accessibilityLiveRegion="polite"
-        style={styles.body}
-        testID={`${testId}-status`}
-      >
-        {t(`${settingsKey}.${displayStatus}`)}
-      </Text>
+      {!available ? (
+        <Text
+          accessibilityRole={isError(displayStatus) ? 'alert' : undefined}
+          accessibilityLiveRegion="polite"
+          style={styles.body}
+          testID={`${testId}-status`}
+        >
+          {t(`${settingsKey}.${displayStatus}`)}
+        </Text>
+      ) : null}
       {displayStatus === 'unavailable' && routeOwner.current?.connection ? (
         <Text style={styles.body}>{t(`${settingsKey}.recovery`)}</Text>
       ) : null}

@@ -62,6 +62,8 @@ export function SettingsDetailsRoute({
       );
     case 'settings-privacy':
       return <SettingsPrivacyRoute />;
+    case 'settings-privacy-policy':
+      return <SettingsPrivacyRoute policy />;
     case 'settings-notifications':
       return <SettingsNotificationsRoute />;
     case 'settings-memory':
@@ -73,6 +75,7 @@ export function SettingsDetailsRoute({
         <SettingsSyncStatusRoute
           calendarSync={calendarSync}
           onConfigureHealthData={() => actions.push('settings-health-data')}
+          onOpenBackup={() => actions.push('settings-backup')}
         />
       );
     default:

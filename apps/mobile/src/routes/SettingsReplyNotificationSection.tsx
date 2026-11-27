@@ -1,7 +1,8 @@
 import { SettingsInformationButton } from './SettingsInformationButton';
 import { SettingsNotificationDivider } from './SettingsNotificationDivider';
 import { useEffect, useState } from 'react';
-import { AppState, Pressable, StyleSheet, Switch, View } from 'react-native';
+import { AppState, StyleSheet, View } from 'react-native';
+import { SettingsNotificationToggleRow } from './SettingsNotificationToggleRow';
 import { t } from '../i18n';
 import { AppText as Text } from '../layout/AppText';
 import { appColors } from '../layout/appColors';
@@ -68,51 +69,41 @@ export function SettingsReplyNotificationSection() {
         />
       </View>
       <View style={styles.card}>
-        <View style={styles.row}>
-          <Text style={styles.label}>
-            {t('settings.replyNotification.enabled')}
-          </Text>
-          <ReplySwitch
-            label={t('settings.replyNotification.enabled')}
-            hint={
-              preference?.preview
-                ? t('settings.replyNotification.previewRisk')
-                : undefined
-            }
-            disabled={busy || !preference}
-            value={preference?.enabled ?? false}
-            onToggle={() => {
-              if (preference)
-                save({ ...preference, enabled: !preference.enabled }).catch(
-                  () => undefined,
-                );
-            }}
-          />
-        </View>
+        <SettingsNotificationToggleRow
+          testID="settings-reply-notification"
+          label={t('settings.replyNotification.enabled')}
+          hint={
+            preference?.preview
+              ? t('settings.replyNotification.previewRisk')
+              : undefined
+          }
+          disabled={busy || !preference}
+          value={preference?.enabled ?? false}
+          onToggle={() => {
+            if (preference)
+              save({ ...preference, enabled: !preference.enabled }).catch(
+                () => undefined,
+              );
+          }}
+        />
         <SettingsNotificationDivider inset={16} />
-        <View style={styles.row}>
-          <View style={styles.previewCopy}>
-            <Text style={styles.previewTitle}>
-              {t('settings.replyNotification.preview')}
-            </Text>
-            {/* Keep the privacy warning visible before anyone enables previews. */}
-            <Text style={styles.previewRisk}>
-              {t('settings.replyNotification.previewRisk')}
-            </Text>
-          </View>
-          <ReplySwitch
-            label={t('settings.replyNotification.preview')}
-            hint={t('settings.replyNotification.previewRisk')}
-            disabled={busy || !preference?.enabled}
-            value={preference?.preview ?? true}
-            onToggle={() => {
-              if (preference)
-                save({ ...preference, preview: !preference.preview }).catch(
-                  () => undefined,
-                );
-            }}
-          />
-        </View>
+        <SettingsNotificationToggleRow
+          testID="settings-reply-preview"
+          label={t('settings.replyNotification.preview')}
+          hint={t('settings.replyNotification.previewRisk')}
+          disabled={busy || !preference?.enabled}
+          value={preference?.preview ?? true}
+          onToggle={() => {
+            if (preference)
+              save({ ...preference, preview: !preference.preview }).catch(
+                () => undefined,
+              );
+          }}
+        />
+        {/* Keep the warning visible before opt-in without shifting the title row's center. */}
+        <Text style={styles.previewRisk}>
+          {t('settings.replyNotification.previewRisk')}
+        </Text>
         {status && (
           <Text accessibilityRole="alert" style={styles.status}>
             {t(
@@ -127,61 +118,7 @@ export function SettingsReplyNotificationSection() {
   );
 }
 
-/** The wrapper owns the 44-point touch target and the accessible switch state. */
-function ReplySwitch({
-  label,
-  hint,
-  disabled,
-  value,
-  onToggle,
-}: {
-  label: string;
-  hint?: string;
-  disabled: boolean;
-  value: boolean;
-  onToggle: () => void;
-}) {
-  const [size, setSize] = useState({ width: 0, height: 0 });
-  const padding = {
-    paddingHorizontal: size.width ? Math.max(0, (44 - size.width) / 2) : 0,
-    paddingVertical: size.height ? Math.max(0, (44 - size.height) / 2) : 0,
-  };
-  return (
-    <Pressable
-      accessibilityRole="switch"
-      accessibilityLabel={label}
-      accessibilityHint={hint}
-      accessibilityState={{ checked: value, disabled }}
-      disabled={disabled}
-      onPress={onToggle}
-      style={[styles.control, padding]}
-    >
-      <Switch
-        accessible={false}
-        importantForAccessibility="no-hide-descendants"
-        pointerEvents="none"
-        value={value}
-        disabled={disabled}
-        onLayout={event => {
-          const { width, height } = event.nativeEvent.layout;
-          setSize(current =>
-            current.width === width && current.height === height
-              ? current
-              : { width, height },
-          );
-        }}
-      />
-    </Pressable>
-  );
-}
-
 const styles = StyleSheet.create({
-  control: {
-    minWidth: 44,
-    minHeight: 44,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
   section: { gap: 8 },
   sectionHeading: {
     alignItems: 'center',
@@ -203,17 +140,10 @@ const styles = StyleSheet.create({
     overflow: 'hidden',
   },
   status: { color: appColors.danger, fontSize: 14, padding: 16 },
-  previewCopy: { flex: 1, minWidth: 0, gap: 4 },
-  previewTitle: { color: appColors.text, fontSize: 17 },
-  previewRisk: { color: appColors.secondary, fontSize: 13 },
-  row: {
-    alignItems: 'center',
-    flexDirection: 'row',
-    gap: 12,
-    justifyContent: 'space-between',
-    minHeight: 60,
+  previewRisk: {
+    color: appColors.secondary,
+    fontSize: 13,
+    paddingBottom: 16,
     paddingHorizontal: 16,
-    paddingVertical: 8,
   },
-  label: { color: appColors.text, flex: 1, fontSize: 17 },
 });

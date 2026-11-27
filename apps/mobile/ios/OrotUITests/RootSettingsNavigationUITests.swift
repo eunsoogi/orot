@@ -36,7 +36,6 @@ extension RootNavigationUITests {
         let initialWindow = try NavigationGeometryUITestConditions.snapshot(app).window
         let regularTitleHeight = UITestConditions.element(app, "settings-title").frame.height
         try verifySettingsPanels(app)
-
         appearanceSnapshot = try AppearanceUITestConditions.select(
             true,
             returningTo: app,
@@ -61,7 +60,6 @@ extension RootNavigationUITests {
         XCUIDevice.shared.orientation = .portrait
         _ = try NavigationGeometryUITestConditions.snapshot(app, after: returnedAt, width: initialWindow.width)
         try verifySettingsPanels(app)
-
         FormUITestConditions.reveal(
             UITestConditions.element(app, "settings-open-health-data"),
             in: app,
@@ -91,7 +89,7 @@ extension RootNavigationUITests {
         )
         try verifySettingsPanels(app, expectsStacked: true)
         try NavigationUITestConditions.scrollToBottom(app, "navigation-route-scroll")
-        XCTAssertTrue(UITestConditions.element(app, "settings-open-backup").isHittable)
+        XCTAssertTrue(UITestConditions.element(app, "settings-open-privacy-policy").isHittable)
         capture(app, "settings-duo-large-text")
     }
 
@@ -101,7 +99,7 @@ extension RootNavigationUITests {
         let app = launch(["-OROT_TEST_UI_GEOMETRY", "YES", "-OROT_TEST_NAVIGATION_OBSERVATION", "YES"])
         defer { app.terminate() }
         try ViewportObservation.openSettings(app, testCase: self)
-        for identifier in ["settings-open-health-data", "settings-open-sync-status", "settings-open-provider", "settings-open-accounts", "settings-open-privacy", "settings-open-backup", "settings-open-notifications", "settings-open-memory"] {
+        for identifier in ["settings-open-health-data", "settings-open-sync-status", "settings-open-provider", "settings-open-accounts", "settings-open-privacy", "settings-open-privacy-policy", "settings-open-notifications", "settings-open-memory"] {
             let control = app.buttons[identifier]
             FormUITestConditions.reveal(control, in: app, scrollID: "navigation-route-scroll")
             XCTAssertTrue(control.exists && control.isHittable)
@@ -141,6 +139,8 @@ extension RootNavigationUITests {
         XCTAssertTrue(UITestConditions.element(app, "chatgpt-account-setup").exists)
         try NavigationGeometryUITestConditions.captureChildBoundary(app, viewportIDs: ["settings-accounts-screen"], name: "settings-accounts-boundary", testCase: self)
         try backToSettings(app)
+        tap(app, "settings-open-sync-status")
+        FormUITestConditions.reveal(app.buttons["settings-open-backup"], in: app, scrollID: "settings-sync-status-scroll")
         tap(app, "settings-open-backup")
         NavigationUITestConditions.route(app, markers: ["settings-backup-title"])
         XCTAssertTrue(UITestConditions.element(app, "backup-status-message").isHittable)
@@ -149,6 +149,7 @@ extension RootNavigationUITests {
         XCTAssertTrue(UITestConditions.element(app, "backup-open-system-settings").isHittable)
         try NavigationGeometryUITestConditions.captureChildBoundary(app, viewportIDs: ["settings-backup-scroll"], name: "settings-backup-boundary", testCase: self)
         capture(app, "settings-backup-light")
+        try NavigationUITestConditions.tapNavigation(app, "navigation-back")
         try backToSettings(app)
         tap(app, "settings-open-privacy")
         NavigationUITestConditions.route(app, markers: ["settings-privacy-title"])
@@ -161,7 +162,6 @@ extension RootNavigationUITests {
         capture(app, "settings-privacy-light")
         try backToSettings(app)
     }
-
     /// Keeps the account panel assertion on the synthetic route and its measured return path.
     @MainActor
     func testSettingsAccountsLayoutTracksMeasuredPanels() throws {
@@ -222,7 +222,7 @@ extension RootNavigationUITests {
             )
         }
 
-        for identifier in ["settings-open-health-data", "settings-open-sync-status", "settings-open-provider", "settings-open-accounts", "settings-open-privacy", "settings-open-backup", "settings-open-notifications", "settings-open-memory"] {
+        for identifier in ["settings-open-health-data", "settings-open-sync-status", "settings-open-provider", "settings-open-accounts", "settings-open-privacy", "settings-open-privacy-policy", "settings-open-notifications", "settings-open-memory"] {
             let control = app.buttons[identifier]
             XCTAssertTrue(control.exists && control.frame.height >= 44)
         }

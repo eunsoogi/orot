@@ -38,7 +38,7 @@ test('shows concrete permission guidance and opens the iOS app settings page', a
 
   await fireEvent.press(screen.getByTestId('navigation-tab-settings'));
   expect(screen.getByTestId('settings-open-accounts')).toBeTruthy();
-  expect(screen.getByTestId('settings-open-backup')).toBeTruthy();
+  expect(screen.getByTestId('settings-open-privacy-policy')).toBeTruthy();
   await fireEvent.press(screen.getByTestId('settings-open-privacy'));
   expect(await screen.findByText('마이크')).toBeTruthy();
   for (const [title, summary] of [
@@ -70,6 +70,12 @@ test('shows concrete permission guidance and opens the iOS app settings page', a
     expect(screen.getByTestId('settings-title')).toBeTruthy(),
   );
   expect(screen.getByTestId('navigation-tab-settings')).toBeVisible();
+  await fireEvent.press(screen.getByTestId('settings-open-privacy-policy'));
+  expect(
+    await screen.findByTestId('settings-privacy-policy-title'),
+  ).toHaveTextContent('개인정보 처리 방침');
+  expect(screen.getByTestId('inference-consent-clear')).toBeTruthy();
+  expect(screen.queryByTestId('privacy-open-system-settings')).toBeNull();
   information.mockRestore();
   openSettings.mockRestore();
 });
