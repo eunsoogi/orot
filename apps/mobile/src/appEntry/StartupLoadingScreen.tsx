@@ -1,5 +1,4 @@
 import {
-  ActivityIndicator,
   Platform,
   PlatformColor,
   ScrollView,
@@ -106,22 +105,13 @@ export function StartupLoadingScreen() {
           testID="startup-lockup"
         >
           <StartupMark size={markSize} />
-          <View style={styles.copy}>
-            <AppText
-              accessibilityRole="header"
-              style={[styles.title, spacious && styles.spaciousTitle]}
-            >
-              {t('app.welcome.title')}
-            </AppText>
-            <View
-              accessible
-              accessibilityRole="progressbar"
-              accessibilityState={{ busy: true }}
-              accessibilityLabel={t('assistantAppearance.startupProgress')}
-            >
-              <ActivityIndicator color={appColors.primaryText} />
-            </View>
-          </View>
+          <AppText
+            accessibilityRole="header"
+            accessibilityState={{ busy: true }}
+            style={[styles.title, spacious && styles.spaciousTitle]}
+          >
+            {t('app.welcome.title')}
+          </AppText>
         </View>
       </ScrollView>
     </View>
@@ -151,8 +141,9 @@ const styles = StyleSheet.create({
     backgroundColor: appColors.primary,
     flexShrink: 0,
   },
-  copy: { flexShrink: 1, minWidth: 0, alignItems: 'center', gap: 12 },
   title: {
+    flexShrink: 1,
+    minWidth: 0,
     textAlign: 'center',
     fontSize: 38,
     fontWeight: '700',
