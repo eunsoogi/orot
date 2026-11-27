@@ -92,12 +92,33 @@ test.each(['empty', 'recorded', 'restricted', 'failed'] as const)(
       const saved = await storage.lookup(result.context.identity);
       if (saved.status !== 'saved') throw new Error(saved.status);
       const text = conversationDailyReportText(saved);
-      expect(text.includes('기록된 운동: 0회')).toBe(state === 'empty');
-      expect(text.includes('기록된 운동: 1회')).toBe(state === 'recorded');
+      // Routine counts and verified absence remain available as protected
+      // report details, not a fallback claim in the compact chat summary.
+      const details = [
+        ...dailyReportEmptyActivity(saved.report.coverage),
+        ...saved.report.observations.map(item => item.text),
+        ...saved.report.supportedContext
+          .filter(item => !item.focus)
+          .map(item => item.text),
+      ];
+      expect(details.includes('기록된 운동: 0회')).toBe(state === 'empty');
+      expect(details.includes('기록된 운동: 1회')).toBe(state === 'recorded');
+      const workoutCount = saved.report.supportedContext.find(
+        item => item.text === '기록된 운동: 1회',
+      );
+      if (state === 'recorded')
+        expect(workoutCount?.sourceReferences).toEqual([
+          { source: 'health_observation', recordId: 'synthetic-workout' },
+        ]);
+      else expect(workoutCount).toBeUndefined();
+      expect(text).not.toContain('기록된 운동:');
+      expect(text).not.toContain('수면 기록이 없어요.');
       expect(text).not.toContain(
         '권한·동기화·기록 범위에 따라 빠질 수 있어요.',
       );
-      expect(text.includes('수면 기록이 없어요.')).toBe(state !== 'restricted');
+      expect(details.includes('수면 기록이 없어요.')).toBe(
+        state !== 'restricted',
+      );
       expect(text).not.toContain('않았다는 뜻');
       expect(text).not.toContain('완전한 기록이나 정상 범위');
     } finally {
