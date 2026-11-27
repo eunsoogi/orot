@@ -36,10 +36,11 @@ function publicEvidenceKey(reference: EvidenceReference): string | undefined {
  * carry a read-only proposal to the terminal citation boundary. */
 export function withPublicWebConversationLayout(
   previous: TaskResponderContract<GroundedRagAnswer>,
+  version: '61' | '62' = '61',
 ): TaskResponderContract<GroundedRagAnswer> {
   return {
     ...previous,
-    taskVersion: '61',
+    taskVersion: version,
     createResultSchema(input, jsonPrompt) {
       const schema =
         previous.createResultSchema?.(input, jsonPrompt) ??
