@@ -8,13 +8,14 @@ export function parseConversationA2UIChoiceControl(
   base: string[],
   caption: string,
   label: (raw: unknown) => string,
-  filterable: boolean,
+  filterable: boolean | 'chips',
 ): Extract<ComposedControl, { kind: 'choice' }> {
   keys(value, [
     ...base,
     'variant',
     'options',
     ...(filterable ? ['filterable'] : []),
+    ...(filterable === 'chips' ? ['displayStyle'] : []),
   ]);
   if (value.filterable !== undefined && typeof value.filterable !== 'boolean')
     fail();
@@ -25,6 +26,12 @@ export function parseConversationA2UIChoiceControl(
     !Array.isArray(value.options) ||
     value.options.length === 0 ||
     value.options.length > maxNodes
+  )
+    fail();
+  if (
+    value.displayStyle !== undefined &&
+    value.displayStyle !== 'checkbox' &&
+    value.displayStyle !== 'chips'
   )
     fail();
   const seen = new Set<string>();
@@ -42,5 +49,6 @@ export function parseConversationA2UIChoiceControl(
     multiple: value.variant === 'multipleSelection',
     options,
     ...(value.filterable === true ? { filterable: true } : {}),
+    ...(value.displayStyle === 'chips' ? { chips: true } : {}),
   };
 }

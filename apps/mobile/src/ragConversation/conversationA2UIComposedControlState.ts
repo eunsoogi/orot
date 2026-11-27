@@ -18,6 +18,7 @@ export type ComposedControl = Readonly<
       label: string;
       multiple: boolean;
       filterable?: true;
+      chips?: true;
       options: readonly Readonly<{ label: string; value: string }>[];
     }
 >;

@@ -1,6 +1,7 @@
 import { useLayoutEffect, useRef, useState } from 'react';
 import { Pressable, StyleSheet, TextInput, View } from 'react-native';
 import { t } from '../i18n';
+import { AppSymbol } from '../layout/AppSymbol';
 import { AppText } from '../layout/AppText';
 import { appColors } from '../layout/appColors';
 import type { ComposedControl } from './conversationA2UIComposedControlState';
@@ -83,6 +84,7 @@ export function ConversationA2UIComposedChoice({
       <View
         accessibilityRole={control.multiple ? undefined : 'radiogroup'}
         accessibilityLabel={control.label}
+        style={control.chips ? styles.wrapping : undefined}
       >
         {visible.map(option => {
           const chosen = selected.includes(option.value);
@@ -92,7 +94,13 @@ export function ConversationA2UIComposedChoice({
               accessibilityLabel={option.label}
               accessibilityRole={control.multiple ? 'checkbox' : 'radio'}
               accessibilityState={{ checked: chosen }}
-              style={chosen ? [styles.option, styles.chosen] : styles.option}
+              style={
+                control.chips
+                  ? [styles.option, styles.chip, chosen && styles.chipChosen]
+                  : chosen
+                    ? [styles.option, styles.chosen]
+                    : styles.option
+              }
               onPress={() => {
                 if (!owns() || !matches(option.label, queryRef.current)) return;
                 const previous = pendingSelection.current;
@@ -106,7 +114,13 @@ export function ConversationA2UIComposedChoice({
                 setSelected(next);
               }}
             >
-              <AppText allowFontScaling>{option.label}</AppText>
+              {control.chips && chosen ? <AppSymbol name="checkmark" /> : null}
+              <AppText
+                allowFontScaling
+                style={control.chips ? styles.chipLabel : undefined}
+              >
+                {option.label}
+              </AppText>
             </Pressable>
           );
         })}
@@ -119,6 +133,23 @@ const styles = StyleSheet.create({
     minHeight: 44,
     paddingHorizontal: 12,
     borderRadius: 8,
+    backgroundColor: appColors.primarySoft,
+  },
+  wrapping: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
+  chip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    flexShrink: 1,
+    maxWidth: '100%',
+    paddingVertical: 6,
+    gap: 6,
+    borderWidth: 1,
+    borderColor: appColors.border,
+    borderRadius: 24,
+  },
+  chipLabel: { flexShrink: 1 },
+  chipChosen: {
+    borderColor: appColors.primaryText,
     backgroundColor: appColors.primarySoft,
   },
   option: { minHeight: 44, paddingHorizontal: 12, justifyContent: 'center' },

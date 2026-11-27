@@ -28,7 +28,7 @@ function controlFor(
   value: Record<string, unknown>,
   timeControls: boolean | 'combined',
   multiline: boolean,
-  filterable: boolean,
+  filterable: boolean | 'chips',
   numeric: boolean,
 ): ComposedControl {
   const base = ['id', 'component', 'label', 'value'];
@@ -102,7 +102,7 @@ export function projectConversationA2UIComposedControls(
   dateControls = false,
   timeControls: boolean | 'combined' = false,
   multiline = false,
-  filterable = false,
+  filterable: boolean | 'chips' = false,
   numeric = false,
 ) {
   if (
