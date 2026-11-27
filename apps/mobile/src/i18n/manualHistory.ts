@@ -48,6 +48,29 @@ export const manualHistoryKo = {
     '습관 자동 저장이 켜졌는지 확인할 수 없어요.',
   'settings.routineMemory.disableError':
     '습관 자동 저장이 꺼졌는지 확인할 수 없어요. 다시 꺼 주세요.',
+  'settings.authoredNoteMemory.title': '내가 말한 내용 자동 저장',
+  'settings.authoredNoteMemory.description':
+    'AI가 앞으로도 유용하다고 판단한 내 프로젝트, 계획, 관심사처럼 직접 말한 내용을 이 기기의 보호된 메모에 자동으로 저장해요. AI 답변, 건강 정보, 개인정보, 비밀번호는 저장 대상으로 삼지 않아요. 저장된 메모는 AI에 다시 전송되거나 답변에 쓰이지 않으며, 대화 전송 설정은 바뀌지 않아요.',
+  'settings.authoredNoteMemory.retention':
+    '끄면 새 메모를 자동으로 저장하지 않아요. 이미 저장된 메모는 기록에서 직접 삭제할 수 있어요.',
+  'settings.authoredNoteMemory.backup':
+    '저장된 메모는 암호화된 iOS 백업에 포함될 수 있지만 이 허가는 다른 기기로 옮겨지지 않아요.',
+  'settings.authoredNoteMemory.recovery':
+    '복원 후 상태를 확인할 수 없으면 이 설정을 끈 다음 이 기기에서 다시 켤 수 있어요.',
+  'settings.authoredNoteMemory.off': '내가 말한 내용 자동 저장 꺼짐',
+  'settings.authoredNoteMemory.on': '내가 말한 내용 자동 저장 켜짐',
+  'settings.authoredNoteMemory.checking': '자동 저장 설정을 확인하는 중…',
+  'settings.authoredNoteMemory.enabling': '자동 저장을 켜는 중…',
+  'settings.authoredNoteMemory.disabling': '자동 저장을 끄는 중…',
+  'settings.authoredNoteMemory.enable': '내가 말한 내용 자동 저장 켜기',
+  'settings.authoredNoteMemory.disable': '내가 말한 내용 자동 저장 끄기',
+  'settings.authoredNoteMemory.retry': '자동 저장 설정 다시 확인',
+  'settings.authoredNoteMemory.unavailable':
+    '자동 저장 설정을 확인할 수 없어요.',
+  'settings.authoredNoteMemory.enableError':
+    '자동 저장이 켜졌는지 확인할 수 없어요.',
+  'settings.authoredNoteMemory.disableError':
+    '자동 저장이 꺼졌는지 확인할 수 없어요. 다시 꺼 주세요.',
   'manualHistory.title': '과거 건강 기록',
   'manualHistory.subtitle':
     '진단, 시술, 복용 관련 내용과 건강 정보를 이 기기에 기록해요.',

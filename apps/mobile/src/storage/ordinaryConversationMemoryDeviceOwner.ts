@@ -128,3 +128,10 @@ export const authoredRoutineMemoryDeviceOwner = createDeviceMemoryOwner(
   'com.orot.mobile.authored-routine-memory-authority.v1',
   'authored-routine-memory-authority',
 );
+
+// General authored notes require a distinct disclosure and never inherit a narrower grant.
+export const authoredNoteMemoryDeviceOwner = createDeviceMemoryOwner(
+  'authored-note',
+  'com.orot.mobile.authored-note-memory-authority.v1',
+  'authored-note-memory-authority',
+);

@@ -1,3 +1,4 @@
+import { isWholeStandingAuthoredNote } from '../memory/authoredNoteMemory';
 import { createStandingAuthoredMemoryAdmission } from './standingAuthoredMemoryAdmission';
 import { createOrdinaryMemorySidecar } from './ordinaryMemorySidecar';
 import { localConversationMemoryScope } from '../memory/authoredRoutineMemory';
@@ -36,6 +37,9 @@ export function beginOrdinaryConversationMemoryTask(
     : canProposeReplyPreferenceSpan(question)
       ? ['reply-preferences', 'authored-routine']
       : [];
+  const narrowSidecar = scopes.length > 0;
+  if (!narrowSidecar && isWholeStandingAuthoredNote(question, question))
+    scopes.push('authored-note');
   if (signal.aborted || scopes.length === 0) return;
   // Read each independent enrollment before awaiting; a later Settings enable must
   // not retroactively enroll a pending response from an older composer turn.
@@ -75,6 +79,12 @@ export function beginOrdinaryConversationMemoryTask(
   };
   const current = () => active && !signal.aborted;
   return {
+    async hasStandingAuthoredNote() {
+      const receipt = await admissions.get('authored-note');
+      return (
+        current() && receipt?.scope === 'authored-note' && receipt.isCurrent()
+      );
+    },
     authorizeStandingAuthoredMemory: createStandingAuthoredMemoryAdmission({
       question,
       eligible: () =>
@@ -95,7 +105,7 @@ export function beginOrdinaryConversationMemoryTask(
         import('./conversationObserver').RagConversationObserver['templateProposalOwner']
       >,
     ) {
-      if (!current() || !source || toolMode) return;
+      if (!narrowSidecar || !current() || !source || toolMode) return;
       toolMode = true;
       modelCurrent = owner.current;
       try {

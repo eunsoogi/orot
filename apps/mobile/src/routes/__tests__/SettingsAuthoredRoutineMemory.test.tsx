@@ -8,6 +8,7 @@ import { View } from 'react-native';
 import { openSqliteTestDatabase } from '../../../../../packages/storage/__tests__/sqliteTestDatabase';
 import {
   authoredRoutineMemoryDeviceOwner,
+  authoredNoteMemoryDeviceOwner,
   captureOrdinaryConversationMemoryAdmission,
 } from '../../storage/ordinaryConversationMemoryDeviceOwner';
 import { openLocalAgentMemoryDatabase } from '../../storage/secureDatabase';
@@ -53,6 +54,7 @@ test('the distinct routine switch starts off and does not silently authorize whe
       <View>
         <SettingsAutomaticMemorySection ownership={owner} />
         <SettingsAutomaticMemorySection ownership={owner} routine />
+        <SettingsAutomaticMemorySection ownership={owner} general />
       </View>,
     );
     try {
@@ -78,6 +80,10 @@ test('the distinct routine switch starts off and does not silently authorize whe
       expect(await screen.findByText('습관 자동 저장 켜짐')).toBeTruthy();
       const granted = await authoredRoutineMemoryDeviceOwner.captureAdmission();
       expect(granted?.scope).toBe('authored-routine');
+      expect(screen.getByText('내가 말한 내용 자동 저장 꺼짐')).toBeTruthy();
+      expect(
+        await authoredNoteMemoryDeviceOwner.captureAdmission(),
+      ).toBeUndefined();
       expect(write.mock.lastCall?.[2]).toMatchObject({
         service: consentService,
         accessible: 'device-only',
@@ -91,6 +97,25 @@ test('the distinct routine switch starts off and does not silently authorize whe
       );
       expect(await screen.findByText('습관 자동 저장 꺼짐')).toBeTruthy();
       expect(granted?.isCurrent()).toBe(false);
+      await fireEvent.press(
+        screen.getByTestId('settings-authored-note-memory-enable'),
+      );
+      expect(
+        await screen.findByText('내가 말한 내용 자동 저장 켜짐'),
+      ).toBeTruthy();
+      const general = await authoredNoteMemoryDeviceOwner.captureAdmission();
+      expect(general?.scope).toBe('authored-note');
+      expect(write.mock.lastCall?.[2]).toMatchObject({
+        service: 'com.orot.mobile.authored-note-memory-authority.v1',
+        accessible: 'device-only',
+      });
+      await fireEvent.press(
+        screen.getByTestId('settings-authored-note-memory-disable'),
+      );
+      expect(
+        await screen.findByText('내가 말한 내용 자동 저장 꺼짐'),
+      ).toBeTruthy();
+      expect(general?.isCurrent()).toBe(false);
       expect(
         (await captureOrdinaryConversationMemoryAdmission())?.isCurrent(),
       ).toBe(true);

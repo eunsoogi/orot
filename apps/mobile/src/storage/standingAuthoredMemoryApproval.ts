@@ -1,3 +1,4 @@
+import { isWholeStandingAuthoredNote } from '../memory/authoredNoteMemory';
 import type { SqlExecutor } from '@orot/storage';
 import {
   matchesOrdinaryConversationMemoryEnrollment,
@@ -41,7 +42,8 @@ export function isExactStandingAuthoredMemorySentence(
     typeof statement === 'string' &&
     statement.length >= 8 &&
     statement.length <= 900 &&
-    standingAuthoredMemoryScope(question, statement) !== undefined
+    (standingAuthoredMemoryScope(question, statement) !== undefined ||
+      isWholeStandingAuthoredNote(question, statement))
   );
 }
 
@@ -57,7 +59,9 @@ export async function standingAuthoredMemoryIsCurrent(
   if (!approval) return true; // Existing per-item explicit local paths retain their separate gate.
   if (
     !approval.current() ||
-    standingAuthoredMemoryScope(question, statement) !== approval.scope
+    (approval.scope === 'authored-note'
+      ? !isWholeStandingAuthoredNote(question, statement)
+      : standingAuthoredMemoryScope(question, statement) !== approval.scope)
   )
     return false;
   const row = await readOrdinaryConversationMemoryEnrollment(

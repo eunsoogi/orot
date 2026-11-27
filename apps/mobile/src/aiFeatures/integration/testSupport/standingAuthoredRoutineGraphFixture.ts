@@ -10,19 +10,21 @@ export async function standingAuthoredRoutineGraphFixture(
   mode: string,
   source: OrdinaryConversationCompletionIdentity,
 ) {
+  const scope = mode.startsWith('standing-note-')
+    ? 'authored-note'
+    : 'authored-routine';
   const enrollment = createOrdinaryConversationMemoryEnrollmentStore(
     database,
-    'authored-routine',
+    scope,
   );
   const epoch = 'a'.repeat(64);
-  const receipt =
-    mode !== 'standing-opted-out'
-      ? await enrollment.replace(await enrollment.read(), epoch, () => true)
-      : undefined;
+  const receipt = !mode.endsWith('opted-out')
+    ? await enrollment.replace(await enrollment.read(), epoch, () => true)
+    : undefined;
   const owner = createConversationOrdinaryMemoryOwner({
     save: async () => false,
-    capture: async scope =>
-      receipt && scope === 'authored-routine'
+    capture: async requested =>
+      receipt && requested === scope
         ? {
             database,
             scope,
@@ -71,4 +73,22 @@ export function interceptAuthoredMemoryCommit(
         }),
       ),
   };
+}
+
+// Each trial is a fresh ordinary composer request, including the unsupported no-grant case.
+export const standingMemoryModes = [
+  'standing-success',
+  'standing-opted-out',
+  'standing-revoked',
+  'standing-note-success',
+  'standing-note-opted-out',
+  'standing-note-revoked',
+  'standing-note-sensitive',
+] as const;
+
+export function standingMemoryUtterance(mode: string) {
+  if (mode === 'standing-note-sensitive') return '저는 병원에서 치료를 받아요.';
+  return mode.startsWith('standing-note-')
+    ? '저는 배경 음악을 모으는 프로젝트를 진행해요.'
+    : '매일 피아노를 연습해요';
 }

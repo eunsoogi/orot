@@ -27,6 +27,7 @@ export function conversationMutationExecution(input: {
   question: string;
   history: FreshConversationHistory;
   remoteAnswerMemory?: boolean;
+  standingAuthoredNote?: boolean;
   remoteMemory?: boolean | ConversationEntryContext;
 }) {
   const {
@@ -124,7 +125,10 @@ export function conversationMutationExecution(input: {
       question,
       terminal: authoredTerminal,
       ...(standingLane
-        ? { standing: observer.authorizeStandingAuthoredMemory }
+        ? {
+            standing: observer.authorizeStandingAuthoredMemory,
+            generalStanding: input.standingAuthoredNote,
+          }
         : {}),
     });
   const answerMemory =

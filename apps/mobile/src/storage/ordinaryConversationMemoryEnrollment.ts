@@ -1,7 +1,7 @@
 import type { SqlDatabase, SqlExecutor } from '@orot/storage';
 
 export type LocalConversationMemoryScope =
-  'reply-preferences' | 'authored-routine';
+  'reply-preferences' | 'authored-routine' | 'authored-note';
 
 /** These independently disclosed grants never share a persisted row. */
 function enrollmentTable(scope: LocalConversationMemoryScope) {
@@ -10,6 +10,8 @@ function enrollmentTable(scope: LocalConversationMemoryScope) {
       return 'ordinary_conversation_memory_enrollment';
     case 'authored-routine':
       return 'authored_routine_memory_enrollment';
+    case 'authored-note':
+      return 'authored_note_memory_enrollment';
   }
 }
 

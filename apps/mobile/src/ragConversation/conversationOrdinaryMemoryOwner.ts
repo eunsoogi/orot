@@ -80,6 +80,8 @@ export function createConversationOrdinaryMemoryOwner(
             return {
               ...observer,
               authorizeStandingAuthoredMemory: async () => undefined,
+              hasStandingAuthoredNote: undefined,
+
               async onRetentionCandidate(
                 ...args: Parameters<
                   NonNullable<RagConversationObserver['onRetentionCandidate']>
@@ -105,6 +107,7 @@ export function createConversationOrdinaryMemoryOwner(
           return {
             ...observer,
             bindOrdinaryMemorySidecar: task.bindSidecar,
+            hasStandingAuthoredNote: task.hasStandingAuthoredNote,
             authorizeStandingAuthoredMemory:
               task.authorizeStandingAuthoredMemory,
             async onRetentionCandidate(
