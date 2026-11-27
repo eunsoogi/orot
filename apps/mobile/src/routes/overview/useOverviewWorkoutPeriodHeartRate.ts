@@ -140,8 +140,27 @@ export function useOverviewWorkoutPeriodHeartRate(
           storage.isCurrentLocalAgentMemoryDatabase(database);
         const admitted = () => ownsScope() && target.epoch?.current() === true;
         target.usable = admitted;
-        if (!admitted()) return trace.report('epoch', 'cancelled');
         let observedCohort: Parameters<typeof cohortFence.admit>[0] | undefined;
+        target.recover = async () => {
+          const dispatched = cohortFence.dispatched();
+          const cohort = dispatched ?? observedCohort ?? previous?.cohort;
+          if (
+            rechecks > (dispatched ? 1 : 0) &&
+            (await canReacquireOverviewWorkoutSnapshot(
+              target.epoch?.current(),
+              () => ownsScope() && phase() === 'active',
+              awaitWriter,
+              () => confirm(target),
+            ))
+          ) {
+            dropTask(false);
+            start(dispatched ? 0 : rechecks - 1, { database, period, cohort });
+          }
+        };
+        if (!admitted()) {
+          trace.report('epoch', 'cancelled');
+          return await target.recover();
+        }
         const { result, stale } = await readOverviewWorkoutChoicePeriod(
           startup,
           period,
@@ -158,23 +177,6 @@ export function useOverviewWorkoutPeriodHeartRate(
           },
         );
         target.staleStartup = stale || (!!startup && !admitted());
-        target.recover = async () => {
-          const dispatched = cohortFence.dispatched();
-          const cohort = dispatched ?? observedCohort;
-          if (
-            cohort &&
-            rechecks > (dispatched ? 1 : 0) &&
-            (await canReacquireOverviewWorkoutSnapshot(
-              target.epoch?.current(),
-              () => ownsScope() && phase() === 'active',
-              awaitWriter,
-              () => confirm(target),
-            ))
-          ) {
-            dropTask(false);
-            start(dispatched ? 0 : rechecks - 1, { database, period, cohort });
-          }
-        };
         const usableResult = !!result && result.status !== 'unavailable';
         while (usableResult && phase() === 'inactive') {
           if (!(await confirm(target))) return;
