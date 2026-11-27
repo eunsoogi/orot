@@ -1,3 +1,4 @@
+import { isAdmittedConversationA2UIFolder } from './conversationA2UIFolder';
 import { hasConversationA2UIComposedControls } from './conversationA2UIComposedControlState';
 import type { ConversationA2UINode } from './conversationA2UI';
 import { isConversationA2UIRowWeight } from './conversationA2UIRowWeight';
@@ -18,7 +19,6 @@ import {
   conversationA2UIProse,
 } from './conversationA2UIPresentation';
 export type { ArchivedA2UILayout } from './conversationA2UIArchiveShape';
-
 /** Serialize only an admitted native tree reproducing the existing accepted answer. */
 export function storeConversationA2UILayout(
   root: ConversationA2UINode,
@@ -113,9 +113,9 @@ export function storeConversationA2UILayout(
       value.children.length > (value.component === 'Card' ? 1 : 16)
     )
       return undefined;
-    const children = value.children.map(child =>
-      visit(child, depth + 1, value.component === 'Row'),
-    );
+    const children = value.children
+      .filter(child => !isAdmittedConversationA2UIFolder(child))
+      .map(child => visit(child, depth + 1, value.component === 'Row'));
     if (!children.every((child): child is Shape => child !== undefined)) return;
     if (hasAlignment) {
       const kind = value.component;

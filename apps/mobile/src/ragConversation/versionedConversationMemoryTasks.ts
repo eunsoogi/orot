@@ -84,6 +84,7 @@ export function versionedConversationMemoryTasks(
     multiline = false,
     filterable = false,
     mixedWeights = false,
+    folderIcon = false,
   ) =>
     withConversationA2UIReplacement(
       withConversationA2UIPanelCaptions(
@@ -97,6 +98,7 @@ export function versionedConversationMemoryTasks(
       ),
       '55',
       mixedWeights,
+      folderIcon,
     );
   return {
     conversationTaskV25,
@@ -161,11 +163,17 @@ export function versionedConversationMemoryTasks(
           '58',
         ),
       ),
+      v59: observeConversationA2UIFinalAdmission(
+        withConversationA2UITabSelectionLifetime(
+          temporaryFormTask(true, true, true),
+          '59',
+        ),
+      ),
     },
     ragConversationTask: observeConversationA2UIFinalAdmission(
       withConversationA2UITabSelectionLifetime(
-        temporaryFormTask(true, true, true),
-        '59',
+        temporaryFormTask(true, true, true, true),
+        '60',
       ),
     ),
   };

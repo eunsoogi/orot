@@ -40,7 +40,7 @@ import {
   a2uiNativeAlignment,
   a2uiStretchedColumnChild,
 } from './conversationA2UINativeAlignment';
-import { conversationA2UIIcons } from './conversationA2UIStaticCatalog';
+import { conversationA2UIDisplayIcons } from './conversationA2UIStaticCatalog';
 import type { ConversationA2UINode } from './conversationA2UI';
 import { ConversationA2UILocalDraftControls } from './ConversationA2UILocalDraftControls';
 import {
@@ -166,7 +166,7 @@ function SurfaceNode({
   if (node.component === 'Icon') {
     return (
       <AppSymbol
-        name={conversationA2UIIcons[node.name]}
+        name={conversationA2UIDisplayIcons[node.name]}
         color={appColors.secondary}
       />
     );
