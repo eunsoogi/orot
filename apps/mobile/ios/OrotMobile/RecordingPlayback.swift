@@ -123,6 +123,7 @@ public extension RecordingModule {
             self.playbackRecordingID = recordingID
             self.playbackEndMs = end
             self.playbackResult = [
+                "seekID": start == 0 && abs(Double(end) / 1000 - player.duration) <= 0.01 ? UUID().uuidString : "",
                 "startMs": start,
                 "endMs": end,
                 "actualStartMs": Int((player.currentTime * 1000).rounded()),

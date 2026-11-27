@@ -39,6 +39,8 @@ export interface RecordingPlaybackRange {
 /** Current native player state; positions and durations are milliseconds. */
 export interface RecordingPlaybackState {
   readonly status: 'idle' | 'playing';
+  readonly seekID?: string;
+  readonly seekEndMs?: number;
   readonly recordingId: string | null;
   readonly positionMs: number;
   readonly durationMs: number;
@@ -55,6 +57,12 @@ export interface RecordingPlaybackService {
     owner?: symbol,
   ): Promise<RecordingPlaybackRange>;
   stopPlayback?(owner?: symbol): Promise<void>;
+  seekPlayback?(
+    recordingId: string,
+    seekID: string,
+    positionMs: number,
+    owner?: symbol,
+  ): Promise<boolean>;
   subscribePlayback?(
     listener: (state: RecordingPlaybackState) => void,
   ): () => void;
