@@ -31,6 +31,7 @@ export interface ConversationPhotoAttachmentProps {
   readonly compact?: boolean;
   readonly pickerDisabled?: boolean;
   readonly groupedPicker?: boolean;
+  readonly sendingInTranscript?: boolean;
   readonly onSelect: () => void;
   readonly onRemove: () => void;
   readonly children?: ReactNode;
@@ -54,6 +55,7 @@ export function ConversationPhotoAttachment({
   compact = false,
   pickerDisabled = false,
   groupedPicker = false,
+  sendingInTranscript = false,
   onSelect,
   onRemove,
   children,
@@ -130,7 +132,8 @@ export function ConversationPhotoAttachment({
         </View>
       ) : null}
       {/* Preparation still locks the controls; image transfer disclosure stays in settings consent. */}
-      {status === 'transferring' || status === 'error' ? (
+      {(status === 'transferring' && !sendingInTranscript) ||
+      status === 'error' ? (
         <Text accessibilityLiveRegion="polite" style={styles.status}>
           {t(
             status === 'transferring'
