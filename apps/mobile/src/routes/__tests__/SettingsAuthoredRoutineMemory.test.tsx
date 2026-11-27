@@ -4,7 +4,7 @@ import {
   setGenericPassword,
   STORAGE_TYPE,
 } from 'react-native-keychain';
-import { View } from 'react-native';
+import { Alert, View } from 'react-native';
 import { openSqliteTestDatabase } from '../../../../../packages/storage/__tests__/sqliteTestDatabase';
 import {
   authoredRoutineMemoryDeviceOwner,
@@ -28,6 +28,7 @@ const owner = { isCurrent: () => true, subscribe: () => () => {} };
 
 test('the distinct routine switch starts off and does not silently authorize when preferences are on', async () => {
   const fixture = openSqliteTestDatabase(':memory:');
+  const information = jest.spyOn(Alert, 'alert');
   const keychain = new Map<
     string,
     Awaited<ReturnType<typeof getGenericPassword>>
@@ -59,12 +60,19 @@ test('the distinct routine switch starts off and does not silently authorize whe
       expect(await screen.findByText('습관 자동 저장 꺼짐')).toBeTruthy();
       expect(screen.getByText('대화에서 기억 자동 저장')).toBeTruthy();
       expect(
-        screen.getByText(/읽기나 공부처럼 직접 말한 일부 반복 습관/),
-      ).toBeTruthy();
+        screen.queryByText(/읽기나 공부처럼 직접 말한 일부 반복 습관/),
+      ).toBeNull();
+      await fireEvent.press(screen.getByTestId('settings-routine-memory-info'));
+      expect(information).toHaveBeenCalledWith(
+        '대화에서 기억 자동 저장',
+        expect.stringContaining('읽기나 공부처럼 직접 말한 일부 반복 습관'),
+      );
       expect(write).not.toHaveBeenCalled();
 
-      await fireEvent.press(
-        await screen.findByTestId('settings-automatic-memory-enable'),
+      await fireEvent(
+        screen.getByTestId('settings-automatic-memory-toggle'),
+        'valueChange',
+        true,
       );
       expect(await screen.findByText('켜짐')).toBeTruthy();
       expect(screen.getByText('습관 자동 저장 꺼짐')).toBeTruthy();
@@ -72,8 +80,10 @@ test('the distinct routine switch starts off and does not silently authorize whe
         await authoredRoutineMemoryDeviceOwner.captureAdmission(),
       ).toBeUndefined();
 
-      await fireEvent.press(
-        screen.getByTestId('settings-routine-memory-enable'),
+      await fireEvent(
+        screen.getByTestId('settings-routine-memory-toggle'),
+        'valueChange',
+        true,
       );
       expect(await screen.findByText('습관 자동 저장 켜짐')).toBeTruthy();
       const granted = await authoredRoutineMemoryDeviceOwner.captureAdmission();
@@ -86,8 +96,10 @@ test('the distinct routine switch starts off and does not silently authorize whe
         (await captureOrdinaryConversationMemoryAdmission())?.isCurrent(),
       ).toBe(true);
 
-      await fireEvent.press(
-        screen.getByTestId('settings-routine-memory-disable'),
+      await fireEvent(
+        screen.getByTestId('settings-routine-memory-toggle'),
+        'valueChange',
+        false,
       );
       expect(await screen.findByText('습관 자동 저장 꺼짐')).toBeTruthy();
       expect(granted?.isCurrent()).toBe(false);
@@ -98,6 +110,7 @@ test('the distinct routine switch starts off and does not silently authorize whe
       await component.unmount();
     }
   } finally {
+    information.mockRestore();
     fixture.close();
   }
 });
