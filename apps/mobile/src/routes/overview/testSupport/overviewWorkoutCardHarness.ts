@@ -1,5 +1,9 @@
 import { NativeModules } from 'react-native';
-import { createRecordRepository, runMigrations } from '@orot/storage';
+import {
+  createRecordRepository,
+  runMigrations,
+  type SqlDatabase,
+} from '@orot/storage';
 import { openSqliteTestDatabase } from '../../../../../../packages/storage/__tests__/sqliteTestDatabase';
 import {
   openLocalAgentMemoryDatabase,
@@ -51,8 +55,13 @@ function fixture(id: string, hoursAgo: number) {
   return toCommonObservationRecord(mapped.observation, end);
 }
 
-export async function setup() {
-  const { database, close } = openSqliteTestDatabase(':memory:');
+export async function setup(
+  adapter: {
+    database: SqlDatabase;
+    close(): void | Promise<void>;
+  } = openSqliteTestDatabase(':memory:'),
+) {
+  const { database, close } = adapter;
   await runMigrations(database);
   const guarded = guardedNativeDatabase(database);
   const repository = createRecordRepository(guarded);

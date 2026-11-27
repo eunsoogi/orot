@@ -1,3 +1,4 @@
+import { ownRecordRepository } from './recordRepositoryOwner';
 import { clearCalendarClassificationCache } from './calendarClassificationCache';
 import {
   readHealthObservationMonthChart,
@@ -82,7 +83,6 @@ export interface RecordRepository extends RecordWriter, TypedSourceDeletionReade
   ): Promise<boolean>;
   listDeletedSourceReferenceIds(referenceIds: readonly string[]): Promise<readonly string[]>;
 }
-
 function createWriter(executor: SqlTransaction): RecordWriter {
   return {
     async put(kind, record) {
@@ -110,7 +110,7 @@ function createWriter(executor: SqlTransaction): RecordWriter {
 export function createRecordRepository(database: SqlDatabase): RecordRepository {
   const sourceEvidenceRepositories = createSourceEvidenceRepositories(database);
   const transcripts = createTranscriptEvidenceRepository(database);
-  return {
+  return ownRecordRepository(database, {
     ...sourceEvidenceRepositories,
     manualHistory: createManualHistoryRepository(database),
     listHealthMedicationPage: (request) => readHealthMedicationPage(database, request),
@@ -246,5 +246,5 @@ export function createRecordRepository(database: SqlDatabase): RecordRepository 
         return RecordIdSchema.parse(row.source_id);
       });
     },
-  };
+  });
 }
