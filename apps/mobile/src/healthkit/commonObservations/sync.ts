@@ -78,7 +78,12 @@ async function syncCommonObservationChangesExclusive(
 
   const checkpointKey = healthKitSampleChangesCheckpointKey(feature, feature);
   const savedCheckpoint = await repository.getSyncCheckpoint(checkpointKey);
-  let cursor = savedCheckpoint?.value ?? null;
+  const previous = savedCheckpoint?.value ?? null;
+  const replay =
+    feature === 'workouts' &&
+    options.replayWorkoutHistoryAfterReview &&
+    previous !== null;
+  let cursor = replay ? null : previous;
   let upserted = 0;
   let deleted = 0;
   let skipped = 0;
@@ -163,9 +168,17 @@ async function syncCommonObservationChangesExclusive(
         'HealthKit returned observation changes without advancing its cursor.',
       );
     }
-    const pageCursorAdvanced = nextCursor !== cursor;
+    // Keep the old incremental anchor usable if a reviewed historical replay
+    // fails mid-page; only a complete replay may replace it.
+    const cursorToCommit = replay
+      ? !page.hasMore && nextCursor !== previous
+        ? nextCursor
+        : null
+      : nextCursor !== cursor
+        ? nextCursor
+        : null;
     const anchor = tryStepAnchor(options, pageHasChanges, cursor, nextCursor);
-    if ((pageHasChanges || pageCursorAdvanced) && !(anchor && (await anchor))) {
+    if ((pageHasChanges || cursorToCommit) && !(anchor && (await anchor))) {
       deleted += await measureCommonObservationOperation(
         options.instrumentation,
         'persist',
@@ -185,10 +198,10 @@ async function syncCommonObservationChangesExclusive(
             }
             for (const id of deletedIds)
               if (await writer.delete('health_observation', id)) pageDeleted++;
-            if (pageCursorAdvanced && nextCursor) {
+            if (cursorToCommit) {
               await writer.putSyncCheckpoint({
                 key: checkpointKey,
-                value: nextCursor,
+                value: cursorToCommit,
                 updatedAt: now(),
               });
             }
@@ -199,7 +212,7 @@ async function syncCommonObservationChangesExclusive(
 
     reportShape(feature, 'derived_committed', candidates.length);
     cursor = nextCursor;
-    cursorAdvanced ||= pageCursorAdvanced;
+    cursorAdvanced ||= cursorToCommit !== null;
     pageCount += 1;
     if (!page.hasMore) {
       if (options.refreshDerivedSamples && savedCheckpoint) {

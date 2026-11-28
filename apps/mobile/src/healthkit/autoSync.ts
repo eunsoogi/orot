@@ -27,6 +27,8 @@ interface RunHealthKitAutoSyncOptions {
   readonly now: () => string;
   /** Set by explicit medication access/re-import actions, never ordinary app foreground refresh. */
   readonly refreshMedicationDoseHistory?: boolean;
+  /** Only an explicit completed workout authorization request can start a replay. */
+  readonly replayWorkoutHistoryAfterReview?: boolean;
 }
 
 const pendingRuns = new WeakMap<object, Promise<HealthKitAutoSyncResult>>();
@@ -117,6 +119,8 @@ async function runRequestedFeatures(
           permissionPreviouslyRequested: true,
           repository: options.repository,
           now: options.now,
+          replayWorkoutHistoryAfterReview:
+            feature === 'workouts' && options.replayWorkoutHistoryAfterReview,
           ...(options.healthKit.querySamples &&
           (feature === 'restingHeartRate' ||
             feature === 'walkingHeartRateAverage')
