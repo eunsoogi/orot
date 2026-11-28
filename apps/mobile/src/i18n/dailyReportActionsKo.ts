@@ -5,6 +5,8 @@ export const dailyReportActionsKo = {
   'dailyReport.baseline.higher': '높아요',
   'dailyReport.baseline.lower': '낮아요',
   'dailyReport.baseline.equal': '같아요',
+  'dailyReport.baseline.focusComparison':
+    '오늘 보고서의 {concept} 중앙값({today} {unit})은 비교 가능한 과거 {days}일의 일별 중앙값 범위({low}~{high} {unit})보다 {direction}.',
   'dailyReport.baseline.limit':
     '최근 28일 중 접근 가능한 관측일만 비교했어요. 미측정일·다른 기기·단위·누적량은 채워 넣지 않았어요.',
   'dailyReport.baseline.comparison':

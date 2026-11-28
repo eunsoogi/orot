@@ -72,7 +72,9 @@ test.each(['taken', 'skipped'] as const)(
       );
       if (status === 'taken') {
         expect(focus).toHaveLength(1);
-        expect(text).toContain('따로 요약할 변화나 예외는 선별하지 않았어요');
+        expect(text).toContain(
+          '확인한 기록에서 눈여겨볼 변화나 예외는 찾지 못했어요.',
+        );
       } else {
         expect(text).toContain('누락 또는 건너뜀');
         expect(focus[0]?.sourceReferences).toEqual(
