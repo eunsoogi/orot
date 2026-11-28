@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { View, useWindowDimensions } from 'react-native';
+import { StyleSheet, View, useWindowDimensions } from 'react-native';
+import { NavigationInlineTransition } from '../navigation/NavigationInlineTransition';
 import { CalendarAccessibleDates } from './CalendarAccessibleDates';
 import { CalendarDateCoverage } from './CalendarDateCoverage';
 import type { Appointment } from '@orot/storage';
@@ -65,6 +66,7 @@ export function CalendarMonthView({
     year: initialDate.getFullYear(),
     month: initialDate.getMonth(),
   }));
+  const [slidePage, setSlidePage] = useState(0);
   const focusedAppointment = useRef(false);
   const focusedCandidateList = useRef(false);
   const linkedEvent = useMemo(
@@ -105,6 +107,9 @@ export function CalendarMonthView({
     focusDate(rangedEvents[0].startDay);
   }, [candidatesLoaded, focusDate, linkedEvent, rangedEvents]);
   function moveMonth(amount: number) {
+    // Only explicit paging animates; provider reconciliation can focus another month
+    // without changing the user's gesture state or remounting their density setting.
+    if (flat) setSlidePage(previous => previous + amount);
     const target = shiftCalendarMonth(
       visibleMonth.year,
       visibleMonth.month,
@@ -152,18 +157,26 @@ export function CalendarMonthView({
         testID="calendar-date-grid-content"
       >
         {flat ? (
-          <ScheduleMonthGrid
-            days={gridDays}
-            eventsForDay={eventsForDay}
-            focusDate={focusDate}
-            focusedDate={selectedDate}
-            todayDate={todayDateKey}
-            width={width}
-            largeText={accessibleDates}
-            selectedEvent={selectedEvent}
-            selectionDisabled={selectionDisabled}
-            selectEvent={onSelectEvent}
-          />
+          <View style={pagingStyles.clip}>
+            <NavigationInlineTransition
+              transitionKey={String(slidePage)}
+              depth={slidePage}
+            >
+              <ScheduleMonthGrid
+                days={gridDays}
+                eventsForDay={eventsForDay}
+                focusDate={focusDate}
+                onSwipeMonth={moveMonth}
+                focusedDate={selectedDate}
+                todayDate={todayDateKey}
+                width={width}
+                largeText={accessibleDates}
+                selectedEvent={selectedEvent}
+                selectionDisabled={selectionDisabled}
+                selectEvent={onSelectEvent}
+              />
+            </NavigationInlineTransition>
+          </View>
         ) : accessibleDates ? (
           <CalendarAccessibleDates
             days={gridDays}
@@ -220,3 +233,5 @@ export function CalendarMonthView({
     </View>
   );
 }
+
+const pagingStyles = StyleSheet.create({ clip: { overflow: 'hidden' } });

@@ -27,8 +27,8 @@ final class ScheduleCalendarUITests: OrotFailFastTestCase {
             app.terminate()
             XCUIDevice.shared.orientation = .portrait
         }
-
         try openSchedule(app)
+        ScheduleCalendarAdaptiveLayoutUITestConditions.assertMonthSwipeRoundTrip(app)
         let selectedTitle = try selectSyntheticEvent(app)
         UITestConditions.value(selectedTitle, equals: "합성 외래 방문")
         let portraitFrame = app.frame

@@ -1,10 +1,14 @@
 import { View } from 'react-native';
 import { AppButton as Button } from '../layout/AppButton';
 import { AppText as Text } from '../layout/AppText';
+import {
+  UpcomingVisitDetails,
+  UpcomingVisitHeading,
+  upcomingVisitSectionStyle,
+} from '../layout/UpcomingVisitHeading';
 import { t } from '../i18n';
 import { formatCalendarEventRange } from './dateTime';
 import { calendarStyles as styles } from './calendarStyles';
-import { schedulePresentationStyles as scheduleStyles } from './schedulePresentationStyles';
 import { eventFromAppointment } from './calendarMonthEvents';
 import type { useCalendarLinking } from './useCalendarLinking';
 
@@ -67,25 +71,27 @@ export function CalendarSelectionSummary({
     </View>
   ) : showNextVisit && upcomingEvent ? (
     <View
-      style={flat ? scheduleStyles.flatNextVisit : styles.card}
+      style={upcomingVisitSectionStyle}
       testID="schedule-next-visit-summary"
     >
-      <Text
-        accessibilityRole="header"
-        style={flat ? styles.calendarSelectedDate : undefined}
-      >
-        {t('calendar.nextVisit')}
-      </Text>
-      <Text style={styles.eventTitle} testID="schedule-next-visit-title">
-        {upcomingEvent.calendarEventSnapshot.title ||
-          t('calendar.eventNoTitle')}
-      </Text>
-      <Text
-        style={flat ? scheduleStyles.flatEventTime : undefined}
-        testID="schedule-next-visit-time"
-      >
-        {formatCalendarEventRange(upcomingEvent, { hideTimeZoneLabel: true })}
-      </Text>
+      <UpcomingVisitHeading label={t('calendar.nextVisit')} />
+      <UpcomingVisitDetails
+        title={
+          upcomingEvent.calendarEventSnapshot.title ||
+          t('calendar.eventNoTitle')
+        }
+        time={formatCalendarEventRange(upcomingEvent, {
+          hideTimeZoneLabel: true,
+        })}
+        startsAt={upcomingEvent.effectiveAt}
+        testIDs={{
+          titleRow: 'schedule-next-visit-title-row',
+          title: 'schedule-next-visit-title',
+          countdown: 'schedule-next-visit-countdown',
+          timeRow: 'schedule-next-visit-time-row',
+          time: 'schedule-next-visit-time',
+        }}
+      />
     </View>
   ) : null;
 }
