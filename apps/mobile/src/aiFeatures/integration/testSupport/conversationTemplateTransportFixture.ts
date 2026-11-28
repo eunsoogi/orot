@@ -11,6 +11,7 @@ export function syntheticTemplateTransport(
   route: 'apple' | 'chatgpt',
   intent: string,
   after: () => void,
+  beforePlanReply?: () => Promise<void>,
 ) {
   const verdict = {
     id: 'synthetic-function',
@@ -65,6 +66,7 @@ export function syntheticTemplateTransport(
       _account: string,
       _request: ChatGPTPlanRequest,
     ) => {
+      if (beforePlanReply) await beforePlanReply();
       const text = 'Never render this proposal prose.';
       receive({ requestId, type: 'text_delta', text });
       receive({
