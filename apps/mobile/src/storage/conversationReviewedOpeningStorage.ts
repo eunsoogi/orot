@@ -25,7 +25,8 @@ export function decodeReviewedOpening(
     const value = JSON.parse(raw);
     if (
       (value?.kind !== 'reviewed-prompt-opening-v1' &&
-        value?.kind !== 'reviewed-authored-local-opening-v2') ||
+        value?.kind !== 'reviewed-authored-local-opening-v2' &&
+        value?.kind !== 'reviewed-authored-contextual-opening-v3') ||
       Object.keys(value).length !== 4 ||
       !Number.isSafeInteger(value.deletionEpoch) ||
       value.deletionEpoch < 0 ||
@@ -43,7 +44,7 @@ export function decodeReviewedOpening(
  * deletion epoch; an invalid present journal still blocks artifact fallback. */
 export const currentReviewedOpeningSql = `CASE
   WHEN NOT json_valid(r.reviewed_opening_json) THEN NULL
-  WHEN json_extract(r.reviewed_opening_json, '$.kind') = 'reviewed-authored-local-opening-v2'
+  WHEN json_extract(r.reviewed_opening_json, '$.kind') IN ('reviewed-authored-local-opening-v2', 'reviewed-authored-contextual-opening-v3')
     AND r.status = 'completed' AND r.input_json IS NULL
     AND NOT EXISTS (SELECT 1 FROM conversation_request_sources opening_source WHERE opening_source.request_id = r.id)
   THEN r.reviewed_opening_json
@@ -74,7 +75,7 @@ export function createReviewedOpeningStorage(
       kind:
         authoredInput === undefined
           ? 'reviewed-prompt-opening-v1'
-          : 'reviewed-authored-local-opening-v2',
+          : 'reviewed-authored-contextual-opening-v3',
       callId: opening.callId,
       text: opening.text,
     });
@@ -82,7 +83,14 @@ export function createReviewedOpeningStorage(
       throw new Error('Invalid reviewed conversation opening.');
     const assertCurrent = () => {
       assertConversationNotCancelled(signal);
-      if (!input.current() || (authored && !authored.current()))
+      if (
+        !input.current() ||
+        (authored &&
+          (authored.requestId !== id ||
+            authored.sessionId !== sessionId ||
+            authored.sessionVersion !== version ||
+            !authored.current()))
+      )
         throw new Error('Conversation is unavailable.');
     };
     assertCurrent();
