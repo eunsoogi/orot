@@ -95,7 +95,7 @@ final class RecordingDuoUITests: OrotFailFastTestCase {
 
     /// Exercises the saved-source route with real keyboard input while native window geometry changes.
     @MainActor
-    func testRecordingReviewRetainsTranscriptDraftAndSelectionAcrossWindowReflow() {
+    func testRecordingReviewRetainsTranscriptDraftAndSelectionAcrossWindowReflow() throws {
         let fixture = "test-persistence-" + UUID().uuidString.lowercased()
         let app = XCUIApplication()
         let originalOrientation = XCUIDevice.shared.orientation
@@ -104,7 +104,8 @@ final class RecordingDuoUITests: OrotFailFastTestCase {
             XCUIDevice.shared.orientation = originalOrientation
         }
         XCUIDevice.shared.orientation = .portrait
-        launchReviewFixture(app, fixture: fixture)
+        let rotationSession = UUID().uuidString
+        launchReviewFixture(app, fixture: fixture, rotationSession: rotationSession)
 
         let primary = UITestConditions.element(app, "recording-review-layout-primary")
         let secondary = UITestConditions.element(app, "recording-review-layout-secondary")
@@ -116,9 +117,7 @@ final class RecordingDuoUITests: OrotFailFastTestCase {
 
         guard RecordingFixtureUITestConditions.openSavedTranscript(app) else { return }
 
-        let start = UITestConditions.element(app, "encounter-start")
-        FormUITestConditions.reveal(start, in: app, scrollID: "navigation-route-scroll")
-        start.tap()
+        guard RecordingFixtureUITestConditions.startSavedAnalysis(app) else { return }
         let selection = UITestConditions.element(app, "encounter-select-candidate-0")
         FormUITestConditions.reveal(selection, in: app, scrollID: "navigation-route-scroll")
         XCTAssertTrue(selection.isSelected)
@@ -134,25 +133,29 @@ final class RecordingDuoUITests: OrotFailFastTestCase {
         XCTAssertTrue(app.keyboards.firstMatch.waitForAppearance())
 
         guard let portrait = RecordingFixtureUITestConditions.reviewLayout(app) else { return XCTFail("No unique saved recording layout before rotation") }
-        XCUIDevice.shared.orientation = .landscapeLeft
-        guard let landscape = RecordingFixtureUITestConditions.reviewReflow(app, from: portrait, expanded: true, testCase: self) else { return }
+        let landscape = try NavigationRotationUITestConditions.rotateRecordingScene(app, session: rotationSession, landscape: true, initialAX: portrait.window, testCase: self) {
+            RecordingFixtureUITestConditions.reviewReflow(app, from: portrait, landscape: true, testCase: self)
+        }
         UITestConditions.value(input, equals: draft)
         XCTAssertFalse(selection.isSelected)
 
-        XCUIDevice.shared.orientation = .portrait
-        guard RecordingFixtureUITestConditions.reviewReflow(app, from: landscape, expanded: false, testCase: self) != nil else { return }
+        _ = try NavigationRotationUITestConditions.rotateRecordingScene(app, session: rotationSession, landscape: false, initialAX: landscape.window, testCase: self) {
+            RecordingFixtureUITestConditions.reviewReflow(app, from: landscape, landscape: false, testCase: self)
+        }
         UITestConditions.value(input, equals: draft)
         XCTAssertFalse(selection.isSelected)
     }
 
     @MainActor
-    private func launchReviewFixture(_ app: XCUIApplication, fixture: String) {
+    private func launchReviewFixture(_ app: XCUIApplication, fixture: String, rotationSession: String) {
         // Seed an owned local review so this geometry case never requests a remote model or approval.
         app.launchArguments = [
             "-OROT_TEST_PROFILE", "speech",
             "-OROT_TRANSCRIPTION_PROBE_MODE", "encounter-review",
             "-OROT_REVIEW_FIXTURE", fixture,
             "-OROT_REVIEW_MODE", "seed",
+            "-OROT_TEST_UI_GEOMETRY", "YES",
+            "-OROT_TEST_ROTATION_GEOMETRY_SESSION", rotationSession,
         ]
         app.launch()
         UITestConditions.value(UITestConditions.element(app, "encounter-probe-ready"), equals: "ready")

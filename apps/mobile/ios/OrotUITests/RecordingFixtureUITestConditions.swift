@@ -96,6 +96,38 @@ enum RecordingFixtureUITestConditions {
         XCTAssertEqual(UITestConditions.wait(for: [state]), .completed)
     }
 
+    /// Start only the stock analysis action, whether the route exposes it directly or in its shared menu.
+    static func startSavedAnalysis(_ app: XCUIApplication) -> Bool {
+        let direct = UITestConditions.element(app, "encounter-start")
+        let menu = app.buttons["recording-analysis-menu"]
+        let ready = XCTNSPredicateExpectation(predicate: NSPredicate { _, _ in
+            (direct.exists && direct.isEnabled) || (menu.exists && menu.isEnabled)
+        }, object: nil)
+        guard XCTWaiter.wait(for: [ready], timeout: 8) == .completed else {
+            XCTFail("No enabled saved recording analysis action")
+            return false
+        }
+        if !menu.exists {
+            if !direct.isHittable {
+                FormUITestConditions.reveal(direct, in: app, scrollID: "navigation-route-scroll")
+            }
+            guard direct.isHittable else { XCTFail("Saved recording analysis is not hittable"); return false }
+            direct.tap()
+            return true
+        }
+        guard menu.isHittable else { XCTFail("Saved recording analysis menu is not hittable"); return false }
+        menu.tap()
+        let start = app.sheets.buttons.matching(
+            NSPredicate(format: "label IN %@", ["이 녹음에서 후보 찾기", "새 검토 시작"]),
+        )
+        guard start.firstMatch.waitForExistence(timeout: 8), start.count == 1, start.firstMatch.isEnabled, start.firstMatch.isHittable else {
+            XCTFail("The stock analysis menu has no unique enabled candidate action")
+            return false
+        }
+        start.firstMatch.tap()
+        return true
+    }
+
     struct ReviewLayout {
         let window: CGRect
         let scroll: CGRect
@@ -121,29 +153,28 @@ enum RecordingFixtureUITestConditions {
         return layout
     }
 
-    /// Width alone may describe a system AX window. Require the same route markers and panel axis in a fresh sample.
-    static func reviewReflow(_ app: XCUIApplication, from initial: ReviewLayout, expanded: Bool, testCase: XCTestCase) -> ReviewLayout? {
+    /// Rotation must resize the owned app window without changing the saved page's vertical reading order.
+    static func reviewReflow(_ app: XCUIApplication, from initial: ReviewLayout, landscape: Bool, testCase: XCTestCase) -> ReviewLayout? {
         var last: ReviewLayout?
         let ready = XCTNSPredicateExpectation(predicate: NSPredicate { _, _ in
             last = reviewLayout(app)
             guard let layout = last,
                   abs(layout.window.width - initial.window.width) > 0.5,
-                  !layout.primary.intersects(layout.secondary)
+                  !layout.primary.intersects(layout.secondary),
+                  layout.primary.maxY <= layout.secondary.minY
             else { return false }
-            return expanded
-                ? layout.window.width > layout.window.height && layout.primary.maxX <= layout.secondary.minX
-                : layout.window.height > layout.window.width && layout.primary.maxY <= layout.secondary.minY
+            return landscape
+                ? layout.window.width > layout.window.height
+                : layout.window.height > layout.window.width
         }, object: nil)
         let settled = XCTWaiter.wait(for: [ready], timeout: 20) == .completed
-        let dimensions = "requestedExpanded=\(expanded), before=\(initial), last=\(String(describing: last))"
+        let dimensions = "requestedLandscape=\(landscape), before=\(initial), last=\(String(describing: last))"
         let receipt = XCTAttachment(string: dimensions)
-        receipt.name = expanded ? "saved-recording-reflow-landscape" : "saved-recording-reflow-portrait"
+        receipt.name = landscape ? "saved-recording-reflow-landscape" : "saved-recording-reflow-portrait"
         receipt.lifetime = .keepAlways
         testCase.add(receipt)
-        guard settled else {
-            XCTFail("The unique saved recording route did not reflow: \(dimensions)")
-            return nil
-        }
-        return last
+        // Keep the rejection evidence, but let the caller capture UIKit's result
+        // before fail-fast can end the test on an unavailable AX projection.
+        return settled ? last : nil
     }
 }
