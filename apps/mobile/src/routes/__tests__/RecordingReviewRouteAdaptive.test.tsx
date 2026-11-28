@@ -151,6 +151,14 @@ function layoutAxis(): string | undefined {
   )?.flexDirection;
 }
 
+function expectSavedSegmentPresentation(): void {
+  expect(screen.getByTestId('transcript-play-0')).toBeEnabled();
+  expect(screen.queryByTestId('transcript-play-range-0')).toBeNull();
+  expect(screen.queryByTestId('transcript-origin-0')).toBeNull();
+  expect(screen.getByTestId('transcript-range-0')).toBeVisible();
+  expect(screen.getByTestId('recording-playback-controls')).toBeVisible();
+}
+
 async function setMeasuredHostWidth(width: number): Promise<void> {
   const testID = 'recording-review-layout-frame-host';
   measuredBounds.set(testID, { x: 20, width });
@@ -175,8 +183,7 @@ test('reflows source and review panels without losing edits, selection, or reque
   expect(await screen.findByTestId('transcript-text-0')).toBeVisible();
   expect(screen.queryByTestId('transcript-segment-toggle-0')).toBeNull();
   expect(screen.queryByTestId('transcript-summary')).toBeNull();
-  expect(screen.getByTestId('transcript-play-0')).toBeEnabled();
-  expect(screen.getByTestId('transcript-range-0')).toBeVisible();
+  expectSavedSegmentPresentation();
   await screen.findByTestId('encounter-save');
 
   expect(layoutAxis()).toBe('column');
@@ -192,6 +199,7 @@ test('reflows source and review panels without losing edits, selection, or reque
   );
 
   await setMeasuredHostWidth(1500);
+  expectSavedSegmentPresentation();
   expect(layoutAxis()).toBe('column');
   expect(
     within(screen.getByTestId('recording-review-layout-primary')).getByTestId(

@@ -47,6 +47,10 @@ export const transcriptEvidenceStyles = StyleSheet.create({
     gap: 6,
     padding: 10,
   },
+  // Keep the saved transcript timestamp and its two distinct actions in one compact row.
+  savedSegment: { gap: 4, paddingVertical: 4 },
+  savedSegmentHeader: { marginHorizontal: 6 },
+  savedSegments: { gap: 4 },
   // Keep editing beside the review header so controls do not add a separate row.
   segmentHeadingRow: { flexDirection: 'row', alignItems: 'center', gap: 4 },
   editButton: {

@@ -12,6 +12,7 @@ interface TranscriptEvidenceItemProps {
   collapsed: boolean;
   busy: boolean;
   playing: boolean;
+  savedDetail: boolean;
   onToggleCollapsed?: () => void;
   onPlay: () => Promise<void>;
   onEdit: () => void;
@@ -54,10 +55,46 @@ export default function TranscriptEvidenceItem({
   collapsed,
   busy,
   playing,
+  savedDetail,
   onToggleCollapsed,
   onPlay,
   onEdit,
 }: TranscriptEvidenceItemProps) {
+  const range = (
+    <Text
+      style={styles.range}
+      testID={`transcript-range-${segment.segmentOrdinal}`}
+    >
+      {t('recording.transcript.range', {
+        start: timeLabel(segment.audioRange.startMs),
+        end: timeLabel(segment.audioRange.endMs),
+      })}
+    </Text>
+  );
+  const playButton = (
+    <Pressable
+      accessibilityHint={t('recording.transcript.range', {
+        start: timeLabel(segment.audioRange.startMs),
+        end: timeLabel(segment.audioRange.endMs),
+      })}
+      accessibilityLabel={
+        playing
+          ? t('recording.transcript.playing')
+          : t('recording.transcript.play')
+      }
+      accessibilityRole="button"
+      accessibilityState={{ disabled: playing }}
+      disabled={playing}
+      onPress={onPlay}
+      style={styles.playButton}
+      testID={`transcript-play-${segment.segmentOrdinal}`}
+    >
+      <AppSymbol
+        name={playing ? 'waveform' : 'play.fill'}
+        color={appColors.onPrimary}
+      />
+    </Pressable>
+  );
   const labels = (
     <View style={styles.segmentHeaderLabels}>
       {/* Storage is not clinician verification; saved machine text needs no review chip. */}
@@ -71,20 +108,24 @@ export default function TranscriptEvidenceItem({
           </Text>
         </View>
       ) : null}
-      <Text
-        style={styles.origin}
-        testID={`transcript-origin-${segment.segmentOrdinal}`}
-      >
-        {originLabel(segment)}
-      </Text>
+      {savedDetail ? range : null}
+      {!savedDetail || segment.provenance.origin === 'user_reported' ? (
+        <Text
+          style={styles.origin}
+          testID={`transcript-origin-${segment.segmentOrdinal}`}
+        >
+          {originLabel(segment)}
+        </Text>
+      ) : null}
     </View>
   );
   return (
     <View
-      style={styles.segment}
+      style={[styles.segment, savedDetail && styles.savedSegment]}
       testID={`transcript-segment-${segment.segmentOrdinal}`}
     >
       <View style={styles.segmentHeadingRow}>
+        {savedDetail ? playButton : null}
         {onToggleCollapsed ? (
           <Pressable
             accessibilityLabel={
@@ -106,7 +147,14 @@ export default function TranscriptEvidenceItem({
             />
           </Pressable>
         ) : (
-          <View style={styles.segmentHeader}>{labels}</View>
+          <View
+            style={[
+              styles.segmentHeader,
+              savedDetail && styles.savedSegmentHeader,
+            ]}
+          >
+            {labels}
+          </View>
         )}
         <Pressable
           accessibilityLabel={t('recording.transcript.edit')}
@@ -125,62 +173,35 @@ export default function TranscriptEvidenceItem({
           style={styles.segmentBody}
           testID={`transcript-segment-body-${segment.segmentOrdinal}`}
         >
-          <View style={styles.audioCard}>
-            <View style={styles.audioTopRow}>
-              <Pressable
-                accessibilityHint={t('recording.transcript.range', {
-                  start: timeLabel(segment.audioRange.startMs),
-                  end: timeLabel(segment.audioRange.endMs),
-                })}
-                accessibilityLabel={
-                  playing
-                    ? t('recording.transcript.playing')
-                    : t('recording.transcript.play')
-                }
-                accessibilityRole="button"
-                accessibilityState={{ disabled: playing }}
-                disabled={playing}
-                onPress={onPlay}
-                style={styles.playButton}
-                testID={`transcript-play-${segment.segmentOrdinal}`}
-              >
-                <AppSymbol
-                  name={playing ? 'waveform' : 'play.fill'}
-                  color={appColors.onPrimary}
-                />
-              </Pressable>
-              <View style={styles.audioRangeCopy}>
-                <Text
-                  style={styles.range}
-                  testID={`transcript-range-${segment.segmentOrdinal}`}
-                >
-                  {t('recording.transcript.range', {
-                    start: timeLabel(segment.audioRange.startMs),
-                    end: timeLabel(segment.audioRange.endMs),
-                  })}
-                </Text>
-                <Pressable
-                  accessibilityRole="button"
-                  accessibilityState={{ disabled: playing }}
-                  disabled={playing}
-                  onPress={onPlay}
-                  style={styles.playRangeButton}
-                  testID={`transcript-play-range-${segment.segmentOrdinal}`}
-                >
-                  <AppSymbol
-                    name="play.fill"
-                    size={15}
-                    color={appColors.primaryText}
-                  />
-                  <Text style={styles.playRangeLabel}>
-                    {playing
-                      ? t('recording.transcript.playing')
-                      : t('recording.transcript.play')}
-                  </Text>
-                </Pressable>
+          {!savedDetail ? (
+            <View style={styles.audioCard}>
+              <View style={styles.audioTopRow}>
+                {playButton}
+                <View style={styles.audioRangeCopy}>
+                  {range}
+                  <Pressable
+                    accessibilityRole="button"
+                    accessibilityState={{ disabled: playing }}
+                    disabled={playing}
+                    onPress={onPlay}
+                    style={styles.playRangeButton}
+                    testID={`transcript-play-range-${segment.segmentOrdinal}`}
+                  >
+                    <AppSymbol
+                      name="play.fill"
+                      size={15}
+                      color={appColors.primaryText}
+                    />
+                    <Text style={styles.playRangeLabel}>
+                      {playing
+                        ? t('recording.transcript.playing')
+                        : t('recording.transcript.play')}
+                    </Text>
+                  </Pressable>
+                </View>
               </View>
             </View>
-          </View>
+          ) : null}
           <Text
             style={styles.textBubble}
             testID={`transcript-text-${segment.segmentOrdinal}`}
