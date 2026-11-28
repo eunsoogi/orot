@@ -15,7 +15,7 @@ import { SettingsConsentReadServicesContext } from '../../agent/execution/Settin
 import { liveVoiceModelId as mockLiveVoiceModelId } from '../../agent/execution/liveVoiceSettingsIdentity';
 import { openLiveAudioSettingsFixture } from '../testSupport/liveAudioSettingsFixture';
 import { fixture as protectedFixture } from '../testSupport/liveResponsesProtectedFixture';
-import { LiveConversationVoiceEntry } from '../LiveConversationVoiceEntry';
+import { LiveEntryWithStockVisibility } from '../testSupport/LiveEntryWithStockVisibility';
 import type { ConversationVoiceProps } from '../conversationVoiceDependencies';
 import {
   emitFakeLiveReadyBatch,
@@ -136,7 +136,7 @@ test.each([
           readGrant: audio.repo.read,
         }}
       >
-        <LiveConversationVoiceEntry
+        <LiveEntryWithStockVisibility
           sessionId={sessionId}
           selectionRevision={1}
           busy={false}

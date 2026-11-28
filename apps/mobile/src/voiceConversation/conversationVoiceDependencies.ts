@@ -13,7 +13,9 @@ export interface ConversationVoiceProps {
   readonly sessionId: number;
   readonly busy: boolean;
   readonly photoPending: boolean;
-  readonly isEntryCurrent?: () => boolean;
+  readonly isEntryCurrent?: (() => boolean) & {
+    readonly routeOwnsDraft?: () => boolean;
+  };
   readonly selectionRevision: number;
   readonly liveCommonTools?: import('./liveCommonConversationRun').LiveCommonConversationPort;
   readonly resolveSelectedAi: () => Promise<SelectedAiResolution>;
