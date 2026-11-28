@@ -118,6 +118,7 @@ export function AppRouteContent({
             selectedAiResolverOptions={serviceDependencies?.selectedAi}
             onOpenProviderSettings={openProviderSettings}
             onOpenAccounts={() => actions.push('settings-accounts')}
+            onOpenDisplayMode={() => actions.push('settings-display-mode')}
             onOpenNotifications={() => actions.push('settings-notifications')}
             onOpenMemory={() => actions.push('settings-memory')}
             onOpenPrivacy={() => actions.push('settings-privacy')}
@@ -227,6 +228,7 @@ export function AppRouteContent({
     case 'settings-provider':
     case 'settings-privacy':
     case 'settings-privacy-policy':
+    case 'settings-display-mode':
     case 'settings-notifications':
     case 'settings-memory':
     case 'settings-health-data':

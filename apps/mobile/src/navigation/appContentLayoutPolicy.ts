@@ -50,6 +50,7 @@ export const appContentLayoutOwner: NavigationRouteLayoutPolicy<string> = (
     route.name === 'recording-review' ||
     route.name === 'settings-privacy' ||
     route.name === 'settings-privacy-policy' ||
+    route.name === 'settings-display-mode' ||
     route.name === 'settings-notifications' ||
     route.name === 'settings-memory' ||
     route.name === 'settings-sync-status' ||

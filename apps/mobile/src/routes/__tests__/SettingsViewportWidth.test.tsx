@@ -30,6 +30,7 @@ function settingsHome() {
         onOpenAccounts={jest.fn()}
         onOpenPrivacy={jest.fn()}
         onOpenMemory={jest.fn()}
+        onOpenDisplayMode={() => {}}
         onOpenNotifications={jest.fn()}
         onOpenPrivacyPolicy={jest.fn()}
         onOpenHealthData={jest.fn()}
