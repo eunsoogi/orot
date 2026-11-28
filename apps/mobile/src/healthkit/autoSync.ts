@@ -63,6 +63,20 @@ export async function refreshHealthKitAutoSyncSelection(
   return runHealthKitAutoSync(options);
 }
 
+/** Only an explicit manual refresh replays the already-requested workout type.
+ * Wait for an ordinary refresh first so it cannot swallow manual recovery. */
+export function runPreviouslyRequestedHealthKit(
+  options: RunHealthKitAutoSyncOptions,
+  mode: 'automatic' | 'manual',
+) {
+  return mode === 'manual'
+    ? refreshHealthKitAutoSyncSelection({
+        ...options,
+        replayWorkoutHistoryAfterReview: true,
+      })
+    : runHealthKitAutoSync(options);
+}
+
 async function runRequestedFeatures(
   options: RunHealthKitAutoSyncOptions,
 ): Promise<HealthKitAutoSyncResult> {

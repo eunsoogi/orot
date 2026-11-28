@@ -30,7 +30,7 @@ type AutoSyncSnapshot = Awaited<
 export function SettingsSyncStatusRoute({
   loadSelection = loadLocalHealthKitAutoSyncSelection,
   loadStatus = loadLocalHealthKitAutoSyncStatus,
-  retrySync = syncLocalPreviouslyRequestedHealthKit,
+  retrySync = () => syncLocalPreviouslyRequestedHealthKit('manual'),
   calendarSync,
   backupState,
   onPrepareBackup,

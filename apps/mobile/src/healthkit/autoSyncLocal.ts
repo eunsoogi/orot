@@ -1,5 +1,6 @@
+import { notifyWorkoutObservationSelectionCommitted } from './foregroundWorkoutObservation';
 import type { HealthKitAutoSyncResult } from './autoSync';
-import { runHealthKitAutoSync } from './autoSync';
+import { runPreviouslyRequestedHealthKit } from './autoSync';
 import { configureHealthKitAutoSync } from './autoSyncSettings';
 import type { HealthKitAutoSyncConfigurationResult } from './autoSyncSettings';
 import {
@@ -8,16 +9,23 @@ import {
 } from './autoSyncCheckpoint';
 import type { HealthKitAutoSyncFeature } from './autoSyncCheckpoint';
 
-let pendingLocalRun: Promise<HealthKitAutoSyncResult> | null = null;
+const pendingLocalRuns = new Map<
+  'automatic' | 'manual',
+  Promise<HealthKitAutoSyncResult>
+>();
 
-/** Loads persisted choices at launch without loading native storage in importers or tests. */
-export function syncLocalPreviouslyRequestedHealthKit(): Promise<HealthKitAutoSyncResult> {
-  if (pendingLocalRun) return pendingLocalRun;
+/** An explicit sync can replay already-requested visible workouts, but never
+ * request HealthKit authorization. Launch/foreground stays incremental. */
+export function syncLocalPreviouslyRequestedHealthKit(
+  mode: 'automatic' | 'manual' = 'automatic',
+): Promise<HealthKitAutoSyncResult> {
+  const pending = pendingLocalRuns.get(mode);
+  if (pending) return pending;
 
-  const run = syncLocalHealthKit();
-  pendingLocalRun = run;
+  const run = syncLocalHealthKit(mode);
+  pendingLocalRuns.set(mode, run);
   const clear = () => {
-    if (pendingLocalRun === run) pendingLocalRun = null;
+    if (pendingLocalRuns.get(mode) === run) pendingLocalRuns.delete(mode);
   };
   run.then(clear, clear);
   return run;
@@ -57,6 +65,7 @@ export async function configureLocalHealthKitAutoSync(
       now: () => new Date().toISOString(),
       onSelectionCommitted() {
         committed = true;
+        notifyWorkoutObservationSelectionCommitted();
         onSelectionCommitted?.();
       },
     });
@@ -68,18 +77,21 @@ export async function configureLocalHealthKitAutoSync(
   }
 }
 
-async function syncLocalHealthKit(): Promise<HealthKitAutoSyncResult> {
+async function syncLocalHealthKit(
+  mode: 'automatic' | 'manual',
+): Promise<HealthKitAutoSyncResult> {
   try {
     const [{ healthKit }, { openLocalStorage }] = await Promise.all([
       import('.'),
       import('../storage/secureDatabase'),
     ]);
     const repository = await openLocalStorage();
-    return runHealthKitAutoSync({
+    const options = {
       repository,
       healthKit,
       now: () => new Date().toISOString(),
-    });
+    };
+    return runPreviouslyRequestedHealthKit(options, mode);
   } catch {
     return { status: 'retryable', attemptedFeatures: [] };
   }

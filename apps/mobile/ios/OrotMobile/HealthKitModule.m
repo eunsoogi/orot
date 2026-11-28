@@ -1,7 +1,9 @@
 #import <React/RCTBridgeModule.h>
+#import <React/RCTEventEmitter.h>
 #import <TargetConditionals.h>
 
-@interface RCT_EXTERN_MODULE (HealthKitModule, NSObject)
+@interface RCT_EXTERN_MODULE (HealthKitModule, RCTEventEmitter)
+RCT_EXTERN_METHOD(setWorkoutChangeObservation : (BOOL)enabled)
 RCT_EXTERN_METHOD(getAvailability : (RCTPromiseResolveBlock)
                       resolve rejecter : (RCTPromiseRejectBlock)reject)
 RCT_EXTERN_METHOD(requestReadAuthorization : (NSString *)feature resolver : (RCTPromiseResolveBlock)
