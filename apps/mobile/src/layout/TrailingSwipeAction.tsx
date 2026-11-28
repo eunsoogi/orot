@@ -43,6 +43,15 @@ export function TrailingSwipeAction({
   readonly revealDuringDrag?: boolean;
 }) {
   const [offset] = useState(() => new Animated.Value(0));
+  const uncovered = useMemo(
+    () =>
+      offset.interpolate({
+        inputRange: [-revealWidth, 0],
+        outputRange: [revealWidth, 0],
+        extrapolate: 'clamp',
+      }),
+    [offset, revealWidth],
+  );
   const [dragging, setDragging] = useState(false);
   const expanded = revealed && !disabled;
   const canUseActions = expanded && !dragging;
@@ -96,30 +105,43 @@ export function TrailingSwipeAction({
       settled,
     ],
   );
+  const right = I18nManager.isRTL ? styles.rightInRtl : styles.rightInLtr;
+  const interaction = {
+    pointerEvents: canUseActions ? ('auto' as const) : ('none' as const),
+    accessibilityElementsHidden: !canUseActions,
+    importantForAccessibility: canUseActions
+      ? ('auto' as const)
+      : ('no-hide-descendants' as const),
+  };
   return (
     <View style={styles.clip} testID={testID} {...responder.panHandlers}>
-      {revealDuringDrag || expanded ? (
+      {revealDuringDrag ? (
+        // Width and row translation share one value. A transparent foreground
+        // cannot expose any part of the action lane that is still covered.
+        <Animated.View
+          {...interaction}
+          style={[styles.action, right, styles.clip, { width: uncovered }]}
+          testID={`${testID}-action-clip`}
+        >
+          <View
+            style={[styles.action, right, { width: revealWidth }]}
+            testID={`${testID}-action-lane`}
+          >
+            {action}
+          </View>
+        </Animated.View>
+      ) : expanded ? (
         <View
-          style={[
-            styles.action,
-            { width: revealWidth },
-            // Physical left gestures uncover the physical right edge in RTL too.
-            revealDuringDrag
-              ? I18nManager.isRTL
-                ? styles.rightInRtl
-                : styles.rightInLtr
-              : styles.legacyRight,
-          ]}
-          pointerEvents={canUseActions ? 'auto' : 'none'}
-          accessibilityElementsHidden={!canUseActions}
-          importantForAccessibility={
-            canUseActions ? 'auto' : 'no-hide-descendants'
-          }
+          {...interaction}
+          style={[styles.action, styles.legacyRight, { width: revealWidth }]}
         >
           {action}
         </View>
       ) : null}
-      <Animated.View style={{ transform: [{ translateX: offset }] }}>
+      <Animated.View
+        style={{ transform: [{ translateX: offset }] }}
+        testID={`${testID}-content`}
+      >
         {children}
       </Animated.View>
     </View>
