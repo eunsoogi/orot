@@ -1,3 +1,4 @@
+import { settingsPageInsets } from '../layout/settingsPagePresentation';
 import { useEffect, useState } from 'react';
 import { ScrollView, StyleSheet, View } from 'react-native';
 import type { HealthKitAutoSyncFeature } from '../healthkit/autoSyncCheckpoint';
@@ -41,10 +42,10 @@ export function SettingsSyncStatusRoute({
   readonly backupState?: BackupPreparationDisplayState;
   readonly onPrepareBackup?: () => Promise<void>;
 }) {
-  const inset = useNavigationContentInset();
+  const inset = settingsPageInsets(useNavigationContentInset());
   // This page owns the scroll viewport; the panels retain their readable inset.
   const edge = useNavigationEdgeVerticalScroll({
-    trailingPadding: inset.paddingRight ?? styles.container.paddingHorizontal,
+    trailingPadding: inset.paddingRight,
   });
   const [selected, setSelected] = useState<readonly HealthKitAutoSyncFeature[]>(
     [],
@@ -178,8 +179,5 @@ const styles = StyleSheet.create({
   pageSections: { gap: 16 },
   container: {
     flexGrow: 1,
-    paddingHorizontal: 20,
-    paddingTop: 16,
-    paddingBottom: 32,
   },
 });

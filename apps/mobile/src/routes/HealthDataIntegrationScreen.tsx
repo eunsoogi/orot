@@ -1,3 +1,7 @@
+import {
+  settingsPageInsets,
+  settingsPageStyles,
+} from '../layout/settingsPagePresentation';
 import { useState } from 'react';
 import { ScrollView, StyleSheet, View } from 'react-native';
 import type { HealthKitAutoSyncFeature } from '../healthkit/autoSyncCheckpoint';
@@ -33,11 +37,11 @@ export function HealthDataIntegrationScreen({
   readonly saving: boolean;
   readonly selected: ReadonlySet<HealthKitAutoSyncFeature>;
 }) {
-  const inset = useNavigationContentInset();
+  const inset = settingsPageInsets(useNavigationContentInset());
   const [ownerWidth, setOwnerWidth] = useState(0);
   const edge = useNavigationEdgeVerticalScroll({
     ownerWidth,
-    trailingPadding: inset.paddingRight ?? styles.panel.paddingHorizontal,
+    trailingPadding: inset.paddingRight,
   });
   const hasDock = useHealthDataRouteActions({
     loadFailed,
@@ -57,7 +61,7 @@ export function HealthDataIntegrationScreen({
       <View style={styles.heading}>
         <Text
           accessibilityRole="header"
-          style={styles.title}
+          style={settingsPageStyles.title}
           testID="health-data-title"
         >
           {t('settings.healthData.title')}
@@ -153,12 +157,8 @@ const styles = StyleSheet.create({
     flexGrow: 1,
     backgroundColor: appColors.background,
     gap: 16,
-    paddingHorizontal: 24,
-    paddingTop: 24,
-    paddingBottom: 32,
   },
   heading: { gap: 8 },
-  title: { color: appColors.text, fontSize: 30, fontWeight: '700' },
   body: { color: appColors.secondary, fontSize: 15, lineHeight: 22 },
   note: { color: appColors.secondary, fontSize: 13, lineHeight: 19 },
   status: {

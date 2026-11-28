@@ -1,8 +1,8 @@
+import { settingsPageStyles } from '../layout/settingsPagePresentation';
 import { StyleSheet, View } from 'react-native';
 import { t } from '../i18n';
 import { AdaptiveColumns } from '../layout/AdaptiveColumns';
 import { AppText as Text } from '../layout/AppText';
-import { appColors } from '../layout/appColors';
 import { useNavigationLeaveStateRegistration } from '../navigation';
 import { NAVIGATION_CONTENT_GAP } from '../navigation/navigationLayout';
 import { NavigationRouteScrollView } from '../navigation/NavigationRouteScrollView';
@@ -29,7 +29,7 @@ export function SettingsNotificationsRoute() {
             <View style={styles.content} testID="settings-notifications">
               <Text
                 accessibilityRole="header"
-                style={styles.title}
+                style={settingsPageStyles.title}
                 testID="settings-notifications-title"
               >
                 {t('settings.notifications')}
@@ -53,9 +53,7 @@ const styles = StyleSheet.create({
     width: '100%',
     gap: 20,
     minWidth: 0,
-    paddingHorizontal: 20,
-    paddingTop: 12,
+    ...settingsPageStyles.inset,
     paddingBottom: 28 - NAVIGATION_CONTENT_GAP,
   },
-  title: { color: appColors.text, fontSize: 30, fontWeight: '700' },
 });

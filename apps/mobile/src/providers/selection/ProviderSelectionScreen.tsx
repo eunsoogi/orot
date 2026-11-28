@@ -1,3 +1,4 @@
+import { settingsPageStyles } from '../../layout/settingsPagePresentation';
 import { useSavedChatGPTTitle } from './useSavedChatGPTTitle';
 import { savedModelPresentation } from './savedModelPresentation';
 import { useSavedSearchChoices } from './useSavedSearchChoices';
@@ -39,8 +40,10 @@ export default function ProviderSelectionScreen({
   onSelectionCommitted,
   onNavigationStateChange,
 }: ProviderSelectionScreenProps) {
+  const isSettings = presentation !== 'feature';
   const { edge, contentStyle, onLayout } = useProviderSelectionScrollLane(
-    Boolean(navigationRouteKey) && presentation !== 'feature',
+    Boolean(navigationRouteKey) && isSettings,
+    isSettings,
   );
   const search = useSavedSearchChoices(selectionStore);
   const [savedSelection, setSavedSelection] =
@@ -154,7 +157,10 @@ export default function ProviderSelectionScreen({
             title={navigationText.back.label}
           />
         ) : null}
-        <Text accessibilityRole="header" style={styles.title}>
+        <Text
+          accessibilityRole="header"
+          style={isSettings ? settingsPageStyles.title : styles.title}
+        >
           {presentation === 'feature'
             ? t('modelSettings.languageTitle')
             : (screenTitle ?? providerSelectionText.title)}

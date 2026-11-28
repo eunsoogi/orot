@@ -1,3 +1,7 @@
+import {
+  settingsPageInsets,
+  settingsPageStyles,
+} from '../layout/settingsPagePresentation';
 import { useCallback, useState } from 'react';
 import { Linking, Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import { AppText as Text } from '../layout/AppText';
@@ -22,11 +26,10 @@ export function SettingsPrivacyRoute({
   readonly policy?: boolean;
   readonly calendarSync?: CalendarAutoSyncActions;
 } = {}) {
-  const navigationInset = useNavigationContentInset();
+  const navigationInset = settingsPageInsets(useNavigationContentInset());
   // This page owns the scroll viewport; the panels retain their readable inset.
   const edge = useNavigationEdgeVerticalScroll({
-    trailingPadding:
-      navigationInset.paddingRight ?? styles.container.paddingHorizontal,
+    trailingPadding: navigationInset.paddingRight,
   });
   const [settingsError, setSettingsError] = useState(false);
   const [isClearingConsent, setIsClearingConsent] = useState(false);
@@ -64,7 +67,7 @@ export function SettingsPrivacyRoute({
           <View style={styles.pageSections}>
             <Text
               accessibilityRole="header"
-              style={styles.title}
+              style={settingsPageStyles.title}
               testID={
                 policy
                   ? 'settings-privacy-policy-title'
@@ -177,11 +180,7 @@ const styles = StyleSheet.create({
   container: {
     flexGrow: 1,
     gap: 20,
-    paddingHorizontal: 20,
-    paddingTop: 16,
-    paddingBottom: 32,
   },
-  title: { color: appColors.text, fontSize: 30, fontWeight: '700' },
   pageSections: { gap: 20 },
   section: {
     backgroundColor: settingsListColors.row,

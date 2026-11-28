@@ -1,3 +1,4 @@
+import { settingsPageStyles } from '../layout/settingsPagePresentation';
 import { NativeModules, StyleSheet, View } from 'react-native';
 import { AdaptiveColumns } from '../layout/AdaptiveColumns';
 import { AppText as Text } from '../layout/AppText';
@@ -52,7 +53,7 @@ export function SettingsRoute({
           <View style={styles.panel} testID="settings-panel">
             <Text
               accessibilityRole="header"
-              style={styles.title}
+              style={settingsPageStyles.title}
               testID="settings-title"
             >
               {t('settings.title')}
@@ -139,12 +140,10 @@ const styles = StyleSheet.create({
     // The AdaptiveColumns lane already excludes space reserved by navigation.
     width: '100%',
     gap: 20,
-    paddingHorizontal: 20,
-    paddingTop: 24,
+    ...settingsPageStyles.inset,
     // The outer route scroller already supplies the navigation gap.
     paddingBottom: 28 - NAVIGATION_CONTENT_GAP,
   },
-  title: { color: appColors.text, fontSize: 34, fontWeight: '700' },
   list: {
     // These groups use the same adaptive card surface as the Records tab.
     backgroundColor: appColors.surface,
