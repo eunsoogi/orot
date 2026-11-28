@@ -11,13 +11,13 @@ import {
   calendarMonthGrid,
   formatCalendarDate,
   shiftCalendarMonth,
+  type CalendarQueryWindow,
 } from './calendarMonth';
-import type { CalendarQueryWindow } from './calendarMonth';
 import {
   eventFromAppointment,
   projectCalendarMonthEvents,
+  type CalendarMonthDisplayEvent,
 } from './calendarMonthEvents';
-import type { CalendarMonthDisplayEvent } from './calendarMonthEvents';
 import {
   CalendarMonthHeader,
   CalendarWeekdayHeader,
@@ -135,7 +135,6 @@ export function CalendarMonthView({
       item => item.startDay <= dateKey && dateKey <= item.endDay,
     );
   }
-
   const selectedDateOutsideQuery =
     candidatesLoaded &&
     queryWindow !== null &&
@@ -234,6 +233,7 @@ export function CalendarMonthView({
                 key={item.rowKey}
                 onSelectEvent={onSelectEvent}
                 selected={selected}
+                draftActive={selectedEvent !== null}
                 selectionDisabled={selectionDisabled}
               />
             );

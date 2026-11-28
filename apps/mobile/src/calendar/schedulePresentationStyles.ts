@@ -23,11 +23,5 @@ export const schedulePresentationStyles = StyleSheet.create({
   flatEventRowLargeText: { alignItems: 'stretch', flexDirection: 'column' },
   flatEventCopy: { flex: 1, gap: 3, minWidth: 0 },
   flatEventTime: { color: appColors.secondary, fontSize: 14 },
-  flatSelectEventButton: {
-    alignSelf: 'center',
-    backgroundColor: 'transparent',
-    borderColor: appColors.primaryText,
-    borderWidth: StyleSheet.hairlineWidth,
-  },
   flatNextVisit: { gap: 4, paddingVertical: 10 },
 });

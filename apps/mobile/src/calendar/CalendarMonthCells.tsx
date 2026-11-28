@@ -1,4 +1,5 @@
 import { Pressable, View, useWindowDimensions } from 'react-native';
+import { ScheduleAgendaSelectAction } from './ScheduleAgendaSelectAction';
 import { AppButton as Button } from '../layout/AppButton';
 import { AppText as Text } from '../layout/AppText';
 import { t } from '../i18n';
@@ -145,6 +146,7 @@ export function CalendarDayCell({
 }
 
 interface CalendarMonthEventRowProps {
+  draftActive?: boolean;
   agendaDate?: string;
   item: CalendarMonthDisplayEvent;
   selected: boolean;
@@ -153,6 +155,7 @@ interface CalendarMonthEventRowProps {
 }
 
 export function CalendarMonthEventRow({
+  draftActive = false,
   agendaDate,
   item,
   selected,
@@ -212,22 +215,34 @@ export function CalendarMonthEventRow({
           {visibleTime}
         </Text>
       </View>
-      {item.canSelect ? (
+      {flat && (item.canSelect || item.isNextVisit) ? (
+        <ScheduleAgendaSelectAction
+          title={title}
+          time={time}
+          draftSelected={selected}
+          draftActive={draftActive}
+          savedVisit={item.isNextVisit}
+          disabled={selectionDisabled}
+          onPress={item.canSelect ? () => onSelectEvent(item.event) : undefined}
+          testID={
+            item.canSelect
+              ? `calendar-candidate-${item.event.calendarEventIdentifier}`
+              : 'schedule-saved-visit-selection'
+          }
+        />
+      ) : item.canSelect ? (
         <Button
           accessibilityLabel={`${title}, ${time}, ${t(selected ? 'calendar.selectedEvent' : 'calendar.selectEvent')}`}
           accessibilityState={{ selected }}
           disabled={selectionDisabled}
           onPress={() => onSelectEvent(item.event)}
           size="compact"
-          style={[
-            styles.calendarSelectEventButton,
-            flat && scheduleStyles.flatSelectEventButton,
-          ]}
+          style={styles.calendarSelectEventButton}
           testID={`calendar-candidate-${item.event.calendarEventIdentifier}`}
           title={t(
             selected ? 'calendar.selectedEvent' : 'calendar.selectEvent',
           )}
-          variant={flat ? 'secondary' : 'neutral'}
+          variant="neutral"
         />
       ) : null}
     </View>

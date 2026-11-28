@@ -1,13 +1,27 @@
 import {
+  act,
   fireEvent,
   render,
   screen,
   waitFor,
 } from '@testing-library/react-native';
+import { AppState } from 'react-native';
+import { loadRecentMaterial } from '../../generatedReports/recentMaterialReader';
+import { conversationExecutionNative } from '../../ragConversation/conversationExecutionNative';
+import {
+  holdRecentTestPage,
+  recentTestExecution,
+} from '../testSupport/recentRecordsRouteTestSupport';
 import type { RecordsRouteProps } from '../RecordsRoute';
 import { RecordsRoute } from '../RecordsRoute';
 import type { MedicalDocumentImportService } from '../../medicalDocuments/medicalDocumentImportService';
 
+jest.mock('../../generatedReports/recentMaterialReader', () => ({
+  loadRecentMaterial: jest.fn(),
+}));
+jest.mock('../../ragConversation/conversationExecutionNative', () => ({
+  conversationExecutionNative: jest.fn(),
+}));
 jest.mock('../../layout/AppSymbol', () => ({ AppSymbol: () => null }));
 jest.mock('../../navigation', () => ({
   useNavigationLeaveStateRegistration: jest.fn(),
@@ -67,4 +81,26 @@ test('shows and retries a failed imported-document list read', async () => {
   });
   expect(listDocuments).toHaveBeenCalledTimes(2);
   expect(onRetryRecordings).not.toHaveBeenCalled();
+});
+
+test('first paint waits for an unfocused Records cursor and only reports empty after settlement', async () => {
+  AppState.currentState = 'active';
+  jest.mocked(conversationExecutionNative).mockReturnValue(recentTestExecution);
+  const read = jest.mocked(loadRecentMaterial);
+  const pending = holdRecentTestPage<[]>();
+  read.mockClear().mockReturnValue(pending.promise);
+  const props = routeProps({ openReport: jest.fn() });
+  // Native navigation may render the scene before useIsFocused becomes true.
+  const view = await render(<RecordsRoute {...props} active={false} />);
+  expect(read).not.toHaveBeenCalled();
+  expect(screen.queryByTestId('records-recent-sources-empty')).toBeNull();
+  expect(
+    screen.getByRole('progressbar', { name: '최근 기록을 불러오는 중…' }),
+  ).toBeTruthy();
+  await view.rerender(<RecordsRoute {...props} active />);
+  await waitFor(() => expect(read).toHaveBeenCalledTimes(1));
+  expect(screen.queryByTestId('records-recent-sources-empty')).toBeNull();
+  await act(async () => pending.resolve([]));
+  expect(screen.getByTestId('records-recent-sources-empty')).toBeTruthy();
+  expect(screen.queryByTestId('records-recent-sources-loading')).toBeNull();
 });

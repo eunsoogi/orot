@@ -94,6 +94,7 @@ export function RecordsRecentSources(props: RecordsRecentSourcesProps) {
   const status = (
     <>
       {isLoading &&
+        (hasRecords || loadErrors.length === 0) &&
         (hasRecords ? (
           <RecordsRecentSourceState state="loading" onRetry={retrySources} />
         ) : (
