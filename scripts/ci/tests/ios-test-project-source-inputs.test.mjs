@@ -41,13 +41,39 @@ test('Xcode project semantic changes and ordered-list changes remain blocking', 
   );
 });
 
+test('a React Native build path mismatch identifies only the fixed key and still refuses the project', () => {
+  const project = (value) =>
+    Buffer.from(
+      JSON.stringify({
+        objects: { PRIVATE_OBJECT: { buildSettings: { REACT_NATIVE_PATH: value } } },
+      }),
+    );
+  assert.throws(
+    () =>
+      restoreEquivalentProjectSerialization(
+        project('PRIVATE_BEFORE_PATH'),
+        project('PRIVATE_AFTER_PATH'),
+        parseJson,
+      ),
+    {
+      message:
+        'Generated Xcode project metadata changed its meaning ' +
+        '(root=object->object; fields=objects.*.buildSettings.REACT_NATIVE_PATH:changed)',
+    },
+  );
+});
+
 test('semantic refusal reports only fixed schema fields and shapes, never project data', () => {
   const make = (deployment, secret, order) =>
     Buffer.from(
       JSON.stringify({
         objects: {
           ABCDEF1234567890ABCDEF12: {
-            buildSettings: { IPHONEOS_DEPLOYMENT_TARGET: deployment, SECRET_KEY: secret },
+            buildSettings: {
+              IPHONEOS_DEPLOYMENT_TARGET: deployment,
+              REACT_NATIVE_PATH: secret,
+              SECRET_KEY: secret,
+            },
             buildPhases: order,
             shellScript: secret,
           },
@@ -71,6 +97,7 @@ test('semantic refusal reports only fixed schema fields and shapes, never projec
         'Generated Xcode project metadata changed its meaning ' +
           '(root=object->object; fields=objects.*.buildPhases:changed,' +
           'objects.*.buildSettings.IPHONEOS_DEPLOYMENT_TARGET:changed,' +
+          'objects.*.buildSettings.REACT_NATIVE_PATH:changed,' +
           'objects.*.buildSettings.<other>:changed,objects.*.shellScript:changed,<other>:changed)',
       );
       for (const privateText of [
