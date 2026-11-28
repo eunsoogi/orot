@@ -18,10 +18,13 @@ export function OverviewWidgetAmbient() {
   const strength = dark ? 0.26 : 0.17;
   const { right } = useNavigationRightScrollEdge();
   const contentInset = useNavigationContentInset();
-  // The shared scroller already paints under the physical right rail. Extend only this
-  // decorative grid layer into that viewport, without changing card or control geometry.
+  // The page gutter reaches the rail boundary. Borrow just a shallow strip
+  // beyond it for the feather, never the rail's full visual scroll extent.
+  const edgeBleed = 12;
   const bleed = right
-    ? right + (contentInset.paddingRight ?? 0) + pageHeadingHorizontalInset
+    ? Math.min(right, edgeBleed) +
+      (contentInset.paddingRight ?? 0) +
+      pageHeadingHorizontalInset
     : 18;
   const horizontalBounds = I18nManager.isRTL
     ? { start: -bleed, end: -18 }
@@ -66,6 +69,30 @@ export function OverviewWidgetAmbient() {
               width="400"
               height="700"
               fill="url(#overview-widget-ambient-vertical)"
+            />
+          </Mask>
+          <LinearGradient
+            id="overview-widget-ambient-trailing"
+            x1="0%"
+            y1="0%"
+            x2="100%"
+            y2="0%"
+          >
+            <Stop offset="0.88" stopColor="white" stopOpacity={1} />
+            <Stop offset="1" stopColor="white" stopOpacity={0} />
+          </LinearGradient>
+          <Mask
+            id="overview-widget-ambient-trailing-mask"
+            x="0"
+            y="0"
+            width="400"
+            height="700"
+            maskUnits="userSpaceOnUse"
+          >
+            <Rect
+              width="400"
+              height="700"
+              fill="url(#overview-widget-ambient-trailing)"
             />
           </Mask>
           <RadialGradient
@@ -116,16 +143,18 @@ export function OverviewWidgetAmbient() {
           </RadialGradient>
         </Defs>
         <G mask="url(#overview-widget-ambient-mask)">
-          <Rect
-            width="400"
-            height="700"
-            fill="url(#overview-widget-ambient-blue)"
-          />
-          <Rect
-            width="400"
-            height="700"
-            fill="url(#overview-widget-ambient-plum)"
-          />
+          <G mask="url(#overview-widget-ambient-trailing-mask)">
+            <Rect
+              width="400"
+              height="700"
+              fill="url(#overview-widget-ambient-blue)"
+            />
+            <Rect
+              width="400"
+              height="700"
+              fill="url(#overview-widget-ambient-plum)"
+            />
+          </G>
         </G>
       </Svg>
     </View>
