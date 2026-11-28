@@ -1,3 +1,4 @@
+import { conversationPreviousDisplayOption } from './conversationPreviousDisplayOption';
 import { conversationHistoryPageOption } from './conversationHistoryPageOption';
 import { conversationSavedHistoryDisplayOption } from './conversationSavedHistoryDisplayOption';
 import { restoreConversationSessionTurns } from './restoreConversationSessionTurns';
@@ -26,6 +27,7 @@ export function createConversationSessionOptions(
     useProtectedPromptHistory: true,
     writeDirectPhotoReply: async (...args) =>
       (await openStorage()).writeDirectPhotoReply(...args),
+    readPreviousDisplay: conversationPreviousDisplayOption(openStorage),
     readSavedHistoryDisplay: conversationSavedHistoryDisplayOption(openStorage),
     readPlainContextPage: async (...args) =>
       (await openStorage()).readPlainContextPage(...args),

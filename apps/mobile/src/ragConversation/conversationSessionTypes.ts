@@ -23,6 +23,7 @@ export interface ConversationSessionOptions {
   readonly writeDirectPhotoReply?: ReturnType<
     typeof import('../storage/conversationDirectPhotoReplies').createDirectPhotoReplyWriter
   >;
+  readonly readPreviousDisplay?: import('./usePreviousConversationDisplay').ReadPreviousConversationDisplay;
   readonly readSavedHistoryDisplay?: import('./conversationSavedHistoryDisplay').ReadSavedHistoryDisplay;
   readonly readPlainContextPage?: ReturnType<
     typeof import('../storage/plainConversationContext').createPlainConversationContextReader

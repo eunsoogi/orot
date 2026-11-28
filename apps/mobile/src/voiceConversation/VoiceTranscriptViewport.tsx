@@ -27,8 +27,10 @@ export interface VoiceTranscriptLine {
 /** Five scaled lines remain visible; scrolling back suspends following new speech. No transcript is persisted here. */
 export function VoiceTranscriptViewport({
   lines,
+  fitFixedFrame = false,
 }: {
   readonly lines: readonly VoiceTranscriptLine[];
+  readonly fitFixedFrame?: boolean;
 }) {
   const scroll = useRef<ComponentRef<typeof ScrollView>>(null);
   const following = useRef(true);
@@ -57,7 +59,11 @@ export function VoiceTranscriptViewport({
   return (
     <View
       testID="voice-transcript-viewport"
-      style={[styles.viewport, { height: 5 * lineHeight + 32 }]}
+      style={[
+        styles.viewport,
+        fitFixedFrame && styles.fixedFrame,
+        { height: 5 * lineHeight + 32 },
+      ]}
     >
       <ScrollView
         ref={scroll}
@@ -192,6 +198,8 @@ const styles = StyleSheet.create({
     alignSelf: 'center',
     overflow: 'hidden',
   },
+  // The viewport yields to the hero and reachable call controls in a short fixed shell.
+  fixedFrame: { flexShrink: 1, minHeight: 0 },
   content: { paddingVertical: 16 },
   line: { fontSize: 18, lineHeight: 24, textAlign: 'center' },
   speaker: { fontWeight: '700' },

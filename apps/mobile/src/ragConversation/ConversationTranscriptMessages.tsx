@@ -1,3 +1,4 @@
+import { ConversationPreviousArchiveMessage } from './ConversationPreviousArchiveMessage';
 import { ConversationChoiceBoundary } from './ConversationQuickChoices';
 import { ConversationVoiceEndMarker } from './ConversationVoiceEndMarker';
 import { conversationVoiceEndPlacement } from './conversationVoiceEndPlacement';
@@ -116,7 +117,9 @@ export function ConversationTranscriptMessages({
     const after = message.streaming
       ? ownInstructions?.slice(afterBoundary)
       : undefined;
-    const bubble = (
+    const bubble = message.previousDisplayOnly ? (
+      <ConversationPreviousArchiveMessage message={message} />
+    ) : (
       <ConversationMessage
         message={message}
         copyScope={
@@ -142,13 +145,17 @@ export function ConversationTranscriptMessages({
     rows.push(
       <ReplyMessageContainer
         key={`${message.id}:${replyFocus && message.retainedTurnId === replyFocus.messageId ? `focus-${replyFocus.generation}` : 'ordinary'}`}
-        readingId={onReadingLayout ? message.id : undefined}
+        readingId={
+          onReadingLayout && !message.previousDisplayOnly
+            ? message.id
+            : undefined
+        }
         focused={Boolean(
           replyFocus && message.retainedTurnId === replyFocus.messageId,
         )}
         onLayout={onLayout}
         onFrame={
-          onReadingLayout
+          onReadingLayout && !message.previousDisplayOnly
             ? (y, height) => onReadingLayout(message.id, y, height)
             : undefined
         }

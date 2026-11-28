@@ -20,6 +20,7 @@ export interface ConversationHistoryProps {
   readonly restoring?: boolean;
   readonly restoringHistory?: boolean;
   readonly messages: readonly DisplayMessage[];
+  readonly previousDisplayOwner?: import('./usePreviousConversationDisplay').PreviousDisplayOwner;
   readonly savedHistoryDisplay?: ConversationSession['savedHistoryDisplay'];
   readonly voiceEndCards?: readonly VoiceMarkerPresentation[];
   readonly pendingMessage: ConversationSession['pendingMessage'];

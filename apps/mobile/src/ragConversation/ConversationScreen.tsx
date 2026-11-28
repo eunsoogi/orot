@@ -158,7 +158,7 @@ export function ConversationScreen({
           }
         >
           <ConversationHistory
-            replyFocus={focus}
+            previousDisplayOwner={{ store, route: isEntryCurrent }}
             coldResumeBusy={busy || session.restoring || session.retryingSave}
             onContinueCold={requestId =>
               store.resumeCold(id, requestId).catch(() => {})
@@ -182,7 +182,7 @@ export function ConversationScreen({
             onRetrySave={() => {
               store.retrySave(id);
             }}
-            {...sourceActions}
+            {...{ ...sourceActions, replyFocus: focus }}
             resolveColdToolSource={resolveColdToolSource}
             renderVisitQuestions={
               renderVisitQuestions

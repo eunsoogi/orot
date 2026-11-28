@@ -131,7 +131,10 @@ export function VoiceConversationScreen({
             </AppText>
           )}
         </Focus>
-        <VoiceTranscriptViewport lines={transcript ?? []} />
+        <VoiceTranscriptViewport
+          lines={transcript ?? []}
+          fitFixedFrame={fixedLiveLayout}
+        />
       </View>
       {(!fixedLiveLayout || manualFinish || manualInterrupt) && (
         <View style={styles.actions}>
