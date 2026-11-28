@@ -184,16 +184,16 @@ async function hydrate(
   )
     return null;
   const latest = recheck ? await reads.read(input.id) : saved;
-  if (
-    !latest ||
-    fingerprint(latest) !== fingerprint(saved) ||
-    input.signal.aborted
-  )
+  if (!latest) return null;
+  // Snapshot hydration already owns these exact bytes. Canonicalize once for
+  // both bindings and output; a live reread still gets its independent digest.
+  const revision = fingerprint(saved);
+  if ((recheck && fingerprint(latest) !== revision) || input.signal.aborted)
     return null;
   const bound = bindConversationSources({
     citations: sourceAliases as NonNullable<(typeof sourceAliases)[number]>[],
     parentId: saved.id,
-    parentRevision: fingerprint(saved),
+    parentRevision: revision,
     captureOwner: input.boundCaptureOwner,
     storage: input.storage,
     registry: input.registry,
@@ -236,7 +236,7 @@ async function hydrate(
           },
         }
       : {}),
-    revision: fingerprint(saved),
+    revision,
     sources: bound,
     citations: citations as NonNullable<(typeof citations)[number]>[],
     sourceStatus:

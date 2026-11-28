@@ -35,12 +35,10 @@ export async function assertConversationSummaryParent(
       );
     return;
   }
-  const deleted = await tx.execute(
-    'SELECT id FROM conversation_invalid_summaries WHERE id = ? LIMIT 1',
-    [source.id],
-  );
+  // Fetch the body and reprove its exact invalidation fence in one SQLite step.
+  // Later policy and source checks still run on every edge.
   const rows = await tx.execute(
-    'SELECT result_json FROM symptom_summary_runs WHERE id = ?',
+    'SELECT r.result_json FROM symptom_summary_runs r WHERE r.id = ? AND NOT EXISTS (SELECT 1 FROM conversation_invalid_summaries invalid WHERE invalid.id = r.id)',
     [source.id],
   );
   const raw = rows.rows[0]?.result_json;
@@ -54,7 +52,6 @@ export async function assertConversationSummaryParent(
       ? 'symptom_summary'
       : 'disease_possibilities';
   if (
-    deleted.rows.length ||
     !summary ||
     summary.inputLineage !== 'complete' ||
     (measureCost

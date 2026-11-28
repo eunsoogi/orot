@@ -16,7 +16,7 @@ test('storage fences repeat the same six exact period calculations across transa
           batch.aggregates.push(JSON.stringify(args[1]));
         if (
           args[0] ===
-          'SELECT result_json FROM symptom_summary_runs WHERE id = ?'
+          'SELECT r.result_json FROM symptom_summary_runs r WHERE r.id = ? AND NOT EXISTS (SELECT 1 FROM conversation_invalid_summaries invalid WHERE invalid.id = r.id)'
         )
           batch.summaryReads++;
         return execute(...args);
