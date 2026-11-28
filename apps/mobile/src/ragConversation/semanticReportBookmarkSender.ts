@@ -30,6 +30,7 @@ export type BoundPossibilityBookmark = Readonly<{
   lease: BoundReportBookmark['lease'];
   current: () => boolean;
   confirmProtected: () => Promise<boolean>;
+  requiresOriginalProof?: true;
 }>;
 
 function latestReportCandidate(store: ConversationSessions, sessionId: number) {
@@ -127,7 +128,16 @@ export function semanticReportBookmarkSender(
     live.id &&
     live.committedPossibilityCreatedAt
       ? { artifactId: live.id, createdAt: live.committedPossibilityCreatedAt }
-      : undefined;
+      : live &&
+          'kind' in live &&
+          live.kind === 'answer' &&
+          live.savedPossibilityNarrative
+        ? {
+            artifactId: live.id,
+            createdAt: live.createdAt,
+            requiresOriginalProof: true as const,
+          }
+        : undefined;
   const lease = (report || possibility) && store.savedReportLease(sessionId);
   if (!lease) return { send, close: () => {} };
   const owner = captureReportBookmarkOwner({
@@ -144,17 +154,31 @@ export function semanticReportBookmarkSender(
   let stopProtection: (() => void) | undefined;
   const bindPossibility = (signal: AbortSignal) => {
     if (!possibility) return;
-    const stillVisible = () =>
-      owner.current() &&
-      !!store
+    const stillVisible = () => {
+      if (!owner.current()) return false;
+      const session = store
         .getSnapshot()
-        .sessions.find(row => row.id === sessionId)
-        ?.messages.some(
-          message =>
-            message.retainedTurnId === possibility.artifactId &&
-            message.committedPossibilityOriginal &&
-            message.committedPossibilityCreatedAt === possibility.createdAt,
+        .sessions.find(row => row.id === sessionId);
+      if (!session) return false;
+      // Archive metadata is a locator only, not proof that the original is
+      // typed, current, or even openable. The service re-proves it before use.
+      if ('requiresOriginalProof' in possibility)
+        return (
+          visibleSavedHistoryDisplay(session)?.some(
+            ({ row }) =>
+              row.kind === 'answer' &&
+              row.savedPossibilityNarrative &&
+              row.id === possibility.artifactId &&
+              row.createdAt === possibility.createdAt,
+          ) === true
         );
+      return session.messages.some(
+        message =>
+          message.retainedTurnId === possibility.artifactId &&
+          message.committedPossibilityOriginal &&
+          message.committedPossibilityCreatedAt === possibility.createdAt,
+      );
+    };
     if (!stillVisible()) return;
     const native = watchSavedReportNativeProtection(signal, owner.close);
     if (!native) return;

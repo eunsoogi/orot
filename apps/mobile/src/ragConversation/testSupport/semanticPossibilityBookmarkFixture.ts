@@ -1,3 +1,10 @@
+import {
+  markPossibilityProofOutput,
+  possibilityBookmarkSelectedModel,
+  syntheticNoPossibilityOriginal,
+} from './possibilityBookmarkSelectedModel';
+import { fixture, response } from './conversationEnvelopeFixtures';
+import { answer } from './structuredPossibilityReportFixture';
 import { fireEvent, screen, waitFor } from '@testing-library/react-native';
 import {
   providerSuccess,
@@ -18,13 +25,25 @@ import { openSavedGeneratedReportReferences } from '../../memory/openSavedGenera
 import type { ConversationScreenProps } from '../ConversationScreenProps';
 import { conversationExecutionNative } from '../conversationExecutionNative';
 import { runRagConversationTurn } from '../service';
-
+export const possibilityFixtureModes = [
+  'open',
+  'bookmark',
+  'semantic',
+  'semantic-cold',
+  'semantic-untyped',
+  'semantic-no-selection-proof',
+  'semantic-stale-selection',
+] as const;
 export function semanticPossibilityBookmarkFixture(
-  mode: 'open' | 'bookmark' | 'semantic',
+  mode: (typeof possibilityFixtureModes)[number],
   storage: ReturnType<typeof createConversationArtifactStorage>,
   database: SqlDatabase,
 ) {
-  if (mode !== 'semantic') return;
+  if (mode === 'open' || mode === 'bookmark') return;
+  const rejected =
+    mode === 'semantic-untyped' || mode === 'semantic-no-selection-proof';
+  const retired = mode === 'semantic-stale-selection';
+  const fallback = 'Synthetic no eligible original';
   const execute = database.transaction.bind(database);
   let idle = Promise.resolve();
   database.transaction = work => {
@@ -51,9 +70,14 @@ export function semanticPossibilityBookmarkFixture(
   const name = 'remember-possibilities-report';
   const question =
     'Could you keep the preceding possibilities report for next time?';
+  const proof = markPossibilityProofOutput(storage);
   const generate = jest.fn(async (call: LanguageModelRequest) => {
+    proof.expectNoMarker(call);
+    if (rejected) {
+      expect(call.tools?.find(tool => tool.name === name)).toBeUndefined();
+      return syntheticNoPossibilityOriginal(fallback);
+    }
     expect(call.tools?.find(tool => tool.name === name)).toBeDefined();
-    expect(JSON.stringify(call)).not.toContain('synthetic-possibility-turn-1');
     return providerSuccess({
       text: 'Untrusted provider prose.',
       finishReason: 'tool_calls' as const,
@@ -76,27 +100,22 @@ export function semanticPossibilityBookmarkFixture(
       toolCalling: true,
     },
   };
-  const selectedAi = async () => ({
-    status: 'ready' as const,
-    selection: model,
-    option: { ...apple, provider },
-    provider,
-    modelId: model.modelId,
-    recipient: 'Synthetic device',
-    remoteProcessing: false,
-  });
+  const selected = possibilityBookmarkSelectedModel(
+    { ...apple, provider },
+    mode,
+  );
   const consent = { authorize: jest.fn(async () => 'authorized' as const) };
-  const confirmHistorySave = jest.fn(async () => true);
+  const confirmHistorySave = jest.fn(selected.confirm);
   const search = jest.fn();
   const run = createRagConversationService({
-    selectedAi,
+    selectedAi: selected.resolve,
     consent,
     queryConsent: consent,
     externalEvidence: { search },
     registry: new LocalEvidenceReferenceRegistry(),
     loadLocalData: async () => ({
       ...localData([]).data,
-      openConversationArtifactStorage: async () => storage,
+      openConversationArtifactStorage: async () => proof.probe,
     }),
     createOperationRunId: () => 'synthetic-semantic-possibility',
     ragRunner: runRagConversationTurn,
@@ -126,8 +145,31 @@ export function semanticPossibilityBookmarkFixture(
       async () => storage,
     ),
     send,
-    async verify(saved: ConversationArtifact) {
+    close: selected.close,
+    async verify(saved: ConversationArtifact, remount: () => Promise<void>) {
+      if (mode !== 'semantic') {
+        await remount();
+        expect(await screen.findByText(answer.observations)).toBeTruthy();
+      }
       await submitPossibilityFixture(question);
+      if (rejected || retired) {
+        await waitFor(() => expect(observed).toHaveBeenCalledTimes(1));
+        const action = generate.mock.calls[0]?.[0].tools?.find(
+          tool => tool.name === name,
+        );
+        expect(Boolean(action)).toBe(retired);
+        expect(
+          screen.queryByText(t('savedMemory.generatedReportSaved')),
+        ).toBeNull();
+        expect(generate).toHaveBeenCalledTimes(1);
+        expect(confirmHistorySave).toHaveBeenCalledTimes(retired ? 1 : 0);
+        expect(write).not.toHaveBeenCalled();
+        expect(reopen).not.toHaveBeenCalled();
+        expect(await storage.listBookmarkedConversationPossibilities()).toEqual(
+          [],
+        );
+        return;
+      }
       await waitFor(() =>
         expect(observed).toHaveBeenCalledWith(
           expect.objectContaining({
@@ -156,12 +198,12 @@ export function semanticPossibilityBookmarkFixture(
     },
   };
 }
-
 export async function expectCommittedPossibilityFixture(
   observed: jest.Mock,
   generate: jest.Mock,
   storage: ReturnType<typeof createConversationArtifactStorage>,
   body: string,
+  legacy = false,
 ) {
   await waitFor(() => expect(observed).toHaveBeenCalledTimes(1));
   expect(observed).toHaveBeenCalledWith({
@@ -177,17 +219,28 @@ export async function expectCommittedPossibilityFixture(
   const rows = (await storage.list('selected')).items;
   expect(rows).toHaveLength(1);
   const saved = await storage.read(rows[0]!.id);
-  expect(saved?.possibilityOriginal?.version).toBe(1);
-  expect(JSON.stringify(saved?.possibilityOriginal)).not.toContain(body);
+  expect(saved?.possibilityOriginal?.version).toBe(legacy ? undefined : 1);
+  if (!legacy)
+    expect(JSON.stringify(saved?.possibilityOriginal)).not.toContain(body);
   if (!saved) throw new Error('The typed original was not committed.');
-
   return saved;
 }
-
 export async function submitPossibilityFixture(question: string) {
   await fireEvent.changeText(
     screen.getByTestId('rag-conversation-input'),
     question,
   );
   await fireEvent(screen.getByTestId('rag-conversation-send'), 'composerPress');
+}
+/** Each mount uses the same typed envelope, not a fabricated retained stamp. */
+export function canonicalPossibilityFixture(evidenceId: string) {
+  const canonical = fixture();
+  canonical.generate.mockReset().mockResolvedValue(
+    response({
+      type: 'result',
+      value: { answerKind: 'grounded', answer },
+      citations: [evidenceId],
+    }),
+  );
+  return canonical;
 }
