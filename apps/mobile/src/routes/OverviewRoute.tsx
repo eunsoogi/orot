@@ -3,13 +3,12 @@ import type { AiFeatureServices } from '../aiFeatures/integration/featureService
 import { HubBanner } from './HubBanner';
 import { StyleSheet, View } from 'react-native';
 import type { Appointment } from '@orot/storage';
-import { AppText as Text } from '../layout/AppText';
-import { formatDate, t } from '../i18n';
+import { t } from '../i18n';
 import { appColors } from '../layout/appColors';
 import { hubSpacing } from '../layout/hubSpacing';
 import { NAVIGATION_CONTENT_GAP } from '../navigation/navigationLayout';
 import { useNavigationLeaveStateRegistration } from '../navigation';
-import { NextVisitPanel } from './OverviewSummaryPanels';
+import { OverviewNextVisitCard } from './OverviewNextVisitCard';
 import { ChartTooltipHost } from '../ui/charts/ChartTooltipHost';
 import { OverviewMetrics } from './overview/OverviewMetrics';
 import type { OverviewPreparationLoaders } from './useOverviewPreparationData';
@@ -52,17 +51,9 @@ export default function OverviewRoute({
           testID="overview"
         />
       </View>
-      {/* Keep date text outside the rounded decorative clip, including at large type sizes. */}
-      <Text style={styles.message}>
-        {formatDate(new Date())} ·{' '}
-        {t('overview.localTimeZone', {
-          zone: Intl.DateTimeFormat().resolvedOptions().timeZone,
-        })}
-      </Text>
-
       {/* The shell consumes system/navigation geometry once and owns the only vertical scroll. */}
       <View style={styles.sections} testID="overview-overview-sections">
-        <NextVisitPanel
+        <OverviewNextVisitCard
           appointment={appointment}
           appointmentState={appointmentState}
           onOpenSchedule={onOpenSchedule}
@@ -96,7 +87,6 @@ const styles = StyleSheet.create({
     backgroundColor: appColors.surface,
   },
   sections: { gap: hubSpacing.item, minWidth: 0 },
-  message: { color: appColors.secondary, fontSize: 16, lineHeight: 24 },
 });
 
 // Keep shared error-route styling available to CalendarAppRoute while using the Toss palette.
