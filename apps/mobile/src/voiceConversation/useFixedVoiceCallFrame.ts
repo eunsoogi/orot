@@ -44,14 +44,16 @@ export function useFixedVoiceCallFrame(active: boolean) {
 export const fixedVoiceCallStyles = StyleSheet.create({
   fixedContent: { flex: 1, padding: 24, gap: 24 },
   compactContent: { padding: 12, gap: 8 },
-  compactCenter: { gap: 8 },
-  focus: { width: '100%', alignItems: 'center', gap: 20 },
-  compactFocus: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    justifyContent: 'center',
-    gap: 8,
+  compactCenter: { minHeight: 0, gap: 8 },
+  // Short safe height tightens the stack, never changes its visual or reading order.
+  focus: {
+    width: '100%',
+    flexShrink: 0,
+    flexDirection: 'column',
+    alignItems: 'center',
+    gap: 20,
   },
+  compactFocus: { gap: 8 },
   compactActions: { gap: 12 },
   compactAction: { gap: 4 },
   compactDisc: { width: 56, height: 56, borderRadius: 28 },
