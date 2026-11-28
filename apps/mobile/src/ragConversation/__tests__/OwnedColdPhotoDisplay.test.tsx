@@ -182,3 +182,37 @@ test('a held result cannot reappear after session/owner replacement', async () =
     await ui.unmount();
   }
 });
+
+test.each(['current', 'admits'] as const)(
+  'an unavailable synchronous %s proof retires the zoom and retains the caption',
+  async predicate => {
+    const f = fixture();
+    let retired = false;
+    const owner = {
+      ...f.owner,
+      [predicate]() {
+        if (retired)
+          throw new Error('Synthetic native authorizer unavailable.');
+        return true;
+      },
+    };
+    const ui = await render(draw(owner, 1, true));
+    try {
+      await fireEvent.press(screen.getByTestId(openerID));
+      expect(
+        screen.getByTestId('conversation-photo-viewer-image'),
+      ).toBeVisible();
+      retired = true;
+      await ui.rerender(draw(owner, 1, true));
+      expect(screen.queryByTestId(imageID)).toBeNull();
+      expect(
+        screen.queryByTestId('conversation-photo-viewer-image'),
+      ).toBeNull();
+      expect(screen.getByText('Synthetic authored caption')).toBeVisible();
+      expect(f.read).toHaveBeenCalledTimes(1);
+      expect(f.read.mock.calls[0]?.[1].aborted).toBe(true);
+    } finally {
+      await ui.unmount();
+    }
+  },
+);

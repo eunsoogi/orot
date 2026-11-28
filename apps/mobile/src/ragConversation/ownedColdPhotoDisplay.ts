@@ -35,8 +35,20 @@ export const OwnedColdPhotoDisplayContext = createContext<
   OwnedColdPhotoDisplay | undefined
 >(undefined);
 
-function active(owner: OwnedColdPhotoDisplay | undefined) {
-  return !!owner && !owner.signal.aborted && owner.current();
+function active(owner: OwnedColdPhotoDisplay | undefined, id?: string) {
+  if (!owner || owner.signal.aborted) return false;
+  try {
+    // Native unavailability cannot crash the transcript or revive a loan
+    // retired synchronously during either eligibility check.
+    return (
+      owner.current() === true &&
+      !owner.signal.aborted &&
+      (id === undefined || owner.admits(id) === true) &&
+      !owner.signal.aborted
+    );
+  } catch {
+    return false;
+  }
 }
 
 function candidate(
@@ -51,9 +63,7 @@ function candidate(
     !message.savedHistoryDisplayOnly ||
     !message.restoredHistory ||
     !message.photoAttached ||
-    !owner ||
-    !active(owner) ||
-    !owner.admits(id)
+    !active(owner, id)
   )
     return undefined;
   return id;
@@ -133,8 +143,7 @@ export function useOwnedColdPhotoPreview(
     const request = new AbortController();
     const retire = () => request.abort();
     owner.signal.addEventListener('abort', retire, { once: true });
-    const current = () =>
-      !request.signal.aborted && active(owner) && owner.admits(id);
+    const current = () => !request.signal.aborted && active(owner, id);
     (async () => {
       if (!current()) return;
       const result = await owner.read(id, request.signal);
