@@ -15,6 +15,7 @@ import { styles } from './ConversationScreen.styles';
 import { ConversationTranscriptMessages } from './ConversationTranscriptMessages';
 import { ConversationHistoryStatus } from './ConversationHistoryStatus';
 import { useReplyScroll } from './useReplyScroll';
+import { useConversationScrollGeometry } from './useConversationScrollGeometry';
 import { useConversationHistoryPresentation } from './conversationHistoryActivity';
 import { useTranscriptEdgeScroll } from './useConversationOwnedEdgeScroll';
 export function ConversationHistory({
@@ -62,12 +63,7 @@ export function ConversationHistory({
   const userScrolling = useRef(false);
   const viewportHeight = useRef(0);
   const messageEnd = useRef<number | null>(null);
-  const scrollGeometry = useRef<{
-    height: number;
-    contentHeight: number;
-    offset: number;
-  } | null>(null);
-  const expectedOffset = useRef<number | null>(null);
+  const { scrollGeometry, expectedOffset } = useConversationScrollGeometry();
   const jumpControl = useConversationJumpToLatest({
     sessionId,
     replyFocusGeneration: replyFocus?.generation,
