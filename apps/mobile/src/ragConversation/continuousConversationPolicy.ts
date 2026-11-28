@@ -171,14 +171,13 @@ export function continuousConversationPolicy<
       .catch(() => {});
     return work;
   };
-  const restartInitial = () =>
-    synchronizeModel(true, 'restart-interrupted-initial-page');
+  const redo = () => synchronizeModel(true, 'restart-interrupted-initial-page');
   const { resume: resumeRootRestore, setVisible: setRootConversationVisible } =
     createRootRestoreVisibility(
       rootRestore,
       options.continuousSession!,
       activeRestoration,
-      restartInitial,
+      redo,
       () => Boolean(interrupted && !pending),
     );
   const retireSelection = () => {
@@ -209,6 +208,7 @@ export function continuousConversationPolicy<
   return {
     ...store,
     continuous: enabled,
+    readPreviousDisplay: options.readPreviousDisplay,
     synchronizeModel,
     retryRestore: createCanonicalHistoryRetry(
       store,
@@ -229,7 +229,7 @@ export function continuousConversationPolicy<
     refreshAfterSourceDeletion(...event: SourceDeletionEvent) {
       const deferReloadId = abandonInitial(true);
       store.refreshAfterSourceDeletionOwned(event, deferReloadId);
-      if (interrupted && rootRestore.visible) restartInitial().catch(() => {});
+      if (interrupted && rootRestore.visible) redo().catch(() => {});
     },
     prepareLocalReportModel: warm.prepareLocalReportModel,
     create: () => {
