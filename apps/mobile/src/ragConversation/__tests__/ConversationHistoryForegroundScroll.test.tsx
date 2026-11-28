@@ -75,6 +75,17 @@ test.each([false, true])(
       });
       await fireEvent(history, 'scrollEndDrag');
       await act(() => transition('inactive'));
+      await act(() => transition('background'));
+      // Snapshot layout can transiently report a shorter transcript and a
+      // clamped offset at its bottom. That is not new reader intent.
+      await fireEvent(history, 'contentSizeChange', 300, 680);
+      await fireEvent.scroll(history, {
+        nativeEvent: {
+          contentOffset: { x: 0, y: 200 },
+          contentSize: { width: 300, height: 680 },
+          layoutMeasurement: { width: 300, height: 480 },
+        },
+      });
       await act(() => transition('active'));
       await fireEvent(history, 'layout', {
         nativeEvent: { layout: { height: 420 } },

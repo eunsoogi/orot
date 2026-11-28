@@ -1,5 +1,5 @@
 import RestoreIndicator from './ConversationRestoreIndicator';
-import { conversationHistoryScrollEvents } from './conversationHistoryScrollEvents';
+import * as scrollEvents from './conversationHistoryScrollEvents';
 import { useConversationReadingPosition } from './useConversationReadingPosition';
 import { useConversationTranscriptWindow } from './useConversationTranscriptWindow';
 import { conversationHistoryError } from './conversationHistoryError';
@@ -157,7 +157,7 @@ export function ConversationHistory(
         ref={historyView}
         {...edge.scrollProps}
         keyboardShouldPersistTaps="handled"
-        {...conversationHistoryScrollEvents({
+        {...scrollEvents.conversationHistoryScrollEvents({
           reading,
           viewportHeight,
           followLatest,
@@ -225,11 +225,11 @@ export function ConversationHistory(
         </View>
         <View
           collapsable={false}
-          onLayout={event => {
-            messageEnd.current = event.nativeEvent.layout.y;
-            jumpControl.refresh();
-            if (compact) followLatest();
-          }}
+          onLayout={scrollEvents.tailLayout(
+            messageEnd,
+            jumpControl.refresh,
+            compact ? followLatest : undefined,
+          )}
           testID="rag-conversation-message-end"
         />
         {footer}

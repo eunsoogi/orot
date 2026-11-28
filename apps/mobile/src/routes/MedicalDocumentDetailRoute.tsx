@@ -140,22 +140,21 @@ export function MedicalDocumentDetailRoute({
     };
     const stopSource = subscribeLocalSourceDeletion(invalidate);
     const stopAll = subscribeLocalDataClear(invalidate);
-    // A short app switch must not make an earlier manual result current again.
-    const suspendRefresh = () => {
-      if (!pending.current?.manual) return;
-      retireRead();
-      setDocument(null);
-      setLoading(false);
-      setMessage(t('medicalDocument.source.loadError'));
-    };
     const appState = AppState.addEventListener('change', value => {
-      if (value !== 'active') suspendRefresh();
+      if (value === 'active' || !pending.current?.manual) return;
+      // Ordinary suspension retires the unsettled pull without invalidating the parked detail.
+      retireRead();
+      setLoading(false);
     });
     const native = conversationExecutionNative();
     const stopProtection = native?.bridgeAvailable
       ? native.subscribe(event => {
-          if (event.kind === 'protectedData' && !event.available)
-            suspendRefresh();
+          if (event.kind !== 'protectedData' || event.available) return;
+          // A real lock invalidates settled text and any in-flight result, independent of visibility.
+          retireRead();
+          setDocument(null);
+          setLoading(false);
+          setMessage(t('medicalDocument.source.loadError'));
         })
       : undefined;
     return () => {
