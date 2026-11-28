@@ -220,7 +220,10 @@ final class ScheduleCalendarUITests: OrotFailFastTestCase {
         let day = UITestConditions.element(app, "calendar-day-2035-06-02")
         FormUITestConditions.reveal(day, in: app, scrollID: "calendar-screen")
         day.tap()
-
+        let event = UITestConditions.element(app, "schedule-event-bar-2035-06-02-calendar-synthetic-clinic")
+        XCTAssertTrue(event.waitForAppearance(), app.debugDescription)
+        FormUITestConditions.reveal(event, in: app, scrollID: "calendar-screen")
+        event.tap()
         let candidate = UITestConditions.element(
             app,
             "calendar-candidate-calendar-synthetic-clinic",

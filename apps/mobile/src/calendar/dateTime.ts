@@ -57,34 +57,21 @@ export function formatCalendarEventCompactRange(event: CalendarEvent): string {
   return `${startDate} ${formatTime(start, timeZone)}–${endDate !== startDate ? endDate + ' ' : ''}${formatTime(end, timeZone)}`;
 }
 
-/** Only omit the date when the selected heading supplies that exact civil day. */
-export function formatCalendarAgendaTime(
-  event: CalendarEvent,
-  dateKey: string,
-): string {
-  const { start, end, timeZone } = eventDisplayTimes(event);
-  if (!Number.isFinite(start.getTime()) || !Number.isFinite(end.getTime())) {
-    return formatCalendarEventRange(event);
-  }
-  const heading = formatDateInZone(new Date(`${dateKey}T00:00:00.000Z`), 'UTC');
-  const allDay = event.calendarEventSnapshot.isAllDay;
-  const last = allDay ? new Date(end.getTime() - 1) : end;
-  if (
-    formatDateInZone(start, timeZone) !== heading ||
-    formatDateInZone(last, timeZone) !== heading
-  ) {
-    return formatCalendarEventRange(event);
-  }
-  if (allDay) return t('calendar.allDay');
-  const time = `${formatTime(start, timeZone)}–${formatTime(end, timeZone)}`;
-  const sourceZone = event.calendarEventSnapshot.timeZoneIdentifier;
-  return sourceZone &&
-    sourceZone !== Intl.DateTimeFormat().resolvedOptions().timeZone
-    ? `${time} · ${sourceZone}`
-    : time;
+/** Start time in the event's source zone, including floating and all-day events. */
+export function formatCalendarEventStart(event: CalendarEvent): string {
+  const { start, timeZone } = eventDisplayTimes(event);
+  if (!Number.isFinite(start.getTime()))
+    return t('appointments.errors.invalidTime');
+  return event.calendarEventSnapshot.isAllDay
+    ? t('calendar.allDay')
+    : formatTime(start, timeZone);
 }
 
-export function formatCalendarEventRange(event: CalendarEvent): string {
+/** The summary can omit the label without changing the source time conversion. */
+export function formatCalendarEventRange(
+  event: CalendarEvent,
+  options?: { hideTimeZoneLabel?: boolean },
+): string {
   const { start, end, timeZone } = eventDisplayTimes(event);
   if (!Number.isFinite(start.getTime()) || !Number.isFinite(end.getTime())) {
     return t('appointments.errors.invalidTime');
@@ -107,21 +94,5 @@ export function formatCalendarEventRange(event: CalendarEvent): string {
   const timeZoneLabel =
     event.calendarEventSnapshot.timeZoneIdentifier ??
     t('appointments.localTime');
-  return `${startDateTime}–${endTime} · ${timeZoneLabel}`;
-}
-
-// The month heading supplies the year; the agenda heading supplies the selected weekday.
-const CALENDAR_AGENDA_DATE_FORMATTER = new Intl.DateTimeFormat('ko-KR', {
-  calendar: 'gregory',
-  day: 'numeric',
-  month: 'long',
-  timeZone: 'UTC',
-  weekday: 'long',
-});
-
-export function formatCalendarAgendaDate(dateKey: string): string {
-  const date = new Date(`${dateKey}T00:00:00.000Z`);
-  return Number.isFinite(date.getTime())
-    ? CALENDAR_AGENDA_DATE_FORMATTER.format(date)
-    : dateKey;
+  return `${startDateTime}–${endTime}${options?.hideTimeZoneLabel ? '' : ` · ${timeZoneLabel}`}`;
 }

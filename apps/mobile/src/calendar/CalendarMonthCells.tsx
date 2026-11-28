@@ -1,9 +1,8 @@
-import { Pressable, View, useWindowDimensions } from 'react-native';
-import { ScheduleAgendaSelectAction } from './ScheduleAgendaSelectAction';
+import { Pressable, View } from 'react-native';
 import { AppButton as Button } from '../layout/AppButton';
 import { AppText as Text } from '../layout/AppText';
 import { t } from '../i18n';
-import { formatCalendarAgendaTime, formatCalendarEventRange } from './dateTime';
+import { formatCalendarEventRange } from './dateTime';
 import { calendarStyles as styles } from './calendarStyles';
 import { schedulePresentationStyles as scheduleStyles } from './schedulePresentationStyles';
 import type { CalendarGridDay } from './calendarMonth';
@@ -44,6 +43,9 @@ export function calendarDayAccessibilityLabel(
 
 interface CalendarDayCellProps {
   flat?: boolean;
+  fillCell?: boolean;
+  hideEventMarkers?: boolean;
+  fullDate?: boolean;
   day: CalendarGridDay;
   dayEvents: CalendarMonthDisplayEvent[];
   label: string;
@@ -54,6 +56,9 @@ interface CalendarDayCellProps {
 
 export function CalendarDayCell({
   flat = false,
+  fillCell = false,
+  hideEventMarkers = false,
+  fullDate = false,
   day,
   dayEvents,
   label,
@@ -72,6 +77,7 @@ export function CalendarDayCell({
       onPress={() => onPress(day.dateKey)}
       style={[
         styles.calendarDay,
+        fillCell && scheduleStyles.dayInGrid,
         !day.belongsToMonth && styles.calendarOutsideDay,
       ]}
       testID={`calendar-day-${day.dateKey}`}
@@ -79,6 +85,7 @@ export function CalendarDayCell({
       <View
         style={[
           styles.calendarDayFace,
+          fullDate && scheduleStyles.fullDateFace,
           selected &&
             (flat
               ? scheduleStyles.flatSelectedDay
@@ -99,9 +106,9 @@ export function CalendarDayCell({
             !selected && today && styles.calendarTodayDayNumber,
           ]}
         >
-          {day.dayNumber}
+          {fullDate ? formatCalendarDate(day.dateKey) : day.dayNumber}
         </Text>
-        {dayEvents.length ? (
+        {!hideEventMarkers && dayEvents.length ? (
           <View
             accessibilityElementsHidden
             style={styles.calendarEventMarkers}
@@ -128,7 +135,7 @@ export function CalendarDayCell({
             )}
           </View>
         ) : null}
-        {hasNextVisit && !flat ? (
+        {hasNextVisit && !flat && !hideEventMarkers ? (
           <Text
             accessibilityElementsHidden
             style={styles.calendarVisitMarker}
@@ -146,8 +153,6 @@ export function CalendarDayCell({
 }
 
 interface CalendarMonthEventRowProps {
-  draftActive?: boolean;
-  agendaDate?: string;
   item: CalendarMonthDisplayEvent;
   selected: boolean;
   selectionDisabled: boolean;
@@ -155,39 +160,24 @@ interface CalendarMonthEventRowProps {
 }
 
 export function CalendarMonthEventRow({
-  draftActive = false,
-  agendaDate,
   item,
   selected,
   selectionDisabled,
   onSelectEvent,
 }: CalendarMonthEventRowProps) {
-  const { fontScale } = useWindowDimensions();
-  const flat = agendaDate !== undefined;
-  // Allow large text to reflow without squeezing the title against the action.
   const title =
     item.event.calendarEventSnapshot.title || t('calendar.eventNoTitle');
   const time = formatCalendarEventRange(item.event);
-  const visibleTime = agendaDate
-    ? formatCalendarAgendaTime(item.event, agendaDate)
-    : time;
   return (
     <View
-      style={
-        flat
-          ? [
-              scheduleStyles.flatEventRow,
-              fontScale > 1.5 && scheduleStyles.flatEventRowLargeText,
-            ]
-          : styles.calendarEventRow
-      }
+      style={styles.calendarEventRow}
       testID={
         item.isNextVisit
           ? 'calendar-next-visit'
           : `calendar-event-card-${item.rowKey}`
       }
     >
-      <View style={flat ? scheduleStyles.flatEventCopy : undefined}>
+      <View>
         <View
           style={styles.calendarEventHeading}
           testID={`calendar-event-row-${item.rowKey}`}
@@ -198,39 +188,20 @@ export function CalendarMonthEventRow({
           >
             {title}
           </Text>
-          {item.isNextVisit && !flat ? (
+          {item.isNextVisit ? (
             <Text style={styles.calendarNextVisitBadge}>
               {t('calendar.nextVisit')}
             </Text>
           ) : null}
         </View>
         <Text
-          accessibilityLabel={flat ? time : undefined}
-          style={[
-            styles.calendarEventTime,
-            flat && scheduleStyles.flatEventTime,
-          ]}
+          style={styles.calendarEventTime}
           testID={item.isNextVisit ? 'calendar-next-visit-time' : undefined}
         >
-          {visibleTime}
+          {time}
         </Text>
       </View>
-      {flat && (item.canSelect || item.isNextVisit) ? (
-        <ScheduleAgendaSelectAction
-          title={title}
-          time={time}
-          draftSelected={selected}
-          draftActive={draftActive}
-          savedVisit={item.isNextVisit}
-          disabled={selectionDisabled}
-          onPress={item.canSelect ? () => onSelectEvent(item.event) : undefined}
-          testID={
-            item.canSelect
-              ? `calendar-candidate-${item.event.calendarEventIdentifier}`
-              : 'schedule-saved-visit-selection'
-          }
-        />
-      ) : item.canSelect ? (
+      {item.canSelect ? (
         <Button
           accessibilityLabel={`${title}, ${time}, ${t(selected ? 'calendar.selectedEvent' : 'calendar.selectEvent')}`}
           accessibilityState={{ selected }}
