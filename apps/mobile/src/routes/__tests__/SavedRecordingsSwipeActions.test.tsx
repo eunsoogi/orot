@@ -39,6 +39,7 @@ jest.mock('../../navigation', () => ({
 }));
 
 const id = source.id;
+const clipId = `recording-library-item-${id}-action-clip`;
 const nativeModule = NativeModules.RecordingModule;
 const originalAppState = AppState.currentState;
 
@@ -114,7 +115,9 @@ test('reveals separate Share and Delete tiles outside the translated rounded car
   await reveal();
   const lane = screen.getByTestId(`recording-delete-slot-${id}`);
   const content = screen.getByTestId(`recording-row-content-${id}`);
-  expect(content.parent?.parent).toBe(lane.parent?.parent);
+  const clip = screen.getByTestId(clipId);
+  expect(content.parent?.parent).toBe(clip.parent);
+  expect(lane.parent?.parent).toBe(clip);
   expect(StyleSheet.flatten(content.props.style).borderRadius).toBe(20);
   expect(StyleSheet.flatten(lane.props.style).backgroundColor).toBeUndefined();
   expect(StyleSheet.flatten(lane.parent?.props.style)).toMatchObject({
@@ -197,13 +200,13 @@ test('paints tiles progressively in a physical left drag without exposing action
   const share = jest.fn(async () => 'cancelled');
   NativeModules.RecordingModule = { shareRecordingAudio: share };
   const { beginDrag, alert, service } = await mount();
-  const lane = () =>
-    screen.getByTestId(`recording-delete-slot-${id}`, {
-      includeHiddenElements: true,
-    });
+  const hidden = { includeHiddenElements: true };
+  const lane = () => screen.getByTestId(`recording-delete-slot-${id}`, hidden);
+  const clip = () => screen.getByTestId(clipId, hidden);
   const card = () => screen.getByTestId(`recording-row-content-${id}`);
   const shareId = `recording-share-${id}`;
   expect(card().parent).toHaveStyle({ transform: [{ translateX: 0 }] });
+  expect(clip()).toHaveStyle({ start: 0, width: 0, overflow: 'hidden' });
   expect(lane().parent).toHaveStyle({ start: 0, width: 132 });
   expect(lane()).toHaveStyle({ direction: 'ltr' });
   expect(screen.queryByTestId(shareId)).toBeNull();
@@ -212,15 +215,11 @@ test('paints tiles progressively in a physical left drag without exposing action
   const short = await beginDrag(-28);
   expect(short.claimed).toBe(true);
   expect(card().parent).toHaveStyle({ transform: [{ translateX: -28 }] });
-  expect(lane().parent).toHaveProp('pointerEvents', 'none');
-  expect(lane().parent).toHaveProp('accessibilityElementsHidden', true);
-  expect(lane().parent).toHaveProp(
-    'importantForAccessibility',
-    'no-hide-descendants',
-  );
-  await fireEvent.press(
-    screen.getByTestId(shareId, { includeHiddenElements: true }),
-  );
+  expect(clip()).toHaveStyle({ width: 28 });
+  expect(clip()).toHaveProp('pointerEvents', 'none');
+  expect(clip()).toHaveProp('accessibilityElementsHidden', true);
+  expect(clip()).toHaveProp('importantForAccessibility', 'no-hide-descendants');
+  await fireEvent.press(screen.getByTestId(shareId, hidden));
   await short.release();
   expect(card().parent).toHaveStyle({ transform: [{ translateX: 0 }] });
   expect(share).not.toHaveBeenCalled();
@@ -229,16 +228,13 @@ test('paints tiles progressively in a physical left drag without exposing action
   expect(card().parent).toHaveStyle({ transform: [{ translateX: -64 }] });
   expect(screen.queryByTestId(shareId)).toBeNull();
   await open.release();
+  expect(clip()).toHaveStyle({ width: 132 });
   expect(card().parent).toHaveStyle({ transform: [{ translateX: -132 }] });
   expect(screen.getByTestId(shareId)).toBeVisible();
   const close = await beginDrag(65);
   expect(card().parent).toHaveStyle({ transform: [{ translateX: -67 }] });
   expect(screen.queryByTestId(shareId)).toBeNull();
-  await fireEvent.press(
-    screen.getByTestId(`recording-delete-${id}`, {
-      includeHiddenElements: true,
-    }),
-  );
+  await fireEvent.press(screen.getByTestId(`recording-delete-${id}`, hidden));
   expect(alert).not.toHaveBeenCalled();
   await close.cancel();
   expect(screen.getByTestId(shareId)).toBeVisible();
