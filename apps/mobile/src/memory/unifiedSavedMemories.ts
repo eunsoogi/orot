@@ -19,6 +19,7 @@ export interface GeneratedReportSavedMemory {
   readonly artifactId: string;
   readonly reportKind?:
     | 'health_summary'
+    | 'health_summary_section'
     | 'disease_possibilities'
     | 'conversation_disease_possibilities'
     | 'visit_questions';
@@ -110,24 +111,28 @@ export async function loadUnifiedLocalMemories(): Promise<SavedMemory[]> {
   const reportReferences: GeneratedReportSavedMemory[] = generated.map(row => ({
     sourceKind: 'saved_generated_report',
     id:
-      (row.reportKind === 'conversation_disease_possibilities'
-        ? 'generated-conversation-disease-report:'
-        : row.reportKind === 'disease_possibilities'
-          ? 'generated-disease-report:'
-          : row.reportKind === 'visit_questions'
-            ? 'generated-visit-questions:'
-            : 'generated-report:') + row.artifactId,
+      (row.reportKind === 'health_summary_section'
+        ? 'generated-health-summary-section:'
+        : row.reportKind === 'conversation_disease_possibilities'
+          ? 'generated-conversation-disease-report:'
+          : row.reportKind === 'disease_possibilities'
+            ? 'generated-disease-report:'
+            : row.reportKind === 'visit_questions'
+              ? 'generated-visit-questions:'
+              : 'generated-report:') + row.artifactId,
     artifactId: row.artifactId,
     ...(row.reportKind ? { reportKind: row.reportKind } : {}),
     text: t(
-      row.reportKind === 'health_summary'
-        ? 'savedMemory.generatedReportHealthSummary'
-        : row.reportKind === 'disease_possibilities' ||
-            row.reportKind === 'conversation_disease_possibilities'
-          ? 'savedMemory.generatedReportDiseasePossibilities'
-          : row.reportKind === 'visit_questions'
-            ? 'savedMemory.generatedReportVisitQuestions'
-            : 'savedMemory.generatedReportDaily',
+      row.reportKind === 'health_summary_section'
+        ? 'savedMemory.generatedReportHealthSummarySection'
+        : row.reportKind === 'health_summary'
+          ? 'savedMemory.generatedReportHealthSummary'
+          : row.reportKind === 'disease_possibilities' ||
+              row.reportKind === 'conversation_disease_possibilities'
+            ? 'savedMemory.generatedReportDiseasePossibilities'
+            : row.reportKind === 'visit_questions'
+              ? 'savedMemory.generatedReportVisitQuestions'
+              : 'savedMemory.generatedReportDaily',
     ),
     createdAt: Date.parse(row.savedAt),
   }));

@@ -1,3 +1,4 @@
+import { createSavedHealthSummarySections } from './savedHealthSummarySections';
 import {
   createManualHistoryRepository,
   type SqlDatabase,
@@ -15,7 +16,6 @@ import { withWritePeriodCalculations } from './writePeriodCalculationScope';
 import { RetainedSourceInvalidError } from '../aiFeatures/integration/retainedSourceError';
 import { fingerprint } from '../aiFeatures/integration/evidenceUtils';
 import { readBookmarkedHistoricalHealthSummary } from './bookmarkedHistoricalHealthSummary';
-
 type Lease = { readonly id: string; readonly version: number };
 type BookmarkInput = {
   readonly artifactId: string;
@@ -27,7 +27,6 @@ type BookmarkInput = {
     confirmProtected: () => Promise<boolean>;
   };
 };
-
 export async function setupSavedHealthSummaryReferences(tx: SqlExecutor) {
   await tx.execute(
     'CREATE TABLE IF NOT EXISTS saved_health_summary_refs (summary_id TEXT PRIMARY KEY NOT NULL, artifact_id TEXT UNIQUE NOT NULL, revision TEXT NOT NULL, saved_at TEXT NOT NULL)',
@@ -41,7 +40,6 @@ export async function setupSavedHealthSummaryReferences(tx: SqlExecutor) {
       DELETE FROM saved_health_summary_refs WHERE summary_id = OLD.id;
     END`);
 }
-
 const visible = `FROM saved_health_summary_refs b
   JOIN conversation_artifacts a ON a.id = b.artifact_id
   JOIN symptom_summary_runs run ON run.id = b.summary_id
@@ -53,6 +51,7 @@ const visible = `FROM saved_health_summary_refs b
 export function createSavedHealthSummaryReferences(
   database: SqlDatabase,
   ensure: () => Promise<void>,
+  dbLive?: () => boolean,
 ) {
   const history = createManualHistoryRepository(database);
   const resolve = async (
@@ -124,6 +123,7 @@ export function createSavedHealthSummaryReferences(
     };
   };
   return {
+    ...createSavedHealthSummarySections(database, ensure, resolve, dbLive),
     readBookmarkedHistoricalHealthSummary:
       readBookmarkedHistoricalHealthSummary.bind(null, database),
     async bookmarkHealthSummary(input: BookmarkInput): Promise<boolean> {

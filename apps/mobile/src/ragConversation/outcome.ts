@@ -21,6 +21,7 @@ export type RagConversationFailureKind =
   | 'authored_memory_not_saved'
   | 'answer_memory_not_saved'
   | 'protected_memory_not_saved'
+  | 'health_summary_section_unverified'
   | 'budget_exceeded'
   | 'unavailable';
 

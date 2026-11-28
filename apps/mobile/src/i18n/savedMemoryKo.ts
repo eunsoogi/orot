@@ -14,6 +14,12 @@ export const savedMemoryKo = {
   'savedMemory.generatedReportDiseasePossibilities':
     'AI가 만든 질병 가능성 보고서',
   'savedMemory.generatedReportHealthSummary': 'AI가 만든 건강 정보 요약',
+  'savedMemory.generatedReportHealthSummarySection':
+    '건강 요약에서 보관한 부분',
+  'savedMemory.generatedReportSectionUnverified':
+    '건강 요약에서 고른 부분이 기억에 보관됐는지 확인하지 못했어요. 외부로 전송하지 않았어요.',
+  'savedMemory.generatedReportHealthSummarySectionSaved':
+    '건강 요약에서 고른 부분을 기억에 보관했어요.',
   'savedMemory.generatedReportSaved': '보고서 링크를 기억에 보관했어요.',
   'savedMemory.generatedReportUnavailable': '원본 보고서를 확인할 수 없어요.',
   'savedMemory.generatedReportDaily': 'AI가 만든 일일 보고서',

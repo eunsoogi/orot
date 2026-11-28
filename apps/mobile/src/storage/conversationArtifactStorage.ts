@@ -57,6 +57,7 @@ export function createConversationArtifactStorage(
   const generatedReferences = createSavedGeneratedReportReferences(
     database,
     ensure,
+    isCurrentDatabase,
   );
   const possibilities = createSavedConversationPossibilityReference(
     database,
