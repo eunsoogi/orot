@@ -9,6 +9,7 @@ import {
   hasConversationReportTitle,
   parseConversationReport,
 } from './conversationReportTemplate';
+import { conversationA2UIAppNotices } from './conversationA2UIAppNotices';
 import { ConversationA2UISurface } from './ConversationA2UISurface';
 import type { ConversationA2UINode } from './conversationA2UI';
 import { memo, useLayoutEffect } from 'react';
@@ -69,8 +70,11 @@ export const ConversationMessageText = memo(
       !report && allowReport && savedPossibilityNarrative
         ? savedPossibilityNarrativeParts(content)
         : undefined;
+    const notices =
+      verifiedA2UI && conversationA2UIAppNotices(verifiedA2UI, content);
+    const root = notices ? verifiedA2UI : undefined;
     const committedRoot =
-      !report && !parts && !staticText && !user ? verifiedA2UI : undefined;
+      !report && !parts && !staticText && !user ? root : undefined;
     useLayoutEffect(() => {
       if (committedRoot) reportConversationA2UIReactCommit();
     }, [committedRoot]);
@@ -92,13 +96,24 @@ export const ConversationMessageText = memo(
       );
     // Explicit reports and retained narratives above keep their native design.
     // The surrounding bubble still owns any verified sources and copy menu.
-    if (verifiedA2UI && isProtectedArchivedA2UILayout(verifiedA2UI))
-      return <ArchivedRichTextSurface root={verifiedA2UI} testID={testID} />;
-    if (verifiedA2UI)
-      return archivedPairedDetailsFor(verifiedA2UI) ? (
-        <ArchivedPairedDetailsSurface root={verifiedA2UI} testID={testID} />
-      ) : (
-        <ConversationA2UISurface root={verifiedA2UI} testID={testID} />
+    if (root && isProtectedArchivedA2UILayout(root))
+      return <ArchivedRichTextSurface root={root} testID={testID} />;
+    if (root && archivedPairedDetailsFor(root))
+      return <ArchivedPairedDetailsSurface root={root} testID={testID} />;
+    if (root)
+      return (
+        <>
+          <ConversationA2UISurface root={root} testID={testID} />
+          {notices?.map(notice => (
+            <AppText
+              key={notice}
+              selectable={selectable}
+              style={styles.messageText}
+            >
+              {notice}
+            </AppText>
+          ))}
+        </>
       );
     // During a draft the existing text host keeps appending; only a complete
     // ordinary answer (live or restored) can replace raw syntax with formatting.

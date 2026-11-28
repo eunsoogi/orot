@@ -1,3 +1,4 @@
+import { appendConversationAppNotice } from '../../ragConversation/conversationA2UIAppNotices';
 import type { ConversationMemoryReceipt } from './conversationMemoryReceipts';
 import { observeConversationFinalHistory } from '../../ragConversation/conversationFinalizationDiagnostics';
 import type { RagConversationOutcome } from '../../ragConversation/outcome';
@@ -68,10 +69,10 @@ export async function finishConversationWorkflow(
       ...input,
       outcome:
         input.outcome.status === 'answer' && input.priorDialogueOmitted
-          ? {
-              ...input.outcome,
-              answer: `${input.outcome.answer}\n\n${t('ragConversation.conversation.priorDialogueOmitted')}`,
-            }
+          ? appendConversationAppNotice(
+              input.outcome,
+              t('ragConversation.conversation.priorDialogueOmitted'),
+            )
           : input.outcome,
       continuation: Boolean(continuation),
     })
