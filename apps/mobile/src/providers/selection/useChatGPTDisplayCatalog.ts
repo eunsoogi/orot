@@ -91,7 +91,7 @@ export function useSavedChatGPTAccount(
 
 /** Disk entries contain display metadata only. They cannot provide provider readiness. */
 export function useChatGPTDisplayCatalog(accountID: string | undefined) {
-  const owner = useRef({ accountID, mounted: false });
+  const owner = useRef({ accountID, mounted: false, revision: 0 });
   owner.current.accountID = accountID;
   const [snapshot, setSnapshot] = useState<{
     accountID: string;
@@ -100,7 +100,8 @@ export function useChatGPTDisplayCatalog(accountID: string | undefined) {
   }>();
 
   useEffect(() => {
-    owner.current.mounted = true;
+    const scope = owner.current;
+    scope.mounted = true;
     let generation = 0;
     const refresh = async () => {
       const request = ++generation;
@@ -109,7 +110,7 @@ export function useChatGPTDisplayCatalog(accountID: string | undefined) {
       const witness = await readChatGPTConsentCredential();
       const current = () =>
         request === generation &&
-        owner.current.accountID === accountID &&
+        scope.accountID === accountID &&
         witness?.isCurrent() === true;
       if (!witness || !current()) return;
       const raw = await getGenericPassword({
@@ -129,7 +130,8 @@ export function useChatGPTDisplayCatalog(accountID: string | undefined) {
     const unsubscribe = chatGPTCredentialMutation.subscribe(start);
     start();
     return () => {
-      owner.current.mounted = false;
+      scope.mounted = false;
+      scope.revision++;
       generation++;
       unsubscribe();
     };
@@ -137,12 +139,15 @@ export function useChatGPTDisplayCatalog(accountID: string | undefined) {
 
   async function captureRefresh(issuedClientID: string) {
     if (!accountID || accountID !== issuedClientID) return;
+    const scope = owner.current;
+    const revision = scope.revision;
     const witness = await readChatGPTConsentCredential();
     if (!witness?.isCurrent()) return;
     return async (catalog: readonly ChatGPTPlanModelDescriptor[]) => {
       const current = () =>
-        owner.current.mounted &&
-        owner.current.accountID === issuedClientID &&
+        scope.mounted &&
+        scope.revision === revision &&
+        scope.accountID === issuedClientID &&
         witness.isCurrent();
       const models = parseModels(catalog);
       if (!models || !current()) return;
