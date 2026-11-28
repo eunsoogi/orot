@@ -74,7 +74,9 @@ final class NavigationSelectionGlassTests: OrotFailFastTestCase {
             }
             var value = fields(to)
             value["animated"] = from != nil
-            if let from { value["origin"] = fields(from) }
+            if let from {
+                value["origin"] = fields(from)
+            }
             return value as NSDictionary
         }
         view.selectionTarget = target(first)
