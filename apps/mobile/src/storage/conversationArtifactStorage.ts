@@ -1,3 +1,8 @@
+import { notifyConversationVisibilityChanged } from './conversationVisibilityEvents';
+import {
+  createConversationDisplayPredecessorReader,
+  createConversationDisplayPredecessorWatch,
+} from './conversationDisplayPredecessor';
 import { createSavedConversationPossibilityReference } from './savedConversationPossibilityReference';
 import { createConversationPossibilityOriginalReader } from './readConversationPossibilityOriginal';
 import { createArchivedPairedDetailsOwner } from './archivedPairedDetailsOwner';
@@ -41,6 +46,12 @@ export function createConversationArtifactStorage(
         ready = undefined;
         throw error;
       }));
+  const readConversationDisplayPredecessor =
+    createConversationDisplayPredecessorReader(
+      database,
+      ensure,
+      isCurrentDatabase,
+    );
   const tools = createConversationToolEventStorage(database, ensure);
   const listTimeline = conversationTimelinePages(database, ensure);
   const generatedReferences = createSavedGeneratedReportReferences(
@@ -94,6 +105,13 @@ export function createConversationArtifactStorage(
       listTimeline,
     ),
     continuousSession: continuousConversationStorage(database, ensure),
+    readConversationDisplayPredecessor,
+    watchConversationDisplayPredecessor:
+      createConversationDisplayPredecessorWatch(
+        database,
+        readConversationDisplayPredecessor,
+        isCurrentDatabase,
+      ),
     validateWarmLease: createConversationWarmLeaseReader(database, ensure),
     readSteeringHistory: conversationSteeringHistory(database, ensure),
     openWorkflowContinuation: conversationWorkflowContinuationOpener(database),
@@ -163,6 +181,7 @@ export function createConversationArtifactStorage(
           [id],
         );
       });
+      notifyConversationVisibilityChanged();
     },
     append: createConversationArtifactAppend(database, ensure),
     async list(

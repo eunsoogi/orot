@@ -1,4 +1,8 @@
 import { useMemo } from 'react';
+import {
+  usePreviousConversationDisplay,
+  type PreviousDisplayOwner,
+} from './usePreviousConversationDisplay';
 import { useConversationHistoryUserTurnFollow } from './conversationHistoryUserTurn';
 import {
   savedHistoryTranscript,
@@ -93,6 +97,7 @@ export function conversationHistoryActivity(
 /** Follow-to-bottom observes live turns only. Old prose joins at render time. */
 export function useConversationHistoryPresentation(input: {
   saved?: readonly SavedHistoryDisplayItem[];
+  previousDisplayOwner?: PreviousDisplayOwner;
   steeringInstructions?: DisplayMessage['steeringInstructions'];
   messages: readonly DisplayMessage[];
   pendingMessage: ConversationSession['pendingMessage'];
@@ -104,15 +109,20 @@ export function useConversationHistoryPresentation(input: {
   expectedOffset: Parameters<typeof useConversationHistoryUserTurnFollow>[3];
 }) {
   const { saved, messages } = input;
+  const previous = usePreviousConversationDisplay(
+    input.sessionId,
+    input.previousDisplayOwner,
+    saved !== undefined,
+  );
   const directPhoto = useDirectPhotoPresentation();
   const transcript = useMemo(
     () =>
       presentDirectPhotos(
-        savedHistoryTranscript(saved ?? [], messages),
+        [...previous, ...savedHistoryTranscript(saved ?? [], messages)],
         directPhoto,
         input.sessionId,
       ),
-    [saved, messages, directPhoto, input.sessionId],
+    [previous, saved, messages, directPhoto, input.sessionId],
   );
   useConversationHistoryUserTurnFollow(
     input.sessionId ?? null,

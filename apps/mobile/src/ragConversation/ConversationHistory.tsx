@@ -92,6 +92,7 @@ export function ConversationHistory(
   const { visibleMessages, showActivityBubble } =
     useConversationHistoryPresentation({
       saved: savedHistoryDisplay,
+      previousDisplayOwner: props.previousDisplayOwner,
       messages,
       pendingMessage,
       requestSessionId,

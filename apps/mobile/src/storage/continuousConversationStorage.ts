@@ -1,5 +1,6 @@
 import type { SqlDatabase } from '@orot/storage';
 import { listConversationSessionPage } from './conversationSessionPages';
+import { recordConversationDisplayPredecessor } from './conversationDisplayPredecessor';
 
 export type ConversationModelIdentity = { providerId: string; modelId: string };
 /** The pointer contains no transcript or credentials and lives in the existing protected DB.
@@ -101,6 +102,16 @@ export function continuousConversationStorage(
           [id, generation],
         );
       current();
+      if (pointer) {
+        // Preserve the old owned display identity before replacing the model
+        // pointer. This does not move rows or change either model's send lease.
+        await recordConversationDisplayPredecessor(tx, {
+          id,
+          version,
+          generation,
+        });
+        current();
+      }
       await tx.execute(
         'INSERT OR REPLACE INTO conversation_active_model (singleton, provider_id, model_id, session_id, generation, created_at) VALUES (1, ?, ?, ?, ?, ?)',
         [model.providerId, model.modelId, id, generation, updatedAt],
