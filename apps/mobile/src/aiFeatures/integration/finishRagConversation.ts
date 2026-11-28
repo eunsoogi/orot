@@ -1,3 +1,4 @@
+import { appendConversationAppNotice } from '../../ragConversation/conversationA2UIAppNotices';
 import { t } from '../../i18n';
 import type { RagConversationOutcome } from '../../ragConversation/outcome';
 import type { createConversationRetentionBridge } from './conversationRetentionBridge';
@@ -23,10 +24,10 @@ export async function finishRagConversation(input: {
     !input.outcome.alreadySavedAnswerMemory &&
     !input.skipPublicSearchNotice &&
     input.publicSearch.status !== 'success'
-      ? {
-          ...input.outcome,
-          answer: `${input.outcome.answer}\n\n${publicSearchNotice(input.publicSearch.status)}`,
-        }
+      ? appendConversationAppNotice(
+          input.outcome,
+          publicSearchNotice(input.publicSearch.status),
+        )
       : input.outcome;
   const finished = await input.retention.finish(annotated);
   // Retention can await a transaction after the workflow's last report check.
