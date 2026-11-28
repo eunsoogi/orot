@@ -17,7 +17,6 @@ interface ProviderSelectionOptionCardProps {
   readonly index: number;
   readonly catalogModelLabel?: string;
   readonly hideLocalSubtitle?: boolean;
-  readonly showModelIdAlongsideDetail?: boolean;
   readonly onPress: () => void;
 }
 
@@ -30,7 +29,6 @@ export default function ProviderSelectionOptionCard({
   presentationOnly = false,
   catalogModelLabel,
   hideLocalSubtitle = false,
-  showModelIdAlongsideDetail = false,
   onPress,
 }: ProviderSelectionOptionCardProps) {
   // Descriptive capability lists are omitted; actual capability and availability gates stay enforced.
@@ -39,15 +37,11 @@ export default function ProviderSelectionOptionCard({
     : getBlockedMessage(option, requirements);
   const selectable = blockedMessage === null && !disabled;
   const title = catalogModelLabel ?? option.displayName;
-  // Placeholder rows can identify the catalog selection without replacing its privacy notice.
-  const separateModelId =
-    showModelIdAlongsideDetail && title !== option.modelId;
   return (
     <ProviderModelChoiceRow
       key={`${option.provider.id}:${option.modelId}`}
       testID={`provider-option-${index}`}
       title={title}
-      modelId={separateModelId ? option.modelId : undefined}
       detail={
         catalogModelLabel ||
         (hideLocalSubtitle && option.privacyBoundary === 'on-device')
