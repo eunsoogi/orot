@@ -134,6 +134,7 @@ test('keeps the same hub header while only the current body moves left or right'
       x: 94,
       width: 103,
       animated: true,
+      origin: { x: 3, y: 3, width: 91, height: 44 },
     });
     expect(body).toHaveStyle({ transform: [{ translateX: 420 }] });
     expect(body).toContainElement(screen.getByTestId('schedule-content'));
@@ -150,12 +151,14 @@ test('keeps the same hub header while only the current body moves left or right'
       x: 3,
       width: 91,
       animated: true,
+      origin: { x: 94, y: 3, width: 103, height: 44 },
     });
     await fireEvent(recordTab, 'layout', layout(3, 141));
     expect(pill().props.selectionTarget).toMatchObject({
       x: 3,
       width: 141,
       animated: false,
+      origin: undefined,
     });
     await view.rerender(host(true));
     await fireEvent.press(screen.getByTestId('records-section-schedule'));
@@ -165,6 +168,7 @@ test('keeps the same hub header while only the current body moves left or right'
       x: 94,
       width: 103,
       animated: false,
+      origin: undefined,
     });
     expect(timing).toHaveBeenCalledTimes(2);
   } finally {
