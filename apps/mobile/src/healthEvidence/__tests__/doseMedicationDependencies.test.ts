@@ -60,3 +60,86 @@ test('loads only the selected dose’s exact medication dependency even when reg
     close();
   }
 });
+
+test('resolves typed and shared provenance dependencies in one bounded native read', async () => {
+  const { database, close } = createHealthEvidenceTestDatabase();
+  try {
+    await runMigrations(database);
+    const repository = createRecordRepository(database);
+    const ingestedAt = '2026-10-01T00:00:00Z';
+    const provenance = { origin: 'imported' as const, sourceRecordIds: [] };
+    const reviewState = { status: 'unreviewed' as const };
+    for (const id of ['shared', 'typed-only']) {
+      await repository.put('medication_definition', {
+        id,
+        ingestedAt,
+        provenance,
+        reviewState,
+        medicationConceptIdentifier: id,
+        displayText: 'Synthetic medicine',
+        generalForm: 'tablet',
+        isArchived: false,
+        hasSchedule: true,
+      });
+      await repository.put('symptom_entry', {
+        id,
+        ingestedAt,
+        reviewState,
+        effectiveAt: ingestedAt,
+        recordedAt: ingestedAt,
+        provenance: { origin: 'user_reported', sourceRecordIds: [] },
+        status: 'active',
+        description: 'Synthetic symptom',
+      });
+    }
+    await repository.put('dose_event', {
+      id: 'selected-dose',
+      effectiveAt: '2026-10-20T00:00:00Z',
+      ingestedAt: '2026-10-20T00:00:00Z',
+      provenance: { ...provenance, sourceRecordIds: ['shared'] },
+      reviewState,
+      eventKind: 'observed',
+      medicationDefinitionId: 'typed-only',
+      observationStatus: 'taken',
+      dose: { amount: 1, unit: 'tablet' },
+    });
+    let dependencyQueries = 0;
+    const result = await readEvidenceCandidates(
+      {
+        ...database,
+        transaction: work =>
+          database.transaction(tx =>
+            work({
+              ...tx,
+              execute: (sql, args) => {
+                if (
+                  sql.startsWith('SELECT') &&
+                  /WHERE (?:r\.)?id IN \(/.test(sql)
+                )
+                  dependencyQueries++;
+                return tx.execute(sql, args);
+              },
+            }),
+          ),
+      },
+      '',
+      undefined,
+      {
+        timeRange: {
+          fromInclusive: '2026-10-20T00:00:00Z',
+          toExclusive: '2026-10-21T00:00:00Z',
+        },
+      },
+    );
+    expect(
+      result.dependencies.map(item => [item.kind, item.record.id]).sort(),
+    ).toEqual([
+      ['medication_definition', 'shared'],
+      ['medication_definition', 'typed-only'],
+      ['symptom_entry', 'shared'],
+    ]);
+    expect(dependencyQueries).toBe(1);
+  } finally {
+    close();
+  }
+});
