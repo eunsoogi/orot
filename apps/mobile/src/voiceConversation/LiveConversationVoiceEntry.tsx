@@ -45,8 +45,15 @@ export function LiveConversationVoiceEntry(
     const live = latest.current;
     const snapshot = live.store.getSnapshot();
     const session = snapshot.sessions.find(item => item.id === live.sessionId);
+    const systemCallActive = owner.current?.isSystemCallActive() === true;
+    // Only an already activated CallKit owner may use the selected route's
+    // independent ownership witness instead of its foreground-only action gate.
+    const entry =
+      systemCallActive && AppState.currentState !== 'active'
+        ? (live.isEntryCurrent?.routeOwnsDraft ?? live.isEntryCurrent)
+        : live.isEntryCurrent;
     return Boolean(
-      (owner.current?.isSystemCallActive() ||
+      (systemCallActive ||
         AppState.currentState === 'active' ||
         (AppState.currentState === 'inactive' &&
           owner.current?.getState().phase === 'authorizing')) &&
@@ -60,7 +67,7 @@ export function LiveConversationVoiceEntry(
       !session.restoreFailed &&
       !session.retryingSave &&
       !(session.restoreAfterRetry && session.unsavedCount) &&
-      (live.isEntryCurrent?.() ?? true) &&
+      (entry?.() ?? true) &&
       live.store.photoDrafts.get(live.sessionId).status === 'empty',
     );
   };
