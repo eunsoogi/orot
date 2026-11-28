@@ -51,4 +51,34 @@ enum RecordingFixtureUITestConditions {
         XCTAssertTrue(microphone.isEnabled)
         FormUITestConditions.reveal(microphone, in: app, scrollID: scrollID, towardTop: true, keyboardMayBeVisible: false)
     }
+
+    /// Prove the stock title and whole-section disclosure before editing any segment.
+    static func openSavedTranscript(_ app: XCUIApplication) {
+        let title = UITestConditions.element(app, "recording-detail-title")
+        XCTAssertTrue(title.waitForAppearance())
+        XCTAssertFalse(UITestConditions.text(title).isEmpty)
+        let disclosure = UITestConditions.element(app, "recording-detail-transcript-toggle")
+        FormUITestConditions.reveal(disclosure, in: app, scrollID: "navigation-route-scroll")
+        XCTAssertTrue(disclosure.isHittable)
+        XCTAssertFalse(UITestConditions.element(app, "transcript-edit-0").exists)
+        disclosure.tap()
+        XCTAssertTrue(UITestConditions.element(app, "transcript-edit-0").waitForAppearance())
+        XCTAssertFalse(UITestConditions.element(app, "transcript-segment-toggle-0").exists)
+    }
+
+    /// The encounter fixture starts with an actual native tool modal.
+    static func setReviewTools(_ app: XCUIApplication, open: Bool) {
+        let modal = UITestConditions.element(app, "encounter-probe-close")
+        if modal.exists == open {
+            return
+        }
+        let button = UITestConditions.element(app, open ? "encounter-probe-tools" : "encounter-probe-close")
+        let ready = XCTNSPredicateExpectation(predicate: NSPredicate { _, _ in
+            button.exists && button.isEnabled && button.isHittable && app.frame.contains(button.frame)
+        }, object: button)
+        XCTAssertEqual(UITestConditions.wait(for: [ready]), .completed)
+        button.tap()
+        let state = XCTNSPredicateExpectation(predicate: NSPredicate(format: "exists == %@", NSNumber(value: open)), object: modal)
+        XCTAssertEqual(UITestConditions.wait(for: [state]), .completed)
+    }
 }

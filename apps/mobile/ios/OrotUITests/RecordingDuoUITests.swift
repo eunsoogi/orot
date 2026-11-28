@@ -117,6 +117,8 @@ final class RecordingDuoUITests: OrotFailFastTestCase {
             XCTAssertTrue(UITestConditions.exists(panel), panel.identifier)
         }
 
+        RecordingFixtureUITestConditions.openSavedTranscript(app)
+
         let start = UITestConditions.element(app, "encounter-start")
         FormUITestConditions.reveal(start, in: app, scrollID: "navigation-route-scroll")
         start.tap()
@@ -158,6 +160,7 @@ final class RecordingDuoUITests: OrotFailFastTestCase {
         ]
         app.launch()
         UITestConditions.value(UITestConditions.element(app, "encounter-probe-ready"), equals: "ready")
+        RecordingFixtureUITestConditions.setReviewTools(app, open: false)
         let row = app.buttons.matching(identifier: "recording-details-\(fixture):ui-review").firstMatch
         FormUITestConditions.reveal(row, in: app, scrollID: "navigation-route-scroll")
         XCTAssertTrue(row.isHittable)
@@ -173,6 +176,7 @@ final class RecordingDuoUITests: OrotFailFastTestCase {
             FormUITestConditions.reveal(cancel, in: app, scrollID: "navigation-route-scroll")
             cancel.tap()
         }
+        RecordingFixtureUITestConditions.setReviewTools(app, open: true)
         let cleanup = UITestConditions.element(app, "encounter-probe-cleanup")
         XCTAssertTrue(UITestConditions.exists(cleanup))
         XCTAssertTrue(cleanup.isHittable)
