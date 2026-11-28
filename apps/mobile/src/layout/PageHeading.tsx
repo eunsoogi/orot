@@ -5,7 +5,7 @@ import {
   useWindowDimensions,
 } from 'react-native';
 import { AppText } from './AppText';
-import { settingsPageStyles } from './settingsPagePresentation';
+import { pageHeadingStyles } from './pageHeadingPresentation';
 
 type Props = {
   readonly children: string;
@@ -15,12 +15,12 @@ type Props = {
 
 /** Use a common iOS line box only at default size; explicit leading disturbed
  * some wrapped Korean headings at accessibility sizes. Keep native wrapping. */
-export function SettingsPageHeading({ children, testID, style }: Props) {
+export function PageHeading({ children, testID, style }: Props) {
   const { fontScale } = useWindowDimensions();
   const title =
     Platform.OS === 'ios' && fontScale === 1
       ? styles.defaultTitle
-      : settingsPageStyles.title;
+      : pageHeadingStyles.title;
   return (
     <AppText
       accessibilityRole="header"
@@ -33,5 +33,5 @@ export function SettingsPageHeading({ children, testID, style }: Props) {
 }
 
 const styles = StyleSheet.create({
-  defaultTitle: { ...settingsPageStyles.title, lineHeight: 42 },
+  defaultTitle: { ...pageHeadingStyles.title, lineHeight: 42 },
 });

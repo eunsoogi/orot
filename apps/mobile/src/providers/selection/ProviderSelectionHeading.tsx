@@ -2,7 +2,7 @@ import { t } from '../../i18n';
 import { navigationText } from '../../i18n/navigation';
 import { AppButton as Button } from '../../layout/AppButton';
 import { AppText as Text } from '../../layout/AppText';
-import { SettingsPageHeading } from '../../layout/SettingsPageHeading';
+import { PageHeading } from '../../layout/PageHeading';
 import { providerSelectionScreenStyles as styles } from './providerSelectionScreenPresentation';
 import { providerSelectionText } from './text';
 
@@ -29,9 +29,7 @@ export function ProviderSelectionHeading({
         />
       ) : null}
       {isSettings ? (
-        <SettingsPageHeading>
-          {title ?? providerSelectionText.title}
-        </SettingsPageHeading>
+        <PageHeading>{title ?? providerSelectionText.title}</PageHeading>
       ) : (
         <Text accessibilityRole="header" style={styles.title}>
           {t('modelSettings.languageTitle')}

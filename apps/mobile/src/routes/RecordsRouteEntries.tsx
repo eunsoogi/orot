@@ -1,6 +1,6 @@
 import { Pressable, View, useWindowDimensions } from 'react-native';
 import { AppText as Text } from '../layout/AppText';
-import { SettingsPageHeading as PageHeading } from '../layout/SettingsPageHeading';
+import { PageHeading } from '../layout/PageHeading';
 import { NativeGlassBackdrop } from '../layout/NativeGlassBackdrop';
 import { AppSymbol } from '../layout/AppSymbol';
 import { t } from '../i18n';

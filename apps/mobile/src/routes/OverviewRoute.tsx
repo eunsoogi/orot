@@ -1,7 +1,7 @@
 import { OverviewPreparedVisits } from './OverviewPreparedVisits';
 import type { AiFeatureServices } from '../aiFeatures/integration/featureServiceTypes';
-import { SettingsPageHeading as PageHeading } from '../layout/SettingsPageHeading';
-import { settingsPageStyles } from '../layout/settingsPagePresentation';
+import { PageHeading } from '../layout/PageHeading';
+import { pageHeadingStyles } from '../layout/pageHeadingPresentation';
 import { StyleSheet, View } from 'react-native';
 import type { Appointment } from '@orot/storage';
 import { t } from '../i18n';
@@ -69,7 +69,7 @@ const styles = StyleSheet.create({
   container: {
     // Let the shared ScrollView measure long Dynamic Type content past its viewport.
     gap: 24,
-    ...settingsPageStyles.inset,
+    ...pageHeadingStyles.inset,
     // The outer route scroller already contributes the shared navigation gap.
     paddingBottom: hubSpacing.bottom - NAVIGATION_CONTENT_GAP,
     backgroundColor: appColors.background,

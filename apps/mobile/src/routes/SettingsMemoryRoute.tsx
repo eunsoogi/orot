@@ -1,4 +1,4 @@
-import { SettingsPageHeading } from '../layout/SettingsPageHeading';
+import { PageHeading } from '../layout/PageHeading';
 import { settingsPageStyles } from '../layout/settingsPagePresentation';
 import { StyleSheet, View } from 'react-native';
 import { AdaptiveColumns } from '../layout/AdaptiveColumns';
@@ -30,9 +30,9 @@ export function SettingsMemoryRoute({
           testID="settings-memory-layout"
           primary={
             <View style={styles.page}>
-              <SettingsPageHeading testID="settings-memory-title">
+              <PageHeading testID="settings-memory-title">
                 {t('settings.memory')}
-              </SettingsPageHeading>
+              </PageHeading>
               <View style={styles.group} testID="settings-memory-controls">
                 <SettingsAutomaticMemorySection ownership={ownership} />
                 <View style={styles.divider} />

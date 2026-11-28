@@ -4,7 +4,7 @@ import { t } from '../i18n';
 import { AdaptiveColumns } from '../layout/AdaptiveColumns';
 import { AppSymbol } from '../layout/AppSymbol';
 import { AppText } from '../layout/AppText';
-import { SettingsPageHeading } from '../layout/SettingsPageHeading';
+import { PageHeading } from '../layout/PageHeading';
 import { appColors } from '../layout/appColors';
 import { settingsPageStyles } from '../layout/settingsPagePresentation';
 import { useNavigationLeaveStateRegistration } from '../navigation';
@@ -39,9 +39,7 @@ export function SettingsDisplayModeRoute() {
         routeKey="settings-display-mode"
         primary={
           <View style={styles.content}>
-            <SettingsPageHeading>
-              {t('settings.displayMode')}
-            </SettingsPageHeading>
+            <PageHeading>{t('settings.displayMode')}</PageHeading>
             <View
               accessibilityRole="radiogroup"
               onLayout={event => setLaneWidth(event.nativeEvent.layout.width)}
