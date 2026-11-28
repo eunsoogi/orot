@@ -4,15 +4,11 @@ import { useEffect, useState } from 'react';
 import { View } from 'react-native';
 import { AppButton } from '../layout/AppButton';
 import { AppText as Text } from '../layout/AppText';
-import { formatDateTime, t } from '../i18n';
+import { t } from '../i18n';
+import { SavedMemorySwipeRow } from './SavedMemorySwipeRow';
+import { useSavedMemorySwipeActions } from './useSavedMemorySwipeActions';
 import { useSavedMemories, type SavedMemory } from './useSavedMemories';
-import { isHistoryMemory } from './unifiedSavedMemories';
 import {
-  manualHistoryEffectiveDateLabel,
-  manualHistoryReviewLabel,
-} from '../manualHistory/manualHistoryLabels';
-import {
-  MaterialLibraryRow,
   MaterialLibraryRows,
   materialLibraryStyles as styles,
 } from '../layout/MaterialLibraryRows';
@@ -28,13 +24,20 @@ export function SavedMemoryBrowser({
   readonly ownership?: NavigationRouteOwnership;
   readonly onOpenMemory?: (id: string) => void;
 }) {
-  const { rows, state, refresh, readyRead } = useSavedMemories(
+  const { rows, state, refresh, refreshReadOnly, readyRead } = useSavedMemories(
     load,
     active,
     ownership,
   );
   const [visible, setVisible] = useState(20);
   const position = useNavigationRouteScrollPosition();
+  const [revealed, setRevealed] = useState<string>();
+  const { busy, error, requestDelete } = useSavedMemorySwipeActions({
+    read: readyRead,
+    owner: ownership,
+    refresh: refreshReadOnly,
+  });
+  useEffect(() => setRevealed(undefined), [readyRead]);
   // Restore only after the fresh protected list has committed, not while its rows are empty.
   useEffect(() => {
     if (active && state === 'ready') position?.restore();
@@ -74,6 +77,9 @@ export function SavedMemoryBrowser({
           />
         </>
       )}
+      {error && state === 'ready' ? (
+        <Text accessibilityRole="alert">{error}</Text>
+      ) : null}
       {state === 'ready' && (
         <>
           <Text accessibilityLiveRegion="polite">
@@ -84,29 +90,27 @@ export function SavedMemoryBrowser({
           {rows.length ? (
             <MaterialLibraryRows testID="saved-memory-rows">
               {rows.slice(0, visible).map((row, index) => (
-                <MaterialLibraryRow
+                <SavedMemorySwipeRow
                   key={row.id}
-                  testID={`saved-memory-entry-${row.id}`}
-                  divider={index + 1 < Math.min(visible, rows.length)}
-                  // Native wrapping, not a character slice, owns the two-line preview.
-                  title={row.text.replace(/\s+/g, ' ').trim()}
-                  titleNumberOfLines={2}
-                  summary={
-                    isHistoryMemory(row)
-                      ? manualHistoryEffectiveDateLabel(
-                          row.record.effectiveDate,
-                        ) +
-                        ' · ' +
-                        manualHistoryReviewLabel(row.record)
-                      : t('savedMemory.savedAt', {
-                          date: formatDateTime(new Date(row.createdAt)),
-                        })
+                  row={row}
+                  enabled={Boolean(ownership && readyRead)}
+                  disabled={busy}
+                  revealed={revealed === row.id}
+                  onReveal={open =>
+                    setRevealed(current =>
+                      open ? row.id : current === row.id ? undefined : current,
+                    )
                   }
-                  accessibilityHint={t('savedMemory.openDetail')}
-                  onPress={
+                  divider={index + 1 < Math.min(visible, rows.length)}
+                  onDelete={() => {
+                    setRevealed(undefined);
+                    requestDelete(row);
+                  }}
+                  onOpen={
                     onOpenMemory &&
                     (() => {
                       if (!readyRead?.isCurrent()) return;
+                      setRevealed(undefined);
                       position?.preserve();
                       onOpenMemory(row.id);
                     })
