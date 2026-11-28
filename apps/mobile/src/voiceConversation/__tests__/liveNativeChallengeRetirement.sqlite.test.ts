@@ -64,7 +64,10 @@ test('native retirement cancels only the owned stock read', async () => {
     protectedDataAvailable: async () => true,
     openData: storage.openData,
   });
-  const run = liveCommonConversationRun(() => port, () => true);
+  const run = liveCommonConversationRun(
+    () => port,
+    () => true,
+  );
   try {
     run.attach('owned-live');
     emitFakeLiveReadyBatch('owned-live', registration, challenge);
