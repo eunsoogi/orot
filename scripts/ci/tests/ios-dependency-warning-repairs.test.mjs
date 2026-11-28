@@ -3,6 +3,7 @@ import { createRequire } from 'node:module';
 import { dirname, resolve } from 'node:path';
 import { readFileSync } from 'node:fs';
 import test from 'node:test';
+import { runInNewContext } from 'node:vm';
 
 // Read the exact pinned dependency sources installed by pnpm to guard iOS warning repairs.
 const appRequire = createRequire(resolve('apps/mobile/package.json'));
@@ -40,6 +41,42 @@ test('Slider keeps its final-image and quantization contracts with valid iOS inp
     podspec,
     /ss\.exclude_files\s*=\s*"common\/cpp\/react\/renderer\/components\/RNCSlider\/RNCSliderMeasurementsManager\.cpp"/,
   );
+});
+
+test('the shipped slider JavaScript view config forwards the recording seek opt-in', () => {
+  // The app resolves the published JavaScript entry, not the TypeScript codegen spec.
+  const entry = appRequire.resolve('@react-native-community/slider');
+  const entryRequire = createRequire(entry);
+  const adapter = entryRequire.resolve('./index');
+  const configPath = createRequire(adapter).resolve('./RNCSliderNativeComponent');
+  assert.match(readFileSync(entry, 'utf8'), /require\(['"]\.\/index['"]\)/);
+  assert.match(readFileSync(adapter, 'utf8'), /require\(['"]\.\/RNCSliderNativeComponent['"]\)/);
+  let attributes;
+  runInNewContext(readFileSync(configPath, 'utf8'), {
+    exports: {},
+    require(moduleName) {
+      switch (moduleName) {
+        case 'react-native/Libraries/NativeComponent/NativeComponentRegistry':
+          return {
+            get(name, config) {
+              assert.equal(name, 'RNCSlider');
+              attributes = config().validAttributes;
+            },
+          };
+        case 'react-native/Libraries/NativeComponent/ViewConfigIgnore':
+          return { ConditionallyIgnoredEventHandlers: (handlers) => handlers };
+        case 'react-native/Libraries/Image/resolveAssetSource':
+        case 'react-native/Libraries/StyleSheet/processColor':
+          return { default: () => {} };
+        case 'react-native':
+          return {};
+        default:
+          throw new Error('Unexpected dependency in the slider view config');
+      }
+    },
+  });
+  assert.equal(attributes?.commitOnRelease, true);
+  assert.equal(attributes?.tapToSeek, true);
 });
 
 test('DateTimePicker retains its style converters and excludes deprecated or empty inputs', () => {
