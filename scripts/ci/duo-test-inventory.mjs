@@ -22,6 +22,7 @@ export const duoTests = [
   'OrotUITests/RootNavigationUITests/testSettingsLargeTextTargetsRemainReachableBesideDuoRail',
   'OrotUITests/RootNavigationUITests/testSettingsAccountsLayoutTracksMeasuredPanels',
   'OrotUITests/RootNavigationUITests/testSettingsProviderLayoutTracksMeasuredPanels',
+  'OrotIntegrationTests/NavigationSelectionGlassTests/testSectionSelectionMovesTheSameMaterialInBothHorizontalDirections',
   'OrotUITests/ProviderSelectionUITests/testAuthSessionCancellationRouteExitRetryAndCallbackKeepSelectionExplicit',
   'OrotUITests/RootNavigationUITests/testProviderSelectionOverlayKeepsUnavailableProviderDisabledAcrossMeasuredDuoReflow',
   'OrotUITests/RootNavigationUITests/testBackupRecoveryReflowsWithinMeasuredDuoRegionsAndRemainsReachable',
