@@ -62,16 +62,14 @@ export default function AppointmentsScreen({
       Math.max(1, Math.min(60_000, nextBoundary - now)),
     );
     const subscription = AppState.addEventListener('change', appState => {
-      if (appState === 'active') {
-        setNow(Date.now());
-        reload().catch(() => undefined);
-      }
+      // Elapsed time affects the next-visit marker, not the stored list.
+      if (appState === 'active') setNow(Date.now());
     });
     return () => {
       clearTimeout(timer);
       subscription.remove();
     };
-  }, [active, now, state.appointments, reload]);
+  }, [active, now, state.appointments]);
   const upcomingAppointments = state.appointments.filter(appointment =>
     isEligibleNextVisit(appointment, now),
   );

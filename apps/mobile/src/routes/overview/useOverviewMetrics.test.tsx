@@ -1,5 +1,6 @@
 import { act, renderHook, waitFor } from '@testing-library/react-native';
 import { AppState, type AppStateStatus } from 'react-native';
+import { notifyWorkoutImportCommitted } from '../../healthkit/workoutImportEvents';
 import { readIsolatedOverview } from '../../storage/secureDatabase';
 import { loadOverviewMetrics } from './metricLoader';
 import type { OverviewMetricProjection } from './metricProjection';
@@ -28,8 +29,9 @@ jest.mock('./selectedOverviewSnapshot', () =>
   jest.requireActual('../testSupport/overviewSnapshotMock').snapshotMock(),
 );
 
-test('revalidates the local window when the app returns to the foreground', async () => {
+test('defers a real committed workout until foreground, without speculative refresh', async () => {
   jest.clearAllMocks();
+  const previous = AppState.currentState;
   let callback: ((state: AppStateStatus) => void) | undefined;
   const subscription = jest
     .spyOn(AppState, 'addEventListener')
@@ -38,23 +40,28 @@ test('revalidates the local window when the app returns to the foreground', asyn
       return { remove: jest.fn() };
     });
   const hook = await renderHook(() => useOverviewMetrics());
-  await waitFor(() => expect(hook.result.current.state).toBe('ready'));
-  expect(loadOverviewMetrics).toHaveBeenCalledTimes(1);
-  await act(async () => callback?.('active'));
-  await waitFor(() => expect(loadOverviewMetrics).toHaveBeenCalledTimes(2));
-  await hook.unmount();
-  subscription.mockRestore();
+  try {
+    await waitFor(() => expect(hook.result.current.state).toBe('ready'));
+    AppState.currentState = 'background';
+    await act(async () => notifyWorkoutImportCommitted());
+    expect(loadOverviewMetrics).toHaveBeenCalledTimes(1);
+    AppState.currentState = 'active';
+    await act(async () => callback?.('active'));
+    await waitFor(() => expect(loadOverviewMetrics).toHaveBeenCalledTimes(2));
+    await act(async () => callback?.('active'));
+    expect(loadOverviewMetrics).toHaveBeenCalledTimes(2);
+  } finally {
+    AppState.currentState = previous;
+    await hook.unmount();
+    subscription.mockRestore();
+  }
 });
 
 test('does not let an older refresh overwrite a later saved selection', async () => {
   jest.clearAllMocks();
-  let callback: ((state: AppStateStatus) => void) | undefined;
   const subscription = jest
     .spyOn(AppState, 'addEventListener')
-    .mockImplementation((_event, listener) => {
-      callback = listener;
-      return { remove: jest.fn() };
-    });
+    .mockImplementation(() => ({ remove: jest.fn() }));
   let finish!: (
     result: Awaited<ReturnType<typeof loadOverviewMetrics>>,
   ) => void;
@@ -69,7 +76,7 @@ test('does not let an older refresh overwrite a later saved selection', async ()
     .mockReturnValueOnce(pending);
   const hook = await renderHook(() => useOverviewMetrics());
   await waitFor(() => expect(hook.result.current.state).toBe('ready'));
-  await act(async () => callback?.('active'));
+  await act(async () => hook.result.current.retry());
   await waitFor(() => expect(loadOverviewMetrics).toHaveBeenCalledTimes(2));
   await act(async () => hook.result.current.save(['steps', 'sleep']));
   await act(async () => finish({ metrics: {}, quantityTruncated: false }));
@@ -143,6 +150,7 @@ test('reports a first-read failure without treating it as an empty snapshot', as
 });
 
 test('recovers from a discarded snapshot with a fresh read on foreground return', async () => {
+  const phaseBefore = AppState.currentState;
   let callback: ((state: AppStateStatus) => void) | undefined;
   const subscription = jest
     .spyOn(AppState, 'addEventListener')
@@ -155,6 +163,7 @@ test('recovers from a discarded snapshot with a fresh read on foreground return'
     .mockClear()
     .mockResolvedValueOnce('unavailable')
     .mockResolvedValueOnce('discarded')
+    .mockResolvedValueOnce('unavailable')
     .mockImplementationOnce(async (_now, _signal, publish) => {
       publish({
         selection: ['steps'],
@@ -167,14 +176,20 @@ test('recovers from a discarded snapshot with a fresh read on foreground return'
   const hook = await renderHook(() => useOverviewMetrics());
   await waitFor(() => expect(hook.result.current.state).toBe('ready'));
   legacy.mockClear();
+  await act(async () => hook.result.current.retry());
+  await waitFor(() => expect(read).toHaveBeenCalledTimes(2));
+  AppState.currentState = 'background';
+  await act(async () => new Promise(resolve => setTimeout(resolve, 150)));
+  expect(read).toHaveBeenCalledTimes(2);
+  AppState.currentState = 'active';
   await act(async () => callback?.('active'));
-  expect(hook.result.current.state).toBe('loading');
   await waitFor(() => expect(hook.result.current.state).toBe('ready'));
-  expect(read).toHaveBeenCalledTimes(3);
+  expect(read).toHaveBeenCalledTimes(4);
   expect(legacy).not.toHaveBeenCalled();
   expect(hook.result.current.selection).toEqual(['steps']);
   await hook.unmount();
   subscription.mockRestore();
+  AppState.currentState = phaseBefore;
 });
 
 test('bounds repeated rejections and does not use shared storage after losing a witness', async () => {

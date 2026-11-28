@@ -1,6 +1,7 @@
 import { useIsFocused } from '@react-navigation/native';
 import { AppState, type AppStateStatus } from 'react-native';
 import { act, render, screen, waitFor } from '@testing-library/react-native';
+import { notifyWorkoutImportCommitted } from '../../healthkit/workoutImportEvents';
 import { readIsolatedOverview } from '../../storage/secureDatabase';
 import { OverviewMetrics } from './OverviewMetrics';
 import { saveOverviewMetricSelection } from './metricSelection';
@@ -28,9 +29,11 @@ test.each([
   'removed',
   'settings',
 ] as const)(
-  'keeps native workout ownership independent from foreground metric reprojection: %s',
+  'keeps native workout ownership independent from event-driven metric reprojection: %s',
   async outcome => {
     const lane = await setup();
+    const previousPhase = AppState.currentState;
+    AppState.currentState = 'active';
     jest.mocked(useIsFocused).mockReturnValue(true);
     const probe = lane.holdSecondProbe();
     let selectionRemoved = false;
@@ -97,7 +100,17 @@ test.each([
         expect(lane.queryWorkoutPeriodHeartRate).not.toHaveBeenCalled();
         await act(async () => appEvent?.('active'));
       }
-      await waitFor(() => expect(finishRefresh).toBeDefined());
+      if (outcome !== 'settings') {
+        expect(readIsolatedOverview).toHaveBeenCalledTimes(1);
+        expect(finishRefresh).toBeUndefined();
+        // A real commit notification can wake the parent independently of
+        // foreground. Revocation must block even that trigger until unlock.
+        await act(async () => notifyWorkoutImportCommitted());
+      }
+      if (outcome === 'revoked') {
+        expect(readIsolatedOverview).toHaveBeenCalledTimes(1);
+        expect(finishRefresh).toBeUndefined();
+      } else await waitFor(() => expect(finishRefresh).toBeDefined());
       if (outcome === 'available')
         expect(result()).toHaveTextContent(/불러오는 중/);
       await act(async () => probe.release(outcome !== 'revoked'));
@@ -123,6 +136,7 @@ test.each([
       expect(lane.requestReadAuthorizations).not.toHaveBeenCalled();
       await view.unmount();
     } finally {
+      AppState.currentState = previousPhase;
       listener.mockRestore();
       lane.close();
     }

@@ -1,6 +1,6 @@
 import { SettingsInformationButton } from './SettingsInformationButton';
 import { SettingsNotificationDivider } from './SettingsNotificationDivider';
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { AppState, StyleSheet, View } from 'react-native';
 import { SettingsNotificationToggleRow } from './SettingsNotificationToggleRow';
 import { t } from '../i18n';
@@ -18,41 +18,71 @@ export function SettingsReplyNotificationSection() {
   const [status, setStatus] = useState<'denied' | 'error' | null>(null);
   const [busy, setBusy] = useState(false);
 
+  const installedPreference = useRef<ReplyNotificationPreference | null>(null);
+  const request = useRef(0);
+  const saving = useRef(false);
   useEffect(() => {
-    let active = true;
-    const refresh = async () => {
+    const retire = () => {
+      request.current++;
+    };
+    let initializationPending = false;
+    async function checkAuthorization() {
+      const initialize = installedPreference.current === null;
+      // The saved toggle belongs to this form. Only the OS permission can
+      // change elsewhere while backgrounded, and it must still be rechecked.
+      if (
+        saving.current ||
+        initializationPending ||
+        (!initialize && !installedPreference.current?.enabled)
+      )
+        return;
+      const revision = ++request.current;
+      initializationPending = initialize;
       try {
         const native = nativeReplyNotifications();
-        const value = await native.read();
+        const value = initialize
+          ? await native.read()
+          : installedPreference.current;
+        if (!value || revision !== request.current) return;
         const authorized = !value.enabled || (await native.authorized());
-        if (active) {
+        if (revision !== request.current) return;
+        if (initialize) {
+          installedPreference.current = value;
           setPreference(value);
-          setStatus(authorized ? null : 'denied');
         }
+        setStatus(authorized ? null : 'denied');
       } catch {
-        if (active) setStatus('error');
+        if (revision === request.current) setStatus('error');
+      } finally {
+        if (initialize) initializationPending = false;
       }
-    };
-    refresh().catch(() => undefined);
+    }
+    checkAuthorization().catch(() => undefined);
     const listener = AppState.addEventListener('change', value => {
-      if (value === 'active') refresh().catch(() => undefined);
+      if (value === 'active') checkAuthorization().catch(() => undefined);
     });
     return () => {
-      active = false;
+      retire();
       listener.remove();
     };
   }, []);
 
   async function save(value: ReplyNotificationPreference) {
+    if (saving.current) return;
+    saving.current = true;
+    const revision = ++request.current;
     setBusy(true);
     try {
       const result = await nativeReplyNotifications().save(value);
+      if (revision !== request.current) return;
+      installedPreference.current = value;
       setPreference(value);
       setStatus(result === 'denied' || result === 'error' ? result : null);
     } catch {
-      setStatus('error');
+      if (revision === request.current) setStatus('error');
     } finally {
-      setBusy(false);
+      saving.current = false;
+      if (revision === request.current) setBusy(false);
     }
   }
 

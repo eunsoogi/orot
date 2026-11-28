@@ -142,12 +142,8 @@ export function useAppOverviewData(
       refreshRecordings().catch(() => undefined);
     previousRecordingsActive.current = recordingsActive;
     previousOverviewActive.current = overviewActive;
-    const subscription = AppState.addEventListener('change', state => {
-      if (state !== 'active') return;
-      if (overviewActive) refreshAppointments().catch(() => undefined);
-      if (recordingsActive) refreshRecordings().catch(() => undefined);
-    });
-    return () => subscription.remove();
+    // OS foreground is not a tab change. The clock above catches elapsed
+    // time without rereading the settled appointment and recording snapshots.
   }, [
     overviewActive,
     recordingsActive,

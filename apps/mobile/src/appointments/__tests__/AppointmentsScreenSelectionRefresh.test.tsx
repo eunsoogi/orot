@@ -144,47 +144,33 @@ test('keeps a manual history choice on re-entry and defaults after its removal',
   ).toBe(true);
 });
 
-test('re-evaluates automatic selection after an app foreground refresh', async () => {
-  const currentAppointment = appointment('current', now + 60_000);
-  const followingAppointment = appointment('following', now + 2 * 60_000);
-  let appointments = [currentAppointment, followingAppointment];
-  const store = createAppointmentStore(appointments);
-  store.list.mockImplementation(async () => [...appointments]);
-  let stateChangeHandler:
-    Parameters<typeof AppState.addEventListener>[1] | undefined;
+test('declaring the app active preserves the selected visit without reloading', async () => {
+  const visit = appointment('retained', now + 60_000);
+  const store = createAppointmentStore([visit]);
+  const listeners = new Set<Parameters<typeof AppState.addEventListener>[1]>();
   const subscription = jest
     .spyOn(AppState, 'addEventListener')
     .mockImplementation((event, handler) => {
-      if (event === 'change') stateChangeHandler = handler;
-      return { remove: jest.fn() };
+      if (event === 'change') listeners.add(handler);
+      return {
+        remove: () => {
+          listeners.delete(handler);
+        },
+      };
     });
 
   try {
     await render(<AppointmentsScreen repository={store.repository} />);
-    const current = await screen.findByTestId('appointment-select-current');
-    expect(current.props.accessibilityState.selected).toBe(true);
-
-    appointments = [
-      { ...currentAppointment, status: 'cancelled' },
-      followingAppointment,
-    ];
+    const selected = () =>
+      screen.getByTestId('appointment-select-retained').props.accessibilityState
+        .selected;
+    expect(selected()).toBe(true);
     await act(async () => {
-      stateChangeHandler?.('background');
-      stateChangeHandler?.('active');
+      for (const state of ['inactive', 'background', 'active'] as const)
+        for (const listener of [...listeners]) listener(state);
     });
-    await waitFor(() => expect(store.repository.list).toHaveBeenCalledTimes(2));
-
-    expect(
-      await screen.findByTestId('appointment-next-visit-following'),
-    ).toBeTruthy();
-    expect(
-      screen.getByTestId('appointment-select-current').props.accessibilityState
-        .selected,
-    ).toBe(false);
-    expect(
-      screen.getByTestId('appointment-select-following').props
-        .accessibilityState.selected,
-    ).toBe(true);
+    expect(store.repository.list).toHaveBeenCalledTimes(1);
+    expect(selected()).toBe(true);
   } finally {
     subscription.mockRestore();
   }

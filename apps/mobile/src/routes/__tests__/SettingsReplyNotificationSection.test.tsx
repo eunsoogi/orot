@@ -1,12 +1,13 @@
 import React from 'react';
 import {
+  act,
   fireEvent,
   render,
   screen,
   waitFor,
 } from '@testing-library/react-native';
 import { t } from '../../i18n';
-import { NativeModules } from 'react-native';
+import { AppState, NativeModules } from 'react-native';
 import { SettingsReplyNotificationSection } from '../SettingsReplyNotificationSection';
 
 test('explains sensitive previews before explicit opt-in and supports suppression', async () => {
@@ -50,4 +51,41 @@ test('keeps a blocked permission status visible without saving or prompting', as
     t('settings.replyNotification.denied'),
   );
   expect(save).not.toHaveBeenCalled();
+});
+
+test('retains app preferences while reconciling actual OS notification access', async () => {
+  const before = NativeModules.ReplyNotificationModule;
+  const read = jest.fn().mockResolvedValue({ enabled: true, preview: false });
+  const authorized = jest
+    .fn()
+    .mockResolvedValueOnce(true)
+    .mockResolvedValue(false);
+  const save = jest.fn();
+  NativeModules.ReplyNotificationModule = { read, authorized, save };
+  let changed: Parameters<typeof AppState.addEventListener>[1] | undefined;
+  const app = jest
+    .spyOn(AppState, 'addEventListener')
+    .mockImplementation((_type, cb) => {
+      changed = cb;
+      return { remove: jest.fn() };
+    });
+  try {
+    const view = await render(<SettingsReplyNotificationSection />);
+    expect(authorized).toHaveBeenCalledTimes(1);
+    await act(async () => {
+      changed?.('inactive');
+      changed?.('background');
+      changed?.('active');
+    });
+    expect(await screen.findByRole('alert')).toHaveTextContent(
+      t('settings.replyNotification.denied'),
+    );
+    expect(read).toHaveBeenCalledTimes(1);
+    expect(authorized).toHaveBeenCalledTimes(2);
+    expect(save).not.toHaveBeenCalled();
+    await view.unmount();
+  } finally {
+    app.mockRestore();
+    NativeModules.ReplyNotificationModule = before;
+  }
 });

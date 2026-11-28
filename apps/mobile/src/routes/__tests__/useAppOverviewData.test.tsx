@@ -1,3 +1,5 @@
+import { AppState } from 'react-native';
+import { notifyLocalSourceDeleted } from '../../storage/localDataClearEvents';
 import { act, renderHook } from '@testing-library/react-native';
 import type { Appointment } from '@orot/storage';
 import { createAppointmentStore } from '../../../test-helpers/appointmentStore';
@@ -166,4 +168,45 @@ test('built-in recordings do not load an Overview snapshot while Records owns in
   await rerender({ overview: false });
   await act(async () => result.current.refreshRecordings());
   expect(loadRecordings).toHaveBeenCalledTimes(1);
+});
+
+test('retains mounted local snapshots on OS return, but honors retry and source deletion', async () => {
+  const listeners = new Set<Parameters<typeof AppState.addEventListener>[1]>();
+  const subscription = jest
+    .spyOn(AppState, 'addEventListener')
+    .mockImplementation((event, handler) => {
+      if (event === 'change') listeners.add(handler);
+      return {
+        remove: () => {
+          listeners.delete(handler);
+        },
+      };
+    });
+  try {
+    const store = createAppointmentStore([appointment]);
+    const loadAppointments = jest.fn(async () => store.repository);
+    const loadRecordings = jest.fn(async () => [savedSource]);
+    const { result } = await renderHook(() =>
+      useAppOverviewData(loadAppointments, loadRecordings),
+    );
+    expect(result.current.recordings).toEqual([savedSource]);
+    expect(result.current.nextAppointment?.id).toBe(appointment.id);
+    await act(async () => {
+      for (const state of ['inactive', 'background', 'active'] as const)
+        for (const listener of [...listeners]) listener(state);
+    });
+    expect(loadAppointments).toHaveBeenCalledTimes(1);
+    expect(loadRecordings).toHaveBeenCalledTimes(1);
+    expect(result.current.recordings).toEqual([savedSource]);
+    expect(result.current.nextAppointment?.id).toBe(appointment.id);
+
+    await act(async () => result.current.refreshAppointments());
+    expect(loadAppointments).toHaveBeenCalledTimes(2);
+    loadRecordings.mockResolvedValue([]);
+    await act(async () => notifyLocalSourceDeleted('local'));
+    expect(loadRecordings).toHaveBeenCalledTimes(2);
+    expect(result.current.recordings).toEqual([]);
+  } finally {
+    subscription.mockRestore();
+  }
 });
