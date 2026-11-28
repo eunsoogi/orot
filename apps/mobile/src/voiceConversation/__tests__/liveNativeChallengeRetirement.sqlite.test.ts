@@ -23,7 +23,7 @@ jest.mock('../../voiceSettings/liveConversationToolsAuthorization', () => ({
   }),
 }));
 
-test('native retirement cancels only the owned local observation before stock SQLite dispatch', async () => {
+test('native retirement cancels only the owned stock read', async () => {
   const storage = await fixture();
   const priorNative = NativeModules.VoiceRealtimeModule;
   const phase = AppState.currentState;
