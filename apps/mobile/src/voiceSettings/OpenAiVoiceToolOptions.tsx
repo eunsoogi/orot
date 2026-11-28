@@ -17,20 +17,22 @@ export function OpenAiVoiceToolOptions({
 }) {
   return (
     <>
-      {models.map(model => (
-        <ProviderModelChoiceRow
-          key={model}
-          testID={`voice-tool-model-${model}`}
-          title={
-            savedChatGPTModelLabel(model) ?? t('modelSettings.modelNameUnknown')
-          }
-          detail={model}
-          icon="wrench.and.screwdriver"
-          selected={selected === model}
-          disabled={disabled}
-          onPress={() => choose(model)}
-        />
-      ))}
+      {models.map(model => {
+        const title =
+          savedChatGPTModelLabel(model) ?? t('modelSettings.modelNameUnknown');
+        return (
+          <ProviderModelChoiceRow
+            key={model}
+            testID={`voice-tool-model-${model}`}
+            title={title}
+            detail={title === model ? undefined : model}
+            icon="wrench.and.screwdriver"
+            selected={selected === model}
+            disabled={disabled}
+            onPress={() => choose(model)}
+          />
+        );
+      })}
     </>
   );
 }

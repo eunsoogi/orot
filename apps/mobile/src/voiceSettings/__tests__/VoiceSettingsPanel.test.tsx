@@ -74,9 +74,21 @@ it('does not present a static catalog or credentials and refreshes only explicit
   const local = within(view.getByTestId('voice-model-group-local'));
   const api = within(view.getByTestId('voice-model-group-openai-api'));
   expect(local.getByTestId('voice-model-apple-system-speech')).toBeTruthy();
+  expect(local.getByText('Apple 시스템 음성')).toBeTruthy();
+  expect(local.getAllByText('apple-system-speech')).toHaveLength(1);
   expect(local.queryByText('기기 안에서 처리')).toBeNull();
+  const pcc = within(view.getByTestId('provider-option-0'));
+  expect(pcc.getByText('Apple Intelligence')).toBeTruthy();
+  expect(pcc.getAllByText('apple-private-cloud-compute-default')).toHaveLength(
+    1,
+  );
+  expect(pcc.getByText('Private Cloud Compute에서 처리')).toBeTruthy();
+  expect(view.getByTestId('provider-option-0')).toBeDisabled();
   expect(local.queryByTestId('voice-model-gpt-live-1.1')).toBeNull();
-  expect(api.getByTestId('voice-model-gpt-live-1.1')).toBeTruthy();
+  expect(api.getByText('GPT-Live-1.1')).toBeTruthy();
+  expect(api.getAllByText('gpt-live-1.1')).toHaveLength(1);
+  expect(api.getByText('GPT-6 Luna')).toBeTruthy();
+  expect(api.getAllByText('gpt-6-luna')).toHaveLength(1);
   expect(api.queryByTestId('voice-model-apple-system-speech')).toBeNull();
   expect(view.queryByTestId('voice-model-gpt-text')).toBeNull();
   expect(view.queryByTestId('voice-model-gpt-realtime-2.1')).toBeNull();
@@ -90,7 +102,7 @@ it('does not present a static catalog or credentials and refreshes only explicit
   expect(view.getByTestId('voice-settings-save')).toBeDisabled();
   expect(saveReviewedOpenAiVoicePair).not.toHaveBeenCalled();
 });
-it('marks retained results stale and disables API selection after a failed refresh', async () => {
+it('retains disabled results and refresh errors without repeating cached refresh instructions', async () => {
   const view = await render(<VoiceSettingsPanel />);
   await waitForRefreshEnabled(view);
   await fireEvent.press(view.getByTestId('voice-model-refresh'));
@@ -106,6 +118,8 @@ it('marks retained results stale and disables API selection after a failed refre
   );
   expect(view.getByTestId('openai-voice-pair-form')).toBeTruthy();
   expect(view.getByTestId('voice-model-gpt-live-1.1')).toBeDisabled();
+  expect(view.getByTestId('voice-model-refresh')).toBeEnabled();
+  expect(view.queryByText(/최신 목록이 아니므로 새로고침/)).toBeNull();
 });
 it('preserves unavailable saved selection and never silently substitutes local', async () => {
   jest.mocked(voiceSettingsStore.load).mockResolvedValue({

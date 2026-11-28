@@ -34,7 +34,7 @@ export function VoiceModelOption({
       </View>
       <View style={styles.copy}>
         <Text style={styles.title}>{item.title}</Text>
-        {item.mode === 'openai-api' ? (
+        {item.title !== item.id ? (
           <Text style={styles.detail}>{item.id}</Text>
         ) : null}
       </View>

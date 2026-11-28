@@ -9,6 +9,7 @@ export function ProviderModelChoiceRow({
   testID,
   title,
   detail,
+  modelId,
   icon = 'brain',
   blockedMessage,
   selected,
@@ -18,6 +19,7 @@ export function ProviderModelChoiceRow({
   readonly testID: string;
   readonly title: string;
   readonly detail?: string;
+  readonly modelId?: string;
   readonly icon?: 'sparkles' | 'brain' | 'wrench.and.screwdriver';
   readonly blockedMessage?: string | null;
   readonly selected: boolean;
@@ -38,6 +40,9 @@ export function ProviderModelChoiceRow({
       </View>
       <View style={shared.copy}>
         <Text style={shared.title}>{title}</Text>
+        {modelId !== undefined && modelId !== detail ? (
+          <Text style={shared.detail}>{modelId}</Text>
+        ) : null}
         {detail !== undefined ? (
           <Text style={shared.detail}>{detail}</Text>
         ) : null}

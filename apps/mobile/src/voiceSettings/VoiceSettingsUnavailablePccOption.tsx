@@ -18,6 +18,7 @@ export function VoiceSettingsUnavailablePccOption() {
         },
       }}
       requirements={{ inputTypes: ['text'] }}
+      showModelIdAlongsideDetail
       disabled
       selected={false}
       index={0}

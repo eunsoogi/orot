@@ -20,28 +20,13 @@ export function OpenAiVoiceCatalogStatus({
   const message = emptyTools
     ? t('modelSettings.liveResponsesCatalogEmpty')
     : catalog.message;
-  const stale =
-    !catalog.fresh && (catalog.ids.length > 0 || catalog.toolIds.length > 0);
-  return (
-    <>
-      {message && message !== t('modelSettings.refreshAccountModels') ? (
-        <Text
-          accessibilityRole="status"
-          style={[shared.secondary, styles.footer]}
-        >
-          {message}
-        </Text>
-      ) : null}
-      {stale ? (
-        <Text
-          accessibilityRole="status"
-          style={[shared.secondary, styles.footer]}
-        >
-          {t('modelSettings.staleModels')}
-        </Text>
-      ) : null}
-    </>
-  );
+  // Cached rows stay visible and disabled. Keep the explicit refresh button and
+  // its real progress/error messages, without a second refresh instruction.
+  return message && message !== t('modelSettings.refreshAccountModels') ? (
+    <Text accessibilityRole="status" style={[shared.secondary, styles.footer]}>
+      {message}
+    </Text>
+  ) : null;
 }
 
 const styles = StyleSheet.create({
