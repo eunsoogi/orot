@@ -28,7 +28,9 @@ test('groups both Home sections with equal heading and content spacing', async (
   );
   expect(within(overview).getByText('내 건강 한눈에')).toBeTruthy();
   const grid = within(overview).getByTestId('overview-metric-grid');
-  const ambient = within(grid).getByTestId('overview-widget-ambient');
+  const ambient = within(grid).getByTestId('overview-widget-ambient', {
+    includeHiddenElements: true,
+  });
   expect(ambient.props.pointerEvents).toBe('none');
   expect(ambient.props.accessibilityElementsHidden).toBe(true);
   expect(within(changes).getByText('최근 달라진 점')).toBeTruthy();

@@ -1,5 +1,6 @@
 import { Pressable, View, useWindowDimensions } from 'react-native';
 import { AppText as Text } from '../layout/AppText';
+import { SettingsPageHeading as PageHeading } from '../layout/SettingsPageHeading';
 import { NativeGlassBackdrop } from '../layout/NativeGlassBackdrop';
 import { AppSymbol } from '../layout/AppSymbol';
 import { t } from '../i18n';
@@ -28,13 +29,9 @@ export function RecordsHeading({
 }) {
   return (
     <View style={styles.heading} testID="records-hub-header">
-      <Text
-        accessibilityRole="header"
-        style={styles.title}
-        testID="records-title"
-      >
+      <PageHeading style={styles.title} testID="records-title">
         {t('records.title')}
-      </Text>
+      </PageHeading>
       <View style={styles.captureGroup} testID="records-capture-actions">
         <Pressable
           accessibilityRole="button"

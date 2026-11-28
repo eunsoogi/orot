@@ -1,6 +1,7 @@
 import { OverviewPreparedVisits } from './OverviewPreparedVisits';
 import type { AiFeatureServices } from '../aiFeatures/integration/featureServiceTypes';
-import { AppText as Text } from '../layout/AppText';
+import { SettingsPageHeading as PageHeading } from '../layout/SettingsPageHeading';
+import { settingsPageStyles } from '../layout/settingsPagePresentation';
 import { StyleSheet, View } from 'react-native';
 import type { Appointment } from '@orot/storage';
 import { t } from '../i18n';
@@ -44,13 +45,7 @@ export default function OverviewRoute({
 
   return (
     <ChartTooltipHost style={styles.container} testID="overview-screen">
-      <Text
-        accessibilityRole="header"
-        style={styles.title}
-        testID="overview-title"
-      >
-        {t('overview.title')}
-      </Text>
+      <PageHeading testID="overview-title">{t('overview.title')}</PageHeading>
       {/* The shell consumes system/navigation geometry once and owns the only vertical scroll. */}
       <View style={styles.sections} testID="overview-overview-sections">
         <OverviewNextVisitCard
@@ -74,13 +69,11 @@ const styles = StyleSheet.create({
   container: {
     // Let the shared ScrollView measure long Dynamic Type content past its viewport.
     gap: 24,
-    paddingHorizontal: hubSpacing.horizontal,
-    paddingTop: hubSpacing.top,
+    ...settingsPageStyles.inset,
     // The outer route scroller already contributes the shared navigation gap.
     paddingBottom: hubSpacing.bottom - NAVIGATION_CONTENT_GAP,
     backgroundColor: appColors.background,
   },
-  title: { color: appColors.text, fontSize: 36, fontWeight: '700' },
   sections: { gap: 24, minWidth: 0 },
 });
 

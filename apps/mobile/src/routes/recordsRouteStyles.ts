@@ -1,6 +1,7 @@
 import { StyleSheet } from 'react-native';
 import { appColors } from '../layout/appColors';
 import { hubSpacing } from '../layout/hubSpacing';
+import { settingsPageStyles } from '../layout/settingsPagePresentation';
 import { NAVIGATION_CONTENT_GAP } from '../navigation/navigationLayout';
 
 export const recordsRouteStyles = StyleSheet.create({
@@ -12,8 +13,7 @@ export const recordsRouteStyles = StyleSheet.create({
   },
   page: {
     gap: 22,
-    paddingHorizontal: hubSpacing.horizontal,
-    paddingTop: hubSpacing.top,
+    ...settingsPageStyles.inset,
     // The route scroller already supplies the shared readable gap above navigation.
     paddingBottom: hubSpacing.bottom - NAVIGATION_CONTENT_GAP,
   },

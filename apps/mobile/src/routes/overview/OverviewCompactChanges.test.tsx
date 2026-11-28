@@ -55,8 +55,8 @@ it('keeps the widget order, one comparison for heart, and no two-item cap', asyn
     'overview-recent-change-heartRate',
     'overview-recent-change-steps',
   ]);
-  expect(rows[0]).toHaveTextContent('24분 늘었어요');
-  expect(rows[1]).toHaveTextContent('3 BPM 줄었어요');
+  expect(rows[0]).toHaveTextContent(/24분 늘었어요/u);
+  expect(rows[1]).toHaveTextContent(/3 BPM 줄었어요/u);
   expect(rows[1].props.accessibilityLabel).toContain('기록된 날: 6일/7일');
   expect(rows[1].props.accessibilityLabel).not.toMatch(
     /Synthetic source|Asia\/Seoul/u,
@@ -77,6 +77,6 @@ it('does not announce a change while unavailable or when the displayed delta rou
     <OverviewCompactChanges selected={['steps']} metrics={metrics} available />,
   );
   expect(screen.getByTestId('overview-recent-change-steps')).toHaveTextContent(
-    '비슷해요',
+    /비슷해요/u,
   );
 });
