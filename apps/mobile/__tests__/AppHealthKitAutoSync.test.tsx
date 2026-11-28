@@ -3,6 +3,7 @@ import { AppState } from 'react-native';
 import type { AppStateStatus } from 'react-native';
 import App from '../App';
 import { syncLocalPreviouslyRequestedHealthKit } from '../src/healthkit/autoSyncLocal';
+import { observeForegroundWorkoutChanges } from '../src/healthkit/foregroundWorkoutObservation';
 import { createAppointmentStore } from '../test-helpers/appointmentStore';
 
 jest.mock('../src/healthkit/autoSyncLocal', () => ({
@@ -10,6 +11,10 @@ jest.mock('../src/healthkit/autoSyncLocal', () => ({
     status: 'skipped',
     attemptedFeatures: [],
   })),
+}));
+const mockStopWorkoutObserver = jest.fn();
+jest.mock('../src/healthkit/foregroundWorkoutObservation', () => ({
+  observeForegroundWorkoutChanges: jest.fn(() => mockStopWorkoutObserver),
 }));
 jest.mock('../src/healthkit/commonObservations/importLocal', () => ({
   importLocalCommonObservations: jest.fn(),
@@ -41,6 +46,19 @@ test('starts a saved HealthKit refresh when the app opens', async () => {
   await waitFor(() =>
     expect(syncLocalPreviouslyRequestedHealthKit).toHaveBeenCalledTimes(1),
   );
+});
+
+test('owns the workout observer with the stock App lifetime', async () => {
+  const store = createAppointmentStore([]);
+  const view = await render(
+    <App
+      loadAppointments={async () => store.repository}
+      loadRecordings={async () => []}
+    />,
+  );
+  expect(observeForegroundWorkoutChanges).toHaveBeenCalledTimes(1);
+  await view.unmount();
+  expect(mockStopWorkoutObserver).toHaveBeenCalledTimes(1);
 });
 
 test('refreshes only when a backgrounded app returns to the foreground', async () => {

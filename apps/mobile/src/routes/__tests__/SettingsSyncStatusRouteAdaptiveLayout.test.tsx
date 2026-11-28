@@ -8,6 +8,7 @@ import {
 import type { ReactNode } from 'react';
 import { Dimensions, StyleSheet, View } from 'react-native';
 import { emptyCalendarAutoSyncState } from '../../calendar/calendarAutoSync';
+import { syncLocalPreviouslyRequestedHealthKit } from '../../healthkit/autoSyncLocal';
 import { AppRouteContent } from '../AppRouteContent';
 import type { AppRouteContentProps } from '../AppProps';
 import { appContentLayoutOwner } from '../../navigation/appContentLayoutPolicy';
@@ -229,6 +230,12 @@ test('adapts the production Settings sync route to native usable regions and tex
   // Back must return to the original Settings root after the sync route reflows.
   await waitFor(() =>
     expect(screen.getByTestId('navigation-back')).toBeEnabled(),
+  );
+  await fireEvent.press(screen.getByTestId('settings-sync-retry'));
+  await waitFor(() =>
+    expect(syncLocalPreviouslyRequestedHealthKit).toHaveBeenCalledWith(
+      'manual',
+    ),
   );
   await fireEvent.press(screen.getByTestId('navigation-back'));
   await waitFor(() =>

@@ -36,6 +36,7 @@ import type { AppProps } from './src/routes/AppEntryProps';
 import { useBackupPreparation } from './src/backup/useBackupPreparation';
 import { appColors } from './src/layout/appColors';
 import { syncLocalPreviouslyRequestedHealthKit } from './src/healthkit/autoSyncLocal';
+import { observeForegroundWorkoutChanges } from './src/healthkit/foregroundWorkoutObservation';
 import { listLocalHealthObservationPage } from './src/healthkit/healthObservationLibrary';
 import { healthObservationFixturePages } from './src/healthkit/healthObservationFixturePages';
 import type { HealthRecordsDetailSelection } from './src/healthkit/healthRecordsLibraryModel';
@@ -99,12 +100,11 @@ function App({
         (previousState === 'background' || previousState === 'inactive') &&
         nextState === 'active';
       previousState = nextState;
-      if (returnedToForeground) {
-        syncLocalPreviouslyRequestedHealthKit();
-      }
+      if (returnedToForeground) syncLocalPreviouslyRequestedHealthKit();
     });
     return () => subscription.remove();
   }, []);
+  useEffect(observeForegroundWorkoutChanges, []);
   function openRecording() {
     selectActiveTab('records');
     appNavigation.push('recording');

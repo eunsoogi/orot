@@ -368,6 +368,7 @@
 		E16A00000000000000000005 /* HealthKitSimulatorFixture.swift in Sources */ = {isa = PBXBuildFile; fileRef = E16A00000000000000000014 /* HealthKitSimulatorFixture.swift */; };
 		E17A00000000000000000001 /* HealthKitMedicationQueries.swift in Sources */ = {isa = PBXBuildFile; fileRef = E17A00000000000000000011 /* HealthKitMedicationQueries.swift */; };
 		E17A00000000000000000002 /* HealthKitSampleChanges.swift in Sources */ = {isa = PBXBuildFile; fileRef = E17A00000000000000000012 /* HealthKitSampleChanges.swift */; };
+		E17A00000000000000000022 /* HealthKitWorkoutChangeObservation.swift in Sources */ = {isa = PBXBuildFile; fileRef = E17A00000000000000000023 /* HealthKitWorkoutChangeObservation.swift */; };
 		E17A00000000000000000003 /* MedicationDoseCursor.swift in Sources */ = {isa = PBXBuildFile; fileRef = E17A00000000000000000013 /* MedicationDoseCursor.swift */; };
 		E19800000000000000000001 /* ExportDismissalGeometry.swift in Sources */ = {isa = PBXBuildFile; fileRef = E19800000000000000000003 /* ExportDismissalGeometry.swift */; };
 		E19800000000000000000002 /* ExportDismissalGeometryRegression.swift in Sources */ = {isa = PBXBuildFile; fileRef = E19800000000000000000004 /* ExportDismissalGeometryRegression.swift */; };
@@ -839,6 +840,7 @@
 		E16A00000000000000000016 /* HealthKit.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = HealthKit.framework; path = System/Library/Frameworks/HealthKit.framework; sourceTree = SDKROOT; };
 		E17A00000000000000000011 /* HealthKitMedicationQueries.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = HealthKitMedicationQueries.swift; path = OrotMobile/HealthKitMedicationQueries.swift; sourceTree = "<group>"; };
 		E17A00000000000000000012 /* HealthKitSampleChanges.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = HealthKitSampleChanges.swift; path = OrotMobile/HealthKitSampleChanges.swift; sourceTree = "<group>"; };
+		E17A00000000000000000023 /* HealthKitWorkoutChangeObservation.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = HealthKitWorkoutChangeObservation.swift; path = OrotMobile/HealthKitWorkoutChangeObservation.swift; sourceTree = "<group>"; };
 		E17A00000000000000000013 /* MedicationDoseCursor.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = MedicationDoseCursor.swift; path = OrotMobile/MedicationDoseCursor.swift; sourceTree = "<group>"; };
 		E19800000000000000000003 /* ExportDismissalGeometry.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = ExportDismissalGeometry.swift; sourceTree = "<group>"; };
 		E19800000000000000000004 /* ExportDismissalGeometryRegression.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = ExportDismissalGeometryRegression.swift; sourceTree = "<group>"; };
@@ -1028,6 +1030,7 @@
 				E17A00000000000000000011 /* HealthKitMedicationQueries.swift */,
 				E17A00000000000000000013 /* MedicationDoseCursor.swift */,
 				E17A00000000000000000012 /* HealthKitSampleChanges.swift */,
+				E17A00000000000000000023 /* HealthKitWorkoutChangeObservation.swift */,
 				B63F00000000000000000003 /* OpenAIProviderErrorDetails.swift */,
 				B64F00000000000000000001 /* RecordingModule.swift */,
 				B64F00000000000000000002 /* RecordingModule.m */,
@@ -1862,6 +1865,7 @@
 				E17A00000000000000000001 /* HealthKitMedicationQueries.swift in Sources */,
 				E17A00000000000000000003 /* MedicationDoseCursor.swift in Sources */,
 				E17A00000000000000000002 /* HealthKitSampleChanges.swift in Sources */,
+				E17A00000000000000000022 /* HealthKitWorkoutChangeObservation.swift in Sources */,
 				A63F00000000000000000004 /* OpenAIProviderErrorDetails.swift in Sources */,
 				A64F00000000000000000001 /* RecordingModule.swift in Sources */,
 				A64F00000000000000000002 /* RecordingModule.m in Sources */,

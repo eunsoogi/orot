@@ -4,8 +4,37 @@ import React
 
 /// Exposes feature-scoped HealthKit requests and queries to the React Native layer.
 @objc(HealthKitModule)
-public final class HealthKitModule: NSObject {
+public final class HealthKitModule: RCTEventEmitter {
     let store = HKHealthStore()
+    private lazy var workoutObservation = HealthKitWorkoutChangeObservation(store: store) { [weak self] in
+        self?.sendEvent(withName: "HealthKitWorkoutChanges", body: nil)
+    }
+
+    override public func supportedEvents() -> [String]! {
+        ["HealthKitWorkoutChanges"]
+    }
+
+    override public func stopObserving() {
+        DispatchQueue.main.async { [weak self] in self?.workoutObservation.stop() }
+    }
+
+    @objc(setWorkoutChangeObservation:)
+    func setWorkoutChangeObservation(_ enabled: Bool) {
+        DispatchQueue.main.async { [weak self] in
+            guard let self else { return }
+            if enabled {
+                #if DEBUG && targetEnvironment(simulator)
+                    if hasSyntheticFixture(for: "workouts") {
+                        return
+                    }
+                #endif
+                workoutObservation.start()
+            } else {
+                workoutObservation.stop()
+            }
+        }
+    }
+
     #if DEBUG && targetEnvironment(simulator)
         // The probe selection is isolated to Simulator builds and protects real HealthKit data.
         let fixtureLock = NSLock()

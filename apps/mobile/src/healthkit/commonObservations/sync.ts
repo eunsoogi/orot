@@ -45,6 +45,13 @@ async function syncCommonObservationChangesExclusive(
   options: SyncCommonObservationChangesOptions,
 ): Promise<CommonObservationSyncResult> {
   const { feature, healthKit, repository, now } = options;
+  // Observer invalidation may arrive while queued, during native read, or
+  // before the transaction exits. Throw to leave the old anchor usable.
+  const assertCurrent = (confirmed = true) => {
+    if (!confirmed || options.operationCurrent?.() === false)
+      throw new Error('HealthKit workout observation retired.');
+  };
+  assertCurrent();
   const authorization = await resolveHealthKitSyncAuthorization({
     permissionPreviouslyRequested: options.permissionPreviouslyRequested,
     authorization: options.authorization,
@@ -85,6 +92,9 @@ async function syncCommonObservationChangesExclusive(
   let pageCount = 0;
 
   while (true) {
+    if (options.confirmOperationCurrent)
+      assertCurrent(await options.confirmOperationCurrent());
+    else assertCurrent();
     const page = await measureCommonObservationOperation(
       options.instrumentation,
       'query',
@@ -96,6 +106,9 @@ async function syncCommonObservationChangesExclusive(
           cursor,
         }),
     );
+    if (options.confirmOperationCurrent)
+      assertCurrent(await options.confirmOperationCurrent());
+    else assertCurrent();
     if (page.status !== 'completed' || page.availability !== 'available') {
       return result(
         pageCount === 0 ? page.availability : 'partial',
@@ -178,6 +191,7 @@ async function syncCommonObservationChangesExclusive(
         'persist',
         () =>
           commitHealthKitChanges(repository, async writer => {
+            assertCurrent();
             let pageDeleted = 0;
             for (const candidate of candidates) {
               const existing = await writer.get(
@@ -199,6 +213,7 @@ async function syncCommonObservationChangesExclusive(
                 updatedAt: now(),
               });
             }
+            assertCurrent();
             return pageDeleted;
           }),
       );

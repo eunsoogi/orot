@@ -49,6 +49,9 @@ export function measureCommonObservationOperation<T>(
 interface SyncCommonObservationChangesSharedOptions {
   readonly feature: CommonObservationFeature;
   readonly repository: CommonObservationRepository;
+  /** Optional owned observer lifetime, restrictive only. */
+  readonly operationCurrent?: () => boolean;
+  readonly confirmOperationCurrent?: () => Promise<boolean>;
   /** Observes phases without replacing the repository object used for its lock. */
   readonly instrumentation?: CommonObservationInstrumentation;
   readonly now: () => string;
