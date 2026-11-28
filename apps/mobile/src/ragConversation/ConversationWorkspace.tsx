@@ -35,7 +35,7 @@ type Props = {
   session: ConversationSession;
   children: ReactNode;
   composer?: ReactNode;
-  photoPresentationAllowed?: boolean;
+  photoPresentationAllowed?: () => boolean;
   photoOwnerKey?: object;
   routeKey?: string;
 };
@@ -98,9 +98,11 @@ export function ConversationWorkspace(props: Props) {
                   <DirectPhotoPresentationScope
                     sessionId={props.session.id}
                     ownerKey={props.photoOwnerKey}
+                    routeCurrent={() =>
+                      (props.photoPresentationAllowed?.() ?? true) &&
+                      (props.isEntryCurrent?.() ?? true)
+                    }
                     available={
-                      (props.photoPresentationAllowed ?? true) &&
-                      (props.isEntryCurrent?.() ?? true) &&
                       !conversationComposerDisabled(props.session) &&
                       !props.session.leaseRefreshRequired
                     }

@@ -13,14 +13,12 @@ import type { ConversationSessions } from './conversationSessionTypes';
 import { conversationExecutionNative } from './conversationExecutionNative';
 import { openAcceptedPhotoExecution } from './openAcceptedPhotoExecution';
 import { sendReviewedDirectPhotoGroup } from './sendReviewedDirectPhotoGroup';
-
 export type DirectPhotoComposerState = {
   images?: readonly string[];
   picking?: true;
   sending?: true;
   message?: string;
 };
-
 /** The settings/transport contract is unchanged. A positively admitted short
  * lease may own exactly one pending outgoing row independent of tab mounting. */
 export async function performDirectPhotoSend(input: {
@@ -36,7 +34,7 @@ export async function performDirectPhotoSend(input: {
   retired: (controller: AbortController) => void;
 }) {
   const {
-    action,
+    action: { controller, owns },
     images,
     publish,
     sessionId,
@@ -47,7 +45,6 @@ export async function performDirectPhotoSend(input: {
     setState,
     retired,
   } = input;
-  const { controller, owns } = action;
   const submission = captureDirectPhotoPrompt(store, sessionId);
   const { prompt } = submission;
   const unavailable = t('ragConversation.photo.imageUnavailable');
@@ -58,12 +55,12 @@ export async function performDirectPhotoSend(input: {
     return;
   }
   const ownsPrompt = () => owns() && submission.current();
-  let committed = false;
+  let committed = false,
+    enteredNative = false;
   const owner = acceptedPhotoPresentation(store.directPhotoDrafts);
   let transfer: ReturnType<typeof owner.accept>;
   let lease: Awaited<ReturnType<typeof openAcceptedPhotoExecution>>;
   let frame: DirectPhotoPresentation | undefined;
-  let stopObservingUnleased: (() => void) | undefined;
   const present: PublishDirectPhoto = event => {
     if (event && 'sessionId' in event && event.pending) frame = event;
     if (
@@ -73,24 +70,24 @@ export async function performDirectPhotoSend(input: {
       publish?.(event);
   };
   setState(publish ? { sending: true } : { images, sending: true });
-  let presentation: ReturnType<typeof beginDirectPhotoPresentation>;
-  let pending = false;
-  const revealPending = () => {
-    if (pending) return true;
-    if (!retain.start(prompt)) return false;
-    pending = true;
-    presentation = beginDirectPhotoPresentation(
-      publish ? present : undefined,
-      controller.signal,
-      sessionId,
-      retain.id,
-      images,
-    );
-    return true;
-  };
-  if (images.length === 1) revealPending();
+  if (!ownsPrompt() || !submission.accept(retain.start)) {
+    setState({ images, message: unavailable });
+    retired(controller);
+    return;
+  }
+  const presentation = beginDirectPhotoPresentation(
+    publish ? present : undefined,
+    controller.signal,
+    sessionId,
+    retain.id,
+    images,
+  );
+  // A locally accepted Send can be interrupted before a UIKit lease exists.
+  // Record only its identity; the registry cannot admit or restart transport.
+  const stopObservingUnleased =
+    publish && owner.observeUnleased(sessionId, controller);
   const stop = () => {
-    if (transfer ? !retain.current() : !ownsPrompt()) controller.abort();
+    if (!retain.current() || (!transfer && !ownsPrompt())) controller.abort();
   };
   const unsubscribeOwner = store.subscribe(stop);
   const removePending = () => retain.cancel();
@@ -178,18 +175,18 @@ export async function performDirectPhotoSend(input: {
           AppState.currentState !== 'inactive' &&
           AppState.currentState !== 'background' &&
           (!lease || (AppState.currentState === 'active' && lease.current()));
-        if (!sessionCanStart() || !submission.accept() || !sessionCanStart()) {
+        if (!sessionCanStart() || !retain.hasPending()) {
           controller.abort();
           return false;
         }
-        if (!revealPending()) return false;
+        enteredNative = true;
         if (lease?.current() && frame) {
           transfer = owner.accept(frame, controller);
-          if (transfer) publish?.({ retireRequestId: retain.id });
-          else lease.close();
+          if (transfer) {
+            stopObservingUnleased?.();
+            publish?.({ retireRequestId: retain.id });
+          } else lease.close();
         }
-        if (images.length === 1 && publish && !transfer)
-          stopObservingUnleased = owner.observeUnleased(sessionId, controller);
         return admitted();
       },
     });
@@ -240,7 +237,11 @@ export async function performDirectPhotoSend(input: {
     stopObservingUnleased?.();
     transfer?.close();
     lease?.close();
-    if (!committed && current() && AppState.currentState === 'active')
+    if (
+      !committed &&
+      ((!enteredNative && retain.current()) ||
+        (current() && AppState.currentState === 'active'))
+    )
       submission.restore();
     presentation?.dispose(true);
     if (visible() && (controller.signal.aborted || !current())) setState({});

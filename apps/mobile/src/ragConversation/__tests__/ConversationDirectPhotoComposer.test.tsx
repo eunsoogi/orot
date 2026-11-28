@@ -165,8 +165,8 @@ test('Stop cancels the sole native image request and clears its transient previe
   expect(f.ordinary).not.toHaveBeenCalled();
 });
 
-test('a changed composer question invalidates the pending photo approval', async () => {
-  const f = await fixture({ holdGrant: true });
+test('an accepted photo-only send does not consume or send the newly edited draft', async () => {
+  const f = await fixture({ holdGrant: true, hold: true });
   await render(f.view);
   await attach();
   await send();
@@ -176,8 +176,9 @@ test('a changed composer question invalidates the pending photo approval', async
   const sessionId = f.store.getSnapshot().activeId;
   await act(() => f.store.setDraft(sessionId, 'A newer synthetic question'));
   await act(() => f.release());
+  await waitFor(() => expect(f.start).toHaveBeenCalledTimes(1));
+  expect(f.start.mock.calls[0]?.[2].directPhoto?.text).toBe('');
   expect(screen.queryByTestId('conversation-photo-consent')).toBeNull();
-  expect(f.start).not.toHaveBeenCalled();
   expect(f.session().draft).toBe('A newer synthetic question');
 });
 

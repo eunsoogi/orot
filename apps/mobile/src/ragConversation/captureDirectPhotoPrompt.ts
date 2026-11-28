@@ -24,13 +24,11 @@ export function captureDirectPhotoPrompt(
   return {
     prompt,
     current: () => accepted || same(),
-    accept() {
-      if (accepted || !same()) return false;
+    accept(start: (draft: string, revision: number | undefined) => boolean) {
+      if (accepted || !same() || !start(prompt, original?.draftEditRevision))
+        return false;
       accepted = true;
-      if (prompt) {
-        store.setDraft(sessionId, '');
-        clearedRevision = (original!.draftEditRevision ?? 0) + 1;
-      }
+      if (prompt) clearedRevision = (original!.draftEditRevision ?? 0) + 1;
       return true;
     },
     restore() {
