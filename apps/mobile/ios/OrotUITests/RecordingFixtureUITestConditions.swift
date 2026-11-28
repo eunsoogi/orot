@@ -95,4 +95,55 @@ enum RecordingFixtureUITestConditions {
         let state = XCTNSPredicateExpectation(predicate: NSPredicate(format: "exists == %@", NSNumber(value: open)), object: modal)
         XCTAssertEqual(UITestConditions.wait(for: [state]), .completed)
     }
+
+    struct ReviewLayout {
+        let window: CGRect
+        let scroll: CGRect
+        let primary: CGRect
+        let secondary: CGRect
+    }
+
+    /// Bind the active transcript editor to one route scroller before reading either panel.
+    static func reviewLayout(_ app: XCUIApplication) -> ReviewLayout? {
+        let scrollID = "navigation-route-scroll"
+        let editorID = "transcript-input-0"
+        let scroll = app.descendants(matching: .any).matching(identifier: scrollID)
+        let editor = app.textViews.matching(identifier: editorID)
+        guard scroll.firstMatch.exists, editor.count == 1,
+              let owner = FormWindowOwnership.resolve(app, scroll: scroll.firstMatch, target: editor.firstMatch, reportFailure: false)
+        else { return nil }
+        let ownedScroll = owner.descendants(matching: .any).matching(identifier: scrollID)
+        let primary = owner.descendants(matching: .any).matching(identifier: "recording-review-layout-primary")
+        let secondary = owner.descendants(matching: .any).matching(identifier: "recording-review-layout-secondary")
+        guard ownedScroll.count == 1, primary.count == 1, secondary.count == 1 else { return nil }
+        let layout = ReviewLayout(window: owner.frame, scroll: ownedScroll.firstMatch.frame, primary: primary.firstMatch.frame, secondary: secondary.firstMatch.frame)
+        guard layout.window.intersects(layout.scroll), layout.primary.width > 0, layout.secondary.width > 0 else { return nil }
+        return layout
+    }
+
+    /// Width alone may describe a system AX window. Require the same route markers and panel axis in a fresh sample.
+    static func reviewReflow(_ app: XCUIApplication, from initial: ReviewLayout, expanded: Bool, testCase: XCTestCase) -> ReviewLayout? {
+        var last: ReviewLayout?
+        let ready = XCTNSPredicateExpectation(predicate: NSPredicate { _, _ in
+            last = reviewLayout(app)
+            guard let layout = last,
+                  abs(layout.window.width - initial.window.width) > 0.5,
+                  !layout.primary.intersects(layout.secondary)
+            else { return false }
+            return expanded
+                ? layout.window.width > layout.window.height && layout.primary.maxX <= layout.secondary.minX
+                : layout.window.height > layout.window.width && layout.primary.maxY <= layout.secondary.minY
+        }, object: nil)
+        let settled = XCTWaiter.wait(for: [ready], timeout: 20) == .completed
+        let dimensions = "requestedExpanded=\(expanded), before=\(initial), last=\(String(describing: last))"
+        let receipt = XCTAttachment(string: dimensions)
+        receipt.name = expanded ? "saved-recording-reflow-landscape" : "saved-recording-reflow-portrait"
+        receipt.lifetime = .keepAlways
+        testCase.add(receipt)
+        guard settled else {
+            XCTFail("The unique saved recording route did not reflow: \(dimensions)")
+            return nil
+        }
+        return last
+    }
 }

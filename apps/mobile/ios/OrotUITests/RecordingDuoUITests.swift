@@ -133,15 +133,14 @@ final class RecordingDuoUITests: OrotFailFastTestCase {
         guard FormUITestConditions.replace(input, with: draft, in: app, scrollID: "navigation-route-scroll", useNativeSelectAllMenu: true) else { return }
         XCTAssertTrue(app.keyboards.firstMatch.waitForAppearance())
 
-        let firstWidth = app.windows.firstMatch.frame.width
+        guard let portrait = RecordingFixtureUITestConditions.reviewLayout(app) else { return XCTFail("No unique saved recording layout before rotation") }
         XCUIDevice.shared.orientation = .landscapeLeft
-        waitForReviewReflow(app, previousWidth: firstWidth, primary: primary, secondary: secondary, isExpanded: true)
+        guard let landscape = RecordingFixtureUITestConditions.reviewReflow(app, from: portrait, expanded: true, testCase: self) else { return }
         UITestConditions.value(input, equals: draft)
         XCTAssertFalse(selection.isSelected)
 
-        let secondWidth = app.windows.firstMatch.frame.width
         XCUIDevice.shared.orientation = .portrait
-        waitForReviewReflow(app, previousWidth: secondWidth, primary: primary, secondary: secondary, isExpanded: false)
+        guard RecordingFixtureUITestConditions.reviewReflow(app, from: landscape, expanded: false, testCase: self) != nil else { return }
         UITestConditions.value(input, equals: draft)
         XCTAssertFalse(selection.isSelected)
     }
@@ -180,30 +179,6 @@ final class RecordingDuoUITests: OrotFailFastTestCase {
         cleanup.tap()
         UITestConditions.value(UITestConditions.element(app, "encounter-probe-report"), equals: "cleaned")
         app.terminate()
-    }
-
-    @MainActor
-    private func waitForReviewReflow(
-        _ app: XCUIApplication,
-        previousWidth: CGFloat,
-        primary: XCUIElement,
-        secondary: XCUIElement,
-        isExpanded: Bool,
-    ) {
-        let window = app.windows.firstMatch
-        // A width change and separate frames can still describe the wrong layout axis.
-        let ready = XCTNSPredicateExpectation(predicate: NSPredicate { _, _ in
-            guard window.exists, primary.exists, secondary.exists else { return false }
-            let primaryFrame = primary.frame
-            let secondaryFrame = secondary.frame
-            let panelsFollowExpectedAxis = isExpanded
-                ? primaryFrame.maxX <= secondaryFrame.minX
-                : primaryFrame.maxY <= secondaryFrame.minY
-            return abs(window.frame.width - previousWidth) > 0.5 &&
-                primaryFrame.width > 0 && secondaryFrame.width > 0 &&
-                !primaryFrame.intersects(secondaryFrame) && panelsFollowExpectedAxis
-        }, object: nil)
-        XCTAssertEqual(UITestConditions.wait(for: [ready]), .completed, app.debugDescription)
     }
 
     @MainActor
