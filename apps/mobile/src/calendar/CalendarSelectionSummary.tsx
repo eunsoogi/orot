@@ -84,7 +84,7 @@ export function CalendarSelectionSummary({
         style={flat ? scheduleStyles.flatEventTime : undefined}
         testID="schedule-next-visit-time"
       >
-        {formatCalendarEventRange(upcomingEvent)}
+        {formatCalendarEventRange(upcomingEvent, { hideTimeZoneLabel: true })}
       </Text>
     </View>
   ) : null;

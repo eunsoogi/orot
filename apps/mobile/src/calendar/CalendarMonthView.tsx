@@ -2,14 +2,11 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { View, useWindowDimensions } from 'react-native';
 import { CalendarAccessibleDates } from './CalendarAccessibleDates';
 import { CalendarDateCoverage } from './CalendarDateCoverage';
-import { AppText as Text } from '../layout/AppText';
 import type { Appointment } from '@orot/storage';
-import { t } from '../i18n';
 import {
   calendarDateKey,
   calendarEventDayRange,
   calendarMonthGrid,
-  formatCalendarDate,
   shiftCalendarMonth,
   type CalendarQueryWindow,
 } from './calendarMonth';
@@ -24,14 +21,12 @@ import {
 } from './CalendarMonthHeader';
 import {
   CalendarDayCell,
-  CalendarMonthEventRow,
   calendarDayAccessibilityLabel,
 } from './CalendarMonthCells';
 import { calendarStyles as styles } from './calendarStyles';
-import { schedulePresentationStyles as scheduleStyles } from './schedulePresentationStyles';
+import { CalendarSelectedDateAgenda } from './CalendarSelectedDateAgenda';
+import { ScheduleMonthGrid } from './ScheduleMonthGrid';
 import type { CalendarEvent } from './types';
-import { calendarEventsEqual } from './calendarSnapshot';
-import { formatCalendarAgendaDate } from './dateTime';
 interface CalendarMonthViewProps {
   flat?: boolean;
   appointmentsLoading: boolean;
@@ -61,11 +56,9 @@ export function CalendarMonthView({
   queryWindow,
   resultsMayBeIncomplete,
 }: CalendarMonthViewProps) {
-  const { fontScale } = useWindowDimensions();
-  // Keep ordinary seven-column geometry; large-text rows share the same selection owner.
+  const { fontScale, width } = useWindowDimensions();
   const accessibleDates = fontScale > 1.5;
   const initialDateKey = localDateKey(initialDate);
-  // The today marker follows the same local civil-day key used for initial selection.
   const todayDateKey = localDateKey(new Date());
   const [selectedDate, setSelectedDate] = useState(initialDateKey);
   const [visibleMonth, setVisibleMonth] = useState(() => ({
@@ -78,9 +71,10 @@ export function CalendarMonthView({
     () => eventFromAppointment(linkedAppointment),
     [linkedAppointment],
   );
-  const displayEvents = useMemo<CalendarMonthDisplayEvent[]>(() => {
-    return projectCalendarMonthEvents(events, linkedAppointment);
-  }, [events, linkedAppointment]);
+  const displayEvents = useMemo(
+    () => projectCalendarMonthEvents(events, linkedAppointment),
+    [events, linkedAppointment],
+  );
   const rangedEvents = useMemo(
     () =>
       displayEvents.flatMap(item => {
@@ -92,9 +86,6 @@ export function CalendarMonthView({
   const gridDays = useMemo(
     () => calendarMonthGrid(visibleMonth.year, visibleMonth.month),
     [visibleMonth],
-  );
-  const eventsOnSelectedDate = rangedEvents.filter(
-    item => item.startDay <= selectedDate && selectedDate <= item.endDay,
   );
   const focusDate = useCallback((dateKey: string) => {
     setSelectedDate(dateKey);
@@ -135,6 +126,7 @@ export function CalendarMonthView({
       item => item.startDay <= dateKey && dateKey <= item.endDay,
     );
   }
+  const eventsOnSelectedDate = eventsForDay(selectedDate);
   const selectedDateOutsideQuery =
     candidatesLoaded &&
     queryWindow !== null &&
@@ -159,7 +151,20 @@ export function CalendarMonthView({
         style={styles.calendarDateGridContent}
         testID="calendar-date-grid-content"
       >
-        {accessibleDates ? (
+        {flat ? (
+          <ScheduleMonthGrid
+            days={gridDays}
+            eventsForDay={eventsForDay}
+            focusDate={focusDate}
+            focusedDate={selectedDate}
+            todayDate={todayDateKey}
+            width={width}
+            largeText={accessibleDates}
+            selectedEvent={selectedEvent}
+            selectionDisabled={selectionDisabled}
+            selectEvent={onSelectEvent}
+          />
+        ) : accessibleDates ? (
           <CalendarAccessibleDates
             days={gridDays}
             eventsForDay={eventsForDay}
@@ -169,13 +174,12 @@ export function CalendarMonthView({
           />
         ) : (
           <>
-            <CalendarWeekdayHeader flat={flat} />
+            <CalendarWeekdayHeader />
             <View style={styles.calendarGrid} testID="calendar-date-grid">
               {gridDays.map(day => {
                 const dayEvents = eventsForDay(day.dateKey);
                 return (
                   <CalendarDayCell
-                    flat={flat}
                     day={day}
                     dayEvents={dayEvents}
                     key={day.dateKey}
@@ -194,57 +198,25 @@ export function CalendarMonthView({
           </>
         )}
       </View>
-      <View
-        style={[
-          styles.calendarSelectedDateEvents,
-          flat && scheduleStyles.flatAgenda,
-        ]}
-      >
-        <Text
-          accessibilityRole="header"
-          style={styles.calendarSelectedDate}
-          testID="calendar-selected-date"
-        >
-          {flat
-            ? formatCalendarAgendaDate(selectedDate)
-            : formatCalendarDate(selectedDate)}
-        </Text>
+      {flat ? (
         <CalendarDateCoverage
           selectedDateOutsideQuery={selectedDateOutsideQuery}
           incomplete={candidatesLoaded && resultsMayBeIncomplete}
-          empty={showNoReturnedEvents}
+          empty={false}
         />
-        <View
-          style={[
-            styles.calendarSelectedEventList,
-            flat && scheduleStyles.flatAgendaList,
-          ]}
-          testID="calendar-events-for-selected-date"
-        >
-          {eventsOnSelectedDate.map(item => {
-            // A selected recurring event is one exact snapshot, not every matching calendar identifier.
-            const selected =
-              selectedEvent !== null &&
-              calendarEventsEqual(item.event, selectedEvent);
-            return (
-              <CalendarMonthEventRow
-                item={item}
-                agendaDate={flat ? selectedDate : undefined}
-                key={item.rowKey}
-                onSelectEvent={onSelectEvent}
-                selected={selected}
-                draftActive={selectedEvent !== null}
-                selectionDisabled={selectionDisabled}
-              />
-            );
-          })}
-        </View>
-        {!flat &&
-        candidatesLoaded &&
-        eventsOnSelectedDate.some(item => item.canSelect) ? (
-          <Text style={styles.message}>{t('calendar.candidateHint')}</Text>
-        ) : null}
-      </View>
+      ) : (
+        <CalendarSelectedDateAgenda
+          selectedDate={selectedDate}
+          selectedDateOutsideQuery={selectedDateOutsideQuery}
+          incomplete={candidatesLoaded && resultsMayBeIncomplete}
+          showNoReturnedEvents={showNoReturnedEvents}
+          eventsOnSelectedDate={eventsOnSelectedDate}
+          selectedEvent={selectedEvent}
+          onSelectEvent={onSelectEvent}
+          selectionDisabled={selectionDisabled}
+          candidatesLoaded={candidatesLoaded}
+        />
+      )}
     </View>
   );
 }
