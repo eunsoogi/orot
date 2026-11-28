@@ -102,7 +102,6 @@ const request = (): OutboundProcessingRequest => ({
   payload: { messages: [{ role: 'user', content: 'synthetic result' }] },
   signal: new AbortController().signal,
 });
-
 test('unified Settings review is one decision with one actual protected pair publication', async () => {
   const f = createLiveConversationToolsSettingsFixture();
   const saved = jest.fn();
@@ -134,10 +133,14 @@ test('unified Settings review is one decision with one actual protected pair pub
     );
     await waitFor(() => expect(saved).toHaveBeenCalledTimes(1));
     expect(screen.queryByTestId('inference-disclosure-allow')).toBeNull();
-    const active = await loadLiveResponsesSettings();
+    const active = await loadLiveResponsesSettings(
+      undefined,
+      'settings-presentation',
+    );
     expect(active).toMatchObject({
       kind: 'active',
       commonToolsPolicy: 'common-tools-v3',
+      savedPreferences: initialPreferences,
     });
     expect(await f.store.read('conversation')).toBeNull();
     expect(voiceSettingsStore.activateVoicePair).toHaveBeenCalledTimes(1);
@@ -185,7 +188,6 @@ test('unified Settings review is one decision with one actual protected pair pub
     f.db.close();
   }
 });
-
 test('legacy pair choice remains audio/heart only and does not retroactively cover common tools', async () => {
   const f = createLiveConversationToolsSettingsFixture();
   const saved = jest.fn();

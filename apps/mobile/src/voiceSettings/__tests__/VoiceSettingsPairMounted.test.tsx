@@ -1,4 +1,4 @@
-import { fireEvent, render, waitFor } from '@testing-library/react-native';
+import { act, fireEvent, render, waitFor } from '@testing-library/react-native';
 import { VoiceSettingsPanel } from '../VoiceSettingsPanel';
 import { loadLiveResponsesSettings } from '../liveResponsesSettings';
 import { createLiveVoicePreferenceStore } from '../liveVoicePreferenceStore';
@@ -162,6 +162,8 @@ test.each([true, false])(
       connected: true,
       revision: 4,
     });
+    let current = true;
+    let invalidate: (() => void) | undefined;
     jest.mocked(loadLiveResponsesSettings).mockResolvedValue({
       kind: 'active',
       credentialEpoch: 'a'.repeat(64),
@@ -170,8 +172,14 @@ test.each([true, false])(
         grantID: 'synthetic-model',
         generation: 'synthetic',
       },
-      current: () => true,
-      subscribe: () => () => {},
+      savedPreferences: { schema: 1, language: 'ko', voice: 'noeul' },
+      current: () => current,
+      subscribe: notify => {
+        invalidate = notify;
+        return () => {
+          invalidate = undefined;
+        };
+      },
     });
     try {
       const view = await render(<VoiceSettingsPanel />);
@@ -191,13 +199,38 @@ test.each([true, false])(
         'voice-model-group-openai-api',
       );
       expect(view.queryByTestId('voice-current-model')).toBeNull();
-      expect(view.queryByTestId('live-voice-language')).toBeNull();
+      const language = view.getByTestId('live-voice-language');
+      expect(language).toBeDisabled();
+      expect(language).toHaveProp('accessibilityValue', { text: '한국어' });
+      const voice = view.getByTestId('live-voice-voice');
+      expect(voice).toBeDisabled();
+      expect(voice).toHaveProp('accessibilityValue', { text: '노을 · 한국어' });
+      await fireEvent.press(language);
+      expect(view.queryByRole('radiogroup')).toBeNull();
       expect(view.getByTestId('voice-settings-save')).toBeDisabled();
       expect(voiceSettingsStore.discoverModels).not.toHaveBeenCalled();
       expect(saveReviewedOpenAiVoicePair).not.toHaveBeenCalled();
       expect(Boolean(view.queryByTestId('voice-tool-model-gpt-6-luna'))).toBe(
         cached,
       );
+      jest
+        .mocked(voiceSettingsStore.discoverModels)
+        .mockRejectedValueOnce(new Error('network'));
+      await fireEvent.press(view.getByTestId('voice-model-refresh'));
+      await waitFor(() => {
+        expect(view.getByTestId('voice-model-refresh')).toBeEnabled();
+        expect(view.getByTestId('live-voice-voice')).toHaveProp(
+          'accessibilityValue',
+          { text: '노을 · 한국어' },
+        );
+      });
+      expect(view.getByTestId('voice-settings-save')).toBeDisabled();
+      await act(async () => {
+        current = false;
+        invalidate?.();
+      });
+      expect(view.queryByTestId('live-voice-language')).toBeNull();
+      expect(view.queryByTestId('live-voice-voice')).toBeNull();
       await view.unmount();
     } finally {
       Reflect.deleteProperty(voiceSettingsStore, 'loadDisplayModelCatalog');

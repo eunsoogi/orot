@@ -22,7 +22,7 @@ import {
 } from './liveVoicePreferences';
 import type { LiveVoicePreferenceStore } from './liveVoicePreferenceStore';
 
-function voiceLabel(voice: LiveVoice) {
+export function voiceLabel(voice: LiveVoice) {
   if (voice === 'default') return t('modelSettings.liveVoiceDefaultVoice');
   if (voice === 'noeul') return t('modelSettings.liveVoiceNoeul');
   if (voice === 'quartz') return t('modelSettings.liveVoiceQuartz');
