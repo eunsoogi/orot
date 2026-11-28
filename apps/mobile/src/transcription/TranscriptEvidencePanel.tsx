@@ -49,9 +49,13 @@ export default function TranscriptEvidencePanel({
   const [playingSegmentId, setPlayingSegmentId] = useState<string | null>(null);
   const [expanded, setExpanded] = useState(false);
   const [collapsedIds, setCollapsedIds] = useState(() => new Set<string>());
-  const originalText = view?.segments.find(
-    segment => segment.id === editingSegmentId,
-  )?.text;
+  const isCollapsed = (id: string) =>
+    !savedDetail && editingSegmentId !== id && collapsedIds.has(id);
+  const latest = latestRevisions(view?.segments ?? []);
+  const matchesEdit = (segment: TranscriptEvidenceSegment) =>
+    segment.id === editingSegmentId;
+  const editingSegment = latest.find(matchesEdit);
+  const originalText = view?.segments.find(matchesEdit)?.text;
   const dirty = editingSegmentId !== null && draft !== originalText;
   useEffect(() => {
     onInteractionChange?.({ busy, dirty });
@@ -122,10 +126,6 @@ export default function TranscriptEvidencePanel({
     }
   }
   if (!loading && !view && !error) return null;
-  const latest = latestRevisions(view?.segments ?? []);
-  const editingSegment = latest.find(
-    segment => segment.id === editingSegmentId,
-  );
   return (
     <View style={styles.container} testID="transcript-panel">
       <TranscriptReviewHeader
@@ -193,7 +193,10 @@ export default function TranscriptEvidencePanel({
             </Text>
           ) : null}
           {/* The recording screen owns scrolling so nested transcript lists do not trap review actions on compact screens. */}
-          <View style={styles.segments} testID="transcript-segment-list">
+          <View
+            style={[styles.segments, savedDetail && styles.savedSegments]}
+            testID="transcript-segment-list"
+          >
             {latest.map(segment => {
               const history = view.segments.filter(
                 revision =>
@@ -205,11 +208,8 @@ export default function TranscriptEvidencePanel({
                   key={segment.transcriptId}
                   segment={segment}
                   history={history}
-                  collapsed={
-                    !savedDetail &&
-                    editingSegmentId !== segment.id &&
-                    collapsedIds.has(segment.id)
-                  }
+                  collapsed={isCollapsed(segment.id)}
+                  savedDetail={savedDetail}
                   busy={busy}
                   playing={playingSegmentId === segment.id}
                   onToggleCollapsed={
