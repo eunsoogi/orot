@@ -73,12 +73,19 @@ export function createLiveCommonHealthPort(input: {
     },
   };
   let observed: LiveToolCall | undefined;
+  let retirement: AbortController | undefined;
   let retained: CommonHealthSource | undefined;
   const retired = new Set<string>();
-  const clear = () => {
-    if (observed) retired.add(observed.challengeId);
+  const retireObserved = () => {
+    const pending = retirement;
     observed = undefined;
     retained = undefined;
+    retirement = undefined;
+    pending?.abort();
+  };
+  const clear = () => {
+    if (observed) retired.add(observed.challengeId);
+    retireObserved();
   };
   const owns = (call: LiveToolCall) =>
     current() &&
@@ -121,6 +128,10 @@ export function createLiveCommonHealthPort(input: {
           )
             return;
           observed = call;
+          // A normal successor can arrive before the acknowledged predecessor's
+          // bridge promise resolves; only explicit retirement cancels that owner.
+          const ownerRetirement = new AbortController();
+          retirement = ownerRetirement;
           retained = undefined;
           const connect = async () => {
             if (!owns(call)) return;
@@ -179,6 +190,7 @@ export function createLiveCommonHealthPort(input: {
               return;
             accept({
               owner: batch.owner,
+              nativeRetirement: ownerRetirement.signal,
               queuedCurrent: () => owns(call),
               utterance: { kind: 'context-free', current: () => owns(call) },
               nativeChallengeCurrent: candidate =>
@@ -206,15 +218,11 @@ export function createLiveCommonHealthPort(input: {
           connect().catch(() => undefined);
         },
         id => {
-          if (observed?.challengeId === id) {
-            observed = undefined;
-            retained = undefined;
-          }
+          if (observed?.challengeId === id) clear();
         },
       );
       return () => {
-        observed = undefined;
-        retained = undefined;
+        retireObserved();
         detach();
       };
     },

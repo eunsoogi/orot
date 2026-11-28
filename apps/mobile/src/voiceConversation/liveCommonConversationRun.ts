@@ -12,7 +12,10 @@ type Result = NonNullable<
 type Turn = Pick<
   Graph,
   'workflow' | 'owner' | 'utterance' | 'select' | 'nativeChallengeCurrent'
-> & { readonly queuedCurrent?: () => boolean };
+> & {
+  readonly queuedCurrent?: () => boolean;
+  readonly nativeRetirement?: AbortSignal;
+};
 
 type SettlementResult = Result extends infer Owned
   ? Owned extends { call: infer Receipt }
@@ -91,6 +94,7 @@ export function liveCommonConversationRun(
           id !== callId ||
           !ownerCurrent() ||
           !port.current() ||
+          turn.nativeRetirement?.aborted ||
           turn.owner.callId !== callId ||
           (sessionId !== undefined && sessionId !== turn.owner.sessionId)
         )
@@ -119,6 +123,11 @@ export function liveCommonConversationRun(
         sessionId = turn.owner.sessionId;
         admittedDelegations.add(key);
         const operation = new AbortController();
+        // Only this admitted native challenge can cancel its local observation.
+        const retireOperation = () => operation.abort();
+        turn.nativeRetirement?.addEventListener('abort', retireOperation, {
+          once: true,
+        });
         task = operation;
         admitted?.();
         const current = () =>
@@ -171,6 +180,7 @@ export function liveCommonConversationRun(
           return (await prepared.settle(dispatchCurrent)) === true;
         };
         const complete = (delivered: boolean) => {
+          turn.nativeRetirement?.removeEventListener('abort', retireOperation);
           if (active !== attachOwner || task !== operation) return;
           task = undefined;
           waiting = undefined;
