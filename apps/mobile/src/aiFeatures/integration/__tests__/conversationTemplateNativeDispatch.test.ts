@@ -93,6 +93,8 @@ test.each(cases)(
     const summary = jest.fn(async () => answer);
     const visit = jest.fn(async () => answer);
     const rag = jest.fn(async () => answer);
+    const dispatchCounts = () =>
+      [daily, summary, visit, rag].map(handler => handler.mock.calls.length);
     const authorize = jest.fn(async () => 'authorized' as const);
     jest.mocked(createConversationDailyReport).mockReturnValue(daily);
     jest.mocked(createConversationHealthSummary).mockReturnValue(summary);
@@ -180,17 +182,13 @@ test.each(cases)(
     );
     if (intent === 'changed-owner') {
       expect(native.calls()).toBe(1);
-      expect(
-        [daily, summary, visit, rag].map(handler => handler.mock.calls.length),
-      ).toEqual([0, 0, 0, 0]);
+      expect(dispatchCounts()).toEqual([0, 0, 0, 0]);
       return;
     }
     expect(native.calls()).toBe(Number(supported));
     if (!supported) {
       expect(authorize).not.toHaveBeenCalled();
-      expect(
-        [daily, summary, visit, rag].map(handler => handler.mock.calls.length),
-      ).toEqual([0, 0, 0, 1]);
+      expect(dispatchCounts()).toEqual([0, 0, 0, 1]);
       expect(rag).toHaveBeenCalledWith(
         authored,
         history,
@@ -210,9 +208,7 @@ test.each(cases)(
     expect(config.loadData).not.toHaveBeenCalled();
     expect(observer.onRetentionCandidate).not.toHaveBeenCalled();
     expect(observer.onTaskStreamEvent).not.toHaveBeenCalled();
-    expect(
-      [daily, summary, visit, rag].map(handler => handler.mock.calls.length),
-    ).toEqual([
+    expect(dispatchCounts()).toEqual([
       Number(intent === 'daily-report'),
       Number(intent === 'health-summary'),
       Number(intent === 'visit-questions'),
