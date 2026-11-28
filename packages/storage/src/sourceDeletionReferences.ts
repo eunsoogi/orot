@@ -194,8 +194,8 @@ async function materializeTypedReferences(
     if (kind === 'source_record' || kind === 'evidence_span' || kind === 'transcript_segment')
       continue;
     const table = STORAGE_TABLES[kind].table;
-    // The live trigger keeps its original SQL. This snapshot can resolve the recording's
-    // target set once per statement instead of joining it again for every record edge.
+    // Resolve each recording's target set once per statement. The index check above
+    // is local to this snapshot and is not an authorization to reuse it for a delete.
     const predicate = sourceDeletionDependencyPredicate(kind, table, snapshotSource, true);
     const select = indexedTables?.has(table)
       ? sourceSnapshotHealthCandidates(table, predicate)

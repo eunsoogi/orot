@@ -1,5 +1,6 @@
 import {
   fallbackProvenance,
+  periodRemovalIndexDefinitions,
   singletonProvenance,
   singletonProvenanceValue,
 } from './periodProvenanceIndexes';
@@ -17,4 +18,25 @@ export function sourceSnapshotHealthCandidates(table: string, predicate: string)
       WHERE ${singletonProvenance} AND ${singletonProvenanceValue} = aliases.id
     UNION ALL SELECT h.rowid AS position, h.id FROM ${table} h WHERE ${fallbackProvenance} AND ${fallback}
   ) ORDER BY position`;
+}
+
+/** Select the indexed SQL only while both exact canonical indexes exist.
+ * The original no-index scan remains the true fallback after restores or DDL. */
+export function physicalHealthDeletionCandidates(predicate: string): string {
+  const table = 'health_observations';
+  const indexes = periodRemovalIndexDefinitions(table);
+  const shapes = indexes
+    .map(({ name, sql }) => `(name = '${name}' AND sql = '${sql.replaceAll("'", "''")}')`)
+    .join(' OR ');
+  const ready = `(
+    SELECT count(*) = ${indexes.length} FROM sqlite_master
+    WHERE type = 'index' AND tbl_name = '${table}' AND (${shapes})
+  )`;
+  return `SELECT id FROM ${table}
+      WHERE ${ready} AND ${singletonProvenance}
+      AND ${singletonProvenanceValue} IN (${canonicalTextAliases})
+    UNION ALL SELECT id FROM ${table}
+      WHERE ${ready} AND ${fallbackProvenance} AND ${predicate}
+    UNION ALL SELECT id FROM ${table}
+      WHERE NOT ${ready} AND ${predicate}`;
 }
