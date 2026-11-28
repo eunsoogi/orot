@@ -4,8 +4,9 @@ import {
   render,
   screen,
   waitFor,
+  within,
 } from '@testing-library/react-native';
-import { NativeModules } from 'react-native';
+import { NativeModules, StyleSheet } from 'react-native';
 import {
   getGenericPassword,
   setGenericPassword,
@@ -90,6 +91,9 @@ test('reopens the saved API row first from exact durable account cache; failed r
   const first = await mount();
   await fireEvent.press(screen.getByTestId('calendar-model-refresh'));
   expect(await screen.findByText('GPT-6 Luna')).toBeTruthy();
+  expect(
+    within(screen.getByTestId('provider-option-1')).getByText('gpt-6-luna'),
+  ).toBeTruthy();
   expect(setGenericPassword).toHaveBeenCalledWith(
     'openai-api-decisions',
     JSON.stringify({ epoch, ids: ['gpt-6-luna'] }),
@@ -101,10 +105,21 @@ test('reopens the saved API row first from exact durable account cache; failed r
   voice.discoverModels.mockClear();
   const second = await mount();
   expect(await screen.findByText('GPT-6 Luna')).toBeTruthy();
+  expect(
+    within(screen.getByTestId('provider-option-1')).getByText('gpt-6-luna'),
+  ).toBeTruthy();
   const choices = screen.getAllByTestId(
     /^(calendar-model-group-openai-api|provider-choices-content)$/,
   );
   expect(choices[0]?.props.testID).toBe('calendar-model-group-openai-api');
+  const account = within(screen.getByTestId('calendar-account-details'));
+  const title = account.getByText('OpenAI API');
+  const badge = account.getByText('Decisions');
+  expect(badge.parent).toBe(title.parent);
+  expect(StyleSheet.flatten(title.parent?.props.style)?.flexDirection).toBe(
+    'row',
+  );
+  expect(screen.getAllByText('Decisions')).toHaveLength(1);
   expect(screen.queryByTestId('calendar-current-model-card')).toBeNull();
   const api = () => screen.getByTestId('provider-option-1');
   expect(api().props.accessibilityState.selected).toBe(true);

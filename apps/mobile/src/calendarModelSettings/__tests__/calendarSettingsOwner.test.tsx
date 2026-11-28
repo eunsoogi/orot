@@ -4,6 +4,7 @@ import {
   render,
   screen,
   waitFor,
+  within,
 } from '@testing-library/react-native';
 import { CalendarModelSettingsPanel } from '../CalendarModelSettingsPanel';
 import { createAppleSelectionOption } from '../../providers/selection/options';
@@ -118,6 +119,7 @@ test('keeps the Decisions label before, during and after explicit catalog discov
       ...apple,
       modelId,
       displayName: 'Synthetic Decisions',
+      privacyBoundary: 'selected-context-remote',
       provider: { ...apple.provider, id: saved.providerId },
     }),
     saveConsent: jest.fn(async () => {}),
@@ -138,6 +140,8 @@ test('keeps the Decisions label before, during and after explicit catalog discov
   expect(
     screen.getByTestId('provider-option-0').props.accessibilityState.selected,
   ).toBe(true);
-  expect(screen.queryByText('gpt-6-luna')).toBeNull();
+  expect(
+    within(screen.getByTestId('provider-option-0')).getByText('gpt-6-luna'),
+  ).toBeTruthy();
   expect(services.saveConsent).not.toHaveBeenCalled();
 });
