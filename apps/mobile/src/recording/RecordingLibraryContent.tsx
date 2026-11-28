@@ -12,6 +12,7 @@ export default function RecordingLibraryContent({
   onNewRecording,
   onOpen,
   onRetry,
+  onShare,
   recordings,
 }: {
   readonly disabled: boolean;
@@ -20,6 +21,7 @@ export default function RecordingLibraryContent({
   readonly onDelete: (source: RecordingSourceRecord) => void;
   readonly onNewRecording?: () => void;
   readonly onOpen: (id: string, autoPlay?: boolean) => void;
+  readonly onShare?: (id: string) => void;
   readonly onRetry: () => void;
   readonly recordings: readonly RecordingLibrarySummary[];
 }) {
@@ -32,6 +34,7 @@ export default function RecordingLibraryContent({
       disabled={disabled}
       onOpen={onOpen}
       onRetry={onRetry}
+      onShare={onShare}
       onDelete={onDelete}
     />
   );

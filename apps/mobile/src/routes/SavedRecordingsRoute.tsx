@@ -8,6 +8,8 @@ import { recordingLibraryService } from '../recording/recordingLibraryService';
 import { useNavigationLeaveStateRegistration } from '../navigation';
 import { NavigationRouteScrollView } from '../navigation/NavigationRouteScrollView';
 import { appColors } from '../layout/appColors';
+import { AppText } from '../layout/AppText';
+import { useSavedRecordingShare } from '../recording/useSavedRecordingShare';
 import { useAutomaticRecordingTranscription } from '../recording/useAutomaticRecordingTranscription';
 import { transcriptEvidenceService } from '../transcription/transcriptEvidenceService';
 import type { RecordingLibraryService } from '../recording/recordingLibraryService';
@@ -26,6 +28,8 @@ export function SavedRecordingsRoute({
   const [reviewReturnRevision, setReviewReturnRevision] = useState(0);
   const pendingReviewReturn = useRef(false);
   const ownership = actions.ownership;
+  const share = useSavedRecordingShare(ownership);
+  const operating = busy || share.busy;
   useEffect(
     () =>
       ownership?.subscribe(() => {
@@ -41,11 +45,11 @@ export function SavedRecordingsRoute({
     transcriptEvidenceService,
   );
   useNavigationLeaveStateRegistration({
-    canLeave: !busy,
+    canLeave: !operating,
     hasUnsavedChanges: false,
     isRecording: false,
-    hasOngoingOperation: busy,
-    revision: Number(busy),
+    hasOngoingOperation: operating,
+    revision: Number(operating),
     inputRevision: 0,
   });
   return (
@@ -64,12 +68,19 @@ export function SavedRecordingsRoute({
           service={libraryService}
           refreshKey={String(reviewReturnRevision)}
           onBusyChange={setBusy}
+          actionsDisabled={share.busy}
+          onShareRecording={share.share}
           onOpenRecording={(summary, autoPlay) => {
             select({ summary, autoPlay });
             if (actions.push('recording-review'))
               pendingReviewReturn.current = true;
           }}
         />
+        {share.error ? (
+          <AppText accessibilityRole="alert" style={styles.shareError}>
+            {share.error}
+          </AppText>
+        ) : null}
       </View>
     </NavigationRouteScrollView>
   );
@@ -82,5 +93,6 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
     paddingVertical: 20,
   },
+  shareError: { color: appColors.danger, marginTop: 12 },
   narrowViewport: { paddingHorizontal: 0 },
 });

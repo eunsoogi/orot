@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { View } from 'react-native';
 import { GlassIconButton } from '../layout/GlassIconButton';
 import { AppText as Text } from '../layout/AppText';
@@ -19,6 +19,7 @@ export default function RecordingLibraryList({
   disabled,
   onOpen,
   onDelete,
+  onShare,
   onNewRecording,
   onRetry,
 }: {
@@ -27,11 +28,29 @@ export default function RecordingLibraryList({
   readonly loadError: boolean;
   readonly disabled: boolean;
   readonly onOpen: (id: string, autoPlay?: boolean) => void;
+  readonly onShare?: (id: string) => void;
   readonly onDelete: (source: RecordingSourceRecord) => void;
   readonly onNewRecording?: () => void;
   readonly onRetry?: () => void;
 }) {
   const [revealedId, setRevealedId] = useState<string | null>(null);
+  const currentShare = useRef<((id: string) => void) | null>(null);
+  useLayoutEffect(() => {
+    // A callback from a retired row cannot export a different or no longer revealed source.
+    currentShare.current = id => {
+      if (
+        disabled ||
+        revealedId !== id ||
+        !recordings.some(item => item.source.id === id)
+      )
+        return;
+      setRevealedId(null);
+      onShare?.(id);
+    };
+    return () => {
+      currentShare.current = null;
+    };
+  }, [disabled, onShare, recordings, revealedId]);
   useEffect(() => {
     if (
       revealedId !== null &&
@@ -121,7 +140,10 @@ export default function RecordingLibraryList({
         </Text>
       ) : null}
       {recordings.length > 0 ? (
-        <View style={styles.list} testID="recording-library-list">
+        <View
+          style={onShare ? styles.savedList : styles.list}
+          testID="recording-library-list"
+        >
           {recordings.map(summary => (
             <RecordingLibrarySummaryRow
               key={summary.source.id}
@@ -132,6 +154,11 @@ export default function RecordingLibraryList({
               revealed={revealedId === summary.source.id}
               onRevealedChange={revealed =>
                 changeReveal(summary.source.id, revealed)
+              }
+              onShare={
+                onShare
+                  ? () => currentShare.current?.(summary.source.id)
+                  : undefined
               }
               onDelete={() => runRowAction(() => onDelete(summary.source))}
             />

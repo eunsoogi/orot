@@ -15,6 +15,7 @@ export type RecordingDeleteNotice = 'error' | 'cleanup-pending' | null;
 
 export interface RecordingLibraryPanelProps {
   readonly service: RecordingLibraryService;
+  readonly onShareRecording?: (sourceId: string) => void;
   readonly onNewRecording?: () => void;
   readonly onOpenRecording?: (
     summary: RecordingLibrarySummary,

@@ -8,7 +8,7 @@ import {
   type PanResponderGestureState,
 } from 'react-native';
 
-const revealWidth = 88;
+const defaultRevealWidth = 88;
 const claimDistance = 12;
 const settleDistance = 36;
 type Motion = Pick<
@@ -28,6 +28,7 @@ export function TrailingSwipeAction({
   revealed,
   onRevealedChange,
   testID,
+  revealWidth = defaultRevealWidth,
 }: {
   readonly action: ReactNode;
   readonly children: ReactNode;
@@ -35,6 +36,7 @@ export function TrailingSwipeAction({
   readonly revealed: boolean;
   readonly onRevealedChange: (revealed: boolean) => void;
   readonly testID: string;
+  readonly revealWidth?: number;
 }) {
   const [offset] = useState(() => new Animated.Value(0));
   const expanded = revealed && !disabled;
@@ -71,11 +73,13 @@ export function TrailingSwipeAction({
         // The route must remain able to take over a vertical scroll.
         onPanResponderTerminationRequest: () => true,
       }),
-    [disabled, expanded, offset, onRevealedChange, settled],
+    [disabled, expanded, offset, onRevealedChange, revealWidth, settled],
   );
   return (
     <View style={styles.clip} testID={testID} {...responder.panHandlers}>
-      {expanded ? <View style={styles.action}>{action}</View> : null}
+      {expanded ? (
+        <View style={[styles.action, { width: revealWidth }]}>{action}</View>
+      ) : null}
       <Animated.View style={{ transform: [{ translateX: offset }] }}>
         {children}
       </Animated.View>
@@ -90,6 +94,5 @@ const styles = StyleSheet.create({
     right: 0,
     top: 0,
     bottom: 0,
-    width: revealWidth,
   },
 });
