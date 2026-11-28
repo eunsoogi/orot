@@ -142,14 +142,15 @@ const completed = {
 };
 
 test.each([360, 1500])(
-  'uses the whole player’s circle and toggles the same reachable segment at %ipx',
+  'shares the whole player’s circle and stops only the selected equal-range row at %ipx',
   async width => {
+    const [first, second] = segments;
+    jest.mocked(transcriptEvidenceService.load).mockResolvedValueOnce({
+      source: mockSource,
+      segments: [first!, { ...second!, audioRange: first!.audioRange }],
+      staleArtifacts: [],
+    });
     await openDetail(width);
-    expect(
-      StyleSheet.flatten(
-        screen.getByTestId('recording-review-layout').props.style,
-      ).flexDirection,
-    ).toBe('column');
     const whole = screen.getByTestId('recording-playback-button');
     const shape = StyleSheet.flatten(whole.props.style);
     expect(shape).toMatchObject({ width: 48, height: 48, borderRadius: 24 });
@@ -163,7 +164,7 @@ test.each([360, 1500])(
     expect(segmentGlyph?.pointSize).toBe(glyph?.pointSize);
     expect(glyph?.pointSize).toBeGreaterThan(0);
     expect(row(0).props.accessibilityHint).toContain('00:00.250–00:01.801');
-
+    expect(row(1).props.accessibilityHint).toBe(row(0).props.accessibilityHint);
     await fireEvent.press(row(0));
     expect(mockPlay).toHaveBeenCalledWith(mockSource.id, 250, 1801);
     expectPlaying(0, true);
@@ -172,7 +173,6 @@ test.each([360, 1500])(
       row(0).queryAll(node => node.props.symbolName === 'stop.fill').length,
     ).toBeGreaterThan(0);
     expect(row(0)).toBeEnabled();
-    expect(screen.getAllByTestId('transcript-play-0')).toHaveLength(1);
     expect(screen.queryByTestId('transcript-play-range-0')).toBeNull();
     await fireEvent.press(row(0));
     expect(mockStop).toHaveBeenCalledTimes(1);

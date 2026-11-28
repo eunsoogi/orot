@@ -19,7 +19,8 @@ export interface RecordingSegmentPlayback {
 export const idleSegmentPlayback: SegmentPlaybackSnapshot = {};
 
 export function segmentPlaybackKey(segment: TranscriptEvidenceSegment) {
-  // A text-only correction keeps the same audio; a different source or range does not.
+  // The panel displays only the latest row per transcriptId. Preserve that
+  // audio lineage across text corrections, but never alias distinct equal-time segments.
   return JSON.stringify([
     segment.recordingSourceId,
     segment.transcriptId,
