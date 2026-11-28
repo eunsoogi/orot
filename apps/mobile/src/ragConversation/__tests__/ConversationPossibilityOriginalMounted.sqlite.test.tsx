@@ -3,24 +3,27 @@ import { AppState } from 'react-native';
 import { createConversationRetentionBridge } from '../../aiFeatures/integration/conversationRetentionBridge';
 import { healthContextFixture } from '../../aiFeatures/integration/testSupport/healthContextPersistenceFixture';
 import { expectSelectedRecordsPossibility } from '../../generatedReports/testSupport/selectedConversationPossibilityFixture';
-import { createConversationArtifactStorage } from '../../storage/conversationArtifactStorage';
 import { guardedNativeDatabase } from '../../storage/protectedReadEpoch';
 import { ConversationScreen } from '../ConversationScreen';
 import { ConversationSessionsProvider } from '../ConversationSessionsContext';
 import { createConversationSessionRetention } from '../conversationSessionRetention';
 import { runRagConversationTurn } from '../service';
-import { fixture, response } from '../testSupport/conversationEnvelopeFixtures';
 import {
   conversationPossibilityBookmarkFixture as openFixture,
   expectConversationPossibilityBookmark,
 } from '../testSupport/expectConversationPossibilityBookmark';
 import {
+  canonicalPossibilityFixture,
   expectCommittedPossibilityFixture,
+  possibilityFixtureModes,
   semanticPossibilityBookmarkFixture,
   submitPossibilityFixture,
 } from '../testSupport/semanticPossibilityBookmarkFixture';
+import {
+  initializePossibilityBookmarkStorage,
+  legacyPossibilityBookmarkObserver,
+} from '../testSupport/legacyPossibilityBookmarkObserver';
 import { answer } from '../testSupport/structuredPossibilityReportFixture';
-const missingOwner = 'The mounted composer lost its retained owner.';
 const possibilitiesPrompt = '가능성과 추가 확인할 점을 정리해 주세요.';
 jest.mock('../../generatedReports/readers', () => {
   const actual = jest.requireActual<
@@ -54,7 +57,7 @@ jest.mock('../../storage/secureDatabase', () => ({
     hasStoredRecordId: async () => true,
   }),
 }));
-test.each(['open', 'bookmark', 'semantic'] as const)(
+test.each(possibilityFixtureModes)(
   'mounted typed Possibilities admits an exact protected original to %s',
   async mode => {
     const file = mode === 'bookmark' ? await openFixture() : undefined;
@@ -64,14 +67,7 @@ test.each(['open', 'bookmark', 'semantic'] as const)(
     let mounted: Awaited<ReturnType<typeof render>> | undefined;
     try {
       const database = guardedNativeDatabase(f.database);
-      const storage = createConversationArtifactStorage(
-        database,
-        candidate => candidate === database,
-      );
-      await storage.createSession(
-        'selected',
-        await storage.currentGeneration(),
-      );
+      const storage = await initializePossibilityBookmarkStorage(database);
       const clock = '2026-10-05T00:00:00.000Z';
       const semantic = semanticPossibilityBookmarkFixture(
         mode,
@@ -82,14 +78,7 @@ test.each(['open', 'bookmark', 'semantic'] as const)(
         providerId: 'sample',
         modelId: 'sample',
       };
-      const canonical = fixture();
-      canonical.generate.mockReset().mockResolvedValue(
-        response({
-          type: 'result',
-          value: { answerKind: 'grounded', answer },
-          citations: [f.item.evidenceId],
-        }),
-      );
+      const canonical = canonicalPossibilityFixture(f.item.evidenceId);
       const chunk = f.registry.toSearchChunk(
         f.item,
         'synthetic local evidence',
@@ -99,7 +88,7 @@ test.each(['open', 'bookmark', 'semantic'] as const)(
       );
       const observed = jest.fn();
       let requestNumber = 0;
-      mounted = await render(
+      const view = () => (
         <ConversationSessionsProvider
           options={{
             continuousSession: async () => ({
@@ -135,14 +124,17 @@ test.each(['open', 'bookmark', 'semantic'] as const)(
                   context,
                 );
               if (!signal || !observer?.onRetentionCandidate)
-                throw new Error(missingOwner);
+                throw new Error('Missing retained owner.');
               const entry = {
                 intent: 'possibilities',
                 entryKey: 'synthetic-owned-possibility',
                 typedPossibilityReport: true,
               } as const;
               const bridge = createConversationRetentionBridge({
-                observer,
+                observer:
+                  mode === 'semantic-untyped'
+                    ? legacyPossibilityBookmarkObserver(observer)
+                    : observer,
                 signal,
                 registry: f.registry,
                 question,
@@ -208,16 +200,24 @@ test.each(['open', 'bookmark', 'semantic'] as const)(
               return result.outcome;
             }}
           />
-        </ConversationSessionsProvider>,
+        </ConversationSessionsProvider>
       );
+      mounted = await render(view());
       await submitPossibilityFixture(possibilitiesPrompt);
       const saved = await expectCommittedPossibilityFixture(
         observed,
         canonical.generate,
         storage,
         answer.observations,
+        mode === 'semantic-untyped',
       );
-      if (semantic) return await semantic.verify(saved);
+      if (semantic)
+        return await semantic
+          .verify(saved, async () => {
+            await mounted!.unmount();
+            mounted = await render(view());
+          })
+          .finally(semantic.close);
       if (file) {
         await expectConversationPossibilityBookmark(
           database,
