@@ -56,11 +56,12 @@ test.each([1, 1.5, 3.571])(
 );
 
 test.each([
-  [900, 1, '31%'],
-  [390, 2, '100%'],
+  [900, 1, 2],
+  [390, 1, 2],
+  [390, 2, 5],
 ] as const)(
   'reflows the material directory at width %s and text scale %s',
-  async (width, fontScale, tileWidth) => {
+  async (width, fontScale, rowCount) => {
     Dimensions.set({
       window: { ...original.window, width, fontScale },
       screen: { ...original.screen, width, fontScale },
@@ -82,9 +83,13 @@ test.each([
       screen.getByText('대화에서 생성한 자료').props.numberOfLines,
     ).toBeUndefined();
     expect(screen.getByTestId('records-open-generated-reports')).toHaveStyle({
-      width: tileWidth,
+      flexBasis: 0,
+      flexGrow: 1,
       minHeight: 56,
     });
+    expect(screen.getAllByTestId('records-material-launcher-row')).toHaveLength(
+      rowCount,
+    );
     expect(screen.queryByTestId('saved-memory-browser')).toBeNull();
     expect(screen.queryByTestId('generated-report-browser')).toBeNull();
   },

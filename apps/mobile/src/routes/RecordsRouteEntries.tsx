@@ -6,6 +6,7 @@ import { AppSymbol } from '../layout/AppSymbol';
 import { t } from '../i18n';
 import { appColors } from '../layout/appColors';
 import { MedicalDocumentImportAction } from '../medicalDocuments/MedicalDocumentImportAction';
+import { RecordsMaterialLauncher } from './RecordsMaterialLauncher';
 import { styles } from './recordsRouteEntryStyles';
 
 interface RecordsRouteEntriesProps {
@@ -76,9 +77,11 @@ export function RecordsRouteEntries({
 }: RecordsRouteEntriesProps) {
   const { fontScale } = useWindowDimensions();
   const largeText = fontScale > 1.4;
+  // Keep the approved five destinations in launcher order; the tint reinforces, never replaces, their names.
   const items = [
     {
       icon: 'calendar',
+      iconBackground: '#5e83d0',
       title: t('schedule.title'),
       onPress: onOpenSchedule,
       // A native document picker already owns the active route until it settles.
@@ -86,14 +89,16 @@ export function RecordsRouteEntries({
       testID: 'records-open-schedule',
     },
     {
-      icon: 'doc.text',
+      icon: 'waveform',
+      iconBackground: '#8068ad',
       title: t('recording.library.title'),
       hint: t('records.savedRecordingsSummary'),
       onPress: onOpenSavedRecordings,
       testID: 'records-open-saved-recordings',
     },
     {
-      icon: 'folder',
+      icon: 'folder.badge.plus',
+      iconBackground: '#3c8a92',
       title: t('records.healthRecords'),
       hint: t('healthRecords.description'),
       onPress: onOpenHealthLibrary,
@@ -101,6 +106,7 @@ export function RecordsRouteEntries({
     },
     {
       icon: 'bookmark',
+      iconBackground: '#ae701c',
       title: t('savedMemory.title'),
       hint: t('records.conversationMemorySummary'),
       onPress: onOpenManualHistory,
@@ -109,6 +115,7 @@ export function RecordsRouteEntries({
     },
     {
       icon: 'doc.on.doc',
+      iconBackground: '#557da3',
       title: t('records.generatedConversationMaterials'),
       hint: t('records.generatedConversationMaterialsSummary'),
       onPress: onOpenGeneratedReports,
@@ -116,49 +123,13 @@ export function RecordsRouteEntries({
       testID: 'records-open-generated-reports',
     },
   ];
-  // Larger text uses full-width rows to keep long Korean labels readable.
-  const rows = largeText
-    ? items.map(item => [item])
-    : [items.slice(0, 3), items.slice(3)];
   return (
     <View style={styles.sections}>
       <View style={styles.section} testID="records-materials">
         <Text accessibilityRole="header" style={styles.sectionTitle}>
           {t('records.myMaterials')}
         </Text>
-        <View testID="records-material-directory">
-          {rows.map((row, index) => (
-            <View
-              key={row[0]?.testID}
-              style={[styles.gridRow, index > 0 && styles.rowDivider]}
-            >
-              {row.map(({ icon, title, hint, onPress, disabled, testID }) => (
-                <Pressable
-                  key={testID}
-                  accessibilityRole="button"
-                  accessibilityLabel={title}
-                  accessibilityHint={hint}
-                  accessibilityState={{ disabled: disabled || !onPress }}
-                  disabled={disabled || !onPress}
-                  onPress={onPress}
-                  style={[
-                    styles.tile,
-                    largeText && styles.fullTile,
-                    (disabled || !onPress) && styles.disabled,
-                  ]}
-                  testID={testID}
-                >
-                  <AppSymbol
-                    name={icon}
-                    color={appColors.primaryText}
-                    size={22}
-                  />
-                  <Text style={styles.tileText}>{title}</Text>
-                </Pressable>
-              ))}
-            </View>
-          ))}
-        </View>
+        <RecordsMaterialLauncher items={items} largeText={largeText} />
       </View>
       <View style={styles.section} testID="records-document-import">
         <Text accessibilityRole="header" style={styles.sectionTitle}>
