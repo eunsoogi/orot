@@ -164,7 +164,7 @@ export default function CalendarLinkingScreen({
         ) : null}
       </View>
       <CalendarQuickActions
-        flat={flatSchedulePresentation}
+        dock={flatSchedulePresentation}
         disabled={calendar.saving || hasUnsavedSelection}
         onOpenAppointments={onOpenAppointments}
         onOpenMedicalAppointments={onOpenMedicalAppointments}

@@ -108,8 +108,7 @@ export function NavigationActionBar<Name extends string>({
       testID="bottom-navigation-action-bar"
     >
       {/* Keep contextual Back first, ahead of persistent root tabs in the rail. */}
-      {routeBackAction ||
-      (snapshot.canGoBack && (!rootTabs || rootTabs.onSelectFromChild)) ? (
+      {routeBackAction || (snapshot.canGoBack && !rootTabs) ? (
         <NavigationActionButton
           accessibilityLabel={navigationText.back.accessibilityLabel}
           disabled={backDisabled}

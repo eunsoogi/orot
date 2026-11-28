@@ -18,11 +18,6 @@ export const calendarStyles = StyleSheet.create({
     paddingHorizontal: 0,
     paddingVertical: 4,
   },
-  flatQuickActions: {
-    backgroundColor: 'transparent',
-    borderRadius: 0,
-    borderBottomWidth: StyleSheet.hairlineWidth,
-  },
   flatCard: {
     gap: 10,
     borderTopColor: appColors.border,

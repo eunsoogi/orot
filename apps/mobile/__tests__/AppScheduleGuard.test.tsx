@@ -79,16 +79,12 @@ test('guards a calendar draft and allows navigation after explicit save', async 
   expect(screen.getByTestId('schedule-open-appointments')).toBeDisabled();
   expect(screen.getByTestId('open-medical-appointments')).toBeDisabled();
 
-  // The existing root rail and contextual Back both honor the same draft guard.
-  expect(
-    screen.getByTestId('navigation-tab-records').props.accessibilityState,
-  ).toMatchObject({ selected: true });
-  for (const [index, id] of [
-    'navigation-tab-overview',
-    'navigation-back',
-  ].entries()) {
-    await fireEvent.press(screen.getByTestId(id));
-    await waitFor(() => expect(alert).toHaveBeenCalledTimes(index + 1));
+  // The contextual Back owns the transition and cannot discard a selected candidate.
+  expect(screen.queryByTestId('navigation-tab-records')).toBeNull();
+  expect(screen.queryByTestId('navigation-tab-overview')).toBeNull();
+  for (let attempt = 1; attempt <= 2; attempt += 1) {
+    await fireEvent.press(screen.getByTestId('navigation-back'));
+    await waitFor(() => expect(alert).toHaveBeenCalledTimes(attempt));
     expect(alert.mock.calls[0]?.[0]).toBe(navigationText.leaveUnsaved.title);
     await pressAlertButton(alert, 0);
     expect(screen.getByTestId('calendar-selection')).toBeTruthy();
@@ -97,6 +93,8 @@ test('guards a calendar draft and allows navigation after explicit save', async 
   await fireEvent.press(screen.getByTestId('calendar-confirm-selected'));
   expect(await screen.findByText('다음 외래 방문을 저장했어요.')).toBeTruthy();
   expect(screen.getByTestId('schedule-open-appointments')).toBeEnabled();
+  await fireEvent.press(screen.getByTestId('navigation-back'));
+  expect(await screen.findByTestId('records-title')).toBeVisible();
   await fireEvent.press(screen.getByTestId('navigation-tab-overview'));
   await waitFor(() =>
     expect(screen.getByTestId('overview-title')).toBeTruthy(),
