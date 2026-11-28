@@ -5,6 +5,10 @@ import { appColors } from '../layout/appColors';
 import { AppText as Text } from '../layout/AppText';
 import { t } from '../i18n';
 import { TrailingSwipeAction } from '../layout/TrailingSwipeAction';
+import {
+  RecordingSwipeActionTiles,
+  recordingSwipeTileLaneWidth,
+} from './RecordingSwipeActionTiles';
 import { formatRecordedAt } from './formatRecordedAt';
 import { formatRecordingDuration } from './recordingTypes';
 import { recordingLibraryStyles as styles } from './RecordingLibraryPanel.styles';
@@ -15,6 +19,7 @@ interface RecordingLibrarySummaryRowProps {
   readonly disabled: boolean;
   readonly onOpen: () => void;
   readonly onPlay: () => void;
+  readonly onShare?: () => void;
   readonly onDelete: () => void;
   readonly revealed: boolean;
   readonly onRevealedChange: (revealed: boolean) => void;
@@ -63,6 +68,7 @@ export default function RecordingLibrarySummaryRow({
   onOpen,
   onPlay,
   onDelete,
+  onShare,
   revealed,
   onRevealedChange,
 }: RecordingLibrarySummaryRowProps) {
@@ -78,24 +84,33 @@ export default function RecordingLibrarySummaryRow({
 
   return (
     <TrailingSwipeAction
+      revealWidth={onShare ? recordingSwipeTileLaneWidth : undefined}
       action={
-        <View
-          style={styles.swipeActionSlot}
-          testID={`recording-delete-slot-${source.id}`}
-        >
-          <Pressable
-            accessibilityRole="button"
-            accessibilityLabel={deleteLabel}
-            disabled={disabled || !revealed}
-            onPress={onDelete}
-            style={styles.swipeDelete}
-            testID={`recording-delete-${source.id}`}
+        onShare ? (
+          <RecordingSwipeActionTiles
+            sourceId={source.id}
+            onShare={onShare}
+            onDelete={onDelete}
+          />
+        ) : (
+          <View
+            style={styles.swipeActionSlot}
+            testID={`recording-delete-slot-${source.id}`}
           >
-            <Text style={styles.swipeDeleteText}>
-              {t('recording.library.confirmDelete')}
-            </Text>
-          </Pressable>
-        </View>
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel={deleteLabel}
+              disabled={disabled || !revealed}
+              onPress={onDelete}
+              style={styles.swipeDelete}
+              testID={`recording-delete-${source.id}`}
+            >
+              <Text style={styles.swipeDeleteText}>
+                {t('recording.library.confirmDelete')}
+              </Text>
+            </Pressable>
+          </View>
+        )
       }
       disabled={disabled}
       revealed={revealed}
@@ -103,7 +118,11 @@ export default function RecordingLibrarySummaryRow({
       testID={`recording-library-item-${source.id}`}
     >
       <View
-        style={[styles.item, styles.summaryActionRow]}
+        style={[
+          styles.item,
+          styles.summaryActionRow,
+          onShare && styles.savedItem,
+        ]}
         testID={`recording-row-content-${source.id}`}
       >
         <GlassIconButton
@@ -125,10 +144,21 @@ export default function RecordingLibrarySummaryRow({
           accessibilityHint={t('recording.library.openDetailsHint')}
           accessibilityState={{ disabled }}
           accessibilityActions={
-            disabled ? undefined : [{ name: 'delete', label: deleteLabel }]
+            disabled
+              ? undefined
+              : [
+                  ...(onShare
+                    ? [{ name: 'share', label: t('recording.library.share') }]
+                    : []),
+                  { name: 'delete', label: deleteLabel },
+                ]
           }
           onAccessibilityAction={event => {
-            if (!disabled && event.nativeEvent.actionName === 'delete')
+            if (
+              !disabled &&
+              (event.nativeEvent.actionName === 'delete' ||
+                (onShare && event.nativeEvent.actionName === 'share'))
+            )
               onRevealedChange(true);
           }}
           disabled={disabled}

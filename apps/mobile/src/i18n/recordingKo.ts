@@ -141,6 +141,7 @@ export const recordingKo = {
   'recording.library.details': '상세 보기',
   'recording.library.openDetailsHint': '녹음과 전사 검토 내용을 엽니다.',
   'recording.library.closeDetails': '상세 닫기',
+  'recording.library.share': '공유',
   'recording.library.delete': '녹음 삭제',
   'recording.library.untitled': '이름 없는 녹음',
   'recording.library.durationUnavailable': '길이 확인 불가',

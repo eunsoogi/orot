@@ -40,6 +40,9 @@ export const recordingLibraryStyles = StyleSheet.create({
     overflow: 'hidden',
     backgroundColor: appColors.surface,
   },
+  // The uncovered swipe lane belongs to the route canvas, not the card fill.
+  savedList: { gap: 8 },
+  savedItem: { borderRadius: 20, borderBottomWidth: 0 },
   item: {
     gap: 6,
     borderBottomWidth: StyleSheet.hairlineWidth,

@@ -21,6 +21,7 @@ export default function RecordingLibraryPanel({
   service,
   onNewRecording,
   onOpenRecording,
+  onShareRecording,
   transcriptService,
   automaticTranscription = null,
   fallbackExportSourceId,
@@ -151,6 +152,7 @@ export default function RecordingLibraryPanel({
         onDelete={requestDelete}
         onNewRecording={onNewRecording}
         onOpen={selectSource}
+        onShare={onShareRecording}
         recordings={recordings}
       />
       {selected ? (
