@@ -15,6 +15,7 @@ import { formatCalendarDate, type CalendarGridDay } from './calendarMonth';
 import type { CalendarMonthDisplayEvent } from './calendarMonthEvents';
 import { formatCalendarEventRange, formatCalendarEventStart } from './dateTime';
 import type { CalendarEvent } from './types';
+import { useScheduleMonthGesture } from './useScheduleMonthGesture';
 
 interface ScheduleMonthGridProps {
   readonly days: readonly CalendarGridDay[];
@@ -27,6 +28,7 @@ interface ScheduleMonthGridProps {
   readonly selectedEvent: CalendarEvent | null;
   readonly selectionDisabled: boolean;
   readonly selectEvent: (event: CalendarEvent) => void;
+  readonly onSwipeMonth?: (amount: -1 | 1) => void;
 }
 
 type OpenSheet = { date: string; eventKey?: string };
@@ -43,11 +45,22 @@ export function ScheduleMonthGrid({
   selectedEvent,
   selectionDisabled,
   selectEvent,
+  onSwipeMonth,
 }: ScheduleMonthGridProps) {
   const [sheet, setSheet] = useState<OpenSheet | null>(null);
   const [gridWidth, setGridWidth] = useState(0);
+  const { density, responders } = useScheduleMonthGesture(onSwipeMonth);
   const expanded = (gridWidth || width) >= 700 || largeText;
-  const maxVisible = expanded ? 3 : 1;
+  const maxVisible = expanded ? 3 : density >= 3 ? 2 : 1;
+  // Scale layout dimensions, not the entire grid or text; Dynamic Type remains in control.
+  const barHeight = largeText
+    ? 44 + density * 2
+    : (expanded ? 28 : 22) + density * 3;
+  const cellSpacing = {
+    minHeight: 48 + density * 12,
+    paddingBottom: 3 + density,
+  };
+  const eventTarget = { minHeight: barHeight };
   const sheetEvents = sheet ? eventsForDay(sheet.date) : [];
   const sheetEvent = sheetEvents.find(item => item.rowKey === sheet?.eventKey);
   const isSelected = (item: CalendarMonthDisplayEvent) =>
@@ -60,6 +73,7 @@ export function ScheduleMonthGrid({
     <>
       {!largeText ? <CalendarWeekdayHeader flat /> : null}
       <View
+        {...responders}
         style={largeText ? undefined : calendarStyles.calendarGrid}
         onLayout={event => setGridWidth(event.nativeEvent.layout.width)}
         testID="calendar-date-grid"
@@ -78,7 +92,11 @@ export function ScheduleMonthGrid({
           return (
             <View
               key={date}
-              style={[styles.cell, largeText && styles.accessibleCell]}
+              style={[
+                styles.cell,
+                cellSpacing,
+                largeText && styles.accessibleCell,
+              ]}
               testID={`schedule-date-events-${date}`}
             >
               <CalendarDayCell
@@ -111,6 +129,7 @@ export function ScheduleMonthGrid({
                     onPress={() => setSheet({ date, eventKey: item.rowKey })}
                     style={[
                       styles.bar,
+                      eventTarget,
                       selected
                         ? styles.selected
                         : item.isNextVisit
@@ -140,7 +159,7 @@ export function ScheduleMonthGrid({
                   accessibilityRole="button"
                   accessibilityLabel={`${formatCalendarDate(date)}, ${t('calendar.additionalEvents', { count: overflow })}`}
                   onPress={() => setSheet({ date })}
-                  style={styles.more}
+                  style={[styles.more, eventTarget]}
                   testID="schedule-date-event-overflow"
                 >
                   <Text style={styles.time}>{`+${overflow}`}</Text>
@@ -174,7 +193,6 @@ const styles = StyleSheet.create({
   cell: {
     width: '14.2857142857%',
     paddingHorizontal: 1,
-    paddingBottom: 5,
     minWidth: 0,
     gap: 2,
     borderBottomColor: appColors.border,
@@ -183,7 +201,6 @@ const styles = StyleSheet.create({
   accessibleCell: { width: '100%', paddingHorizontal: 8, paddingBottom: 10 },
   bar: {
     minWidth: 0,
-    minHeight: 44,
     justifyContent: 'center',
     borderRadius: 4,
     paddingHorizontal: 4,
@@ -195,5 +212,5 @@ const styles = StyleSheet.create({
   title: { color: appColors.primaryText, fontSize: 11, fontWeight: '600' },
   time: { color: appColors.secondary, fontSize: 10 },
   selectedText: { color: appColors.onPrimary },
-  more: { minHeight: 44, alignItems: 'center', justifyContent: 'center' },
+  more: { alignItems: 'center', justifyContent: 'center' },
 });

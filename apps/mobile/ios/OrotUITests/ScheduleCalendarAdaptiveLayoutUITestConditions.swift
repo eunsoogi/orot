@@ -8,6 +8,18 @@ enum ScheduleCalendarAdaptiveLayoutUITestConditions {
         let columns: Int
     }
 
+    /// Exercises real horizontal responder delivery before the selection journey.
+    static func assertMonthSwipeRoundTrip(_ app: XCUIApplication) {
+        let month = UITestConditions.element(app, "calendar-month-title")
+        UITestConditions.value(month, equals: "2035년 6월")
+        let grid = UITestConditions.element(app, "calendar-date-grid")
+        FormUITestConditions.reveal(grid, in: app, scrollID: "calendar-screen")
+        grid.swipeLeft()
+        UITestConditions.value(month, equals: "2035년 7월")
+        grid.swipeRight()
+        UITestConditions.value(month, equals: "2035년 6월")
+    }
+
     static func waitForLayout(
         _ app: XCUIApplication,
         afterWidth previousWidth: Double?,

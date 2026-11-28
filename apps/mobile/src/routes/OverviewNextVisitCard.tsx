@@ -4,6 +4,11 @@ import { AppButton } from '../layout/AppButton';
 import { AppProgress } from '../layout/AppProgress';
 import { AppText as Text } from '../layout/AppText';
 import { AppSymbol } from '../layout/AppSymbol';
+import {
+  UpcomingVisitDetails,
+  UpcomingVisitHeading,
+  upcomingVisitSectionStyle,
+} from '../layout/UpcomingVisitHeading';
 import { t } from '../i18n';
 import { appColors } from '../layout/appColors';
 import { appointmentTimeLabel } from './nextAppointment';
@@ -29,37 +34,17 @@ export function OverviewNextVisitCard({
 }: OverviewNextVisitCardProps) {
   const nextAppointment =
     appointment && appointment.status !== 'cancelled' ? appointment : null;
-  const calendarDay = (date: Date) =>
-    Date.UTC(date.getFullYear(), date.getMonth(), date.getDate());
-  const daysUntil = nextAppointment
-    ? Math.round(
-        (calendarDay(new Date(nextAppointment.effectiveAt)) -
-          calendarDay(new Date())) /
-          86_400_000,
-      )
-    : null;
-
-  const countdown =
-    daysUntil === null || !Number.isFinite(daysUntil)
-      ? null
-      : daysUntil === 0
-        ? 'D-day'
-        : `D${daysUntil > 0 ? '-' : '+'}${Math.abs(daysUntil)}`;
-
   const questionsLabel = t('visitQuestions.manual.title');
   return (
     <View testID="overview-next-visit-panel">
       <View
         testID={nextAppointment ? 'overview-next-appointment' : undefined}
-        style={styles.content}
+        style={upcomingVisitSectionStyle}
       >
-        <Text
-          accessibilityRole="header"
-          style={styles.label}
+        <UpcomingVisitHeading
+          label={t('overview.nextAppointment')}
           testID="overview-next-visit-heading"
-        >
-          {t('overview.nextAppointment')}
-        </Text>
+        />
         {appointmentState === 'loading' ? (
           <View
             style={nextAppointment ? styles.refreshRow : styles.initialRead}
@@ -93,43 +78,23 @@ export function OverviewNextVisitCard({
         ) : null}
         {nextAppointment ? (
           <>
-            <View style={styles.details} testID="overview-next-visit-details">
-              <View
-                style={styles.titleRow}
-                testID="overview-next-visit-title-row"
-              >
-                {/* Let a long title wrap without shifting the fixed countdown below it. */}
-                <Text
-                  style={styles.clinic}
-                  testID="overview-next-appointment-clinic"
-                >
-                  {nextAppointment.clinicLabel ??
-                    nextAppointment.calendarEventSnapshot?.title ??
-                    t('appointments.fallbackTitle')}
-                </Text>
-                {countdown ? (
-                  <Text
-                    style={styles.countdown}
-                    testID="overview-next-visit-countdown"
-                  >
-                    {countdown}
-                  </Text>
-                ) : null}
-              </View>
-              <View
-                style={styles.timeRow}
-                testID="overview-next-visit-time-row"
-              >
-                <AppSymbol
-                  name="calendar"
-                  size={17}
-                  color={appColors.secondary}
-                />
-                <Text style={styles.time} testID="overview-next-visit-time">
-                  {appointmentTimeLabel(nextAppointment)}
-                </Text>
-              </View>
-            </View>
+            <UpcomingVisitDetails
+              title={
+                nextAppointment.clinicLabel ??
+                nextAppointment.calendarEventSnapshot?.title ??
+                t('appointments.fallbackTitle')
+              }
+              time={appointmentTimeLabel(nextAppointment)}
+              startsAt={nextAppointment.effectiveAt}
+              testIDs={{
+                details: 'overview-next-visit-details',
+                titleRow: 'overview-next-visit-title-row',
+                title: 'overview-next-appointment-clinic',
+                countdown: 'overview-next-visit-countdown',
+                timeRow: 'overview-next-visit-time-row',
+                time: 'overview-next-visit-time',
+              }}
+            />
             <Pressable
               accessibilityRole="button"
               accessibilityLabel={questionsLabel}
@@ -167,28 +132,6 @@ export function OverviewNextVisitCard({
 }
 
 const styles = StyleSheet.create({
-  content: { gap: 8, minWidth: 0 },
-  titleRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
-  label: {
-    color: appColors.text,
-    flexShrink: 1,
-    fontSize: 14,
-    fontWeight: '600',
-  },
-  countdown: {
-    flexShrink: 0,
-    color: appColors.primaryText,
-    backgroundColor: appColors.primarySoft,
-    borderRadius: 12,
-    paddingHorizontal: 8,
-    paddingVertical: 3,
-    fontSize: 13,
-    fontWeight: '600',
-  },
-  details: { gap: 8 },
-  clinic: { color: appColors.text, flex: 1, fontSize: 28, fontWeight: '700' },
-  timeRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
-  time: { color: appColors.secondary, flexShrink: 1, fontSize: 16 },
   preparationAction: {
     alignSelf: 'flex-start',
     alignItems: 'center',
