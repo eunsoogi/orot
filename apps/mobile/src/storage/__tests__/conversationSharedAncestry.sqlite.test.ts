@@ -73,7 +73,8 @@ test('coalesces a real shared DAG across distinct roots and preserves every orig
     }
     expect(controls.map(control => control.parents)).toEqual([25, 4]);
     expect(controls.map(control => control.markers)).toEqual([112, 28]);
-    expect(controls.map(control => control.total)).toEqual([297, 87]);
+    // Each saved-summary parent now reads its body and invalidation fence together.
+    expect(controls.map(control => control.total)).toEqual([269, 80]);
   } finally {
     fixture.close();
   }
@@ -119,3 +120,4 @@ test('does not reuse a different revision, revoked owner, or foreign executor', 
     fixture.close();
   }
 }, 30000);
+
