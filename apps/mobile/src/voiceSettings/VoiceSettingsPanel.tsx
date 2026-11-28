@@ -1,6 +1,6 @@
 import { t } from '../i18n';
 import { View } from 'react-native';
-import { useMemo, useState, type ComponentProps } from 'react';
+import { useState, type ComponentProps } from 'react';
 import { AppText as Text } from '../layout/AppText';
 import { AppButton as Button } from '../layout/AppButton';
 import { providerSettingsStyles as styles } from '../layout/providerSettingsPresentation';
@@ -14,7 +14,6 @@ import {
 import { liveModel } from './liveVoicePreferences';
 import { useModelSettingsServices } from '../agent/execution/ModelSettingsServices';
 import { voiceSettingsStore } from './voiceSettingsStore';
-import { openAiVoicePreferencesDraftReader } from './openAiVoiceFormRead';
 import { voiceModels } from './voiceModels';
 import { VoiceModelOption } from './VoiceModelOption';
 import { VoiceModelGroups } from './VoiceModelGroups';
@@ -25,6 +24,8 @@ import type { LiveVoicePreferencesDraft } from './LiveVoicePreferencesPanel';
 import type { LiveResponsesBackend } from './liveResponsesSettingsIdentity';
 import { selectOpenAiVoicePair } from './reviewOpenAiVoicePair';
 import { usePreviouslyReviewedVoicePair } from './usePreviouslyReviewedVoicePair';
+import { VoicePairPreferences } from './VoicePairPreferences';
+import type { LiveResponsesSettings } from './liveResponsesSettings';
 import { useOpenAiVoicePairSave } from './useOpenAiVoicePairSave';
 /** Local and API providers are sibling sections; a hidden tab must not own navigation actions. */
 export function VoiceSettingsPanel({
@@ -44,7 +45,7 @@ export function VoiceSettingsPanel({
   const [tool, setTool] = useState<{
     revision: number;
     model: LiveResponsesBackend;
-    restored?: true;
+    restored?: Extract<LiveResponsesSettings, { kind: 'active' }>;
   }>();
   const [preferences, setPrefs] = useState<{
     revision: number;
@@ -52,11 +53,6 @@ export function VoiceSettingsPanel({
   }>();
   const [speechRevision, setSpeechRevision] = useState<number>();
   const revision = catalog.revision;
-  const preferencesReader = useMemo(
-    () =>
-      revision === null ? null : openAiVoicePreferencesDraftReader(revision),
-    [revision],
-  );
   const knownPair =
     catalog.ids.includes(liveModel) && catalog.toolIds.length > 0;
   const eligible =
@@ -95,9 +91,13 @@ export function VoiceSettingsPanel({
     hasDraft: speechRevision === revision || tool?.revision === revision,
     allowed: catalog.toolIds,
     allowSavedPreview,
-    restore: (owner, backend) => {
+    restore: (owner, restored) => {
       setSpeechRevision(owner);
-      setTool({ revision: owner, model: backend, restored: true });
+      setTool({
+        revision: owner,
+        model: restored.nativeGrant.backendModel,
+        restored,
+      });
     },
   });
   const pair = selectOpenAiVoicePair({
@@ -180,26 +180,24 @@ export function VoiceSettingsPanel({
       }
       speech={choices('openai-api')}
       preferences={
-        revision !== null &&
-        apiSelectable &&
-        (livePreferences || voice === voiceSettingsStore) ? (
-          <LiveVoicePreferencesPanel
-            key={revision}
-            onDraftChange={draft =>
-              setPrefs(previous =>
-                previous?.revision === revision && previous.draft === draft
-                  ? previous
-                  : { revision, draft },
-              )
+        revision === null ? null : (
+          <VoicePairPreferences
+            revision={revision}
+            saved={
+              mode === savedMode && tool?.revision === revision
+                ? tool.restored
+                : undefined
             }
+            editable={
+              apiSelectable &&
+              !!(livePreferences || voice === voiceSettingsStore)
+            }
+            cached={!catalog.fresh}
             busy={busy || pairedSave.busy}
-            {...(livePreferences ?? {
-              ready: true,
-              store: preferencesReader!,
-              authorityRevision: revision,
-            })}
+            override={livePreferences}
+            onDraftChange={draft => setPrefs({ revision, draft })}
           />
-        ) : null
+        )
       }
       tools={
         <OpenAiVoiceToolOptions

@@ -1,3 +1,4 @@
+import type { Preferences } from './liveVoicePreferences';
 import { commitSettingsConsent } from '../agent/execution/commitSettingsConsent';
 import {
   canReuseConsent,
@@ -56,6 +57,8 @@ export type LiveResponsesSettings =
       readonly kind: 'active';
       readonly nativeGrant: NativeLiveResponsesGrant;
       readonly credentialEpoch: string;
+      /** Only an exact committed pair carries saved preferences for display. */
+      readonly savedPreferences?: Preferences;
       /** The v1 receipt is still displayable, but never authorizes headless health. */
       readonly aggregatePolicy?: 'headless-v2';
       readonly commonToolsPolicy?: 'common-tools-v3';
@@ -68,7 +71,7 @@ export type LiveResponsesSettings =
  * silently change processing path after an authority or account failure. */
 export async function loadLiveResponsesSettings(
   expectedCredentialEpoch?: string,
-  purpose?: 'tool-reproof',
+  purpose?: 'tool-reproof' | 'settings-presentation',
 ): Promise<LiveResponsesSettings> {
   try {
     const owned = captureOwner();
@@ -142,6 +145,9 @@ export async function loadLiveResponsesSettings(
         ? { commonToolsPolicy: permission }
         : {}),
       credentialEpoch: credential,
+      ...(purpose === 'settings-presentation' && pair
+        ? { savedPreferences: pair.preferences }
+        : {}),
       nativeGrant: Object.freeze({
         ...(headless ? { scope: liveAggregateDevicePolicy } : {}),
         backendModel: expected.backendModel,

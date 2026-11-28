@@ -1,5 +1,8 @@
 import { useEffect, useRef } from 'react';
-import { loadLiveResponsesSettings } from './liveResponsesSettings';
+import {
+  loadLiveResponsesSettings,
+  type LiveResponsesSettings,
+} from './liveResponsesSettings';
 import type { LiveResponsesBackend } from './liveResponsesSettingsIdentity';
 import { voiceSettingsStore } from './voiceSettingsStore';
 
@@ -11,7 +14,10 @@ export function usePreviouslyReviewedVoicePair(input: {
   hasDraft: boolean;
   allowed: readonly LiveResponsesBackend[];
   allowSavedPreview: boolean;
-  restore: (revision: number, backend: LiveResponsesBackend) => void;
+  restore: (
+    revision: number,
+    settings: Extract<LiveResponsesSettings, { kind: 'active' }>,
+  ) => void;
 }) {
   const live = useRef(input);
   live.current = input;
@@ -19,7 +25,7 @@ export function usePreviouslyReviewedVoicePair(input: {
   useEffect(() => {
     if (revision === null || !eligible) return;
     let active = true;
-    loadLiveResponsesSettings()
+    loadLiveResponsesSettings(undefined, 'settings-presentation')
       .then(settings => {
         const latest = live.current;
         if (
@@ -34,7 +40,7 @@ export function usePreviouslyReviewedVoicePair(input: {
             !latest.allowed.includes(settings.nativeGrant.backendModel))
         )
           return;
-        latest.restore(revision, settings.nativeGrant.backendModel);
+        latest.restore(revision, settings);
       })
       .catch(() => {});
     return () => {

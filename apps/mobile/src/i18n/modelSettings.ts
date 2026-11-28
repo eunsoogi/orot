@@ -69,6 +69,7 @@ export const modelSettingsKo = {
   'modelSettings.liveVoiceLegacyCurrent': '기존 OpenAI 음성 설정 (전환 필요)',
   'modelSettings.liveVoiceUnavailableNoFallback':
     'GPT-Live-1.1로 연결할 수 없어요. 기존 음성 모델로 자동 전환하지 않아요.',
+  'modelSettings.liveVoiceLanguageAutomatic': '자동',
   'modelSettings.liveVoiceDefaultVoice': '기본값 (Marin)',
   'modelSettings.liveVoiceNoeul': '노을 · 한국어',
   'modelSettings.liveVoiceQuartz': 'Quartz · 영어(호주)',
