@@ -16,7 +16,7 @@ test('one session operation reuses six committed periods but never source validi
         if (/WITH days\(/.test(args[0])) aggregate++;
         if (
           args[0] ===
-          'SELECT result_json FROM symptom_summary_runs WHERE id = ?'
+          'SELECT r.result_json FROM symptom_summary_runs r WHERE r.id = ? AND NOT EXISTS (SELECT 1 FROM conversation_invalid_summaries invalid WHERE invalid.id = r.id)'
         )
           summaryReads++;
         return execute(...args);

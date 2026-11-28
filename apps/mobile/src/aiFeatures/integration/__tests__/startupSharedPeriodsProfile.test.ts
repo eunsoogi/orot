@@ -53,7 +53,9 @@ test.each([
         }
         if (
           args[0] ===
-          'SELECT result_json FROM symptom_summary_runs WHERE id = ?'
+            'SELECT result_json FROM symptom_summary_runs WHERE id = ?' ||
+          args[0] ===
+            'SELECT r.result_json FROM symptom_summary_runs r WHERE r.id = ? AND NOT EXISTS (SELECT 1 FROM conversation_invalid_summaries invalid WHERE invalid.id = r.id)'
         ) {
           stats.sourceChecks++;
           sourceOrder.push(String(args[1]?.[0]));
