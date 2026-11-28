@@ -14,14 +14,73 @@ index 3bb041d7aea37623522d27ef8c56f302ef219bd2..4b5c8256f984d98f13d47e669d3f5e17
 +
  NS_ASSUME_NONNULL_END
 diff --git a/ios/RNCSliderComponentView.mm b/ios/RNCSliderComponentView.mm
-index cf14ae6f66b8c847b2b79c5b0eebd4148f81e00d..a3c53db7ff08e2af6a727054eaee1ea41dba8a78 100644
+index cf14ae6f66b8c847b2b79c5b0eebd4148f81e00d..78cb2784f413fe0862040f277f7d50e14bc72d46 100644
 --- a/ios/RNCSliderComponentView.mm
 +++ b/ios/RNCSliderComponentView.mm
-@@ -320,14 +320,15 @@ - (void)loadImageFromImageSource:(ImageSource)source completionBlock:(RNCLoadIma
+@@ -76,6 +76,17 @@
+     return self;
+ }
+ 
++- (BOOL)commitsOnRelease {
++    return std::static_pointer_cast<const RNCSliderProps>(_props)->commitOnRelease;
++}
++
++- (void)emitReleaseForRecordingSeek {
++    auto emitter = std::dynamic_pointer_cast<const RNCSliderEventEmitter>(_eventEmitter);
++    if (emitter && slider.enabled && slider.window) {
++        emitter->onRNCSliderSlidingComplete(RNCSliderEventEmitter::OnRNCSliderSlidingComplete{.value = static_cast<Float>(slider.value)});
++    }
++}
++
+ - (void)tapHandler:(UITapGestureRecognizer *)gesture {
+     if ([gesture.view class] != [RNCSlider class]) {
+         return;
+@@ -112,6 +123,10 @@
+     }
+ 
+     [slider setValue:[slider discreteValue:value] animated: YES];
++    if ([self commitsOnRelease]) {
++        [self emitReleaseForRecordingSeek];
++        return;
++    }
+ 
+     std::dynamic_pointer_cast<const RNCSliderEventEmitter>(_eventEmitter)
+     ->onRNCSliderSlidingStart(RNCSliderEventEmitter::OnRNCSliderSlidingStart{.value = static_cast<Float>(slider.lastValue)});
+@@ -126,11 +141,13 @@
+ 
+ - (void)sliderValueChanged:(RNCSlider *)sender
+ {
++    if ([self commitsOnRelease]) return;
+     [self RNCSendSliderEvent:sender withContinuous:YES isSlidingStart:NO];
+ }
+ 
+ - (void)sliderTouchStart:(RNCSlider *)sender
+ {
++    if ([self commitsOnRelease]) return;
+     [self RNCSendSliderEvent:sender withContinuous:NO isSlidingStart:YES];
+     _isSliding = YES;
+     sender.isSliding = YES;
+@@ -138,6 +155,7 @@
+ 
+ - (void)sliderTouchEnd:(RNCSlider *)sender
+ {
++    if ([self commitsOnRelease]) return;
+     [self RNCSendSliderEvent:sender withContinuous:NO isSlidingStart:NO];
+     sender.isSliding = NO;
+     _isSliding = NO;
+@@ -184,7 +202,7 @@
+     const auto &newScreenProps = *std::static_pointer_cast<const RNCSliderProps>(props);
+ 
+     if (oldScreenProps.value != newScreenProps.value) {
+-        if (!slider.isSliding) {
++        if (!slider.isSliding && (!newScreenProps.commitOnRelease || !slider.isTracking)) {
+             slider.value = newScreenProps.value;
+         }
+     }
+@@ -320,14 +338,15 @@
          return;
      }
--
-+
+ 
 +    // The slider updates its track from the final image, not download progress or partial frames.
      [imageLoader
      loadImageWithURLRequest:request
@@ -36,6 +95,57 @@ index cf14ae6f66b8c847b2b79c5b0eebd4148f81e00d..a3c53db7ff08e2af6a727054eaee1ea4
      completionBlock:^(NSError *error, UIImage *image) {
          if (image) {
              completionBlock(nil, image);
+@@ -346,7 +365,50 @@
+     }
+ }
+ 
++// The recording scrubber has just one native pan owner. UIControl targets
++// stay unobserved in this mode so UIKit's overlapping TouchCancel cannot
++// impersonate a release or produce a second completion.
++- (void)handleReleaseOnlyPan:(UIPanGestureRecognizer *)gesture {
++    switch (gesture.state) {
++        case UIGestureRecognizerStateBegan:
++            if (!slider.enabled || !slider.window) return;
++            _isSliding = slider.isSliding = YES;
++            break;
++        case UIGestureRecognizerStateChanged:
++        case UIGestureRecognizerStateEnded:
++            if (!_isSliding) return;
++            break;
++        case UIGestureRecognizerStateCancelled:
++        case UIGestureRecognizerStateFailed:
++            if (!_isSliding) return;
++            _isSliding = slider.isSliding = NO;
++            slider.value = std::static_pointer_cast<const RNCSliderProps>(_props)->value;
++            return;
++        default:
++            return;
++    }
++
++    // Write the thumb in UIKit only. No RN ValueChange means no bridge or
++    // React rendering per movement, including the first pan location.
++    CGPoint point = [gesture locationInView:slider];
++    if ([UIView userInterfaceLayoutDirectionForSemanticContentAttribute:slider.semanticContentAttribute] == UIUserInterfaceLayoutDirectionRightToLeft) {
++        point.x = slider.bounds.size.width - point.x;
++    }
++    if (slider.bounds.size.width > 0) {
++        float value = [self calculateSliderValueFromLocation:point];
++        [slider setValue:MIN(slider.upperLimit, MAX(slider.lowerLimit, value)) animated:NO];
++    }
++    if (gesture.state == UIGestureRecognizerStateEnded) {
++        _isSliding = slider.isSliding = NO;
++        [self emitReleaseForRecordingSeek];
++    }
++}
++
+ - (void)panHandler:(UIPanGestureRecognizer *)gesture {
++    if ([self commitsOnRelease]) {
++        [self handleReleaseOnlyPan:gesture];
++        return;
++    }
+     CGPoint location = [gesture locationInView:slider];
+     
+     switch (gesture.state) {
 diff --git a/react-native-slider.podspec b/react-native-slider.podspec
 index b795d531ffed6e39b8b258d7b596bad684ebb988..daa36d3d0db084fc827be40514bad90a817f282a 100644
 --- a/react-native-slider.podspec
@@ -51,3 +161,28 @@ index b795d531ffed6e39b8b258d7b596bad684ebb988..daa36d3d0db084fc827be40514bad90a
    end
 -
 +
+diff --git a/src/RNCSliderNativeComponent.ts b/src/RNCSliderNativeComponent.ts
+index 7ae7fa91b4157b666c43434ae10da33ff86302bf..4df98ae1e57a0b7c04821e015f572d203ff3e1ad 100644
+--- a/src/RNCSliderNativeComponent.ts
++++ b/src/RNCSliderNativeComponent.ts
+@@ -19,6 +19,7 @@
+   disabled?: WithDefault<boolean, false>;
+   inverted?: WithDefault<boolean, false>;
+   vertical?: WithDefault<boolean, false>;
++  commitOnRelease?: WithDefault<boolean, false>;
+   tapToSeek?: WithDefault<boolean, false>;
+   maximumTrackImage?: ImageSource;
+   maximumTrackTintColor?: ColorValue;
+diff --git a/typings/index.d.ts b/typings/index.d.ts
+index 6403396028a9c05771aa513fd98f38dac2ed92d1..8a02ba2e28ba4fb1fe635d771aa218803be7d9fc 100644
+--- a/typings/index.d.ts
++++ b/typings/index.d.ts
+@@ -47,6 +47,8 @@
+    * Permits tapping on the slider track to set the thumb position.
+    * Defaults to false on iOS. No effect on Android or Windows.
+    */
++  /** iOS only: move the thumb natively, emit one successful release, and discard cancellation. */
++  commitOnRelease?: boolean;
+   tapToSeek?: boolean;
+ 
+   /**

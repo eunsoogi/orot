@@ -108,7 +108,7 @@ settings:
 patchedDependencies:
   '@op-engineering/op-sqlite@18.2.5': 486a20d470b81901935f3a035e07ac6ec08d92a9b0b50c19b65f47aa678be21e
   '@react-native-community/datetimepicker@9.2.2': 6726e947391651aa07ae94ede13f0c46ea8c9a1a9343cbe151742ccce67bcebc
-  '@react-native-community/slider@5.2.2': a74dd7dd9af47af05d7ac0376ae6ac1853bd63b445451983e4cbc1cb88295b9e
+  '@react-native-community/slider@5.2.2': b31a7cea9f852ba4e678b3edcdf62992336a452ae851ea6151525baa23ead962
   '@react-native/codegen@0.87.1': cde811a3eac5b68d52071dbd54d492f7f714b86235a4a13437474013c938521e
   '@react-navigation/elements@2.9.44': 086b8ef3b43e7088d7f0c30ecab4a976cb654d48f04cf976e3fa7d8cf0fd686a
   '@react-navigation/native@7.5.0': 2cb711c756c424a25b2dcc5ac4f447ad091d8f86bbe240294c610047cd055195
@@ -181,7 +181,7 @@ importers:
         version: 9.2.2(patch_hash=6726e947391651aa07ae94ede13f0c46ea8c9a1a9343cbe151742ccce67bcebc)(react-native@0.87.1(patch_hash=0136978edf916625a8d3f9932b8952191c477b3d64a1d7c5354facce85b487a0)(@babel/core@7.29.7(supports-color@8.1.1))(@react-native-community/cli@20.2.0(supports-color@8.1.1)(typescript@6.0.3))(@react-native/metro-config@0.87.1(@babel/core@7.29.7(supports-color@8.1.1))(supports-color@8.1.1))(@types/react@19.3.0)(react@19.2.3)(supports-color@8.1.1))(react@19.2.3)
       '@react-native-community/slider':
         specifier: 5.2.2
-        version: 5.2.2(patch_hash=a74dd7dd9af47af05d7ac0376ae6ac1853bd63b445451983e4cbc1cb88295b9e)
+        version: 5.2.2(patch_hash=b31a7cea9f852ba4e678b3edcdf62992336a452ae851ea6151525baa23ead962)
       '@react-navigation/native':
         specifier: 7.5.0
         version: 7.5.0(patch_hash=2cb711c756c424a25b2dcc5ac4f447ad091d8f86bbe240294c610047cd055195)(react-native@0.87.1(patch_hash=0136978edf916625a8d3f9932b8952191c477b3d64a1d7c5354facce85b487a0)(@babel/core@7.29.7(supports-color@8.1.1))(@react-native-community/cli@20.2.0(supports-color@8.1.1)(typescript@6.0.3))(@react-native/metro-config@0.87.1(@babel/core@7.29.7(supports-color@8.1.1))(supports-color@8.1.1))(@types/react@19.3.0)(react@19.2.3)(supports-color@8.1.1))(react@19.2.3)
@@ -5447,7 +5447,7 @@ snapshots:
       react: 19.2.3
       react-native: 0.87.1(patch_hash=0136978edf916625a8d3f9932b8952191c477b3d64a1d7c5354facce85b487a0)(@babel/core@7.29.7(supports-color@8.1.1))(@react-native-community/cli@20.2.0(supports-color@8.1.1)(typescript@6.0.3))(@react-native/metro-config@0.87.1(@babel/core@7.29.7(supports-color@8.1.1))(supports-color@8.1.1))(@types/react@19.3.0)(react@19.2.3)(supports-color@8.1.1)
 
-  '@react-native-community/slider@5.2.2(patch_hash=a74dd7dd9af47af05d7ac0376ae6ac1853bd63b445451983e4cbc1cb88295b9e)': {}
+  '@react-native-community/slider@5.2.2(patch_hash=b31a7cea9f852ba4e678b3edcdf62992336a452ae851ea6151525baa23ead962)': {}
 
   '@react-native/asset-utils@0.87.1': {}
 
