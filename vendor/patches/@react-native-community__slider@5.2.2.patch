@@ -186,3 +186,17 @@ index 6403396028a9c05771aa513fd98f38dac2ed92d1..8a02ba2e28ba4fb1fe635d771aa21880
    tapToSeek?: boolean;
  
    /**
+diff --git a/android/src/main/java/com/reactnativecommunity/slider/ReactSliderManager.java b/android/src/main/java/com/reactnativecommunity/slider/ReactSliderManager.java
+index bdd08f1837358c21324034f1efec31e90fe8c3f1..7ffc46cb5f226d7cbc28d034ce97917777873b5f 100644
+--- a/android/src/main/java/com/reactnativecommunity/slider/ReactSliderManager.java
++++ b/android/src/main/java/com/reactnativecommunity/slider/ReactSliderManager.java
+@@ -208,6 +208,9 @@
+   public void setTapToSeek(ReactSlider view, boolean value) {}
+ 
+   @Override
++  public void setCommitOnRelease(ReactSlider view, boolean value) {}
++
++  @Override
+   public void setVertical(ReactSlider view, boolean value) {}
+ 
+   @Override
