@@ -34,7 +34,8 @@ export function VoiceModelOption({
       </View>
       <View style={styles.copy}>
         <Text style={styles.title}>{item.title}</Text>
-        {item.title !== item.id ? (
+        {/* Apple identifiers are internal; only the OpenAI catalog exposes model IDs. */}
+        {item.mode === 'openai-api' ? (
           <Text style={styles.detail}>{item.id}</Text>
         ) : null}
       </View>

@@ -75,13 +75,11 @@ it('does not present a static catalog or credentials and refreshes only explicit
   const api = within(view.getByTestId('voice-model-group-openai-api'));
   expect(local.getByTestId('voice-model-apple-system-speech')).toBeTruthy();
   expect(local.getByText('Apple 시스템 음성')).toBeTruthy();
-  expect(local.getAllByText('apple-system-speech')).toHaveLength(1);
+  expect(view.queryByText('apple-system-speech')).toBeNull();
   expect(local.queryByText('기기 안에서 처리')).toBeNull();
   const pcc = within(view.getByTestId('provider-option-0'));
   expect(pcc.getByText('Apple Intelligence')).toBeTruthy();
-  expect(pcc.getAllByText('apple-private-cloud-compute-default')).toHaveLength(
-    1,
-  );
+  expect(view.queryByText('apple-private-cloud-compute-default')).toBeNull();
   expect(pcc.getByText('Private Cloud Compute에서 처리')).toBeTruthy();
   expect(view.getByTestId('provider-option-0')).toBeDisabled();
   expect(local.queryByTestId('voice-model-gpt-live-1.1')).toBeNull();
