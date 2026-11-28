@@ -6,6 +6,7 @@ final class NavigationSelectionGlassTests: OrotFailFastTestCase {
     @MainActor
     func testMaterialDropletSettlesAndReplacesInterruptedTransitions() async throws {
         try await verifyRouteReplacementInWindow()
+        try await verifySectionSelectionMovesTheSameMaterialInBothHorizontalDirections()
         let indicator = NavigationSelectionGlass()
         if #available(iOS 26.0, *), !UIAccessibility.isReduceTransparencyEnabled {
             let glass = try XCTUnwrap(indicator.effect as? UIGlassEffect)
@@ -55,7 +56,7 @@ final class NavigationSelectionGlassTests: OrotFailFastTestCase {
     }
 
     @MainActor
-    func testSectionSelectionMovesTheSameMaterialInBothHorizontalDirections() async throws {
+    private func verifySectionSelectionMovesTheSameMaterialInBothHorizontalDirections() async throws {
         let scene = try XCTUnwrap(UIApplication.shared.connectedScenes.compactMap { $0 as? UIWindowScene }.first)
         let window = UIWindow(windowScene: scene)
         window.rootViewController = UIViewController()
