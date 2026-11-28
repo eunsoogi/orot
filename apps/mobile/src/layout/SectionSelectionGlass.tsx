@@ -40,7 +40,7 @@ export function useSectionSelectionGlass<Id extends string>(selected: Id) {
     {},
   );
   const [target, setTarget] = useState<Target>();
-  const previous = useRef<{ id: Id; frames: typeof frames } | undefined>(
+  const previous = useRef<{ id: Id; rect?: LayoutRectangle } | undefined>(
     undefined,
   );
   const transition = useRef(0);
@@ -48,17 +48,16 @@ export function useSectionSelectionGlass<Id extends string>(selected: Id) {
 
   useLayoutEffect(() => {
     const last = previous.current;
-    previous.current = { id: selected, frames };
+    previous.current = { id: selected, rect };
     if (!rect) {
       setTarget(undefined);
       return;
     }
-    // React knows the logical previous selection even if native transactions
-    // coalesce or a prior animation is still in flight. Only stable geometry
-    // can give that previous tab a usable origin in this coordinate space.
+    // A late measure on another tab must not turn the current slide into
+    // a snap. A new selection uses the immediately previous tab in this row.
     const origin =
-      !reduceMotion && last && last.id !== selected && last.frames === frames
-        ? last.frames[last.id]
+      !reduceMotion && last && last.id !== selected
+        ? (frames[last.id] ?? last.rect)
         : undefined;
     if (origin && !sameRect(origin, rect)) {
       setTarget({
@@ -70,7 +69,7 @@ export function useSectionSelectionGlass<Id extends string>(selected: Id) {
       return;
     }
     setTarget(current =>
-      sameRect(current, rect) && current?.animated === false
+      sameRect(current, rect) && (!reduceMotion || current?.animated === false)
         ? current
         : { ...rect, animated: false, origin: undefined },
     );

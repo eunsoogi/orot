@@ -133,6 +133,12 @@ test.each([false, true])(
           ? undefined
           : { x: 99, y: 3, width: 132, height: 44 },
       });
+      const movingToVoice = currentPill().props.selectionTarget;
+      // A late measure on an unselected tab must not cancel the active slide.
+      await fireEvent(screen.getByTestId('model-tab-calendar'), 'layout', {
+        nativeEvent: { layout: { x: 99, y: 3, width: 130, height: 44 } },
+      });
+      expect(currentPill().props.selectionTarget).toBe(movingToVoice);
       expect(screen.getByTestId('voice-model-group-local')).toBeTruthy();
       expect(screen.queryByTestId(animatedHost)).toBeNull();
       const priorTransition = currentPill().props.selectionTarget.transition;
