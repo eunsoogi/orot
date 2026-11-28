@@ -1,3 +1,4 @@
+import { contextualOpeningAuthoredProof } from '../ragConversation/contextualOpeningApproval';
 import type { SqlDatabase } from '@orot/storage';
 import { assertConversationNotCancelled } from './conversationArtifactCancellation';
 
@@ -23,7 +24,8 @@ export function decodeReviewedOpening(
   try {
     const value = JSON.parse(raw);
     if (
-      value?.kind !== 'reviewed-prompt-opening-v1' ||
+      (value?.kind !== 'reviewed-prompt-opening-v1' &&
+        value?.kind !== 'reviewed-authored-local-opening-v2') ||
       Object.keys(value).length !== 4 ||
       !Number.isSafeInteger(value.deletionEpoch) ||
       value.deletionEpoch < 0 ||
@@ -36,9 +38,15 @@ export function decodeReviewedOpening(
   }
 }
 
-/** Comparable to the existing in-memory HealthKit deletion fence, including after restart. */
+/** Only a completed, owned, positively attested authored-only opening can
+ * survive an unrelated health deletion. V1 and interruptions use the existing
+ * deletion epoch; an invalid present journal still blocks artifact fallback. */
 export const currentReviewedOpeningSql = `CASE
   WHEN NOT json_valid(r.reviewed_opening_json) THEN NULL
+  WHEN json_extract(r.reviewed_opening_json, '$.kind') = 'reviewed-authored-local-opening-v2'
+    AND r.status = 'completed' AND r.input_json IS NULL
+    AND NOT EXISTS (SELECT 1 FROM conversation_request_sources opening_source WHERE opening_source.request_id = r.id)
+  THEN r.reviewed_opening_json
   WHEN json_extract(r.reviewed_opening_json, '$.deletionEpoch') =
     (SELECT deletions FROM health_context_generation WHERE singleton = 1)
   THEN r.reviewed_opening_json END AS reviewed_opening_json,
@@ -60,8 +68,13 @@ export function createReviewedOpeningStorage(
     signal: AbortSignal;
   }) => {
     const { id, sessionId, version, createdAt, signal, opening } = input;
+    const authored = contextualOpeningAuthoredProof(opening);
+    const authoredInput = authored?.input;
     const serialized = JSON.stringify({
-      kind: 'reviewed-prompt-opening-v1',
+      kind:
+        authoredInput === undefined
+          ? 'reviewed-prompt-opening-v1'
+          : 'reviewed-authored-local-opening-v2',
       callId: opening.callId,
       text: opening.text,
     });
@@ -69,7 +82,8 @@ export function createReviewedOpeningStorage(
       throw new Error('Invalid reviewed conversation opening.');
     const assertCurrent = () => {
       assertConversationNotCancelled(signal);
-      if (!input.current()) throw new Error('Conversation is unavailable.');
+      if (!input.current() || (authored && !authored.current()))
+        throw new Error('Conversation is unavailable.');
     };
     assertCurrent();
     await ensure();
@@ -83,6 +97,7 @@ export function createReviewedOpeningStorage(
          WHERE EXISTS (SELECT 1 FROM health_context_generation WHERE singleton = 1)
            AND r.id = ? AND r.session_id = ? AND r.session_version = ? AND r.created_at = ?
            AND r.status = 'active' AND r.input_json IS NULL AND r.reviewed_opening_json IS NULL
+           AND (? IS NULL OR r.question = ?)
            AND EXISTS (SELECT 1 FROM conversation_artifact_sessions s
              JOIN conversation_artifact_generation g ON g.singleton = 1 AND s.generation = g.generation
              WHERE s.id = r.session_id AND s.version = r.session_version AND s.hidden = 0)
@@ -90,7 +105,15 @@ export function createReviewedOpeningStorage(
            AND NOT EXISTS (SELECT 1 FROM conversation_deleted_artifacts x WHERE x.id = r.id)
            AND NOT EXISTS (SELECT 1 FROM conversation_invalid_parents x WHERE x.id = r.id)
            AND NOT EXISTS (SELECT 1 FROM conversation_request_sources x WHERE x.request_id = r.id)`,
-          [serialized, id, sessionId, version, createdAt],
+          [
+            serialized,
+            id,
+            sessionId,
+            version,
+            createdAt,
+            authoredInput ?? null,
+            authoredInput ?? null,
+          ],
         );
         if (changed.rowsAffected !== 1)
           throw new Error('Conversation is unavailable.');

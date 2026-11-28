@@ -1,3 +1,4 @@
+import { contextualOpeningAuthoredProof } from './contextualOpeningApproval';
 import { reportOpening } from '../aiFeatures/integration/openingObservation';
 import type { ReviewedOpening } from '../storage/conversationReviewedOpeningStorage';
 import type { ConversationSession } from './conversationSessionTypes';
@@ -48,15 +49,17 @@ export function conversationOpeningDelivery(input: {
   return {
     /** New reviewed producer capability. Raw/preview stream tokens never get a durable write. */
     async onReviewedOpening(
-      { callId, text, presentation }: LiveReviewedOpening,
+      approved: LiveReviewedOpening,
       signal: AbortSignal,
     ) {
+      const { callId, text, presentation } = approved;
+      const authored = contextualOpeningAuthoredProof(approved);
       const value = { callId, text };
       if (!eligible() || signal.aborted || !validOpening(value)) return false;
       input.receipt();
       try {
         await input.retained?.persistReviewedOpening?.(
-          value,
+          approved,
           signal,
           () => !signal.aborted && Boolean(eligible()),
         );
@@ -65,7 +68,11 @@ export function conversationOpeningDelivery(input: {
         reportOpening('opening_display', 'unavailable');
         return false;
       }
-      return !signal.aborted && show(value, presentation);
+      return (
+        !signal.aborted &&
+        (authored?.current() ?? true) &&
+        show(value, presentation)
+      );
     },
     onLegacyOpening(value: ReviewedOpening) {
       // Reviewed first-tool openings still use the legacy event. Preserve live

@@ -60,7 +60,16 @@ export function startPreparedRagOpening(
   },
 ) {
   const gate = createPreparedOpeningConsent(consent);
-  const intent = context.entryContext?.intent;
+  const { entryContext } = context;
+  const intent = entryContext?.intent;
+  const ordinaryEntry =
+    !entryContext ||
+    (entryContext.intent === 'conversation' &&
+      entryContext.appointmentId === undefined &&
+      entryContext.dailyReport === undefined &&
+      entryContext.reportRequest === undefined &&
+      entryContext.typedPossibilityReport === undefined &&
+      entryContext.directDailyReportRequest === undefined);
   const allowA2UI =
     (!intent || intent === 'conversation') &&
     !context.current &&
@@ -75,6 +84,7 @@ export function startPreparedRagOpening(
     signal,
     context.current,
     allowA2UI,
+    ordinaryEntry,
   );
   return {
     done: opening.done,

@@ -1,3 +1,6 @@
+import { approvedAuthoredContextualOpening } from '../../ragConversation/contextualOpeningApproval';
+import { APPLE_PROVIDER_ID } from '@orot/provider-apple';
+import { APPLE_FOUNDATION_MODEL_SELECTION_ID } from '../../providers/selection/options';
 import { reportOpening } from './openingObservation';
 import type { Feature } from '../../providers/diagnosticTypes';
 import { evidenceConsentScope } from './evidenceConsentScope';
@@ -28,6 +31,7 @@ export function startContextualConversationOpening(input: {
   isEvidenceCurrent?: () => Promise<boolean>;
   diagnosticFeature?: Feature;
   allowA2UIPresentation?: boolean;
+  authoredLocalCurrent?: () => boolean;
 }) {
   const controller = new AbortController();
   const stop = () => controller.abort();
@@ -83,14 +87,22 @@ export function startContextualConversationOpening(input: {
       const opening = { callId: id, text };
       const deliver = input.observer.onReviewedOpening;
       if (deliver) {
+        const display = {
+          ...opening,
+          ...(presentation ? { presentation } : {}),
+        };
+        // This capability is separately minted after ALLOW and only when the
+        // exact plain Apple contextual request could not inherit prior context.
+        const approved = input.authoredLocalCurrent
+          ? approvedAuthoredContextualOpening(display, {
+              input: input.request,
+              current: input.authoredLocalCurrent,
+            })
+          : display;
         const outcome = await deliverReviewedOpening(
           controller,
           deliverBy - Date.now(),
-          () =>
-            deliver(
-              { ...opening, ...(presentation ? { presentation } : {}) },
-              controller.signal,
-            ),
+          () => deliver(approved, controller.signal),
         );
         reportOpening('opening_delivery', outcome, input.diagnosticFeature);
       } else {
@@ -166,7 +178,25 @@ export function startRagConversationOpening(
   signal: AbortSignal,
   isEvidenceCurrent?: () => Promise<boolean>,
   allowA2UIPresentation = false,
+  ordinaryComposer = false,
 ) {
+  const authoredLocalCurrent =
+    ordinaryComposer &&
+    observer?.inputOrigin === 'composer' &&
+    !!observer.retentionRequestId &&
+    !observer.photoInput &&
+    !observer.selectedRecordingTranscript &&
+    !observer.expectedVoiceSelection &&
+    !observer.protectedLocalInput &&
+    !isEvidenceCurrent &&
+    !selected.remoteProcessing &&
+    selected.option.privacyBoundary === 'on-device' &&
+    selected.provider.id === APPLE_PROVIDER_ID &&
+    selected.selection.providerId === APPLE_PROVIDER_ID &&
+    selected.selection.modelId === selected.modelId &&
+    selected.modelId === APPLE_FOUNDATION_MODEL_SELECTION_ID
+      ? selected.onDeviceSelectionWitness?.isCurrent
+      : undefined;
   return startContextualConversationOpening({
     selected,
     request,
@@ -175,6 +205,7 @@ export function startRagConversationOpening(
     signal,
     isEvidenceCurrent,
     allowA2UIPresentation,
+    authoredLocalCurrent,
     consentScope: evidenceConsentScope({
       purpose: 'record_conversation',
       generatedArtifacts: false,
