@@ -20,11 +20,28 @@ export function OpenAiVoiceCatalogStatus({
   const message = emptyTools
     ? t('modelSettings.liveResponsesCatalogEmpty')
     : catalog.message;
-  return message && message !== t('modelSettings.refreshAccountModels') ? (
-    <Text accessibilityRole="status" style={[shared.secondary, styles.footer]}>
-      {message}
-    </Text>
-  ) : null;
+  const stale =
+    !catalog.fresh && (catalog.ids.length > 0 || catalog.toolIds.length > 0);
+  return (
+    <>
+      {message && message !== t('modelSettings.refreshAccountModels') ? (
+        <Text
+          accessibilityRole="status"
+          style={[shared.secondary, styles.footer]}
+        >
+          {message}
+        </Text>
+      ) : null}
+      {stale ? (
+        <Text
+          accessibilityRole="status"
+          style={[shared.secondary, styles.footer]}
+        >
+          {t('modelSettings.staleModels')}
+        </Text>
+      ) : null}
+    </>
+  );
 }
 
 const styles = StyleSheet.create({

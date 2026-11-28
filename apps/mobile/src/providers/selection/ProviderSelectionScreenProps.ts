@@ -15,6 +15,7 @@ export interface ProviderSelectionScreenProps {
   readonly screenIntroduction?: string;
   readonly navigationRouteKey?: string;
   readonly options: readonly ProviderSelectionOption[];
+  readonly cachedOptions?: readonly ProviderSelectionOption[];
   readonly requirements: ProviderSelectionRequirements;
   readonly selectionStore: ProviderSelectionStore;
   readonly chatGPTSetup?: ChatGPTAccountSetup;

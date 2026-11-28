@@ -1,5 +1,5 @@
-import { savedModelPresentation } from '../providers/selection/savedModelPresentation';
-import { calendarDecisionsModelLabel } from './calendarDecisionsPresentation';
+import { calendarApiProvider } from './calendarCatalogCache';
+import { readCalendarCatalogDisplay } from './readCalendarCatalogDisplay';
 import type { CalendarModelSettingsPanelProps } from './CalendarModelSettingsPanel.types';
 import { refreshCalendarModels } from './refreshCalendarModels';
 import { useCalendarModelConfirmation } from './useCalendarModelConfirmation';
@@ -7,20 +7,19 @@ import { useEffect, useRef, useState } from 'react';
 import { useCalendarModelActions } from './useCalendarModelActions';
 import { View } from 'react-native';
 import { AppText as Text } from '../layout/AppText';
-import { ModelSelectionSummary } from '../layout/ModelSelectionSummary';
-import { ApiCatalogAccount } from '../providers/selection/ApiCatalogAccount';
-import { providerSettingsStyles as styles } from '../layout/providerSettingsPresentation';
 import { t } from '../i18n';
 import type {
   ProviderSelection,
   ProviderSelectionOption,
 } from '../providers/selection/types';
 import { ProviderSelectionChoices } from '../providers/selection/ProviderSelectionChoices';
-import ProviderSelectionOptionCard from '../providers/selection/ProviderSelectionOptionCard';
 import ProviderSelectionConfirmation from '../providers/selection/ProviderSelectionConfirmation';
 import { resolveProviderSelection } from '../providers/selection/providerSelection';
 import { useModelSettingsServices } from '../agent/execution/ModelSettingsServices';
-const requirements = { inputTypes: ['text'] } as const;
+import {
+  CalendarApiCatalogChoices,
+  calendarModelRequirements as requirements,
+} from './CalendarApiCatalogChoices';
 /** All three destinations share a separate selection, never the conversation store. */
 export function CalendarModelSettingsPanel({
   options,
@@ -34,6 +33,9 @@ export function CalendarModelSettingsPanel({
   const [saved, setSaved] = useState<ProviderSelection | null>(null);
   const [pending, setPending] = useState<ProviderSelectionOption | null>(null);
   const [apiOptions, setApiOptions] = useState<ProviderSelectionOption[]>([]);
+  const [displayedApiOptions, setDisplayedApiOptions] = useState<
+    ProviderSelectionOption[]
+  >([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
@@ -44,11 +46,13 @@ export function CalendarModelSettingsPanel({
   const [message, setMessage] = useState('');
   useEffect(() => {
     let active = true;
+    const scope = new AbortController();
     // A replacement owner cannot inherit the old account's catalog or draft.
     accountRevision.current = null;
     setSaved(null);
     setPending(null);
     setApiOptions([]);
+    setDisplayedApiOptions([]);
     setLoading(true);
     setLoadError(false);
     setConnected(false);
@@ -74,8 +78,19 @@ export function CalendarModelSettingsPanel({
       const version = generation.current;
       try {
         const status = await voiceSettingsStore.accountStatus();
-        if (active && version === generation.current)
-          setConnected(status.connected);
+        if (!active || version !== generation.current) return;
+        if (status.connected) {
+          const current = () => active && version === generation.current;
+          const catalog = await readCalendarCatalogDisplay(
+            services,
+            status.revision,
+            scope.signal,
+            current,
+          );
+          if (!current()) return;
+          setDisplayedApiOptions(catalog);
+        }
+        setConnected(status.connected);
       } catch {
         if (active && version === generation.current) setConnected(false);
       }
@@ -89,8 +104,9 @@ export function CalendarModelSettingsPanel({
       loadAccount();
       setRefreshing(false);
       setApiOptions([]);
+      setDisplayedApiOptions([]);
       setPending(value =>
-        value?.provider.id === 'openai-api-decisions' ? null : value,
+        value?.provider.id === calendarApiProvider ? null : value,
       );
     });
     const invalidate = () => {
@@ -99,6 +115,7 @@ export function CalendarModelSettingsPanel({
     };
     return () => {
       active = false;
+      scope.abort();
       invalidate();
       unsubscribe();
     };
@@ -132,6 +149,7 @@ export function CalendarModelSettingsPanel({
       accountRevision,
       setRefreshing,
       setApiOptions,
+      setDisplayedApiOptions,
       setMessage,
     });
   }
@@ -161,73 +179,46 @@ export function CalendarModelSettingsPanel({
       option.provider.id === saved?.providerId &&
       option.modelId === saved.modelId,
   );
+  const apiFirst = saved?.providerId === calendarApiProvider;
+  const preferred = { preferredProviderId: saved?.providerId };
+  const standardChoices = (
+    <ProviderSelectionChoices
+      key="calendar-standard-catalog"
+      {...preferred}
+      options={options}
+      chatGPTSetup={chatGPTSetup}
+      loading={loading || loadError}
+      saving={saving}
+      pendingOption={pending}
+      requirements={requirements}
+      presentation="settings-provider"
+      selectedOption={savedOption}
+      onChoose={setPending}
+    />
+  );
+  const api = (
+    <CalendarApiCatalogChoices
+      key="calendar-api-catalog"
+      connected={connected}
+      busy={refreshing || saving}
+      disabled={saving || loading || loadError || refreshing}
+      rowStart={options.length}
+      displayed={displayedApiOptions}
+      fresh={apiOptions}
+      selected={
+        pending
+          ? { providerId: pending.provider.id, modelId: pending.modelId }
+          : saved
+      }
+      refresh={refresh}
+      choose={setPending}
+      onOpenAccounts={saving ? undefined : chatGPTSetup?.onOpenAccounts}
+    />
+  );
   return (
     <View testID="calendar-model-settings">
-      <ModelSelectionSummary
-        label={
-          pending
-            ? t('modelSettings.selectedAiPrefix')
-            : saved
-              ? t('modelSettings.currentSelection')
-              : undefined
-        }
-        value={
-          pending
-            ? savedModelPresentation(
-                { providerId: pending.provider.id, modelId: pending.modelId },
-                pending,
-                'calendar',
-              )
-            : saved
-              ? savedModelPresentation(saved, savedOption, 'calendar')
-              : t('modelSettings.calendarUnselected')
-        }
-        testID="calendar-current-model"
-      />
-      <ProviderSelectionChoices
-        options={options}
-        chatGPTSetup={chatGPTSetup}
-        loading={loading || loadError}
-        saving={saving}
-        pendingOption={pending}
-        requirements={requirements}
-        presentation="settings-provider"
-        selectedOption={savedOption}
-        onChoose={setPending}
-      />
-      <View style={styles.section} testID="calendar-model-group-openai-api">
-        <Text accessibilityRole="header" style={styles.heading}>
-          OpenAI API
-        </Text>
-        <View style={styles.catalogAccount}>
-          <ApiCatalogAccount
-            connected={connected}
-            busy={refreshing || saving}
-            refresh={() => {
-              refresh();
-            }}
-            refreshLabel={t('modelSettings.refreshModels')}
-            testIDPrefix="calendar"
-            onOpenAccounts={saving ? undefined : chatGPTSetup?.onOpenAccounts}
-          />
-          {apiOptions.map((option, index) => (
-            <ProviderSelectionOptionCard
-              key={option.modelId}
-              option={option}
-              catalogModelLabel={calendarDecisionsModelLabel}
-              index={options.length + index}
-              disabled={saving || loading || loadError}
-              requirements={requirements}
-              selected={
-                (pending?.modelId ?? saved?.modelId) === option.modelId &&
-                (pending?.provider.id ?? saved?.providerId) ===
-                  option.provider.id
-              }
-              onPress={() => setPending(option)}
-            />
-          ))}
-        </View>
-      </View>
+      {apiFirst ? api : standardChoices}
+      {apiFirst ? standardChoices : api}
       {disclosureSheet}
       {message ? <Text accessibilityRole="alert">{message}</Text> : null}
       {pending ? (

@@ -34,7 +34,7 @@ const store = () => ({
 });
 const requirements = { inputTypes: ['text'] as const };
 
-it('shows saved identity without an unsolicited unavailable warning or fallback', async () => {
+it('does not auto-select an alternative when the saved model is missing', async () => {
   const storage = store();
   await render(
     <ProviderSelectionScreen
@@ -44,16 +44,17 @@ it('shows saved identity without an unsolicited unavailable warning or fallback'
       selectionStore={storage}
     />,
   );
-  expect(screen.getByTestId('provider-selection-current')).toHaveTextContent(
-    /ChatGPT - 모델 이름을 확인할 수 없어요\./,
-  );
+  expect(screen.queryByTestId('provider-selection-current')).toBeNull();
+  expect(
+    screen.getByTestId('provider-option-0').props.accessibilityState.selected,
+  ).toBe(false);
   expect(
     screen.queryByText(new RegExp(providerSelectionText.unavailableSelection)),
   ).toBeNull();
   expect(storage.clear).not.toHaveBeenCalled();
   expect(storage.save).not.toHaveBeenCalled();
 });
-it('updates the label from the matching catalog even when unavailable, without saving', async () => {
+it('marks only the exact saved catalog row selected, even when unavailable, without saving', async () => {
   const storage = store();
   const props = {
     presentation: 'settings-provider' as const,
@@ -63,10 +64,9 @@ it('updates the label from the matching catalog even when unavailable, without s
   const view = await render(
     <ProviderSelectionScreen {...props} options={[apple]} />,
   );
-  const summary = () => screen.getByTestId('provider-selection-current');
-  expect(summary()).toHaveTextContent(
-    /ChatGPT - 모델 이름을 확인할 수 없어요\./,
-  );
+  const selected = () =>
+    screen.getByTestId('provider-option-0').props.accessibilityState.selected;
+  expect(selected()).toBe(false);
   const matching = {
     ...apple,
     provider: { ...apple.provider, id: saved.providerId },
@@ -86,12 +86,15 @@ it('updates the label from the matching catalog even when unavailable, without s
       ]}
     />,
   );
-  expect(summary()).not.toHaveTextContent(/Synthetic GPT/);
+  expect(selected()).toBe(false);
   await view.rerender(
     <ProviderSelectionScreen {...props} options={[matching]} />,
   );
-  expect(summary()).toHaveTextContent(/ChatGPT - Synthetic GPT/);
-  expect(summary()).not.toHaveTextContent(/gpt-synthetic/);
+  expect(selected()).toBe(true);
+  expect(screen.getByTestId('provider-option-0')).toBeDisabled();
+  expect(screen.getByTestId('provider-option-0')).toContainElement(
+    screen.getByText('Synthetic GPT'),
+  );
   expect(storage.save).not.toHaveBeenCalled();
   expect(storage.clear).not.toHaveBeenCalled();
 });
@@ -113,9 +116,10 @@ it('switches accessible tabs and removes the hidden language action surface', as
   expect(screen.getByTestId('synthetic-voice-panel')).toBeTruthy();
   expect(screen.queryByTestId('provider-selection-footer')).toBeNull();
   await fireEvent.press(screen.getByTestId('model-tab-language'));
-  expect(screen.getByTestId('provider-selection-current')).toHaveTextContent(
-    /ChatGPT - 모델 이름을 확인할 수 없어요\./,
-  );
+  expect(screen.queryByTestId('provider-selection-current')).toBeNull();
+  expect(
+    screen.getByTestId('provider-option-0').props.accessibilityState.selected,
+  ).toBe(false);
   expect(screen.queryByTestId('synthetic-voice-panel')).toBeNull();
 });
 it('keeps pending confirmation visible and uses neutral card styling', async () => {
@@ -164,9 +168,10 @@ it('allows explicit replacement of an unavailable saved model without automatic 
   expect(storage.save).not.toHaveBeenCalled();
   await fireEvent.press(screen.getByTestId('provider-selection-cancel'));
   expect(storage.save).not.toHaveBeenCalled();
-  expect(screen.getByTestId('provider-selection-current')).toHaveTextContent(
-    /ChatGPT - 모델 이름을 확인할 수 없어요\./,
-  );
+  expect(screen.queryByTestId('provider-selection-current')).toBeNull();
+  expect(
+    screen.getByTestId('provider-option-0').props.accessibilityState.selected,
+  ).toBe(false);
   await fireEvent.press(screen.getByTestId('provider-option-0'));
   await fireEvent.press(screen.getByTestId('provider-selection-confirm'));
   expect(storage.save).not.toHaveBeenCalled();

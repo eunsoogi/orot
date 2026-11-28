@@ -128,14 +128,13 @@ describe('Settings provider presentation', () => {
     expect(screen.queryByTestId('provider-option-0-capabilities')).toBeNull();
     expect(screen.queryByText('기기 안에서 처리')).toBeNull();
     await fireEvent.press(screen.getByTestId('provider-option-0'));
-    expect(screen.getByTestId('provider-selection-current-card')).toBeTruthy();
-    expect(screen.getByTestId('provider-selection-current')).toHaveTextContent(
-      /선택한 AI/,
-    );
+    expect(screen.queryByTestId('provider-selection-current-card')).toBeNull();
+    expect(
+      screen.getByTestId('provider-option-0').props.accessibilityState.selected,
+    ).toBe(true);
     expect(
       screen.queryByTestId('provider-selection-confirmation-privacy'),
     ).toBeNull();
-    expect(screen.getAllByText(/선택한 AI/)).toHaveLength(1);
     expect(store.save).not.toHaveBeenCalled();
     await fireEvent.press(screen.getByTestId('provider-selection-cancel'));
     expect(screen.queryByTestId('provider-option-1-capabilities')).toBeNull();
@@ -194,7 +193,7 @@ describe('Settings provider presentation', () => {
   });
 });
 
-it('starts every model tab with exactly one identically styled selection card', async () => {
+it('shows each model tab without extra summary without a redundant current-selection card', async () => {
   const local = makeOption('local', 'on-device');
   const calendar = makeStore();
   const voice: ModelSettingsServices['voice'] = {
@@ -227,24 +226,16 @@ it('starts every model tab with exactly one identically styled selection card', 
     </ModelSettingsServicesContext.Provider>,
   );
   const summaries = () =>
-    screen.getAllByTestId(
+    screen.queryAllByTestId(
       /^(provider-selection-current|calendar-current-model|voice-current-model)-card$/,
     );
-  const languageCard = screen.getByTestId('provider-selection-current-card');
-  expect(summaries()).toEqual([languageCard]);
+  expect(screen.getByTestId('settings-provider-local-panel')).toBeTruthy();
+  expect(summaries()).toHaveLength(0);
   await fireEvent.press(screen.getByTestId('model-tab-calendar'));
-  const calendarCard = screen.getByTestId('calendar-current-model-card');
-  expect(summaries()).toEqual([calendarCard]);
-  expect(screen.getByTestId('calendar-model-settings').children[0]).toBe(
-    calendarCard,
-  );
-  expect(calendarCard.props.style).toEqual(languageCard.props.style);
+  expect(screen.getByTestId('calendar-model-settings')).toBeTruthy();
+  expect(summaries()).toHaveLength(0);
   await fireEvent.press(screen.getByTestId('model-tab-voice'));
-  const voiceCard = await screen.findByTestId('voice-current-model-card');
-  expect(summaries()).toEqual([voiceCard]);
-  expect(screen.getByTestId('voice-settings-panel').children[0]).toBe(
-    voiceCard,
-  );
-  expect(voiceCard.props.style).toEqual(languageCard.props.style);
+  expect(await screen.findByTestId('voice-model-group-local')).toBeTruthy();
+  expect(summaries()).toHaveLength(0);
   expect(calendar.save).not.toHaveBeenCalled();
 });

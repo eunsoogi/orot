@@ -1,6 +1,7 @@
 import { useRef, useState } from 'react';
 import type { Dispatch, SetStateAction } from 'react';
 import type { OpenAIAccountSummary } from '../openai';
+import type { ChatGPTPlanModelDescriptor } from '@orot/provider-openai';
 import type { ChatGPTSelectionServices } from './chatGPTServices';
 import { createChatGPTSelectionOptions } from './options';
 import { providerSelectionText } from './text';
@@ -17,6 +18,12 @@ interface ChatGPTSelectionActionsOptions {
     preferredID?: string,
   ) => Promise<readonly OpenAIAccountSummary[]>;
   readonly selectedAccountID: string | null;
+  readonly captureCatalogRefresh?: (
+    account: string,
+  ) => Promise<
+    | ((models: readonly ChatGPTPlanModelDescriptor[]) => Promise<void>)
+    | undefined
+  >;
   readonly setAccountListError: Dispatch<SetStateAction<boolean>>;
   readonly setAccounts: Dispatch<
     SetStateAction<readonly OpenAIAccountSummary[]>
@@ -34,6 +41,7 @@ export function useChatGPTSelectionActions({
   chatGPTServices,
   refreshAccounts,
   selectedAccountID,
+  captureCatalogRefresh,
   setAccountListError,
   setAccounts,
   setOptions,
@@ -78,6 +86,9 @@ export function useChatGPTSelectionActions({
         return;
       }
 
+      const remember = await captureCatalogRefresh?.(
+        account.issuedClientID,
+      ).catch(() => undefined);
       const models = await chatGPTServices.listModels(account.issuedClientID);
       if (!models.ok) {
         // A failed remote catalog keeps ChatGPT unavailable; it never chooses Apple as a substitute.
@@ -97,6 +108,7 @@ export function useChatGPTSelectionActions({
         ...current.filter(option => option.privacyBoundary === 'on-device'),
         ...remoteOptions,
       ]);
+      await remember?.(models.value).catch(() => undefined);
       setActionStatus(providerSelectionText.chatGPTModelsLoaded);
     } catch (error) {
       if (isSignInCancelled(error)) {

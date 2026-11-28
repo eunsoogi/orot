@@ -4,6 +4,9 @@ import {
   screen,
   waitFor,
 } from '@testing-library/react-native';
+import ProviderSelectionFlow from '../ProviderSelectionFlow';
+import { createAppleSelectionOption } from '../options';
+import type { ChatGPTSelectionServices } from '../chatGPTServices';
 import ProviderSelectionScreen from '../ProviderSelectionScreen';
 import { readChatGPTConsentCredential } from '../../chatGPTConsentIdentity';
 
@@ -29,6 +32,25 @@ jest.mock('../../../agent/execution/saveModelSettingsConsent', () => ({
   }) => input.store.save(input.selection),
 }));
 
+jest.mock('react-native-keychain', () => ({
+  getGenericPassword: jest.fn(async () => false),
+}));
+
+const services: ChatGPTSelectionServices = {
+  listAccounts: jest.fn(async () => [
+    {
+      issuedClientID: 'fixture',
+      hasDirectPlanAccess: true,
+      requiresSignIn: false,
+    },
+  ]),
+  listModels: jest.fn(),
+  signIn: jest.fn(),
+  signOut: jest.fn(),
+  cancelSignIn: jest.fn(),
+};
+const loadAppleOption = async () => createAppleSelectionOption('available');
+
 const credential = jest.mocked(readChatGPTConsentCredential);
 const choice = {
   providerId: 'chatgpt-plan:fixture:gpt-fixture',
@@ -46,11 +68,12 @@ function show(selected = choice, name = 'Synthetic Friendly Name') {
   return {
     store,
     mounted: render(
-      <ProviderSelectionScreen
+      <ProviderSelectionFlow
         presentation="settings-provider"
-        options={[]}
-        requirements={{ inputTypes: ['text'] }}
+        chatGPTServices={services}
+        loadAppleOption={loadAppleOption}
         selectionStore={store}
+        onBack={jest.fn()}
       />,
     ),
   };
@@ -64,28 +87,30 @@ it('shows the same local ChatGPT title on a reconstructed settings route without
   });
   const { mounted, store } = show();
   await mounted;
-  expect(
-    await screen.findByText('현재 선택: ChatGPT - Synthetic Friendly Name'),
-  ).toBeTruthy();
+  expect(await screen.findByText('Synthetic Friendly Name')).toBeTruthy();
   expect(store.loadTitle).toHaveBeenCalledWith(
     choice,
     'existing-exact-account-epoch',
   );
   expect(store.rememberTitle).not.toHaveBeenCalled();
   expect(store.save).not.toHaveBeenCalled();
-  expect(screen.queryByText(choice.modelId)).toBeNull();
+  expect(
+    screen
+      .getAllByRole('radio')
+      .find(row => row.props.accessibilityState?.selected),
+  ).toContainElement(screen.getByText('Synthetic Friendly Name'));
 });
 
-it('recognizes a known saved legacy model without an account catalog and never reads custom title under another account', async () => {
+it('does not reveal a saved model title without the exact account credential', async () => {
   credential.mockResolvedValue(null);
   const { mounted, store } = show({
     providerId: 'chatgpt-plan:fixture:gpt-6.2-sol',
     modelId: 'gpt-6.2-sol',
   });
   await mounted;
-  expect(
-    await screen.findByText('현재 선택: ChatGPT - GPT-6.2 Sol'),
-  ).toBeTruthy();
+  await screen.findByTestId('settings-provider-load-models');
+  expect(screen.queryByText('GPT-6.2 Sol')).toBeNull();
+  expect(screen.queryByText('Synthetic Friendly Name')).toBeNull();
   expect(store.loadTitle).not.toHaveBeenCalled();
   expect(store.save).not.toHaveBeenCalled();
 });
@@ -154,16 +179,15 @@ it('remembers a catalog title only after the existing Settings disclosure is acc
   );
   await first.unmount();
   await render(
-    <ProviderSelectionScreen
+    <ProviderSelectionFlow
       presentation="settings-provider"
-      options={[]}
-      requirements={{ inputTypes: ['text'] }}
+      chatGPTServices={services}
+      loadAppleOption={loadAppleOption}
       selectionStore={store}
+      onBack={jest.fn()}
     />,
   );
-  expect(
-    await screen.findByText('현재 선택: ChatGPT - Friendly Catalog Title'),
-  ).toBeTruthy();
+  expect(await screen.findByText('Friendly Catalog Title')).toBeTruthy();
   expect(store.save).toHaveBeenCalledTimes(1);
   expect(provider.generate).not.toHaveBeenCalled();
 });

@@ -17,18 +17,15 @@ import { voiceSettingsStore } from './voiceSettingsStore';
 import { openAiVoicePreferencesDraftReader } from './openAiVoiceFormRead';
 import { voiceModels } from './voiceModels';
 import { VoiceModelOption } from './VoiceModelOption';
-import { VoiceSettingsUnavailablePccOption } from './VoiceSettingsUnavailablePccOption';
-import { OpenAiVoiceCatalogStatus } from './OpenAiVoiceCatalogStatus';
+import { VoiceModelGroups } from './VoiceModelGroups';
 import { OpenAiVoiceToolOptions } from './OpenAiVoiceToolOptions';
 import { OpenAiVoicePairForm } from './OpenAiVoicePairForm';
-import { VoiceCatalogAccount } from './VoiceCatalogAccount';
 import { LiveVoicePreferencesPanel } from './LiveVoicePreferencesPanel';
 import type { LiveVoicePreferencesDraft } from './LiveVoicePreferencesPanel';
 import type { LiveResponsesBackend } from './liveResponsesSettingsIdentity';
 import { selectOpenAiVoicePair } from './reviewOpenAiVoicePair';
 import { usePreviouslyReviewedVoicePair } from './usePreviouslyReviewedVoicePair';
 import { useOpenAiVoicePairSave } from './useOpenAiVoicePairSave';
-import { VoiceCurrentSelection } from './VoiceCurrentSelection';
 /** Local and API providers are sibling sections; a hidden tab must not own navigation actions. */
 export function VoiceSettingsPanel({
   onOpenAccounts,
@@ -47,6 +44,7 @@ export function VoiceSettingsPanel({
   const [tool, setTool] = useState<{
     revision: number;
     model: LiveResponsesBackend;
+    restored?: true;
   }>();
   const [preferences, setPrefs] = useState<{
     revision: number;
@@ -59,19 +57,36 @@ export function VoiceSettingsPanel({
       revision === null ? null : openAiVoicePreferencesDraftReader(revision),
     [revision],
   );
+  const knownPair =
+    catalog.ids.includes(liveModel) && catalog.toolIds.length > 0;
   const eligible =
     revision !== null &&
     (voicePair?.runtimeAvailable ??
       (hasLiveVoiceRuntime() && hasLiveResponsesRuntime())) &&
-    catalog.ids.includes(liveModel) &&
-    catalog.toolIds.length > 0;
+    knownPair;
+  const apiSelectable = catalog.fresh && eligible && catalog.connected;
+  // A legacy installation may have an exact authorized pair but no catalog
+  // cache yet. Show just that proven pair, never use it as fresh availability.
+  const allowSavedPreview =
+    !catalog.fresh && !catalog.ids.length && !catalog.toolIds.length;
+  const preview =
+    allowSavedPreview &&
+    catalog.connected &&
+    !selection.pairAwaitingActivation &&
+    savedMode === 'openai-api' &&
+    mode === savedMode &&
+    savedModel === liveModel &&
+    tool?.revision === revision &&
+    tool.restored
+      ? tool.model
+      : undefined;
   usePreviouslyReviewedVoicePair({
     revision,
     eligible:
       active &&
-      eligible &&
-      catalog.fresh &&
+      (knownPair || allowSavedPreview) &&
       catalog.connected &&
+      !selection.pairAwaitingActivation &&
       savedMode === 'openai-api' &&
       savedModel === liveModel &&
       mode === savedMode &&
@@ -79,14 +94,15 @@ export function VoiceSettingsPanel({
       voice === voiceSettingsStore,
     hasDraft: speechRevision === revision || tool?.revision === revision,
     allowed: catalog.toolIds,
+    allowSavedPreview,
     restore: (owner, backend) => {
       setSpeechRevision(owner);
-      setTool({ revision: owner, model: backend });
+      setTool({ revision: owner, model: backend, restored: true });
     },
   });
   const pair = selectOpenAiVoicePair({
     revision,
-    fresh: catalog.fresh && eligible && catalog.connected,
+    fresh: apiSelectable,
     speechIds: catalog.ids,
     toolIds: catalog.toolIds,
     speechModel:
@@ -128,7 +144,9 @@ export function VoiceSettingsPanel({
       .filter(
         item =>
           item.mode === connection &&
-          (item.mode === 'local' || catalog.ids.includes(item.id)),
+          (item.mode === 'local' ||
+            catalog.ids.includes(item.id) ||
+            (preview && item.id === liveModel)),
       )
       .map(item => (
         <VoiceModelOption
@@ -142,7 +160,7 @@ export function VoiceSettingsPanel({
             busy ||
             pairedSave.busy ||
             failedLoad ||
-            (item.mode === 'openai-api' && (!eligible || !catalog.fresh))
+            (item.mode === 'openai-api' && !apiSelectable)
           }
           onPress={() => {
             if (item.mode === 'openai-api' && revision !== null)
@@ -155,62 +173,63 @@ export function VoiceSettingsPanel({
           }}
         />
       ));
+  const apiOptions = (
+    <OpenAiVoicePairForm
+      visible={
+        active && catalog.connected && (knownPair || preview !== undefined)
+      }
+      speech={choices('openai-api')}
+      preferences={
+        revision !== null &&
+        apiSelectable &&
+        (livePreferences || voice === voiceSettingsStore) ? (
+          <LiveVoicePreferencesPanel
+            key={revision}
+            onDraftChange={draft =>
+              setPrefs(previous =>
+                previous?.revision === revision && previous.draft === draft
+                  ? previous
+                  : { revision, draft },
+              )
+            }
+            busy={busy || pairedSave.busy}
+            {...(livePreferences ?? {
+              ready: true,
+              store: preferencesReader!,
+              authorityRevision: revision,
+            })}
+          />
+        ) : null
+      }
+      tools={
+        <OpenAiVoiceToolOptions
+          models={preview ? [preview] : catalog.toolIds}
+          selected={tool?.revision === revision ? tool.model : undefined}
+          disabled={
+            busy || failedLoad || pairedSave.busy || !catalog.fresh || !eligible
+          }
+          choose={value => {
+            if (revision !== null) setTool({ revision, model: value });
+          }}
+        />
+      }
+    />
+  );
   return (
     <View testID="voice-settings-panel">
-      <VoiceCurrentSelection selection={selection} />
+      {selection.pairAwaitingActivation ? (
+        <Text accessibilityRole="alert">
+          {t('modelSettings.liveVoicePairRecovery')}
+        </Text>
+      ) : null}
       {active ? pairedSave.disclosureSheet : null}
-      <View style={styles.section} testID="voice-model-group-local">
-        <Text accessibilityRole="header" style={styles.heading}>
-          Apple
-        </Text>
-        {choices('local')}
-        <VoiceSettingsUnavailablePccOption />
-      </View>
-      <View style={styles.section} testID="voice-model-group-openai-api">
-        <Text accessibilityRole="header" style={styles.heading}>
-          OpenAI API
-        </Text>
-        <VoiceCatalogAccount catalog={catalog} onOpenAccounts={onOpenAccounts}>
-          <OpenAiVoicePairForm
-            fresh={active && catalog.fresh}
-            eligible={eligible}
-            speech={choices('openai-api')}
-            preferences={
-              revision !== null &&
-              (livePreferences || voice === voiceSettingsStore) ? (
-                <LiveVoicePreferencesPanel
-                  key={revision}
-                  onDraftChange={draft =>
-                    setPrefs(previous =>
-                      previous?.revision === revision &&
-                      previous.draft === draft
-                        ? previous
-                        : { revision, draft },
-                    )
-                  }
-                  busy={busy || pairedSave.busy}
-                  {...(livePreferences ?? {
-                    ready: true,
-                    store: preferencesReader!,
-                    authorityRevision: revision,
-                  })}
-                />
-              ) : null
-            }
-            tools={
-              <OpenAiVoiceToolOptions
-                models={catalog.toolIds}
-                selected={tool?.revision === revision ? tool.model : undefined}
-                disabled={busy || failedLoad || pairedSave.busy}
-                choose={value => {
-                  if (revision !== null) setTool({ revision, model: value });
-                }}
-              />
-            }
-          />
-          <OpenAiVoiceCatalogStatus catalog={catalog} />
-        </VoiceCatalogAccount>
-      </View>
+      <VoiceModelGroups
+        api={apiOptions}
+        catalog={catalog}
+        onOpenAccounts={onOpenAccounts}
+        apiFirst={savedMode === 'openai-api'}
+        local={choices('local')}
+      />
       {active ? (
         <View style={styles.section}>
           {!hasDock ? (

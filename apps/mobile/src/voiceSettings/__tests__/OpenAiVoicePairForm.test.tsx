@@ -7,16 +7,12 @@ const panes = {
   preferences: <Text>synthetic language/voice</Text>,
   tools: <Text>synthetic tool model</Text>,
 };
-test('hides all three OpenAI API sections without a fresh eligible catalog', async () => {
-  const view = await render(
-    <OpenAiVoicePairForm {...panes} fresh={false} eligible={false} />,
-  );
+test('renders only when the catalog owner permits the pair form', async () => {
+  const view = await render(<OpenAiVoicePairForm {...panes} visible={false} />);
   expect(view.queryByTestId('openai-voice-pair-form')).toBeNull();
-  await view.rerender(
-    <OpenAiVoicePairForm {...panes} fresh eligible={false} />,
-  );
+  await view.rerender(<OpenAiVoicePairForm {...panes} visible={false} />);
   expect(view.queryByTestId('openai-voice-pair-form')).toBeNull();
-  await view.rerender(<OpenAiVoicePairForm {...panes} fresh eligible />);
+  await view.rerender(<OpenAiVoicePairForm {...panes} visible />);
   expect(view.getByText('synthetic speech model')).toBeVisible();
   expect(view.getByText('synthetic language/voice')).toBeVisible();
   expect(view.getByText('synthetic tool model')).toBeVisible();
@@ -32,9 +28,7 @@ test('hides all three OpenAI API sections without a fresh eligible catalog', asy
     'openai-voice-preferences',
     'openai-voice-tools',
   ]);
-  await view.rerender(
-    <OpenAiVoicePairForm {...panes} fresh={false} eligible />,
-  );
+  await view.rerender(<OpenAiVoicePairForm {...panes} visible={false} />);
   expect(view.queryByText('synthetic speech model')).toBeNull();
   expect(view.queryByText('synthetic language/voice')).toBeNull();
   expect(view.queryByText('synthetic tool model')).toBeNull();

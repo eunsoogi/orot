@@ -10,6 +10,7 @@ export function usePreviouslyReviewedVoicePair(input: {
   eligible: boolean;
   hasDraft: boolean;
   allowed: readonly LiveResponsesBackend[];
+  allowSavedPreview: boolean;
   restore: (revision: number, backend: LiveResponsesBackend) => void;
 }) {
   const live = useRef(input);
@@ -29,7 +30,8 @@ export function usePreviouslyReviewedVoicePair(input: {
           !voiceSettingsStore.accountRevisionMatches(revision) ||
           settings.kind !== 'active' ||
           !settings.current() ||
-          !latest.allowed.includes(settings.nativeGrant.backendModel)
+          (!latest.allowSavedPreview &&
+            !latest.allowed.includes(settings.nativeGrant.backendModel))
         )
           return;
         latest.restore(revision, settings.nativeGrant.backendModel);

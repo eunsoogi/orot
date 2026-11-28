@@ -1,7 +1,6 @@
 import { ProviderSelectionHeading } from './ProviderSelectionHeading';
 import { AdaptiveColumns } from '../../layout/AdaptiveColumns';
-import { useSavedChatGPTTitle } from './useSavedChatGPTTitle';
-import { savedModelPresentation } from './savedModelPresentation';
+import { AppText as Text } from '../../layout/AppText';
 import { useSavedSearchChoices } from './useSavedSearchChoices';
 import { useConversationModelConfirmation } from './useConversationModelConfirmation';
 import { APPLE_PCC_PROVIDER_ID } from './privateCloudCompute';
@@ -11,10 +10,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { ScrollView, View } from 'react-native';
 import ChatGPTAccountSetupCard from './ChatGPTAccountSetupCard';
 import { ProviderSelectionChoices } from './ProviderSelectionChoices';
-import {
-  ProviderSelectionCurrentSummary,
-  ProviderSelectionFooter,
-} from './ProviderSelectionFooter';
+import { ProviderSelectionFooter } from './ProviderSelectionFooter';
 import {
   providerSelectionScreenStyles as styles,
   selectionSummaryMessage,
@@ -29,6 +25,7 @@ export default function ProviderSelectionScreen({
   screenIntroduction,
   navigationRouteKey,
   options,
+  cachedOptions = [],
   requirements,
   selectionStore,
   chatGPTSetup,
@@ -75,14 +72,10 @@ export default function ProviderSelectionScreen({
     [savedSelection, options, requirements],
   );
   // Saved identity remains visible even before the account catalog is refreshed.
-  const selectedOption = options.find(
+  const selectedOption = [...options, ...cachedOptions].find(
     option =>
       option.provider.id === savedSelection?.providerId &&
       option.modelId === savedSelection?.modelId,
-  );
-  const savedChatGPTTitle = useSavedChatGPTTitle(
-    selectionStore,
-    savedSelection,
   );
   const pendingSelection = pendingOption
     ? { providerId: pendingOption.provider.id, modelId: pendingOption.modelId }
@@ -122,15 +115,6 @@ export default function ProviderSelectionScreen({
     loadError,
     available: resolution.ok,
     displayName: selectedOption?.displayName,
-    storedLabel:
-      savedSelection && presentation === 'settings-provider'
-        ? savedModelPresentation(
-            savedSelection,
-            selectedOption,
-            undefined,
-            savedChatGPTTitle,
-          )
-        : undefined,
     savedModelId: savedSelection?.modelId,
     presentation,
   });
@@ -159,20 +143,17 @@ export default function ProviderSelectionScreen({
           calendarOptions={options}
           chatGPTSetup={chatGPTSetup}
           enabled={presentation === 'settings-provider'}
-          languageHeader={
-            presentation === 'settings-provider' ? (
-              <ProviderSelectionCurrentSummary
-                message={selectionMessage}
-                draft={confirmationOption?.displayName}
-              />
-            ) : null
-          }
           locked={saving || pendingOption !== null}
           onOpenAccounts={chatGPTSetup?.onOpenAccounts}
         >
           {presentation !== 'settings-accounts' ? (
             <ProviderSelectionChoices
-              followsSiblingSummary={presentation === 'settings-provider'}
+              cachedOptions={cachedOptions}
+              preferredProviderId={
+                presentation === 'settings-provider'
+                  ? savedSelection?.providerId
+                  : undefined
+              }
               chatGPTSetup={chatGPTSetup}
               loading={loading}
               onChoose={option => {
@@ -196,6 +177,11 @@ export default function ProviderSelectionScreen({
               saving={saving}
               selectedOption={selectedOption}
             />
+          ) : null}
+          {presentation === 'settings-provider' && loadError ? (
+            <Text accessibilityRole="alert" style={styles.error}>
+              {selectionMessage}
+            </Text>
           ) : null}
           {presentation !== 'settings-accounts' ? (
             <ProviderSelectionFooter

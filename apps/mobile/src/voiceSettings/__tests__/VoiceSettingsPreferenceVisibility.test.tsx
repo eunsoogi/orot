@@ -56,7 +56,8 @@ test.each([
       .mockResolvedValue({ mode, model, hasApiKey: true });
     const { read, write, props } = preferences();
     const view = await render(<VoiceSettingsPanel livePreferences={props} />);
-    await view.findByTestId('voice-current-model');
+    await view.findByTestId('voice-model-apple-system-speech');
+    expect(view.queryByTestId('voice-current-model')).toBeNull();
     expect(view.queryByTestId('live-voice-language')).toBeNull();
     expect(read).not.toHaveBeenCalled();
     await fireEvent.press(view.getByTestId('voice-model-refresh'));

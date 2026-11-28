@@ -1,6 +1,6 @@
 import { createVoiceConsentIdentity } from './voiceConsentIdentity';
 import { createConsentGeneration } from '../agent/execution/consentGeneration';
-import { discoverApiModels } from './voiceApiModelCatalog';
+import { createVoiceCatalogDisplayStore } from './voiceCatalogDisplayStore';
 import { validVoiceModel } from './voiceModels';
 import {
   legacyVoiceCredentials,
@@ -171,24 +171,13 @@ export function createVoiceSettingsStore(input: {
       if (revision !== accountRevision) return store.accountStatus();
       return { connected: Boolean(value.apiKey), revision };
     },
-    /** Explicit catalog refresh only; account changes invalidate the returned models. */
-    async discoverModels(
-      signal: AbortSignal,
-    ): Promise<{ revision: number; ids: string[] }> {
-      return discoverApiModels(
-        signal,
-        async () => {
-          await saving.catch(() => undefined);
-          const revision = accountRevision;
-          const value = await read();
-          return { revision, apiKey: value.apiKey };
-        },
-        async revision => {
-          await saving.catch(() => undefined);
-          return revision === accountRevision;
-        },
-      );
-    },
+    ...createVoiceCatalogDisplayStore({
+      service,
+      revision: () => accountRevision,
+      settle: () => saving.catch(() => undefined),
+      read,
+      enqueue,
+    }),
     /** Calendar selection is independent; discard secrets after use and fence account changes. */
     async classificationCredentials(
       expectedRevision: number,

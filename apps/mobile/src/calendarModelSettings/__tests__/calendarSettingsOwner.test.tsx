@@ -43,23 +43,26 @@ test('replacement calendar and voice owners discard the old draft and same-revis
   const onBusyChange = jest.fn();
   const content = (services: ModelSettingsServices) => (
     <ModelSettingsServicesContext.Provider value={services}>
-      <CalendarModelSettingsPanel options={[]} onBusyChange={onBusyChange} />
+      <CalendarModelSettingsPanel
+        options={[apple]}
+        onBusyChange={onBusyChange}
+      />
     </ModelSettingsServicesContext.Provider>
   );
   const view = await render(content(first));
   await waitFor(() =>
-    expect(view.getByTestId('calendar-current-model')).toHaveTextContent(
-      /Apple - Apple Intelligence/,
-    ),
+    expect(
+      view.getByTestId('provider-option-0').props.accessibilityState.selected,
+    ).toBe(true),
   );
   await waitFor(() =>
     expect(view.getByTestId('calendar-model-refresh')).not.toBeDisabled(),
   );
   await fireEvent.press(view.getByTestId('calendar-model-refresh'));
   await waitFor(() =>
-    expect(view.getByTestId('provider-option-0')).toBeTruthy(),
+    expect(view.getByTestId('provider-option-1')).toBeTruthy(),
   );
-  await fireEvent.press(view.getByTestId('provider-option-0'));
+  await fireEvent.press(view.getByTestId('provider-option-1'));
   expect(view.getByTestId('provider-selection-confirmation')).toBeTruthy();
   let finish!: (value: ProviderSelection | null) => void;
   const next: ModelSettingsServices = {
@@ -76,15 +79,14 @@ test('replacement calendar and voice owners discard the old draft and same-revis
   await view.rerender(content(next));
   expect(view.queryByTestId('provider-selection-confirmation')).toBeNull();
   expect(view.queryByText('Old owner catalog')).toBeNull();
-  expect(view.queryByText(/Apple - Apple Intelligence/)).toBeNull();
-  expect(view.queryByTestId('provider-option-0')).toBeNull();
+  expect(view.queryByTestId('provider-option-1')).toBeNull();
   await act(async () => {
     finish({ providerId: 'new-owner', modelId: 'new-saved-model' });
   });
   await waitFor(() =>
-    expect(view.getByTestId('calendar-current-model')).toHaveTextContent(
-      /모델 이름을 확인할 수 없어요\./,
-    ),
+    expect(
+      view.getByTestId('provider-option-0').props.accessibilityState.selected,
+    ).toBe(false),
   );
   expect(first.saveConsent).not.toHaveBeenCalled();
   await view.unmount();
@@ -125,18 +127,17 @@ test('keeps the Decisions label before, during and after explicit catalog discov
       <CalendarModelSettingsPanel options={[]} onBusyChange={jest.fn()} />
     </ModelSettingsServicesContext.Provider>,
   );
-  const summary = () => screen.getByTestId('calendar-current-model');
-  const label = /OpenAI API - Decisions - GPT-6 Luna/;
-  expect(summary()).toHaveTextContent(label);
+  expect(screen.queryByTestId('calendar-current-model-card')).toBeNull();
   expect(screen.getByRole('header', { name: 'OpenAI API' })).toBeTruthy();
   expect(discoverModels).not.toHaveBeenCalled();
   await fireEvent.press(screen.getByTestId('calendar-model-refresh'));
-  expect(summary()).toHaveTextContent(label);
   await act(async () => finish({ revision: 3, ids: ['gpt-6-luna'] }));
-  expect(summary()).toHaveTextContent(label);
   expect(screen.getByTestId('provider-option-0')).toHaveTextContent(
     /GPT-6 Luna/,
   );
+  expect(
+    screen.getByTestId('provider-option-0').props.accessibilityState.selected,
+  ).toBe(true);
   expect(screen.queryByText('gpt-6-luna')).toBeNull();
   expect(services.saveConsent).not.toHaveBeenCalled();
 });
