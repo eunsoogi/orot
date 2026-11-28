@@ -130,6 +130,86 @@ enum NavigationRotationUITestConditions {
         return receipt
     }
 
+    /// Read the existing test-only UIKit probe even when a focused editor disappears
+    /// during AX re-projection. Native geometry alone never passes the recording test.
+    static func rotateRecordingScene(
+        _ app: XCUIApplication, session: String, landscape: Bool, initialAX: CGRect, testCase: XCTestCase,
+        awaitOwnedAX: () -> RecordingFixtureUITestConditions.ReviewLayout?,
+    ) throws -> RecordingFixtureUITestConditions.ReviewLayout {
+        let controls = app.descendants(matching: .any).matching(identifier: "rotation-transition-request")
+        let control = controls.firstMatch
+        var previousSample = 0.0
+        func command(_ mode: String) throws -> [String: Any] {
+            let hittable = XCTNSPredicateExpectation(predicate: NSPredicate { _, _ in
+                controls.count == 1 && control.isHittable
+            }, object: nil)
+            guard XCTWaiter.wait(for: [hittable], timeout: 10) == .completed else {
+                throw NSError(domain: "RecordingRotationControlUnavailable", code: 1)
+            }
+            control.tap()
+            var receipt: [String: Any] = [:]
+            let fresh = XCTNSPredicateExpectation(predicate: NSPredicate { _, _ in
+                guard let value = try? JSONSerialization.jsonObject(with: Data(control.label.utf8)) as? [String: Any],
+                      value["session"] as? String == session, value["mode"] as? String == mode,
+                      let sampledAt = value["sampledAtMs"] as? Double, sampledAt > previousSample
+                else { return false }
+                previousSample = sampledAt; receipt = value
+                return true
+            }, object: nil)
+            guard XCTWaiter.wait(for: [fresh], timeout: 10) == .completed else {
+                throw NSError(domain: "RecordingRotationReceiptUnavailable", code: 1)
+            }
+            let evidence = try JSONSerialization.data(withJSONObject: receipt, options: .sortedKeys)
+            let attachment = XCTAttachment(data: evidence, uniformTypeIdentifier: "public.json")
+            attachment.name = "recording-scene-\(landscape ? "landscape" : "portrait")-\(mode)"
+            attachment.lifetime = .keepAlways
+            testCase.add(attachment)
+            return receipt
+        }
+
+        let scroll = UITestConditions.element(app, "navigation-route-scroll")
+        let controlOwner = try XCTUnwrap(owningWindow(app, scroll: scroll, target: control, reportFailure: false))
+        XCTAssertEqual(controlOwner.frame, initialAX, "The rotation control must belong to the exact initial recording window.")
+        let armed = try command("start")
+        let scene = try XCTUnwrap(armed["sceneID"] as? String)
+        let window = try XCTUnwrap(armed["windowID"] as? String)
+        let generation = try XCTUnwrap(armed["generation"] as? Int)
+        let started = try XCTUnwrap(armed["startedAtMs"] as? Double)
+        let before = try XCTUnwrap(armed["current"] as? [String: Any])
+        let initial = try XCTUnwrap(before["sceneOrientation"] as? Int)
+        XCTAssertTrue(landscape ? initial == UIInterfaceOrientation.portrait.rawValue : UIInterfaceOrientation(rawValue: initial)?.isLandscape == true)
+        XCUIDevice.shared.orientation = landscape ? .landscapeLeft : .portrait
+        _ = try command(landscape ? "request" : "portrait")
+        let ax = awaitOwnedAX()
+        let receipt = try command("read")
+        let bounds = try XCTUnwrap(receipt["windowBounds"] as? [String: Double])
+        let width = try XCTUnwrap(bounds["width"]), height = try XCTUnwrap(bounds["height"])
+        let current = try XCTUnwrap(receipt["current"] as? [String: Any])
+        let orientation = try XCTUnwrap(current["sceneOrientation"] as? Int)
+        let events = try XCTUnwrap(receipt["events"] as? [[String: Any]])
+        XCTAssertEqual(receipt["status"] as? String, "sampled")
+        XCTAssertEqual(receipt["sceneID"] as? String, scene)
+        XCTAssertEqual(receipt["windowID"] as? String, window)
+        XCTAssertEqual(receipt["generation"] as? Int, generation)
+        XCTAssertTrue((receipt["error"] as? [String: Any])?.isEmpty == true)
+        XCTAssertLessThanOrEqual(try XCTUnwrap(receipt["requestCount"] as? Int), 1)
+        XCTAssertTrue(landscape ? UIInterfaceOrientation(rawValue: orientation)?.isLandscape == true : orientation == UIInterfaceOrientation.portrait.rawValue)
+        XCTAssertTrue(events.contains { event in
+            guard let observedAt = event["atMs"] as? Double, observedAt >= started,
+                  let w = event["width"] as? Double, let h = event["height"] as? Double,
+                  let transition = event["transition"] as? String, ["completed", "unavailable"].contains(transition),
+                  event["cancelled"] as? Bool != true
+            else { return false }
+            return event["sceneID"] as? String == scene && event["windowID"] as? String == window &&
+                event["sceneOrientation"] as? Int == orientation && abs(w - width) <= 0.5 && abs(h - height) <= 0.5
+        }, "No settled native geometry event for the armed recording scene.")
+        let layout = try XCTUnwrap(ax, "The settled native scene had no corroborating owned recording AX layout.")
+        XCTAssertEqual(layout.window.width, width, accuracy: 0.5)
+        XCTAssertEqual(layout.window.height, height, accuracy: 0.5)
+        XCTAssertEqual(try XCTUnwrap(owningWindow(app, scroll: scroll, target: control, reportFailure: false)).frame, layout.window)
+        return layout
+    }
+
     /// Resolves the unique AX window that contains both the page scroll region and the probe control.
     private static func owningWindow(
         _ app: XCUIApplication, scroll: XCUIElement, target: XCUIElement, reportFailure: Bool = true,
