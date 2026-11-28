@@ -183,16 +183,16 @@ test('reflows measured card widths on resize and large text changes', async () =
 });
 
 test.each([
-  [900, 1, 'row', 'wide'],
-  [600, 1, 'row', 'wide'],
-  [599, 1, 'column', 'header'],
-  [900, 1.3, 'column', 'stacked'],
-  [321, 1, 'column', 'header'],
-  [260, 1, 'column', 'stacked'],
-  [321, 1.25, 'column', 'stacked'],
+  [900, 1],
+  [600, 1],
+  [599, 1],
+  [900, 1.3],
+  [321, 1],
+  [260, 1],
+  [321, 1.25],
 ] as const)(
-  'uses responsive layout at %ipt body width and %f font scale (%s expected)',
-  async (bodyWidth, fontScale, direction, mode) => {
+  'keeps the compact comparison readable at %ipt measured width and %f font scale',
+  async (bodyWidth, fontScale) => {
     jest.spyOn(require('react-native'), 'useWindowDimensions').mockReturnValue({
       width: 390,
       height: 800,
@@ -216,34 +216,23 @@ test.each([
       nativeEvent: { layout: { width: bodyWidth, height: 800, x: 0, y: 0 } },
     });
 
-    const comparison = screen.getByTestId('overview-recent-change-sleep');
+    const content = within(
+      screen.getByTestId('overview-recent-changes-content'),
+    );
+    const comparison = content.getByTestId('overview-recent-change-sleep');
     expect(StyleSheet.flatten(comparison.props.style)?.flexDirection).toBe(
-      direction,
+      'row',
     );
-    expect(comparison).toHaveTextContent(/7시간 0분/u);
-    expect(comparison).toHaveTextContent(/7시간 30분/u);
-    expect(comparison.props.accessibilityLabel).toContain('7시간 0분');
-    expect(comparison.props.accessibilityLabel).toContain('7시간 30분');
-    expect(comparison.props.accessibilityLabel).toContain('기록된 날: 3일/7일');
-    expect(comparison.props.accessibilityLabel).toContain('기록된 날: 4일/7일');
-    const identity = StyleSheet.flatten(
-      screen.getByTestId('overview-recent-change-identity-sleep').props.style,
+    expect(comparison).toHaveTextContent(/30분 늘었어요/u);
+    expect(comparison).not.toHaveTextContent(/7시간/u);
+    expect(comparison.props.accessible).toBe(true);
+    expect(comparison.props.accessibilityLabel).toEqual(
+      expect.stringMatching(
+        /2026-10-01–2026-10-07.*7시간 0분.*기록된 날: 3일\/7일.*2026-10-08–2026-10-14.*7시간 30분.*기록된 날: 4일\/7일/u,
+      ),
     );
-    expect(identity.width).toBe(mode === 'wide' ? 200 : '100%');
-    expect(identity.minWidth).toBe(mode === 'wide' ? 200 : 0);
-    expect(identity.maxWidth).toBe(mode === 'wide' ? 200 : '100%');
     expect(
-      Boolean(screen.queryByTestId('overview-recent-change-periods-sleep')),
-    ).toBe(mode !== 'stacked');
-    if (mode !== 'stacked') {
-      expect(screen.getAllByText('이전 7일')).toHaveLength(2);
-      expect(screen.getByText('· 3일 기록')).toBeTruthy();
-      expect(screen.getAllByText('최근 7일')).toHaveLength(2);
-      expect(screen.getByText('· 4일 기록')).toBeTruthy();
-      expect(screen.getAllByText('→')).toHaveLength(2);
-    } else {
-      expect(comparison).toHaveTextContent(/2026-10-01–2026-10-07/u);
-      expect(comparison).toHaveTextContent(/2026-10-08–2026-10-14/u);
-    }
+      content.getByTestId('overview-recent-change-heartRate'),
+    ).toBeVisible();
   },
 );

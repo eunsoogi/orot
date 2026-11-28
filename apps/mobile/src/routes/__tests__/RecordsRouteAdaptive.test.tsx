@@ -129,6 +129,16 @@ test('shows the newest loaded sources and opens their existing saved-recordings 
       '더 오래된 상담',
       '2026-10-22T10:00:00.000Z',
     ),
+    source(
+      '123e4567-e89b-12d3-a456-426614174005',
+      '다섯 번째 상담',
+      '2026-10-21T10:00:00.000Z',
+    ),
+    source(
+      '123e4567-e89b-12d3-a456-426614174006',
+      '여섯 번째 상담',
+      '2026-10-20T10:00:00.000Z',
+    ),
   ];
   const routeProps = props({ recordings });
   await render(<RecordsRoute {...routeProps} />);
@@ -136,9 +146,11 @@ test('shows the newest loaded sources and opens their existing saved-recordings 
   expect(screen.getByText('최근 상담', { exact: true })).toBeTruthy();
   expect(screen.getByText('이전 상담', { exact: true })).toBeTruthy();
   expect(screen.getByText('세 번째 상담', { exact: true })).toBeTruthy();
+  expect(screen.getByText('더 오래된 상담', { exact: true })).toBeTruthy();
+  expect(screen.getByText('다섯 번째 상담', { exact: true })).toBeTruthy();
   expect(
     screen.queryByTestId(
-      'records-recent-source-123e4567-e89b-12d3-a456-426614174004',
+      'records-recent-source-123e4567-e89b-12d3-a456-426614174006',
     ),
   ).toBeNull();
 
@@ -174,6 +186,16 @@ test('groups actual recent recordings by local day and navigates from the comple
         '더 오래된 상담',
         new Date(2026, 9, 31, 20, 27).toISOString(),
       ),
+      source(
+        '123e4567-e89b-12d3-a456-426614174105',
+        '다섯 번째 상담',
+        new Date(2026, 9, 31, 18, 27).toISOString(),
+      ),
+      source(
+        '123e4567-e89b-12d3-a456-426614174106',
+        '여섯 번째 상담',
+        new Date(2026, 9, 31, 16, 27).toISOString(),
+      ),
     ];
     const routeProps = props({ recordings });
     await render(<RecordsRoute {...routeProps} />);
@@ -183,12 +205,14 @@ test('groups actual recent recordings by local day and navigates from the comple
     expect(screen.getByText('오늘 상담', { exact: true })).toBeTruthy();
     expect(screen.getByText('오늘 두 번째 상담', { exact: true })).toBeTruthy();
     expect(screen.getByText('어제 상담', { exact: true })).toBeTruthy();
-    expect(screen.queryByText('더 오래된 상담')).toBeNull();
+    expect(screen.getByText('더 오래된 상담', { exact: true })).toBeTruthy();
+    expect(screen.getByText('다섯 번째 상담', { exact: true })).toBeTruthy();
+    expect(screen.queryByText('여섯 번째 상담')).toBeNull();
 
     await fireEvent.press(screen.getByTestId('records-recent-view-all'));
     expect(
       screen.queryByTestId(
-        'records-recent-source-123e4567-e89b-12d3-a456-426614174104',
+        'records-recent-source-123e4567-e89b-12d3-a456-426614174106',
       ),
     ).toBeNull();
     expect(routeProps.onOpenRecentRecords).toHaveBeenCalledTimes(1);
