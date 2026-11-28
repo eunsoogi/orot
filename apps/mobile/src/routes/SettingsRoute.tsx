@@ -1,7 +1,7 @@
+import { SettingsPageHeading } from '../layout/SettingsPageHeading';
 import { settingsPageStyles } from '../layout/settingsPagePresentation';
 import { NativeModules, StyleSheet, View } from 'react-native';
 import { AdaptiveColumns } from '../layout/AdaptiveColumns';
-import { AppText as Text } from '../layout/AppText';
 import { t } from '../i18n';
 import { appColors } from '../layout/appColors';
 import { useNavigationLeaveStateRegistration } from '../navigation';
@@ -51,13 +51,9 @@ export function SettingsRoute({
       <AdaptiveColumns
         primary={
           <View style={styles.panel} testID="settings-panel">
-            <Text
-              accessibilityRole="header"
-              style={settingsPageStyles.title}
-              testID="settings-title"
-            >
+            <SettingsPageHeading testID="settings-title">
               {t('settings.title')}
-            </Text>
+            </SettingsPageHeading>
             <View style={styles.list} testID="settings-destinations">
               <SettingsRouteRow
                 symbol="sparkles"

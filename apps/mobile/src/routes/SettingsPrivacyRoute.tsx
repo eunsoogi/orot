@@ -1,7 +1,5 @@
-import {
-  settingsPageInsets,
-  settingsPageStyles,
-} from '../layout/settingsPagePresentation';
+import { SettingsPageHeading } from '../layout/SettingsPageHeading';
+import { settingsPageInsets } from '../layout/settingsPagePresentation';
 import { useCallback, useState } from 'react';
 import { Linking, Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import { AppText as Text } from '../layout/AppText';
@@ -65,9 +63,7 @@ export function SettingsPrivacyRoute({
       <AdaptiveColumns
         primary={
           <View style={styles.pageSections}>
-            <Text
-              accessibilityRole="header"
-              style={settingsPageStyles.title}
+            <SettingsPageHeading
               testID={
                 policy
                   ? 'settings-privacy-policy-title'
@@ -75,7 +71,7 @@ export function SettingsPrivacyRoute({
               }
             >
               {t(policy ? 'settings.privacyPolicy' : 'settings.permissions')}
-            </Text>
+            </SettingsPageHeading>
             {!policy ? (
               <View style={styles.secondaryColumn}>
                 <View
