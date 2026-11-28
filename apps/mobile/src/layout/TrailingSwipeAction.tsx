@@ -2,6 +2,7 @@ import { useLayoutEffect, useMemo, useState } from 'react';
 import type { ReactNode } from 'react';
 import {
   Animated,
+  I18nManager,
   PanResponder,
   StyleSheet,
   View,
@@ -29,6 +30,7 @@ export function TrailingSwipeAction({
   onRevealedChange,
   testID,
   revealWidth = defaultRevealWidth,
+  revealDuringDrag = false,
 }: {
   readonly action: ReactNode;
   readonly children: ReactNode;
@@ -37,9 +39,13 @@ export function TrailingSwipeAction({
   readonly onRevealedChange: (revealed: boolean) => void;
   readonly testID: string;
   readonly revealWidth?: number;
+  /** Paint the covered lane during motion; only the settled reveal can expose actions. */
+  readonly revealDuringDrag?: boolean;
 }) {
   const [offset] = useState(() => new Animated.Value(0));
+  const [dragging, setDragging] = useState(false);
   const expanded = revealed && !disabled;
+  const canUseActions = expanded && !dragging;
   const settled = expanded ? -revealWidth : 0;
   useLayoutEffect(() => offset.setValue(settled), [offset, settled]);
   const responder = useMemo(
@@ -51,6 +57,9 @@ export function TrailingSwipeAction({
           horizontal(gesture) &&
           (gesture.dx <= -claimDistance ||
             (expanded && gesture.dx >= claimDistance)),
+        onPanResponderGrant: () => {
+          if (revealDuringDrag) setDragging(true);
+        },
         onPanResponderMove: (_event, gesture) => {
           if (disabled || gesture.numberActiveTouches !== 1) {
             offset.setValue(settled);
@@ -68,17 +77,47 @@ export function TrailingSwipeAction({
           }
           offset.setValue(next ? -revealWidth : 0);
           if (next !== expanded) onRevealedChange(next);
+          if (revealDuringDrag) setDragging(false);
         },
-        onPanResponderTerminate: () => offset.setValue(settled),
+        onPanResponderTerminate: () => {
+          offset.setValue(settled);
+          if (revealDuringDrag) setDragging(false);
+        },
         // The route must remain able to take over a vertical scroll.
         onPanResponderTerminationRequest: () => true,
       }),
-    [disabled, expanded, offset, onRevealedChange, revealWidth, settled],
+    [
+      disabled,
+      expanded,
+      offset,
+      onRevealedChange,
+      revealDuringDrag,
+      revealWidth,
+      settled,
+    ],
   );
   return (
     <View style={styles.clip} testID={testID} {...responder.panHandlers}>
-      {expanded ? (
-        <View style={[styles.action, { width: revealWidth }]}>{action}</View>
+      {revealDuringDrag || expanded ? (
+        <View
+          style={[
+            styles.action,
+            { width: revealWidth },
+            // Physical left gestures uncover the physical right edge in RTL too.
+            revealDuringDrag
+              ? I18nManager.isRTL
+                ? styles.rightInRtl
+                : styles.rightInLtr
+              : styles.legacyRight,
+          ]}
+          pointerEvents={canUseActions ? 'auto' : 'none'}
+          accessibilityElementsHidden={!canUseActions}
+          importantForAccessibility={
+            canUseActions ? 'auto' : 'no-hide-descendants'
+          }
+        >
+          {action}
+        </View>
       ) : null}
       <Animated.View style={{ transform: [{ translateX: offset }] }}>
         {children}
@@ -91,8 +130,10 @@ const styles = StyleSheet.create({
   clip: { overflow: 'hidden' },
   action: {
     position: 'absolute',
-    right: 0,
     top: 0,
     bottom: 0,
   },
+  rightInRtl: { start: 0 },
+  rightInLtr: { end: 0 },
+  legacyRight: { right: 0 },
 });

@@ -7,6 +7,7 @@ import {
 } from '@testing-library/react-native';
 import {
   AppState,
+  I18nManager,
   NativeModules,
   PanResponder,
   StyleSheet,
@@ -69,23 +70,40 @@ async function mount() {
     </RecordingSelectionProvider>,
   );
   await screen.findByTestId(`recording-library-item-${id}`);
-  const reveal = async () => {
+  const beginDrag = async (dx: number, dy = 0) => {
     const handler = responder.mock.lastCall?.[0];
     if (!handler) throw new Error('Expected the stock row gesture responder');
     const event = {} as GestureResponderEvent;
     const swipe = {
-      dx: -180,
-      dy: 0,
+      dx,
+      dy,
       numberActiveTouches: 1,
     } as PanResponderGestureState;
-    expect(handler.onMoveShouldSetPanResponderCapture?.(event, swipe)).toBe(
-      true,
-    );
-    await act(() => {
-      handler.onPanResponderRelease?.(event, swipe);
-    });
+    const claimed = handler.onMoveShouldSetPanResponderCapture?.(event, swipe);
+    if (claimed) {
+      await act(() => {
+        handler.onPanResponderGrant?.(event, swipe);
+        handler.onPanResponderMove?.(event, swipe);
+      });
+    }
+    return {
+      claimed,
+      release: () =>
+        act(() => {
+          handler.onPanResponderRelease?.(event, swipe);
+        }),
+      cancel: () =>
+        act(() => {
+          handler.onPanResponderTerminate?.(event, swipe);
+        }),
+    };
   };
-  return { isCurrent, service, alert, reveal };
+  const reveal = async () => {
+    const drag = await beginDrag(-180);
+    expect(drag.claimed).toBe(true);
+    await drag.release();
+  };
+  return { isCurrent, service, alert, reveal, beginDrag };
 }
 
 test('reveals separate Share and Delete tiles outside the translated rounded card without invoking either', async () => {
@@ -102,7 +120,7 @@ test('reveals separate Share and Delete tiles outside the translated rounded car
   expect(StyleSheet.flatten(lane.parent?.props.style)).toMatchObject({
     position: 'absolute',
     width: 132,
-    right: 0,
+    end: 0,
   });
   const first = within(lane).getByTestId(`recording-share-${id}`);
   const last = within(lane).getByTestId(`recording-delete-${id}`);
@@ -172,4 +190,59 @@ test('exports only the explicitly tapped saved audio, never a duplicate or stale
     cancel('cancelled');
   });
   expect(screen.getByTestId(`recording-library-item-${id}`)).toBeVisible();
+});
+
+test('paints tiles progressively in a physical left drag without exposing actions before settlement', async () => {
+  jest.replaceProperty(I18nManager, 'isRTL', true);
+  const share = jest.fn(async () => 'cancelled');
+  NativeModules.RecordingModule = { shareRecordingAudio: share };
+  const { beginDrag, alert, service } = await mount();
+  const lane = () =>
+    screen.getByTestId(`recording-delete-slot-${id}`, {
+      includeHiddenElements: true,
+    });
+  const card = () => screen.getByTestId(`recording-row-content-${id}`);
+  const shareId = `recording-share-${id}`;
+  expect(card().parent).toHaveStyle({ transform: [{ translateX: 0 }] });
+  expect(lane().parent).toHaveStyle({ start: 0, width: 132 });
+  expect(lane()).toHaveStyle({ direction: 'ltr' });
+  expect(screen.queryByTestId(shareId)).toBeNull();
+  expect((await beginDrag(-26, 85)).claimed).toBe(false);
+
+  const short = await beginDrag(-28);
+  expect(short.claimed).toBe(true);
+  expect(card().parent).toHaveStyle({ transform: [{ translateX: -28 }] });
+  expect(lane().parent).toHaveProp('pointerEvents', 'none');
+  expect(lane().parent).toHaveProp('accessibilityElementsHidden', true);
+  expect(lane().parent).toHaveProp(
+    'importantForAccessibility',
+    'no-hide-descendants',
+  );
+  await fireEvent.press(
+    screen.getByTestId(shareId, { includeHiddenElements: true }),
+  );
+  await short.release();
+  expect(card().parent).toHaveStyle({ transform: [{ translateX: 0 }] });
+  expect(share).not.toHaveBeenCalled();
+
+  const open = await beginDrag(-64);
+  expect(card().parent).toHaveStyle({ transform: [{ translateX: -64 }] });
+  expect(screen.queryByTestId(shareId)).toBeNull();
+  await open.release();
+  expect(card().parent).toHaveStyle({ transform: [{ translateX: -132 }] });
+  expect(screen.getByTestId(shareId)).toBeVisible();
+  const close = await beginDrag(65);
+  expect(card().parent).toHaveStyle({ transform: [{ translateX: -67 }] });
+  expect(screen.queryByTestId(shareId)).toBeNull();
+  await fireEvent.press(
+    screen.getByTestId(`recording-delete-${id}`, {
+      includeHiddenElements: true,
+    }),
+  );
+  expect(alert).not.toHaveBeenCalled();
+  await close.cancel();
+  expect(screen.getByTestId(shareId)).toBeVisible();
+  expect(share).not.toHaveBeenCalled();
+  expect(alert).not.toHaveBeenCalled();
+  expect(service.deleteRecording).not.toHaveBeenCalled();
 });
