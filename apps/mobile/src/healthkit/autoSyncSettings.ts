@@ -113,11 +113,15 @@ export async function configureHealthKitAutoSync(
     };
   }
 
-  // Reviewing medication access may expose doses older than a saved anchor.
-  // Explicit setup replays bounded dose pages; ordinary launch sync stays incremental.
+  // Reviewing workout or medication access may reveal existing samples the old
+  // anchor didn't see. Explicit review can reread those pages; launch stays incremental.
   return refreshHealthKitAutoSyncSelection({
     ...options,
     refreshMedicationDoseHistory: selected.includes('medications'),
+    replayWorkoutHistoryAfterReview:
+      selected.includes('workouts') &&
+      authorization.requestedFeatures.includes('workouts') &&
+      !authorization.unsupportedFeatures.includes('workouts'),
   });
 }
 

@@ -52,6 +52,8 @@ interface SyncCommonObservationChangesSharedOptions {
   /** Observes phases without replacing the repository object used for its lock. */
   readonly instrumentation?: CommonObservationInstrumentation;
   readonly now: () => string;
+  /** Revisit currently visible workouts after an explicit authorization review. */
+  readonly replayWorkoutHistoryAfterReview?: boolean;
   /** The existing explicit import or the opted-in one-time automatic upgrade. */
   readonly refreshDerivedSamples?: HealthKitNativeModule['querySamples'];
   /** Exact previously chosen feature request; ordinary sync must never ask for access. */
