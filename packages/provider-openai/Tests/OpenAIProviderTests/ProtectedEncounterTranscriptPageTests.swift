@@ -71,14 +71,14 @@ final class ProtectedEncounterTranscriptPageTests: XCTestCase {
         task.cancel()
     }
 
-    func testProtectedTransportRejectsDifferentEndpointBeforeCreatingTask() async throws {
+    func testProtectedTransportRejectsDifferentEndpointBeforeCreatingTask() throws {
         let other = try XCTUnwrap(URL(string: "https://different.invalid/v1/responses"))
         var request = URLRequest(url: other)
         request.httpMethod = "POST"
         request.httpBody = Data("Synthetic page".utf8)
         let transport = URLSessionChatGPTResponsesHTTPTransport(session: .shared)
         do {
-            _ = try await transport.streamProtectedEncounterPage(for: request)
+            _ = try transport.prepareSuspendedEncounterPage(for: request)
             XCTFail("Different endpoint accepted")
         } catch let error as ChatGPTResponsesError {
             XCTAssertEqual(error, .invalidHTTPResponse)

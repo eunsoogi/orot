@@ -27,3 +27,5 @@ export type {
   CalendarDecision,
   CalendarDecisionsTransport,
 } from './calendarDecisions';
+export { protectedEncounterPageWire } from './protected-encounter-page';
+export type { ProtectedEncounterPageWire } from './protected-encounter-page';

@@ -265,6 +265,7 @@
 		A62F00000000000000000013 /* AppleNativeToolRegistry.swift in Sources */ = {isa = PBXBuildFile; fileRef = B62F00000000000000000013 /* AppleNativeToolRegistry.swift */; };
 		A62F00000000000000000015 /* AppleNativeToolTrace.swift in Sources */ = {isa = PBXBuildFile; fileRef = B62F00000000000000000015 /* AppleNativeToolTrace.swift */; };
 		A63F00000000000000000001 /* OpenAIProviderModule.swift in Sources */ = {isa = PBXBuildFile; fileRef = B63F00000000000000000001 /* OpenAIProviderModule.swift */; };
+		0E83A54F7C834AD6BEEF5501 /* ProtectedPlanPageOwner.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0E83A54F7C834AD6BEEF5502 /* ProtectedPlanPageOwner.swift */; };
 		A63F00000000000000000002 /* OpenAIProviderModule.m in Sources */ = {isa = PBXBuildFile; fileRef = B63F00000000000000000002 /* OpenAIProviderModule.m */; };
 		A63F00000000000000000003 /* OpenAIProvider in Frameworks */ = {isa = PBXBuildFile; productRef = D63F00000000000000000001 /* OpenAIProvider */; };
 		A63F00000000000000000004 /* OpenAIProviderErrorDetails.swift in Sources */ = {isa = PBXBuildFile; fileRef = B63F00000000000000000003 /* OpenAIProviderErrorDetails.swift */; };
@@ -753,6 +754,7 @@
 		B62F00000000000000000013 /* AppleNativeToolRegistry.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = AppleNativeToolRegistry.swift; path = OrotMobile/AppleNativeToolRegistry.swift; sourceTree = "<group>"; };
 		B62F00000000000000000015 /* AppleNativeToolTrace.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = AppleNativeToolTrace.swift; path = OrotMobile/AppleNativeToolTrace.swift; sourceTree = "<group>"; };
 		B63F00000000000000000001 /* OpenAIProviderModule.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = OpenAIProviderModule.swift; path = OrotMobile/OpenAIProviderModule.swift; sourceTree = "<group>"; };
+		0E83A54F7C834AD6BEEF5502 /* ProtectedPlanPageOwner.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = ProtectedPlanPageOwner.swift; path = OrotMobile/ProtectedPlanPageOwner.swift; sourceTree = "<group>"; };
 		B63F00000000000000000002 /* OpenAIProviderModule.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; name = OpenAIProviderModule.m; path = OrotMobile/OpenAIProviderModule.m; sourceTree = "<group>"; };
 		B63F00000000000000000003 /* OpenAIProviderErrorDetails.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = OpenAIProviderErrorDetails.swift; path = OrotMobile/OpenAIProviderErrorDetails.swift; sourceTree = "<group>"; };
 		B64F00000000000000000001 /* RecordingModule.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = RecordingModule.swift; path = OrotMobile/RecordingModule.swift; sourceTree = "<group>"; };
@@ -1007,6 +1009,7 @@
 				B10940000000000000000002 /* CalendarDecisionsTransport.swift */,
 				B10940000000000000000001 /* CalendarDecisionsRequest.swift */,
 				B63F00000000000000000001 /* OpenAIProviderModule.swift */,
+				0E83A54F7C834AD6BEEF5502 /* ProtectedPlanPageOwner.swift */,
 				B63F00000000000000000002 /* OpenAIProviderModule.m */,
 				E12A00000000000000000011 /* OpenAIProviderAuthCoordinator.swift */,
 				E12A00000000000000000012 /* OpenAIProviderAuthSession.swift */,
@@ -1839,6 +1842,7 @@
 				A10940000000000000000002 /* CalendarDecisionsTransport.swift in Sources */,
 				A10940000000000000000001 /* CalendarDecisionsRequest.swift in Sources */,
 				A63F00000000000000000001 /* OpenAIProviderModule.swift in Sources */,
+				0E83A54F7C834AD6BEEF5501 /* ProtectedPlanPageOwner.swift in Sources */,
 				A63F00000000000000000002 /* OpenAIProviderModule.m in Sources */,
 				E12A00000000000000000001 /* OpenAIProviderAuthCoordinator.swift in Sources */,
 				E12A00000000000000000002 /* OpenAIProviderAuthSession.swift in Sources */,
