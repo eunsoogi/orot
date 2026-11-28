@@ -20,6 +20,7 @@ const openLocalStorage = async () =>
   (await import('../storage/secureDatabase')).openLocalStorage();
 import { createSymptomSummaryStorage } from '../storage/symptomSummaryStorage';
 import { listGeneratedReports } from './catalog';
+import { protectedConversationCatalogRemoval } from './protectedConversationCatalogRemoval';
 import type {
   GeneratedReportReader,
   GeneratedReportRow,
@@ -77,6 +78,12 @@ export function createGeneratedReportReader(
         ? projectGeneratedSummaryDetail(saved.analysis)
         : null;
     },
+    ...(isCurrentDatabase && {
+      prepareCatalogRemoval: protectedConversationCatalogRemoval(
+        database,
+        isCurrentDatabase,
+      ),
+    }),
     list: before => listGeneratedReports(database, before),
     async read(row, signal, onHistoricalProtectionLost) {
       if (signal.aborted) return null;

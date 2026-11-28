@@ -50,6 +50,11 @@ export interface GeneratedReportReader {
   readonly archivedSources?: ReturnType<
     typeof import('../aiFeatures/integration/archivedCitationService').createArchivedCitationService
   >;
+  readonly prepareCatalogRemoval?: (
+    row: GeneratedReportRow,
+    signal: AbortSignal,
+    current: () => boolean,
+  ) => Promise<(() => Promise<boolean>) | undefined>;
   list(before?: {
     createdAt: string;
     key: string;

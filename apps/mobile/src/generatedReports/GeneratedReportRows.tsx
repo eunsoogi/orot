@@ -9,6 +9,7 @@ import {
 } from '../layout/MaterialLibraryRows';
 import { generatedReportCopy as copy } from './text';
 import type { GeneratedReportRow } from './types';
+import { GeneratedReportCatalogRemoval } from './GeneratedReportCatalogRemoval';
 import { generatedReportBrowserStyles as styles } from './generatedReportBrowserStyles';
 
 export type GeneratedReportPagination =
@@ -20,10 +21,12 @@ export function GeneratedReportRows({
   pagination,
   onOpen,
   onMore,
+  onRemove,
 }: {
   readonly rows: readonly GeneratedReportRow[];
   readonly pagination: GeneratedReportPagination;
   readonly onOpen: (row: GeneratedReportRow) => void;
+  readonly onRemove?: (row: GeneratedReportRow) => void;
   readonly onMore: () => void;
 }) {
   return (
@@ -33,16 +36,21 @@ export function GeneratedReportRows({
       ) : (
         <MaterialLibraryRows testID="generated-report-rows">
           {rows.map((row, index) => (
-            <MaterialLibraryRow
+            <GeneratedReportCatalogRemoval
               key={row.key}
-              testID={`generated-report-${row.key}`}
-              divider={index + 1 < rows.length}
-              title={copy[row.kind]}
-              summary={`${formatDateTime(new Date(row.createdAt))}${row.unavailable ? ' · ' + copy.unavailable : ''}`}
-              onPress={() => {
-                onOpen(row);
-              }}
-            />
+              row={row}
+              remove={onRemove}
+            >
+              <MaterialLibraryRow
+                testID={`generated-report-${row.key}`}
+                divider={index + 1 < rows.length}
+                title={copy[row.kind]}
+                summary={`${formatDateTime(new Date(row.createdAt))}${row.unavailable ? ' · ' + copy.unavailable : ''}`}
+                onPress={() => {
+                  onOpen(row);
+                }}
+              />
+            </GeneratedReportCatalogRemoval>
           ))}
         </MaterialLibraryRows>
       )}
@@ -112,5 +120,26 @@ export function GeneratedReportDescription({
     <AppText style={destination ? styles.libraryDescription : undefined}>
       {copy.description}
     </AppText>
+  );
+}
+
+/** Status copy stays separate from row identity and the catalog mutation owner. */
+export function GeneratedReportStatus({
+  state,
+  retry,
+}: {
+  readonly state: 'idle' | 'loading' | 'ready' | 'failed' | 'unavailable';
+  readonly retry: () => void;
+}) {
+  if (state === 'loading')
+    return <AppText accessibilityLiveRegion="polite">{copy.loading}</AppText>;
+  if (state === 'unavailable')
+    return <AppText accessibilityRole="alert">{copy.unavailable}</AppText>;
+  if (state !== 'failed') return null;
+  return (
+    <>
+      <AppText accessibilityRole="alert">{copy.failed}</AppText>
+      <AppButton title={copy.retry} onPress={retry} />
+    </>
   );
 }

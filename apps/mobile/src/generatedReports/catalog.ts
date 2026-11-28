@@ -11,6 +11,10 @@ import {
 } from './recentMaterialTimestamp';
 import { visibleSummary } from '../storage/symptomSummaryQuarantine';
 import type { GeneratedReportRow } from './types';
+import {
+  conversationCatalogArtifactPredicate,
+  conversationCatalogExclusions,
+} from './conversationCatalogExclusions';
 
 export type RecentMaterialRow =
   | GeneratedReportRow
@@ -162,12 +166,9 @@ export async function readCatalog(
       a.created_at AS createdAt,EXISTS(SELECT 1 FROM conversation_invalid_parents i WHERE i.id=a.id) AS unavailable
     FROM conversation_artifacts a JOIN conversation_artifact_sessions s ON s.id=a.session_id AND s.hidden=0
     JOIN conversation_artifact_generation g ON g.singleton=1 AND s.generation=g.generation
-    WHERE json_valid(a.result_json) AND json_extract(a.result_json,'$.status')='complete'
-      AND json_extract(a.result_json,'$.entryIntent')='possibilities'
-      AND json_type(a.result_json,'$.healthSummary') IS NULL
-      AND json_type(a.result_json,'$.dailyReport') IS NULL
-      AND json_type(a.result_json,'$.visitQuestions') IS NULL
-      AND NOT EXISTS(SELECT 1 FROM conversation_deleted_artifacts d WHERE d.id=a.id)`);
+    WHERE (${conversationCatalogArtifactPredicate})
+      AND NOT EXISTS(SELECT 1 FROM conversation_deleted_artifacts d WHERE d.id=a.id)
+      ${!feed && tables.has(conversationCatalogExclusions) ? `AND NOT EXISTS(SELECT 1 FROM ${conversationCatalogExclusions} e WHERE e.artifact_id=a.id)` : ''}`);
   const includeNotes = feed && tables.has('manual_history_entries');
   if (includeNotes) {
     // Match the shared protected Memory reader's current manual-history identities
