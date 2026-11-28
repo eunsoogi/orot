@@ -1,6 +1,7 @@
 import { STORAGE_TABLES } from './contracts';
 import type { RecordKind } from './contracts';
 import type { SqlDatabase, SqlExecutor } from './sql';
+import { physicalHealthDeletionCandidates } from './sourceSnapshotHealthCandidates';
 import {
   removedRecordReferencePredicate,
   SOURCE_DELETION_TOMBSTONES_TABLE,
@@ -94,14 +95,19 @@ function sourceDeletionCascadeDefinitions() {
       continue;
     const table = definition.table;
     const trigger = `source_records_delete_${table}_dependencies`;
+    const predicate = sourceDeletionDependencyPredicate(kind, table, 'OLD.id', true);
+    const candidates =
+      kind === 'health_observation'
+        ? physicalHealthDeletionCandidates(predicate)
+        : `SELECT id FROM ${table} WHERE ${predicate}`;
     // Bind both alias domains once to the physical OLD recording, not once per candidate.
     const dependencyPredicate = `${table}.id IN (
-      WITH target_transcripts AS MATERIALIZED (
+      WITH ${kind === 'health_observation' ? 'deletion_target(id) AS (SELECT OLD.id), ' : ''}target_transcripts AS MATERIALIZED (
         SELECT id, json_extract(payload_json, '$.transcriptId') AS family
         FROM transcript_segments
         WHERE json_extract(payload_json, '$.recordingSourceId') = OLD.id
       )
-      SELECT id FROM ${table} WHERE ${sourceDeletionDependencyPredicate(kind, table, 'OLD.id', true)}
+      ${candidates}
     )`;
     const fenceOfficial =
       kind === 'visit_question'
