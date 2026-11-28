@@ -6,6 +6,7 @@ final class NavigationSelectionGlassTests: OrotFailFastTestCase {
     @MainActor
     func testMaterialDropletSettlesAndReplacesInterruptedTransitions() async throws {
         try await verifyRouteReplacementInWindow()
+        try await verifySectionSelectionMovesTheSameMaterialInBothHorizontalDirections()
         let indicator = NavigationSelectionGlass()
         if #available(iOS 26.0, *), !UIAccessibility.isReduceTransparencyEnabled {
             let glass = try XCTUnwrap(indicator.effect as? UIGlassEffect)
@@ -51,6 +52,62 @@ final class NavigationSelectionGlassTests: OrotFailFastTestCase {
             let middle = try XCTUnwrap(bounds.values?[1] as? NSValue).caTransform3DValue
             XCTAssertGreaterThan(middle.m11, 1)
             XCTAssertLessThan(middle.m22, 1)
+        }
+    }
+
+    @MainActor
+    private func verifySectionSelectionMovesTheSameMaterialInBothHorizontalDirections() async throws {
+        let scene = try XCTUnwrap(UIApplication.shared.connectedScenes.compactMap { $0 as? UIWindowScene }.first)
+        let window = UIWindow(windowScene: scene)
+        window.rootViewController = UIViewController()
+        window.isHidden = false
+        defer { window.isHidden = true }
+        let view = SectionSelectionGlassView()
+        view.frame = CGRect(x: 0, y: 120, width: 390, height: 50)
+        window.rootViewController?.view.addSubview(view)
+        let material = try XCTUnwrap(view.subviews.first as? UIVisualEffectView)
+        let first = CGRect(x: 3, y: 3, width: 96, height: 44)
+        let second = CGRect(x: 99, y: 3, width: 132, height: 44)
+        func target(_ to: CGRect, from: CGRect? = nil) -> NSDictionary {
+            func fields(_ rect: CGRect) -> [String: Any] {
+                ["x": Double(rect.minX), "y": Double(rect.minY),
+                 "width": Double(rect.width), "height": Double(rect.height)]
+            }
+            var value = fields(to)
+            value["animated"] = from != nil
+            if let from {
+                value["origin"] = fields(from)
+            }
+            return value as NSDictionary
+        }
+        view.selectionTarget = target(first)
+        XCTAssertEqual(material.frame, first)
+        for (origin, destination) in [(first, second), (second, first)] {
+            view.selectionTarget = target(destination, from: origin)
+            if UIAccessibility.isReduceMotionEnabled {
+                XCTAssertEqual(material.frame, destination)
+                continue
+            }
+            XCTAssertEqual(material.frame, origin, "The visible material must start on the previous tab.")
+            let deadline = Date().addingTimeInterval(1.5)
+            let xRange = min(origin.minX, destination.minX) ..< max(origin.minX, destination.minX)
+            var sawIntermediateFrame = false
+            while Date() < deadline, material.frame != destination {
+                try await Task.sleep(for: .milliseconds(8))
+                let frame = material.frame
+                if xRange.contains(frame.minX), frame.minX != xRange.lowerBound {
+                    sawIntermediateFrame = true
+                    XCTAssertGreaterThan(frame.width, 96)
+                    XCTAssertLessThan(frame.width, 132)
+                    // A repeated Fabric prop must not send the visual material
+                    // back to its start while it is between two tabs.
+                    view.selectionTarget = target(destination, from: origin)
+                    XCTAssertEqual(material.frame, frame)
+                }
+            }
+            XCTAssertTrue(sawIntermediateFrame)
+            XCTAssertEqual(material.frame, destination)
+            XCTAssertTrue(view.subviews.first === material)
         }
     }
 

@@ -153,6 +153,10 @@ test('keeps the same hub header while only the current body moves left or right'
       animated: true,
       origin: { x: 94, y: 3, width: 103, height: 44 },
     });
+    const movingToRecords = pill().props.selectionTarget;
+    await fireEvent(scheduleTab, 'layout', layout(94, 104));
+    expect(pill().props.selectionTarget).toBe(movingToRecords);
+    await fireEvent(scheduleTab, 'layout', layout(94, 103));
     await fireEvent(recordTab, 'layout', layout(3, 141));
     expect(pill().props.selectionTarget).toMatchObject({
       x: 3,
