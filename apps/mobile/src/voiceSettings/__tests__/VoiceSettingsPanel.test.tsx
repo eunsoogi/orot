@@ -81,8 +81,10 @@ it('does not present a static catalog or credentials and refreshes only explicit
   expect(view.queryByTestId('voice-model-gpt-text')).toBeNull();
   expect(view.queryByTestId('voice-model-gpt-realtime-2.1')).toBeNull();
   await fireEvent.press(view.getByTestId('voice-model-gpt-live-1.1'));
-  expect(view.getByTestId('voice-current-model')).toHaveTextContent(
-    /선택한 AI.*OpenAI API - GPT-Live-1.1/s,
+  expect(view.queryByTestId('voice-current-model')).toBeNull();
+  expect(view.getByTestId('voice-model-gpt-live-1.1')).toHaveProp(
+    'accessibilityState',
+    expect.objectContaining({ selected: true }),
   );
   expect(view.queryByText(/자동 전환하지 않아요/)).toBeNull();
   expect(view.getByTestId('voice-settings-save')).toBeDisabled();
@@ -102,8 +104,8 @@ it('marks retained results stale and disables API selection after a failed refre
   await waitFor(() =>
     expect(view.getByText(/API 인증 또는 모델 접근/)).toBeTruthy(),
   );
-  expect(view.queryByTestId('openai-voice-pair-form')).toBeNull();
-  expect(view.queryByTestId('voice-model-gpt-live-1.1')).toBeNull();
+  expect(view.getByTestId('openai-voice-pair-form')).toBeTruthy();
+  expect(view.getByTestId('voice-model-gpt-live-1.1')).toBeDisabled();
 });
 it('preserves unavailable saved selection and never silently substitutes local', async () => {
   jest.mocked(voiceSettingsStore.load).mockResolvedValue({
@@ -115,12 +117,12 @@ it('preserves unavailable saved selection and never silently substitutes local',
     .mocked(voiceSettingsStore.accountStatus)
     .mockResolvedValue({ connected: false, revision: 1 });
   const view = await render(<VoiceSettingsPanel />);
-  expect(await view.findByTestId('voice-current-model')).toHaveTextContent(
-    /OpenAI API - 모델 이름을 확인할 수 없어요\./,
+  await waitFor(() =>
+    expect(view.getAllByTestId(/^voice-model-group-/)[0]?.props.testID).toBe(
+      'voice-model-group-openai-api',
+    ),
   );
-  expect(view.getAllByTestId(/^voice-(current|model-group-local)/)[0]).toBe(
-    view.getByTestId('voice-current-model-card'),
-  );
+  expect(view.queryByTestId('voice-current-model')).toBeNull();
   expect(
     view.getByTestId('voice-settings-save').props.accessibilityState.disabled,
   ).toBe(true);

@@ -1,6 +1,11 @@
 import type { MutableRefObject } from 'react';
 import type { ProviderSelectionOption } from '../providers/selection/types';
 import type { ModelSettingsServices } from '../agent/execution/ModelSettingsServices';
+import {
+  calendarCatalogEpoch,
+  calendarCatalogIds,
+  saveCalendarCatalog,
+} from './calendarCatalogCache';
 import { t } from '../i18n';
 
 /** Catalog discovery publishes only to its captured owner generation; no grant or verdict is reused. */
@@ -11,6 +16,7 @@ export async function refreshCalendarModels(input: {
   accountRevision: MutableRefObject<number | null>;
   setRefreshing(value: boolean): void;
   setApiOptions(value: ProviderSelectionOption[]): void;
+  setDisplayedApiOptions(value: ProviderSelectionOption[]): void;
   setMessage(value: string): void;
 }) {
   const {
@@ -19,24 +25,48 @@ export async function refreshCalendarModels(input: {
     accountRevision,
     setRefreshing,
     setApiOptions,
+    setDisplayedApiOptions,
     setMessage,
   } = input;
   const request = ++generation.current;
   controller.current?.abort();
   setRefreshing(true);
   setApiOptions([]);
+  accountRevision.current = null;
   const abort = new AbortController();
   controller.current = abort;
   const timeout = setTimeout(() => abort.abort(), 15000);
   try {
-    const result = await input.services.voice.discoverModels(abort.signal);
-    if (request !== generation.current || abort.signal.aborted) return;
+    const voice = input.services.voice;
+    const epoch = await calendarCatalogEpoch(voice);
+    const current = () =>
+      request === generation.current && !abort.signal.aborted;
+    if (!current()) return;
+    const result = await voice.discoverModels(abort.signal);
+    if (!current()) return;
+    const account = await voice.accountStatus();
+    if (
+      !current() ||
+      !account.connected ||
+      account.revision !== result.revision
+    )
+      return;
     accountRevision.current = result.revision;
-    const supported = result.ids.filter(id => id === 'gpt-6-luna');
-    setApiOptions(
-      supported.map(id => input.services.calendarOption(id, result.revision)),
+    const supported = calendarCatalogIds(result.ids);
+    const options = supported.map(id =>
+      input.services.calendarOption(id, result.revision),
     );
+    setApiOptions(options);
+    setDisplayedApiOptions(options);
     setMessage(supported.length ? '' : t('modelSettings.noDecisionModels'));
+    if (epoch)
+      await saveCalendarCatalog(
+        voice,
+        epoch,
+        result.revision,
+        supported,
+        current,
+      );
   } catch {
     if (request === generation.current)
       setMessage(t('modelSettings.modelLoadFailed'));

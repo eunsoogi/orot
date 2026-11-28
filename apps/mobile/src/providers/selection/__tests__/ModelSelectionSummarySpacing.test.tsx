@@ -1,12 +1,11 @@
 import { fireEvent, render, screen } from '@testing-library/react-native';
-import { StyleSheet } from 'react-native';
 import {
   ModelSettingsServicesContext,
   type ModelSettingsServices,
 } from '../../../agent/execution/ModelSettingsServices';
 import ProviderSelectionScreen from '../ProviderSelectionScreen';
 
-test('uses the same spacing below the selection summary in all three Settings tabs', async () => {
+test('does not remount the shared tab rail when switching between model lists', async () => {
   const store = { load: async () => null, save: jest.fn(), clear: jest.fn() };
   const voice: ModelSettingsServices['voice'] = {
     load: async () => ({
@@ -38,22 +37,13 @@ test('uses the same spacing below the selection summary in all three Settings ta
     </ModelSettingsServicesContext.Provider>,
   );
 
-  const gap = StyleSheet.flatten(
-    screen.getByTestId('settings-provider-screen').props.contentContainerStyle,
-  ).gap;
-  const firstAppleSectionMargin = (id: string) =>
-    StyleSheet.flatten(screen.getByTestId(id).props.style).marginTop;
-  const language =
-    gap + firstAppleSectionMargin('settings-provider-local-panel');
-
+  const tab = screen.getByTestId('model-tab-language');
+  expect(screen.getByTestId('settings-provider-local-panel')).toBeTruthy();
   await fireEvent.press(screen.getByTestId('model-tab-calendar'));
-  const calendar = firstAppleSectionMargin('settings-provider-local-panel');
+  expect(screen.getByTestId('calendar-model-settings')).toBeTruthy();
+  expect(screen.getByTestId('model-tab-language')).toBe(tab);
   await fireEvent.press(screen.getByTestId('model-tab-voice'));
-  await screen.findByTestId('voice-current-model-card');
-  const voiceMargin = firstAppleSectionMargin('voice-model-group-local');
-
-  expect(calendar).toBeGreaterThan(0);
-  expect(voiceMargin).toBe(calendar);
-  expect(language).toBe(calendar);
+  expect(await screen.findByTestId('voice-model-group-local')).toBeTruthy();
+  expect(screen.getByTestId('model-tab-language')).toBe(tab);
   expect(store.save).not.toHaveBeenCalled();
 });

@@ -139,15 +139,18 @@ test('shared dock never persists half a pair across decline; a complete fresh pa
   expect(write).not.toHaveBeenCalled();
 });
 
-it('uses the same summary for distinct draft and saved states', async () => {
+it('marks each draft and saved state using the model rows, not a separate card', async () => {
   jest.mocked(voiceSettingsStore.load).mockResolvedValue({
     mode: 'local',
     model: 'apple-system-speech',
     hasApiKey: true,
   });
   const view = await render(<VoiceSettingsPanel />);
-  const summary = await view.findByTestId('voice-current-model');
-  expect(summary).toHaveTextContent(/Apple - Apple 시스템 음성/);
+  const local = await view.findByTestId('voice-model-apple-system-speech');
+  const selected = (id: string) =>
+    view.getByTestId(id).props.accessibilityState.selected;
+  expect(selected('voice-model-apple-system-speech')).toBe(true);
+  expect(view.queryByTestId('voice-current-model')).toBeNull();
   expect(voiceSettingsStore.discoverModels).not.toHaveBeenCalled();
   const refresh = view.getByTestId('voice-model-refresh');
   expect(refresh.props.accessibilityState).toMatchObject({
@@ -157,9 +160,9 @@ it('uses the same summary for distinct draft and saved states', async () => {
   await fireEvent.press(refresh);
   const api = await view.findByTestId('voice-model-gpt-live-1.1');
   await fireEvent.press(api);
-  expect(summary).toHaveTextContent(/선택한 AI.*OpenAI API - GPT-Live-1.1/s);
-  await fireEvent.press(view.getByTestId('voice-model-apple-system-speech'));
-  expect(summary).toHaveTextContent(/현재 선택:.*Apple - Apple 시스템 음성/s);
+  expect(selected('voice-model-gpt-live-1.1')).toBe(true);
+  await fireEvent.press(local);
+  expect(selected('voice-model-apple-system-speech')).toBe(true);
   expect(voiceSettingsStore.save).not.toHaveBeenCalled();
   await fireEvent.press(api);
   await fireEvent.press(view.getByTestId('voice-tool-model-gpt-6-luna'));
@@ -172,8 +175,8 @@ it('uses the same summary for distinct draft and saved states', async () => {
   );
   await fireEvent.press(view.getByTestId('inference-disclosure-allow'));
   await waitFor(() =>
-    expect(summary).toHaveTextContent(
-      /현재 선택:.*OpenAI API - GPT-Live-1\.1/s,
+    expect(view.getAllByTestId(/^voice-model-group-/)[0]?.props.testID).toBe(
+      'voice-model-group-openai-api',
     ),
   );
 });

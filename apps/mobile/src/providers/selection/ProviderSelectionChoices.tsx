@@ -18,6 +18,8 @@ interface ProviderSelectionChoicesProps {
   readonly options: readonly ProviderSelectionOption[];
   readonly loading: boolean;
   readonly saving: boolean;
+  readonly preferredProviderId?: string;
+  readonly cachedOptions?: readonly ProviderSelectionOption[];
   readonly selectedOption: ProviderSelectionOption | undefined;
   readonly pendingOption: ProviderSelectionOption | null;
   readonly requirements: ProviderSelectionRequirements;
@@ -33,6 +35,8 @@ export function ProviderSelectionChoices({
   loading,
   saving,
   selectedOption,
+  preferredProviderId,
+  cachedOptions = [],
   pendingOption,
   requirements,
   presentation = 'feature',
@@ -42,13 +46,31 @@ export function ProviderSelectionChoices({
 }: ProviderSelectionChoicesProps) {
   const modelTabViewport = useContext(AdaptiveColumnsMeasurementRoot);
   const selected = pendingOption ?? selectedOption;
+  const preferred =
+    preferredProviderId ??
+    (presentation === 'settings-provider'
+      ? selectedOption?.provider.id
+      : undefined);
+  const connectedFirst =
+    preferred?.startsWith('chatgpt-plan:') ||
+    options.some(
+      option =>
+        option.provider.id === preferred &&
+        option.privacyBoundary !== 'on-device' &&
+        option.provider.id !== APPLE_PCC_PROVIDER_ID,
+    );
+  const readOnly = cachedOptions.filter(
+    cached =>
+      !options.some(option => option.provider.id === cached.provider.id),
+  );
   const cards = (local: boolean) =>
-    options.map((option, index) =>
+    [...options, ...readOnly].map((option, index) =>
       (option.privacyBoundary === 'on-device' ||
         option.provider.id === APPLE_PCC_PROVIDER_ID) === local ? (
         <ProviderSelectionOptionCard
           key={`${option.provider.id}:${option.modelId}`}
-          disabled={loading || saving}
+          disabled={loading || saving || readOnly.includes(option)}
+          presentationOnly={readOnly.includes(option)}
           index={index}
           onPress={() => onChoose(option)}
           option={option}
@@ -81,6 +103,7 @@ export function ProviderSelectionChoices({
   );
   const showConnectedPanel =
     chatGPTSetup !== undefined ||
+    readOnly.length > 0 ||
     options.some(
       option =>
         option.privacyBoundary !== 'on-device' &&
@@ -116,8 +139,8 @@ export function ProviderSelectionChoices({
           }
           primary={
             <View>
-              {localPanel}
-              {connectedPanel}
+              {connectedFirst ? connectedPanel : localPanel}
+              {connectedFirst ? localPanel : connectedPanel}
             </View>
           }
           testID={
@@ -132,8 +155,8 @@ export function ProviderSelectionChoices({
 
   return (
     <>
-      {localPanel}
-      {connectedPanel}
+      {connectedFirst ? connectedPanel : localPanel}
+      {connectedFirst ? localPanel : connectedPanel}
     </>
   );
 }

@@ -154,10 +154,12 @@ test('lists only freshly discovered supported tool choices and explains empty an
     }),
   );
   await fireEvent.press(refresh());
-  expect(screen.queryAllByTestId(/^voice-tool-model-/)).toHaveLength(0);
+  expect(screen.queryAllByTestId(/^voice-tool-model-/)).toHaveLength(1);
+  expect(row('gpt-6-sol')).toBeDisabled();
   expect(screen.getByTestId('voice-settings-save')).toBeDisabled();
   await act(async () => fail(new Error('network')));
-  expect(screen.queryAllByTestId(/^voice-tool-model-/)).toHaveLength(0);
+  expect(screen.queryAllByTestId(/^voice-tool-model-/)).toHaveLength(1);
+  expect(row('gpt-6-sol')).toBeDisabled();
   expect(screen.getByTestId('voice-settings-save')).toBeDisabled();
   expect(voiceSettingsStore.discoverModels).toHaveBeenCalledTimes(3);
   expect(saveReviewedOpenAiVoicePair).not.toHaveBeenCalled();

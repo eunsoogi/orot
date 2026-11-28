@@ -11,19 +11,17 @@ import {
 /** Keep the provider account control visible while its exact catalog is not eligible.
  * Presentation never fetches a catalog or inherits a prior account's selected models. */
 export function OpenAiVoicePairForm({
-  fresh,
-  eligible,
+  visible,
   speech,
   preferences,
   tools,
 }: {
-  readonly fresh: boolean;
-  readonly eligible: boolean;
+  readonly visible: boolean;
   readonly speech: ReactNode;
   readonly preferences: ReactNode;
   readonly tools: ReactNode;
 }) {
-  if (!fresh || !eligible) return null;
+  if (!visible) return null;
   return (
     <View style={styles.form} testID="openai-voice-pair-form">
       <View style={styles.rows} testID="openai-voice-speech">

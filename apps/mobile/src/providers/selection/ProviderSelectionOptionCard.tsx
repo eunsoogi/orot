@@ -13,6 +13,7 @@ interface ProviderSelectionOptionCardProps {
   readonly requirements: ProviderSelectionRequirements;
   readonly selected: boolean;
   readonly disabled: boolean;
+  readonly presentationOnly?: boolean;
   readonly index: number;
   readonly catalogModelLabel?: string;
   readonly hideLocalSubtitle?: boolean;
@@ -25,12 +26,15 @@ export default function ProviderSelectionOptionCard({
   selected,
   disabled,
   index,
+  presentationOnly = false,
   catalogModelLabel,
   hideLocalSubtitle = false,
   onPress,
 }: ProviderSelectionOptionCardProps) {
   // Descriptive capability lists are omitted; actual capability and availability gates stay enforced.
-  const blockedMessage = getBlockedMessage(option, requirements);
+  const blockedMessage = presentationOnly
+    ? null
+    : getBlockedMessage(option, requirements);
   const selectable = blockedMessage === null && !disabled;
   return (
     <ProviderModelChoiceRow

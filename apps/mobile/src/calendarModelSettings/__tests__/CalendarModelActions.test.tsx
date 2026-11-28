@@ -72,9 +72,10 @@ test('calendar confirmation uses the sidebar owner, preserves disclosure, and un
   expect(
     screen.queryByTestId('provider-selection-confirmation-privacy'),
   ).toBeNull();
-  expect(screen.getByTestId('calendar-current-model')).toHaveTextContent(
-    /선택한 AI/,
-  );
+  expect(screen.queryByTestId('calendar-current-model-card')).toBeNull();
+  expect(
+    screen.getByTestId('provider-option-0').props.accessibilityState.selected,
+  ).toBe(true);
   expect(calendarModelStore.save).not.toHaveBeenCalled();
   await fireEvent.press(screen.getByTestId('dock-cancel-calendar-model'));
   expect(screen.getByTestId('dock-confirm-calendar-model')).toBeDisabled();

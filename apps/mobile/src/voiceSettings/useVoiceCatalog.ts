@@ -2,6 +2,8 @@ import { t } from '../i18n';
 import { useEffect, useRef, useState } from 'react';
 import { useModelSettingsServices } from '../agent/execution/ModelSettingsServices';
 import { voiceModels } from './voiceModels';
+import { voiceSettingsStore as productionVoiceStore } from './voiceSettingsStore';
+import { supportedVoiceModelIds } from './voiceCatalogDisplayStore';
 import { isLiveResponsesBackend } from './liveResponsesSettingsIdentity';
 
 const isSpeechModel = (id: string) =>
@@ -13,9 +15,8 @@ const errors: Record<string, string> = {
   network: t('modelSettings.networkError'),
   'account-changed': t('modelSettings.accountChanged'),
 };
-/** Catalogs are memory-only and scoped to a credential revision. Opening settings
- * never contacts the provider. A failed refresh retains an explicitly stale list.
- */
+/** Opening Settings reads only the current account's durable display hints.
+ * Only a successful explicit refresh authorizes fresh selection/save. */
 export function useVoiceCatalog() {
   const { voice: voiceSettingsStore } = useModelSettingsServices();
   const [connected, setConnected] = useState(false);
@@ -23,11 +24,13 @@ export function useVoiceCatalog() {
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState(t('modelSettings.checkingAccount'));
   const [fresh, setFresh] = useState(false);
+  const owner = useRef(voiceSettingsStore);
   const revision = useRef<number | null>(null);
   const generation = useRef(0);
   const controller = useRef<AbortController | null>(null);
   useEffect(() => {
     let alive = true;
+    owner.current = voiceSettingsStore;
     // Equal numeric revisions from a different service owner are not the same account.
     revision.current = null;
     setConnected(false);
@@ -50,6 +53,23 @@ export function useVoiceCatalog() {
               ? t('modelSettings.refreshAccountModels')
               : t('modelSettings.registerApiKey'),
           );
+          if (
+            status.connected &&
+            voiceSettingsStore === productionVoiceStore &&
+            typeof productionVoiceStore.loadDisplayModelCatalog === 'function'
+          ) {
+            const saved = await productionVoiceStore
+              .loadDisplayModelCatalog(status.revision)
+              .catch(() => []);
+            if (
+              alive &&
+              request === generation.current &&
+              revision.current === status.revision &&
+              voiceSettingsStore.accountRevisionMatches?.(status.revision) ===
+                true
+            )
+              setIds(supportedVoiceModelIds(saved));
+          }
         }
       } catch {
         if (!alive || request !== generation.current) return;
@@ -87,7 +107,13 @@ export function useVoiceCatalog() {
     };
   }, [voiceSettingsStore]);
   const refresh = async () => {
-    if (busy || !connected || revision.current === null) return;
+    if (
+      owner.current !== voiceSettingsStore ||
+      busy ||
+      !connected ||
+      revision.current === null
+    )
+      return;
     const request = ++generation.current;
     controller.current?.abort();
     const abort = new AbortController();
@@ -97,14 +123,15 @@ export function useVoiceCatalog() {
     setMessage(t('modelSettings.loadingModels'));
     const timeout = setTimeout(() => abort.abort(), 15000);
     try {
-      const result = await voiceSettingsStore.discoverModels(abort.signal);
+      const result = await (voiceSettingsStore === productionVoiceStore &&
+      typeof productionVoiceStore.refreshDisplayModels === 'function'
+        ? productionVoiceStore.refreshDisplayModels(abort.signal)
+        : voiceSettingsStore.discoverModels(abort.signal));
       if (request !== generation.current) return;
       if (result.revision !== revision.current)
         throw new Error('account-changed');
       // Keep both approved subsets from the same explicit account refresh.
-      const supported = result.ids.filter(
-        id => isSpeechModel(id) || isLiveResponsesBackend(id),
-      );
+      const supported = supportedVoiceModelIds(result.ids);
       setIds(supported);
       setFresh(true);
       setMessage(
@@ -123,14 +150,15 @@ export function useVoiceCatalog() {
       if (request === generation.current) setBusy(false);
     }
   };
+  const currentOwner = owner.current === voiceSettingsStore;
   return {
-    connected,
-    ids: ids.filter(isSpeechModel),
-    toolIds: ids.filter(isLiveResponsesBackend),
+    connected: currentOwner && connected,
+    ids: currentOwner ? ids.filter(isSpeechModel) : [],
+    toolIds: currentOwner ? ids.filter(isLiveResponsesBackend) : [],
     busy,
-    fresh,
+    fresh: currentOwner && fresh,
     message,
     refresh,
-    revision: revision.current,
+    revision: currentOwner ? revision.current : null,
   };
 }

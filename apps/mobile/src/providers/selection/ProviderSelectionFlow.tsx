@@ -14,6 +14,7 @@ import { providerSelectionText } from './text';
 import { providerSelectionStore } from './keychainSelectionStore';
 import { useCancelSignInOnUnmount } from './flowHelpers';
 import { useProviderSelectionAccounts } from './useProviderSelectionAccounts';
+import { useConversationCatalogState } from './useChatGPTDisplayCatalog';
 import type {
   ChatGPTAccountSetup,
   ProviderSelection,
@@ -98,9 +99,14 @@ export default function ProviderSelectionFlow({
   });
   useCancelSignInOnUnmount(chatGPTServices.cancelSignIn);
 
-  const selectedAccount = accounts.find(
-    account => account.issuedClientID === selectedAccountID,
-  );
+  const { selectedAccount, displayAccountID, cachedOptions, captureRefresh } =
+    useConversationCatalogState({
+      selectionStore,
+      enabled: presentation === 'settings-provider',
+      selectedAccountID,
+      accounts,
+      canReadCatalog: accountListReady && !accountListError,
+    });
   const actionTitle = useMemo(() => {
     if (!accountListReady) return providerSelectionText.chatGPTChecking;
     if (accountListError) return providerSelectionText.chatGPTAccountReadError;
@@ -119,7 +125,8 @@ export default function ProviderSelectionFlow({
     appleOption,
     chatGPTServices,
     refreshAccounts,
-    selectedAccountID,
+    selectedAccountID: displayAccountID,
+    captureCatalogRefresh: captureRefresh,
     setAccountListError,
     setAccounts,
     setOptions,
@@ -174,7 +181,7 @@ export default function ProviderSelectionFlow({
   const chatGPTSetup: ChatGPTAccountSetup = {
     presentation,
     accounts,
-    selectedAccountID,
+    selectedAccountID: displayAccountID,
     statusMessage: accountListError
       ? providerSelectionText.chatGPTAccountReadError
       : actions.actionStatus || accountStatus,
@@ -186,7 +193,7 @@ export default function ProviderSelectionFlow({
     actionDisabled:
       !accountListReady ||
       accountListError ||
-      (accounts.length > 0 && selectedAccountID === null),
+      (accounts.length > 0 && displayAccountID === null),
     onAccountSelected: issuedClientID => {
       setSelectedAccountID(issuedClientID);
       actions.clearStatus();
@@ -211,6 +218,7 @@ export default function ProviderSelectionFlow({
         onBack={onBack}
         onNavigationStateChange={reportSelectionState}
         onSelectionCommitted={onSelectionCommitted}
+        cachedOptions={cachedOptions}
         options={pccOption ? [...options, pccOption] : options}
         requirements={visitRecommendationRequirements}
         selectionStore={selectionStore}

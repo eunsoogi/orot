@@ -1,9 +1,13 @@
 import { fireEvent, render, waitFor } from '@testing-library/react-native';
 import { VoiceSettingsPanel } from '../VoiceSettingsPanel';
+import { loadLiveResponsesSettings } from '../liveResponsesSettings';
 import { createLiveVoicePreferenceStore } from '../liveVoicePreferenceStore';
 import { voiceSettingsStore } from '../voiceSettingsStore';
 import { saveReviewedOpenAiVoicePair } from '../saveReviewedOpenAiVoicePair';
 
+jest.mock('../liveResponsesSettings', () => ({
+  loadLiveResponsesSettings: jest.fn(async () => ({ kind: 'off' })),
+}));
 jest.mock('../saveReviewedOpenAiVoicePair', () => ({
   saveReviewedOpenAiVoicePair: jest.fn(),
 }));
@@ -46,7 +50,8 @@ test('whole paired form opens only after explicit refresh; one chosen model cann
       livePreferences={{ ready: true, store, authorityRevision: 4 }}
     />,
   );
-  await view.findByTestId('voice-current-model');
+  await view.findByTestId('voice-model-apple-system-speech');
+  expect(view.queryByTestId('voice-current-model')).toBeNull();
   expect(view.queryByTestId('openai-voice-pair-form')).toBeNull();
   expect(loadPreferences).not.toHaveBeenCalled();
   expect(voiceSettingsStore.discoverModels).not.toHaveBeenCalled();
@@ -139,3 +144,63 @@ test('cold paired settings evaluate the live receipt at mounted state publicatio
     Reflect.deleteProperty(voiceSettingsStore, 'loadVoicePairPresentation');
   }
 });
+
+test.each([true, false])(
+  'marks both verified saved rows on reopening without a network refresh (cached: %s)',
+  async cached => {
+    jest.clearAllMocks();
+    const stored = jest.fn(async () =>
+      cached ? ['gpt-live-1.1', 'gpt-6-sol', 'gpt-6-luna'] : [],
+    );
+    Object.assign(voiceSettingsStore, { loadDisplayModelCatalog: stored });
+    jest.mocked(voiceSettingsStore.load).mockResolvedValue({
+      mode: 'openai-api',
+      model: 'gpt-live-1.1',
+      hasApiKey: true,
+    });
+    jest.mocked(voiceSettingsStore.accountStatus).mockResolvedValue({
+      connected: true,
+      revision: 4,
+    });
+    jest.mocked(loadLiveResponsesSettings).mockResolvedValue({
+      kind: 'active',
+      credentialEpoch: 'a'.repeat(64),
+      nativeGrant: {
+        backendModel: 'gpt-6-sol',
+        grantID: 'synthetic-model',
+        generation: 'synthetic',
+      },
+      current: () => true,
+      subscribe: () => () => {},
+    });
+    try {
+      const view = await render(<VoiceSettingsPanel />);
+      await waitFor(() => {
+        const speech = view.getByTestId('voice-model-gpt-live-1.1');
+        const backend = view.getByTestId('voice-tool-model-gpt-6-sol');
+        expect(speech).toHaveProp(
+          'accessibilityState',
+          expect.objectContaining({ selected: true, disabled: true }),
+        );
+        expect(backend).toHaveProp(
+          'accessibilityState',
+          expect.objectContaining({ selected: true, disabled: true }),
+        );
+      });
+      expect(view.getAllByTestId(/^voice-model-group-/)[0]?.props.testID).toBe(
+        'voice-model-group-openai-api',
+      );
+      expect(view.queryByTestId('voice-current-model')).toBeNull();
+      expect(view.queryByTestId('live-voice-language')).toBeNull();
+      expect(view.getByTestId('voice-settings-save')).toBeDisabled();
+      expect(voiceSettingsStore.discoverModels).not.toHaveBeenCalled();
+      expect(saveReviewedOpenAiVoicePair).not.toHaveBeenCalled();
+      expect(Boolean(view.queryByTestId('voice-tool-model-gpt-6-luna'))).toBe(
+        cached,
+      );
+      await view.unmount();
+    } finally {
+      Reflect.deleteProperty(voiceSettingsStore, 'loadDisplayModelCatalog');
+    }
+  },
+);
