@@ -35,6 +35,7 @@ test('keeps one settings end gutter beyond the navigation overlap', async () => 
           onOpenAccounts={jest.fn()}
           onOpenPrivacy={jest.fn()}
           onOpenMemory={jest.fn()}
+          onOpenDisplayMode={() => {}}
           onOpenNotifications={jest.fn()}
           onOpenPrivacyPolicy={jest.fn()}
           onOpenHealthData={jest.fn()}
@@ -82,6 +83,7 @@ test.each([
         onOpenAccounts={jest.fn()}
         onOpenPrivacy={jest.fn()}
         onOpenMemory={jest.fn()}
+        onOpenDisplayMode={() => {}}
         onOpenNotifications={jest.fn()}
         onOpenPrivacyPolicy={jest.fn()}
         onOpenHealthData={jest.fn()}

@@ -33,4 +33,8 @@ export const assistantAppearanceKo = {
   'assistantAppearance.literature': '의학 자료를 찾고 있어요',
   'assistantAppearance.streaming': '답변을 작성하고 있어요',
   'assistantAppearance.cancelling': '요청을 중단하고 있어요',
+  'settings.displayMode': '화면 모드',
+  'settings.displayMode.system': '시스템',
+  'settings.displayMode.light': '라이트 모드',
+  'settings.displayMode.dark': '다크 모드',
 } as const;

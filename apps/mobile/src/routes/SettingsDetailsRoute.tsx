@@ -6,6 +6,7 @@ import type { AiFeatureServiceDependencies } from '../aiFeatures/integration/fea
 import type { BackupPreparationDisplayState } from '../backup/useBackupPreparation';
 import type { NavigationRouteActions } from '../navigation/NavigationRouteAdapter';
 import { SettingsAccountsRoute } from './SettingsAccountsRoute';
+import { SettingsDisplayModeRoute } from './SettingsDisplayModeRoute';
 import { SettingsMemoryRoute } from './SettingsMemoryRoute';
 import { SettingsNotificationsRoute } from './SettingsNotificationsRoute';
 import { SettingsPrivacyRoute } from './SettingsPrivacyRoute';
@@ -59,6 +60,8 @@ export function SettingsDetailsRoute({
       return <SettingsPrivacyRoute calendarSync={calendarSync} />;
     case 'settings-privacy-policy':
       return <SettingsPrivacyRoute policy />;
+    case 'settings-display-mode':
+      return <SettingsDisplayModeRoute />;
     case 'settings-notifications':
       return <SettingsNotificationsRoute />;
     case 'settings-memory':

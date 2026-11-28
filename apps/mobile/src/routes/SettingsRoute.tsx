@@ -20,6 +20,7 @@ interface SettingsRouteProps {
   readonly onOpenPrivacyPolicy: () => void;
   readonly onOpenHealthData: () => void;
   readonly onOpenSyncStatus: () => void;
+  readonly onOpenDisplayMode: () => void;
   readonly onOpenNotifications: () => void;
   readonly onOpenMemory: () => void;
 }
@@ -32,6 +33,7 @@ export function SettingsRoute({
   onOpenPrivacyPolicy,
   onOpenHealthData,
   onOpenSyncStatus,
+  onOpenDisplayMode,
   onOpenNotifications,
   onOpenMemory,
 }: SettingsRouteProps) {
@@ -68,6 +70,12 @@ export function SettingsRoute({
                 title={t('settings.accounts')}
                 onPress={onOpenAccounts}
                 testID="settings-open-accounts"
+              />
+              <SettingsRouteRow
+                symbol="circle.lefthalf.filled"
+                title={t('settings.displayMode')}
+                onPress={onOpenDisplayMode}
+                testID="settings-open-display-mode"
               />
               <SettingsRouteRow
                 symbol="heart.fill"

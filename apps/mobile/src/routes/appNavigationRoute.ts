@@ -22,6 +22,7 @@ export type AppNavigationRoute =
   | 'medical-manual'
   | 'settings-provider'
   | 'settings-accounts'
+  | 'settings-display-mode'
   | 'settings-privacy'
   | 'settings-privacy-policy'
   | 'settings-notifications'

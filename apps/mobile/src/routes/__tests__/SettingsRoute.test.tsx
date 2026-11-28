@@ -28,6 +28,7 @@ test('shows the installed application version supplied by native metadata', asyn
         onOpenAccounts={jest.fn()}
         onOpenPrivacy={jest.fn()}
         onOpenMemory={jest.fn()}
+        onOpenDisplayMode={() => {}}
         onOpenNotifications={jest.fn()}
         onOpenPrivacyPolicy={jest.fn()}
         onOpenHealthData={jest.fn()}
@@ -63,6 +64,7 @@ test('shows one compact list and preserves each Settings destination', async () 
       onOpenAccounts={onOpenAccounts}
       onOpenPrivacy={onOpenPrivacy}
       onOpenMemory={onOpenMemory}
+      onOpenDisplayMode={() => {}}
       onOpenNotifications={onOpenNotifications}
       onOpenPrivacyPolicy={onOpenPrivacyPolicy}
       onOpenHealthData={onOpenHealthData}

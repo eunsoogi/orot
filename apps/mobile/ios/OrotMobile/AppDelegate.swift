@@ -153,6 +153,15 @@ class SceneDelegate: UIResponder, UIWindowSceneDelegate {
         #else
             window = UIWindow(windowScene: windowScene)
         #endif
+        // Resolve the app-only preference before the first React or UIKit surface is visible.
+        window.overrideUserInterfaceStyle = switch UserDefaults.standard.string(forKey: "orot.app.display-mode.v1") {
+        case "light":
+            .light
+        case "dark":
+            .dark
+        default:
+            .unspecified
+        }
         self.window = window
         appDelegate.window = window
 
