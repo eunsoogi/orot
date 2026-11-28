@@ -210,20 +210,20 @@ test('keeps the ordinary research input and raw-source schema instead of forcing
   ).toEqual(['sections']);
 });
 
-test('preserves source-derived limitations and refuses unsafe model-written clinical claims', () => {
+test('reports measured facts without speculative caveats and refuses unsafe clinical claims', () => {
   const result = partitionedSymptomSummaryTask.validateResult(
     { recordSummaries },
     input,
   );
   expect(result.status).toBe('valid');
   if (result.status !== 'valid')
-    throw new Error('Expected preserved source limitation');
-  expect(result.value.hypotheses[3].summary).toContain(
-    '기록하지 않은 날짜의 수면은 알 수 없어요.',
-  );
-  expect(result.value.hypotheses[2].summary).toContain(
-    '중복될 수 있어 합산하거나 전체 일일 걸음수로 해석할 수 없어요.',
-  );
+    throw new Error('Expected source-bound summaries');
+  const activity = result.value.hypotheses[2].summary;
+  const sleep = result.value.hypotheses[3].summary;
+  expect(activity).toContain('5000 걸음');
+  expect(sleep).toContain('평균 420분');
+  expect(activity).not.toContain('중복될 수 있어 합산하거나');
+  expect(sleep).not.toContain('기록하지 않은 날짜의 수면은 알 수 없어요.');
   const raw = JSON.stringify({
     type: 'result',
     value: { recordSummaries: { e1: '확실히 당뇨병입니다.' } },
