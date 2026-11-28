@@ -1,11 +1,10 @@
-import { StyleSheet } from 'react-native';
 import {
   settingsPageInsets,
   settingsPageStyles,
 } from '../settingsPagePresentation';
 
 test('uses the same title gutter before adding each shell reservation', () => {
-  const inner = StyleSheet.flatten(settingsPageStyles.inset);
+  const inner = settingsPageStyles.inset;
   expect(settingsPageInsets({ paddingBottom: 12 })).toEqual({
     paddingTop: inner.paddingTop,
     paddingLeft: inner.paddingHorizontal,
