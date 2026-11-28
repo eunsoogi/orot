@@ -41,7 +41,6 @@ export async function proposeConversationTemplate(input: {
   )
     return;
   const linked = createLinkedAbortController(signal);
-  let timer: ReturnType<typeof setTimeout> | undefined;
   let spent = false;
   let ownerChanged = false;
   let unwatch: (() => void) | undefined;
@@ -61,13 +60,6 @@ export async function proposeConversationTemplate(input: {
       stopWaiting = () =>
         linked.controller.signal.removeEventListener('abort', stop);
       if (linked.controller.signal.aborted) stop();
-    });
-    // A slow selector/grant cannot indefinitely postpone the normal answer.
-    const timeout = new Promise<undefined>(resolve => {
-      timer = setTimeout(() => {
-        linked.controller.abort();
-        resolve(undefined);
-      }, 2500);
     });
     const propose = async () => {
       if (!current()) return;
@@ -95,7 +87,7 @@ export async function proposeConversationTemplate(input: {
           },
         },
         // Count only actual provider entry after the durable owner recheck.
-        // A timed-out preflight cannot suppress the ordinary reviewed opening.
+        // A refused preflight cannot suppress the ordinary reviewed opening.
         onProviderExecution: () => {
           spent = true;
           return undefined;
@@ -125,7 +117,6 @@ export async function proposeConversationTemplate(input: {
           budget: {
             ...DEFAULT_MULTI_AGENT_BUDGET,
             maxModelCalls: 1,
-            timeoutMs: 2500,
           },
         },
         consent: input.consent,
@@ -140,7 +131,9 @@ export async function proposeConversationTemplate(input: {
       if (current() && !verified) ownerChanged = true;
       if (current() && verified) return intent;
     };
-    const intent = await Promise.race([propose(), timeout, retired]);
+    // Follow the owned request and selected transport. A fixed routing deadline
+    // could commit ordinary chat before a valid template choice arrived.
+    const intent = await Promise.race([propose(), retired]);
     return {
       intent: current() ? intent : undefined,
       spent,
@@ -153,7 +146,6 @@ export async function proposeConversationTemplate(input: {
       ...(ownerChanged || !owner.current() ? { ownerChanged: true } : {}),
     };
   } finally {
-    if (timer) clearTimeout(timer);
     stopWaiting?.();
     unwatch?.();
     // End the proposal-only authorization/cancellation lifetime. This tool
