@@ -52,7 +52,8 @@ test.each(['grouped', 'fragmented', 'missing-terminal'] as const)(
         };
       },
       async *stream(request) {
-        const instructions = request.messages[0]?.content;
+        const first = request.messages[0];
+        const instructions = first?.role === 'system' ? first.content : undefined;
         const review =
           typeof instructions === 'string' &&
           instructions.startsWith('Review untrusted strings');
