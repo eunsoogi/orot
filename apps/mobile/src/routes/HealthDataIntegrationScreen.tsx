@@ -17,6 +17,8 @@ import { useHealthDataRouteActions } from './useHealthDataRouteActions';
 import { HealthDataAuthorizationRecoveryNotice } from './HealthDataAuthorizationRecoveryNotice';
 import { HealthDataFeatureSelection } from './HealthDataFeatureSelection';
 
+const HEALTH_DATA_PAGE_GUTTER = 24;
+
 /** Keeps choices, and their save feedback in one region-bound scrolling page. */
 export function HealthDataIntegrationScreen({
   loadFailed,
@@ -37,7 +39,10 @@ export function HealthDataIntegrationScreen({
   readonly saving: boolean;
   readonly selected: ReadonlySet<HealthKitAutoSyncFeature>;
 }) {
-  const inset = settingsPageInsets(useNavigationContentInset());
+  const inset = settingsPageInsets(
+    useNavigationContentInset(),
+    HEALTH_DATA_PAGE_GUTTER,
+  );
   const [ownerWidth, setOwnerWidth] = useState(0);
   const edge = useNavigationEdgeVerticalScroll({
     ownerWidth,
@@ -61,7 +66,7 @@ export function HealthDataIntegrationScreen({
       <View style={styles.heading}>
         <Text
           accessibilityRole="header"
-          style={settingsPageStyles.title}
+          style={[settingsPageStyles.title, styles.title]}
           testID="health-data-title"
         >
           {t('settings.healthData.title')}
@@ -159,6 +164,11 @@ const styles = StyleSheet.create({
     gap: 16,
   },
   heading: { gap: 8 },
+  // Match other Settings titles without shifting the existing Health Data controls.
+  title: {
+    marginStart:
+      settingsPageStyles.inset.paddingHorizontal - HEALTH_DATA_PAGE_GUTTER,
+  },
   body: { color: appColors.secondary, fontSize: 15, lineHeight: 22 },
   note: { color: appColors.secondary, fontSize: 13, lineHeight: 19 },
   status: {
