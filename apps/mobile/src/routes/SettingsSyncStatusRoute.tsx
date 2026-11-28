@@ -1,4 +1,4 @@
-import { settingsPageInsets } from '../layout/settingsPagePresentation';
+import { settingsPageStyles } from '../layout/settingsPagePresentation';
 import { useEffect, useState } from 'react';
 import { ScrollView, StyleSheet, View } from 'react-native';
 import type { HealthKitAutoSyncFeature } from '../healthkit/autoSyncCheckpoint';
@@ -42,7 +42,7 @@ export function SettingsSyncStatusRoute({
   readonly backupState?: BackupPreparationDisplayState;
   readonly onPrepareBackup?: () => Promise<void>;
 }) {
-  const inset = settingsPageInsets(useNavigationContentInset());
+  const inset = useNavigationContentInset();
   // This page owns the scroll viewport; the panels retain their readable inset.
   const edge = useNavigationEdgeVerticalScroll({
     trailingPadding: inset.paddingRight,
@@ -134,7 +134,7 @@ export function SettingsSyncStatusRoute({
     >
       <AdaptiveColumns
         primary={
-          <View style={styles.pageSections}>
+          <View style={styles.pageSections} testID="settings-sync-status-page">
             <SettingsSyncStatusHealthPanel
               attemptedFeatures={attemptedFeatures}
               calendarSync={calendarSync}
@@ -176,7 +176,7 @@ export function SettingsSyncStatusRoute({
 
 const styles = StyleSheet.create({
   scroll: { flex: 1 },
-  pageSections: { gap: 16 },
+  pageSections: { ...settingsPageStyles.inset, gap: 16 },
   container: {
     flexGrow: 1,
   },

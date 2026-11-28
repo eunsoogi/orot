@@ -1,3 +1,4 @@
+import ProviderSelectionScreen from '../../providers/selection/ProviderSelectionScreen';
 import { render, screen } from '@testing-library/react-native';
 import { Text } from 'react-native';
 import type { ReactNode } from 'react';
@@ -53,5 +54,40 @@ test.each([
       `navigation-route-columns-${routeKey}`,
     );
     expect(Boolean(sceneColumns)).toBe(sceneOwnsColumns);
+  },
+);
+
+test.each(['settings-provider', 'settings-accounts'] as const)(
+  '%s puts its shared large title inside the measured Settings lane',
+  async presentation => {
+    await render(
+      <ProviderSelectionScreen
+        presentation={presentation}
+        screenTitle="Synthetic settings page"
+        options={[]}
+        requirements={{ inputTypes: ['text'] }}
+        selectionStore={{
+          load: async () => null,
+          save: async () => undefined,
+          clear: async () => undefined,
+        }}
+      />,
+    );
+    const lane = screen.getByTestId('settings-provider-columns-primary');
+    expect(lane).toContainElement(screen.getByText('Synthetic settings page'));
+    expect(screen.getByText('Synthetic settings page')).toHaveStyle({
+      fontSize: 34,
+      fontWeight: '700',
+    });
+    expect(
+      screen.getByTestId(presentation + '-screen').props.contentContainerStyle,
+    ).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          paddingLeft: 20,
+          paddingTop: 24,
+        }),
+      ]),
+    );
   },
 );
