@@ -136,9 +136,8 @@ const styles = StyleSheet.create({
     minWidth: 0,
   },
   panel: {
-    alignSelf: 'center',
+    // The AdaptiveColumns lane already excludes space reserved by navigation.
     width: '100%',
-    maxWidth: 680,
     gap: 20,
     paddingHorizontal: 20,
     paddingTop: 24,

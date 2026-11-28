@@ -57,9 +57,8 @@ const styles = StyleSheet.create({
   background: { flexGrow: 1 },
   page: {
     flexGrow: 1,
-    alignSelf: 'center',
+    // The AdaptiveColumns lane already excludes space reserved by navigation.
     width: '100%',
-    maxWidth: 680,
     padding: 20,
     gap: 20,
   },
