@@ -117,6 +117,9 @@ test.each([false, true])(
         x: 99,
         width: 132,
         animated: !reduceMotion,
+        origin: reduceMotion
+          ? undefined
+          : { x: 3, y: 3, width: 96, height: 44 },
       });
       expect(width()).toBe(345);
       await fireEvent.press(screen.getByTestId('model-tab-voice'));
@@ -126,10 +129,25 @@ test.each([false, true])(
         x: 231,
         width: 108,
         animated: !reduceMotion,
+        origin: reduceMotion
+          ? undefined
+          : { x: 99, y: 3, width: 132, height: 44 },
       });
       expect(screen.getByTestId('voice-model-group-local')).toBeTruthy();
       expect(screen.queryByTestId(animatedHost)).toBeNull();
+      const priorTransition = currentPill().props.selectionTarget.transition;
       await fireEvent.press(screen.getByTestId('model-tab-language'));
+      expect(currentPill().props.selectionTarget).toMatchObject({
+        x: 3,
+        width: 96,
+        origin: reduceMotion
+          ? undefined
+          : { x: 231, y: 3, width: 108, height: 44 },
+      });
+      if (!reduceMotion)
+        expect(currentPill().props.selectionTarget.transition).toBeGreaterThan(
+          priorTransition,
+        );
       expect(width()).toBe(345);
       expect(animation.start).toHaveBeenCalledTimes(reduceMotion ? 0 : 3);
       expect(animation.stop).toHaveBeenCalledTimes(reduceMotion ? 0 : 2);

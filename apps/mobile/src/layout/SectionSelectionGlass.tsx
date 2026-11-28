@@ -11,7 +11,11 @@ import {
 import { NavigationMotionContext } from '../navigation/NavigationMotionContext';
 import { appColors } from './appColors';
 
-type Target = LayoutRectangle & { readonly animated: boolean };
+type Target = LayoutRectangle & {
+  readonly animated: boolean;
+  readonly origin?: LayoutRectangle;
+  readonly transition?: number;
+};
 type Props = ViewProps & { readonly selectionTarget?: Target };
 
 const NativeSectionGlass =
@@ -39,6 +43,7 @@ export function useSectionSelectionGlass<Id extends string>(selected: Id) {
   const previous = useRef<{ id: Id; frames: typeof frames } | undefined>(
     undefined,
   );
+  const transition = useRef(0);
   const rect = frames[selected];
 
   useLayoutEffect(() => {
@@ -48,15 +53,27 @@ export function useSectionSelectionGlass<Id extends string>(selected: Id) {
       setTarget(undefined);
       return;
     }
-    // A layout-only change must settle immediately rather than glide to stale geometry.
-    setTarget(current => {
-      const animated =
-        !reduceMotion && last?.id !== selected && last?.frames === frames;
-      if (sameRect(current, rect) && !reduceMotion) return current;
-      if (sameRect(current, rect) && current?.animated === animated)
-        return current;
-      return { ...rect, animated };
-    });
+    // React knows the logical previous selection even if native transactions
+    // coalesce or a prior animation is still in flight. Only stable geometry
+    // can give that previous tab a usable origin in this coordinate space.
+    const origin =
+      !reduceMotion && last && last.id !== selected && last.frames === frames
+        ? last.frames[last.id]
+        : undefined;
+    if (origin && !sameRect(origin, rect)) {
+      setTarget({
+        ...rect,
+        animated: true,
+        origin,
+        transition: ++transition.current,
+      });
+      return;
+    }
+    setTarget(current =>
+      sameRect(current, rect) && current?.animated === false
+        ? current
+        : { ...rect, animated: false, origin: undefined },
+    );
   }, [frames, rect, reduceMotion, selected]);
 
   return {
