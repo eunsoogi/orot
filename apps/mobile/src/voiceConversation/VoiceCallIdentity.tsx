@@ -42,8 +42,13 @@ export function SavedVoiceCallIdentity({
   );
 }
 const styles = StyleSheet.create({
-  identity: { alignItems: 'center', gap: 24, maxWidth: '100%' },
-  compactIdentity: { flexDirection: 'row', gap: 8 },
+  identity: {
+    flexDirection: 'column',
+    alignItems: 'center',
+    gap: 24,
+    maxWidth: '100%',
+  },
+  compactIdentity: { gap: 8 },
   compactDisc: { width: 64, height: 64, borderRadius: 32 },
   compactAvatar: { transform: [{ scale: 1.25 }] },
   compactName: { fontSize: 20 },

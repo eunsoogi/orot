@@ -7,6 +7,7 @@ import {
   type ViewStyle,
 } from 'react-native';
 import { RealtimeVoiceSurface } from '../RealtimeVoiceSurface';
+import { t } from '../../i18n';
 import { liveModel } from '../../voiceSettings/liveVoicePreferences';
 import type { RealtimeTranscript } from '../nativeRealtimeVoiceTypes';
 
@@ -48,8 +49,30 @@ const insetLayout = (width: number, height: number) =>
     nativeEvent: { layout: { x: 0, y: 0, width, height } },
   });
 
+function expectHeroStack(status: string) {
+  const identity = screen.getByTestId('voice-call-identity');
+  const focus = identity.parent?.parent;
+  const activity = screen.getByTestId('voice-activity-symbol', {
+    includeHiddenElements: true,
+  });
+  const statusLabel = screen.getByText(status);
+  expect(identity).toHaveStyle({
+    flexDirection: 'column',
+    alignItems: 'center',
+  });
+  expect(focus).toHaveStyle({ flexDirection: 'column', alignItems: 'center' });
+  expect(focus?.children.slice(0, 3)).toEqual([
+    identity.parent,
+    activity.parent,
+    statusLabel,
+  ]);
+  expect(identity.children[1]).toHaveProp('accessibilityRole', 'header');
+  expect(statusLabel).toHaveProp('accessibilityLiveRegion', 'polite');
+}
+
 test.each([
   { width: 466, height: 678, safeWidth: 382, safeHeight: 590, fontScale: 2 },
+  { width: 760, height: 520, safeWidth: 686, safeHeight: 466, fontScale: 1 },
   { width: 951, height: 669, safeWidth: 867, safeHeight: 600, fontScale: 1 },
 ])(
   'only transcript scrolls; the call controls remain usable ($width × $height)',
@@ -58,7 +81,7 @@ test.each([
     const stop = jest.fn();
     const mute = jest.fn();
     const resume = jest.fn();
-    const call = (phase: 'listening' | 'stopped') => (
+    const call = (phase: 'listening' | 'stopped', transcripts = lines) => (
       <RealtimeVoiceSurface
         visible
         state={{
@@ -67,7 +90,7 @@ test.each([
         }}
         status="Synthetic listening"
         model={liveModel}
-        transcripts={lines}
+        transcripts={transcripts}
         disabled={false}
         statusExternallyRendered={false}
         start={jest.fn()}
@@ -88,7 +111,10 @@ test.each([
     const shell = screen.getByTestId('voice-call-screen');
     expect(shell.type).not.toBe(transcript.type);
     await insetLayout(safeWidth, safeHeight);
-    expect(screen.getByTestId('voice-call-identity')).toBeTruthy();
+    expectHeroStack('Synthetic listening');
+    expect(screen.getByTestId('voice-transcript-viewport')).toHaveStyle({
+      flexShrink: 1,
+    });
     for (const id of ['voice-transcript-fade', 'voice-transcript-fade-bottom'])
       expect(
         screen.getByTestId(id, { includeHiddenElements: true }).props
@@ -120,7 +146,10 @@ test.each([
     }
     await fireEvent.press(screen.getByTestId('voice-call-mute'));
     expect(mute).toHaveBeenCalledTimes(1);
-    await view.rerender(call('stopped'));
+    await view.rerender(call('stopped', []));
+    expectHeroStack(t('ragConversation.voice.muted'));
+    expect(screen.queryAllByTestId('voice-transcript-line')).toHaveLength(0);
+    expect(screen.getByTestId('voice-transcript-scroll')).toBe(transcript);
     await fireEvent.press(screen.getByTestId('voice-call-resume'));
     await fireEvent.press(screen.getByTestId('voice-call-end'));
     expect(resume).toHaveBeenCalledTimes(1);
@@ -172,6 +201,7 @@ test('Live transcript keeps reader scroll-back over a safe-area reflow and still
   ).toBe(12);
   await windowSize(669, 951, 1);
   await insetLayout(635, 850);
+  expectHeroStack('Synthetic');
   expect(
     StyleSheet.flatten(screen.getByTestId('voice-call-screen').props.style)
       .padding,
