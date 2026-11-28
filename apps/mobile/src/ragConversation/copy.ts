@@ -56,6 +56,8 @@ export function getRagConversationFailureCopy(
     authored_memory_not_saved: 'historyDisplay.authoredMemoryNotSaved',
     answer_memory_not_saved: 'historyDisplay.answerMemoryNotSaved',
     protected_memory_not_saved: 'historyDisplay.protectedMemoryNotSaved',
+    health_summary_section_unverified:
+      'savedMemory.generatedReportSectionUnverified',
     budget_exceeded: 'ragConversation.failureBudget',
     unavailable: 'ragConversation.unavailable',
   } as const satisfies Record<RagConversationFailureKind, string>;

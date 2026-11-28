@@ -24,6 +24,7 @@ export function SavedGeneratedReportDetail({
   artifactId: string;
   reportKind?:
     | 'health_summary'
+    | 'health_summary_section'
     | 'disease_possibilities'
     | 'conversation_disease_possibilities'
     | 'visit_questions';
@@ -104,6 +105,13 @@ export function SavedGeneratedReportDetail({
           ? { bookmarkedVisitQuestions: questions }
           : null;
       }
+      if (reportKind === 'health_summary_section') {
+        const section = await storage.readBookmarkedHealthSummarySection(
+          artifactId,
+          { current: isCurrent, confirmProtected: admission.confirm },
+        );
+        return section && isCurrent() ? section.detail : null;
+      }
       if (reportKind === 'health_summary') {
         const strict = await storage.readSavedHealthSummaryReference(
           artifactId,
@@ -142,14 +150,16 @@ export function SavedGeneratedReportDetail({
     <View testID="saved-generated-report-detail">
       <AppText accessibilityRole="header">
         {t(
-          reportKind === 'health_summary'
-            ? 'savedMemory.generatedReportHealthSummary'
-            : reportKind === 'disease_possibilities' ||
-                reportKind === 'conversation_disease_possibilities'
-              ? 'savedMemory.generatedReportDiseasePossibilities'
-              : reportKind === 'visit_questions'
-                ? 'savedMemory.generatedReportVisitQuestions'
-                : 'savedMemory.generatedReportDaily',
+          reportKind === 'health_summary_section'
+            ? 'savedMemory.generatedReportHealthSummarySection'
+            : reportKind === 'health_summary'
+              ? 'savedMemory.generatedReportHealthSummary'
+              : reportKind === 'disease_possibilities' ||
+                  reportKind === 'conversation_disease_possibilities'
+                ? 'savedMemory.generatedReportDiseasePossibilities'
+                : reportKind === 'visit_questions'
+                  ? 'savedMemory.generatedReportVisitQuestions'
+                  : 'savedMemory.generatedReportDaily',
         )}
       </AppText>
       <AppText>{t('savedMemory.generatedReportOrigin')}</AppText>

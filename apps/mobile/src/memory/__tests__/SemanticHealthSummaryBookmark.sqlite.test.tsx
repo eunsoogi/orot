@@ -24,6 +24,7 @@ import { ConversationScreen } from '../../ragConversation/ConversationScreen';
 import { ConversationSessionsProvider } from '../../ragConversation/ConversationSessionsContext';
 import { createConversationSessionRetention } from '../../ragConversation/conversationSessionRetention';
 import { setup } from '../../storage/testSupport/conversationHistoryDisplayFixture';
+import { healthSummarySectionSelectedModel } from '../testSupport/healthSummarySectionSelectedModel';
 import { openSavedGeneratedReportReferences } from '../openSavedGeneratedReportReferences';
 
 jest.mock('../openSavedGeneratedReportReferences');
@@ -82,24 +83,21 @@ test.each(['contextual', 'exact-local'] as const)(
         });
       });
       const authorize = jest.fn(async () => 'authorized' as const);
-      const model = { providerId: apple.provider.id, modelId: apple.modelId };
-      const selectedAi = async () => ({
-        status: 'ready' as const,
-        selection: model,
-        option: apple,
-        provider: {
-          ...apple.provider,
-          generate,
-          capabilities: {
-            ...apple.provider.capabilities,
-            streaming: false,
-            toolCalling: true,
+      const { model, selectedAi } = healthSummarySectionSelectedModel(
+        {
+          ...apple,
+          provider: {
+            ...apple.provider,
+            generate,
+            capabilities: {
+              ...apple.provider.capabilities,
+              streaming: false,
+              toolCalling: true,
+            },
           },
         },
-        modelId: apple.modelId,
-        recipient: 'Synthetic device',
-        remoteProcessing: false,
-      });
+        mode,
+      );
       const registry = new LocalEvidenceReferenceRegistry();
       const loadLocalData = async () => ({
         ...localData([]).data,

@@ -1,3 +1,4 @@
+import { rememberHealthSummarySection } from './rememberHealthSummarySection';
 import { hasConversationMemoryCommand } from '../../manualHistory/conversationHistoryIntent';
 import { conversationTemplateTarget } from '../../ragConversation/conversationTemplateTarget';
 import { proposeConversationTemplate } from '../../ragConversation/conversationTemplateProposal';
@@ -117,13 +118,28 @@ export function createConversationSummaryIntegration(input: {
             : 'protected_memory_not_saved',
           discardUnverifiedDraft: true,
         } as const;
-      if (protectedLocalInput)
+      const scopedMemory = await rememberHealthSummarySection({
+        question,
+        protectedRequest: protectedLocalInput,
+        observer: originalObserver,
+        signal: operationSignal,
+        loadData: input.loadData,
+        select: input.selectedAi,
+        consent: input.consent,
+      });
+      if (scopedMemory && typeof scopedMemory !== 'string') return scopedMemory;
+      // Ordinary discussion does not lend the last report bookmark authority.
+      // Its existing sender, intent, and current model stay unchanged.
+      let observer =
+        scopedMemory === 'ordinary' && originalObserver
+          ? { ...originalObserver, reportBookmark: undefined }
+          : originalObserver;
+      if (protectedLocalInput || scopedMemory === 'whole-summary')
         return input.sendRagMessage(question, history, signal, {
-          ...originalObserver,
+          ...observer,
           protectedLocalInput: true,
           suppressContextualOpening: true,
         });
-      let observer = originalObserver;
       let context = originalContext;
       const admission = observer?.modelTemplateAdmission;
       if (

@@ -1,4 +1,15 @@
-import { currentConversationMessages } from './currentConversationMessages';
+import {
+  bindArchivedHealthSummarySection,
+  type ArchivedHealthSummarySection,
+} from './archivedHealthSummarySectionOwner';
+import {
+  latestReportArtifact,
+  latestReportCandidate,
+} from './latestConversationBookmarkTarget';
+export {
+  latestConversationPossibilityArtifact,
+  latestReportArtifact,
+} from './latestConversationBookmarkTarget';
 import { watchSavedReportNativeProtection } from '../generatedReports/savedReportNativeProtection';
 import type { ConversationScreenProps } from './ConversationScreenProps';
 import type { ConversationSessions } from './conversationSessions';
@@ -6,10 +17,7 @@ import {
   captureReportBookmarkOwner,
   type ReportBookmarkVisibility,
 } from './reportBookmarkOwnership';
-import {
-  savedHistoryTranscript,
-  visibleSavedHistoryDisplay,
-} from './conversationSavedHistoryDisplay';
+import { visibleSavedHistoryDisplay } from './conversationSavedHistoryDisplay';
 import {
   allowWarmConversationSender,
   isWarmConversationSender,
@@ -21,9 +29,9 @@ export interface BoundReportBookmark {
   readonly lease: Readonly<{ id: string; version: number }>;
   readonly current: () => boolean;
   readonly displayedReport?: import('../storage/dailyReportMemoryBookmark').DailyReportBookmarkTarget;
+  readonly section?: ArchivedHealthSummarySection;
   readonly confirmProtection?: () => Promise<boolean>;
 }
-
 export type BoundPossibilityBookmark = Readonly<{
   artifactId: string;
   createdAt: string;
@@ -32,87 +40,9 @@ export type BoundPossibilityBookmark = Readonly<{
   confirmProtected: () => Promise<boolean>;
   requiresOriginalProof?: true;
 }>;
-
-function latestReportCandidate(store: ConversationSessions, sessionId: number) {
-  const session = store
-    .getSnapshot()
-    .sessions.find(row => row.id === sessionId);
-  if (
-    !session ||
-    session.busy ||
-    session.preparingSend ||
-    store.photoDrafts.get(sessionId).status !== 'empty'
-  )
-    return;
-  const savedDisplay = visibleSavedHistoryDisplay(session);
-  if (session.savedHistoryDisplay && !savedDisplay) return;
-  // Use the same order as the displayed transcript: a newly saved local
-  // photo can follow a live report even though it resides in the archive list.
-  const last = savedHistoryTranscript(
-    savedDisplay ?? [],
-    currentConversationMessages(session),
-  ).at(-1);
-  if (
-    !last ||
-    last.role !== 'assistant' ||
-    last.streaming ||
-    last.incomplete ||
-    last.completion === 'partial' ||
-    last.localClarification ||
-    last.historyUnavailable ||
-    last.interruptionReason ||
-    last.directPhotoReply
-  )
-    return;
-  const saved = last.savedHistoryDisplayOnly
-    ? savedDisplay?.find(item => item.answerId === last.id)?.row
-    : undefined;
-  const candidate = last.savedHistoryDisplayOnly
-    ? saved?.kind === 'answer' && !saved.partial && !saved.directPhoto && saved
-    : {
-        id: last.retainedTurnId,
-        healthSummary: last.healthSummary,
-        dailyReport: last.dailyReport,
-        committedPossibilityOriginal: last.committedPossibilityOriginal,
-        committedPossibilityCreatedAt: last.committedPossibilityCreatedAt,
-      };
-  return candidate || undefined;
-}
-
-/** The live completion receipt elects only the exact adjacent original. */
-export function latestConversationPossibilityArtifact(
-  store: ConversationSessions,
-  sessionId: number,
-) {
-  const candidate = latestReportCandidate(store, sessionId);
-  return candidate &&
-    'committedPossibilityOriginal' in candidate &&
-    candidate.committedPossibilityOriginal
-    ? candidate.id
-    : undefined;
-}
-
-export function latestReportArtifact(
-  store: ConversationSessions,
-  sessionId: number,
-) {
-  const candidate = latestReportCandidate(store, sessionId);
-  if (!candidate?.id) return;
-  if (candidate.dailyReport) {
-    const { identity, runId, revision } = candidate.dailyReport;
-    return {
-      artifactId: candidate.id,
-      kind: 'daily-report' as const,
-      displayedReport: { identityKey: identity.key, runId, revision },
-    };
-  }
-  const summary = candidate.healthSummary?.analysis.savedSummary;
-  if (summary?.status === 'saved' && !summary.sourceChanged)
-    return { artifactId: candidate.id };
-}
-
 /** Bind a single already-displayed, completed artifact before ordinary dispatch.
- * A selected on-device tool decides whether to use it; no prompt parsing or extra call. */
+ * Protected summary sections receive a separate lease; the on-device model
+ * must resolve the current request before accessing that leased summary. */
 export function semanticReportBookmarkSender(
   store: ConversationSessions,
   sessionId: number,
@@ -140,18 +70,19 @@ export function semanticReportBookmarkSender(
         : undefined;
   const lease = (report || possibility) && store.savedReportLease(sessionId);
   if (!lease) return { send, close: () => {} };
+  let stopProtection: (() => void) | undefined;
   const owner = captureReportBookmarkOwner({
     store,
     sessionId,
     current,
     allowOwnSend: true,
+    onLost: () => stopProtection?.(),
   });
   const target: BoundReportBookmark | undefined = report && {
     ...report,
     lease,
     current: owner.current,
   };
-  let stopProtection: (() => void) | undefined;
   const bindPossibility = (signal: AbortSignal) => {
     if (!possibility) return;
     const stillVisible = () => {
@@ -205,13 +136,29 @@ export function semanticReportBookmarkSender(
       !owner.current()
     )
       return send(question, history, signal, observer, context);
+    const section =
+      signal && report?.summaryRevision
+        ? bindArchivedHealthSummarySection(
+            store,
+            sessionId,
+            { ...report, summaryRevision: report.summaryRevision },
+            owner.current,
+            signal,
+          )
+        : undefined;
+    stopProtection = section?.dispose;
     const possibilityBookmark = signal && bindPossibility(signal);
     return send(
       question,
       history,
       signal,
       target
-        ? { ...observer, reportBookmark: target }
+        ? {
+            ...observer,
+            reportBookmark: section
+              ? { ...target, section: section.section }
+              : target,
+          }
         : possibilityBookmark
           ? { ...observer, possibilityBookmark }
           : observer,

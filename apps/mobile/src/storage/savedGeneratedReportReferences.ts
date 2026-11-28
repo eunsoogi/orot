@@ -1,3 +1,4 @@
+import { setupSavedHealthSummarySections } from './savedHealthSummarySections';
 import { createSavedVisitQuestionReferences } from './savedVisitQuestionReferences';
 import {
   createDailyReportBookmark,
@@ -29,13 +30,18 @@ type Original = NonNullable<
 export type SavedGeneratedReportReference = Readonly<{
   artifactId: string;
   savedAt: string;
-  reportKind?: 'health_summary' | 'disease_possibilities' | 'visit_questions';
+  reportKind?:
+    | 'health_summary'
+    | 'health_summary_section'
+    | 'disease_possibilities'
+    | 'visit_questions';
 }>;
 
 /** The bookmark belongs to the protected generated artifact, not the model's memory corpus. */
 export async function setupSavedGeneratedReportReferences(tx: SqlExecutor) {
   await setupDailyReportAutomaticMemory(tx);
   await setupSavedHealthSummaryReferences(tx);
+  await setupSavedHealthSummarySections(tx);
   await setupSavedDiseasePossibilityReferences(tx);
   await tx.execute(
     'CREATE TABLE IF NOT EXISTS saved_generated_report_refs (report_id TEXT PRIMARY KEY NOT NULL, artifact_id TEXT UNIQUE NOT NULL, saved_at TEXT NOT NULL)',
@@ -54,6 +60,7 @@ export async function setupSavedGeneratedReportReferences(tx: SqlExecutor) {
 export function createSavedGeneratedReportReferences(
   database: SqlDatabase,
   ensure: () => Promise<void>,
+  isCurrentDatabase?: (database: SqlDatabase) => boolean,
 ) {
   const catalogExists = async () =>
     Boolean(
@@ -64,7 +71,11 @@ export function createSavedGeneratedReportReferences(
       ).rows.length,
     );
   const history = createManualHistoryRepository(database);
-  const summary = createSavedHealthSummaryReferences(database, ensure);
+  const summary = createSavedHealthSummaryReferences(
+    database,
+    ensure,
+    () => isCurrentDatabase?.(database) === true,
+  );
   const possibilities = createSavedDiseasePossibilityReferences(
     database,
     ensure,
@@ -95,6 +106,7 @@ export function createSavedGeneratedReportReferences(
     > {
       const summaries = [
         ...(await summary.listSavedHealthSummaryReferences()),
+        ...(await summary.listSavedHealthSummarySections()),
         ...(await possibilities.listSavedDiseasePossibilityReferences()),
         ...(await visit.listSavedVisitQuestionReferences()),
       ];
