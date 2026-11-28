@@ -52,18 +52,32 @@ enum RecordingFixtureUITestConditions {
         FormUITestConditions.reveal(microphone, in: app, scrollID: scrollID, towardTop: true, keyboardMayBeVisible: false)
     }
 
-    /// Prove the stock title and whole-section disclosure before editing any segment.
-    static func openSavedTranscript(_ app: XCUIApplication) {
-        let title = UITestConditions.element(app, "recording-detail-title")
-        XCTAssertTrue(title.waitForAppearance())
+    /// Prove the visible title and whole-section disclosure before editing any segment.
+    static func openSavedTranscript(_ app: XCUIApplication) -> Bool {
+        let title = app.staticTexts["recording-detail-title"]
+        guard title.waitForExistence(timeout: 8), !title.frame.isEmpty, app.frame.intersects(title.frame) else {
+            XCTFail("Saved recording title is not visible")
+            return false
+        }
         XCTAssertFalse(UITestConditions.text(title).isEmpty)
-        let disclosure = UITestConditions.element(app, "recording-detail-transcript-toggle")
+        // Only the removed inline actions are absent. The separate sidebar menu has its own scope.
+        XCTAssertFalse(app.buttons["recording-export-audio"].exists)
+        XCTAssertFalse(app.buttons["recording-export-transcript"].exists)
+        let disclosure = app.buttons["recording-detail-transcript-toggle"]
+        guard disclosure.waitForExistence(timeout: 8) else {
+            XCTFail("Saved transcript disclosure is missing")
+            return false
+        }
         FormUITestConditions.reveal(disclosure, in: app, scrollID: "navigation-route-scroll")
         XCTAssertTrue(disclosure.isHittable)
         XCTAssertFalse(UITestConditions.element(app, "transcript-edit-0").exists)
         disclosure.tap()
-        XCTAssertTrue(UITestConditions.element(app, "transcript-edit-0").waitForAppearance())
+        guard UITestConditions.element(app, "transcript-edit-0").waitForExistence(timeout: 8) else {
+            XCTFail("The saved transcript did not expose its editor action")
+            return false
+        }
         XCTAssertFalse(UITestConditions.element(app, "transcript-segment-toggle-0").exists)
+        return true
     }
 
     /// The encounter fixture starts with an actual native tool modal.

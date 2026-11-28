@@ -110,14 +110,11 @@ final class RecordingDuoUITests: OrotFailFastTestCase {
         let secondary = UITestConditions.element(app, "recording-review-layout-secondary")
         let transcript = UITestConditions.element(app, "transcript-panel")
         let review = UITestConditions.element(app, "encounter-review-panel")
-        for panel in [primary, secondary, transcript, review,
-                      UITestConditions.element(app, "recording-playback-controls"),
-                      UITestConditions.element(app, "recording-export-panel")]
-        {
-            XCTAssertTrue(UITestConditions.exists(panel), panel.identifier)
+        for panel in [primary, secondary, transcript, review, UITestConditions.element(app, "recording-playback-controls")] {
+            guard panel.waitForExistence(timeout: 8) else { return XCTFail("Missing saved detail panel: \(panel)") }
         }
 
-        RecordingFixtureUITestConditions.openSavedTranscript(app)
+        guard RecordingFixtureUITestConditions.openSavedTranscript(app) else { return }
 
         let start = UITestConditions.element(app, "encounter-start")
         FormUITestConditions.reveal(start, in: app, scrollID: "navigation-route-scroll")
