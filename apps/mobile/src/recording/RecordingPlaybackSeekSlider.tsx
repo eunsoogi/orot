@@ -1,5 +1,5 @@
 import { useLayoutEffect, useRef, useState } from 'react';
-import { StyleSheet } from 'react-native';
+import { Platform, StyleSheet, View } from 'react-native';
 import Slider from '@react-native-community/slider';
 import { t } from '../i18n';
 import { appColors } from '../layout/appColors';
@@ -30,30 +30,53 @@ export function RecordingPlaybackSeekSlider({
     if (current.current && Number.isFinite(next)) seek(clamp(next));
   };
 
+  const adjustable = {
+    accessible: true,
+    accessibilityRole: 'adjustable' as const,
+    accessibilityLabel: t('recording.library.seekAudio'),
+    accessibilityValue: {
+      min: 0,
+      max: maximum,
+      now: value,
+      text: formatRecordingDuration(value),
+    },
+    accessibilityActions: [{ name: 'increment' }, { name: 'decrement' }],
+    onAccessibilityAction(event: { nativeEvent: { actionName: string } }) {
+      const action = event.nativeEvent.actionName;
+      if (action === 'increment' || action === 'decrement')
+        commit(value + (action === 'increment' ? 5000 : -5000));
+    },
+  };
+  const range = {
+    style: styles.slider,
+    minimumValue: 0,
+    maximumValue: maximum,
+    minimumTrackTintColor: appColors.primaryAction,
+    tapToSeek: true,
+    value,
+  };
+
+  if (Platform.OS === 'ios') {
+    return (
+      <View {...adjustable} testID="recording-playback-progress">
+        {/* Native owns the thumb until touch ends. React gets no per-frame
+            changes, and the separate adjustable element avoids double actions. */}
+        <Slider
+          {...range}
+          accessible={false}
+          accessibilityElementsHidden
+          commitOnRelease
+          onSlidingComplete={commit}
+          testID="recording-playback-thumb"
+        />
+      </View>
+    );
+  }
   return (
     <Slider
       testID="recording-playback-progress"
-      style={styles.slider}
-      accessible
-      accessibilityRole="adjustable"
-      accessibilityLabel={t('recording.library.seekAudio')}
-      accessibilityValue={{
-        min: 0,
-        max: maximum,
-        now: value,
-        text: formatRecordingDuration(value),
-      }}
-      accessibilityActions={[{ name: 'increment' }, { name: 'decrement' }]}
-      onAccessibilityAction={event => {
-        const action = event.nativeEvent.actionName;
-        if (action === 'increment' || action === 'decrement')
-          commit(value + (action === 'increment' ? 5000 : -5000));
-      }}
-      minimumValue={0}
-      maximumValue={maximum}
-      minimumTrackTintColor={appColors.primaryAction}
-      tapToSeek
-      value={value}
+      {...adjustable}
+      {...range}
       onSlidingStart={() => {
         if (!current.current) return;
         dragging.current = true;

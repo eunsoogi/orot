@@ -66,6 +66,10 @@ test('one playback control and owned whole-source seek survive native clock upda
   }
   const view = await render(<Route active />);
   const slider = () => screen.getByTestId('recording-playback-progress');
+  const thumb = () =>
+    screen.queryByTestId('recording-playback-thumb', {
+      includeHiddenElements: true,
+    }) ?? slider();
   const reading = (positionMs: number, seekID?: string) => ({
     status: 'playing' as const,
     recordingId: 'synthetic-record',
@@ -89,13 +93,23 @@ test('one playback control and owned whole-source seek survive native clock upda
     expect(slider().props.accessibilityRole).toBe('progressbar'); // Range-only/legacy.
     await act(async () => publish?.(reading(5_000, 'exact-player')));
     expect(slider().props.accessibilityRole).toBe('adjustable');
-    await fireEvent(slider(), 'slidingStart', 5_000);
-    await fireEvent(slider(), 'valueChange', 13_000);
+    // v5.2.2 on iOS produces its first ValueChange before SlidingStart.
+    // Keep that order so the old app's early native seek is a real failure.
+    await fireEvent(thumb(), 'valueChange', 6_000);
     expect(native.seekPlayback).not.toHaveBeenCalled();
+    await fireEvent(thumb(), 'slidingStart', 6_000);
+    for (const next of [13_000, 18_000, 15_000]) {
+      await fireEvent(thumb(), 'valueChange', next);
+      expect(thumb().props.value).toBe(5_000);
+    }
+    expect(native.seekPlayback).not.toHaveBeenCalled();
+    expect(thumb().props.commitOnRelease).toBe(true);
+    expect(thumb().props.onSlidingStart).toBeUndefined();
+    expect(thumb().props.onValueChange).toBeUndefined();
     expect(screen.getByTestId('recording-playback-position')).toHaveTextContent(
       '00:05',
     );
-    await fireEvent(slider(), 'slidingComplete', 13_000);
+    await fireEvent(thumb(), 'slidingComplete', 13_000);
     expect(native.seekPlayback).toHaveBeenCalledWith(
       'synthetic-record',
       'exact-player',
@@ -119,14 +133,21 @@ test('one playback control and owned whole-source seek survive native clock upda
       ['synthetic-record', 'exact-player', 18_000],
       ['synthetic-record', 'exact-player', 8_000],
     ]);
-    await fireEvent(slider(), 'slidingStart', 13_000);
-    const staleComplete = slider().props.onSlidingComplete;
+    // The native tap emits the same positive completion without a start event.
+    await fireEvent(thumb(), 'slidingComplete', 11_000);
+    expect(native.seekPlayback).toHaveBeenNthCalledWith(
+      4,
+      'synthetic-record',
+      'exact-player',
+      11_000,
+    );
+    const staleComplete = thumb().props.onSlidingComplete;
     await fireEvent.press(screen.getByTestId('recording-playback-stop'));
     expect(native.stopPlayback).toHaveBeenCalledTimes(1);
     staleComplete(29_000);
     await view.rerender(<Route active={false} />);
     staleComplete(26_000);
-    expect(native.seekPlayback).toHaveBeenCalledTimes(3);
+    expect(native.seekPlayback).toHaveBeenCalledTimes(4);
     expect(native.playRange).toHaveBeenCalledTimes(1);
   } finally {
     await view.unmount();

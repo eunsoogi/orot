@@ -199,7 +199,7 @@ export default function RecordingPlaybackControls({
       Number.isFinite(seekEnd) &&
       seekEnd > 0 ? (
         <RecordingPlaybackSeekSlider
-          key={seekID}
+          key={JSON.stringify([recordingId, seekID])}
           maximum={seekEnd}
           position={position}
           seek={next => {
