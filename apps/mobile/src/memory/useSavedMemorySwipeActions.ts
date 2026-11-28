@@ -1,5 +1,5 @@
 import { useLayoutEffect, useRef, useState } from 'react';
-import { Alert, Share } from 'react-native';
+import { Alert } from 'react-native';
 import { watchEncounterNativeAdmission } from '../encounterReview/nativeAdmission';
 import { t } from '../i18n';
 import type { NavigationRouteOwnership } from '../navigation/navigationRouteContracts';
@@ -11,11 +11,7 @@ type Read = NonNullable<ReturnType<typeof useSavedMemories>['readyRead']>;
 type Protection = NonNullable<ReturnType<typeof watchEncounterNativeAdmission>>;
 type Target = { read: Read; started?: true; protection?: Protection };
 
-export function shareableSavedMemory(row: SavedMemory) {
-  return isHistoryMemory(row) && Boolean(row.record.details.trim());
-}
-
-/** One intent per current list read; native UI never receives a bookmark label or stale payload. */
+/** One confirmation per current list read, including while the native alert is open. */
 export function useSavedMemorySwipeActions({
   read,
   owner,
@@ -78,7 +74,6 @@ export function useSavedMemorySwipeActions({
 
   async function perform(
     target: Target,
-    mode: 'share' | 'delete',
     work: (protection: Protection) => Promise<void>,
   ) {
     if (target.started) return;
@@ -92,38 +87,11 @@ export function useSavedMemorySwipeActions({
       if (current(target) && !protection?.signal.aborted)
         setFailure({
           read: target.read,
-          message: t(
-            mode === 'share'
-              ? 'savedMemory.shareFailed'
-              : 'manualHistory.error.delete',
-          ),
+          message: t('manualHistory.error.delete'),
         });
     } finally {
       release(target);
     }
-  }
-
-  function requestShare(row: SavedMemory) {
-    if (!isHistoryMemory(row) || !shareableSavedMemory(row)) return;
-    const target = claim(row);
-    if (!target) return;
-    return perform(target, 'share', async protection => {
-      const matches = (await target.read.load()).filter(
-        item => item.id === row.id,
-      );
-      const next = matches.length === 1 ? matches[0] : undefined;
-      if (
-        !next ||
-        !isHistoryMemory(next) ||
-        next.record.id !== row.record.id ||
-        next.record.details !== row.record.details ||
-        !(await protection.confirm())
-      )
-        return;
-      if (!current(target) || protection.signal.aborted) return;
-      // The only handoff is the standard system share sheet initiated expressly by the user.
-      await Share.share({ message: next.record.details });
-    });
   }
 
   function requestDelete(row: SavedMemory) {
@@ -146,7 +114,7 @@ export function useSavedMemorySwipeActions({
           text: t('manualHistory.detail.confirmDeleteAction'),
           style: 'destructive',
           onPress: () =>
-            perform(target, 'delete', async protection => {
+            perform(target, async protection => {
               const { openLocalCurrentHistoryDeletion } =
                 require('../manualHistory/localRepository') as typeof import('../manualHistory/localRepository');
               const repository = await openLocalCurrentHistoryDeletion();
@@ -166,7 +134,6 @@ export function useSavedMemorySwipeActions({
   return {
     busy: !!working && working.read === read,
     error: failure && failure.read === read ? failure.message : undefined,
-    requestShare,
     requestDelete,
   };
 }

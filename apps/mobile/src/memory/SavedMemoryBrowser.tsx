@@ -32,12 +32,11 @@ export function SavedMemoryBrowser({
   const [visible, setVisible] = useState(20);
   const position = useNavigationRouteScrollPosition();
   const [revealed, setRevealed] = useState<string>();
-  const { busy, error, requestShare, requestDelete } =
-    useSavedMemorySwipeActions({
-      read: readyRead,
-      owner: ownership,
-      refresh: refreshReadOnly,
-    });
+  const { busy, error, requestDelete } = useSavedMemorySwipeActions({
+    read: readyRead,
+    owner: ownership,
+    refresh: refreshReadOnly,
+  });
   useEffect(() => setRevealed(undefined), [readyRead]);
   // Restore only after the fresh protected list has committed, not while its rows are empty.
   useEffect(() => {
@@ -103,10 +102,6 @@ export function SavedMemoryBrowser({
                     )
                   }
                   divider={index + 1 < Math.min(visible, rows.length)}
-                  onShare={() => {
-                    setRevealed(undefined);
-                    requestShare(row);
-                  }}
                   onDelete={() => {
                     setRevealed(undefined);
                     requestDelete(row);

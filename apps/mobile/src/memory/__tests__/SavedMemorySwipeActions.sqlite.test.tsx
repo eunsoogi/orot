@@ -1,11 +1,5 @@
 import { createManualHistoryRepository } from '@orot/storage';
-import {
-  act,
-  fireEvent,
-  render,
-  screen,
-  waitFor,
-} from '@testing-library/react-native';
+import { act, fireEvent, render, screen } from '@testing-library/react-native';
 import { Alert, AppState, PanResponder, Share } from 'react-native';
 import { healthContextFixture } from '../../aiFeatures/integration/testSupport/healthContextPersistenceFixture';
 import { conversationExecutionNative } from '../../ragConversation/conversationExecutionNative';
@@ -31,14 +25,7 @@ jest.mock('../../storage/ragEmbeddingStorage', () => ({
   },
 }));
 
-test.each([
-  'share',
-  'cancel',
-  'delete',
-  'superseded',
-  'locked-share',
-  'locked-delete',
-] as const)(
+test.each(['cancel', 'delete', 'superseded', 'locked-delete'] as const)(
   'saved Memory row only acts after selecting its revealed icon: %s',
   async action => {
     const previous = AppState.currentState;
@@ -47,10 +34,7 @@ test.each([
     const pan = jest.spyOn(PanResponder, 'create');
     jest.clearAllMocks();
     const alert = jest.spyOn(Alert, 'alert').mockImplementation(() => {});
-    const share = jest.spyOn(Share, 'share').mockResolvedValue({
-      action: Share.dismissedAction,
-      activityType: undefined,
-    });
+    const share = jest.spyOn(Share, 'share');
     const listeners = new Set<
       Parameters<
         NonNullable<ReturnType<typeof conversationExecutionNative>>['subscribe']
@@ -84,15 +68,7 @@ test.each([
         details: 'An exact synthetic note.\nSecond line.',
         effectiveDate: { status: 'unknown' },
       });
-      let release: (() => void) | undefined;
-      let held = false;
-      const load = async () => {
-        if (held)
-          await new Promise<void>(resolve => {
-            release = resolve;
-          });
-        return unifySavedMemories([], await repository.list());
-      };
+      const load = async () => unifySavedMemories([], await repository.list());
       const route = { isCurrent: () => true, subscribe: () => () => {} };
       await render(<SavedMemoryBrowser load={load} ownership={route} />);
       const id = 'manual-history:' + original.id;
@@ -107,36 +83,16 @@ test.each([
       const gesture = { dx: -92, dy: 1, numberActiveTouches: 1 } as Parameters<
         NonNullable<typeof responder.onPanResponderRelease>
       >[1];
-      expect(screen.queryByTestId(shareID)).toBeNull();
+      expect(screen.queryByTestId(deleteID)).toBeNull();
       await act(() => responder.onPanResponderMove?.(event, gesture));
-      expect(screen.queryByTestId(shareID)).toBeNull();
+      expect(screen.queryByTestId(deleteID)).toBeNull();
       await act(() => responder.onPanResponderRelease?.(event, gesture));
-      expect(await screen.findByTestId(shareID)).toBeEnabled();
+      expect(screen.queryByTestId(shareID)).toBeNull();
       expect(await screen.findByTestId(deleteID)).toBeEnabled();
       expect(share).not.toHaveBeenCalled();
       expect(alert).not.toHaveBeenCalled();
       expect(await repository.list()).toEqual([original]);
       expect(screen.queryByText('공유')).toBeNull();
-
-      if (action === 'share' || action === 'locked-share') {
-        held = action === 'locked-share';
-        await fireEvent.press(screen.getByTestId(shareID));
-        if (held) {
-          await waitFor(() => expect(release).toBeDefined());
-          await act(() => {
-            listeners.forEach(listener =>
-              listener({ kind: 'protectedData', available: false }),
-            );
-            release?.();
-          });
-          expect(share).not.toHaveBeenCalled();
-        } else {
-          await waitFor(() => expect(share).toHaveBeenCalledTimes(1));
-          expect(share).toHaveBeenCalledWith({ message: original.details });
-        }
-        expect(await repository.list()).toEqual([original]);
-        return;
-      }
 
       await fireEvent.press(screen.getByTestId(deleteID));
       expect(await repository.list()).toEqual([original]);

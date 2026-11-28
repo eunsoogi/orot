@@ -36,8 +36,6 @@ export const savedMemoryKo = {
   'savedMemory.preference': '선호',
   'savedMemory.reviewedInteraction': '검토한 대화',
   'savedMemory.taskContext': '작업 맥락',
-  'savedMemory.share': '공유',
-  'savedMemory.shareFailed': '기억을 공유하지 못했어요.',
   'savedMemory.title': '기억',
   'savedMemory.summary': '이 기기에 저장된 기억을 확인해요',
   'savedMemory.closeMemory': '기억 닫기',

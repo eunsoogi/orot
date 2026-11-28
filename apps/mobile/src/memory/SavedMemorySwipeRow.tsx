@@ -1,16 +1,14 @@
 import { formatDateTime, t } from '../i18n';
 import { MaterialLibraryRow } from '../layout/MaterialLibraryRows';
-import {
-  SwipeActionIconTiles,
-  swipeActionIconTileLaneWidth,
-} from '../layout/SwipeActionIconTiles';
+import { Pressable, StyleSheet, View } from 'react-native';
+import { AppSymbol } from '../layout/AppSymbol';
+import { appColors } from '../layout/appColors';
 import { TrailingSwipeAction } from '../layout/TrailingSwipeAction';
 import {
   manualHistoryEffectiveDateLabel,
   manualHistoryReviewLabel,
 } from '../manualHistory/manualHistoryLabels';
 import { isHistoryMemory, type SavedMemory } from './unifiedSavedMemories';
-import { shareableSavedMemory } from './useSavedMemorySwipeActions';
 
 export function SavedMemorySwipeRow({
   row,
@@ -19,7 +17,6 @@ export function SavedMemorySwipeRow({
   revealed,
   onReveal,
   divider,
-  onShare,
   onDelete,
   onOpen,
 }: {
@@ -29,7 +26,6 @@ export function SavedMemorySwipeRow({
   revealed: boolean;
   onReveal: (open: boolean) => void;
   divider: boolean;
-  onShare: () => void;
   onDelete: () => void;
   onOpen?: () => void;
 }) {
@@ -53,34 +49,26 @@ export function SavedMemorySwipeRow({
       onPress={onOpen}
     />
   );
-  if (!enabled || !history || !shareableSavedMemory(row)) return entry;
+  if (!enabled || !history) return entry;
   return (
     <TrailingSwipeAction
       action={
-        <SwipeActionIconTiles
-          testID={`saved-memory-swipe-actions-${row.id}`}
-          actions={[
-            {
-              label: t('savedMemory.share'),
-              symbol: 'square.and.arrow.up',
-              tone: 'primary',
-              onPress: onShare,
-              testID: `saved-memory-share-${row.id}`,
-            },
-            {
-              label: t('manualHistory.detail.delete'),
-              symbol: 'trash',
-              tone: 'destructive',
-              onPress: onDelete,
-              testID: `saved-memory-delete-${row.id}`,
-            },
-          ]}
-        />
+        <View style={styles.lane}>
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel={t('manualHistory.detail.delete')}
+            onPress={onDelete}
+            style={styles.tile}
+            testID={`saved-memory-delete-${row.id}`}
+          >
+            <AppSymbol name="trash" color={appColors.onDanger} size={20} />
+          </Pressable>
+        </View>
       }
       disabled={disabled}
       revealed={revealed}
       revealDuringDrag
-      revealWidth={swipeActionIconTileLaneWidth}
+      revealWidth={64}
       onRevealedChange={onReveal}
       testID={`saved-memory-swipe-${row.id}`}
     >
@@ -88,3 +76,15 @@ export function SavedMemorySwipeRow({
     </TrailingSwipeAction>
   );
 }
+
+const styles = StyleSheet.create({
+  lane: { flex: 1, alignItems: 'center', justifyContent: 'center' },
+  tile: {
+    width: 48,
+    height: 48,
+    borderRadius: 13,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: appColors.dangerAction,
+  },
+});
