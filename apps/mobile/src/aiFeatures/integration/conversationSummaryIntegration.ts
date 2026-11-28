@@ -165,13 +165,20 @@ export function createConversationSummaryIntegration(input: {
             !originalObserver?.templateProposalOwner?.current())
         )
           return { status: 'failure', kind: 'cancelled' } as const;
-        if (proposed?.spent)
-          observer = { ...observer, suppressContextualOpening: true };
         const target = conversationTemplateTarget(
           proposed?.intent,
           admission,
           Boolean(report),
         );
+        // The local Apple proposal returns an action only. When no template
+        // takes ownership, it did not display an opening and cannot replace the
+        // ordinary on-device turn's existing reviewed opening.
+        if (
+          proposed?.spent &&
+          (target ||
+            observer?.templateProposalOwner?.providerId !== APPLE_PROVIDER_ID)
+        )
+          observer = { ...observer, suppressContextualOpening: true };
         if (target?.intent === 'visit-questions' && admission.prepareVisit)
           return admission.prepareVisit(
             question,
