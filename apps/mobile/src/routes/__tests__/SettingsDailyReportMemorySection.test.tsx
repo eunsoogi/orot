@@ -135,18 +135,21 @@ test('drops the cached preference on protected-data lock and authoritative local
   let emit: (event: ConversationExecutionEvent) => void = () => {};
   const close = jest.fn();
   const native = jest.mocked(conversationExecutionNative);
+  // This component touches only the protected-data subscription and preference reader.
   native.mockReturnValue({
     bridgeAvailable: true,
-    subscribe: listener => {
+    subscribe: (listener: (event: ConversationExecutionEvent) => void) => {
       emit = listener;
       return close;
     },
-  } as NonNullable<ReturnType<typeof conversationExecutionNative>>);
+  } as unknown as NonNullable<ReturnType<typeof conversationExecutionNative>>);
   const open = jest.mocked(openSavedGeneratedReportReferences);
   const readAutomaticDailyReportMemory = jest.fn().mockResolvedValue(true);
   open.mockClear().mockResolvedValue({
     readAutomaticDailyReportMemory,
-  } as Awaited<ReturnType<typeof openSavedGeneratedReportReferences>>);
+  } as unknown as Awaited<
+    ReturnType<typeof openSavedGeneratedReportReferences>
+  >);
 
   try {
     const view = await render(
