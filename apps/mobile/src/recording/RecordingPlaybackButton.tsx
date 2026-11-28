@@ -1,8 +1,7 @@
-import { Pressable, StyleSheet } from 'react-native';
-import { AppSymbol } from '../layout/AppSymbol';
-import { appColors } from '../layout/appColors';
+import { GlassIconButton } from '../layout/GlassIconButton';
+import { recordingLibraryStyles as styles } from './RecordingLibraryPanel.styles';
 
-/** Use the whole-recording player's circle and glyph at both playback levels. */
+/** Keep list and detail playback on the same native glass control and accessibility fallback. */
 export function RecordingPlaybackButton({
   label,
   hint,
@@ -19,33 +18,15 @@ export function RecordingPlaybackButton({
   readonly testID: string;
 }) {
   return (
-    <Pressable
+    <GlassIconButton
       accessibilityRole="button"
       accessibilityLabel={label}
       accessibilityHint={hint}
-      accessibilityState={{ disabled }}
       disabled={disabled}
-      onPress={() => {
-        onPress();
-      }}
-      style={styles.circle}
+      onPress={onPress}
+      style={styles.listPlaybackButton}
       testID={testID}
-    >
-      <AppSymbol
-        name={stop ? 'stop.fill' : 'play.fill'}
-        color={appColors.onPrimary}
-      />
-    </Pressable>
+      symbolName={stop ? 'stop.fill' : 'play.fill'}
+    />
   );
 }
-
-const styles = StyleSheet.create({
-  circle: {
-    alignItems: 'center',
-    justifyContent: 'center',
-    width: 48,
-    height: 48,
-    borderRadius: 24,
-    backgroundColor: appColors.primaryAction,
-  },
-});
