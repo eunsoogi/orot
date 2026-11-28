@@ -105,3 +105,59 @@ test.each(['plan', 'medication', 'mixed', 'healthy-medication'] as const)(
     }
   },
 );
+
+test.each([false, true])(
+  'long local acceptance reads prior observations only when it has candidates (%s)',
+  async hasCandidates => {
+    const f = await harness(9);
+    try {
+      const db = fixture.database();
+      const at = '2026-01-01T00:00:00.000Z';
+      await db.execute(
+        'INSERT INTO health_observations (id, effective_at, recorded_at, ingested_at, payload_json) VALUES (?, ?, ?, ?, ?)',
+        ['synthetic-unrelated-observation', at, at, at, '{}'],
+      );
+      await expect(f.repository.list('health_observation')).rejects.toThrow(
+        'A stored record is invalid',
+      );
+      const selected = await resolveSelectedAiProvider();
+      if (selected.status !== 'ready')
+        throw new Error('Synthetic provider missing.');
+      if (!hasCandidates) {
+        const generate = selected.provider.generate.bind(selected.provider);
+        jest
+          .spyOn(selected.provider, 'generate')
+          .mockImplementation(async (...args) => {
+            const reply = await generate(...args);
+            if (!reply.ok) return reply;
+            return providerSuccess({
+              ...reply.value,
+              text: JSON.stringify({
+                type: 'result',
+                value: { candidates: [] },
+                citations: [],
+              }),
+            });
+          });
+      }
+
+      await f.controller.start(consent);
+      expect(f.calls()).toBe(2);
+      expect(f.controller.state.status).toBe(
+        hasCandidates ? 'unavailable' : 'pending',
+      );
+      expect(f.controller.state.candidates).toEqual([]);
+      if (!hasCandidates)
+        expect(f.controller.state.pending?.segments).toHaveLength(9);
+      await f.controller.decide('approve');
+      expect(
+        (await db.execute('SELECT id, payload_json FROM health_observations'))
+          .rows,
+      ).toEqual([
+        { id: 'synthetic-unrelated-observation', payload_json: '{}' },
+      ]);
+    } finally {
+      f.controller.dispose();
+    }
+  },
+);

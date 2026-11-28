@@ -11,6 +11,9 @@ export async function encounterConflicts(
   writer: RecordWriter,
   candidates: EncounterCandidate[],
 ): Promise<EncounterConflict[]> {
+  // No possible conflict exists without a candidate. Do not let an unrelated
+  // stored record prevent a complete, validated empty review.
+  if (!candidates.length) return [];
   const observations = (await writer.list('health_observation')).filter(
     record =>
       ['encounter_medication_statement', 'encounter_plan'].includes(
