@@ -50,9 +50,16 @@ const session = {
   pendingMessage: null,
 };
 const sourceActions = { onOpenSource: jest.fn(), onLinkError: jest.fn() };
-function mockScene(top: boolean, cornerX = 0) {
+function mockScene(
+  top: boolean,
+  cornerX = 0,
+  cornerMargin = 0,
+  sceneWidth = 750,
+  cornerWidth = 80,
+) {
+  const bounds = { ...windowBounds, width: sceneWidth };
   mockGeometry = createNavigationGeometrySnapshot({
-    windowBounds,
+    windowBounds: bounds,
     safeAreaInsets: { top: 56, left: 0, right: 0, bottom: 34 },
     hasHinge: true,
     reservedRegionsSupported: true,
@@ -61,12 +68,12 @@ function mockScene(top: boolean, cornerX = 0) {
         id: 'synthetic-corner',
         kind: 'occlusion',
         isActive: true,
-        frame: { x: cornerX, y: 0, width: 80, height: 80 },
-        margins: { top: 0, right: 0, bottom: 0, left: 0 },
+        frame: { x: cornerX, y: 0, width: cornerWidth, height: 80 },
+        margins: { top: 0, right: cornerMargin, bottom: 0, left: 0 },
       },
     ],
     navigationSide: top ? 'bottom' : 'right',
-    systemTopBarFrame: top ? { ...windowBounds, height: 56 } : undefined,
+    systemTopBarFrame: top ? { ...bounds, height: 56 } : undefined,
   });
   return (
     <NavigationContentFrameContext.Provider
@@ -99,4 +106,31 @@ test('uses the focused top-indicator lane’s clear gutter without moving its hi
   expect(artwork).not.toHaveStyle({ transform: [{ translateY: -12 }] });
   await view.rerender(mockScene(false));
   expect(artwork).not.toHaveStyle({ transform: [{ translateY: -12 }] });
+});
+
+test('does not expand the already margin-inclusive UIKit occlusion into the profile', async () => {
+  const view = await render(mockScene(false, 125, 40));
+  const artwork = screen.getByTestId('assistant-profile-artwork');
+  const target = screen.getByTestId('assistant-floating-identity');
+  await view.rerender(mockScene(true, 125, 40));
+  expect(artwork).toHaveStyle({ transform: [{ translateY: -12 }] });
+  expect(target).not.toHaveStyle({ transform: [{ translateY: -12 }] });
+  await view.rerender(mockScene(true, 165, 40));
+  expect(artwork).not.toHaveStyle({ transform: [{ translateY: -12 }] });
+});
+
+test('lifts the profile in an expanded scene without changing navigation or hit-target ownership', async () => {
+  Dimensions.set({
+    window: { ...originalWindow, width: 951, height: 669, fontScale: 1 },
+  });
+  const view = await render(mockScene(false, 0, 6, 951, 8));
+  const artwork = screen.getByTestId('assistant-profile-artwork');
+  const target = screen.getByTestId('assistant-floating-identity');
+  const transcript = screen.getByTestId('synthetic-profile-transcript');
+  expect(artwork).not.toHaveStyle({ transform: [{ translateY: -12 }] });
+  await view.rerender(mockScene(true, 0, 6, 951, 8));
+  expect(artwork).toHaveStyle({ transform: [{ translateY: -12 }] });
+  expect(screen.getByTestId('assistant-floating-identity')).toBe(target);
+  expect(target).not.toHaveStyle({ transform: [{ translateY: -12 }] });
+  expect(screen.getByTestId('synthetic-profile-transcript')).toBe(transcript);
 });

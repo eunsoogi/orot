@@ -75,7 +75,7 @@ test('keeps the visuals below active physical reservations in their lane', () =>
   ).toBe(12);
 });
 
-test('an in-lane edge reservation only blocks lift if it reaches the profile', () => {
+test('only the native margin-inclusive reservation boundary determines collision', () => {
   const edge = {
     id: 'synthetic-edge-indicator',
     kind: 'occlusion' as const,
@@ -87,6 +87,11 @@ test('an in-lane edge reservation only blocks lift if it reaches the profile', (
   expect(
     candidate(topBar, {
       reservedRegions: [{ ...edge, margins: { ...edge.margins, right: 10 } }],
+    }),
+  ).toBe(12);
+  expect(
+    candidate(topBar, {
+      reservedRegions: [{ ...edge, frame: { ...edge.frame, width: 30 } }],
     }),
   ).toBe(0);
 });

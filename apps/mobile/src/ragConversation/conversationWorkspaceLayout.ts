@@ -46,13 +46,14 @@ export function conversationProfileVisualLift(
   // disjoint edge reservation cannot cover it or move its original hit target.
   const width = Math.min(lane.width, assistantProfileMaximumWidth);
   const left = lane.x + (lane.width - width) / 2;
+  // UIKit supplies the complete exclusion frame, including the reported margins.
   return frame.reservedRegions.some(
-    ({ isActive, frame: region, margins }) =>
+    ({ isActive, frame: region }) =>
       isActive &&
-      region.x - margins.left < left + width &&
-      region.x + region.width + margins.right > left &&
-      region.y - margins.top < lane.y &&
-      region.y + region.height + margins.bottom > exposedTop,
+      region.x < left + width &&
+      region.x + region.width > left &&
+      region.y < lane.y &&
+      region.y + region.height > exposedTop,
   )
     ? 0
     : lift;
