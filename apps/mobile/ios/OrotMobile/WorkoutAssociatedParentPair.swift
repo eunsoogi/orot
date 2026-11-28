@@ -94,7 +94,7 @@ enum WorkoutPeriodMembershipDigest {
         output.reserveCapacity(SHA256.Digest.byteCount * 2)
         for byte in hash {
             output.append(digits[Int(byte >> 4)])
-            output.append(digits[Int(byte & 0x0f)])
+            output.append(digits[Int(byte & 15)])
         }
         return String(decoding: output, as: UTF8.self)
     }
