@@ -1,11 +1,16 @@
 import Foundation
 
 protocol ChatGPTResponsesHTTPTransport: Sendable {
+    func prepareSuspendedEncounterPage(for request: URLRequest) throws -> SuspendedEncounterHTTP
     func stream(for request: URLRequest) async throws -> (URLResponse, AsyncThrowingStream<Data, Error>)
     func streamDirectPhoto(for request: URLRequest) async throws -> (URLResponse, AsyncThrowingStream<Data, Error>)
 }
 
 extension ChatGPTResponsesHTTPTransport {
+    func prepareSuspendedEncounterPage(for _: URLRequest) throws -> SuspendedEncounterHTTP {
+        throw ChatGPTResponsesError.transportUnavailable
+    }
+
     /// Other transports must explicitly implement the protected photo route;
     /// never fall through to their ordinary request and redirect behavior.
     func streamDirectPhoto(for _: URLRequest) async throws -> (URLResponse, AsyncThrowingStream<Data, Error>) {
@@ -15,6 +20,16 @@ extension ChatGPTResponsesHTTPTransport {
 
 struct URLSessionChatGPTResponsesHTTPTransport: ChatGPTResponsesHTTPTransport {
     let session: URLSession
+    private let encounterProtocolClasses: [AnyClass]?
+
+    init(session: URLSession, encounterProtocolClasses: [AnyClass]? = nil) {
+        self.session = session
+        self.encounterProtocolClasses = encounterProtocolClasses
+    }
+
+    func prepareSuspendedEncounterPage(for request: URLRequest) throws -> SuspendedEncounterHTTP {
+        try SuspendedEncounterHTTP(request: request, protocolClasses: encounterProtocolClasses)
+    }
 
     func stream(for request: URLRequest) async throws -> (URLResponse, AsyncThrowingStream<Data, Error>) {
         let (bytes, response) = try await session.bytes(for: request)
@@ -110,5 +125,32 @@ final class DirectPhotoNoRedirectDelegate: NSObject, URLSessionTaskDelegate, @un
         lock.withLock { redirectRefused = true }
         completionHandler(nil)
         task.cancel()
+    }
+}
+
+/// Refuse redirect, authentication resend, and body-stream re-creation. Neither
+/// a refusal nor a transport error causes the app to start another request.
+class ProtectedEncounterHTTPDelegate: NSObject, URLSessionTaskDelegate, @unchecked Sendable {
+    func urlSession(_: URLSession, task: URLSessionTask,
+                    willPerformHTTPRedirection _: HTTPURLResponse, newRequest _: URLRequest,
+                    completionHandler: @escaping @Sendable (URLRequest?) -> Void)
+    {
+        completionHandler(nil)
+        task.cancel()
+    }
+
+    func urlSession(_: URLSession, task _: URLSessionTask,
+                    didReceive challenge: URLAuthenticationChallenge,
+                    completionHandler: @escaping @Sendable (URLSession.AuthChallengeDisposition, URLCredential?) -> Void)
+    {
+        // Keep standard TLS trust verification; refuse HTTP authentication resend.
+        completionHandler(challenge.protectionSpace.authenticationMethod == NSURLAuthenticationMethodServerTrust
+            ? .performDefaultHandling : .cancelAuthenticationChallenge, nil)
+    }
+
+    func urlSession(_: URLSession, task _: URLSessionTask,
+                    needNewBodyStream completionHandler: @escaping @Sendable (InputStream?) -> Void)
+    {
+        completionHandler(nil)
     }
 }
