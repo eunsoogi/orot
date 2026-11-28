@@ -18,7 +18,7 @@ interface OverviewNextVisitCardProps {
   readonly onOpenSchedule: () => void;
 }
 
-/** Keeps visit details, saved-question guidance and recovery before the explicit compact preparation action. */
+/** One informational visit section, with its existing question and recovery entry points. */
 export function OverviewNextVisitCard({
   children,
   appointment,
@@ -46,32 +46,20 @@ export function OverviewNextVisitCard({
         ? 'D-day'
         : `D${daysUntil > 0 ? '-' : '+'}${Math.abs(daysUntil)}`;
 
+  const questionsLabel = t('visitQuestions.manual.title');
   return (
-    <View style={styles.appointment} testID="overview-next-visit-panel">
+    <View testID="overview-next-visit-panel">
       <View
         testID={nextAppointment ? 'overview-next-appointment' : undefined}
         style={styles.content}
       >
-        <View style={styles.heading} testID="overview-next-visit-heading">
-          <View style={styles.headingLabel}>
-            <AppSymbol
-              name="calendar"
-              size={16}
-              color={appColors.primaryText}
-            />
-            <Text accessibilityRole="header" style={styles.label}>
-              {t('overview.nextAppointment')}
-            </Text>
-          </View>
-          {countdown ? (
-            <Text
-              style={styles.countdown}
-              testID="overview-next-visit-countdown"
-            >
-              {countdown}
-            </Text>
-          ) : null}
-        </View>
+        <Text
+          accessibilityRole="header"
+          style={styles.label}
+          testID="overview-next-visit-heading"
+        >
+          {t('overview.nextAppointment')}
+        </Text>
         {appointmentState === 'loading' ? (
           <View
             style={nextAppointment ? styles.refreshRow : styles.initialRead}
@@ -106,35 +94,57 @@ export function OverviewNextVisitCard({
         {nextAppointment ? (
           <>
             <View style={styles.details} testID="overview-next-visit-details">
-              {/* The name retains its full text at narrow widths and large Dynamic Type sizes. */}
-              <Text
-                style={styles.clinic}
-                testID="overview-next-appointment-clinic"
+              <View
+                style={styles.titleRow}
+                testID="overview-next-visit-title-row"
               >
-                {nextAppointment.clinicLabel ??
-                  nextAppointment.calendarEventSnapshot?.title ??
-                  t('appointments.fallbackTitle')}
-              </Text>
-              <Text style={styles.time} testID="overview-next-visit-time">
-                {appointmentTimeLabel(nextAppointment)}
-              </Text>
-            </View>
-            {children}
-            <AppButton
-              onPress={onPrepareVisit}
-              variant="text"
-              size="compact"
-              style={styles.preparationAction}
-              trailingContent={
+                {/* Let a long title wrap without shifting the fixed countdown below it. */}
+                <Text
+                  style={styles.clinic}
+                  testID="overview-next-appointment-clinic"
+                >
+                  {nextAppointment.clinicLabel ??
+                    nextAppointment.calendarEventSnapshot?.title ??
+                    t('appointments.fallbackTitle')}
+                </Text>
+                {countdown ? (
+                  <Text
+                    style={styles.countdown}
+                    testID="overview-next-visit-countdown"
+                  >
+                    {countdown}
+                  </Text>
+                ) : null}
+              </View>
+              <View
+                style={styles.timeRow}
+                testID="overview-next-visit-time-row"
+              >
                 <AppSymbol
-                  name="chevron.right"
-                  size={12}
-                  color={appColors.primaryText}
+                  name="calendar"
+                  size={17}
+                  color={appColors.secondary}
                 />
-              }
+                <Text style={styles.time} testID="overview-next-visit-time">
+                  {appointmentTimeLabel(nextAppointment)}
+                </Text>
+              </View>
+            </View>
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel={questionsLabel}
+              onPress={onPrepareVisit}
+              style={styles.preparationAction}
               testID="overview-prepare-visit"
-              title={t('visitDayQuestions.open')}
-            />
+            >
+              <Text style={styles.preparationLabel}>{questionsLabel}</Text>
+              <AppSymbol
+                name="chevron.right"
+                size={12}
+                color={appColors.primaryText}
+              />
+            </Pressable>
+            {children}
           </>
         ) : appointmentState === 'ready' ? (
           <Pressable
@@ -157,25 +167,8 @@ export function OverviewNextVisitCard({
 }
 
 const styles = StyleSheet.create({
-  appointment: {
-    backgroundColor: appColors.surface,
-    borderRadius: 16,
-    padding: 16,
-  },
-  content: { gap: 10, minWidth: 0 },
-  heading: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    gap: 8,
-  },
-  headingLabel: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    flexShrink: 1,
-    gap: 6,
-  },
+  content: { gap: 8, minWidth: 0 },
+  titleRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
   label: {
     color: appColors.secondary,
     flexShrink: 1,
@@ -183,7 +176,7 @@ const styles = StyleSheet.create({
     fontWeight: '600',
   },
   countdown: {
-    alignSelf: 'flex-start',
+    flexShrink: 0,
     color: appColors.primaryText,
     backgroundColor: appColors.primarySoft,
     borderRadius: 12,
@@ -192,10 +185,25 @@ const styles = StyleSheet.create({
     fontSize: 13,
     fontWeight: '600',
   },
-  details: { gap: 4 },
-  clinic: { color: appColors.text, fontSize: 20, fontWeight: '700' },
-  time: { color: appColors.secondary, fontSize: 14 },
-  preparationAction: { alignSelf: 'flex-start', maxWidth: '100%' },
+  details: { gap: 8 },
+  clinic: { color: appColors.text, flex: 1, fontSize: 28, fontWeight: '700' },
+  timeRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
+  time: { color: appColors.secondary, flexShrink: 1, fontSize: 16 },
+  preparationAction: {
+    alignSelf: 'flex-start',
+    alignItems: 'center',
+    flexDirection: 'row',
+    gap: 6,
+    maxWidth: '100%',
+    minHeight: 44,
+    minWidth: 44,
+  },
+  preparationLabel: {
+    color: appColors.primaryText,
+    flexShrink: 1,
+    fontSize: 17,
+    fontWeight: '600',
+  },
   emptyAppointment: {
     alignItems: 'center',
     flexDirection: 'row',

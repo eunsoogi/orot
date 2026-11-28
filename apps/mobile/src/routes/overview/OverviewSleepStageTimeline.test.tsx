@@ -105,9 +105,19 @@ test.each([230, 660] as const)(
     expect(
       screen.getByTestId('overview-sleep-duration-core'),
     ).toHaveTextContent('2시간 0분');
-    expect(
-      screen.getAllByTestId('overview-sleep-stage-connector'),
-    ).toHaveLength(2);
+    const connectors = screen
+      .getAllByTestId('overview-sleep-stage-connector')
+      .map(node => StyleSheet.flatten(node.props.style));
+    expect(connectors).toHaveLength(2);
+    expect(connectors.map(connector => parseFloat(connector.left))).toEqual([
+      50, 75,
+    ]);
+    const endOfCore = parseFloat(
+      StyleSheet.flatten(
+        screen.getByTestId('overview-sleep-interval-core').props.style,
+      ).width,
+    );
+    expect(parseFloat(connectors[0]!.left)).toBe(endOfCore);
   },
 );
 

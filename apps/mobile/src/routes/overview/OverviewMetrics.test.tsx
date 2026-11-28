@@ -50,8 +50,9 @@ test('formats recent comparison units without exposing projection provenance', a
   await render(<OverviewMetrics />);
 
   const recentChange = screen.getByTestId('overview-recent-change-steps');
-  expect(recentChange).toHaveTextContent(/1,000걸음/u);
-  expect(recentChange).toHaveTextContent(/1,234걸음/u);
+  expect(recentChange).toHaveTextContent('234걸음 늘었어요');
+  expect(recentChange.props.accessibilityLabel).toContain('1,000걸음');
+  expect(recentChange.props.accessibilityLabel).toContain('1,234걸음');
   expect(recentChange.props.accessibilityLabel).not.toContain(
     'Synthetic Watch App',
   );

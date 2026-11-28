@@ -5,6 +5,7 @@ import { ChartPlot } from '../../ui/charts';
 import { workoutRecordsChartKind } from '../../ui/charts/workoutRecordsChart';
 import { AppText as Text } from '../../layout/AppText';
 import { AppSymbol } from '../../layout/AppSymbol';
+import { OverviewReadingValue } from './OverviewReadingValue';
 import { OverviewReadingSkeleton } from './OverviewReadingSkeleton';
 import { appColors } from '../../layout/appColors';
 import { formatDateTime, t } from '../../i18n';
@@ -34,17 +35,6 @@ export const overviewMetricTitle = (metric: OverviewMetric) =>
 
 type HeartPlacement = 'featured' | 'supporting';
 
-const overviewMetricAccent = (metric: OverviewMetric) =>
-  ({
-    sleep: appColors.purple,
-    heartRate: appColors.pink,
-    restingHeartRate: appColors.pink,
-    walkingHeartRate: appColors.pink,
-    bodyMass: appColors.primaryText,
-    steps: appColors.green,
-    workouts: appColors.green,
-  })[metric];
-
 const overviewMetricSymbol = (metric: OverviewMetric) =>
   ({
     sleep: 'moon',
@@ -70,11 +60,11 @@ function OverviewMetricHeading({
         <View style={styles.metricIcon}>
           <AppSymbol
             name={overviewMetricSymbol(metric)}
-            color={overviewMetricAccent(metric)}
+            color={appColors.secondary}
           />
         </View>
       )}
-      <Text style={styles.cardTitle}>{overviewMetricTitle(metric)}</Text>
+      <Text style={styles.widgetTitle}>{overviewMetricTitle(metric)}</Text>
     </View>
   );
 }
@@ -152,7 +142,7 @@ export function OverviewMetricCard({
   return (
     <View
       style={[
-        heartPlacement ? styles.heartMetric : styles.card,
+        heartPlacement ? styles.heartMetric : [styles.card, styles.widgetShell],
         styles.gridCard,
         { width },
       ]}
@@ -175,15 +165,12 @@ export function OverviewMetricCard({
             heartPlacement === 'supporting' && styles.heartSupportingNumber,
           ]}
         >
-          {latestValue}
+          <OverviewReadingValue formatted={latestValue} />
         </Text>
-        <Text style={styles.detail}>
-          {metric.latest.date} · {statistic}
-        </Text>
-        <Text style={styles.detail}>{measuredAt}</Text>
       </View>
       {metric.metric === 'sleep' ? (
         <OverviewSleepStageTimeline
+          cardWidth={width}
           episode={metric.sleepEpisode}
           timeZone={metric.timeZone}
         />
@@ -216,7 +203,7 @@ export function OverviewMetricChartPlaceholder({
   return (
     <View
       style={[
-        heartPlacement ? styles.heartMetric : styles.card,
+        heartPlacement ? styles.heartMetric : [styles.card, styles.widgetShell],
         styles.gridCard,
         { width },
       ]}
@@ -238,8 +225,6 @@ export function OverviewMetricChartPlaceholder({
       ) : (
         <Text style={styles.number}>{'\u00a0'}</Text>
       )}
-      <Text style={styles.detail}>{'\u00a0'}</Text>
-      <Text style={styles.detail}>{'\u00a0'}</Text>
       <MeasuredOverviewMetricChart
         metric={metric}
         data={overviewMetricChartPlaceholderData(metric, status)}

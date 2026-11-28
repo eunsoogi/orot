@@ -2,6 +2,7 @@ import { useIsFocused } from '@react-navigation/native';
 import { StyleSheet, View } from 'react-native';
 import { AppText as Text } from '../../layout/AppText';
 import { AppSymbol } from '../../layout/AppSymbol';
+import { OverviewReadingValue } from './OverviewReadingValue';
 import { OverviewReadingSkeleton } from './OverviewReadingSkeleton';
 import { appColors } from '../../layout/appColors';
 import { t } from '../../i18n';
@@ -70,13 +71,39 @@ function HeartReadingValue({
     ? formatOverviewMetricValue(metric, value.latest.value, value.unit)
     : unavailable(state);
 
+  // Keep the actual daily period and source available without adding extra visual rows.
+  const context =
+    value &&
+    [
+      title(metric),
+      amount,
+      value.latest.date,
+      t('chart.source', { source: value.source }),
+      ...(range && range.minimum !== range.maximum
+        ? [
+            t('overview.heartPanelRange', {
+              minimum: isHeartRateDisplayUnit(value.unit)
+                ? formatHeartRateBpm(range.minimum, false)
+                : formatOverviewMetricValue(metric, range.minimum, value.unit),
+              maximum: formatOverviewMetricValue(
+                metric,
+                range.maximum,
+                value.unit,
+              ),
+            }),
+          ]
+        : []),
+    ].join(', ');
+
   return (
     <View
       testID={`overview-metric-${metric}`}
       style={primary ? styles.featured : styles.subrow}
     >
       <View style={!primary && styles.readingLine}>
-        <Text style={overview.cardTitle}>{title(metric)}</Text>
+        {!primary && (
+          <Text style={overview.widgetRowTitle}>{title(metric)}</Text>
+        )}
         {!value && state === 'loading' ? (
           <OverviewReadingSkeleton
             metric={metric}
@@ -86,13 +113,7 @@ function HeartReadingValue({
         ) : (
           <Text
             onTextLayout={onTextLayout}
-            accessibilityLabel={
-              value
-                ? [amount, t('chart.source', { source: value.source })].join(
-                    ', ',
-                  )
-                : undefined
-            }
+            accessibilityLabel={context}
             style={
               value
                 ? primary
@@ -101,25 +122,14 @@ function HeartReadingValue({
                 : overview.detail
             }
           >
-            {amount}
+            {primary && value ? (
+              <OverviewReadingValue formatted={amount} />
+            ) : (
+              amount
+            )}
           </Text>
         )}
       </View>
-      {value ? <Text style={overview.detail}>{value.latest.date}</Text> : null}
-      {value && range && range.minimum !== range.maximum ? (
-        <Text style={overview.detail}>
-          {t('overview.heartPanelRange', {
-            minimum: isHeartRateDisplayUnit(value.unit)
-              ? formatHeartRateBpm(range.minimum, false)
-              : formatOverviewMetricValue(metric, range.minimum, value.unit),
-            maximum: formatOverviewMetricValue(
-              metric,
-              range.maximum,
-              value.unit,
-            ),
-          })}
-        </Text>
-      ) : null}
     </View>
   );
 }
@@ -141,12 +151,18 @@ export function OverviewHeartPanel({
   const focused = useIsFocused();
   return (
     <View
-      style={[overview.card, overview.gridCard, styles.panel, { width }]}
+      style={[
+        overview.card,
+        overview.widgetShell,
+        overview.gridCard,
+        styles.panel,
+        { width },
+      ]}
       testID="overview-heart-panel"
     >
       <View style={styles.heading}>
-        <AppSymbol name="heart" color={appColors.pink} />
-        <Text accessibilityRole="header" style={overview.title}>
+        <AppSymbol name="heart" color={appColors.secondary} />
+        <Text accessibilityRole="header" style={overview.widgetTitle}>
           {t('overview.heartPanel')}
         </Text>
       </View>
@@ -182,7 +198,7 @@ export function OverviewHeartPanel({
 }
 
 const styles = StyleSheet.create({
-  panel: { gap: 14 },
+  panel: { gap: 9 },
   heading: {
     flexDirection: 'row',
     flexWrap: 'wrap',
@@ -198,6 +214,6 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     columnGap: 8,
   },
-  subrows: { width: '100%', gap: 8 },
+  subrows: { width: '100%', gap: 7 },
   rule: { height: StyleSheet.hairlineWidth, backgroundColor: appColors.border },
 });

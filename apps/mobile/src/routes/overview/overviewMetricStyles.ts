@@ -43,11 +43,22 @@ export const overviewMetricStyles = StyleSheet.create({
     padding: 14,
     gap: overviewMetricCardGap,
   },
+  widgetShell: {
+    borderRadius: 19,
+    borderColor: appColors.border,
+    borderWidth: StyleSheet.hairlineWidth,
+    padding: 16,
+  },
   /** Preserve the card's spacing when headline content is grouped for accessibility. */
   metricSummary: { gap: overviewMetricCardGap },
   heartMetric: { gap: overviewMetricCardGap },
-  heartNumber: { color: appColors.text, fontSize: 35, fontWeight: '700' },
-  heartSupportingNumber: { fontSize: 18, fontVariant: ['tabular-nums'] },
+  heartNumber: {
+    color: appColors.text,
+    fontSize: 38,
+    fontWeight: '700',
+    fontVariant: ['tabular-nums'],
+  },
+  heartSupportingNumber: { fontSize: 16, fontVariant: ['tabular-nums'] },
   recentChange: { alignSelf: 'stretch', maxWidth: '100%' },
   recentChangeRow: {
     flexDirection: 'row',
@@ -189,6 +200,18 @@ export const overviewMetricStyles = StyleSheet.create({
   },
   gridCard: { flexGrow: 0, flexShrink: 0 },
   cardTitle: { color: appColors.text, fontWeight: '700' },
+  widgetTitle: {
+    color: appColors.text,
+    fontSize: 16,
+    fontWeight: '700',
+    flexShrink: 1,
+  },
+  widgetRowTitle: {
+    color: appColors.text,
+    fontSize: 14,
+    fontWeight: '500',
+    flexShrink: 1,
+  },
   metricHeading: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -203,7 +226,7 @@ export const overviewMetricStyles = StyleSheet.create({
   },
   number: {
     color: appColors.text,
-    fontSize: 32,
+    fontSize: 38,
     fontWeight: '700',
     fontVariant: ['tabular-nums'],
   },

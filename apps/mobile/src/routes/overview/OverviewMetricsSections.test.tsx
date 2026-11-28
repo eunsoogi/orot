@@ -22,8 +22,15 @@ test('groups both Home sections with equal heading and content spacing', async (
 
   const overview = screen.getByTestId('overview-health-overview-section');
   const changes = screen.getByTestId('overview-recent-changes-section');
+  const health = screen.getByTestId('overview-health-sections');
+  expect(health.children.indexOf(changes)).toBeLessThan(
+    health.children.indexOf(overview),
+  );
   expect(within(overview).getByText('내 건강 한눈에')).toBeTruthy();
-  expect(within(overview).getByTestId('overview-metric-grid')).toBeTruthy();
+  const grid = within(overview).getByTestId('overview-metric-grid');
+  const ambient = within(grid).getByTestId('overview-widget-ambient');
+  expect(ambient.props.pointerEvents).toBe('none');
+  expect(ambient.props.accessibilityElementsHidden).toBe(true);
   expect(within(changes).getByText('최근 달라진 점')).toBeTruthy();
   expect(
     within(changes).getByText('비교할 기록이 충분하지 않아요.'),

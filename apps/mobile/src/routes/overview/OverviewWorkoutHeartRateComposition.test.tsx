@@ -133,26 +133,15 @@ test('announces the exact source and whole BPM of each available heart reading',
     />,
   );
   expect(screen.getByText('74 BPM')).toBeVisible();
-  for (const date of ['2035-01-15', '2035-01-14', '2035-01-13'])
-    expect(screen.getAllByText(date)).toHaveLength(1);
-  expect(
-    screen.getByLabelText(
-      ['74 BPM', t('chart.source', { source: 'Fixture one' })].join(', '),
-    ),
-  ).toBeVisible();
-  expect(
-    screen.getByLabelText(
-      ['58 BPM', t('chart.source', { source: 'Fixture two' })].join(', '),
-    ),
-  ).toBeVisible();
-  expect(
-    screen.getByLabelText(
-      [
-        '83 BPM',
-        t('chart.source', { source: t('overview.sourceUnknown') }),
-      ].join(', '),
-    ),
-  ).toBeVisible();
+  for (const [reading, date, source] of [
+    ['74 BPM', '2035-01-15', 'Fixture one'],
+    ['58 BPM', '2035-01-14', 'Fixture two'],
+    ['83 BPM', '2035-01-13', t('overview.sourceUnknown')],
+  ]) {
+    expect(screen.queryByText(date)).toBeNull();
+    const label = [reading, date, t('chart.source', { source })].join(', ');
+    expect(screen.getByLabelText(label, { exact: false })).toBeVisible();
+  }
   expect(screen.queryByText('Fixture one')).toBeNull();
   expect(screen.queryByTestId('overview-metric-chart-heartRate')).toBeNull();
   await view.unmount();
