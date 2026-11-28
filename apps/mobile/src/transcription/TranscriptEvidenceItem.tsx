@@ -4,6 +4,7 @@ import { AppSymbol } from '../layout/AppSymbol';
 import { AppText as Text } from '../layout/AppText';
 import { appColors } from '../layout/appColors';
 import { t } from '../i18n';
+import { RecordingPlaybackButton } from '../recording/RecordingPlaybackButton';
 import { transcriptEvidenceStyles as styles } from './TranscriptEvidencePanel.styles';
 
 interface TranscriptEvidenceItemProps {
@@ -15,6 +16,8 @@ interface TranscriptEvidenceItemProps {
   savedDetail: boolean;
   onToggleCollapsed?: () => void;
   onPlay: () => Promise<void>;
+  onStop?: () => void;
+  playbackDisabled: boolean;
   onEdit: () => void;
 }
 
@@ -58,25 +61,37 @@ export default function TranscriptEvidenceItem({
   savedDetail,
   onToggleCollapsed,
   onPlay,
+  onStop,
+  playbackDisabled,
   onEdit,
 }: TranscriptEvidenceItemProps) {
+  const rangeHint = t('recording.transcript.range', {
+    start: timeLabel(segment.audioRange.startMs),
+    end: timeLabel(segment.audioRange.endMs),
+  });
   const range = (
     <Text
       style={styles.range}
       testID={`transcript-range-${segment.segmentOrdinal}`}
     >
-      {t('recording.transcript.range', {
-        start: timeLabel(segment.audioRange.startMs),
-        end: timeLabel(segment.audioRange.endMs),
-      })}
+      {rangeHint}
     </Text>
   );
-  const playButton = (
+  const stop = playing ? onStop : undefined;
+  const playButton = savedDetail ? (
+    <RecordingPlaybackButton
+      label={t(
+        stop ? 'recording.library.stopAudio' : 'recording.transcript.play',
+      )}
+      hint={rangeHint}
+      stop={Boolean(stop)}
+      disabled={playbackDisabled || (playing && !stop)}
+      onPress={stop ?? onPlay}
+      testID={`transcript-play-${segment.segmentOrdinal}`}
+    />
+  ) : (
     <Pressable
-      accessibilityHint={t('recording.transcript.range', {
-        start: timeLabel(segment.audioRange.startMs),
-        end: timeLabel(segment.audioRange.endMs),
-      })}
+      accessibilityHint={rangeHint}
       accessibilityLabel={
         playing
           ? t('recording.transcript.playing')
