@@ -83,6 +83,7 @@ export const standingMemoryModes = [
   'standing-note-success',
   'standing-note-opted-out',
   'standing-note-revoked',
+  'standing-note-source-deleted',
   'standing-note-sensitive',
 ] as const;
 
@@ -92,3 +93,21 @@ export function standingMemoryUtterance(mode: string) {
     ? '저는 배경 음악을 모으는 프로젝트를 진행해요.'
     : '매일 피아노를 연습해요';
 }
+
+export function standingAuthoredCommitAttempted(mode: string) {
+  return (
+    mode === 'locked-in-transaction' ||
+    mode.endsWith('-revoked') ||
+    mode === 'standing-note-source-deleted'
+  );
+}
+
+export const authoredTerminalGraphModes = [
+  'success',
+  'denied',
+  'owner-retired',
+  'locked-in-transaction',
+  'wrong-text',
+  'wrong-proof',
+  ...standingMemoryModes,
+] as const;

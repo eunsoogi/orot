@@ -1,7 +1,8 @@
 import {
   interceptAuthoredMemoryCommit,
+  standingAuthoredCommitAttempted,
   standingAuthoredRoutineGraphFixture,
-  standingMemoryModes,
+  authoredTerminalGraphModes,
   standingMemoryUtterance,
 } from '../testSupport/standingAuthoredRoutineGraphFixture';
 import { runMultiAgentWorkflow } from '@orot/agent-runtime';
@@ -23,22 +24,12 @@ import type { AiFeatureLocalData } from '../localData';
 const runId = 'synthetic-authored-terminal-run';
 const sessionId = 'synthetic-authored-session';
 const requestId = 'synthetic-authored-request';
-const modelId = authoredPlanModel;
 const toolId = 'remember-current-user-statement';
 const statement = 'The lilac project demo takes place each Friday.';
 const request = `${statement} Please remember this.`;
 const empty = { items: [], coverage: [], conflicts: [] };
-const tests = [
-  'success',
-  'denied',
-  'owner-retired',
-  'locked-in-transaction',
-  'wrong-text',
-  'wrong-proof',
-  ...standingMemoryModes,
-] as const;
 
-test.each(tests)(
+test.each(authoredTerminalGraphModes)(
   'ordinary ChatGPT Plan uses a local-only terminal receipt: %s',
   async mode => {
     const f = await healthContextFixture();
@@ -84,6 +75,8 @@ test.each(tests)(
         ) =>
           (async () => {
             if (mode.endsWith('-revoked')) await standingTask?.revoke();
+            if (mode === 'standing-note-source-deleted')
+              await storage.deleteSession(sessionId);
             return saveConversationHealthHistory(database, input, signal);
           })(),
       );
@@ -101,9 +94,9 @@ test.each(tests)(
       type Mutation = Parameters<typeof prepareConversationMutation>[1];
       const selected = {
         status: 'ready',
-        selection: { providerId, modelId },
+        selection: { providerId, modelId: authoredPlanModel },
         provider,
-        modelId,
+        modelId: authoredPlanModel,
         remoteProcessing: true,
         recipient: 'synthetic-local-fixture',
       } as Mutation['selected'];
@@ -146,7 +139,7 @@ test.each(tests)(
             templateProposalOwner: {
               providerId:
                 mode === 'wrong-proof' ? 'chatgpt-plan:other' : providerId,
-              modelId,
+              modelId: authoredPlanModel,
               current: () => ownerCurrent,
               recheck: async () => ownerCurrent,
               watch: dispose => {
@@ -237,8 +230,9 @@ test.each(tests)(
         expect(result.status).not.toBe('result');
         expect(await notes.list()).toEqual([]);
         expect(confirm).not.toHaveBeenCalled();
+        expect(mutation.memorySaved()).not.toBe('saved');
         expect(persist).toHaveBeenCalledTimes(
-          mode === 'locked-in-transaction' || mode.endsWith('-revoked') ? 1 : 0,
+          standingAuthoredCommitAttempted(mode) ? 1 : 0,
         );
       }
       mutation.disposeAnswerMemory();
