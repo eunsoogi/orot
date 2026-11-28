@@ -1,4 +1,10 @@
-import { act, fireEvent, screen, waitFor } from '@testing-library/react-native';
+import {
+  act,
+  fireEvent,
+  screen,
+  waitFor,
+  within,
+} from '@testing-library/react-native';
 import { AppState } from 'react-native';
 import type { RecentMaterialRow } from '../../generatedReports/catalog';
 import { loadRecentMaterial } from '../../generatedReports/recentMaterialReader';
@@ -46,7 +52,7 @@ test('a pending next page keeps incumbent rows and More ahead of pagination feed
     expect(screen.getByTestId('records-recent-sources-loading')).toBeTruthy(),
   );
   expect(
-    screen.queryByTestId('records-recent-skeleton', {
+    within(scroll).queryByTestId('records-recent-skeleton', {
       includeHiddenElements: true,
     }),
   ).toBeNull();

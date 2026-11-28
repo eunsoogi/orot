@@ -236,12 +236,12 @@ export function useRecordsRecentFeed(
       !partial &&
       (hasKnownMore ||
         streams.some(stream => stream.more && stream.rows.length > 0)),
+    // An idle cursor has not proved emptiness, even before the route takes focus.
     isLoading:
       legacyRecordingState === 'loading' ||
       legacyDocumentState === 'loading' ||
       streams.some(
-        stream =>
-          stream.state === 'loading' || (active && stream.state === 'idle'),
+        stream => stream.state === 'loading' || stream.state === 'idle',
       ),
     canAdvance,
     loadErrors,
