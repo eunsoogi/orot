@@ -112,7 +112,11 @@ test('Sync Status retains its explicit retry and one loaded scroll page at the n
       />,
     ),
   );
-  expectRightEdge('settings-sync-status-scroll', 20);
+  expectRightEdge('settings-sync-status-scroll', 0);
+  // The same gutter is applied inside the measured region, not outside it.
+  expect(screen.getByTestId('settings-sync-status-page')).toHaveStyle({
+    paddingHorizontal: 20,
+  });
   expect(retrySync).not.toHaveBeenCalled();
   await fireEvent.press(await screen.findByTestId('settings-sync-retry'));
   expect(retrySync).toHaveBeenCalledTimes(1);

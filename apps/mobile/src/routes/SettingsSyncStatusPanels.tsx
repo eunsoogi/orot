@@ -1,3 +1,4 @@
+import { settingsPageStyles } from '../layout/settingsPagePresentation';
 import { StyleSheet, View } from 'react-native';
 import type { HealthKitAutoSyncFeature } from '../healthkit/autoSyncCheckpoint';
 import type { CalendarAutoSyncActions } from '../calendar/useCalendarAutoSync';
@@ -34,7 +35,7 @@ export function SettingsSyncStatusHealthPanel({
     <View style={styles.panel} testID="settings-sync-status-primary">
       <Text
         accessibilityRole="header"
-        style={styles.title}
+        style={settingsPageStyles.title}
         testID="settings-sync-status-title"
       >
         {t('settings.syncStatus.title')}
@@ -134,7 +135,6 @@ export function SettingsSyncStatusRecoveryPanel({
 
 const styles = StyleSheet.create({
   panel: { flexGrow: 1, gap: 16 },
-  title: { color: appColors.text, fontSize: 30, fontWeight: '700' },
   card: {
     backgroundColor: appColors.surface,
     borderColor: appColors.border,

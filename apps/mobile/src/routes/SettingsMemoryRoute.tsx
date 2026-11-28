@@ -1,9 +1,9 @@
+import { settingsPageStyles } from '../layout/settingsPagePresentation';
 import { StyleSheet, View } from 'react-native';
 import { AdaptiveColumns } from '../layout/AdaptiveColumns';
 import { settingsListColors } from './settingsListColors';
 import { t } from '../i18n';
 import { AppText } from '../layout/AppText';
-import { appColors } from '../layout/appColors';
 import { useNavigationLeaveStateRegistration } from '../navigation';
 import { NavigationRouteScrollView } from '../navigation/NavigationRouteScrollView';
 import type { NavigationRouteOwnership } from '../navigation/navigationRouteContracts';
@@ -32,7 +32,7 @@ export function SettingsMemoryRoute({
             <View style={styles.page}>
               <AppText
                 accessibilityRole="header"
-                style={styles.title}
+                style={settingsPageStyles.title}
                 testID="settings-memory-title"
               >
                 {t('settings.memory')}
@@ -59,10 +59,10 @@ const styles = StyleSheet.create({
     flexGrow: 1,
     // The AdaptiveColumns lane already excludes space reserved by navigation.
     width: '100%',
-    padding: 20,
+    ...settingsPageStyles.inset,
+    paddingBottom: 20,
     gap: 20,
   },
-  title: { color: appColors.text, fontSize: 30, fontWeight: '700' },
   group: { backgroundColor: settingsListColors.row, borderRadius: 18 },
   divider: {
     height: StyleSheet.hairlineWidth,

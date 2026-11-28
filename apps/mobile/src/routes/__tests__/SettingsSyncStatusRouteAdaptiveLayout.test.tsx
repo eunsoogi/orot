@@ -95,7 +95,7 @@ function geometry(width: number, divided: boolean): NavigationGeometryPayload {
           {
             id: 'duo-division',
             kind: 'division',
-            frame: { x: width / 2 - 5, y: 0, width: 10, height: 600 },
+            frame: { x: width / 3 - 5, y: 0, width: 10, height: 600 },
             margins: { top: 0, right: 0, bottom: 0, left: 0 },
             isActive: true,
           },
@@ -194,7 +194,14 @@ test('adapts the production Settings sync route to native usable regions and tex
     StyleSheet.flatten(
       screen.getByTestId('settings-sync-status-layout-primary').props.style,
     )?.width,
-  ).toBeLessThanOrEqual(445);
+  ).toBeGreaterThan(445);
+  // When a right native region wins, the gutter belongs inside that region.
+  expect(StyleSheet.flatten(layout().props.style)?.marginStart).toBe(305);
+  expect(
+    StyleSheet.flatten(
+      screen.getByTestId('settings-sync-status-page').props.style,
+    ),
+  ).toEqual(expect.objectContaining({ paddingHorizontal: 20, paddingTop: 24 }));
   expect(
     screen.getByTestId('settings-sync-retry').props.accessibilityState.disabled,
   ).toBe(false);

@@ -1,16 +1,14 @@
+import { ProviderSelectionHeading } from './ProviderSelectionHeading';
+import { AdaptiveColumns } from '../../layout/AdaptiveColumns';
 import { useSavedChatGPTTitle } from './useSavedChatGPTTitle';
 import { savedModelPresentation } from './savedModelPresentation';
 import { useSavedSearchChoices } from './useSavedSearchChoices';
 import { useConversationModelConfirmation } from './useConversationModelConfirmation';
-import { t } from '../../i18n';
 import { APPLE_PCC_PROVIDER_ID } from './privateCloudCompute';
 import { ModelSelectionTabs } from './ModelSelectionTabs';
 import { useProviderSelectionScrollLane } from './useProviderSelectionScrollLane';
-import { AppButton as Button } from '../../layout/AppButton';
-import { AppText as Text } from '../../layout/AppText';
 import { useEffect, useMemo, useState } from 'react';
 import { ScrollView, View } from 'react-native';
-import { navigationText } from '../../i18n/navigation';
 import ChatGPTAccountSetupCard from './ChatGPTAccountSetupCard';
 import { ProviderSelectionChoices } from './ProviderSelectionChoices';
 import {
@@ -22,7 +20,6 @@ import {
   selectionSummaryMessage,
 } from './providerSelectionScreenPresentation';
 import { resolveProviderSelection } from './providerSelection';
-import { providerSelectionText } from './text';
 import type { ProviderSelectionScreenProps } from './ProviderSelectionScreenProps';
 import { useProviderSelectionNavigationState } from './providerSelectionNavigationState';
 import type { ProviderSelection, ProviderSelectionOption } from './types';
@@ -39,8 +36,10 @@ export default function ProviderSelectionScreen({
   onSelectionCommitted,
   onNavigationStateChange,
 }: ProviderSelectionScreenProps) {
+  const isSettings = presentation !== 'feature';
   const { edge, contentStyle, onLayout } = useProviderSelectionScrollLane(
-    Boolean(navigationRouteKey) && presentation !== 'feature',
+    Boolean(navigationRouteKey) && isSettings,
+    isSettings,
   );
   const search = useSavedSearchChoices(selectionStore);
   const [savedSelection, setSavedSelection] =
@@ -136,7 +135,7 @@ export default function ProviderSelectionScreen({
     presentation,
   });
   const host = { testID: 'provider-selection-scroll-lane', onLayout };
-  return (
+  const screen = (
     <View style={styles.root} {...host}>
       <ScrollView
         {...edge.indicatorProps}
@@ -146,24 +145,12 @@ export default function ProviderSelectionScreen({
           presentation.replace('feature', 'provider-selection') + '-screen'
         }
       >
-        {onBack && !navigationRouteKey ? (
-          <Button
-            accessibilityLabel={navigationText.back.accessibilityLabel}
-            onPress={onBack}
-            testID="provider-selection-back"
-            title={navigationText.back.label}
-          />
-        ) : null}
-        <Text accessibilityRole="header" style={styles.title}>
-          {presentation === 'feature'
-            ? t('modelSettings.languageTitle')
-            : (screenTitle ?? providerSelectionText.title)}
-        </Text>
-        <Text style={styles.introduction}>
-          {presentation === 'feature'
-            ? t('modelSettings.languagePrompt')
-            : (screenIntroduction ?? providerSelectionText.introduction)}
-        </Text>
+        <ProviderSelectionHeading
+          isSettings={isSettings}
+          introduction={screenIntroduction}
+          title={screenTitle}
+          onBack={navigationRouteKey ? undefined : onBack}
+        />
         {chatGPTSetup && presentation === 'settings-accounts' ? (
           <ChatGPTAccountSetupCard setup={chatGPTSetup} />
         ) : null}
@@ -244,5 +231,12 @@ export default function ProviderSelectionScreen({
       </ScrollView>
       {disclosureSheet}
     </View>
+  );
+  // Select the same native usable region as the Settings tab before measuring
+  // whether this page can borrow the full-width scroll-indicator lane.
+  return isSettings ? (
+    <AdaptiveColumns primary={screen} testID="settings-provider-columns" />
+  ) : (
+    screen
   );
 }

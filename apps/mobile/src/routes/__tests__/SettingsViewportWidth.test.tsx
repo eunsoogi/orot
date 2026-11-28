@@ -120,6 +120,15 @@ describe.each(routes)(
           width - rail,
         );
         expect(page.paddingHorizontal ?? page.padding).toBe(20);
+        expect(page.paddingTop).toBe(24);
+        expect(
+          StyleSheet.flatten(screen.getByTestId(title).props.style),
+        ).toEqual(
+          expect.objectContaining({
+            fontSize: 34,
+            fontWeight: '700',
+          }),
+        );
         expect(screen.getByTestId(group)).toBeVisible();
         expect(
           StyleSheet.flatten(screen.getByTestId(scroll).props.style)

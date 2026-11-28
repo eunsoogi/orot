@@ -1,3 +1,7 @@
+import {
+  settingsPageInsets,
+  settingsPageStyles,
+} from '../layout/settingsPagePresentation';
 import { useState } from 'react';
 import { ScrollView, StyleSheet, View } from 'react-native';
 import type { HealthKitAutoSyncFeature } from '../healthkit/autoSyncCheckpoint';
@@ -12,6 +16,8 @@ import { useNavigationContentInset } from '../navigation/useNavigationContentIns
 import { useHealthDataRouteActions } from './useHealthDataRouteActions';
 import { HealthDataAuthorizationRecoveryNotice } from './HealthDataAuthorizationRecoveryNotice';
 import { HealthDataFeatureSelection } from './HealthDataFeatureSelection';
+
+const HEALTH_DATA_PAGE_GUTTER = 24;
 
 /** Keeps choices, and their save feedback in one region-bound scrolling page. */
 export function HealthDataIntegrationScreen({
@@ -33,11 +39,14 @@ export function HealthDataIntegrationScreen({
   readonly saving: boolean;
   readonly selected: ReadonlySet<HealthKitAutoSyncFeature>;
 }) {
-  const inset = useNavigationContentInset();
+  const inset = settingsPageInsets(
+    useNavigationContentInset(),
+    HEALTH_DATA_PAGE_GUTTER,
+  );
   const [ownerWidth, setOwnerWidth] = useState(0);
   const edge = useNavigationEdgeVerticalScroll({
     ownerWidth,
-    trailingPadding: inset.paddingRight ?? styles.panel.paddingHorizontal,
+    trailingPadding: inset.paddingRight,
   });
   const hasDock = useHealthDataRouteActions({
     loadFailed,
@@ -57,7 +66,7 @@ export function HealthDataIntegrationScreen({
       <View style={styles.heading}>
         <Text
           accessibilityRole="header"
-          style={styles.title}
+          style={[settingsPageStyles.title, styles.title]}
           testID="health-data-title"
         >
           {t('settings.healthData.title')}
@@ -153,12 +162,13 @@ const styles = StyleSheet.create({
     flexGrow: 1,
     backgroundColor: appColors.background,
     gap: 16,
-    paddingHorizontal: 24,
-    paddingTop: 24,
-    paddingBottom: 32,
   },
   heading: { gap: 8 },
-  title: { color: appColors.text, fontSize: 30, fontWeight: '700' },
+  // Match other Settings titles without shifting the existing Health Data controls.
+  title: {
+    marginStart:
+      settingsPageStyles.inset.paddingHorizontal - HEALTH_DATA_PAGE_GUTTER,
+  },
   body: { color: appColors.secondary, fontSize: 15, lineHeight: 22 },
   note: { color: appColors.secondary, fontSize: 13, lineHeight: 19 },
   status: {

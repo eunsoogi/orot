@@ -68,6 +68,11 @@ export const providerSelectionScreenStyles = StyleSheet.create({
     padding: 20,
     backgroundColor: appColors.background,
   },
+  settingsContainer: {
+    flexGrow: 1,
+    gap: modelSettingsPageGap,
+    backgroundColor: appColors.background,
+  },
   title: {
     color: appColors.text,
     fontSize: 32,
