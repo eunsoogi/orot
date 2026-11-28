@@ -104,6 +104,7 @@
 		283304E73431063EB5C4206B /* TestSpeechObservation.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2D0CC908B80A06121230581D /* TestSpeechObservation.swift */; };
 		2D158C819B404E85932B08B6 /* ConsentFingerprintModule.m in Sources */ = {isa = PBXBuildFile; fileRef = F097A6B0483243F38A41E365 /* ConsentFingerprintModule.m */; };
 		2D2444A0FF364D46BDF72F7C /* ComposerGlassView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5314A0EDC2A24E8488D3D89E /* ComposerGlassView.swift */; };
+		56847FE45DFF487EA81E828F /* SectionSelectionGlassView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2DACFEF327B9459981679430 /* SectionSelectionGlassView.swift */; };
 		2E36EE573FDE4C56822B9AC1 /* AuthConsentWaitRegression.swift in Sources */ = {isa = PBXBuildFile; fileRef = CA4C008D18154122AA378350 /* AuthConsentWaitRegression.swift */; };
 		2F12B87418286448ACE4235E /* RenderedTextUITestConditions.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1972BAC3D96A140512956AE4 /* RenderedTextUITestConditions.swift */; };
 		32E95890ED81D9F662C886C9 /* UITestConditions.swift in Sources */ = {isa = PBXBuildFile; fileRef = A89139838EEBFC807829E10F /* UITestConditions.swift */; };
@@ -584,6 +585,7 @@
 		4D1FCB337FC3473EA50FC8C2 /* ProviderAuthUITestDiagnostics.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = ProviderAuthUITestDiagnostics.swift; sourceTree = "<group>"; };
 		4DD0E61F7D56E61215372EFE /* Foundation.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = Foundation.framework; path = System/Library/Frameworks/Foundation.framework; sourceTree = SDKROOT; };
 		5314A0EDC2A24E8488D3D89E /* ComposerGlassView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ComposerGlassView.swift; sourceTree = "<group>"; };
+		2DACFEF327B9459981679430 /* SectionSelectionGlassView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SectionSelectionGlassView.swift; sourceTree = "<group>"; };
 		56193BCDFC252774044F643A /* RecordingPlaybackUITests.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = RecordingPlaybackUITests.swift; sourceTree = "<group>"; };
 		C7D0958D88C7DACC50305B2F /* RecordingBackgroundRecoveryUITests.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = RecordingBackgroundRecoveryUITests.swift; sourceTree = "<group>"; };
 		BE5A0E10C3AC43AF78DF8AF5 /* DailyReminderDeliveryUITests.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = DailyReminderDeliveryUITests.swift; sourceTree = "<group>"; };
@@ -1315,6 +1317,7 @@
 				B19500000000000000000001 /* NavigationGlassButton.swift */,
 				B19500000000000000000003 /* NavigationContextualActionContent.swift */,
 				5314A0EDC2A24E8488D3D89E /* ComposerGlassView.swift */,
+				2DACFEF327B9459981679430 /* SectionSelectionGlassView.swift */,
 				572A3A3D79AD451BAD30D047 /* GlassIconButton.swift */,
 				B1011000B1011000B1011003 /* AppSymbolView.swift */,
 				B20400000000000000000001 /* AppProgressView.swift */,
@@ -1810,6 +1813,7 @@
 				A19500000000000000000001 /* NavigationGlassButton.swift in Sources */,
 				A19500000000000000000003 /* NavigationContextualActionContent.swift in Sources */,
 				2D2444A0FF364D46BDF72F7C /* ComposerGlassView.swift in Sources */,
+				56847FE45DFF487EA81E828F /* SectionSelectionGlassView.swift in Sources */,
 				EBAE3A6E40FC4104951D98F5 /* GlassIconButton.swift in Sources */,
 				A1011000A1011000A1011003 /* AppSymbolView.swift in Sources */,
 				A20400000000000000000001 /* AppProgressView.swift in Sources */,

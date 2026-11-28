@@ -4,7 +4,10 @@ import UIKit
 /// A material-only backing keeps React's text input, focus and actions in their own hierarchy.
 /// It never consumes touches or becomes an accessibility element.
 final class ComposerGlassSurfaceView: UIVisualEffectView {
-    init() {
+    private let maximumCornerRadius: CGFloat?
+
+    init(maximumCornerRadius: CGFloat? = 28) {
+        self.maximumCornerRadius = maximumCornerRadius
         super.init(effect: nil)
         isUserInteractionEnabled = false
         isAccessibilityElement = false
@@ -24,7 +27,7 @@ final class ComposerGlassSurfaceView: UIVisualEffectView {
     override func layoutSubviews() {
         super.layoutSubviews()
         // Multiline input grows vertically while keeping the same rounded capsule ends.
-        layer.cornerRadius = min(28, bounds.height / 2)
+        layer.cornerRadius = min(maximumCornerRadius ?? bounds.width / 2, bounds.height / 2)
     }
 
     deinit {

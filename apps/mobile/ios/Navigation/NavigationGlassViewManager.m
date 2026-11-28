@@ -15,6 +15,11 @@ RCT_EXPORT_VIEW_PROPERTY(onContentHeightChange, RCTDirectEventBlock)
 @interface RCT_EXTERN_MODULE (ComposerGlassViewManager, RCTViewManager)
 @end
 
+// Inner section selection is independent of composer input and the app navigation rail.
+@interface RCT_EXTERN_MODULE (SectionSelectionGlassViewManager, RCTViewManager)
+RCT_EXPORT_VIEW_PROPERTY(selectionTarget, NSDictionary)
+@end
+
 // UIKit owns the Send/Stop target; the adjacent ComposerGlassView supplies the field material.
 @interface RCT_EXTERN_MODULE (ComposerGlassActionViewManager, RCTViewManager)
 RCT_EXPORT_VIEW_PROPERTY(busy, BOOL)
