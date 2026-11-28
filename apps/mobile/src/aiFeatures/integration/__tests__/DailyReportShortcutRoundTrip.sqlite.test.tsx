@@ -170,13 +170,16 @@ test('real Daily shortcut separates lookup, dispatch, verified receipt and visib
     );
     expect(expectedHeadings.length).toBeGreaterThan(0);
     const observation = /오늘 기록된 심박수: 72/;
-    expect(screen.getByText(observation)).toBeVisible();
+    const quiet = '확인한 기록에서 눈여겨볼 변화나 예외는 찾지 못했어요.';
+    expect(screen.getByText(quiet)).toBeVisible();
+    expect(screen.queryByText(observation)).toBeNull();
     const attempts = generate.mock.calls.length;
     expect(attempts).toBeGreaterThan(0);
     expect(await feature.storage().listCompletionIdentities()).toHaveLength(1);
     await feature.reopen();
     expect(await screen.findByText(heading)).toBeVisible();
-    expect(screen.getByText(observation)).toBeVisible();
+    expect(screen.getByText(quiet)).toBeVisible();
+    expect(screen.queryByText(observation)).toBeNull();
     for (const label of expectedHeadings)
       expect(screen.getByText(label)).toBeVisible();
     expect(generate).toHaveBeenCalledTimes(attempts);

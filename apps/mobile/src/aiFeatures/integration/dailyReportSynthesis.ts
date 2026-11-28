@@ -15,7 +15,9 @@ type Claim = DailyReportOutput['supportedContext'][number];
 /** Summarize observed daily patterns, not medical meaning. No reference ranges or
  * causal/diagnostic conclusions can be inferred from a day's incomplete sample.
  * The existing model selects highlights; only deterministic, cited synthesis is
- * allowed to add statements beyond their verbatim source descriptions. */
+ * allowed to add statements beyond their verbatim source descriptions. For the
+ * main report, only an explicitly recorded symptom or a conflicted measurement
+ * is a same-day signal; a point value or endpoint difference alone is not. */
 export function dailyReportSynthesis(
   values: readonly LocalHealthEvidenceRecord[],
   sources: readonly DailyReportSourceRecord[],
@@ -175,8 +177,9 @@ export function dailyReportSynthesis(
           ]),
         ]),
       );
+    } else if (focus) {
+      continue;
     } else if (!group.every(item => item.pointMeasurement)) {
-      if (focus) continue;
       result.push(
         claim(t('dailySynthesis.interval', { value0: first.concept }), indexes),
       );
@@ -184,7 +187,6 @@ export function dailyReportSynthesis(
       first.at !== last.at &&
       compareTimestamps(first.at, last.at) !== 0
     ) {
-      if (focus && first.amount === last.amount) continue;
       const valuesText =
         first.amount === last.amount
           ? t('dailySynthesis.same', {

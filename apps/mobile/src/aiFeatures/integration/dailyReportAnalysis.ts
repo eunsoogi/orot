@@ -21,7 +21,10 @@ export function dailyReportAnalysis(
   values: readonly LocalHealthEvidenceRecord[],
   sources: readonly DailyReportSourceRecord[],
   selected: readonly number[],
-  history: readonly (Claim & { materialComparison?: boolean })[],
+  history: readonly (Claim & {
+    materialComparison?: boolean;
+    focusText?: string;
+  })[],
   plans: readonly Claim[],
   generated: readonly ProjectedReportModelClaim[] = [],
   sleep: readonly Claim[] = [],
@@ -113,7 +116,16 @@ export function dailyReportAnalysis(
       priority,
       candidates,
       comparisons: [
-        ...history.filter(item => item.materialComparison === true),
+        ...history.flatMap(item =>
+          item.materialComparison && item.focusText
+            ? [
+                {
+                  text: item.focusText,
+                  sourceReferences: item.sourceReferences,
+                },
+              ]
+            : [],
+        ),
         ...dailyReportSynthesis(values, sources, selected, true),
       ],
       generated,

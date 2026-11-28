@@ -82,30 +82,52 @@ export function dailyReportPersonalBaseline(
     )
       throw new Error('Baseline sources do not match values.');
     const current = median(group.today);
-    const prior = median([...group.past.values()].map(median));
+    const pastDays = [...group.past.values()].map(median);
+    const prior = median(pastDays);
+    const shownCurrent = Number(display(current));
+    const shownDays = pastDays.map(value => Number(display(value)));
+    const low = Math.min(...shownDays);
+    const high = Math.max(...shownDays);
+    const concept = visibleValue(group.concept, 'concept') ?? group.concept;
+    const unit =
+      group.unit === 'count/min'
+        ? t('dailyReport.baseline.perMinute')
+        : group.unit;
+    const direction = t(
+      current > prior
+        ? 'dailyReport.baseline.higher'
+        : current < prior
+          ? 'dailyReport.baseline.lower'
+          : 'dailyReport.baseline.equal',
+    );
     const text = t('dailyReport.baseline.comparison', {
-      concept: visibleValue(group.concept, 'concept') ?? group.concept,
+      concept,
       today: display(current),
       baseline: display(prior),
       days: group.past.size,
-      unit:
-        group.unit === 'count/min'
-          ? t('dailyReport.baseline.perMinute')
-          : group.unit,
-      direction: t(
-        current > prior
-          ? 'dailyReport.baseline.higher'
-          : current < prior
-            ? 'dailyReport.baseline.lower'
-            : 'dailyReport.baseline.equal',
-      ),
+      unit,
+      direction,
     });
+    // The main report skips ordinary within-history variation. Use the
+    // displayed observed day medians, not a clinical or personal normal range.
+    const outsideHistory = shownCurrent < low || shownCurrent > high;
     return [
       {
         text,
         modelText: text,
-        ...(display(current) !== display(prior)
-          ? { materialComparison: true as const }
+        ...(outsideHistory
+          ? {
+              materialComparison: true as const,
+              focusText: t('dailyReport.baseline.focusComparison', {
+                concept,
+                today: display(current),
+                low,
+                high,
+                unit,
+                days: group.past.size,
+                direction,
+              }),
+            }
           : {}),
         sourceReferences: sources
           .filter(
