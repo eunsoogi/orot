@@ -14,7 +14,7 @@ import {
   conversationAssistantTextFormat,
 } from './ConversationMessageText';
 import { ConversationSentPhoto } from './ConversationSentPhoto';
-import { sentPhotoPreview } from './conversationBubblePaint';
+import { useOwnedColdPhotoPreview } from './ownedColdPhotoDisplay';
 import { ConversationPreviousOutputs } from './ConversationPreviousOutputs';
 import { ConversationInitialResponse } from './ConversationInitialResponse';
 import { ConversationBubbleEntrance } from './ConversationBubbleEntrance';
@@ -43,6 +43,7 @@ export function ConversationMessage({
   showToolActivity = true,
   compact = false,
   copyScope,
+  coldPhotoSessionId,
   toolSourceSessionId,
   resolveToolSource,
   resolveColdToolSource,
@@ -63,6 +64,7 @@ export function ConversationMessage({
   readonly showToolActivity?: boolean;
   readonly compact?: boolean;
   readonly copyScope?: ConversationBubbleCopyScope;
+  readonly coldPhotoSessionId?: number;
   readonly toolSourceSessionId?: string | null;
   readonly resolveColdToolSource?: import('../aiFeatures/integration/coldConversationSourceResolvers').ResolveColdConversationToolSource;
   readonly resolveToolSource?: ResolveConversationToolSource;
@@ -76,7 +78,7 @@ export function ConversationMessage({
       onLinkError,
     });
   const markdownLinkError = useConversationMarkdownLinkError(onLinkError);
-  const photo = sentPhotoPreview(message);
+  const photo = useOwnedColdPhotoPreview(message, coldPhotoSessionId);
   const user = message.role === 'user';
   const copyMenus = conversationBubbleCopyMenus(copyScope, message);
   const visitQuestions =

@@ -7,7 +7,8 @@ final class OpenAIProviderRequestRegistry {
         let ticket: ChatGPTRequestLifecycleGate.Ticket
         var task: Task<Void, Never>?
         var steering: ChatGPTSteerableResponse?
-        let event: (NSDictionary) -> Void
+        fileprivate let photoDelivery: PhotoDelivery?
+        fileprivate let enqueue: (Delivery) -> Void
 
         var id: String {
             ticket.id
@@ -17,9 +18,89 @@ final class OpenAIProviderRequestRegistry {
             ticket.issuedClientID
         }
 
-        init(ticket: ChatGPTRequestLifecycleGate.Ticket, event: @escaping (NSDictionary) -> Void) {
+        fileprivate init(ticket: ChatGPTRequestLifecycleGate.Ticket, photoDelivery: PhotoDelivery?, enqueue: @escaping (Delivery) -> Void) {
             self.ticket = ticket
-            self.event = event
+            self.photoDelivery = photoDelivery
+            self.enqueue = enqueue
+        }
+
+        func event(_ packet: NSDictionary) {
+            // Never let a mutable progress packet acquire a terminal tag after queue admission.
+            guard let snapshot = packet.copy() as? NSDictionary else { return }
+            switch snapshot["type"] as? String {
+            case "steering_ready", "text_snapshot", "steering", "response_started", "text_delta", "tool_call":
+                enqueue(.event(snapshot))
+            default: break
+            }
+        }
+    }
+
+    /// Only a typed native response can schedule a successful terminal. Bridge dictionaries do not grant it.
+    enum Terminal {
+        case completed(ChatGPTResponsesResult)
+        case failed(Error)
+
+        fileprivate var packet: [String: Any] {
+            switch self {
+            case let .completed(response):
+                var packet: [String: Any] = [
+                    "type": "completed",
+                    "text": response.text,
+                    "toolCalls": response.toolCalls.map(OpenAIProviderRequestRegistry.toolPacket),
+                    "continuationItems": response.continuationItems,
+                ]
+                if let usage = response.usage {
+                    packet["usage"] = usage.nativePayload
+                }
+                // Public-search output carries provider citations, not fetched originals.
+                if let search = response.webSearch {
+                    packet["webSearch"] = [
+                        "callCount": search.callCount,
+                        "citations": search.citations.map { ["url": $0.url, "title": $0.title] },
+                    ]
+                }
+                return packet
+            case let .failed(error):
+                return ["type": "failed", "error": OpenAIProviderErrorDetails.make(error)]
+            }
+        }
+    }
+
+    fileprivate enum Delivery {
+        case event(NSDictionary)
+        case terminal(Terminal)
+
+        var isTerminal: Bool {
+            if case .terminal = self {
+                return true
+            }
+            return false
+        }
+
+        var packet: NSDictionary {
+            switch self {
+            case let .event(packet): packet
+            case let .terminal(terminal): terminal.packet as NSDictionary
+            }
+        }
+    }
+
+    /// Photo Stop can still win after the provider reserves its terminal but before the bridge enqueue.
+    /// This is an enqueue fence only; it is not a JavaScript sink or persistent-media receipt.
+    fileprivate final class PhotoDelivery {
+        private let lock = NSLock()
+        private var retired = false
+
+        func retire() {
+            lock.withLock { retired = true }
+        }
+
+        func deliver(_ enqueue: () -> Void) {
+            lock.withLock {
+                if !retired {
+                    enqueue()
+                }
+            }
         }
     }
 
@@ -36,21 +117,27 @@ final class OpenAIProviderRequestRegistry {
     func register(
         _ requestID: String,
         issuedClientID: String,
+        photo: Bool = false,
         emit: @escaping (String, NSDictionary) -> Void,
     ) -> Registration {
         lock.lock()
         defer { lock.unlock() }
         switch lifecycle.register(requestID, issuedClientID: issuedClientID) {
         case let .accepted(ticket):
-            let slot = Slot(ticket: ticket) { [weak self] packet in
-                let terminal = Self.isTerminalPacket(packet)
+            let photoDelivery = photo ? PhotoDelivery() : nil
+            let slot = Slot(ticket: ticket, photoDelivery: photoDelivery) { [weak self] delivery in
                 DispatchQueue.main.async { [weak self] in
                     guard let self,
-                          lifecycle.deliver(ticket, terminal: terminal, emit: {
-                              emit(requestID, packet)
+                          lifecycle.deliver(ticket, terminal: delivery.isTerminal, emit: {
+                              let enqueue = { emit(requestID, delivery.packet) }
+                              if let photoDelivery {
+                                  photoDelivery.deliver(enqueue)
+                              } else {
+                                  enqueue()
+                              }
                           })
                     else { return }
-                    if terminal {
+                    if delivery.isTerminal {
                         remove(ticket)
                     }
                 }
@@ -83,7 +170,13 @@ final class OpenAIProviderRequestRegistry {
 
     func cancel(requestID: String) -> Task<Void, Never>? {
         lock.lock()
-        guard let slot = requests[requestID], lifecycle.cancel(slot.ticket) else {
+        guard let slot = requests[requestID] else {
+            lock.unlock()
+            return nil
+        }
+        // Release the per-photo lock before claiming the lifecycle gate; queued delivery takes them in the other order.
+        slot.photoDelivery?.retire()
+        guard lifecycle.cancel(slot.ticket) else {
             lock.unlock()
             return nil
         }
@@ -132,8 +225,10 @@ final class OpenAIProviderRequestRegistry {
         lifecycle.isActive(slot.ticket)
     }
 
-    func finish(_ slot: Slot) -> Bool {
-        lifecycle.reserveTerminal(slot.ticket)
+    func finish(_ slot: Slot, _ terminal: Terminal) {
+        if lifecycle.reserveTerminal(slot.ticket) {
+            slot.enqueue(.terminal(terminal))
+        }
     }
 
     private func remove(_ ticket: ChatGPTRequestLifecycleGate.Ticket) {
@@ -144,8 +239,7 @@ final class OpenAIProviderRequestRegistry {
         lock.unlock()
     }
 
-    private static func isTerminalPacket(_ packet: NSDictionary) -> Bool {
-        guard let type = packet["type"] as? String else { return false }
-        return type == "completed" || type == "failed"
+    static func toolPacket(_ toolCall: ChatGPTResponsesFunctionCall) -> [String: String] {
+        ["id": toolCall.id, "name": toolCall.name, "arguments": toolCall.argumentsJSON]
     }
 }

@@ -122,7 +122,9 @@ export function savedHistoryTranscript(
               id: questionId,
               role: 'user' as const,
               content: row.question,
-              ...(directPhoto ? { photoAttached: true } : {}),
+              ...(directPhoto
+                ? { photoAttached: true, archivedDirectPhotoId: row.id }
+                : {}),
               ...(row.kind === 'answer' && row.delivery
                 ? { delivery: row.delivery }
                 : {}),

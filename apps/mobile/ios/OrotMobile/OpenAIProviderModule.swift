@@ -50,7 +50,7 @@ public final class OpenAIProviderModule: RCTEventEmitter {
     }
 
     private func startNativeResponse(_ payload: NSDictionary, requestId: String, issuedClientID: String, steerable: Bool, photo: Bool = false) {
-        let registration = responseRequests.register(requestId, issuedClientID: issuedClientID) {
+        let registration = responseRequests.register(requestId, issuedClientID: issuedClientID, photo: photo) {
             [weak self] requestID, packet in
             self?.sendEvent(
                 withName: "OpenAIProviderEvent",
@@ -124,40 +124,18 @@ public final class OpenAIProviderModule: RCTEventEmitter {
                     case let .textDelta(text): slot.event(["type": "text_delta", "text": text] as NSDictionary)
                     case let .toolCall(toolCall):
                         emittedToolCallIDs.insert(toolCall.id)
-                        slot.event(["type": "tool_call", "toolCall": Self.nativeToolCall(toolCall)] as NSDictionary)
+                        slot.event(["type": "tool_call", "toolCall": OpenAIProviderRequestRegistry.toolPacket(toolCall)] as NSDictionary)
                     case let .completed(response):
                         for toolCall in response.toolCalls where !emittedToolCallIDs.contains(toolCall.id) {
-                            slot.event(["type": "tool_call", "toolCall": Self.nativeToolCall(toolCall)] as NSDictionary)
+                            slot.event(["type": "tool_call", "toolCall": OpenAIProviderRequestRegistry.toolPacket(toolCall)] as NSDictionary)
                         }
-                        if responseRequests.finish(slot) {
-                            var payload: [String: Any] = [
-                                "type": "completed",
-                                "text": response.text,
-                                "toolCalls": response.toolCalls.map(Self.nativeToolCall),
-                                "continuationItems": response.continuationItems,
-                            ]
-                            if let usage = response.usage {
-                                payload["usage"] = usage.nativePayload
-                            }
-                            // Public-search output carries provider citations, not fetched originals.
-                            if let search = response.webSearch {
-                                payload["webSearch"] = [
-                                    "callCount": search.callCount,
-                                    "citations": search.citations.map { ["url": $0.url, "title": $0.title] },
-                                ]
-                            }
-                            slot.event(payload as NSDictionary)
-                        }
+                        responseRequests.finish(slot, .completed(response))
                         return
                     }
                 }
-                if responseRequests.finish(slot) {
-                    slot.event(["type": "failed", "error": OpenAIProviderErrorDetails.make(ChatGPTResponsesError.interrupted)] as NSDictionary)
-                }
+                responseRequests.finish(slot, .failed(ChatGPTResponsesError.interrupted))
             } catch {
-                if responseRequests.finish(slot) {
-                    slot.event(["type": "failed", "error": OpenAIProviderErrorDetails.make(error)] as NSDictionary)
-                }
+                responseRequests.finish(slot, .failed(error))
             }
         }
         responseRequests.attach(task, to: slot)
@@ -198,10 +176,6 @@ public final class OpenAIProviderModule: RCTEventEmitter {
             fixtureLock.withLock { simulatorFixture?.client }
         }
     #endif
-
-    private static func nativeToolCall(_ toolCall: ChatGPTResponsesFunctionCall) -> [String: String] {
-        ["id": toolCall.id, "name": toolCall.name, "arguments": toolCall.argumentsJSON]
-    }
 
     /// Invalidate account-scoped streams synchronously before credential clearing begins.
     func beginSignOut(for issuedClientID: String) -> Bool {

@@ -146,7 +146,6 @@ export async function directPhotoComposerFixture({
       displayName: 'Synthetic image model',
       supportsDirectPhoto: supported,
     },
-    requestIDFactory: () => 'image-request',
   });
   jest.mocked(ports.pick).mockResolvedValue(syntheticDirectJPEG);
   jest.mocked(ports.authorization).mockResolvedValue({
@@ -239,7 +238,8 @@ export async function directPhotoComposerFixture({
     ordinary,
     cancel,
     release: () => releaseGrant(),
-    completePhoto: () => publishReply('image-request'),
+    requestId: () => start.mock.lastCall?.[0],
+    completePhoto: (id = start.mock.lastCall?.[0] ?? '') => publishReply(id),
     retire() {
       current = false;
       invalidate?.();

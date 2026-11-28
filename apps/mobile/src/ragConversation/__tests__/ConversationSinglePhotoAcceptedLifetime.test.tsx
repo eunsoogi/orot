@@ -178,7 +178,7 @@ test.each([
         expect(await screen.findByText('합성 이미지 설명')).toBeTruthy();
         expect(fixture.cancel).not.toHaveBeenCalled();
       } else {
-        expect(fixture.cancel).toHaveBeenCalledWith('image-request');
+        expect(fixture.cancel).toHaveBeenCalledWith(fixture.requestId());
         expect(
           screen.queryByTestId('conversation-sent-photo-image'),
         ).toBeNull();

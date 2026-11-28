@@ -46,7 +46,7 @@ test('a mounted photo in flight does not report preparation failure when its pre
     expect(screen.getByText('Synthetic caption')).toBeTruthy();
     expect(f.cancel).not.toHaveBeenCalled();
     await fireEvent.press(screen.getByTestId('rag-conversation-cancel'));
-    await waitFor(() => expect(f.cancel).toHaveBeenCalledWith('image-request'));
+    await waitFor(() => expect(f.cancel).toHaveBeenCalledWith(f.requestId()));
     expect(screen.queryByText(/전송 중/u)).toBeNull();
     expect(
       screen.queryByText(t('ragConversation.photo.transferring')),

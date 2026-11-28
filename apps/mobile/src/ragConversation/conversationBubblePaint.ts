@@ -71,12 +71,14 @@ export function conversationBubblePaint(
 export function projectTranscript(
   messages: readonly DisplayMessage[],
   separated: boolean,
+  admitsColdPhoto?: (message: DisplayMessage) => boolean,
 ) {
   return messages.filter(message => {
     if (
       hasSentPhoto(message) &&
       !message.content.trim() &&
-      !sentPhotoPreview(message)
+      !sentPhotoPreview(message) &&
+      !admitsColdPhoto?.(message)
     )
       return false;
     if (
