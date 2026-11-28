@@ -58,30 +58,65 @@ async function readDependencies(
     candidates.map(item => `${item.kind}\u0000${item.record.id}`),
   );
   const dependencies: LocalHealthEvidenceRecord[] = [];
-  for (const kind of HEALTH_EVIDENCE_RECORD_KINDS) {
-    // Dose links identify a table as well as an ID; same-ID rows in other tables are not dependencies.
-    const kindIds = [
+  const kinds = HEALTH_EVIDENCE_RECORD_KINDS.map(kind => ({
+    kind,
+    // Dose links identify a table as well as an ID; ordinary provenance does not.
+    ids: [
       ...new Set([
         ...ids,
         ...medications.filter(link => link.kind === kind).map(link => link.id),
       ]),
-    ];
+    ],
+  })).filter(group => group.ids.length);
+  const admit = async (
+    kind: RecordKind,
+    rows: Array<Record<string, unknown>>,
+  ) => {
+    for (const row of rows) {
+      checkHealthEvidenceAbort(signal);
+      if (!selected.has(`${kind}\u0000${row.id}`)) {
+        const entry = decodeHealthEvidenceRecord(kind, row);
+        if (await visitPeriodEvidenceAvailable(executor, entry))
+          dependencies.push(entry);
+      }
+    }
+  };
+  const queryFor = (kind: RecordKind, count: number, extraColumns = '') =>
+    `SELECT r.id, r.payload_json, length(CAST(r.payload_json AS BLOB)) AS payload_bytes${extraColumns}
+     FROM ${STORAGE_TABLES[kind].table} r
+     WHERE r.id IN (${Array.from({ length: count }, () => '?').join(', ')}) ${defaultObservationEvidence(kind)}`;
+  // One bounded bridge request for the common small dependency set. Separate
+  // indexed branches retain every untyped alias and the exact typed dose kind.
+  // The large-input path retains the existing payload transfer bound.
+  if (
+    kinds.length > 1 &&
+    kinds.reduce((size, group) => size + group.ids.length, 0) <= 100
+  ) {
+    checkHealthEvidenceAbort(signal);
+    const branches = kinds.map(({ kind, ids: groupIds }, index) =>
+      queryFor(kind, groupIds.length, `, ${index} AS kind_index`),
+    );
+    const { rows } = await executor.execute(
+      `${branches.join(' UNION ALL ')} ORDER BY kind_index, id`,
+      kinds.flatMap(group => group.ids),
+    );
+    checkHealthEvidenceAbort(signal);
+    for (const [index, { kind }] of kinds.entries())
+      await admit(
+        kind,
+        rows.filter(row => row.kind_index === index),
+      );
+    return dependencies;
+  }
+  for (const { kind, ids: kindIds } of kinds) {
     for (let offset = 0; offset < kindIds.length; offset += 100) {
       checkHealthEvidenceAbort(signal);
       const batch = kindIds.slice(offset, offset + 100);
       const result = await executor.execute(
-        `SELECT id, payload_json,
-          length(CAST(payload_json AS BLOB)) AS payload_bytes FROM ${STORAGE_TABLES[kind].table} r
-          WHERE id IN (${batch.map(() => '?').join(', ')}) ${defaultObservationEvidence(kind)}`,
-        [...batch],
+        queryFor(kind, batch.length),
+        batch,
       );
-      for (const row of result.rows) {
-        if (!selected.has(`${kind}\u0000${row.id}`)) {
-          const entry = decodeHealthEvidenceRecord(kind, row);
-          if (await visitPeriodEvidenceAvailable(executor, entry))
-            dependencies.push(entry);
-        }
-      }
+      await admit(kind, result.rows);
     }
   }
   return dependencies;
