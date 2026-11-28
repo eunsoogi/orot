@@ -5,10 +5,10 @@ import {
   useRef,
   useState,
 } from 'react';
-import { AppButton } from '../layout/AppButton';
 import { AppText } from '../layout/AppText';
 import type { NavigationRouteOwnership } from '../navigation/navigationRouteContracts';
 import { t } from '../i18n';
+import { useNavigationRouteActions } from '../navigation/useNavigationRouteActions';
 import RecordingDeletionConfirmation from './RecordingDeletionConfirmation';
 import { recordingLibraryService } from './recordingLibraryService';
 import type { RecordingSourceRecord } from './recordingTypes';
@@ -164,23 +164,30 @@ export function SavedRecordingDeleteAction(props: Props) {
     }
   }
 
-  return (
-    <>
-      <AppButton
-        disabled={
-          !props.active ||
-          !owner ||
+  const label = t('recording.library.delete');
+  useNavigationRouteActions(
+    [
+      {
+        id: 'saved-recording-detail-delete',
+        label,
+        accessibilityLabel: label,
+        testID: 'saved-recording-detail-delete',
+        systemImageName: 'trash',
+        destructive: true,
+        disabled:
+          !owner?.isCurrent() ||
           props.actionsDisabled ||
           !!target ||
           busy ||
-          completedCurrent
-        }
-        size="compact"
-        onPress={request}
-        testID="saved-recording-detail-delete"
-        title={t('recording.library.delete')}
-        variant="destructive"
-      />
+          completedCurrent,
+        onPress: request,
+      },
+    ],
+    props.active,
+  );
+
+  return (
+    <>
       <RecordingDeletionConfirmation
         key={target?.key ?? 'settled'}
         target={target?.source ?? null}
