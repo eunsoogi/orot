@@ -238,12 +238,14 @@ test.each(cases)(
         expect.objectContaining({ suppressContextualOpening: true }),
         expect.objectContaining({ intent, typedPossibilityReport: true }),
       );
-    if (intent === 'ordinary')
+    if (intent === 'ordinary' || intent === 'nonmedical')
       expect(rag).toHaveBeenCalledWith(
         authored,
         history,
         expect.any(AbortSignal),
-        expect.objectContaining({ suppressContextualOpening: true }),
+        adapter === 'apple'
+          ? observer
+          : expect.objectContaining({ suppressContextualOpening: true }),
         undefined,
       );
   },
