@@ -73,6 +73,17 @@ test('guards a calendar draft and allows navigation after explicit save', async 
   await fireEvent.press(screen.getByTestId('navigation-tab-records'));
   await fireEvent.press(screen.getByTestId('records-open-schedule'));
   expect(screen.queryByTestId('calendar-connect')).toBeNull();
+  // The grid opens a preview; only its explicit selection action creates a draft.
+  const openEvent = async () =>
+    fireEvent.press(
+      await screen.findByRole('button', { name: /^새봄의원 진료,/ }),
+    );
+  await openEvent();
+  expect(await screen.findByTestId('schedule-event-detail-time')).toBeTruthy();
+  expect(screen.queryByTestId('calendar-selection')).toBeNull();
+  await fireEvent.press(screen.getByTestId('schedule-event-sheet-close'));
+  expect(screen.queryByTestId('calendar-selection')).toBeNull();
+  await openEvent();
   await fireEvent.press(
     await screen.findByTestId('calendar-candidate-selected-visit'),
   );
