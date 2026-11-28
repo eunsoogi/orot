@@ -1,4 +1,5 @@
 import type { ConversationA2UINode } from './conversationA2UI';
+import { conversationA2UIAppNotices } from './conversationA2UIAppNotices';
 import { conversationA2UIModalFor } from './conversationA2UIModalWire';
 import { conversationA2UILocalDraftFor } from './conversationA2UILocalDraftFrames';
 import type { conversationA2UIIcons } from './conversationA2UIStaticCatalog';
@@ -39,9 +40,12 @@ export function storeArchivedConversationRichText(
 ): ArchivedConversationRichTextLayout | undefined {
   if (!ownsLiveRichText(root) || conversationA2UILocalDraftFor(root)) return;
   const lines = conversationRichArchiveProse(answer);
-  if (!lines) return;
+  const notices = conversationA2UIAppNotices(root, answer);
+  if (!lines || !notices || notices.length >= 16) return;
   let at = 0;
-  let count = 0;
+  // The v9 archive decoder's shape and size limits include the host-only
+  // wrapper. Keep the validated model subtree immutable.
+  let count = notices.length ? 1 : 0;
   function shape(
     node: ConversationA2UINode,
     depth: number,
@@ -84,8 +88,26 @@ export function storeArchivedConversationRichText(
       }
     }
   }
-  const tree = shape(root, 1);
-  if (tree !== undefined && at === lines.length) return { version: 9, tree };
+  const tree = shape(root, notices.length ? 2 : 1);
+  if (tree === undefined) return;
+  if (!notices.length) {
+    if (at === lines.length) return { version: 9, tree };
+    return;
+  }
+  // Notices are app finalizer copy, bound by exact root and entire body above.
+  // Persist only ordinary unformatted v9 slots after the unchanged tree.
+  if (
+    count + notices.length > maxNodes ||
+    !notices.every(
+      notice => notice === lines[at++] && conversationA2UIProse(notice),
+    ) ||
+    at !== lines.length
+  )
+    return;
+  return {
+    version: 9,
+    tree: ['Column', tree, ...notices.map(() => 0 as const)],
+  };
 }
 
 /** A separate local shape parser, never a provider frame or legacy parse mode.
