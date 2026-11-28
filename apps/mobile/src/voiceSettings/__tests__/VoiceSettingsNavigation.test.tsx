@@ -76,7 +76,16 @@ it('shares tab and section presentation and routes voice confirmation only while
   const view = await render(<Fixture />);
   expect(
     StyleSheet.flatten(view.getByTestId('model-tab-language').props.style),
-  ).toMatchObject(sectionTabStyles.selectedTab);
+  ).toMatchObject(sectionTabStyles.tab);
+  expect(view.getByTestId('model-tab-language')).toHaveProp(
+    'accessibilityState',
+    expect.objectContaining({ selected: true }),
+  );
+  expect(
+    view.getByTestId('model-tab-selection-glass', {
+      includeHiddenElements: true,
+    }),
+  ).toHaveProp('pointerEvents', 'none');
   await fireEvent.press(view.getByTestId('model-tab-voice'));
   await waitFor(() =>
     expect(view.getByTestId('dock-confirm-voice-model')).toBeEnabled(),

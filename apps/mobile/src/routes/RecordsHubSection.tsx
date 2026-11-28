@@ -9,6 +9,10 @@ import { Pressable, StyleSheet, View } from 'react-native';
 import { AppText as Text } from '../layout/AppText';
 import { RecordsHubBanner, RecordsHubHeadingContext } from './RecordsHubBanner';
 import { sectionTabStyles as tabs } from '../layout/sectionTabPresentation';
+import {
+  SectionSelectionGlass,
+  useSectionSelectionGlass,
+} from '../layout/SectionSelectionGlass';
 import { appColors } from '../layout/appColors';
 import { hubSpacing } from '../layout/hubSpacing';
 import { t } from '../i18n';
@@ -52,6 +56,7 @@ export function RecordsHubSection({
       setPending(false);
     }
   }
+  const glass = useSectionSelectionGlass(selected);
   const header = (
     <View style={styles.header} testID="records-hub-header">
       <RecordsHubBanner />
@@ -59,6 +64,10 @@ export function RecordsHubSection({
         style={[tabs.tabs, styles.tabsMargin]}
         testID="records-section-tabs"
       >
+        <SectionSelectionGlass
+          target={glass.target}
+          testID="records-section-selection-glass"
+        />
         {(['records', 'schedule'] as const).map(section => (
           <Pressable
             key={section}
@@ -73,10 +82,14 @@ export function RecordsHubSection({
             onPress={() => {
               settleNavigationRequest(select(section));
             }}
-            style={[tabs.tab, selected === section && tabs.selectedTab]}
+            onLayout={event => glass.onTabLayout(section, event)}
+            style={tabs.tab}
           >
             <Text
-              style={[tabs.label, selected === section && tabs.selectedLabel]}
+              style={[
+                tabs.label,
+                selected === section && tabs.glassSelectedLabel,
+              ]}
             >
               {t(`navigation.tabs.${section}`)}
             </Text>

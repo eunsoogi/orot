@@ -5,6 +5,10 @@ import { useRef, useState, type ReactNode } from 'react';
 import { Pressable, StyleSheet, View, type HostInstance } from 'react-native';
 import { AppText as Text } from '../../layout/AppText';
 import { sectionTabStyles as tabs } from '../../layout/sectionTabPresentation';
+import {
+  SectionSelectionGlass,
+  useSectionSelectionGlass,
+} from '../../layout/SectionSelectionGlass';
 import { VoiceSettingsPanel } from '../../voiceSettings/VoiceSettingsPanel';
 import { NavigationInlineTransition } from '../../navigation/NavigationInlineTransition';
 import { providerSelectionScreenStyles } from './providerSelectionScreenPresentation';
@@ -41,10 +45,15 @@ export function ModelSelectionTabs({
   const [active, setActive] = useState<ModelTab>('language');
   const [visitedVoice, setVisitedVoice] = useState(false);
   const [calendarLocked, setCalendarLocked] = useState(false);
+  const glass = useSectionSelectionGlass(active);
   if (!enabled) return <>{children}</>;
   return (
     <>
       <View style={tabs.tabs}>
+        <SectionSelectionGlass
+          target={glass.target}
+          testID="model-tab-selection-glass"
+        />
         {modelTabs.map(tab => (
           <Pressable
             key={tab}
@@ -55,13 +64,16 @@ export function ModelSelectionTabs({
             }}
             disabled={locked || calendarLocked}
             testID={`model-tab-${tab}`}
-            style={[tabs.tab, active === tab && tabs.selectedTab]}
+            onLayout={event => glass.onTabLayout(tab, event)}
+            style={tabs.tab}
             onPress={() => {
               setActive(tab);
               if (tab === 'voice') setVisitedVoice(true);
             }}
           >
-            <Text style={[tabs.label, active === tab && tabs.selectedLabel]}>
+            <Text
+              style={[tabs.label, active === tab && tabs.glassSelectedLabel]}
+            >
               {tab === 'language'
                 ? t('modelSettings.languageTab')
                 : tab === 'calendar'

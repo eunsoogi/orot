@@ -101,6 +101,25 @@ test('keeps the same hub header while only the current body moves left or right'
     const scroll = screen.getByTestId('navigation-route-scroll');
     expect(scroll).toContainElement(header);
     const tabs = screen.getByTestId('records-section-tabs');
+    const pill = () =>
+      screen.getByTestId('records-section-selection-glass', {
+        includeHiddenElements: true,
+      });
+    const firstPill = pill();
+    const recordTab = screen.getByTestId('records-section-records');
+    const scheduleTab = screen.getByTestId('records-section-schedule');
+    const layout = (x: number, width: number) => ({
+      nativeEvent: { layout: { x, width, y: 3, height: 44 } },
+    });
+    expect(firstPill.props.accessibilityElementsHidden).toBe(true);
+    expect(firstPill.props.selectionTarget).toBeUndefined();
+    await fireEvent(recordTab, 'layout', layout(3, 91));
+    await fireEvent(scheduleTab, 'layout', layout(94, 103));
+    expect(pill().props.selectionTarget).toMatchObject({
+      x: 3,
+      width: 91,
+      animated: false,
+    });
     const body = screen.getByTestId('navigation-inline-transition');
     expect(body).toHaveStyle({ transform: [{ translateX: 0 }] });
     expect(body).not.toContainElement(header);
@@ -110,6 +129,12 @@ test('keeps the same hub header while only the current body moves left or right'
     await fireEvent.press(screen.getByTestId('records-section-schedule'));
     expect(screen.getByTestId('records-hub-header')).toBe(header);
     expect(screen.getByTestId('records-section-tabs')).toBe(tabs);
+    expect(pill()).toBe(firstPill);
+    expect(pill().props.selectionTarget).toMatchObject({
+      x: 94,
+      width: 103,
+      animated: true,
+    });
     expect(body).toHaveStyle({ transform: [{ translateX: 420 }] });
     expect(body).toContainElement(screen.getByTestId('schedule-content'));
     expect(screen.getByTestId('calendar-screen')).toBe(scroll);
@@ -121,9 +146,26 @@ test('keeps the same hub header while only the current body moves left or right'
     expect(body).toHaveStyle({ transform: [{ translateX: -420 }] });
     expect(screen.queryByTestId('calendar-screen')).toBeNull();
     expect(screen.getAllByTestId('navigation-route-scroll')).toHaveLength(1);
+    expect(pill().props.selectionTarget).toMatchObject({
+      x: 3,
+      width: 91,
+      animated: true,
+    });
+    await fireEvent(recordTab, 'layout', layout(3, 141));
+    expect(pill().props.selectionTarget).toMatchObject({
+      x: 3,
+      width: 141,
+      animated: false,
+    });
     await view.rerender(host(true));
     await fireEvent.press(screen.getByTestId('records-section-schedule'));
     expect(body).toHaveStyle({ transform: [{ translateX: 0 }] });
+    expect(pill()).toBe(firstPill);
+    expect(pill().props.selectionTarget).toMatchObject({
+      x: 94,
+      width: 103,
+      animated: false,
+    });
     expect(timing).toHaveBeenCalledTimes(2);
   } finally {
     timing.mockRestore();

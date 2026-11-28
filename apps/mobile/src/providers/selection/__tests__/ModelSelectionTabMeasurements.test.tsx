@@ -85,6 +85,26 @@ test.each([false, true])(
         </NavigationMotionContext.Provider>,
       );
       expect(width()).toBe(345);
+      const pillId = 'model-tab-selection-glass';
+      const pill = screen.getByTestId(pillId, { includeHiddenElements: true });
+      const currentPill = () =>
+        screen.getByTestId(pillId, { includeHiddenElements: true });
+      expect(pill.props.pointerEvents).toBe('none');
+      expect(pill.props.selectionTarget).toBeUndefined();
+      for (const [id, x, tabWidth] of [
+        ['language', 3, 96],
+        ['calendar', 99, 132],
+        ['voice', 231, 108],
+      ] as const) {
+        await fireEvent(screen.getByTestId(`model-tab-${id}`), 'layout', {
+          nativeEvent: { layout: { x, y: 3, width: tabWidth, height: 44 } },
+        });
+      }
+      expect(currentPill().props.selectionTarget).toMatchObject({
+        x: 3,
+        width: 96,
+        animated: false,
+      });
       await fireEvent(
         screen.getByTestId('navigation-inline-transition'),
         'layout',
@@ -92,9 +112,21 @@ test.each([false, true])(
       );
       await fireEvent.press(screen.getByTestId('model-tab-calendar'));
       expect(screen.getByTestId('calendar-model-settings')).toBeTruthy();
+      expect(currentPill()).toBe(pill);
+      expect(currentPill().props.selectionTarget).toMatchObject({
+        x: 99,
+        width: 132,
+        animated: !reduceMotion,
+      });
       expect(width()).toBe(345);
       await fireEvent.press(screen.getByTestId('model-tab-voice'));
       expect(screen.getByTestId('voice-settings-panel')).toBeTruthy();
+      expect(currentPill()).toBe(pill);
+      expect(currentPill().props.selectionTarget).toMatchObject({
+        x: 231,
+        width: 108,
+        animated: !reduceMotion,
+      });
       expect(screen.getByTestId('voice-model-group-local')).toBeTruthy();
       expect(screen.queryByTestId(animatedHost)).toBeNull();
       await fireEvent.press(screen.getByTestId('model-tab-language'));

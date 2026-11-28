@@ -28,4 +28,5 @@ export const sectionTabStyles = StyleSheet.create({
     textAlign: 'center',
   },
   selectedLabel: { color: appColors.background },
+  glassSelectedLabel: { color: appColors.text },
 });
