@@ -1,4 +1,4 @@
-export const overviewMetricGridColumnGap = 12;
+export const overviewMetricGridColumnGap = 14;
 
 // Keep the existing 320pt readable-column floor instead of treating a compact chart as a full card.
 // The measured grid already excludes the shell's reserved rail and Home's content gutters.

@@ -45,8 +45,8 @@ test('keeps compact section separation independent of widget card spacing', asyn
     includeHiddenElements: true,
   });
   expect(StyleSheet.flatten(grid.props.style)).toMatchObject({
-    columnGap: 12,
-    rowGap: 14,
+    columnGap: 14,
+    rowGap: 16,
   });
   for (const id of ['overview-metric-sleep', 'overview-heart-panel']) {
     const card = StyleSheet.flatten(within(grid).getByTestId(id).props.style);
@@ -63,7 +63,7 @@ test('keeps compact section separation independent of widget card spacing', asyn
     within(changes).getByText('비교할 기록이 충분하지 않아요.'),
   ).toBeTruthy();
   expect(StyleSheet.flatten(overview.props.style).gap).toBe(12);
-  expect(StyleSheet.flatten(changes.props.style).gap).toBe(12);
+  expect(StyleSheet.flatten(changes.props.style).gap).toBe(4);
   expect(
     StyleSheet.flatten(
       screen.getByTestId('overview-health-sections').props.style,
@@ -73,8 +73,9 @@ test('keeps compact section separation independent of widget card spacing', asyn
     'overview-health-overview-heading',
     'overview-recent-changes-heading',
   ].map(id => StyleSheet.flatten(screen.getByTestId(id).props.style));
-  expect(headingStyles[0]).toEqual(headingStyles[1]);
   expect(headingStyles[0].minHeight).toBe(44);
+  expect(headingStyles[1].minHeight).toBe(0);
+  expect(headingStyles[1].flexWrap).toBe(headingStyles[0].flexWrap);
   const sectionHeadingColor = (id: string) =>
     StyleSheet.flatten(screen.getByTestId(id).props.style).color;
   expect(sectionHeadingColor('overview-next-visit-heading')).toEqual(

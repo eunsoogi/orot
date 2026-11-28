@@ -64,8 +64,11 @@ export function OverviewCompactChanges({
       })
     : [];
   return (
-    <View style={styles.section} testID="overview-recent-changes-section">
-      <View style={styles.heading} testID="overview-recent-changes-heading">
+    <View style={compact.section} testID="overview-recent-changes-section">
+      <View
+        style={[styles.heading, compact.heading]}
+        testID="overview-recent-changes-heading"
+      >
         <Text
           accessibilityRole="header"
           style={styles.title}
@@ -144,6 +147,10 @@ export function OverviewCompactChanges({
 }
 
 const compact = StyleSheet.create({
+  section: { gap: 4 },
+  // This heading has no touch control. Keep its text reflow but not the
+  // widgets' 44pt edit-button height, which leaves blank space below the title.
+  heading: { minHeight: 0 },
   caption: { color: appColors.secondary, fontSize: 13, flexShrink: 1 },
   row: { flexDirection: 'row', alignItems: 'center', gap: 12, minHeight: 32 },
   sentence: { flexShrink: 1, fontSize: 15, color: appColors.text },
