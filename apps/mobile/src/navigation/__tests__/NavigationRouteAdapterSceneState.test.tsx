@@ -156,7 +156,6 @@ test('Schedule, Recording and Visit Questions bypass scene-owned columns', async
   const controller = createNavigationController<TestRoute | 'schedule'>('root');
   const rootTabs = { activeTab: 'records' as const, onSelect: jest.fn() };
   const homeKey = controller.getSnapshot().currentRoute.key;
-
   await render(
     <NavigationRouteAdapter
       contentLayoutOwner={appContentLayoutOwner}
@@ -170,8 +169,9 @@ test('Schedule, Recording and Visit Questions bypass scene-owned columns', async
   expect(
     screen.queryByTestId(`navigation-route-columns-${homeKey}`),
   ).toBeNull();
-
-  await act(async () => void controller.push('schedule'));
+  await act(async () => {
+    controller.push('schedule');
+  });
   expect(
     screen.queryByTestId(
       `navigation-route-columns-${controller.getSnapshot().currentRoute.key}`,
