@@ -43,6 +43,7 @@ extension NavigationGeometryUITestConditions {
         schedule.tap()
         NavigationUITestConditions.route(app, markers: ["calendar-title", "schedule-retry"])
         XCTAssertFalse(UITestConditions.element(app, "records-section-tabs").exists)
+        try verifyRootSelection(app, tab: "records", testCase: testCase)
         let scheduleFrame = try captureBoundary(app, navigationID: "navigation-back", name: "duo-schedule-section-boundary", testCase: testCase)
         assertSameRailCenter(rootFrame, contextualFrames: [scheduleFrame])
         try NavigationUITestConditions.tapNavigation(app, "navigation-back")

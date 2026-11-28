@@ -38,6 +38,7 @@ test('Schedule measures the contextual boundary, then returns to the retained Re
     'schedule.tap()',
     'route(app, markers: ["calendar-title", "schedule-retry"])',
     'XCTAssertFalse(UITestConditions.element(app, "records-section-tabs").exists)',
+    'verifyRootSelection(app, tab: "records", testCase: testCase)',
     'navigationID: "navigation-back", name: "duo-schedule-section-boundary"',
     'assertSameRailCenter(rootFrame, contextualFrames: [scheduleFrame])',
     'tapNavigation(app, "navigation-back")',
@@ -47,7 +48,7 @@ test('Schedule measures the contextual boundary, then returns to the retained Re
   ];
   let previous = -1;
   for (const value of ordered) {
-    const index = section.indexOf(value);
+    const index = section.indexOf(value, previous + 1);
     assert.ok(index > previous, value);
     previous = index;
   }

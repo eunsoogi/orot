@@ -47,6 +47,8 @@ export interface NavigationRootTabs {
   /** Distinguishes nested content while retaining its parent navigation selection. */
   readonly contentKey?: AppRootTab;
   readonly onSelect: (tab: AppRootTab) => void | Promise<unknown>;
+  /** A child that retains the root rail owns its guarded return before selection. */
+  readonly onSelectFromChild?: (tab: AppRootTab) => Promise<unknown>;
 }
 
 /** Keeps nested content distinct while its parent tab remains selected. */

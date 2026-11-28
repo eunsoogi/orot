@@ -124,7 +124,18 @@ function App({
             controller={appNavigation}
             // Recent records and root pages each retain one route-owned scroll host.
             scrollable={nonRootRouteOwnsScroll}
-            rootTabs={route => (route.name === 'root' ? rootTabs : undefined)}
+            rootTabs={route => {
+              if (route.name === 'root') return rootTabs;
+              if (route.name !== 'schedule') return undefined;
+              // The calendar preserves the Records rail. A tab selection must run its
+              // leave guard before clearing the stack, just like a contextual Back.
+              return {
+                ...createNavigationRootTabs('records', selectActiveTab),
+                onSelectFromChild: async tab => {
+                  if (await appNavigation.requestHome()) selectActiveTab(tab);
+                },
+              };
+            }}
             contentLayoutOwner={appContentLayoutOwner}
           >
             {/* Settings and AI use the same account services and persisted selection. */}

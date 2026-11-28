@@ -96,7 +96,8 @@ export function createNativeNavigationBindings<Name extends string>({
     const tab = rootTabItems.find(item => `tab-${item.id}` === nativeEvent.id);
     if (tab && rootTabs && rootTabs.activeTab !== tab.id && !backDisabled) {
       settleNavigationRequest(
-        controller.requestTabSwitch(() => rootTabs.onSelect(tab.id)),
+        rootTabs.onSelectFromChild?.(tab.id) ??
+          controller.requestTabSwitch(() => rootTabs.onSelect(tab.id)),
       );
     }
   };
