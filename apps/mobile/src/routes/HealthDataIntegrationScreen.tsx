@@ -1,4 +1,4 @@
-import { SettingsPageHeading } from '../layout/SettingsPageHeading';
+import { PageHeading } from '../layout/PageHeading';
 import {
   settingsPageInsets,
   settingsPageStyles,
@@ -65,9 +65,9 @@ export function HealthDataIntegrationScreen({
       testID="health-data-scroll"
     >
       <View style={styles.heading}>
-        <SettingsPageHeading style={styles.title} testID="health-data-title">
+        <PageHeading style={styles.title} testID="health-data-title">
           {t('settings.healthData.title')}
-        </SettingsPageHeading>
+        </PageHeading>
         <Text style={styles.body}>{t('settings.healthData.description')}</Text>
       </View>
       <HealthDataFeatureSelection

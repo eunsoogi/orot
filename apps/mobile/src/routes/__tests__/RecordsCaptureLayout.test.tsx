@@ -18,6 +18,10 @@ test.each([1, 1.5, 3.571])(
     });
     const onOpenRecording = jest.fn();
     await render(<RecordsHeading onOpenRecording={onOpenRecording} />);
+    expect(screen.getByTestId('records-title')).toHaveStyle({
+      fontSize: 34,
+      fontWeight: '700',
+    });
     const action = screen.getByRole('button', { name: '새 상담 녹음' });
     expect(action).toHaveStyle({
       minHeight: 44,

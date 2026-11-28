@@ -1,4 +1,10 @@
-import { StyleSheet, View, useWindowDimensions } from 'react-native';
+import {
+  StyleSheet,
+  View,
+  useColorScheme,
+  useWindowDimensions,
+} from 'react-native';
+import Svg, { Line } from 'react-native-svg';
 import { AppText as Text } from '../../layout/AppText';
 import { formatHealthDuration } from '../../i18n/healthDuration';
 import { appColors } from '../../layout/appColors';
@@ -17,13 +23,24 @@ const labels = {
   deep: 'healthSemantic.deepSleep',
   unspecified: 'healthSemantic.unspecifiedSleep',
 } as const;
-const colors = {
-  awake: appColors.pink,
-  rem: appColors.green,
-  core: appColors.primary,
-  deep: appColors.purple,
-  unspecified: appColors.secondary,
+// Each theme preserves the reference stage hues without using low-contrast pastel text on light cards.
+const stagesByAppearance = {
+  light: {
+    awake: '#bc375d',
+    rem: '#067c64',
+    core: '#176dc7',
+    deep: '#782bb7',
+    unspecified: '#5e6875',
+  },
+  dark: {
+    awake: '#ff638d',
+    rem: '#58d8b9',
+    core: '#55a4ff',
+    deep: '#ad69ff',
+    unspecified: '#a1acb8',
+  },
 } as const;
+const stageMarkHeight = 13;
 
 function fraction(value: number, episode: OverviewSleepEpisode): number {
   return ((value - episode.from) / (episode.to - episode.from)) * 100;
@@ -34,11 +51,19 @@ function fraction(value: number, episode: OverviewSleepEpisode): number {
 export function OverviewSleepStageTimeline({
   episode,
   timeZone,
+  cardWidth,
 }: {
   readonly episode?: OverviewSleepEpisode;
   readonly timeZone: string;
+  readonly cardWidth: number | '100%';
 }) {
-  const rowHeight = 31 * Math.max(1, useWindowDimensions().fontScale);
+  const { fontScale } = useWindowDimensions();
+  const scheme = useColorScheme() === 'dark' ? 'dark' : 'light';
+  const colors = stagesByAppearance[scheme];
+  // Keep label and duration columns aligned; narrow or enlarged cards use two lines per stage.
+  const stacked =
+    fontScale > 1.2 || (typeof cardWidth === 'number' && cardWidth < 280);
+  const rowHeight = Math.ceil((stacked ? 31 : 24) * Math.max(1, fontScale));
   if (!episode?.intervals.length)
     return (
       <Text style={styles.note}>{t('overview.sleepStagesUnavailable')}</Text>
@@ -67,26 +92,52 @@ export function OverviewSleepStageTimeline({
   return (
     <View style={styles.timeline} testID="overview-sleep-stage-timeline">
       <View style={styles.content}>
-        {shown.map(stage => (
-          <View
-            key={stage}
-            pointerEvents="none"
-            style={[styles.guide, { top: rowFor(stage) + rowHeight - 1 }]}
-          />
-        ))}
+        <Svg
+          width="100%"
+          height={shown.length * rowHeight}
+          style={StyleSheet.absoluteFill}
+          pointerEvents="none"
+          accessibilityElementsHidden
+        >
+          {shown.slice(0, -1).map(stage => {
+            const y = rowFor(stage) + rowHeight - 0.5;
+            return (
+              <Line
+                key={stage}
+                x1={0}
+                x2="100%"
+                y1={y}
+                y2={y}
+                stroke={scheme === 'dark' ? '#666f7b' : '#949da8'}
+                strokeWidth={1}
+                strokeDasharray="1 3"
+              />
+            );
+          })}
+        </Svg>
         <View style={styles.labels}>
           {shown.map(stage => (
             <View
               key={stage}
-              style={[styles.labelRow, { minHeight: rowHeight }]}
+              style={[
+                styles.labelRow,
+                !stacked && styles.labelRowInline,
+                { height: rowHeight },
+              ]}
             >
-              <Text style={[styles.label, { color: colors[stage] }]}>
+              <Text
+                style={[
+                  styles.label,
+                  !stacked && styles.labelName,
+                  { color: colors[stage] },
+                ]}
+              >
                 {t(labels[stage])}
               </Text>
               {stageMinutes.has(stage) && (
                 <Text
                   testID={`overview-sleep-duration-${stage}`}
-                  style={styles.note}
+                  style={[styles.duration, !stacked && styles.labelDuration]}
                 >
                   {formatHealthDuration(
                     'sleep',
@@ -128,7 +179,7 @@ export function OverviewSleepStageTimeline({
               style={[
                 styles.interval,
                 {
-                  top: rowFor(point.stage) + (rowHeight - 12) / 2,
+                  top: rowFor(point.stage) + (rowHeight - stageMarkHeight) / 2,
                   left: `${fraction(point.start, episode)}%`,
                   width: `${fraction(point.end, episode) - fraction(point.start, episode)}%`,
                   backgroundColor: colors[point.stage],
@@ -148,31 +199,31 @@ export function OverviewSleepStageTimeline({
 const styles = StyleSheet.create({
   timeline: { gap: 6, width: '100%' },
   content: { flexDirection: 'row', gap: 8 },
-  labels: { flexBasis: '36%', maxWidth: 190 },
-  labelRow: {
+  labels: { flexBasis: '46%', maxWidth: 220 },
+  labelRow: { justifyContent: 'center' },
+  labelRowInline: {
     flexDirection: 'row',
-    flexWrap: 'wrap',
-    columnGap: 6,
-    alignItems: 'baseline',
-    alignContent: 'center',
+    alignItems: 'center',
+    justifyContent: 'flex-start',
+    columnGap: 4,
   },
-  label: { fontSize: 12, flexShrink: 1, fontWeight: '600' },
-  note: { color: appColors.secondary, fontSize: 12 },
-  lanes: { flex: 1, minWidth: 0, position: 'relative' },
-  guide: {
-    position: 'absolute',
-    width: '100%',
-    borderBottomWidth: StyleSheet.hairlineWidth,
-    borderColor: appColors.border,
-    borderStyle: 'dotted',
+  label: { fontSize: 11, fontWeight: '600' },
+  labelName: { flex: 1.05, minWidth: 0 },
+  labelDuration: { flex: 1, minWidth: 0 },
+  duration: {
+    color: appColors.text,
+    fontSize: 11,
+    fontVariant: ['tabular-nums'],
   },
+  note: { color: appColors.secondary, fontSize: 11 },
+  lanes: { flex: 1, minWidth: 0, position: 'relative', overflow: 'hidden' },
   connector: {
     position: 'absolute',
     width: 3,
     marginLeft: -1.5,
     opacity: 0.48,
   },
-  interval: { position: 'absolute', height: 12, borderRadius: 4 },
+  interval: { position: 'absolute', height: stageMarkHeight, borderRadius: 5 },
   times: {
     flexDirection: 'row',
     justifyContent: 'space-between',

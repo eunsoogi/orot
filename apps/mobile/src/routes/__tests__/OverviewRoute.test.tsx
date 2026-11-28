@@ -19,7 +19,12 @@ jest.mock('@react-navigation/native', () => ({
 jest.mock('../../navigation', () => ({
   useNavigationLeaveStateRegistration: jest.fn(),
 }));
-jest.mock('../../layout/AppSymbol', () => ({ AppSymbol: () => null }));
+jest.mock('../../layout/AppSymbol', () => ({
+  AppSymbol: ({ name }: { name: string }) =>
+    require('react').createElement(require('react-native').View, {
+      testID: `symbol-${name}`,
+    }),
+}));
 
 function props(
   overrides: Partial<OverviewRouteProps> = {},
@@ -73,7 +78,7 @@ test('keeps one home end gutter beyond the navigation overlap', async () => {
 test('shows saved questions without a symptom journal shortcut', async () => {
   const input = props();
   await render(<OverviewRoute {...input} />);
-  expect(screen.getByText('진료 당일 질문 보기')).toBeTruthy();
+  expect(screen.getByText('준비한 진료 질문')).toBeTruthy();
   expect(screen.queryByText('저장한 질문 1개')).toBeNull();
   expect(screen.queryByTestId('home-ongoing-symptoms')).toBeNull();
   expect(screen.queryByTestId('overview-recent-records-panel')).toBeNull();
@@ -83,20 +88,21 @@ test('shows saved questions without a symptom journal shortcut', async () => {
   expect(input.onPrepareVisit).toHaveBeenCalledTimes(1);
 });
 
-test('keeps Home preparation explicit and compact within the filled visit card', async () => {
+test('keeps Home preparation explicit and compact in the cardless visit section', async () => {
   const input = props();
   await render(<OverviewRoute {...input} />);
 
   const action = screen.getByTestId('overview-prepare-visit');
+  expect(within(action).getByTestId('symbol-chevron.right')).toBeTruthy();
   expect(action.props.accessibilityRole).toBe('button');
-  expect(action.props.accessibilityLabel).toBe('진료 당일 질문 보기');
+  expect(action.props.accessibilityLabel).toBe('준비한 진료 질문');
   expect(StyleSheet.flatten(action.props.style)).toMatchObject({
     alignSelf: 'flex-start',
     maxWidth: '100%',
     minHeight: 44,
     minWidth: 44,
-    paddingHorizontal: 12,
-    paddingVertical: 8,
+    flexDirection: 'row',
+    gap: 6,
   });
 
   await fireEvent.press(action);
@@ -108,19 +114,19 @@ test('does not eagerly read question text or counts on Overview', async () => {
   await render(<OverviewRoute {...props({ loadSavedVisitQuestions })} />);
   expect(loadSavedVisitQuestions).not.toHaveBeenCalled();
   expect(screen.queryByTestId('overview-preparation-pending')).toBeNull();
-  expect(screen.getByText('진료 당일 질문 보기')).toBeTruthy();
+  expect(screen.getByText('준비한 진료 질문')).toBeTruthy();
 });
 
 test('keeps the confirmed visit and preparation visible during a refresh and failure', async () => {
   const input = props();
   const route = await render(<OverviewRoute {...input} />);
-  expect(screen.getByText('진료 당일 질문 보기')).toBeTruthy();
+  expect(screen.getByText('준비한 진료 질문')).toBeTruthy();
   expect(screen.queryByText('저장한 질문 1개')).toBeNull();
 
   await route.rerender(<OverviewRoute {...input} appointmentState="loading" />);
   expect(screen.getByTestId('overview-appointment-loading')).toBeTruthy();
   expect(screen.getByTestId('overview-next-appointment-clinic')).toBeTruthy();
-  expect(screen.getByText('진료 당일 질문 보기')).toBeTruthy();
+  expect(screen.getByText('준비한 진료 질문')).toBeTruthy();
 
   await route.rerender(<OverviewRoute {...input} appointmentState="failed" />);
   expect(screen.getByTestId('overview-next-appointment-clinic')).toBeTruthy();
@@ -133,7 +139,7 @@ test.each([
   { width: 320, fontScale: 2 },
   { width: 920, fontScale: 1 },
 ])(
-  'keeps visit metadata and the action in the card at width $width',
+  'keeps visit metadata and the action in the section at width $width',
   async ({ width, fontScale }) => {
     const initialWindow = Dimensions.get('window');
     const initialScreen = Dimensions.get('screen');
@@ -152,17 +158,26 @@ test.each([
         </View>,
       );
       const card = within(screen.getByTestId('overview-next-appointment'));
+      expect(card.getByTestId('overview-next-visit-heading')).toHaveTextContent(
+        '다음 진료',
+      );
+      const titleRow = card.getByTestId('overview-next-visit-title-row');
+      expect(StyleSheet.flatten(titleRow.props.style).flexDirection).toBe(
+        'row',
+      );
+      const title = within(titleRow);
       expect(
-        within(card.getByTestId('overview-next-visit-heading')).getByText(
-          '다음 진료',
-        ),
-      ).toBeVisible();
-      expect(
-        card.getByTestId('overview-next-visit-countdown'),
+        title.getByTestId('overview-next-visit-countdown'),
       ).toHaveTextContent(/^D[-+]?[0-9]+$|^D-day$/);
-      const details = within(card.getByTestId('overview-next-visit-details'));
-      const clinic = details.getByTestId('overview-next-appointment-clinic');
-      const time = details.getByTestId('overview-next-visit-time');
+      const clinic = title.getByTestId('overview-next-appointment-clinic');
+      const timeRow = within(card.getByTestId('overview-next-visit-time-row'));
+      expect(timeRow.getByTestId('symbol-calendar')).toBeTruthy();
+      const time = timeRow.getByTestId('overview-next-visit-time');
+      expect(
+        StyleSheet.flatten(
+          screen.getByTestId('overview-next-visit-panel').props.style,
+        )?.backgroundColor,
+      ).toBeUndefined();
       expect(clinic).toHaveTextContent(appointment.clinicLabel);
       expect(clinic.props.numberOfLines).toBeUndefined();
       expect(time).toHaveTextContent(appointmentTimeLabel(appointment));
@@ -171,7 +186,7 @@ test.each([
         StyleSheet.flatten(time.props.style).fontSize,
       );
       expect(screen.queryByText(/ · 현지 시간 /)).toBeNull();
-      const action = card.getByRole('button', { name: '진료 당일 질문 보기' });
+      const action = card.getByRole('button', { name: '준비한 진료 질문' });
       await fireEvent.press(action);
       expect(input.onPrepareVisit).toHaveBeenCalledTimes(1);
       expect(input.onOpenSchedule).not.toHaveBeenCalled();
@@ -183,7 +198,7 @@ test.each([
   },
 );
 
-test('keeps the empty card actionable without stale visit metadata', async () => {
+test('keeps the empty section actionable without stale visit metadata', async () => {
   const input = props({ appointment: null });
   await render(<OverviewRoute {...input} />);
   const card = within(screen.getByTestId('overview-next-visit-panel'));

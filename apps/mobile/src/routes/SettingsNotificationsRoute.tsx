@@ -1,4 +1,4 @@
-import { SettingsPageHeading } from '../layout/SettingsPageHeading';
+import { PageHeading } from '../layout/PageHeading';
 import { settingsPageStyles } from '../layout/settingsPagePresentation';
 import { StyleSheet, View } from 'react-native';
 import { t } from '../i18n';
@@ -27,9 +27,9 @@ export function SettingsNotificationsRoute() {
           testID="settings-notifications-layout"
           primary={
             <View style={styles.content} testID="settings-notifications">
-              <SettingsPageHeading testID="settings-notifications-title">
+              <PageHeading testID="settings-notifications-title">
                 {t('settings.notifications')}
-              </SettingsPageHeading>
+              </PageHeading>
               <SettingsDailyReminderSection />
               <SettingsReplyNotificationSection />
             </View>

@@ -95,7 +95,7 @@ test('keeps Home compact and groups calendar and appointment management under th
   // Home's own adaptive panels need the full usable lane to choose their columns.
   expect(screen.getByTestId('overview-overview-sections')).toBeTruthy();
   expect(screen.queryByTestId('navigation-route-columns-route-1')).toBeNull();
-  expect(screen.getByText('오늘도 나를 위한 기록')).toBeTruthy();
+  expect(screen.queryByText('오늘도 나를 위한 기록')).toBeNull();
   expect(screen.queryByTestId('ai-feature-visit-questions')).toBeNull();
   expect(screen.queryByTestId('settings-open-provider')).toBeNull();
   expect(

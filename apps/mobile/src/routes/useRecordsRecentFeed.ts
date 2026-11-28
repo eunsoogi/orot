@@ -150,7 +150,7 @@ export function useRecordsRecentFeed(
     legacyDocumentFailed: legacyDocumentState === 'failed',
     documentsError,
   });
-  const groups = groupRecentRecords(certified, new Date(), showAll ? limit : 3);
+  const groups = groupRecentRecords(certified, new Date(), showAll ? limit : 5);
   const hasKnownMore = certified.length > limit;
   const canAdvance =
     !refreshing &&

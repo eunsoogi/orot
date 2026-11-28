@@ -51,7 +51,7 @@ export function OverviewWorkoutHeartRateCard({
       <View style={embedded && embeddedStyles.readingLine}>
         <Text
           accessibilityRole="header"
-          style={embedded ? styles.cardTitle : styles.title}
+          style={embedded ? styles.widgetRowTitle : styles.title}
         >
           {t('healthRecords.workoutHeartRate.overviewTitle')}
         </Text>
@@ -69,6 +69,9 @@ export function OverviewWorkoutHeartRateCard({
               ? [
                   t('healthRecords.workoutHeartRate.associatedSource'),
                   formatHeartRateBpm(state.mean),
+                  ...(embedded
+                    ? [t('healthRecords.workoutHeartRate.periodLabel')]
+                    : []),
                 ].join(', ')
               : undefined
           }
@@ -85,9 +88,11 @@ export function OverviewWorkoutHeartRateCard({
                 : t('healthRecords.workoutHeartRate.periodUnavailable')}
         </Text>
       </View>
-      <Text style={embedded && styles.detail}>
-        {t('healthRecords.workoutHeartRate.periodLabel')}
-      </Text>
+      {!embedded || state.status !== 'available' ? (
+        <Text style={embedded && styles.detail}>
+          {t('healthRecords.workoutHeartRate.periodLabel')}
+        </Text>
+      ) : null}
     </View>
   );
 }

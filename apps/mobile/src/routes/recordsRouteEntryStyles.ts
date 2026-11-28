@@ -5,10 +5,10 @@ export const styles = StyleSheet.create({
   heading: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    alignItems: 'center',
+    alignItems: 'flex-start',
     gap: 12,
   },
-  title: { fontSize: 36, fontWeight: '700', flexShrink: 1 },
+  title: { flexShrink: 1 },
   captureGroup: { maxWidth: '100%', marginStart: 'auto' },
   captureAction: {
     minHeight: 44,

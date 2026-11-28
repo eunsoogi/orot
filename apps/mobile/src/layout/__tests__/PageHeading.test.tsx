@@ -1,8 +1,8 @@
 import { render, screen } from '@testing-library/react-native';
 import { Platform, StyleSheet } from 'react-native';
 import { AppText } from '../AppText';
-import { SettingsPageHeading } from '../SettingsPageHeading';
-import { settingsPageStyles } from '../settingsPagePresentation';
+import { PageHeading } from '../PageHeading';
+import { pageHeadingStyles } from '../pageHeadingPresentation';
 
 const text = '개인정보 처리 방침';
 const originalStyle = { marginStart: -4 };
@@ -24,14 +24,14 @@ test('matches original native text at every nondefault size and switches reactiv
       <>
         <AppText
           accessibilityRole="header"
-          style={[settingsPageStyles.title, originalStyle]}
+          style={[pageHeadingStyles.title, originalStyle]}
           testID="stock"
         >
           {text}
         </AppText>
-        <SettingsPageHeading style={originalStyle} testID="title">
+        <PageHeading style={originalStyle} testID="title">
           {text}
-        </SettingsPageHeading>
+        </PageHeading>
       </>,
     );
     const original = () =>
@@ -46,14 +46,14 @@ test('matches original native text at every nondefault size and switches reactiv
         <>
           <AppText
             accessibilityRole="header"
-            style={[settingsPageStyles.title, originalStyle]}
+            style={[pageHeadingStyles.title, originalStyle]}
             testID="stock"
           >
             {text}
           </AppText>
-          <SettingsPageHeading style={originalStyle} testID="title">
+          <PageHeading style={originalStyle} testID="title">
             {text}
-          </SettingsPageHeading>
+          </PageHeading>
         </>,
       );
       expect(current()).toEqual(
@@ -80,10 +80,8 @@ test('keeps the original heading on Android even at default scale', async () => 
     .spyOn(require('react-native'), 'useWindowDimensions')
     .mockReturnValue({ width: 466, height: 678, scale: 3, fontScale: 1 });
   try {
-    await render(
-      <SettingsPageHeading testID="title">{text}</SettingsPageHeading>,
-    );
-    expect(screen.getByTestId('title')).toHaveStyle(settingsPageStyles.title);
+    await render(<PageHeading testID="title">{text}</PageHeading>);
+    expect(screen.getByTestId('title')).toHaveStyle(pageHeadingStyles.title);
     expect(
       StyleSheet.flatten(screen.getByTestId('title').props.style),
     ).not.toHaveProperty('lineHeight');

@@ -73,8 +73,9 @@ test('renders one chartless card with independently labeled real values at narro
     await resize(width);
     const panel = within(screen.getByTestId('overview-heart-panel'));
     expect(panel.getByRole('header', { name: '심박수' })).toBeVisible();
-    expect(panel.getByText('평균 심박수')).toBeVisible();
-    expect(panel.getByText('범위 60–90 BPM')).toBeVisible();
+    expect(panel.queryByText('평균 심박수')).toBeNull();
+    expect(panel.queryByText('범위 60–90 BPM')).toBeNull();
+    expect(panel.getByLabelText(/평균 심박수.*범위 60–90 BPM/u)).toBeVisible();
     expect(panel.getByText('안정 시 심박수')).toBeVisible();
     expect(panel.getByText('걷기 평균 심박수')).toBeVisible();
     expect(panel.getByText('운동 심박수')).toBeVisible();

@@ -124,6 +124,16 @@ test('groups recordings and imported documents and preserves their destinations'
             '어제 상담',
             new Date(2026, 10, 1, 20, 27).toISOString(),
           ),
+          recordingSource(
+            'third',
+            '추가 상담 1',
+            new Date(2026, 10, 1, 18).toISOString(),
+          ),
+          recordingSource(
+            'fourth',
+            '추가 상담 2',
+            new Date(2026, 10, 1, 16).toISOString(),
+          ),
           olderRecording,
         ]}
         recordingState="ready"
@@ -138,6 +148,8 @@ test('groups recordings and imported documents and preserves their destinations'
 
     expect(screen.getByText('11월 2일 (오늘)')).toBeTruthy();
     expect(screen.getByText('Clinic summary.pdf')).toBeTruthy();
+    expect(screen.getByText('추가 상담 1')).toBeTruthy();
+    expect(screen.getByText('추가 상담 2')).toBeTruthy();
     expect(
       screen.getByTestId('records-recent-source-recording-recent-1'),
     ).toBeTruthy();

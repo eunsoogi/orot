@@ -10,12 +10,10 @@ import {
 } from '../testSupport/recentRecordsRouteTestSupport';
 import { createNavigationController } from '../../navigation/navigationController';
 import type { AppNavigationRoute } from '../appNavigationRoute';
-
 jest.mock(
   'react-native-safe-area-context',
   () => require('react-native-safe-area-context/jest/mock').default,
 );
-
 jest.mock('../../ragConversation/conversationExecutionNative', () => ({
   conversationExecutionNative: jest.fn(),
 }));
@@ -69,35 +67,38 @@ jest.mock('../../memory/SavedMemoryLoaderContext', () => {
     ]),
   };
 });
-
 function allowSavedMaterial() {
   AppState.currentState = 'active';
   jest.mocked(conversationExecutionNative).mockReturnValue(recentTestExecution);
 }
-
 // Synthetic data exercises the production route switch and native-stack adapter, not a local expansion toggle.
 test('opens all recent records in a separate route and Back restores the compact overview', async () => {
   allowSavedMaterial();
   jest.mocked(loadRecentMaterial).mockResolvedValue([]);
   const controller = createNavigationController<AppNavigationRoute>('root');
   const props = routeProps();
-  await renderRecords(controller, props);
-  expect(screen.getByTestId('records-capture-actions')).toBeTruthy();
-  expect(screen.queryByTestId('records-recent-source-synthetic-4')).toBeNull();
+  const sixth = {
+    ...props.recordings[0]!,
+    id: 'synthetic-5',
+    recordedAt: '2026-10-31T10:00:00Z',
+  };
+  const sixthId = 'records-recent-source-synthetic-5';
+  await renderRecords(controller, {
+    ...props,
+    recordings: [...props.recordings, sixth],
+  });
+  const recordIds = /^records-recent-source-synthetic-/;
+  expect(screen.getAllByTestId(recordIds)).toHaveLength(5);
+  expect(screen.queryByTestId(sixthId)).toBeNull();
   await fireEvent.press(await screen.findByTestId('records-recent-view-all'));
   expect(controller.getSnapshot().currentRoute.name).toBe('recent-records');
-  expect(screen.getByTestId('records-recent-source-synthetic-4')).toBeTruthy();
-  expect(screen.queryByTestId('records-capture-actions')).toBeNull();
-  expect(screen.queryByTestId('records-hub-header')).toBeNull();
-  expect(screen.queryByTestId('records-recent-view-all')).toBeNull();
+  const homeOnly = /^records-(hub-header|capture-actions|recent-view-all)$/;
+  expect(screen.queryAllByTestId(homeOnly)).toHaveLength(0);
   await fireEvent.press(screen.getByTestId('navigation-back'));
   expect(controller.getSnapshot().currentRoute.name).toBe('root');
-  expect(screen.getByTestId('records-capture-actions')).toBeTruthy();
-  expect(screen.queryByTestId('records-recent-source-synthetic-4')).toBeNull();
+  expect(screen.queryByTestId(sixthId)).toBeNull();
   await fireEvent.press(await screen.findByTestId('records-recent-view-all'));
-  await fireEvent.press(
-    screen.getByTestId('records-recent-source-synthetic-4'),
-  );
+  await fireEvent.press(screen.getByTestId(sixthId));
   expect(controller.getSnapshot().currentRoute.name).toBe('recording-review');
   expect(screen.getByTestId('recording-review-layout')).toBeTruthy();
 });

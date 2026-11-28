@@ -59,7 +59,7 @@ test('the real Overview root has no daily report entry and still opens its guard
   expect(screen.queryByTestId('overview-open-daily-report')).toBeNull();
   expect(screen.queryByRole('button', { name: '일일 보고서' })).toBeNull();
   await fireEvent.press(
-    screen.getByRole('button', { name: '진료 당일 질문 보기' }),
+    screen.getByRole('button', { name: '준비한 진료 질문' }),
   );
   expect(push).toHaveBeenCalledTimes(1);
   expect(push).toHaveBeenCalledWith('visit-day-questions');

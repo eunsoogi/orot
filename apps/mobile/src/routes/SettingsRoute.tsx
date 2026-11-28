@@ -1,5 +1,5 @@
-import { SettingsPageHeading } from '../layout/SettingsPageHeading';
-import { settingsPageStyles } from '../layout/settingsPagePresentation';
+import { PageHeading } from '../layout/PageHeading';
+import { pageHeadingStyles } from '../layout/pageHeadingPresentation';
 import { NativeModules, StyleSheet, View } from 'react-native';
 import { AdaptiveColumns } from '../layout/AdaptiveColumns';
 import { t } from '../i18n';
@@ -53,9 +53,9 @@ export function SettingsRoute({
       <AdaptiveColumns
         primary={
           <View style={styles.panel} testID="settings-panel">
-            <SettingsPageHeading testID="settings-title">
+            <PageHeading testID="settings-title">
               {t('settings.title')}
-            </SettingsPageHeading>
+            </PageHeading>
             <View style={styles.list} testID="settings-destinations">
               <SettingsRouteRow
                 symbol="sparkles"
@@ -144,7 +144,7 @@ const styles = StyleSheet.create({
     // The AdaptiveColumns lane already excludes space reserved by navigation.
     width: '100%',
     gap: 20,
-    ...settingsPageStyles.inset,
+    ...pageHeadingStyles.inset,
     // The outer route scroller already supplies the navigation gap.
     paddingBottom: 28 - NAVIGATION_CONTENT_GAP,
   },

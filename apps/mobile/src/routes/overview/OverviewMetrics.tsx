@@ -13,14 +13,10 @@ import { overviewMetricStyles as styles } from './overviewMetricStyles';
 import {
   OverviewMetricCard,
   OverviewMetricChartPlaceholder,
-  overviewMetricTitle as title,
 } from './OverviewMetricCard';
-import {
-  resolveOverviewMetricGridLayout,
-  resolveOverviewRecentChangeLayout,
-} from './overviewMetricLayout';
-import { OverviewRecentHealthChange } from './OverviewRecentHealthChange';
-import { formatOverviewMetricValue } from './metricFormatting';
+import { resolveOverviewMetricGridLayout } from './overviewMetricLayout';
+import { OverviewCompactChanges } from './OverviewCompactChanges';
+import { OverviewWidgetAmbient } from './OverviewWidgetAmbient';
 import {
   OverviewHeartPanel,
   groupOverviewCardSelection,
@@ -30,20 +26,10 @@ export function OverviewMetrics({ onEdit }: { readonly onEdit?: () => void }) {
   const data = useOverviewMetrics();
   const { fontScale } = useWindowDimensions();
   const [gridWidth, setGridWidth] = useState(0);
-  const comparisons = data.selection
-    .filter(isOverviewSnapshotMetric)
-    .flatMap(metric =>
-      data.metrics[metric]?.comparison ? [data.metrics[metric]!] : [],
-    )
-    .slice(0, 2);
   const cards = groupOverviewCardSelection(data.selection);
   const gridLayout = resolveOverviewMetricGridLayout(
     gridWidth,
     cards.length,
-    fontScale,
-  );
-  const recentChangeLayout = resolveOverviewRecentChangeLayout(
-    gridWidth,
     fontScale,
   );
   const placeholderStatus: Extract<
@@ -95,6 +81,11 @@ export function OverviewMetrics({ onEdit }: { readonly onEdit?: () => void }) {
     data.state === 'stale';
   return (
     <View style={styles.sections} testID="overview-health-sections">
+      <OverviewCompactChanges
+        selected={cards}
+        metrics={data.metrics}
+        available={canShowComparisons}
+      />
       <View style={styles.section} testID="overview-health-overview-section">
         <View style={styles.heading} testID="overview-health-overview-heading">
           <Text accessibilityRole="header" style={styles.title}>
@@ -131,6 +122,7 @@ export function OverviewMetrics({ onEdit }: { readonly onEdit?: () => void }) {
             setGridWidth(current => (current === width ? current : width));
           }}
         >
+          {cards.length > 0 ? <OverviewWidgetAmbient /> : null}
           {cards.map(metric =>
             metric === 'heartRate' ? (
               <OverviewHeartPanel
@@ -145,35 +137,6 @@ export function OverviewMetrics({ onEdit }: { readonly onEdit?: () => void }) {
               </Fragment>
             ) : null,
           )}
-        </View>
-      </View>
-      <View style={styles.section} testID="overview-recent-changes-section">
-        <View style={styles.heading} testID="overview-recent-changes-heading">
-          <Text
-            accessibilityRole="header"
-            style={styles.title}
-            testID="overview-recent-changes"
-          >
-            {t('overview.recentChanges')}
-          </Text>
-        </View>
-        <View style={styles.section} testID="overview-recent-changes-content">
-          {canShowComparisons &&
-            (comparisons.length ? (
-              comparisons.map(metric => (
-                <OverviewRecentHealthChange
-                  key={metric.metric}
-                  metric={metric}
-                  title={title(metric.metric)}
-                  layout={recentChangeLayout}
-                  formatValue={(amount, unit) =>
-                    formatOverviewMetricValue(metric.metric, amount, unit)
-                  }
-                />
-              ))
-            ) : (
-              <Text>{t('overview.noChanges')}</Text>
-            ))}
         </View>
       </View>
     </View>

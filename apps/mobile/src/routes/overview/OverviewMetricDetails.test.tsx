@@ -61,7 +61,7 @@ test.each([
 
     if (metric === 'heartRate') {
       expect(screen.getByText(formattedValue)).toBeVisible();
-      expect(screen.getByText('평균 심박수')).toBeVisible();
+      expect(screen.getByLabelText(/평균 심박수/u)).toBeVisible();
       expect(screen.queryByText(/Synthetic Watch App|Asia\/Seoul/u)).toBeNull();
       expect(
         screen.queryByTestId('overview-metric-chart-heartRate'),

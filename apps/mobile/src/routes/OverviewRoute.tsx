@@ -1,6 +1,7 @@
 import { OverviewPreparedVisits } from './OverviewPreparedVisits';
 import type { AiFeatureServices } from '../aiFeatures/integration/featureServiceTypes';
-import { HubBanner } from './HubBanner';
+import { PageHeading } from '../layout/PageHeading';
+import { pageHeadingStyles } from '../layout/pageHeadingPresentation';
 import { StyleSheet, View } from 'react-native';
 import type { Appointment } from '@orot/storage';
 import { t } from '../i18n';
@@ -44,13 +45,7 @@ export default function OverviewRoute({
 
   return (
     <ChartTooltipHost style={styles.container} testID="overview-screen">
-      <View style={styles.header}>
-        <HubBanner
-          title={t('overview.title')}
-          subtitle={t('overview.greeting')}
-          testID="overview"
-        />
-      </View>
+      <PageHeading testID="overview-title">{t('overview.title')}</PageHeading>
       {/* The shell consumes system/navigation geometry once and owns the only vertical scroll. */}
       <View style={styles.sections} testID="overview-overview-sections">
         <OverviewNextVisitCard
@@ -73,20 +68,13 @@ export default function OverviewRoute({
 const styles = StyleSheet.create({
   container: {
     // Let the shared ScrollView measure long Dynamic Type content past its viewport.
-    gap: hubSpacing.item,
-    paddingHorizontal: hubSpacing.horizontal,
-    paddingTop: hubSpacing.top,
+    gap: 24,
+    ...pageHeadingStyles.inset,
     // The outer route scroller already contributes the shared navigation gap.
     paddingBottom: hubSpacing.bottom - NAVIGATION_CONTENT_GAP,
     backgroundColor: appColors.background,
   },
-  header: {
-    gap: 8,
-    borderRadius: 24,
-    overflow: 'hidden',
-    backgroundColor: appColors.surface,
-  },
-  sections: { gap: hubSpacing.item, minWidth: 0 },
+  sections: { gap: 24, minWidth: 0 },
 });
 
 // Keep shared error-route styling available to CalendarAppRoute while using the Toss palette.
