@@ -1,14 +1,18 @@
-import { act, fireEvent, render, screen } from '@testing-library/react-native';
+import { act, render, screen, within } from '@testing-library/react-native';
 import { Alert } from 'react-native';
 import { recordingLibraryService } from '../recordingLibraryService';
 import type { RecordingSourceRecord } from '../recordingTypes';
 import { SavedRecordingDeleteAction } from '../SavedRecordingDeleteAction';
+import {
+  SavedRecordingDeleteDockFixture,
+  tapRecordingTrash,
+  trashButton,
+} from '../testSupport/SavedRecordingDeleteDockFixture';
 
 jest.mock('../recordingLibraryService', () => ({
   recordingLibraryService: { deleteRecording: jest.fn() },
 }));
 
-const button = 'saved-recording-detail-delete';
 const source = (id: string): RecordingSourceRecord => ({
   id,
   sourceKind: 'audio_recording',
@@ -65,7 +69,7 @@ test('native Delete approves exactly once and Back follows committed service and
     order.push('back');
   });
   await render(
-    <SavedRecordingDeleteAction
+    <SavedRecordingDeleteDockFixture
       active
       routeOwner={owner}
       source={source('first')}
@@ -73,7 +77,7 @@ test('native Delete approves exactly once and Back follows committed service and
       onBusyChange={busy => order.push(busy ? 'busy' : 'ready')}
     />,
   );
-  await fireEvent.press(screen.getByTestId(button));
+  await tapRecordingTrash();
   const destructive = alert.mock.calls[0]?.[2]?.find(
     item => item.style === 'destructive',
   )?.onPress;
@@ -103,30 +107,30 @@ test('Cancel and a route-retired native alert cannot approve a later target', as
     second = route();
   const alert = jest.spyOn(Alert, 'alert').mockImplementation(() => undefined);
   const ui = await render(
-    <SavedRecordingDeleteAction
+    <SavedRecordingDeleteDockFixture
       active
       routeOwner={first}
       source={source('first')}
     />,
   );
-  await fireEvent.press(screen.getByTestId(button));
+  await tapRecordingTrash();
   const oldButtons = alert.mock.calls[0]?.[2];
   await act(() => {
     oldButtons?.find(item => item.style === 'cancel')?.onPress?.();
   });
-  await fireEvent.press(screen.getByTestId(button));
+  await tapRecordingTrash();
   const retired = alert.mock.calls[1]?.[2]?.find(
     item => item.style === 'destructive',
   )?.onPress;
   await act(() => first.set(false));
   await ui.rerender(
-    <SavedRecordingDeleteAction
+    <SavedRecordingDeleteDockFixture
       active
       routeOwner={second}
       source={source('second')}
     />,
   );
-  await fireEvent.press(screen.getByTestId(button));
+  await tapRecordingTrash();
   await act(() => {
     retired?.();
     oldButtons?.find(item => item.style === 'destructive')?.onPress?.();
@@ -157,14 +161,14 @@ test.each(['failure', 'retired'] as const)('no Back after %s', async mode => {
   });
   const back = jest.fn();
   await render(
-    <SavedRecordingDeleteAction
+    <SavedRecordingDeleteDockFixture
       active
       routeOwner={owner}
       source={source('first')}
       onDeleted={back}
     />,
   );
-  await fireEvent.press(screen.getByTestId(button));
+  await tapRecordingTrash();
   await act(() => {
     alert.mock.calls[0]?.[2]
       ?.find(item => item.style === 'destructive')
@@ -182,3 +186,46 @@ test.each(['failure', 'retired'] as const)('no Back after %s', async mode => {
   if (mode === 'failure')
     expect(screen.getByTestId('saved-recording-delete-error')).toBeVisible();
 });
+
+test.each([false, true])(
+  'publishes one icon-only native trash action, compact=%s',
+  async compact => {
+    const alert = jest
+      .spyOn(Alert, 'alert')
+      .mockImplementation(() => undefined);
+    const owner = route();
+    const withoutHost = await render(
+      <SavedRecordingDeleteAction
+        active
+        routeOwner={owner}
+        source={source('first')}
+      />,
+    );
+    expect(screen.queryByTestId(trashButton)).toBeNull();
+    await withoutHost.unmount();
+    await render(
+      <SavedRecordingDeleteDockFixture
+        compact={compact}
+        active
+        routeOwner={owner}
+        source={source('first')}
+      />,
+    );
+    const surface = screen.getByTestId('navigation-page-action-surface');
+    expect(surface.props.layoutMode).toBe(compact ? 'bottom' : 'right');
+    expect(surface.props.actions).toEqual([
+      expect.objectContaining({
+        testID: trashButton,
+        systemImageName: 'trash',
+        accessibilityLabel: '녹음 삭제',
+      }),
+    ]);
+    expect(surface.props.actions[0].showsTitleWithSystemImage).not.toBe(true);
+    const body = within(screen.getByTestId('recording-detail-body'));
+    expect(body.queryByTestId(trashButton)).toBeNull();
+    expect(body.queryByText('녹음 삭제')).toBeNull();
+    await tapRecordingTrash();
+    expect(alert).toHaveBeenCalledTimes(1);
+    expect(remove).not.toHaveBeenCalled();
+  },
+);
