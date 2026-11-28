@@ -130,7 +130,7 @@ final class RecordingDuoUITests: OrotFailFastTestCase {
         edit.tap()
         let input = FormUITestConditions.multilineInput(app, identifier: "transcript-input-0")
         let draft = "Duo reflow draft"
-        FormUITestConditions.replace(input, with: draft, in: app, scrollID: "navigation-route-scroll")
+        guard FormUITestConditions.replace(input, with: draft, in: app, scrollID: "navigation-route-scroll", useNativeSelectAllMenu: true) else { return }
         XCTAssertTrue(app.keyboards.firstMatch.waitForAppearance())
 
         let firstWidth = app.windows.firstMatch.frame.width
