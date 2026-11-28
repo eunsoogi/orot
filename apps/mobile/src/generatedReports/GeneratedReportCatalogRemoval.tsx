@@ -1,23 +1,25 @@
-import { useState, type ReactNode } from 'react';
-import { Alert, Pressable, StyleSheet } from 'react-native';
+import type { ReactNode } from 'react';
+import { Alert, Pressable, StyleSheet, View } from 'react-native';
 import { AppSymbol } from '../layout/AppSymbol';
 import { appColors } from '../layout/appColors';
 import { TrailingSwipeAction } from '../layout/TrailingSwipeAction';
 import type { GeneratedReportReader, GeneratedReportRow } from './types';
-
 import { generatedReportCopy as copy } from './text';
 
 /** These tiles only remove the catalog projection, never the shared answer. */
 export function GeneratedReportCatalogRemoval({
   row,
   remove,
+  revealed,
+  onReveal,
   children,
 }: {
   readonly row: GeneratedReportRow;
   readonly remove?: (row: GeneratedReportRow) => void;
+  readonly revealed: boolean;
+  readonly onReveal: (next: boolean) => void;
   readonly children: ReactNode;
 }) {
-  const [revealed, setRevealed] = useState(false);
   if (
     !remove ||
     row.origin !== 'conversation' ||
@@ -30,21 +32,24 @@ export function GeneratedReportCatalogRemoval({
       revealDuringDrag
       disabled={false}
       revealed={revealed}
-      onRevealedChange={setRevealed}
+      onRevealedChange={onReveal}
       testID={`generated-report-swipe-${row.key}`}
       revealWidth={64}
       action={
-        <Pressable
-          accessibilityRole="button"
-          accessibilityLabel={copy.catalogRemove}
-          style={styles.delete}
-          onPress={() => {
-            setRevealed(false);
-            remove(row);
-          }}
-        >
-          <AppSymbol name="trash" color={appColors.onDanger} size={20} />
-        </Pressable>
+        <View style={styles.lane}>
+          <Pressable
+            testID={`generated-report-remove-${row.key}`}
+            accessibilityRole="button"
+            accessibilityLabel={copy.catalogRemove}
+            style={styles.delete}
+            onPress={() => {
+              onReveal(false);
+              remove(row);
+            }}
+          >
+            <AppSymbol name="trash" color={appColors.onDanger} size={20} />
+          </Pressable>
+        </View>
       }
     >
       {children}
@@ -134,6 +139,7 @@ export async function requestGeneratedReportCatalogRemoval(
 }
 
 const styles = StyleSheet.create({
+  lane: { flex: 1, alignItems: 'center', justifyContent: 'center' },
   delete: {
     alignSelf: 'center',
     width: 48,

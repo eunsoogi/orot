@@ -1,5 +1,5 @@
 import { formatDateTime, t } from '../i18n';
-import type { ReactNode } from 'react';
+import { useState, type ReactNode } from 'react';
 import { View } from 'react-native';
 import { AppText } from '../layout/AppText';
 import { AppButton } from '../layout/AppButton';
@@ -29,6 +29,7 @@ export function GeneratedReportRows({
   readonly onRemove?: (row: GeneratedReportRow) => void;
   readonly onMore: () => void;
 }) {
+  const [openKey, setOpenKey] = useState<string>();
   return (
     <>
       {rows.length === 0 ? (
@@ -40,6 +41,12 @@ export function GeneratedReportRows({
               key={row.key}
               row={row}
               remove={onRemove}
+              revealed={openKey === row.key}
+              onReveal={open => {
+                setOpenKey(current =>
+                  open ? row.key : current === row.key ? undefined : current,
+                );
+              }}
             >
               <MaterialLibraryRow
                 testID={`generated-report-${row.key}`}
@@ -47,6 +54,7 @@ export function GeneratedReportRows({
                 title={copy[row.kind]}
                 summary={`${formatDateTime(new Date(row.createdAt))}${row.unavailable ? ' · ' + copy.unavailable : ''}`}
                 onPress={() => {
+                  setOpenKey(undefined);
                   onOpen(row);
                 }}
               />
