@@ -1,4 +1,3 @@
-import CryptoKit
 import Foundation
 import HealthKit
 import UIKit
@@ -8,6 +7,7 @@ import UIKit
 @MainActor
 enum WorkoutPeriodHealthKitProducer {
     typealias Accumulator = WorkoutPeriodQuantityAccumulator
+    private typealias Membership = WorkoutPeriodMembershipDigest
 
     struct OwnedWorkout: Sendable {
         let id: UUID
@@ -85,6 +85,14 @@ enum WorkoutPeriodHealthKitProducer {
                 return .emptyVisible
             }
             let byID = Dictionary(uniqueKeysWithValues: workouts.map { ($0.uuid, $0) })
+            // Foundation's formatter builds its formatting state on first use.
+            // Reuse it across this one main-actor comparison pass and keep the
+            // original fractional-second equality contract.
+            let savedInstantFormatter = ISO8601DateFormatter()
+            savedInstantFormatter.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
+            func matchesSavedInstant(_ native: Date, _ saved: Date) -> Bool {
+                savedInstantFormatter.string(from: native) == savedInstantFormatter.string(from: saved)
+            }
             var parentCounts: [UUID: Int] = [:]
             var parentWindows: [UUID: Set<Accumulator.Window>] = [:]
             var parentSource: [UUID: String] = [:]
@@ -95,8 +103,8 @@ enum WorkoutPeriodHealthKitProducer {
                 completeCohort, active: active,
                 prepare: { imported in
                     guard active(), let workout = byID[imported.id],
-                          sameSavedInstant(workout.startDate, imported.start),
-                          sameSavedInstant(workout.endDate, imported.end),
+                          matchesSavedInstant(workout.startDate, imported.start),
+                          matchesSavedInstant(workout.endDate, imported.end),
                           workout.sourceRevision.source.bundleIdentifier == imported.sourceBundle
                     else { throw WorkoutAssociatedParentPair.Stopped.retired }
                     let start = max(period.start, workout.startDate)
@@ -112,7 +120,7 @@ enum WorkoutPeriodHealthKitProducer {
                 }, consume: { scope, parents in
                     let workout = scope.workout
                     let clipped = scope.clipped
-                    digestParts.append(digest([workout.uuid.uuidString, scope.sourceBundle,
+                    digestParts.append(Membership.digest([workout.uuid.uuidString, scope.sourceBundle,
                                                dateKey(workout.startDate), dateKey(workout.endDate)]))
                     guard active(), parents.count <= maxParents,
                           parents.count <= maxMemberships - memberships
@@ -130,7 +138,7 @@ enum WorkoutPeriodHealthKitProducer {
                         parentCounts[sample.uuid] = sample.count
                         parentSource[sample.uuid] = identity
                         parentWindows[sample.uuid, default: []].insert(clipped)
-                        digestParts.append(digest([workout.uuid.uuidString, sample.uuid.uuidString, identity,
+                        digestParts.append(Membership.digest([workout.uuid.uuidString, sample.uuid.uuidString, identity,
                                                    dateKey(clipped.start), dateKey(clipped.end), String(sample.count)]))
                     }
                     guard parentCounts.count <= maxParents else { throw WorkoutAssociatedParentPair.Stopped.retired }
@@ -169,7 +177,7 @@ enum WorkoutPeriodHealthKitProducer {
                     first = first.map { min($0, start) } ?? start
                     last = last.map { max($0, start) } ?? start
                     // Keep multiplicity, including multiple identical values from one series.
-                    digestParts.append(stableFields([parent.uuid.uuidString, source,
+                    digestParts.append(Membership.stableFields([parent.uuid.uuidString, source,
                                                      dateKey(start), dateKey(end), String(bpm.bitPattern)]))
                 }
                 return true
@@ -201,9 +209,9 @@ enum WorkoutPeriodHealthKitProducer {
             case .unavailable: return .unavailable
             case let .available(stats):
                 guard let first, let last else { return .unavailable }
-                digestParts.append(digest([dateKey(period.start), dateKey(period.end)]))
+                digestParts.append(Membership.digest([dateKey(period.start), dateKey(period.end)]))
                 let material = digestParts
-                let revision = await Task.detached(priority: .utility) { digest(material.sorted()) }.value
+                let revision = await Task.detached(priority: .utility) { Membership.digest(material.sorted()) }.value
                 guard active() else { return .unavailable }
                 return .available(Witness(
                     stats: stats, firstSampleAtMs: Int64(first.timeIntervalSince1970 * 1000),
@@ -221,24 +229,10 @@ enum WorkoutPeriodHealthKitProducer {
         String(date.timeIntervalSince1970.bitPattern)
     }
 
-    private static func sameSavedInstant(_ native: Date, _ saved: Date) -> Bool {
-        let formatter = ISO8601DateFormatter()
-        formatter.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
-        return formatter.string(from: native) == formatter.string(from: saved)
-    }
-
     private static func sourceDigest(_ sample: HKQuantitySample) -> String {
         let revision = sample.sourceRevision
-        return digest([revision.source.bundleIdentifier, revision.version ?? "",
+        return Membership.digest([revision.source.bundleIdentifier, revision.version ?? "",
                        revision.productType ?? "", sample.device?.localIdentifier ?? ""])
-    }
-
-    private nonisolated static func stableFields(_ fields: [String]) -> String {
-        fields.map { "\($0.utf8.count):\($0)" }.joined()
-    }
-
-    private nonisolated static func digest(_ fields: [String]) -> String {
-        SHA256.hash(data: Data(stableFields(fields).utf8)).map { String(format: "%02x", $0) }.joined()
     }
 }
 

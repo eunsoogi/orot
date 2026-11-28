@@ -82,6 +82,13 @@ final class WorkoutAssociatedParentPairTests: XCTestCase {
         let serial = [10, 20, 30, 40, 50].map { $0 * 2 }
         XCTAssertEqual(reader.consumed, serial)
         XCTAssertEqual(reader.starts.count, serial.count)
+        // The ordered traversal must retain the same lowercase membership
+        // witness, including byte-length prefixes and leading zero nibbles.
+        let observed = ["운동", "", "source:0"] + reader.consumed.map(String.init)
+        XCTAssertEqual(
+            WorkoutPeriodMembershipDigest.digest(observed),
+            "fa4fd6359bca4a73ab91bbc40968262c3e3096540c22360c2648a97546fe763a",
+        )
     }
 
     func testLostOwnerAndCancelledCallerCannotConsumeOrStartNextPair() async throws {
