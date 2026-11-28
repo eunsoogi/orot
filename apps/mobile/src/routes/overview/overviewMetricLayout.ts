@@ -1,4 +1,4 @@
-export const overviewMetricGridGap = 8;
+export const overviewMetricGridColumnGap = 12;
 
 // Keep the existing 320pt readable-column floor instead of treating a compact chart as a full card.
 // The measured grid already excludes the shell's reserved rail and Home's content gutters.
@@ -23,14 +23,14 @@ export function resolveOverviewMetricGridLayout(
   const readableCardWidth = minimumMetricCardWidth * Math.max(1, fontScale);
   const columns: 1 | 2 =
     metricCount > 1 &&
-    measuredWidth >= readableCardWidth * 2 + overviewMetricGridGap
+    measuredWidth >= readableCardWidth * 2 + overviewMetricGridColumnGap
       ? 2
       : 1;
 
   return {
     columns,
     cardWidth:
-      (measuredWidth - overviewMetricGridGap * (columns - 1)) / columns,
+      (measuredWidth - overviewMetricGridColumnGap * (columns - 1)) / columns,
   };
 }
 

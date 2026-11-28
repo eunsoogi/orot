@@ -155,7 +155,7 @@ test('reflows measured card widths on resize and large text changes', async () =
   expect(cardWidth('sleep')).toBe(348);
 
   await fireEvent(metricGrid(), 'layout', {
-    nativeEvent: { layout: { width: 648, height: 600, x: 0, y: 0 } },
+    nativeEvent: { layout: { width: 652, height: 600, x: 0, y: 0 } },
   });
   expect(cardWidth('sleep')).toBe(320);
 
@@ -166,14 +166,14 @@ test('reflows measured card widths on resize and large text changes', async () =
     fontScale: 1.25,
   });
   await rerender(<OverviewMetrics />);
-  expect(cardWidth('sleep')).toBe(648);
+  expect(cardWidth('sleep')).toBe(652);
 
   await fireEvent(metricGrid(), 'layout', {
     nativeEvent: { layout: { width: 600, height: 600, x: 0, y: 0 } },
   });
   expect(cardWidth('sleep')).toBe(600);
   await fireEvent(metricGrid(), 'layout', {
-    nativeEvent: { layout: { width: 808, height: 600, x: 0, y: 0 } },
+    nativeEvent: { layout: { width: 812, height: 600, x: 0, y: 0 } },
   });
   expect(cardWidth('sleep')).toBe(400);
   await fireEvent(metricGrid(), 'layout', {
