@@ -1,3 +1,4 @@
+import { withObservedRecordAnswers } from './observedRecordConversationTask';
 import { recentConversationLayoutTasks } from './recentConversationLayoutTasks';
 import { withPublicWebConversationLayout } from './conversationA2UIPublicWebLayout';
 import { withConversationA2UITabSelectionLifetime } from './conversationA2UITabSelectionLifetime';
@@ -223,6 +224,7 @@ export function versionedConversationMemoryTasks(
       ),
       v67: recent.v67,
       v68: recent.v68,
+      v69: recent.current,
       v66: observeConversationA2UIFinalAdmission(
         withPublicWebConversationLayout(
           withConversationA2UITabSelectionLifetime(
@@ -233,6 +235,6 @@ export function versionedConversationMemoryTasks(
         ),
       ),
     },
-    ragConversationTask: recent.current,
+    ragConversationTask: withObservedRecordAnswers(recent.current),
   };
 }

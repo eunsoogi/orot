@@ -1,3 +1,4 @@
+import { healthSleepAwakeConflict } from './observationSemantics';
 import type {
   HealthContextReport,
   HealthQuantityDay,
@@ -85,6 +86,15 @@ export function projectHealthContext(
         )
       : [];
   const asleepDays = report.sleep.filter(day => day.asleepSeconds > 0);
+  // Clipped calendar days do not overlap. Add the existing union, never the
+  // per-stage totals; a documented awake conflict precludes a combined claim.
+  const observedAsleepSeconds = asleepDays.reduce(
+    (seconds, day) => seconds + day.asleepSeconds,
+    0,
+  );
+  const publishAsleepTotal =
+    observedAsleepSeconds > 0 &&
+    !report.limitations.includes(healthSleepAwakeConflict);
   return {
     period: report.window,
     calendarDays: dates.length,
@@ -147,6 +157,9 @@ export function projectHealthContext(
     sleep: {
       semantics:
         'observed_asleep_interval_union_by_calendar_day_not_complete_nights',
+      ...(publishAsleepTotal
+        ? { observedAsleepSeconds: Number(observedAsleepSeconds.toFixed(3)) }
+        : {}),
       recordedDays: asleepDays.length,
       missingCalendarDays: dates.length - asleepDays.length,
       meanRecordedDailyMinutes: average(

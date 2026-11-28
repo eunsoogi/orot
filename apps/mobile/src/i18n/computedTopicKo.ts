@@ -32,7 +32,11 @@ export const computedTopicKo = {
   'computedTopic.calendarDays': ' / {days}일',
   'computedTopic.coverage': ' · 기록 {days}일{calendar}',
   'computedTopic.sleepMean':
-    '기록된 날짜의 수면 시간 평균 {minutes}분{coverage}. 날짜별로 겹치는 수면 구간을 합친 값이며 완전한 하룻밤 수면 총량을 뜻하지는 않아요. 기록하지 않은 날짜의 수면은 알 수 없어요.',
+    '기록된 날짜의 수면 시간 평균 {minutes}분{coverage}.',
+  'computedTopic.sleepObservedTotal':
+    '이 기간에 잠든 것으로 기록된 구간은 총 {duration}이에요.',
+  'computedTopic.sleepDuration': '{minutes}분',
+  'computedTopic.sleepSeconds': '{seconds}초',
   'computedTopic.stageMinutes': '{stage} {minutes}분',
   'computedTopic.meanStages': '{mean} 전체 기간의 단계별 누적 시간: {stages}.',
   'computedTopic.symptomDays': ' · {days}일',

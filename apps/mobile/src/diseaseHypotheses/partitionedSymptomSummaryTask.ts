@@ -25,7 +25,7 @@ export const partitionedSymptomSummaryTask: TaskResponderContract<DiseaseHypothe
   {
     ...symptomSummaryTask,
     // Version the Apple selection contract separately from cloud-provider prose.
-    taskVersion: '7',
+    taskVersion: '9',
     createMessages(input) {
       const messages = symptomSummaryTask.createMessages(input);
       // Research turns need a tool decision, not duplicated facts for final prose generation.
@@ -72,9 +72,9 @@ export const partitionedSymptomSummaryTask: TaskResponderContract<DiseaseHypothe
               medications:
                 'Include all supplied medication names, recorded-use status and completed-dose counts when present. Do not enumerate first/last timestamps for every medication.',
               quantities:
-                'Include every supplied concept and sensor series with its recorded-day mean and unit, or latest amount when no mean exists. Preserve coverage and sensor-series limitations.',
+                'Include every supplied concept and sensor series with its recorded-day mean and unit, or latest amount when no mean exists. Name the corresponding sensor or source without repeating mathematical exclusions as limitations.',
               sleep:
-                'Include the recorded-calendar-day mean and its coverage/complete-night limitation. Do not enumerate all interval endpoints or repeat every stage total when a mean is available.',
+                'Report the recorded asleep duration or recorded-calendar-day mean supplied in the requested scope. Keep their roles distinct and avoid unsupported whole-night estimates. Do not enumerate all intervals or stages unless requested.',
               complete:
                 'Finish every required topic and the top-level citations array. Do not repeat unrelated medication limitations in activity, measurements or sleep.',
             },

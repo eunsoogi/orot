@@ -12,7 +12,7 @@ const input = {
   evidence: { items: [], coverage: [], conflicts: [] },
 } as unknown as TaskResponderInput;
 test('new answer contract has no coverage completion classification', () => {
-  expect(ragConversationTask.taskVersion).toBe('69');
+  expect(ragConversationTask.taskVersion).toBe('70');
   for (const schema of [
     conversationResultSchema,
     literatureConversationResultSchema,
@@ -145,4 +145,54 @@ test('object A2UI frames are advertised only in current JSON guidance for ordina
     ['version', 'createSurface'],
   );
   expect(selectedRecording?.properties).not.toHaveProperty('a2uiFrames');
+});
+
+test('fresh ordinary answers lead with facts without changing stored v69 policy or source bytes', () => {
+  const phrase =
+    'Use available follow-up tools for missing requested topics before treating a partial search as insufficient.';
+  const evidence = 'synthetic evidence containing ' + phrase;
+  const source: TaskResponderInput = {
+    ...input,
+    request: phrase,
+    evidence: {
+      ...input.evidence,
+      items: [
+        {
+          sourceKind: 'personal_record',
+          sourceId: 'fixture-source',
+          sourceRevision: '1',
+          evidenceId: 'fixture-evidence',
+          evidenceRevision: '1',
+          locator: { kind: 'structured_record', recordId: 'fixture' },
+          effectiveTime: null,
+          reviewState: 'unknown',
+          content: evidence,
+        },
+      ],
+    },
+  };
+  const prior = restoreConversationTask({
+    taskType: ragConversationTask.taskType,
+    taskVersion: '69',
+  })!;
+  const message = (task: typeof ragConversationTask) => {
+    const result = task.createMessages(source).find(x => x.role === 'user');
+    if (result?.role !== 'user' || typeof result.content !== 'string')
+      throw new Error('Expected task payload');
+    return JSON.parse(result.content);
+  };
+  expect(prior.systemPrompt).toContain(
+    'Explain any missing requested information',
+  );
+  expect(ragConversationTask.systemPrompt).toContain(
+    'state its value, unit, scope',
+  );
+  expect(ragConversationTask.systemPrompt).not.toContain(
+    'Explain any missing requested information',
+  );
+  const old = message(prior);
+  const fresh = message(ragConversationTask);
+  expect(old.answerRequirements).toContain(phrase);
+  expect(fresh.evidence[0].content).toBe(evidence);
+  expect(fresh).toEqual(old);
 });

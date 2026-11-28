@@ -1,3 +1,4 @@
+import { healthSleepAwakeConflict } from './observationSemantics';
 import { readTypedHeartRateContext } from './typedHeartRateContext';
 import { observeReportAggregateSql } from './reportCalculationDiagnostic';
 import type { SqlExecutor } from '@orot/storage';
@@ -194,6 +195,9 @@ async function readHealthContext(
           ? ['quantity_sensor_series_limit_reached']
           : []),
         ...(medications.truncated ? ['medication_catalog_limit_reached'] : []),
+        ...('awakeConflict' in sleep && sleep.awakeConflict
+          ? [healthSleepAwakeConflict]
+          : []),
         ...(sleep.unsupportedCategories
           ? ['unsupported_sleep_categories_excluded_from_duration']
           : []),

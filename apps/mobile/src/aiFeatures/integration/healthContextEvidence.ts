@@ -93,6 +93,8 @@ export function healthContextContent(
               }
             : scope.topic === 'sleep'
               ? {
+                  observedAsleepSeconds:
+                    'Direct total duration of observed asleep intervals in this exact window, already merged across overlapping stages and exclusive of awake/in-bed intervals. No extrapolation.',
                   meanRecordedDailyMinutes:
                     'Mean of calendar-day unions of asleep intervals over recorded dates, not a complete-night total.',
                   stageMinutes:
