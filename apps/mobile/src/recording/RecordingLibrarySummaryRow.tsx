@@ -82,6 +82,7 @@ export default function RecordingLibrarySummaryRow({
 
   return (
     <TrailingSwipeAction
+      springReveal
       revealDuringDrag={Boolean(onShare)}
       revealWidth={onShare ? swipeActionIconTileLaneWidth : undefined}
       action={

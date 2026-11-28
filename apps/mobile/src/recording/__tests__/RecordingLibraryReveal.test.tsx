@@ -19,6 +19,9 @@ import {
   pressNativeDeletionButton,
 } from '../testSupport/nativeDeletionAlert';
 
+beforeEach(() => jest.useFakeTimers());
+afterEach(() => jest.useRealTimers());
+
 test('left swipe leaves an open trailing slot and never asks to delete until the button is tapped', async () => {
   if (recorded.sourceKind !== 'audio_recording') throw new Error('Bad fixture');
   const source = { ...recorded, sourceKind: 'audio_recording' as const };
@@ -69,6 +72,8 @@ test('left swipe leaves an open trailing slot and never asks to delete until the
       true,
     );
     await act(async () => {
+      handler.onPanResponderGrant?.(event, swipe);
+      handler.onPanResponderMove?.(event, swipe);
       handler.onPanResponderRelease?.(event, swipe);
     });
     const slot = screen.getByTestId(`recording-delete-slot-${id}`);
