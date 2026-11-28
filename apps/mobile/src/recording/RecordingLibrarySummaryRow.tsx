@@ -5,10 +5,8 @@ import { appColors } from '../layout/appColors';
 import { AppText as Text } from '../layout/AppText';
 import { t } from '../i18n';
 import { TrailingSwipeAction } from '../layout/TrailingSwipeAction';
-import {
-  RecordingSwipeActionTiles,
-  recordingSwipeTileLaneWidth,
-} from './RecordingSwipeActionTiles';
+import { swipeActionIconTileLaneWidth } from '../layout/SwipeActionIconTiles';
+import { RecordingSwipeActionTiles } from './RecordingSwipeActionTiles';
 import { formatRecordedAt } from './formatRecordedAt';
 import { formatRecordingDuration } from './recordingTypes';
 import { recordingLibraryStyles as styles } from './RecordingLibraryPanel.styles';
@@ -84,7 +82,8 @@ export default function RecordingLibrarySummaryRow({
 
   return (
     <TrailingSwipeAction
-      revealWidth={onShare ? recordingSwipeTileLaneWidth : undefined}
+      revealDuringDrag={Boolean(onShare)}
+      revealWidth={onShare ? swipeActionIconTileLaneWidth : undefined}
       action={
         onShare ? (
           <RecordingSwipeActionTiles
