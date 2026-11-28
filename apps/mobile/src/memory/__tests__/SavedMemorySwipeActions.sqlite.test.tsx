@@ -25,12 +25,31 @@ jest.mock('../../storage/ragEmbeddingStorage', () => ({
   },
 }));
 
-test.each(['cancel', 'delete', 'superseded', 'locked-delete'] as const)(
+test.each([
+  'cancel',
+  'delete',
+  'superseded',
+  'locked-delete',
+  'foreground ABA',
+] as const)(
   'saved Memory row only acts after selecting its revealed icon: %s',
   async action => {
     const previous = AppState.currentState;
     AppState.currentState = 'active';
     const f = await healthContextFixture();
+    const appListeners = new Set<
+      Parameters<typeof AppState.addEventListener>[1]
+    >();
+    jest
+      .spyOn(AppState, 'addEventListener')
+      .mockImplementation((_event, listener) => {
+        appListeners.add(listener);
+        return {
+          remove: () => {
+            appListeners.delete(listener);
+          },
+        };
+      });
     const pan = jest.spyOn(PanResponder, 'create');
     jest.clearAllMocks();
     const alert = jest.spyOn(Alert, 'alert').mockImplementation(() => {});
@@ -104,12 +123,23 @@ test.each(['cancel', 'delete', 'superseded', 'locked-delete'] as const)(
         expect(await repository.list()).toEqual([original]);
         return;
       }
-      if (action === 'locked-delete') {
-        await act(() => {
-          listeners.forEach(listener =>
-            listener({ kind: 'protectedData', available: false }),
-          );
-        });
+      if (action === 'locked-delete' || action === 'foreground ABA') {
+        if (action === 'locked-delete') {
+          await act(() => {
+            listeners.forEach(listener =>
+              listener({ kind: 'protectedData', available: false }),
+            );
+          });
+        } else {
+          for (const phase of ['background', 'active'] as const)
+            await act(async () => {
+              AppState.currentState = phase;
+              for (const listener of [...appListeners]) listener(phase);
+            });
+          expect(
+            await screen.findByTestId('saved-memory-entry-' + id),
+          ).toBeVisible();
+        }
         await act(async () => {
           await buttons
             ?.find(button => button.style === 'destructive')

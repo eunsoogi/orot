@@ -7,6 +7,7 @@ import { AppText as Text } from '../layout/AppText';
 import { t } from '../i18n';
 import { SavedMemorySwipeRow } from './SavedMemorySwipeRow';
 import { useSavedMemorySwipeActions } from './useSavedMemorySwipeActions';
+import { useSavedMemorySuspensionOffset } from './useSavedMemorySuspensionOffset';
 import { useSavedMemories, type SavedMemory } from './useSavedMemories';
 import {
   MaterialLibraryRows,
@@ -31,6 +32,13 @@ export function SavedMemoryBrowser({
   );
   const [visible, setVisible] = useState(20);
   const position = useNavigationRouteScrollPosition();
+  useSavedMemorySuspensionOffset({
+    active,
+    ownership,
+    position,
+    read: readyRead,
+    state,
+  });
   const [revealed, setRevealed] = useState<string>();
   const { busy, error, requestDelete } = useSavedMemorySwipeActions({
     read: readyRead,
