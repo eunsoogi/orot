@@ -14,10 +14,136 @@ index 3bb041d7aea37623522d27ef8c56f302ef219bd2..4b5c8256f984d98f13d47e669d3f5e17
 +
  NS_ASSUME_NONNULL_END
 diff --git a/ios/RNCSliderComponentView.mm b/ios/RNCSliderComponentView.mm
-index cf14ae6f66b8c847b2b79c5b0eebd4148f81e00d..78cb2784f413fe0862040f277f7d50e14bc72d46 100644
+index cf14ae6f66b8c847b2b79c5b0eebd4148f81e00d..08a628c619afa1707691a94c454c84cb7dbf3653 100644
 --- a/ios/RNCSliderComponentView.mm
 +++ b/ios/RNCSliderComponentView.mm
-@@ -76,6 +76,17 @@
+@@ -13,10 +13,99 @@
+ #import <React/RCTUtils.h>
+ #import "RCTFabricComponentsPlugins.h"
+ #import "RNCSlider.h"
++#import <UIKit/UIGestureRecognizerSubclass.h>
++#import "RNCReleaseOnlyContact.hpp"
+ 
+ using namespace facebook::react;
+ 
+-@interface RNCSliderComponentView () <RCTRNCSliderViewProtocol>
++// Owns the contact from raw TouchDown, not from the later pan threshold.
++@interface RNCScrubContactRecognizer : UIGestureRecognizer
++@property (nonatomic, copy) void (^contactStarted)(CGPoint point);
++@property (nonatomic, copy) void (^contactCancelled)(void);
++@property (nonatomic, readonly) CGPoint contactPoint;
++@property (nonatomic, readonly) BOOL ownsThumb;
++- (BOOL)shouldSetTargetFromThumb:(BOOL)startedOnThumb tapToSeek:(BOOL)tapToSeek;
++- (BOOL)consumeContact;
++- (void)abandonContact;
++@end
++
++@implementation RNCScrubContactRecognizer {
++    RNCReleaseOnlyContact _contact;
++    UITouch *_activeTouch;
++    CGPoint _origin;
++    CGPoint _point;
++}
++
++- (CGPoint)contactPoint { return _point; }
++- (BOOL)ownsThumb { return _contact.ownsThumb(); }
++- (BOOL)shouldSetTargetFromThumb:(BOOL)startedOnThumb tapToSeek:(BOOL)tapToSeek {
++    return _contact.shouldSetTarget(startedOnThumb, tapToSeek);
++}
++
++- (BOOL)consumeContact {
++    _activeTouch = nil;
++    return _contact.finish();
++}
++
++- (void)abandonContact {
++    if ([self consumeContact] && self.contactCancelled) self.contactCancelled();
++}
++
++- (void)failContact {
++    const BOOL recognized = self.state == UIGestureRecognizerStateBegan || self.state == UIGestureRecognizerStateChanged;
++    [self abandonContact];
++    self.state = recognized ? UIGestureRecognizerStateCancelled : UIGestureRecognizerStateFailed;
++}
++
++- (void)touchesBegan:(NSSet<UITouch *> *)touches withEvent:(UIEvent *)event {
++    [super touchesBegan:touches withEvent:event];
++    if (!_contact.begin() || touches.count != 1) {
++        [self failContact];
++        return;
++    }
++    _activeTouch = touches.anyObject;
++    _origin = _point = [_activeTouch locationInView:self.view];
++    if (self.contactStarted) self.contactStarted(_origin);
++}
++
++- (void)touchesMoved:(NSSet<UITouch *> *)touches withEvent:(UIEvent *)event {
++    [super touchesMoved:touches withEvent:event];
++    if (!_activeTouch || ![touches containsObject:_activeTouch]) return;
++    _point = [_activeTouch locationInView:self.view];
++    switch (_contact.move(_point.x - _origin.x, _point.y - _origin.y)) {
++        case RNCReleaseOnlyContact::Motion::waiting: return;
++        case RNCReleaseOnlyContact::Motion::vertical: [self failContact]; return;
++        case RNCReleaseOnlyContact::Motion::horizontal:
++            self.state = self.state == UIGestureRecognizerStatePossible
++                ? UIGestureRecognizerStateBegan : UIGestureRecognizerStateChanged;
++            return;
++    }
++}
++
++- (void)touchesEnded:(NSSet<UITouch *> *)touches withEvent:(UIEvent *)event {
++    [super touchesEnded:touches withEvent:event];
++    if (!_activeTouch || ![touches containsObject:_activeTouch]) return;
++    _point = [_activeTouch locationInView:self.view];
++    // A vertical release before a coalesced move callback still yields to scroll.
++    if (_contact.move(_point.x - _origin.x, _point.y - _origin.y) == RNCReleaseOnlyContact::Motion::vertical) {
++        [self failContact];
++        return;
++    }
++    self.state = UIGestureRecognizerStateEnded;
++}
++
++- (void)touchesCancelled:(NSSet<UITouch *> *)touches withEvent:(UIEvent *)event {
++    [super touchesCancelled:touches withEvent:event];
++    if (_activeTouch && [touches containsObject:_activeTouch]) [self failContact];
++}
++
++- (void)reset {
++    [self abandonContact];
++    [super reset];
++}
++@end
++
++@interface RNCSliderComponentView () <RCTRNCSliderViewProtocol, UIGestureRecognizerDelegate>
+ 
+ @end
+ 
+@@ -26,6 +115,10 @@ @implementation RNCSliderComponentView
+     RNCSlider *slider;
+     UIImage *_image;
+     BOOL _isSliding;
++    RNCScrubContactRecognizer *_releaseContact;
++    BOOL _startedOnThumb;
++    BOOL _boundsChangedDuringContact;
++    CGFloat _thumbOffset;
+ }
+ 
+ + (ComponentDescriptorProvider)componentDescriptorProvider
+@@ -70,14 +163,33 @@ - (instancetype)initWithFrame:(CGRect)frame
+         panGesturer = [[UIPanGestureRecognizer alloc] initWithTarget:self action:@selector(panHandler:)];
+         [slider addGestureRecognizer:panGesturer];
+ 
++        _releaseContact = [[RNCScrubContactRecognizer alloc] initWithTarget:self action:@selector(handleReleaseOnlyContact:)];
++        _releaseContact.delegate = self;
++        _releaseContact.enabled = NO;
++        __weak RNCSliderComponentView *weakSelf = self;
++        _releaseContact.contactStarted = ^(CGPoint point) { [weakSelf beginReleaseOnlyContact:point]; };
++        _releaseContact.contactCancelled = ^{ [weakSelf cancelReleaseOnlyContact]; };
++        [self addGestureRecognizer:_releaseContact];
++
+         slider.value = (float)defaultProps->value;
+         self.contentView = slider;
+     }
      return self;
  }
  
@@ -33,20 +159,20 @@ index cf14ae6f66b8c847b2b79c5b0eebd4148f81e00d..78cb2784f413fe0862040f277f7d50e1
 +}
 +
  - (void)tapHandler:(UITapGestureRecognizer *)gesture {
-     if ([gesture.view class] != [RNCSlider class]) {
+-    if ([gesture.view class] != [RNCSlider class]) {
++    if ([self commitsOnRelease] || [gesture.view class] != [RNCSlider class]) {
          return;
-@@ -112,6 +123,10 @@
+     }
+     RNCSlider *slider = (RNCSlider *)gesture.view;
+@@ -112,7 +224,6 @@ - (void)tapHandler:(UITapGestureRecognizer *)gesture {
      }
  
      [slider setValue:[slider discreteValue:value] animated: YES];
-+    if ([self commitsOnRelease]) {
-+        [self emitReleaseForRecordingSeek];
-+        return;
-+    }
- 
+-
      std::dynamic_pointer_cast<const RNCSliderEventEmitter>(_eventEmitter)
      ->onRNCSliderSlidingStart(RNCSliderEventEmitter::OnRNCSliderSlidingStart{.value = static_cast<Float>(slider.lastValue)});
-@@ -126,11 +141,13 @@
+ 
+@@ -126,11 +237,13 @@ - (void)tapHandler:(UITapGestureRecognizer *)gesture {
  
  - (void)sliderValueChanged:(RNCSlider *)sender
  {
@@ -60,7 +186,7 @@ index cf14ae6f66b8c847b2b79c5b0eebd4148f81e00d..78cb2784f413fe0862040f277f7d50e1
      [self RNCSendSliderEvent:sender withContinuous:NO isSlidingStart:YES];
      _isSliding = YES;
      sender.isSliding = YES;
-@@ -138,6 +155,7 @@
+@@ -138,6 +251,7 @@ - (void)sliderTouchStart:(RNCSlider *)sender
  
  - (void)sliderTouchEnd:(RNCSlider *)sender
  {
@@ -68,16 +194,82 @@ index cf14ae6f66b8c847b2b79c5b0eebd4148f81e00d..78cb2784f413fe0862040f277f7d50e1
      [self RNCSendSliderEvent:sender withContinuous:NO isSlidingStart:NO];
      sender.isSliding = NO;
      _isSliding = NO;
-@@ -184,7 +202,7 @@
+@@ -183,31 +297,43 @@ - (void)updateProps:(const Props::Shared &)props oldProps:(const Props::Shared &
+     const auto &oldScreenProps = *std::static_pointer_cast<const RNCSliderProps>(_props);
      const auto &newScreenProps = *std::static_pointer_cast<const RNCSliderProps>(props);
  
-     if (oldScreenProps.value != newScreenProps.value) {
+-    if (oldScreenProps.value != newScreenProps.value) {
 -        if (!slider.isSliding) {
-+        if (!slider.isSliding && (!newScreenProps.commitOnRelease || !slider.isTracking)) {
++    const BOOL releaseOnly = newScreenProps.commitOnRelease;
++    const BOOL changedMode = oldScreenProps.commitOnRelease != releaseOnly;
++    const BOOL changedValue = oldScreenProps.value != newScreenProps.value;
++    const BOOL changedBounds = oldScreenProps.step != newScreenProps.step ||
++        oldScreenProps.minimumValue != newScreenProps.minimumValue ||
++        oldScreenProps.maximumValue != newScreenProps.maximumValue ||
++        oldScreenProps.lowerLimit != newScreenProps.lowerLimit ||
++        oldScreenProps.upperLimit != newScreenProps.upperLimit;
++    if (releaseOnly && _releaseContact.ownsThumb && changedBounds) {
++        _boundsChangedDuringContact = YES;
++    }
++    if (changedMode) slider.userInteractionEnabled = !releaseOnly;
++    if (changedValue) {
++        if (!releaseOnly && !slider.isSliding) {
              slider.value = newScreenProps.value;
          }
      }
-@@ -320,14 +338,15 @@
+     if (oldScreenProps.disabled != newScreenProps.disabled) {
+         [slider setDisabled: newScreenProps.disabled];
+     }
+-    if (oldScreenProps.step != newScreenProps.step) {
++    if (!releaseOnly && oldScreenProps.step != newScreenProps.step) {
+         slider.step = newScreenProps.step;
+     }
+     if (oldScreenProps.inverted != newScreenProps.inverted) {
+         [self setInverted:newScreenProps.inverted];
+     }
+-    if (oldScreenProps.maximumValue != newScreenProps.maximumValue) {
++    if (!releaseOnly && oldScreenProps.maximumValue != newScreenProps.maximumValue) {
+         [slider setMaximumValue:newScreenProps.maximumValue];
+     }
+-    if (slider.lowerLimit != newScreenProps.lowerLimit) {
++    if (!releaseOnly && slider.lowerLimit != newScreenProps.lowerLimit) {
+         if(newScreenProps.lowerLimit > slider.upperLimit){
+             NSLog(@"Invalid configuration: upperLimit < lowerLimit; lowerLimit not set");
+         } else {
+             slider.lowerLimit = newScreenProps.lowerLimit;
+         }
+     }
+-    if (slider.upperLimit != newScreenProps.upperLimit) {
++    if (!releaseOnly && slider.upperLimit != newScreenProps.upperLimit) {
+         if(newScreenProps.upperLimit < slider.lowerLimit){
+             NSLog(@"Invalid configuration: upperLimit < lowerLimit; upperLimit not set");
+         } else {
+@@ -217,7 +343,7 @@ - (void)updateProps:(const Props::Shared &)props oldProps:(const Props::Shared &
+     if (oldScreenProps.tapToSeek != newScreenProps.tapToSeek) {
+         slider.tapToSeek = newScreenProps.tapToSeek;
+     }
+-    if (oldScreenProps.minimumValue != newScreenProps.minimumValue) {
++    if (!releaseOnly && oldScreenProps.minimumValue != newScreenProps.minimumValue) {
+         [slider setMinimumValue:newScreenProps.minimumValue];
+     }
+     if (oldScreenProps.thumbTintColor != newScreenProps.thumbTintColor) {
+@@ -285,6 +411,15 @@ - (void)updateProps:(const Props::Shared &)props oldProps:(const Props::Shared &
+         }];
+     }
+     [super updateProps:props oldProps:oldProps];
++    const BOOL acceptContact = releaseOnly && !newScreenProps.disabled;
++    if (_releaseContact.enabled != acceptContact) {
++        _releaseContact.enabled = acceptContact;
++        if (!acceptContact) [_releaseContact abandonContact];
++    }
++    if (releaseOnly && !_releaseContact.ownsThumb &&
++        (changedMode || changedBounds || changedValue)) {
++        [self syncReleaseOnlyClockAndRange:changedMode || changedBounds];
++    }
+ }
+ 
+ 
+@@ -320,14 +455,15 @@ - (void)loadImageFromImageSource:(ImageSource)source completionBlock:(RNCLoadIma
          return;
      }
  
@@ -95,57 +287,136 @@ index cf14ae6f66b8c847b2b79c5b0eebd4148f81e00d..78cb2784f413fe0862040f277f7d50e1
      completionBlock:^(NSError *error, UIImage *image) {
          if (image) {
              completionBlock(nil, image);
-@@ -346,7 +365,50 @@
+@@ -346,7 +482,76 @@ - (void)setInverted:(BOOL)inverted
      }
  }
  
-+// The recording scrubber has just one native pan owner. UIControl targets
-+// stay unobserved in this mode so UIKit's overlapping TouchCancel cannot
-+// impersonate a release or produce a second completion.
-+- (void)handleReleaseOnlyPan:(UIPanGestureRecognizer *)gesture {
-+    switch (gesture.state) {
-+        case UIGestureRecognizerStateBegan:
-+            if (!slider.enabled || !slider.window) return;
-+            _isSliding = slider.isSliding = YES;
-+            break;
-+        case UIGestureRecognizerStateChanged:
-+        case UIGestureRecognizerStateEnded:
-+            if (!_isSliding) return;
-+            break;
-+        case UIGestureRecognizerStateCancelled:
-+        case UIGestureRecognizerStateFailed:
-+            if (!_isSliding) return;
-+            _isSliding = slider.isSliding = NO;
-+            slider.value = std::static_pointer_cast<const RNCSliderProps>(_props)->value;
-+            return;
-+        default:
-+            return;
++// Do not write any value-affecting range properties during touch: the pinned
++// UISlider subclass reapplies its cached thumb value in both min/max setters.
++- (void)syncReleaseOnlyClockAndRange:(BOOL)includeRange {
++    if (![self commitsOnRelease] || _releaseContact.ownsThumb) return;
++    const auto &props = *std::static_pointer_cast<const RNCSliderProps>(_props);
++    if (includeRange) {
++        slider.step = props.step;
++        [slider setMinimumValue:props.minimumValue];
++        [slider setMaximumValue:props.maximumValue];
++        if (props.lowerLimit <= props.upperLimit) {
++            slider.lowerLimit = props.lowerLimit;
++            slider.upperLimit = props.upperLimit;
++        }
 +    }
++    slider.value = props.value;
++}
 +
-+    // Write the thumb in UIKit only. No RN ValueChange means no bridge or
-+    // React rendering per movement, including the first pan location.
-+    CGPoint point = [gesture locationInView:slider];
-+    if ([UIView userInterfaceLayoutDirectionForSemanticContentAttribute:slider.semanticContentAttribute] == UIUserInterfaceLayoutDirectionRightToLeft) {
-+        point.x = slider.bounds.size.width - point.x;
++- (void)beginReleaseOnlyContact:(CGPoint)point {
++    _boundsChangedDuringContact = NO;
++    CGPoint local = [self convertPoint:point toView:slider];
++    CGRect track = [slider trackRectForBounds:slider.bounds];
++    CGRect thumb = [slider thumbRectForBounds:slider.bounds trackRect:track value:slider.value];
++    _startedOnThumb = CGRectContainsPoint(CGRectInset(thumb, -8, -8), local);
++    _thumbOffset = _startedOnThumb ? local.x - CGRectGetMidX(thumb) : 0;
++}
++
++- (void)cancelReleaseOnlyContact {
++    [self syncReleaseOnlyClockAndRange:_boundsChangedDuringContact];
++    _boundsChangedDuringContact = NO;
++}
++
++- (void)didMoveToWindow {
++    [super didMoveToWindow];
++    if (!self.window) [_releaseContact abandonContact];
++}
++
++// Let the ancestor scroll pan wait only while direction is unknown. A vertical
++// move fails this recognizer rather than committing or capturing that scroll.
++- (BOOL)gestureRecognizer:(UIGestureRecognizer *)recognizer
++    shouldBeRequiredToFailByGestureRecognizer:(UIGestureRecognizer *)other {
++    if (recognizer != _releaseContact) return NO;
++    for (UIView *view = self.superview; view; view = view.superview) {
++        if ([view isKindOfClass:UIScrollView.class] && ((UIScrollView *)view).panGestureRecognizer == other) return YES;
 +    }
-+    if (slider.bounds.size.width > 0) {
++    return NO;
++}
++
++- (void)handleReleaseOnlyContact:(RNCScrubContactRecognizer *)gesture {
++    if (![self commitsOnRelease] || !gesture.ownsThumb) return;
++    const BOOL ended = gesture.state == UIGestureRecognizerStateEnded;
++    if (!ended && gesture.state != UIGestureRecognizerStateBegan && gesture.state != UIGestureRecognizerStateChanged) return;
++    const BOOL seek = slider.enabled && slider.window && !_boundsChangedDuringContact &&
++        [gesture shouldSetTargetFromThumb:_startedOnThumb tapToSeek:slider.tapToSeek];
++    if (seek && slider.bounds.size.width > 0) {
++        CGPoint point = [self convertPoint:gesture.contactPoint toView:slider];
++        point.x -= _thumbOffset;
++        if ([UIView userInterfaceLayoutDirectionForSemanticContentAttribute:slider.semanticContentAttribute] == UIUserInterfaceLayoutDirectionRightToLeft) {
++            point.x = slider.bounds.size.width - point.x;
++        }
 +        float value = [self calculateSliderValueFromLocation:point];
 +        [slider setValue:MIN(slider.upperLimit, MAX(slider.lowerLimit, value)) animated:NO];
 +    }
-+    if (gesture.state == UIGestureRecognizerStateEnded) {
-+        _isSliding = slider.isSliding = NO;
-+        [self emitReleaseForRecordingSeek];
++    if (ended && [gesture consumeContact]) {
++        if (seek) [self emitReleaseForRecordingSeek];
++        else [self cancelReleaseOnlyContact];
 +    }
 +}
 +
  - (void)panHandler:(UIPanGestureRecognizer *)gesture {
-+    if ([self commitsOnRelease]) {
-+        [self handleReleaseOnlyPan:gesture];
-+        return;
-+    }
++    if ([self commitsOnRelease]) return;
      CGPoint location = [gesture locationInView:slider];
      
      switch (gesture.state) {
+diff --git a/ios/RNCReleaseOnlyContact.hpp b/ios/RNCReleaseOnlyContact.hpp
+new file mode 100644
+index 0000000000000000000000000000000000000000..7a9400d74d6b2552030d9a4f703a8ca7a4c18b1d
+--- /dev/null
++++ b/ios/RNCReleaseOnlyContact.hpp
+@@ -0,0 +1,47 @@
++#pragma once
++
++#include <algorithm>
++#include <cmath>
++
++// Raw contact owns the thumb even while UIKit's recognizer is still Possible.
++class RNCReleaseOnlyContact {
++ public:
++  enum class Motion { waiting, horizontal, vertical };
++
++  bool begin() {
++    if (active_) return false;
++    active_ = true;
++    horizontal_ = false;
++    return true;
++  }
++
++  bool ownsThumb() const { return active_; }
++  bool movedHorizontally() const { return horizontal_; }
++
++  // A still thumb belongs to playback again on release, not to a stale seek.
++  bool shouldSetTarget(bool startedOnThumb, bool tapToSeek) const {
++    return active_ && (movedHorizontally() || (!startedOnThumb && tapToSeek));
++  }
++
++  Motion move(double dx, double dy) {
++    if (!active_) return Motion::waiting;
++    if (horizontal_) return Motion::horizontal;
++    if (std::max(std::abs(dx), std::abs(dy)) < 8) return Motion::waiting;
++    if (std::abs(dy) > std::abs(dx)) return Motion::vertical;
++    horizontal_ = true;
++    return Motion::horizontal;
++  }
++
++  // Both actual completion and cancellation consume the one contact; only the
++  // recognizer's positive terminal action is allowed to request a seek.
++  bool finish() {
++    if (!active_) return false;
++    active_ = false;
++    horizontal_ = false;
++    return true;
++  }
++
++ private:
++  bool active_{false};
++  bool horizontal_{false};
++};
 diff --git a/react-native-slider.podspec b/react-native-slider.podspec
 index b795d531ffed6e39b8b258d7b596bad684ebb988..daa36d3d0db084fc827be40514bad90a817f282a 100644
 --- a/react-native-slider.podspec
