@@ -9,6 +9,7 @@ interface MedicalDocumentImportActionProps {
   readonly disabled: boolean;
   readonly onPress: () => void;
   readonly showDivider?: boolean;
+  readonly compact?: boolean;
   readonly source?: 'files' | 'photos';
 }
 
@@ -18,6 +19,7 @@ export function MedicalDocumentImportAction({
   disabled,
   onPress,
   showDivider = false,
+  compact = false,
   source = 'files',
 }: MedicalDocumentImportActionProps) {
   // Keep the source-specific name stable when the picker status description changes.
@@ -26,7 +28,33 @@ export function MedicalDocumentImportAction({
       ? 'medicalDocument.import.photos'
       : 'medicalDocument.import.title',
   );
-  const content = (
+  const summary = t(
+    opening
+      ? source === 'photos'
+        ? 'medicalDocument.import.photosOpening'
+        : 'medicalDocument.import.opening'
+      : source === 'photos'
+        ? 'medicalDocument.import.photosSummary'
+        : 'medicalDocument.import.summary',
+  );
+  const content = compact ? (
+    <>
+      <AppSymbol
+        name={source === 'photos' ? 'photo' : 'doc.text'}
+        color={appColors.primaryText}
+      />
+      <View style={styles.copy}>
+        <Text style={styles.compactTitle}>
+          {t(
+            source === 'photos'
+              ? 'records.importPhotos'
+              : 'records.importFiles',
+          )}
+        </Text>
+        {opening ? <Text style={styles.summary}>{summary}</Text> : null}
+      </View>
+    </>
+  ) : (
     <>
       <View style={styles.icon}>
         <AppSymbol
@@ -36,19 +64,7 @@ export function MedicalDocumentImportAction({
       </View>
       <View style={styles.copy}>
         <Text style={styles.title}>{label}</Text>
-        <Text style={styles.summary}>
-          {opening
-            ? t(
-                source === 'photos'
-                  ? 'medicalDocument.import.photosOpening'
-                  : 'medicalDocument.import.opening',
-              )
-            : t(
-                source === 'photos'
-                  ? 'medicalDocument.import.photosSummary'
-                  : 'medicalDocument.import.summary',
-              )}
-        </Text>
+        <Text style={styles.summary}>{summary}</Text>
       </View>
       <AppSymbol name="chevron.right" size={16} color={appColors.secondary} />
     </>
@@ -56,11 +72,13 @@ export function MedicalDocumentImportAction({
   return (
     <Pressable
       accessibilityLabel={label}
+      accessibilityHint={compact ? summary : undefined}
+      accessibilityState={{ busy: opening, disabled }}
       accessibilityRole="button"
       disabled={disabled}
       onPress={onPress}
       style={[
-        styles.row,
+        compact ? styles.compact : styles.row,
         showDivider && styles.divider,
         disabled && styles.disabled,
       ]}
@@ -76,6 +94,15 @@ export function MedicalDocumentImportAction({
 }
 
 const styles = StyleSheet.create({
+  compact: {
+    flex: 1,
+    minWidth: 0,
+    minHeight: 44,
+    flexDirection: 'row',
+    gap: 6,
+    alignItems: 'center',
+  },
+  compactTitle: { flexShrink: 1, fontSize: 15, fontWeight: '600' },
   row: {
     alignItems: 'center',
     flexDirection: 'row',

@@ -115,7 +115,7 @@ async function mountOverview(
           scrollable={route => appRouteIsScrollable(route, 'overview')}
           rootTabs={route =>
             route.name === 'root'
-              ? { activeTab: 'overview', onSelect: props.selectTab }
+              ? { activeTab: 'overview', onSelect: jest.fn() }
               : undefined
           }
         >

@@ -8,6 +8,7 @@ import CalendarLinkingScreen from '../calendar/CalendarLinkingScreen';
 import type { CalendarBridge } from '../calendar/types';
 import type { CalendarAutoSyncState } from '../calendar/calendarAutoSync';
 import { useNavigationLeaveStateRegistration } from '../navigation';
+import { RecordsPageBackdrop } from './RecordsPageBackdrop';
 import { useNavigationRouteActions } from '../navigation/useNavigationRouteActions';
 
 interface ScheduleRouteProps {
@@ -21,7 +22,7 @@ interface ScheduleRouteProps {
   readonly onAppointmentsChanged: () => void;
 }
 
-/** Places calendar linking and appointment management under the Schedule tab. */
+/** Places calendar linking and appointment management in the Records stack without a second scroll host. */
 export function ScheduleRoute({
   appointmentRepository,
   appointmentState,
@@ -47,33 +48,30 @@ export function ScheduleRoute({
         ]
       : [],
   );
-  useNavigationLeaveStateRegistration({
-    canLeave: true,
-    hasUnsavedChanges: false,
-    isRecording: false,
-    hasOngoingOperation: false,
-    revision: 0,
-    inputRevision: 0,
-  });
-
   if (appointmentRepository) {
     return (
-      <CalendarLinkingScreen
-        bridge={bridge}
-        calendarSync={calendarSync}
-        adaptiveScheduleLayout
-        embeddedInHubScroll
-        heading={t('schedule.title')}
-        onOpenAppointments={onOpenAppointments}
-        onOpenMedicalAppointments={onOpenMedicalAppointments}
-        onAppointmentsChanged={onAppointmentsChanged}
-        repository={appointmentRepository}
-      />
+      <View style={styles.screen}>
+        <RecordsPageBackdrop />
+        <CalendarLinkingScreen
+          bridge={bridge}
+          calendarSync={calendarSync}
+          adaptiveScheduleLayout
+          embeddedInHubScroll
+          flatSchedulePresentation
+          heading={t('schedule.title')}
+          onOpenAppointments={onOpenAppointments}
+          onOpenMedicalAppointments={onOpenMedicalAppointments}
+          onAppointmentsChanged={onAppointmentsChanged}
+          repository={appointmentRepository}
+        />
+      </View>
     );
   }
 
   return (
     <View style={styles.container}>
+      <RecordsPageBackdrop />
+      <ScheduleUnavailableGuard />
       <Text accessibilityRole="header" style={styles.title}>
         {t('schedule.title')}
       </Text>
@@ -93,9 +91,22 @@ export function ScheduleRoute({
   );
 }
 
+/** When the calendar cannot mount, its passive recovery state still owns Back. */
+function ScheduleUnavailableGuard() {
+  useNavigationLeaveStateRegistration({
+    canLeave: true,
+    hasUnsavedChanges: false,
+    isRecording: false,
+    hasOngoingOperation: false,
+    revision: 0,
+    inputRevision: 0,
+  });
+  return null;
+}
+
 const styles = StyleSheet.create({
+  screen: { flexGrow: 1, minWidth: 0 },
   container: {
-    backgroundColor: appColors.background,
     flexGrow: 1,
     gap: 12,
     paddingHorizontal: 24,

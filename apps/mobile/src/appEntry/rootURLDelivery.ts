@@ -81,6 +81,12 @@ export function createRootURLDelivery(input: {
       )
         return 'deferred';
       cancelled = null;
+      // Anchor the existing URL to a guarded child so Back reaches the Records home.
+      if (
+        destination === 'schedule' &&
+        !input.controller.pushOwned(after.currentRoute.key, 'schedule')
+      )
+        return 'deferred';
       input.selectTab(rootDestinationTab(destination));
       applied = entry.id;
       await input.acknowledge(entry.id);

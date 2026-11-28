@@ -131,7 +131,7 @@ test('an unmounted Records root cannot use a callback even if its shared stack k
   expect(available).toHaveBeenCalledTimes(2);
 });
 
-test.each(['schedule', 'records'] as const)(
+test.each(['overview', 'records'] as const)(
   'a held action cannot cross a synchronous tab switch ending in %s, even with the same stack key',
   async finalTab => {
     AppState.currentState = 'active';
@@ -176,7 +176,7 @@ test.each(['schedule', 'records'] as const)(
     const lastRender = result.current.feed;
     const held = lastRender.open(row, select);
     await act(async () => {
-      result.current.rootTab.selectActiveTab('schedule');
+      result.current.rootTab.selectActiveTab('overview');
       result.current.rootTab.selectActiveTab(finalTab);
       // No React render or native transition has run yet; the stack owner is unchanged.
       expect(owner.isCurrent()).toBe(true);
@@ -226,7 +226,7 @@ test('a held catalog result from the previous Records epoch never repopulates th
   });
   expect(list).toHaveReturnedWith(pending);
   await act(async () => {
-    result.current.tab.selectActiveTab('schedule');
+    result.current.tab.selectActiveTab('overview');
     result.current.tab.selectActiveTab('records');
     release([row]);
   });

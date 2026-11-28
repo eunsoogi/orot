@@ -56,8 +56,12 @@ test('peeks at mount and applies a cold URL after readiness', async () => {
       selectTab={selectTab}
     />,
   );
-  await waitFor(() => expect(selectTab).toHaveBeenCalledWith('schedule'));
+  await waitFor(() => expect(selectTab).toHaveBeenCalledWith('records'));
   expect(selectTab).toHaveBeenCalledTimes(1);
+  expect(controller.getSnapshot().routes.map(route => route.name)).toEqual([
+    'root',
+    'schedule',
+  ]);
   expect(bridge.acknowledge).toHaveBeenCalledWith('delivery');
 });
 

@@ -33,24 +33,21 @@ extension NavigationGeometryUITestConditions {
         try NavigationUITestConditions.panelSnapshot(app, frames: ["selection": indicator, "selectedControl": selected.frame], testCase: testCase)
     }
 
-    /// Schedule is a Records section, not a fifth root or a Back destination. Recording still checks contextual Back independently.
+    /// Schedule participates in the same measured rail as other Records stack destinations.
     private static func verifyScheduleSectionBoundary(_ app: XCUIApplication, rootFrame: CGRect, testCase: XCTestCase) throws {
         try NavigationUITestConditions.openTab(app, "records", markers: ["records-title"])
-        let schedule = UITestConditions.element(app, "records-section-schedule")
-        XCTAssertTrue(schedule.waitForAppearance())
+        let schedule = UITestConditions.element(app, "records-open-schedule")
+        _ = try XCTUnwrap(FormUITestConditions.reveal(schedule, in: app, scrollID: "navigation-route-scroll"))
         XCTAssertTrue(schedule.isEnabled && schedule.isHittable)
+        let menuBefore = schedule.frame
         schedule.tap()
         NavigationUITestConditions.route(app, markers: ["calendar-title", "schedule-retry"])
-        XCTAssertTrue(schedule.isSelected)
-        try verifyRootSelection(app, tab: "records", testCase: testCase)
-        let scheduleFrame = try captureBoundary(app, navigationID: "navigation-tab-records", name: "duo-schedule-section-boundary", testCase: testCase)
+        XCTAssertFalse(UITestConditions.element(app, "records-section-tabs").exists)
+        let scheduleFrame = try captureBoundary(app, navigationID: "navigation-back", name: "duo-schedule-section-boundary", testCase: testCase)
         assertSameRailCenter(rootFrame, contextualFrames: [scheduleFrame])
-        let records = UITestConditions.element(app, "records-section-records")
-        XCTAssertTrue(records.waitForAppearance())
-        XCTAssertTrue(records.isEnabled && records.isHittable)
-        records.tap()
+        try NavigationUITestConditions.tapNavigation(app, "navigation-back")
         NavigationUITestConditions.route(app, markers: ["records-title"])
-        XCTAssertTrue(records.isSelected)
+        XCTAssertEqual(schedule.frame.minY, menuBefore.minY, accuracy: 1)
         try verifyRootSelection(app, tab: "records", testCase: testCase)
     }
 }

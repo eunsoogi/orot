@@ -13,7 +13,6 @@ export const document = {
 export function recordsRouteTestProps(): Omit<AppRouteContentProps, 'actions'> {
   return {
     activeTab: 'records',
-    selectTab: jest.fn(),
     appointmentRepository: null,
     backupPreparationState: 'checking',
     retryBackupPreparation: async () => undefined,

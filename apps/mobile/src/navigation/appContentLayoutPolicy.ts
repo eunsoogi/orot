@@ -14,7 +14,7 @@ export const appContentLayoutOwner: NavigationRouteLayoutPolicy<string> = (
   route: NavigationRoute<string>,
   rootTabs?: NavigationRootTabs,
 ): 'scene' | 'screen' => {
-  // Root tabs keep the `home` route name while Home, Records, Schedule, or AI owns layout.
+  // Root tabs keep the root route name while their active screen owns layout.
   // Provider settings reflows local and connected models within measured regions.
   // Health detail panels resolve against the actual native usable regions.
   // Account management measures its connection and action panels within the full route lane.
@@ -35,6 +35,7 @@ export const appContentLayoutOwner: NavigationRouteLayoutPolicy<string> = (
     route.name === 'settings-health-data' ||
     route.name === 'saved-recordings' ||
     route.name === 'recent-records' ||
+    route.name === 'schedule' ||
     route.name === 'medical-document-detail' ||
     route.name === 'visit-questions' ||
     // Literature search measures query and selected-source panels across the usable regions.
@@ -61,7 +62,6 @@ export const appContentLayoutOwner: NavigationRouteLayoutPolicy<string> = (
     (route.name === 'root' &&
       (rootTabs?.activeTab === 'overview' ||
         rootTabs?.activeTab === 'records' ||
-        rootTabs?.activeTab === 'schedule' ||
         rootTabs?.activeTab === 'conversation' ||
         rootTabs?.activeTab === 'settings'))
     ? 'screen'
@@ -77,6 +77,7 @@ export function appRouteIsScrollable(
     [
       'overview-metric-selection',
       'recent-records',
+      'schedule',
       'medical-document-detail',
       'saved-memory-detail',
       'manual-history',

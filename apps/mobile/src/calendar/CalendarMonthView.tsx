@@ -30,6 +30,7 @@ import { calendarStyles as styles } from './calendarStyles';
 import type { CalendarEvent } from './types';
 import { calendarEventsEqual } from './calendarSnapshot';
 interface CalendarMonthViewProps {
+  flat?: boolean;
   appointmentsLoading: boolean;
   candidatesLoaded: boolean;
   events: readonly CalendarEvent[];
@@ -45,6 +46,7 @@ function localDateKey(date: Date): string {
   return calendarDateKey(date.getFullYear(), date.getMonth(), date.getDate());
 }
 export function CalendarMonthView({
+  flat = false,
   appointmentsLoading,
   candidatesLoaded,
   events,
@@ -146,7 +148,10 @@ export function CalendarMonthView({
     eventsOnSelectedDate.length === 0;
 
   return (
-    <View style={styles.calendarMonth} testID="calendar-month-view">
+    <View
+      style={[styles.calendarMonth, flat && styles.flatMonth]}
+      testID="calendar-month-view"
+    >
       <CalendarMonthHeader
         year={visibleMonth.year}
         month={visibleMonth.month}

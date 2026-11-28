@@ -11,13 +11,12 @@ export const recordsRouteStyles = StyleSheet.create({
     backgroundColor: appColors.background,
   },
   page: {
-    gap: hubSpacing.item,
+    gap: 22,
     paddingHorizontal: hubSpacing.horizontal,
     paddingTop: hubSpacing.top,
     // The route scroller already supplies the shared readable gap above navigation.
     paddingBottom: hubSpacing.bottom - NAVIGATION_CONTENT_GAP,
   },
-  pageAfterBanner: { paddingTop: hubSpacing.item },
   primaryPanel: { minWidth: 0, gap: hubSpacing.item },
   status: { color: appColors.secondary, fontSize: 14, lineHeight: 20 },
 });

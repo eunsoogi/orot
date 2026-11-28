@@ -28,6 +28,7 @@ interface CalendarLinkingScreenProps {
   calendarSync?: CalendarAutoSyncState;
   adaptiveScheduleLayout?: boolean;
   embeddedInHubScroll?: boolean;
+  flatSchedulePresentation?: boolean;
   heading?: string;
   onOpenAppointments?: () => void;
   onOpenMedicalAppointments?: () => void;
@@ -43,6 +44,7 @@ export default function CalendarLinkingScreen({
   calendarSync = emptyCalendarAutoSyncState,
   adaptiveScheduleLayout = false,
   embeddedInHubScroll = false,
+  flatSchedulePresentation = false,
   heading = t('calendar.title'),
   onOpenAppointments,
   onOpenMedicalAppointments,
@@ -70,7 +72,10 @@ export default function CalendarLinkingScreen({
   const upcomingEvent = eventFromAppointment(calendar.nextVisitAppointment);
   // The saved-appointment panel belongs only to Schedule; other linking flows keep their prior layout.
   const selectionSummary = calendar.selectedEvent ? (
-    <View style={styles.card} testID="calendar-selection">
+    <View
+      style={flatSchedulePresentation ? styles.flatCard : styles.card}
+      testID="calendar-selection"
+    >
       <Text>
         {calendar.linkedAppointment
           ? t('calendar.reconfirmPrompt')
@@ -102,7 +107,10 @@ export default function CalendarLinkingScreen({
       />
     </View>
   ) : adaptiveScheduleLayout && upcomingEvent ? (
-    <View style={styles.card} testID="schedule-next-visit-summary">
+    <View
+      style={flatSchedulePresentation ? styles.flatCard : styles.card}
+      testID="schedule-next-visit-summary"
+    >
       <Text accessibilityRole="header">{t('calendar.nextVisit')}</Text>
       <Text style={styles.eventTitle} testID="schedule-next-visit-title">
         {upcomingEvent.calendarEventSnapshot.title ||
@@ -116,6 +124,7 @@ export default function CalendarLinkingScreen({
 
   const calendarMonth = (
     <CalendarMonthView
+      flat={flatSchedulePresentation}
       appointmentsLoading={calendar.loadingAppointments}
       candidatesLoaded={calendar.hasLoadedCandidates}
       events={calendar.events}
@@ -148,11 +157,14 @@ export default function CalendarLinkingScreen({
         >
           {heading}
         </Text>
-        <Text style={styles.subtitle} testID="schedule-subtitle">
-          {t('schedule.subtitle')}
-        </Text>
+        {!flatSchedulePresentation ? (
+          <Text style={styles.subtitle} testID="schedule-subtitle">
+            {t('schedule.subtitle')}
+          </Text>
+        ) : null}
       </View>
       <CalendarQuickActions
+        flat={flatSchedulePresentation}
         disabled={calendar.saving || hasUnsavedSelection}
         onOpenAppointments={onOpenAppointments}
         onOpenMedicalAppointments={onOpenMedicalAppointments}
@@ -215,9 +227,18 @@ export default function CalendarLinkingScreen({
       )}
     </>
   );
-  // The Records/Schedule hub owns the only vertical scroll and its safe inset.
+  // The stack owns the only vertical scroll and inset for the Records calendar.
   if (embeddedInHubScroll)
-    return <View style={styles.container}>{content}</View>;
+    return (
+      <View
+        style={[
+          styles.container,
+          flatSchedulePresentation && styles.flatContainer,
+        ]}
+      >
+        {content}
+      </View>
+    );
   return (
     <View style={styles.screen}>
       <ScrollView

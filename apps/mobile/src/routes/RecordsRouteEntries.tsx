@@ -1,8 +1,4 @@
-import { useContext, type ReactNode } from 'react';
-import { AdaptiveColumns } from '../layout/AdaptiveColumns';
-import { hubSpacing } from '../layout/hubSpacing';
-import { RecordsHubHeadingContext } from './RecordsHubBanner';
-import { Pressable, View } from 'react-native';
+import { Pressable, View, useWindowDimensions } from 'react-native';
 import { AppText as Text } from '../layout/AppText';
 import { AppSymbol } from '../layout/AppSymbol';
 import { t } from '../i18n';
@@ -14,7 +10,7 @@ interface RecordsRouteEntriesProps {
   readonly materialsActive?: boolean;
   readonly onOpenGeneratedReports?: () => void;
   readonly onOpenSavedRecordings: () => void;
-  readonly onOpenRecording: () => void;
+  readonly onOpenSchedule?: () => void;
   readonly onOpenHealthLibrary: () => void;
   readonly onOpenManualHistory?: () => void;
   readonly medicalDocumentOpening: boolean;
@@ -23,37 +19,22 @@ interface RecordsRouteEntriesProps {
   readonly onImportMedicalPhoto: () => void;
 }
 
-/** Groups capture actions and existing record destinations without adding a new scroll owner. */
-export function RecordsRouteEntries({
-  materialsActive = true,
-  onOpenGeneratedReports,
-  onOpenManualHistory,
-  onOpenSavedRecordings,
+/** Keeps the primary recording action next to the page title, not in the library grid. */
+export function RecordsHeading({
   onOpenRecording,
-  onOpenHealthLibrary,
-  medicalDocumentOpening,
-  medicalDocumentDisabled,
-  onImportMedicalDocument,
-  onImportMedicalPhoto,
-}: RecordsRouteEntriesProps) {
-  const hubOwnsHeading = useContext(RecordsHubHeadingContext);
+}: {
+  readonly onOpenRecording: () => void;
+}) {
   return (
-    <View style={styles.container}>
-      {!hubOwnsHeading ? (
-        <>
-          <Text
-            accessibilityRole="header"
-            style={styles.title}
-            testID="records-title"
-          >
-            {t('records.title')}
-          </Text>
-          <Text style={styles.subtitle} testID="records-subtitle">
-            {t('records.subtitle')}
-          </Text>
-        </>
-      ) : null}
-      <View style={styles.captureActions} testID="records-capture-actions">
+    <View style={styles.heading} testID="records-hub-header">
+      <Text
+        accessibilityRole="header"
+        style={styles.title}
+        testID="records-title"
+      >
+        {t('records.title')}
+      </Text>
+      <View style={styles.captureGroup} testID="records-capture-actions">
         <Pressable
           accessibilityRole="button"
           onPress={onOpenRecording}
@@ -64,141 +45,142 @@ export function RecordsRouteEntries({
             style={styles.captureContent}
             testID="recording-capture-content"
           >
-            <View style={styles.captureIcon} testID="recording-capture-icon">
-              <AppSymbol name="mic.fill" color={appColors.primaryAction} />
+            <View testID="recording-capture-icon">
+              <AppSymbol
+                name="mic.fill"
+                color={appColors.primaryText}
+                size={16}
+              />
             </View>
-            <Text
-              style={styles.captureActionTitle}
-              testID="recording-capture-title"
-            >
+            <Text style={styles.captureTitle} testID="recording-capture-title">
               {t('records.newRecording')}
             </Text>
           </View>
         </Pressable>
       </View>
-
-      <AdaptiveColumns
-        testID="records-material-columns"
-        stackedGap={hubSpacing.item}
-        secondary={
-          <RecordsMaterials
-            title={t('records.conversationMaterials')}
-            testID="records-conversation-materials"
-          >
-            <RecordsLibraryAction
-              icon="bookmark"
-              title={t('savedMemory.title')}
-              summary={t('records.conversationMemorySummary')}
-              onPress={onOpenManualHistory}
-              disabled={!materialsActive}
-              testID="records-open-memory"
-              showDivider
-            />
-            <RecordsLibraryAction
-              icon="doc.on.doc"
-              title={t('records.generatedConversationMaterials')}
-              summary={t('records.generatedConversationMaterialsSummary')}
-              onPress={onOpenGeneratedReports}
-              disabled={!materialsActive}
-              testID="records-open-generated-reports"
-            />
-          </RecordsMaterials>
-        }
-        primary={
-          <RecordsMaterials
-            title={t('records.myMaterials')}
-            testID="records-materials"
-          >
-            <MedicalDocumentImportAction
-              opening={medicalDocumentOpening}
-              disabled={medicalDocumentDisabled}
-              onPress={onImportMedicalDocument}
-              showDivider
-            />
-            <MedicalDocumentImportAction
-              source="photos"
-              opening={medicalDocumentOpening}
-              disabled={medicalDocumentDisabled}
-              onPress={onImportMedicalPhoto}
-              showDivider
-            />
-            <RecordsLibraryAction
-              icon="doc.text"
-              title={t('recording.library.title')}
-              summary={t('records.savedRecordingsSummary')}
-              onPress={onOpenSavedRecordings}
-              testID="records-open-saved-recordings"
-              showDivider
-            />
-            <RecordsLibraryAction
-              icon="folder"
-              title={t('records.healthRecords')}
-              summary={t('healthRecords.description')}
-              onPress={onOpenHealthLibrary}
-              testID="records-open-health-library"
-            />
-          </RecordsMaterials>
-        }
-      />
     </View>
   );
 }
 
-/** Both panels share the exact heading, divider, and card chrome. */
-function RecordsMaterials({
-  title,
-  testID,
-  children,
-}: {
-  readonly title: string;
-  readonly testID: string;
-  readonly children: ReactNode;
-}) {
+/** Groups destinations separately from imports without adding a new vertical scroll owner. */
+export function RecordsRouteEntries({
+  materialsActive = true,
+  onOpenGeneratedReports,
+  onOpenManualHistory,
+  onOpenSavedRecordings,
+  onOpenSchedule,
+  onOpenHealthLibrary,
+  medicalDocumentOpening,
+  medicalDocumentDisabled,
+  onImportMedicalDocument,
+  onImportMedicalPhoto,
+}: RecordsRouteEntriesProps) {
+  const { fontScale } = useWindowDimensions();
+  const largeText = fontScale > 1.4;
+  const items = [
+    {
+      icon: 'calendar',
+      title: t('schedule.title'),
+      onPress: onOpenSchedule,
+      // A native document picker already owns the active route until it settles.
+      disabled: medicalDocumentDisabled,
+      testID: 'records-open-schedule',
+    },
+    {
+      icon: 'doc.text',
+      title: t('recording.library.title'),
+      hint: t('records.savedRecordingsSummary'),
+      onPress: onOpenSavedRecordings,
+      testID: 'records-open-saved-recordings',
+    },
+    {
+      icon: 'folder',
+      title: t('records.healthRecords'),
+      hint: t('healthRecords.description'),
+      onPress: onOpenHealthLibrary,
+      testID: 'records-open-health-library',
+    },
+    {
+      icon: 'bookmark',
+      title: t('savedMemory.title'),
+      hint: t('records.conversationMemorySummary'),
+      onPress: onOpenManualHistory,
+      disabled: !materialsActive,
+      testID: 'records-open-memory',
+    },
+    {
+      icon: 'doc.on.doc',
+      title: t('records.generatedConversationMaterials'),
+      hint: t('records.generatedConversationMaterialsSummary'),
+      onPress: onOpenGeneratedReports,
+      disabled: !materialsActive,
+      testID: 'records-open-generated-reports',
+    },
+  ];
+  // Larger text uses full-width rows to keep long Korean labels readable.
+  const rows = largeText
+    ? items.map(item => [item])
+    : [items.slice(0, 3), items.slice(3)];
   return (
-    <View style={styles.materials} testID={testID}>
-      <Text accessibilityRole="header" style={styles.materialsTitle}>
-        {title}
-      </Text>
-      <View style={styles.materialRows}>{children}</View>
+    <View style={styles.sections}>
+      <View style={styles.section} testID="records-materials">
+        <Text accessibilityRole="header" style={styles.sectionTitle}>
+          {t('records.myMaterials')}
+        </Text>
+        <View testID="records-material-directory">
+          {rows.map((row, index) => (
+            <View
+              key={row[0]?.testID}
+              style={[styles.gridRow, index > 0 && styles.rowDivider]}
+            >
+              {row.map(({ icon, title, hint, onPress, disabled, testID }) => (
+                <Pressable
+                  key={testID}
+                  accessibilityRole="button"
+                  accessibilityLabel={title}
+                  accessibilityHint={hint}
+                  accessibilityState={{ disabled: disabled || !onPress }}
+                  disabled={disabled || !onPress}
+                  onPress={onPress}
+                  style={[
+                    styles.tile,
+                    largeText && styles.fullTile,
+                    (disabled || !onPress) && styles.disabled,
+                  ]}
+                  testID={testID}
+                >
+                  <AppSymbol
+                    name={icon}
+                    color={appColors.primaryText}
+                    size={22}
+                  />
+                  <Text style={styles.tileText}>{title}</Text>
+                </Pressable>
+              ))}
+            </View>
+          ))}
+        </View>
+      </View>
+      <View style={styles.section} testID="records-document-import">
+        <Text accessibilityRole="header" style={styles.sectionTitle}>
+          {t('records.importHeading')}
+        </Text>
+        <View style={[styles.importRow, largeText && styles.importStack]}>
+          <MedicalDocumentImportAction
+            compact
+            opening={medicalDocumentOpening}
+            disabled={medicalDocumentDisabled}
+            onPress={onImportMedicalDocument}
+          />
+          <MedicalDocumentImportAction
+            compact
+            source="photos"
+            opening={medicalDocumentOpening}
+            disabled={medicalDocumentDisabled}
+            onPress={onImportMedicalPhoto}
+          />
+        </View>
+      </View>
     </View>
-  );
-}
-
-/** Opens an existing local library with the same row styling in either panel. */
-function RecordsLibraryAction({
-  icon,
-  title,
-  summary,
-  onPress,
-  testID,
-  disabled = false,
-  showDivider = false,
-}: {
-  readonly icon: string;
-  readonly title: string;
-  readonly summary: string;
-  readonly onPress?: () => void;
-  readonly disabled?: boolean;
-  readonly testID: string;
-  readonly showDivider?: boolean;
-}) {
-  return (
-    <Pressable
-      accessibilityRole="button"
-      accessibilityState={{ disabled: disabled || !onPress }}
-      disabled={disabled || !onPress}
-      onPress={onPress}
-      style={[styles.materialRow, showDivider && styles.rowDivider]}
-      testID={testID}
-    >
-      <View style={styles.materialIcon}>
-        <AppSymbol name={icon} color={appColors.primaryAction} />
-      </View>
-      <View style={styles.cardCopy}>
-        <Text style={styles.cardTitle}>{title}</Text>
-        <Text style={styles.cardSummary}>{summary}</Text>
-      </View>
-      <AppSymbol name="chevron.right" size={16} color={appColors.secondary} />
-    </Pressable>
   );
 }

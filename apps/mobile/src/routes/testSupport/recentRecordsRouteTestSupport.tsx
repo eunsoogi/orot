@@ -20,7 +20,6 @@ import type { AppNavigationRoute } from '../appNavigationRoute';
 export function recentRouteProps(): Omit<AppRouteContentProps, 'actions'> {
   return {
     activeTab: 'records',
-    selectTab: jest.fn(),
     appointmentRepository: null,
     backupPreparationState: 'checking',
     retryBackupPreparation: async () => undefined,
@@ -97,7 +96,7 @@ export function renderRecords(
       >
         {actions =>
           actions.route.name === 'root' ? (
-            <RecordsHubSection selected="records">
+            <RecordsHubSection>
               <AppRouteContent {...props} actions={actions} />
             </RecordsHubSection>
           ) : (

@@ -28,23 +28,22 @@ test('right rail measures precisely the four actual root destinations', () => {
     assert.ok(source.includes(assertion), assertion);
 });
 
-test('Schedule retains Records selection and measured boundary, then returns through its real section', () => {
+test('Schedule measures the contextual boundary, then returns to the retained Records root', () => {
   const start = source.indexOf('static func verifyScheduleSectionBoundary');
   assert.ok(start >= 0);
   const section = source.slice(start);
   const ordered = [
     'openTab(app, "records", markers: ["records-title"])',
-    '"records-section-schedule"',
+    '"records-open-schedule"',
     'schedule.tap()',
     'route(app, markers: ["calendar-title", "schedule-retry"])',
-    'XCTAssertTrue(schedule.isSelected)',
-    'verifyRootSelection(app, tab: "records", testCase: testCase)',
-    'navigationID: "navigation-tab-records", name: "duo-schedule-section-boundary"',
+    'XCTAssertFalse(UITestConditions.element(app, "records-section-tabs").exists)',
+    'navigationID: "navigation-back", name: "duo-schedule-section-boundary"',
     'assertSameRailCenter(rootFrame, contextualFrames: [scheduleFrame])',
-    '"records-section-records"',
-    'records.tap()',
+    'tapNavigation(app, "navigation-back")',
     'route(app, markers: ["records-title"])',
-    'XCTAssertTrue(records.isSelected)',
+    'XCTAssertEqual(schedule.frame.minY, menuBefore.minY, accuracy: 1)',
+    'verifyRootSelection(app, tab: "records", testCase: testCase)',
   ];
   let previous = -1;
   for (const value of ordered) {
@@ -52,7 +51,7 @@ test('Schedule retains Records selection and measured boundary, then returns thr
     assert.ok(index > previous, value);
     previous = index;
   }
-  assert.doesNotMatch(section, /navigation-back|navigation-tab-schedule|sleep\(|timeout:/);
+  assert.doesNotMatch(section, /navigation-tab-schedule|sleep\(|timeout:/);
   assert.ok(
     source.includes(
       'verifyScheduleSectionBoundary(app, rootFrame: XCTUnwrap(homeFrame), testCase: testCase)',

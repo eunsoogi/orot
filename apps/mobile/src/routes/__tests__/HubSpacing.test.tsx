@@ -61,25 +61,23 @@ test('populated rows use the same page edge and equal gaps while retaining reada
   const style = StyleSheet.flatten(row.props.style);
   expect(style.minHeight).toBeGreaterThanOrEqual(44);
   expect(style.height).toBeUndefined();
-  expect(StyleSheet.flatten(row.parent?.props.style).gap).toBe(16);
+  expect(StyleSheet.flatten(row.parent?.props.style).gap).toBe(6);
   expect(
     StyleSheet.flatten(screen.getByTestId('records-recent-sources').props.style)
       .padding,
   ).toBeUndefined();
 });
 
-test('uses the same compact boundary gap after the hub banner and between the material panels', async () => {
+test('uses the same compact boundary gap between the page heading, timeline, and library', async () => {
   await renderRecords(
     createNavigationController<AppNavigationRoute>('root'),
     recentRouteProps(),
   );
   expect(screen.getByTestId('records-hub-header')).toBeTruthy();
   expect(screen.getByTestId('records-layout')).toHaveStyle({
-    paddingTop: hubSpacing.item,
-    gap: hubSpacing.item,
+    paddingTop: hubSpacing.top,
+    gap: 22,
   });
-  expect(screen.getByTestId('records-material-columns')).toHaveStyle({
-    flexDirection: 'column',
-    rowGap: hubSpacing.item,
-  });
+  expect(screen.getByTestId('records-material-directory')).toBeVisible();
+  expect(screen.getByTestId('records-document-import')).toBeVisible();
 });

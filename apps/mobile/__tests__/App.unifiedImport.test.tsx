@@ -187,7 +187,7 @@ test('keeps imported records in Records and only reclassifies and reconfirms an 
     expect(requestEventAccess).not.toHaveBeenCalled();
 
     await fireEvent.press(view.getByTestId('navigation-tab-records'));
-    await fireEvent.press(view.getByTestId('records-section-schedule'));
+    await fireEvent.press(view.getByTestId('records-open-schedule'));
     await fireEvent.press(view.getByTestId('open-medical-appointments'));
     expect(
       await view.findByText(medicalAppointmentCopy.localNotice),

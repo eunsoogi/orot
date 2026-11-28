@@ -1,5 +1,4 @@
-import { useRecordsDetailVisibility } from './RecordsHubSection';
-import { RecordsHubHeadingContext } from './RecordsHubBanner';
+import { RecordsPageBackdrop } from './RecordsPageBackdrop';
 import { NavigationInlineTransition } from '../navigation/NavigationInlineTransition';
 import { useContext, useEffect } from 'react';
 import { View } from 'react-native';
@@ -18,7 +17,7 @@ import { RecordsRecentSources } from './RecordsRecentSources';
 import { RecentMaterialReadinessContext } from './RecentMaterialReadinessContext';
 import { hubSpacing } from '../layout/hubSpacing';
 import { useNavigationRouteScrollPosition } from '../navigation/NavigationRouteScrollView';
-import { RecordsRouteEntries } from './RecordsRouteEntries';
+import { RecordsHeading, RecordsRouteEntries } from './RecordsRouteEntries';
 import type { RecordsTabAuthority } from './useAppRootTab';
 import type { NavigationRouteOwnership } from '../navigation/navigationRouteContracts';
 import type { GeneratedReportRow } from '../generatedReports/types';
@@ -38,6 +37,7 @@ export interface RecordsRouteProps {
   readonly recordsTabAuthority?: RecordsTabAuthority;
   readonly showAllRecent?: boolean;
   readonly onOpenRecentRecords?: () => void;
+  readonly onOpenSchedule?: () => void;
   readonly recordings: readonly RecordingSourceRecord[];
   readonly recordingState: 'loading' | 'ready' | 'failed';
   readonly onRetryRecordings: () => void;
@@ -62,6 +62,7 @@ export function RecordsRoute({
   memoryActive = true,
   showAllRecent = false,
   onOpenRecentRecords,
+  onOpenSchedule,
   recordings,
   recordingState,
   onRetryRecordings,
@@ -91,9 +92,7 @@ export function RecordsRoute({
     sourceMessage,
     stagedDocument,
   } = useMedicalDocumentImport(documentImportService, !pagedDocuments);
-  useRecordsDetailVisibility(sourceDetail !== null);
   const routeScrollPosition = useNavigationRouteScrollPosition();
-  const hasHubBanner = useContext(RecordsHubHeadingContext);
   const recentMaterialReadyLease = useContext(RecentMaterialReadinessContext);
   useEffect(() => {
     // Source invalidation closes detail before file cleanup settles.
@@ -168,39 +167,11 @@ export function RecordsRoute({
       style={styles.transition}
     >
       <View style={styles.container}>
-        <View
-          testID="records-layout"
-          style={[
-            styles.page,
-            hasHubBanner && !showAllRecent && styles.pageAfterBanner,
-          ]}
-        >
+        {!showAllRecent ? <RecordsPageBackdrop /> : null}
+        <View testID="records-layout" style={styles.page}>
           {!showAllRecent ? (
-            <View style={styles.primaryPanel}>
-              <RecordsRouteEntries
-                materialsActive={memoryActive}
-                onOpenGeneratedReports={onOpenGeneratedReports}
-                onOpenSavedRecordings={onOpenSavedRecordings}
-                onOpenRecording={onOpenRecording}
-                onOpenHealthLibrary={onOpenHealthLibrary}
-                onOpenManualHistory={onOpenManualHistory}
-                medicalDocumentOpening={activity === 'selecting'}
-                medicalDocumentDisabled={activity !== null}
-                onImportMedicalDocument={() => selectMedicalDocument('files')}
-                onImportMedicalPhoto={() => selectMedicalDocument('photos')}
-              />
-              {message ? (
-                <Text
-                  accessibilityLiveRegion="polite"
-                  style={styles.status}
-                  testID="medical-document-import-status"
-                >
-                  {message}
-                </Text>
-              ) : null}
-            </View>
+            <RecordsHeading onOpenRecording={onOpenRecording} />
           ) : null}
-          {!showAllRecent ? <LegacySymptomData /> : null}
           <RecordsRecentSources
             showAll={showAllRecent}
             recentMaterialReadyLease={recentMaterialReadyLease}
@@ -224,6 +195,32 @@ export function RecordsRoute({
             tabAuthority={recordsTabAuthority}
             onOpenSavedRecordings={onOpenSavedRecordings}
           />
+          {!showAllRecent ? (
+            <View style={styles.primaryPanel}>
+              <RecordsRouteEntries
+                materialsActive={memoryActive}
+                onOpenGeneratedReports={onOpenGeneratedReports}
+                onOpenSavedRecordings={onOpenSavedRecordings}
+                onOpenSchedule={onOpenSchedule}
+                onOpenHealthLibrary={onOpenHealthLibrary}
+                onOpenManualHistory={onOpenManualHistory}
+                medicalDocumentOpening={activity === 'selecting'}
+                medicalDocumentDisabled={activity !== null}
+                onImportMedicalDocument={() => selectMedicalDocument('files')}
+                onImportMedicalPhoto={() => selectMedicalDocument('photos')}
+              />
+              {message ? (
+                <Text
+                  accessibilityLiveRegion="polite"
+                  style={styles.status}
+                  testID="medical-document-import-status"
+                >
+                  {message}
+                </Text>
+              ) : null}
+            </View>
+          ) : null}
+          {!showAllRecent ? <LegacySymptomData /> : null}
           {sourceMessage ? (
             <Text
               accessibilityLiveRegion="polite"

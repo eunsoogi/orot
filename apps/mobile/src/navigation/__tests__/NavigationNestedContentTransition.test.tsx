@@ -23,9 +23,9 @@ jest.mock('react-native-safe-area-context', () => {
   };
 });
 
-test('switches hub panes without a root fade but still fades between distinct root tabs', async () => {
+test('fades only on a real root-tab change', async () => {
   const controller = createNavigationController<'root'>('root');
-  const content = (contentKey: 'records' | 'schedule' | 'overview') => (
+  const content = (contentKey: 'records' | 'overview') => (
     <NavigationMotionContext.Provider value={false}>
       <NavigationRouteAdapter
         controller={controller}
@@ -45,11 +45,6 @@ test('switches hub panes without a root fade but still fades between distinct ro
           config.duration === 100 &&
           config.useNativeDriver,
       );
-    await view.rerender(content('schedule'));
-    expect(rootFade()).toHaveLength(0);
-    expect(screen.getByText('schedule')).toBeVisible();
-    expect(screen.queryByText('records')).toBeNull();
-
     await view.rerender(content('records'));
     expect(rootFade()).toHaveLength(0);
     expect(screen.getByText('records')).toBeVisible();
@@ -61,9 +56,9 @@ test('switches hub panes without a root fade but still fades between distinct ro
   }
 });
 
-test('keeps Records selected for schedule content', () => {
-  expect(createNavigationRootTabs('schedule', jest.fn())).toMatchObject({
+test('publishes Records as one root destination rather than a pair of tabs', () => {
+  expect(createNavigationRootTabs('records', jest.fn())).toMatchObject({
     activeTab: 'records',
-    contentKey: 'schedule',
+    contentKey: 'records',
   });
 });

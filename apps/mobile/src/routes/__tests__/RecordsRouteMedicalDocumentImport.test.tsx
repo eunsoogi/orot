@@ -52,8 +52,10 @@ test('disables the Records body import action while the picker is opening', asyn
     saveDocument: jest.fn().mockResolvedValue('saved'),
     discardDocument: jest.fn().mockResolvedValue(undefined),
   };
+  const openSchedule = jest.fn();
   await render(
     <RecordsRoute
+      onOpenSchedule={openSchedule}
       recordings={[]}
       recordingState="ready"
       onRetryRecordings={jest.fn()}
@@ -65,7 +67,7 @@ test('disables the Records body import action while the picker is opening', asyn
     />,
   );
 
-  expect(screen.getByText('파일에서 의료 문서 가져오기')).toBeTruthy();
+  expect(screen.getByText('파일에서 가져오기')).toBeTruthy();
   expect(
     screen.getByRole('button', { name: '파일에서 의료 문서 가져오기' }),
   ).toBeEnabled();
@@ -79,6 +81,10 @@ test('disables the Records body import action while the picker is opening', asyn
       screen.getByTestId('records-import-medical-document'),
     ).toBeDisabled();
   });
+  const schedule = screen.getByRole('button', { name: '일정' });
+  expect(schedule).toBeDisabled();
+  await fireEvent.press(schedule);
+  expect(openSchedule).not.toHaveBeenCalled();
   expect(service.selectDocument).toHaveBeenCalledTimes(1);
   expect(service.selectDocument).toHaveBeenCalledWith('files');
 
@@ -88,8 +94,13 @@ test('disables the Records body import action while the picker is opening', asyn
   });
   await selectionPress;
 
+  expect(screen.getByRole('button', { name: '일정' })).toBeEnabled();
+
   expect(screen.getByTestId('records-import-medical-document')).toBeEnabled();
-  expect(screen.getByText(t('medicalDocument.import.summary'))).toBeTruthy();
+  expect(
+    screen.getByTestId('records-import-medical-document').props
+      .accessibilityHint,
+  ).toBe(t('medicalDocument.import.summary'));
 });
 
 test('routes Photos selection separately and returns to both actions after cancellation', async () => {
@@ -112,7 +123,7 @@ test('routes Photos selection separately and returns to both actions after cance
       documentImportService={service}
     />,
   );
-  expect(screen.getByText('사진에서 의료 문서 가져오기')).toBeTruthy();
+  expect(screen.getByText('사진에서 가져오기')).toBeTruthy();
   await fireEvent.press(
     screen.getByRole('button', { name: '사진에서 의료 문서 가져오기' }),
   );

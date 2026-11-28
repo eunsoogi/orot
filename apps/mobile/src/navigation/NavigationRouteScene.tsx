@@ -158,6 +158,7 @@ export function NavigationRouteScene<Name extends string>({
   const body = scrollable ? (
     <NavigationRouteScrollView
       key={`${route.key}:${rootTabs?.activeTab ?? ''}`}
+      testID={route.name === 'schedule' ? 'calendar-screen' : undefined}
       pullToRefresh={
         route.name === 'recent-records' ||
         route.name === 'generated-report-detail' ||
@@ -185,11 +186,7 @@ export function NavigationRouteScene<Name extends string>({
 
   return rootTabs ? (
     <NavigationContentTransition
-      transitionKey={
-        rootTabs.contentKey === 'schedule'
-          ? 'records'
-          : (rootTabs.contentKey ?? rootTabs.activeTab)
-      }
+      transitionKey={rootTabs.contentKey ?? rootTabs.activeTab}
     >
       {scene}
     </NavigationContentTransition>

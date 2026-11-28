@@ -51,11 +51,8 @@ export function RecordsRecentSourceEntry({
       ]}
       testID={testID}
     >
-      <View style={styles.markerColumn}>
-        <View style={styles.marker} />
-      </View>
       <View style={styles.icon}>
-        <AppSymbol name={icon} color={appColors.primaryAction} />
+        <AppSymbol name={icon} color={appColors.primaryText} />
       </View>
       <View style={styles.copy}>
         <Text style={styles.title}>{record.title}</Text>
@@ -73,24 +70,14 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     flexDirection: 'row',
     gap: 10,
-    minHeight: 58,
+    minHeight: 44,
     minWidth: 0,
     paddingVertical: 7,
   },
-  markerColumn: { alignItems: 'center', width: 12 },
-  marker: {
-    backgroundColor: appColors.primaryAction,
-    borderRadius: 4,
-    height: 8,
-    width: 8,
-  },
   icon: {
     alignItems: 'center',
-    backgroundColor: appColors.primarySoft,
-    borderRadius: 12,
-    height: 40,
     justifyContent: 'center',
-    width: 40,
+    width: 28,
   },
   copy: { flex: 1, gap: 3, minWidth: 0 },
   title: { color: appColors.text, fontSize: 15, fontWeight: '600' },

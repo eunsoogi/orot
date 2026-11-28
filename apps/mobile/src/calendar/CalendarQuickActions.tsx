@@ -7,6 +7,7 @@ import { t } from '../i18n';
 import { calendarStyles as styles } from './calendarStyles';
 
 interface CalendarQuickActionsProps {
+  flat?: boolean;
   disabled: boolean;
   onOpenAppointments?: () => void;
   onOpenMedicalAppointments?: () => void;
@@ -22,6 +23,7 @@ interface CalendarQuickAction {
 
 /** Keeps appointment management and explicit AI classification one tap away. */
 export function CalendarQuickActions({
+  flat = false,
   disabled,
   onOpenAppointments,
   onOpenMedicalAppointments,
@@ -46,7 +48,10 @@ export function CalendarQuickActions({
   if (!actions.length) return null;
 
   return (
-    <View style={styles.calendarQuickActions} testID="calendar-quick-actions">
+    <View
+      style={[styles.calendarQuickActions, flat && styles.flatQuickActions]}
+      testID="calendar-quick-actions"
+    >
       {actions.map((action, index) => (
         <Fragment key={action.testID}>
           {index > 0 ? (

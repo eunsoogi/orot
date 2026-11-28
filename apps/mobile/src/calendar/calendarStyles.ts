@@ -12,6 +12,23 @@ export const calendarStyles = StyleSheet.create({
   },
   // The injected hub header owns its gutters; cancel only this scroll container padding.
   scrollHeader: { marginHorizontal: -20, marginTop: -20 },
+  flatContainer: { backgroundColor: 'transparent', paddingTop: 24 },
+  flatMonth: {
+    backgroundColor: 'transparent',
+    paddingHorizontal: 0,
+    paddingVertical: 4,
+  },
+  flatQuickActions: {
+    backgroundColor: 'transparent',
+    borderRadius: 0,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+  },
+  flatCard: {
+    gap: 10,
+    borderTopColor: appColors.border,
+    borderTopWidth: StyleSheet.hairlineWidth,
+    paddingVertical: 14,
+  },
   heading: { gap: 6 },
   pageSections: { gap: 16 },
   title: { color: appColors.text, fontSize: 36, fontWeight: '700' },

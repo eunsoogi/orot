@@ -108,7 +108,6 @@ function geometry(width: number, divided: boolean): NavigationGeometryPayload {
 function routeProps(): Omit<AppRouteContentProps, 'actions'> {
   return {
     activeTab: 'settings',
-    selectTab: jest.fn(),
     appointmentRepository: null,
     backupPreparationState: 'checking',
     retryBackupPreparation: async () => undefined,

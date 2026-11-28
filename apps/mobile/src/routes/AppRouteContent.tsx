@@ -28,7 +28,6 @@ export function AppRouteContent({
   actions,
   activeTab,
   recordsTabAuthority,
-  selectTab,
   appointmentRepository,
   backupPreparationState,
   retryBackupPreparation,
@@ -67,7 +66,7 @@ export function AppRouteContent({
             appointmentState={appointmentState}
             onRetryAppointments={() => refreshAppointments()}
             onPrepareVisit={openOverviewPreparation}
-            onOpenSchedule={() => selectTab('schedule')}
+            onOpenSchedule={() => actions.push('schedule')}
             onEditMetricSelection={() =>
               active &&
               actions.ownership?.isCurrent() !== false &&
@@ -84,6 +83,7 @@ export function AppRouteContent({
             onOpenGeneratedReports={() => actions.push('generated-reports')}
             memoryActive={active}
             onOpenRecentRecords={() => actions.push('recent-records')}
+            onOpenSchedule={() => actions.push('schedule')}
             documentImportService={documentImportService}
             recordings={recordings}
             recordingState={recordingState}
@@ -92,19 +92,6 @@ export function AppRouteContent({
             onOpenRecording={openRecording}
             onOpenHealthLibrary={() => actions.push('health-records')}
             onOpenManualHistory={() => actions.push('manual-history')}
-          />
-        );
-      case 'schedule':
-        return (
-          <ScheduleRoute
-            appointmentRepository={appointmentRepository}
-            appointmentState={appointmentState}
-            bridge={calendarBridge}
-            calendarSync={calendarSync}
-            onRetry={() => refreshAppointments()}
-            onOpenAppointments={() => actions.push('appointments')}
-            onOpenMedicalAppointments={() => actions.push('medical')}
-            onAppointmentsChanged={() => refreshAppointments()}
           />
         );
       case 'conversation':
@@ -130,12 +117,23 @@ export function AppRouteContent({
     }
   }
   switch (actions.route.name) {
+    case 'schedule':
+      return (
+        <ScheduleRoute
+          appointmentRepository={appointmentRepository}
+          appointmentState={appointmentState}
+          bridge={calendarBridge}
+          calendarSync={calendarSync}
+          onRetry={() => refreshAppointments()}
+          onOpenAppointments={() => actions.push('appointments')}
+          onOpenMedicalAppointments={() => actions.push('medical')}
+          onAppointmentsChanged={() => refreshAppointments()}
+        />
+      );
     case 'visit-day-questions':
     case 'appointment-preparation':
       return (
-        <AppointmentQuestionRoutes
-          {...{ actions, selectTab, loadSavedVisitQuestions }}
-        />
+        <AppointmentQuestionRoutes {...{ actions, loadSavedVisitQuestions }} />
       );
     case 'saved-memory-detail':
       return (

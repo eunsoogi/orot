@@ -86,14 +86,15 @@ test.each(['standalone', 'hub'] as const)(
     );
     await render(
       embeddedInHubScroll ? (
-        <RecordsHubSection selected="schedule">{calendar}</RecordsHubSection>
+        <RecordsHubSection>{calendar}</RecordsHubSection>
       ) : (
         calendar
       ),
     );
-    const scroll = screen.getByTestId('calendar-screen');
-    if (embeddedInHubScroll)
-      expect(scroll).toContainElement(screen.getByTestId('records-hub-header'));
+    const scroll = screen.getByTestId(
+      embeddedInHubScroll ? 'navigation-route-scroll' : 'calendar-screen',
+    );
+    expect(scroll).toContainElement(screen.getByTestId('calendar-title'));
     await fireEvent(
       screen.getByTestId('schedule-adaptive-columns-host'),
       'layout',

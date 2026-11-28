@@ -4,7 +4,7 @@ test.each([
   ['conversation', 'conversation'],
   ['overview', 'overview'],
   ['records', 'records'],
-  ['schedule', 'schedule'],
+  ['schedule', 'records'],
   ['settings', 'settings'],
 ] as const)('decodes only the explicit %s root', (destination, tab) => {
   expect(decodeRootURL(`orot://open/v1/${destination}`)).toBe(destination);

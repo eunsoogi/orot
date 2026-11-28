@@ -30,7 +30,7 @@ export async function renderRecordsRouteTest() {
       >
         {actions =>
           actions.route.name === 'root' ? (
-            <RecordsHubSection selected="records">
+            <RecordsHubSection>
               <AppRouteContent {...props} actions={actions} />
             </RecordsHubSection>
           ) : (
