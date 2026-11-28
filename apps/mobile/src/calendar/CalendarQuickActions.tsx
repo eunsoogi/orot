@@ -4,9 +4,11 @@ import { AppSymbol } from '../layout/AppSymbol';
 import { AppText as Text } from '../layout/AppText';
 import { appColors } from '../layout/appColors';
 import { t } from '../i18n';
+import { useNavigationRouteActions } from '../navigation/useNavigationRouteActions';
 import { calendarStyles as styles } from './calendarStyles';
 
 interface CalendarQuickActionsProps {
+  dock?: boolean;
   disabled: boolean;
   onOpenAppointments?: () => void;
   onOpenMedicalAppointments?: () => void;
@@ -22,6 +24,7 @@ interface CalendarQuickAction {
 
 /** Keeps appointment management and explicit AI classification one tap away. */
 export function CalendarQuickActions({
+  dock = false,
   disabled,
   onOpenAppointments,
   onOpenMedicalAppointments,
@@ -43,7 +46,21 @@ export function CalendarQuickActions({
       symbol: 'tag',
     });
   }
-  if (!actions.length) return null;
+  const hasDock = useNavigationRouteActions(
+    actions.map(action => ({
+      id: action.testID,
+      label: action.title,
+      accessibilityLabel: action.title,
+      testID: action.testID,
+      systemImageName: action.symbol,
+      disabled,
+      onPress: action.onPress,
+    })),
+    dock,
+  );
+  // The shared contextual chrome owns these buttons when Schedule is a stack child.
+  // Standalone and fixture calendars retain functional in-content controls.
+  if (!actions.length || hasDock) return null;
 
   return (
     <View style={styles.calendarQuickActions} testID="calendar-quick-actions">

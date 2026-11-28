@@ -7,7 +7,6 @@ import { ScrollView, View } from 'react-native';
 import type { AppointmentRepository } from '@orot/storage';
 import { t } from '../i18n';
 import { CalendarMonthView } from './CalendarMonthView';
-import { formatCalendarEventRange } from './dateTime';
 import { calendarQueryWindowFromCoverage } from './calendarMonth';
 import type { CalendarQueryWindow } from './calendarMonth';
 import { CalendarQuickActions } from './CalendarQuickActions';
@@ -17,7 +16,7 @@ import type { CalendarBridge } from './types';
 import { emptyCalendarAutoSyncState } from './calendarAutoSync';
 import type { CalendarAutoSyncState } from './calendarAutoSync';
 import { useCalendarLinking } from './useCalendarLinking';
-import { eventFromAppointment } from './calendarMonthEvents';
+import { CalendarSelectionSummary } from './CalendarSelectionSummary';
 import { CalendarRouteActions } from './CalendarRouteActions';
 import { useCalendarNavigationLeaveState } from './useCalendarNavigationLeaveState';
 
@@ -28,6 +27,7 @@ interface CalendarLinkingScreenProps {
   calendarSync?: CalendarAutoSyncState;
   adaptiveScheduleLayout?: boolean;
   embeddedInHubScroll?: boolean;
+  flatSchedulePresentation?: boolean;
   heading?: string;
   onOpenAppointments?: () => void;
   onOpenMedicalAppointments?: () => void;
@@ -43,6 +43,7 @@ export default function CalendarLinkingScreen({
   calendarSync = emptyCalendarAutoSyncState,
   adaptiveScheduleLayout = false,
   embeddedInHubScroll = false,
+  flatSchedulePresentation = false,
   heading = t('calendar.title'),
   onOpenAppointments,
   onOpenMedicalAppointments,
@@ -67,55 +68,17 @@ export default function CalendarLinkingScreen({
     selectedEventIdentifier,
     notice: calendar.notice,
   });
-  const upcomingEvent = eventFromAppointment(calendar.nextVisitAppointment);
-  // The saved-appointment panel belongs only to Schedule; other linking flows keep their prior layout.
-  const selectionSummary = calendar.selectedEvent ? (
-    <View style={styles.card} testID="calendar-selection">
-      <Text>
-        {calendar.linkedAppointment
-          ? t('calendar.reconfirmPrompt')
-          : t('calendar.confirmPrompt')}
-      </Text>
-      <Text style={styles.eventTitle} testID="calendar-selected-event-title">
-        {calendar.selectedEvent.calendarEventSnapshot.title ||
-          t('calendar.eventNoTitle')}
-      </Text>
-      <Text>{formatCalendarEventRange(calendar.selectedEvent)}</Text>
-      <Button
-        disabled={calendar.saving}
-        onPress={calendar.confirmSelectedEvent}
-        testID="calendar-confirm-selected"
-        title={
-          calendar.saving
-            ? t('calendar.saving')
-            : t(
-                calendar.linkedAppointment
-                  ? 'calendar.reconfirm'
-                  : 'calendar.confirm',
-              )
-        }
-      />
-      <Button
-        disabled={calendar.saving}
-        onPress={calendar.clearSelection}
-        title={t('calendar.cancelSelection')}
-      />
-    </View>
-  ) : adaptiveScheduleLayout && upcomingEvent ? (
-    <View style={styles.card} testID="schedule-next-visit-summary">
-      <Text accessibilityRole="header">{t('calendar.nextVisit')}</Text>
-      <Text style={styles.eventTitle} testID="schedule-next-visit-title">
-        {upcomingEvent.calendarEventSnapshot.title ||
-          t('calendar.eventNoTitle')}
-      </Text>
-      <Text testID="schedule-next-visit-time">
-        {formatCalendarEventRange(upcomingEvent)}
-      </Text>
-    </View>
-  ) : null;
+  const selectionSummary = (
+    <CalendarSelectionSummary
+      calendar={calendar}
+      showNextVisit={adaptiveScheduleLayout}
+      flat={flatSchedulePresentation}
+    />
+  );
 
   const calendarMonth = (
     <CalendarMonthView
+      flat={flatSchedulePresentation}
       appointmentsLoading={calendar.loadingAppointments}
       candidatesLoaded={calendar.hasLoadedCandidates}
       events={calendar.events}
@@ -148,11 +111,14 @@ export default function CalendarLinkingScreen({
         >
           {heading}
         </Text>
-        <Text style={styles.subtitle} testID="schedule-subtitle">
-          {t('schedule.subtitle')}
-        </Text>
+        {!flatSchedulePresentation ? (
+          <Text style={styles.subtitle} testID="schedule-subtitle">
+            {t('schedule.subtitle')}
+          </Text>
+        ) : null}
       </View>
       <CalendarQuickActions
+        dock={flatSchedulePresentation}
         disabled={calendar.saving || hasUnsavedSelection}
         onOpenAppointments={onOpenAppointments}
         onOpenMedicalAppointments={onOpenMedicalAppointments}
@@ -215,9 +181,18 @@ export default function CalendarLinkingScreen({
       )}
     </>
   );
-  // The Records/Schedule hub owns the only vertical scroll and its safe inset.
+  // The stack owns the only vertical scroll and inset for the Records calendar.
   if (embeddedInHubScroll)
-    return <View style={styles.container}>{content}</View>;
+    return (
+      <View
+        style={[
+          styles.container,
+          flatSchedulePresentation && styles.flatContainer,
+        ]}
+      >
+        {content}
+      </View>
+    );
   return (
     <View style={styles.screen}>
       <ScrollView

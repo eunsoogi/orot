@@ -116,7 +116,7 @@ test('saved medical source returns through the shared Back action without losing
       surface={FallbackSurface}
     >
       {() => (
-        <RecordsHubSection selected="records">
+        <RecordsHubSection>
           <RecordsRoute
             recordings={[]}
             recordingState="ready"

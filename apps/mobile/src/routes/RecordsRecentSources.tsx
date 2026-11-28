@@ -166,7 +166,6 @@ export function RecordsRecentSources(props: RecordsRecentSourcesProps) {
                 <View style={styles.groupDivider} />
               </View>
               <View style={styles.rows}>
-                <View pointerEvents="none" style={styles.timelineLine} />
                 {group.records.map(record => (
                   <RecordsRecentSourceEntry
                     key={`${record.kind}:${record.id}`}
@@ -227,13 +226,5 @@ const styles = StyleSheet.create({
     flex: 1,
     height: StyleSheet.hairlineWidth,
   },
-  rows: { gap: hubSpacing.item, minWidth: 0, position: 'relative' },
-  timelineLine: {
-    backgroundColor: appColors.border,
-    bottom: 10,
-    left: 5,
-    position: 'absolute',
-    top: 10,
-    width: StyleSheet.hairlineWidth,
-  },
+  rows: { gap: 6, minWidth: 0 },
 });

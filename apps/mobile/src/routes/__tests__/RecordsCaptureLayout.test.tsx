@@ -1,7 +1,6 @@
 import { fireEvent, render, screen } from '@testing-library/react-native';
 import { Dimensions } from 'react-native';
-import { hubSpacing } from '../../layout/hubSpacing';
-import { RecordsRouteEntries } from '../RecordsRouteEntries';
+import { RecordsHeading, RecordsRouteEntries } from '../RecordsRouteEntries';
 
 jest.mock('../../layout/AppSymbol', () => ({ AppSymbol: () => null }));
 const original = {
@@ -10,91 +9,53 @@ const original = {
 };
 afterEach(() => Dimensions.set(original));
 
-test('keeps the recording entry in the Records spacing rhythm', async () => {
-  await render(
-    <RecordsRouteEntries
-      onOpenRecording={jest.fn()}
-      onOpenSavedRecordings={jest.fn()}
-      onOpenHealthLibrary={jest.fn()}
-      onOpenManualHistory={jest.fn()}
-      medicalDocumentOpening={false}
-      medicalDocumentDisabled={false}
-      onImportMedicalDocument={jest.fn()}
-      onImportMedicalPhoto={jest.fn()}
-    />,
-  );
-
-  const captureActions = screen.getByTestId('records-capture-actions');
-  const recordingAction = screen.getByRole('button', { name: '새 상담 녹음' });
-
-  // The route container already adds one 16pt item gap before the action group.
-  expect(captureActions).not.toHaveStyle({ marginTop: 4 });
-  expect(recordingAction).toHaveStyle({
-    paddingHorizontal: hubSpacing.item,
-    paddingVertical: hubSpacing.item,
-  });
-  // My Data rows use a 12pt space between their icon and title.
-  expect(screen.getByTestId('recording-capture-content')).toHaveStyle({
-    gap: 12,
-  });
-});
-
 test.each([1, 1.5, 3.571])(
-  'retains recording at text scale %s without a journal action',
+  'keeps the title-adjacent recording action usable at scale %s',
   async fontScale => {
     Dimensions.set({
       window: { ...original.window, width: 393, fontScale },
       screen: { ...original.screen, width: 393, fontScale },
     });
     const onOpenRecording = jest.fn();
-    await render(
-      <RecordsRouteEntries
-        onOpenRecording={onOpenRecording}
-        onOpenSavedRecordings={jest.fn()}
-        onOpenHealthLibrary={jest.fn()}
-        onOpenManualHistory={jest.fn()}
-        medicalDocumentOpening={false}
-        medicalDocumentDisabled={false}
-        onImportMedicalDocument={jest.fn()}
-        onImportMedicalPhoto={jest.fn()}
-      />,
-    );
-    expect(screen.queryByTestId('symptoms-open')).toBeNull();
-    // This protects the row contract; actual wrapping and hit targets need native geometry.
+    await render(<RecordsHeading onOpenRecording={onOpenRecording} />);
+    const action = screen.getByRole('button', { name: '새 상담 녹음' });
+    expect(action).toHaveStyle({ minHeight: 44, paddingHorizontal: 12 });
+    expect(screen.getByTestId('records-hub-header')).toHaveStyle({
+      flexWrap: 'wrap',
+      flexDirection: 'row',
+      gap: 12,
+    });
     expect(screen.getByTestId('recording-capture-content')).toHaveStyle({
       flexDirection: 'row',
       alignItems: 'center',
+      gap: 6,
     });
-    expect(screen.getByText('새 상담 녹음')).toHaveStyle({ flexShrink: 1 });
-    expect(screen.getByText('새 상담 녹음').props).toEqual(
-      expect.not.objectContaining({ allowFontScaling: false }),
-    );
-    expect(
-      screen.getByText('새 상담 녹음').props.numberOfLines,
-    ).toBeUndefined();
-    expect(
-      screen.getByText('새 상담 녹음').props.maxFontSizeMultiplier,
-    ).toBeUndefined();
-    await fireEvent.press(screen.getByRole('button', { name: '새 상담 녹음' }));
+    const title = screen.getByText('새 상담 녹음');
+    expect(title).toHaveStyle({ flexShrink: 1 });
+    expect(title.props.allowFontScaling).not.toBe(false);
+    expect(title.props.numberOfLines).toBeUndefined();
+    expect(title.props.maxFontSizeMultiplier).toBeUndefined();
+    expect(screen.queryByTestId('symptoms-open')).toBeNull();
+    await fireEvent.press(action);
     expect(onOpenRecording).toHaveBeenCalledTimes(1);
   },
 );
 
 test.each([
-  [900, 1, 'row'],
-  [390, 2, 'column'],
+  [900, 1, '31%'],
+  [390, 2, '100%'],
 ] as const)(
-  'inherits the same material-column reflow at width %s and text scale %s',
-  async (width, fontScale, flexDirection) => {
+  'reflows the material directory at width %s and text scale %s',
+  async (width, fontScale, tileWidth) => {
     Dimensions.set({
       window: { ...original.window, width, fontScale },
       screen: { ...original.screen, width, fontScale },
     });
     await render(
       <RecordsRouteEntries
-        onOpenRecording={jest.fn()}
         onOpenSavedRecordings={jest.fn()}
         onOpenHealthLibrary={jest.fn()}
+        onOpenSchedule={jest.fn()}
         onOpenManualHistory={jest.fn()}
         onOpenGeneratedReports={jest.fn()}
         medicalDocumentOpening={false}
@@ -103,14 +64,12 @@ test.each([
         onImportMedicalPhoto={jest.fn()}
       />,
     );
-    expect(screen.getByTestId('records-material-columns')).toHaveStyle({
-      flexDirection,
-    });
     expect(
       screen.getByText('대화에서 생성한 자료').props.numberOfLines,
     ).toBeUndefined();
     expect(screen.getByTestId('records-open-generated-reports')).toHaveStyle({
-      minHeight: 70,
+      width: tileWidth,
+      minHeight: 56,
     });
     expect(screen.queryByTestId('saved-memory-browser')).toBeNull();
     expect(screen.queryByTestId('generated-report-browser')).toBeNull();

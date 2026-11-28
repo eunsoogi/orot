@@ -4,28 +4,10 @@ import {
   screen,
   within,
 } from '@testing-library/react-native';
-import type { ReactNode } from 'react';
-import { StyleSheet } from 'react-native';
 import type { RecordingSourceRecord } from '../../recording/recordingTypes';
 import type { RecordsRouteProps } from '../RecordsRoute';
 import { RecordsRoute } from '../RecordsRoute';
 
-// Keep route behavior independent from geometry, which is exercised by XCTest.
-jest.mock('../../layout/AdaptiveColumns', () => {
-  const ReactRuntime = require('react') as typeof import('react');
-  const { View } = require('react-native') as typeof import('react-native');
-  return {
-    AdaptiveColumns: ({
-      primary,
-      secondary,
-      testID,
-    }: {
-      primary: ReactNode;
-      secondary?: ReactNode;
-      testID?: string;
-    }) => ReactRuntime.createElement(View, { testID }, primary, secondary),
-  };
-});
 jest.mock('../../layout/AppSymbol', () => ({ AppSymbol: () => null }));
 jest.mock('../../navigation', () => ({
   useNavigationLeaveStateRegistration: jest.fn(),
@@ -51,6 +33,7 @@ function source(
 function props(overrides: Partial<RecordsRouteProps> = {}): RecordsRouteProps {
   return {
     onOpenRecentRecords: jest.fn(),
+    onOpenSchedule: jest.fn(),
     recordings: [],
     recordingState: 'ready',
     onRetryRecordings: jest.fn(),
@@ -75,41 +58,29 @@ test('keeps one primary recording action and every existing Records destination'
   await render(<RecordsRoute {...routeProps} />);
 
   expect(screen.getAllByTestId('records-new-recording')).toHaveLength(1);
-  // Assert real route composition; the shared measured-columns tests own geometry.
-  const materials = within(screen.getByTestId('records-material-columns'));
-  expect(materials.getByTestId('records-materials')).toBeTruthy();
-  const mine = materials.getByTestId('records-materials');
-  const conversation = materials.getByTestId('records-conversation-materials');
-  expect(StyleSheet.flatten(conversation.props.style)).toEqual(
-    StyleSheet.flatten(mine.props.style),
-  );
-  const heading = within(conversation).getByRole('header', {
-    name: '대화 자료',
-  });
-  expect(StyleSheet.flatten(heading.props.style)).toEqual(
-    StyleSheet.flatten(
-      within(mine).getByRole('header', { name: '내 자료' }).props.style,
-    ),
-  );
-  const rows = within(conversation).getAllByRole('button');
-  expect(rows).toHaveLength(2);
-  expect(within(rows[0]).getByText('기억')).toBeTruthy();
+  const mine = screen.getByTestId('records-materials');
+  const headings = screen.getAllByRole('header');
   expect(
-    within(rows[0]).getByText(
-      '과거 건강 기록과 대화에서 저장한 기억을 확인해요.',
-    ),
-  ).toBeTruthy();
-  expect(within(rows[1]).getByText('대화에서 생성한 자료')).toBeTruthy();
-  expect(StyleSheet.flatten(rows[0].props.style)).toEqual(
-    StyleSheet.flatten(
-      screen.getByTestId('records-open-saved-recordings').props.style,
-    ),
+    headings.indexOf(screen.getByRole('header', { name: '최근 기록' })),
+  ).toBeLessThan(
+    headings.indexOf(within(mine).getByRole('header', { name: '내 자료' })),
   );
-  expect(StyleSheet.flatten(rows[1].props.style)).toEqual(
-    StyleSheet.flatten(
-      screen.getByTestId('records-open-health-library').props.style,
-    ),
-  );
+  const labels = [
+    '일정',
+    '저장된 녹음',
+    '가져온 건강 기록',
+    '기억',
+    '대화에서 생성한 자료',
+  ];
+  expect(
+    within(mine)
+      .getAllByRole('button')
+      .map(row => row.props.accessibilityLabel),
+  ).toEqual(labels);
+  expect(
+    within(mine).getByRole('button', { name: '기억' }).props.accessibilityHint,
+  ).toBe('과거 건강 기록과 대화에서 저장한 기억을 확인해요.');
+  expect(screen.queryByTestId('records-section-tabs')).toBeNull();
   expect(screen.queryByTestId('saved-memory-browser')).toBeNull();
   expect(screen.queryByTestId('generated-report-browser')).toBeNull();
   expect(screen.getByTestId('records-recent-sources-empty')).toHaveTextContent(
@@ -118,6 +89,7 @@ test('keeps one primary recording action and every existing Records destination'
   expect(screen.getByTestId('records-import-medical-document')).toBeTruthy();
   for (const id of [
     'records-new-recording',
+    'records-open-schedule',
     'records-open-saved-recordings',
     'records-open-health-library',
     'records-open-memory',
@@ -126,6 +98,7 @@ test('keeps one primary recording action and every existing Records destination'
     await fireEvent.press(screen.getByTestId(id));
   }
 
+  expect(routeProps.onOpenSchedule).toHaveBeenCalledTimes(1);
   expect(routeProps.onOpenRecording).toHaveBeenCalledTimes(1);
   expect(routeProps.onOpenSavedRecordings).toHaveBeenCalledTimes(1);
   expect(routeProps.onOpenManualHistory).toHaveBeenCalledTimes(1);

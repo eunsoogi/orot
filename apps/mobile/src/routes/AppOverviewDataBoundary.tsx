@@ -118,20 +118,14 @@ export function AppOverviewDataRouteContent(props: RouteProps) {
     return <OverviewMetricSelectionRoute actions={props.actions} />;
   const root = route === 'root' ? props.activeTab : undefined;
   if (root === 'overview') return <OverviewRouteContent {...props} />;
-  if (root === 'records' || root === 'schedule')
+  if (root === 'records')
     return (
-      <RecordsHubSection
-        selected={root}
-        onSelect={props.onSelectRecordsSection}
-      >
-        {root === 'records' ? (
-          <RecordingRouteContent {...props} />
-        ) : (
-          <AppointmentRouteContent {...props} />
-        )}
+      <RecordsHubSection>
+        <RecordingRouteContent {...props} />
       </RecordsHubSection>
     );
-  if (route === 'appointments') return <AppointmentRouteContent {...props} />;
+  if (route === 'appointments' || route === 'schedule')
+    return <AppointmentRouteContent {...props} />;
   if (route === 'recent-records') return <RecordingRouteContent {...props} />;
   return (
     <AppRouteContent {...props} {...idleAppointments} {...idleRecordings} />

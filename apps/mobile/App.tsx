@@ -180,11 +180,6 @@ function App({
                     actions={actions}
                     activeTab={activeTab}
                     recordsTabAuthority={root.recordsTabAuthority}
-                    selectTab={selectActiveTab}
-                    onSelectRecordsSection={async tab => {
-                      if (await appNavigation.requestTabSwitch())
-                        selectActiveTab(tab);
-                    }}
                     backupPreparationState={backupPreparation.state}
                     retryBackupPreparation={backupPreparation.retry}
                     calendarBridge={calendarBridge}

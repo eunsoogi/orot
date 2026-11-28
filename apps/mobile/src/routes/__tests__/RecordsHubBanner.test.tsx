@@ -1,28 +1,12 @@
-import { render, screen } from '@testing-library/react-native';
-import * as ReactNative from 'react-native';
-import { RecordsHubBanner } from '../RecordsHubBanner';
+import { render, screen, within } from '@testing-library/react-native';
+import { RecordsHeading } from '../RecordsRouteEntries';
 
-afterEach(() => jest.restoreAllMocks());
-
-test('keeps the requested decorative banner and subtitle at ordinary text size', async () => {
-  jest
-    .spyOn(require('react-native'), 'useWindowDimensions')
-    .mockReturnValue({ width: 390, height: 844, scale: 3, fontScale: 1 });
-  await render(<RecordsHubBanner />);
-  expect(screen.getByTestId('records-title')).toBeVisible();
-  expect(screen.getByTestId('records-subtitle')).toBeVisible();
-});
-
-test('makes the fixed heading compact without capping accessible text scaling', async () => {
-  jest.spyOn(require('react-native'), 'useWindowDimensions').mockReturnValue({
-    width: 390,
-    height: 844,
-    scale: 3,
-    fontScale: 3.12,
-  });
-  await render(<RecordsHubBanner />);
-  const title = screen.getByTestId('records-title');
-  expect(ReactNative.StyleSheet.flatten(title.props.style).fontSize).toBe(24);
+test('keeps the title and recording action in a single scalable heading without a banner', async () => {
+  await render(<RecordsHeading onOpenRecording={jest.fn()} />);
+  const heading = within(screen.getByTestId('records-hub-header'));
+  const title = heading.getByRole('header', { name: '기록' });
   expect(title.props.maxFontSizeMultiplier).toBeUndefined();
+  expect(heading.getByRole('button', { name: '새 상담 녹음' })).toBeVisible();
   expect(screen.queryByTestId('records-subtitle')).toBeNull();
+  expect(screen.queryByTestId('records-section-tabs')).toBeNull();
 });

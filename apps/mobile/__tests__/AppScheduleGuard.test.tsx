@@ -71,7 +71,7 @@ test('guards a calendar draft and allows navigation after explicit save', async 
   );
 
   await fireEvent.press(screen.getByTestId('navigation-tab-records'));
-  await fireEvent.press(screen.getByTestId('records-section-schedule'));
+  await fireEvent.press(screen.getByTestId('records-open-schedule'));
   expect(screen.queryByTestId('calendar-connect')).toBeNull();
   await fireEvent.press(
     await screen.findByTestId('calendar-candidate-selected-visit'),
@@ -79,25 +79,22 @@ test('guards a calendar draft and allows navigation after explicit save', async 
   expect(screen.getByTestId('schedule-open-appointments')).toBeDisabled();
   expect(screen.getByTestId('open-medical-appointments')).toBeDisabled();
 
-  await fireEvent.press(screen.getByTestId('navigation-tab-overview'));
-  await waitFor(() => expect(alert).toHaveBeenCalledTimes(1));
-  expect(alert.mock.calls[0]?.[0]).toBe(navigationText.leaveUnsaved.title);
-  await pressAlertButton(alert, 0);
-  expect(screen.getByTestId('calendar-selection')).toBeTruthy();
-
-  // The new inner tab must honor the same unsaved calendar guard as the root bar.
-  await fireEvent.press(screen.getByTestId('records-section-records'));
-  await waitFor(() => expect(alert).toHaveBeenCalledTimes(2));
-  await pressAlertButton(alert, 0);
-  expect(screen.getByTestId('calendar-selection')).toBeTruthy();
-  expect(
-    screen.getByTestId('records-section-schedule').props.accessibilityState
-      .selected,
-  ).toBe(true);
+  // The contextual Back owns the transition and cannot discard a selected candidate.
+  expect(screen.queryByTestId('navigation-tab-records')).toBeNull();
+  expect(screen.queryByTestId('navigation-tab-overview')).toBeNull();
+  for (let attempt = 1; attempt <= 2; attempt += 1) {
+    await fireEvent.press(screen.getByTestId('navigation-back'));
+    await waitFor(() => expect(alert).toHaveBeenCalledTimes(attempt));
+    expect(alert.mock.calls[0]?.[0]).toBe(navigationText.leaveUnsaved.title);
+    await pressAlertButton(alert, 0);
+    expect(screen.getByTestId('calendar-selection')).toBeTruthy();
+  }
 
   await fireEvent.press(screen.getByTestId('calendar-confirm-selected'));
   expect(await screen.findByText('다음 외래 방문을 저장했어요.')).toBeTruthy();
   expect(screen.getByTestId('schedule-open-appointments')).toBeEnabled();
+  await fireEvent.press(screen.getByTestId('navigation-back'));
+  expect(await screen.findByTestId('records-title')).toBeVisible();
   await fireEvent.press(screen.getByTestId('navigation-tab-overview'));
   await waitFor(() =>
     expect(screen.getByTestId('overview-title')).toBeTruthy(),

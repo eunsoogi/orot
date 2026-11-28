@@ -70,7 +70,7 @@ async function renderApp(props: ComponentProps<typeof App> = {}) {
 async function selectTab(tab: string) {
   if (tab === 'schedule') {
     await selectTab('records');
-    await fireEvent.press(screen.getByTestId('records-section-schedule'));
+    await fireEvent.press(screen.getByTestId('records-open-schedule'));
     return;
   }
   await fireEvent.press(screen.getByTestId(`navigation-tab-${tab}`));
@@ -83,7 +83,7 @@ beforeEach(() => {
   jest.clearAllMocks();
 });
 
-test('keeps Home compact and groups calendar and appointment management under Records schedule subtab', async () => {
+test('keeps Home compact and groups calendar and appointment management under the Records schedule destination', async () => {
   const store = createAppointmentStore();
   const bridge = createCalendarBridge();
   const loadAppointments = jest.fn(async () => store.repository);
@@ -104,9 +104,9 @@ test('keeps Home compact and groups calendar and appointment management under Re
   await waitFor(() => expect(loadAppointments).toHaveBeenCalledTimes(2));
 
   await selectTab('records');
-  const header = screen.getByTestId('records-hub-header');
-  await fireEvent.press(screen.getByTestId('records-section-schedule'));
-  expect(screen.getByTestId('records-hub-header')).toBe(header);
+  await fireEvent.press(screen.getByTestId('records-open-schedule'));
+  expect(screen.queryByTestId('records-section-tabs')).toBeNull();
+  expect(screen.getByTestId('navigation-back')).toBeTruthy();
   expect(screen.queryByTestId('navigation-route-columns-route-1')).toBeNull();
   expect(screen.getByTestId('calendar-title')).toHaveTextContent('일정');
   expect(screen.queryByTestId('calendar-connect')).toBeNull();
@@ -121,6 +121,8 @@ test('keeps Home compact and groups calendar and appointment management under Re
   expect(screen.queryByTestId('navigation-tab-schedule')).toBeNull();
   await fireEvent.press(screen.getByTestId('navigation-back'));
   expect(screen.getByTestId('calendar-title')).toHaveTextContent('일정');
+  await fireEvent.press(screen.getByTestId('navigation-back'));
+  expect(screen.getByTestId('records-title')).toBeVisible();
 });
 
 test('refreshes authorized Calendar events at app startup without requesting access', async () => {

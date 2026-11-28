@@ -15,6 +15,7 @@ export type AppNavigationRoute =
   | 'health-records'
   | 'health-records-detail'
   | 'manual-history'
+  | 'schedule'
   | 'appointments'
   | 'appointment-preparation'
   | 'visit-day-questions'

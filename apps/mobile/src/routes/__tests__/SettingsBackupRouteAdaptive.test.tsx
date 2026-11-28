@@ -90,7 +90,6 @@ const contentProps: Omit<
   'actions' | 'backupPreparationState'
 > = {
   activeTab: 'settings',
-  selectTab: jest.fn(),
   appointmentRepository: null,
   retryBackupPreparation: jest.fn(async () => {}),
   appointmentState: 'ready',

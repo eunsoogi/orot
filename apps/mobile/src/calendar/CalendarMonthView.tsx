@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { View, useWindowDimensions } from 'react-native';
 import { CalendarAccessibleDates } from './CalendarAccessibleDates';
+import { CalendarDateCoverage } from './CalendarDateCoverage';
 import { AppText as Text } from '../layout/AppText';
 import type { Appointment } from '@orot/storage';
 import { t } from '../i18n';
@@ -30,6 +31,7 @@ import { calendarStyles as styles } from './calendarStyles';
 import type { CalendarEvent } from './types';
 import { calendarEventsEqual } from './calendarSnapshot';
 interface CalendarMonthViewProps {
+  flat?: boolean;
   appointmentsLoading: boolean;
   candidatesLoaded: boolean;
   events: readonly CalendarEvent[];
@@ -45,6 +47,7 @@ function localDateKey(date: Date): string {
   return calendarDateKey(date.getFullYear(), date.getMonth(), date.getDate());
 }
 export function CalendarMonthView({
+  flat = false,
   appointmentsLoading,
   candidatesLoaded,
   events,
@@ -146,7 +149,10 @@ export function CalendarMonthView({
     eventsOnSelectedDate.length === 0;
 
   return (
-    <View style={styles.calendarMonth} testID="calendar-month-view">
+    <View
+      style={[styles.calendarMonth, flat && styles.flatMonth]}
+      testID="calendar-month-view"
+    >
       <CalendarMonthHeader
         year={visibleMonth.year}
         month={visibleMonth.month}
@@ -198,27 +204,11 @@ export function CalendarMonthView({
         >
           {formatCalendarDate(selectedDate)}
         </Text>
-        {selectedDateOutsideQuery ? (
-          <Text style={styles.calendarNotice} testID="calendar-outside-query">
-            {t('calendar.outsideQueryRange')}
-          </Text>
-        ) : null}
-        {candidatesLoaded && resultsMayBeIncomplete ? (
-          <Text style={styles.calendarNotice} testID="calendar-result-limit">
-            {t('calendar.resultsMayBeIncomplete')}
-          </Text>
-        ) : null}
-        {showNoReturnedEvents ? (
-          <>
-            <Text testID="calendar-empty">{t('calendar.empty')}</Text>
-            <Text
-              style={styles.calendarNotice}
-              testID="calendar-empty-query-note"
-            >
-              {t('calendar.emptyQueryNote')}
-            </Text>
-          </>
-        ) : null}
+        <CalendarDateCoverage
+          selectedDateOutsideQuery={selectedDateOutsideQuery}
+          incomplete={candidatesLoaded && resultsMayBeIncomplete}
+          empty={showNoReturnedEvents}
+        />
         <View
           style={styles.calendarSelectedEventList}
           testID="calendar-events-for-selected-date"

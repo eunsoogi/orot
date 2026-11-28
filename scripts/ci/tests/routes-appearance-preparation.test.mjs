@@ -52,7 +52,7 @@ test('first Routes case reaches Send through current Records surfaces and preser
   const body = source.split('    func test')[1];
   assert.match(body, /recording-controls-fullscreen/);
   assert.match(body, /recording-session-panel/);
-  assert.match(body, /records-section-schedule/);
+  assert.match(body, /records-open-schedule/);
   assert.match(body, /XCTAssertFalse\(node\(app, "navigation-tab-schedule"\).exists\)/);
   assert.doesNotMatch(
     body,

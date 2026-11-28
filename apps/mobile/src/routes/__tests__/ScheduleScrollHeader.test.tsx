@@ -1,5 +1,5 @@
 import { render, screen } from '@testing-library/react-native';
-import { RecordsHubSection } from '../RecordsHubSection';
+import { NavigationRouteScrollView } from '../../navigation/NavigationRouteScrollView';
 import { ScheduleRoute } from '../ScheduleRoute';
 import {
   bridge,
@@ -7,12 +7,11 @@ import {
   syncedCalendar,
 } from '../../calendar/calendarLinkingTestFixtures';
 
-// Recovery states must use the same header and native vertical owner as the loaded calendar.
-test('uses the same vertical scroll owner and header across Calendar recovery and loaded content', async () => {
+test('uses one vertical owner and one title across calendar recovery and loaded content', async () => {
   const repo = repository(async () => []);
-  function hub(appointmentState: 'loading' | 'failed' | 'ready') {
+  function route(appointmentState: 'loading' | 'failed' | 'ready') {
     return (
-      <RecordsHubSection selected="schedule" onSelect={jest.fn(async () => {})}>
+      <NavigationRouteScrollView testID="calendar-screen">
         <ScheduleRoute
           appointmentRepository={appointmentState === 'ready' ? repo : null}
           appointmentState={appointmentState}
@@ -23,18 +22,18 @@ test('uses the same vertical scroll owner and header across Calendar recovery an
           onOpenMedicalAppointments={jest.fn()}
           onAppointmentsChanged={jest.fn()}
         />
-      </RecordsHubSection>
+      </NavigationRouteScrollView>
     );
   }
-  const view = await render(hub('loading'));
+  const view = await render(route('loading'));
   const scroll = screen.getByTestId('calendar-screen');
-  const header = screen.getByTestId('records-hub-header');
   for (const state of ['failed', 'ready'] as const) {
-    await view.rerender(hub(state));
+    await view.rerender(route(state));
     expect(screen.getAllByTestId('calendar-screen')).toEqual([scroll]);
-    expect(screen.getByTestId('records-hub-header')).toBe(header);
-    expect(scroll).toContainElement(header);
-    expect(screen.getByTestId('records-hub-body')).not.toContainElement(header);
+    expect(scroll).toContainElement(
+      screen.getByRole('header', { name: '일정' }),
+    );
+    expect(screen.queryByTestId('records-section-tabs')).toBeNull();
   }
   expect(scroll).toContainElement(screen.getByTestId('calendar-month-view'));
   expect(screen.queryByTestId('navigation-route-scroll')).toBeNull();

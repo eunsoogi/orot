@@ -40,8 +40,7 @@ export const rootTabItems = [
   },
 ] as const;
 
-// Schedule remains a compatible deep-link destination inside the Records hub.
-export type AppRootTab = (typeof rootTabItems)[number]['id'] | 'schedule';
+export type AppRootTab = (typeof rootTabItems)[number]['id'];
 
 export interface NavigationRootTabs {
   readonly activeTab: AppRootTab;
@@ -56,7 +55,7 @@ export function createNavigationRootTabs(
   onSelect: NavigationRootTabs['onSelect'],
 ): NavigationRootTabs {
   return {
-    activeTab: contentKey === 'schedule' ? 'records' : contentKey,
+    activeTab: contentKey,
     contentKey,
     onSelect,
   };

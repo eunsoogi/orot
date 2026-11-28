@@ -99,7 +99,6 @@ function productionRouteProps(
   return {
     actions,
     activeTab: 'settings',
-    selectTab: jest.fn(),
     appointmentRepository: null,
     backupPreparationState: 'checking',
     retryBackupPreparation: jest.fn(async () => undefined),

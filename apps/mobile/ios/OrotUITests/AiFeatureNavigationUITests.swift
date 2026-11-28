@@ -29,7 +29,7 @@ final class AiFeatureNavigationUITests: OrotFailFastTestCase {
         XCTAssertTrue(UITestConditions.exists(node(app, "recording-session-panel")))
         try NavigationUITestConditions.tapNavigation(app, "navigation-back")
         NavigationUITestConditions.route(app, markers: ["records-title"])
-        let schedule = node(app, "records-section-schedule")
+        let schedule = node(app, "records-open-schedule")
         XCTAssertTrue(UITestConditions.exists(schedule), app.debugDescription)
         XCTAssertEqual(schedule.label, "일정")
         try NavigationUITestConditions.openTab(app, "conversation", markers: ["rag-conversation-screen"])
@@ -193,13 +193,14 @@ final class AiFeatureNavigationUITests: OrotFailFastTestCase {
         }
     }
 
-    /// Schedule is a Records section; exercise its native control before checking the calendar route.
+    /// Schedule is a Records destination; exercise its native control before checking the calendar route.
     @MainActor
     private func openSchedule(_ app: XCUIApplication) throws {
         try NavigationUITestConditions.openTab(app, "records", markers: ["records-title"])
-        let schedule = node(app, "records-section-schedule")
+        let schedule = node(app, "records-open-schedule")
         XCTAssertTrue(UITestConditions.exists(schedule), app.debugDescription)
         XCTAssertEqual(schedule.label, "일정")
+        _ = try XCTUnwrap(FormUITestConditions.reveal(schedule, in: app, scrollID: "navigation-route-scroll"))
         XCTAssertTrue(schedule.isEnabled && schedule.isHittable && app.frame.contains(schedule.frame))
         schedule.tap()
         NavigationUITestConditions.route(app, markers: ["calendar-title"])

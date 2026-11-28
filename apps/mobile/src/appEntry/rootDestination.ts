@@ -27,7 +27,7 @@ export function decodeRootURL(raw: string): RootDestination | null {
   return match?.[0] === raw ? normalizeRootDestination(match[1]) : null;
 }
 
-/** Public destinations and the current tab model share one canonical identity. */
+/** Schedule links select Records as the parent of the native calendar route. */
 export function rootDestinationTab(destination: RootDestination): AppRootTab {
-  return destination;
+  return destination === 'schedule' ? 'records' : destination;
 }
