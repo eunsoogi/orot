@@ -160,7 +160,10 @@ test.each(['grouped', 'fragmented', 'missing-terminal'] as const)(
         expect(stage).toContain('opening_display:completed');
       }
       await act(async () => release());
-      expect(await screen.findByText(new RegExp(copy))).toBeVisible();
+      // Text can mount before the first visible frame of the reply fade.
+      await waitFor(() =>
+        expect(screen.getByText(new RegExp(copy))).toBeVisible(),
+      );
       expect(await f.storage.listCompletionIdentities()).toHaveLength(1);
       if (shape !== 'missing-terminal')
         expect(screen.getAllByTestId(openingID)).toHaveLength(1);
