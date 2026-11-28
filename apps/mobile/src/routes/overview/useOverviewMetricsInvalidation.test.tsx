@@ -1,6 +1,11 @@
 import { act, renderHook, waitFor } from '@testing-library/react-native';
 import { useIsFocused } from '@react-navigation/native';
-import { AppState, type AppStateStatus } from 'react-native';
+import {
+  AppState,
+  NativeEventEmitter,
+  NativeModules,
+  type AppStateStatus,
+} from 'react-native';
 import { notifyWorkoutImportCommitted } from '../../healthkit/workoutImportEvents';
 import {
   notifyLocalDataCleared,
@@ -101,7 +106,7 @@ test.each([
   },
 );
 
-test('clears metrics on return while Home is unfocused and waits for focus to re-read', async () => {
+test('retains metrics on ordinary return while focused and accepts explicit refresh', async () => {
   let callback: ((state: AppStateStatus) => void) | undefined;
   const appStateSubscription = jest
     .spyOn(AppState, 'addEventListener')
@@ -109,43 +114,24 @@ test('clears metrics on return while Home is unfocused and waits for focus to re
       callback = listener;
       return { remove: jest.fn() };
     });
-  let failRead!: (error: Error) => void;
-  const failedRead = new Promise<LoadResult>((_resolve, reject) => {
-    failRead = reject;
-  });
-  jest
-    .mocked(loadOverviewMetrics)
-    .mockReset()
-    .mockResolvedValueOnce(snapshot)
-    .mockReturnValueOnce(failedRead);
-
+  jest.mocked(loadOverviewMetrics).mockReset().mockResolvedValue(snapshot);
   const hook = await renderHook(() => useOverviewMetrics());
-  await waitFor(() => expect(hook.result.current.state).toBe('ready'));
-  expect(hook.result.current.metrics.steps).toEqual(metric);
-
-  mockedUseIsFocused.mockReturnValue(false);
-  await hook.rerender(undefined);
-  await act(async () => {
-    callback?.('background');
-    callback?.('active');
-  });
-  expect(hook.result.current.metrics).toEqual({});
-  expect(hook.result.current.state).toBe('loading');
-  expect(loadOverviewMetrics).toHaveBeenCalledTimes(1);
-
-  mockedUseIsFocused.mockReturnValue(true);
-  await hook.rerender(undefined);
-  await waitFor(() => expect(loadOverviewMetrics).toHaveBeenCalledTimes(2));
-
-  // The mocked failure models a local read that cannot revalidate after settings changed.
-  await act(async () =>
-    failRead(new Error('source unavailable after permission change')),
-  );
-  await waitFor(() => expect(hook.result.current.state).toBe('failed'));
-  expect(hook.result.current.metrics).toEqual({});
-
-  await hook.unmount();
-  appStateSubscription.mockRestore();
+  try {
+    await waitFor(() => expect(hook.result.current.state).toBe('ready'));
+    await act(async () => {
+      callback?.('inactive');
+      callback?.('background');
+      callback?.('active');
+    });
+    expect(hook.result.current.metrics.steps).toEqual(metric);
+    expect(hook.result.current.state).toBe('ready');
+    expect(loadOverviewMetrics).toHaveBeenCalledTimes(1);
+    await act(async () => hook.result.current.retry());
+    await waitFor(() => expect(loadOverviewMetrics).toHaveBeenCalledTimes(2));
+  } finally {
+    await hook.unmount();
+    appStateSubscription.mockRestore();
+  }
 });
 
 test('committed workouts refresh focused Overview and coalesce while its read is held', async () => {
@@ -210,5 +196,55 @@ test('committed workouts refresh focused Overview and coalesce while its read is
     await hook.unmount();
     AppState.currentState = previous;
     subscription.mockRestore();
+  }
+});
+test('native lock clears cached health data, rejects late reads, and unlock restores', async () => {
+  const previous = NativeModules.ConversationExecutionModule;
+  NativeModules.ConversationExecutionModule = {};
+  let received = (_event: object) => {};
+  const remove = jest.fn();
+  const original = NativeEventEmitter.prototype.addListener;
+  NativeEventEmitter.prototype.addListener = (_name, listener) => {
+    received = listener;
+    return { remove };
+  };
+  const app = jest
+    .spyOn(AppState, 'addEventListener')
+    .mockImplementation(() => ({ remove: jest.fn() }));
+  let settle!: (value: LoadResult) => void;
+  const held = new Promise<LoadResult>(resolve => {
+    settle = resolve;
+  });
+  jest
+    .mocked(loadOverviewMetrics)
+    .mockReset()
+    .mockResolvedValueOnce(snapshot)
+    .mockReturnValueOnce(held)
+    .mockResolvedValueOnce(snapshot);
+  const hook = await renderHook(() => useOverviewMetrics());
+  try {
+    await waitFor(() =>
+      expect(hook.result.current.metrics.steps).toEqual(metric),
+    );
+    await act(async () => hook.result.current.retry());
+    expect(loadOverviewMetrics).toHaveBeenCalledTimes(2);
+    await act(async () =>
+      received({ kind: 'protectedData', available: false }),
+    );
+    expect(hook.result.current.metrics).toEqual({});
+    await act(async () => settle(snapshot));
+    expect(hook.result.current.metrics).toEqual({});
+    expect(loadOverviewMetrics).toHaveBeenCalledTimes(2);
+    await act(async () => received({ kind: 'protectedData', available: true }));
+    await waitFor(() =>
+      expect(hook.result.current.metrics.steps).toEqual(metric),
+    );
+    expect(loadOverviewMetrics).toHaveBeenCalledTimes(3);
+  } finally {
+    await hook.unmount();
+    app.mockRestore();
+    NativeEventEmitter.prototype.addListener = original;
+    NativeModules.ConversationExecutionModule = previous;
+    expect(remove).toHaveBeenCalledTimes(1);
   }
 });

@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useIsFocused } from '@react-navigation/native';
 import { AppState } from 'react-native';
+import { conversationExecutionNative } from '../../ragConversation/conversationExecutionNative';
 import { subscribeWorkoutImportCommitted } from '../../healthkit/workoutImportEvents';
 import {
   subscribeLocalDataClear,
@@ -36,24 +37,29 @@ export function useOverviewMetrics() {
     'loading' | 'ready' | 'refreshing' | 'stale' | 'failed'
   >('loading');
   const [attempt, setAttempt] = useState(0);
+  const [protectedDataLocked, setProtectedDataLocked] = useState(false);
   const selectionGeneration = useRef(0);
   const loadGeneration = useRef(0);
   const hasSnapshot = useRef(false);
   const reads = useRef(0);
   const workoutRefreshPending = useRef(false);
   const workoutFocus = useRef(false);
+  const deferredRead = useRef<number | undefined>(undefined);
   const retry = useCallback(() => {
     loadGeneration.current += 1;
     setAttempt(value => value + 1);
   }, []);
-  const invalidateSnapshot = useCallback(() => {
+  const clearSnapshot = useCallback(() => {
     // No previously presented measurements survive this invalidation.
     hasSnapshot.current = false;
     setMetrics({});
     setQuantityTruncated(false);
     setState('loading');
+  }, []);
+  const invalidateSnapshot = useCallback(() => {
+    clearSnapshot();
     retry();
-  }, [retry]);
+  }, [clearSnapshot, retry]);
   useEffect(() => {
     const unsubscribeClear = subscribeLocalDataClear(() =>
       invalidateSnapshot(),
@@ -67,16 +73,44 @@ export function useOverviewMetrics() {
     };
   }, [invalidateSnapshot]);
   useEffect(() => {
-    const subscription = AppState.addEventListener('change', appState => {
-      if (appState === 'active') invalidateSnapshot();
+    // Lock is an authoritative invalidation; opening the app switcher is not.
+    const protection = conversationExecutionNative();
+    let sawLock = false;
+    const unsubscribe = protection?.bridgeAvailable
+      ? protection.subscribe(event => {
+          if (event.kind !== 'protectedData') return;
+          if (!event.available) {
+            sawLock = true;
+            loadGeneration.current++;
+            clearSnapshot();
+          } else if (sawLock) {
+            sawLock = false;
+            // Same-tick lock/unlock still invalidates the old generation.
+            retry();
+          }
+          setProtectedDataLocked(!event.available);
+        })
+      : undefined;
+    return () => unsubscribe?.();
+  }, [clearSnapshot, retry]);
+  useEffect(() => {
+    if (!focused || protectedDataLocked) return;
+    const subscription = AppState.addEventListener('change', phase => {
+      // Resume only interrupted work or a genuine committed change, not a settled snapshot.
+      if (phase !== 'active' || deferredRead.current === undefined) return;
+      retry();
     });
     return () => subscription.remove();
-  }, [invalidateSnapshot]);
+  }, [focused, protectedDataLocked, retry]);
   useEffect(() => {
     if (!focused) return;
     workoutFocus.current = true;
     const unsubscribe = subscribeWorkoutImportCommitted(() => {
-      if (!isForeground() || workoutRefreshPending.current) return;
+      if (!isForeground() || protectedDataLocked) {
+        deferredRead.current ??= 0;
+        return;
+      }
+      if (workoutRefreshPending.current) return;
       // A read already in flight cannot present pre-import rows as current.
       // Let it settle before requesting one successor for coalesced imports.
       if (reads.current > 0) {
@@ -89,7 +123,7 @@ export function useOverviewMetrics() {
       workoutRefreshPending.current = false;
       unsubscribe();
     };
-  }, [focused, retry]);
+  }, [focused, protectedDataLocked, retry]);
   useEffect(() => {
     if (!focused) return;
     const now = new Date();
@@ -98,15 +132,20 @@ export function useOverviewMetrics() {
       now.getMonth(),
       now.getDate() + 1,
     );
-    // Calendar boundaries change the chart and completed comparison windows even without new records.
-    const timer = setTimeout(
-      retry,
-      Math.max(1, midnight.getTime() - now.getTime()),
-    );
+    const timer = setTimeout(retry, Math.max(1, +midnight - +now));
     return () => clearTimeout(timer);
-  }, [focused, attempt, retry, invalidateSnapshot]);
+  }, [focused, attempt, retry]);
   useEffect(() => {
-    if (!focused) return;
+    if (!focused || protectedDataLocked) return;
+    if (
+      AppState.currentState === 'background' ||
+      AppState.currentState === 'inactive'
+    ) {
+      deferredRead.current ??= 0;
+      return;
+    }
+    const resumeAttempt = deferredRead.current ?? 0;
+    deferredRead.current = undefined;
     let active = true;
     const controller = new AbortController();
     let retryTimer: ReturnType<typeof setTimeout> | undefined;
@@ -158,6 +197,7 @@ export function useOverviewMetrics() {
                 AppState.currentState !== 'background'
               )
                 load(discardRetries + 1);
+              else if (isCurrent()) deferredRead.current = discardRetries + 1;
             }, delay);
           }
           return;
@@ -178,18 +218,20 @@ export function useOverviewMetrics() {
         reads.current--;
         if (reads.current === 0 && workoutRefreshPending.current) {
           workoutRefreshPending.current = false;
-          if (workoutFocus.current && isForeground()) retry();
+          if (workoutFocus.current) {
+            if (isForeground()) retry();
+            else deferredRead.current ??= 0;
+          }
         }
       }
     };
-    Promise.resolve().then(() => load(0));
+    Promise.resolve().then(() => load(resumeAttempt));
     return () => {
       active = false;
       clearTimeout(retryTimer);
-      // Discard queued work and stop only this read at safe SQL boundaries.
       controller.abort();
     };
-  }, [focused, attempt, retry]);
+  }, [focused, protectedDataLocked, attempt, retry]);
   const save = useCallback(async (next: readonly OverviewMetricChoice[]) => {
     const storage = require('../../storage/secureDatabase');
     await saveOverviewMetricSelection(await storage.openLocalStorage(), next);

@@ -12,18 +12,27 @@ export function SettingsHealthConnectionSection() {
   >();
   useEffect(() => {
     let sequence = 0;
+    let settled = false;
+    let pending = false;
     const read = async () => {
+      if (settled || pending) return;
+      pending = true;
       const request = ++sequence;
       try {
         const result = await healthKit.getAvailability();
-        if (request === sequence)
+        if (request === sequence) {
+          // Device capability is not the mutable Health permission.
+          settled = true;
           setStatus(
             result.status === 'unsupportedPlatform'
               ? 'unavailable'
               : result.status,
           );
+        }
       } catch {
         if (request === sequence) setStatus('unknown');
+      } finally {
+        pending = false;
       }
     };
     read();
