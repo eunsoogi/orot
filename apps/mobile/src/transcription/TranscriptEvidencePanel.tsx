@@ -4,6 +4,8 @@ import type { TranscriptEvidenceSegment } from '@orot/domain';
 import { AppText as Text } from '../layout/AppText';
 import { AppButton } from '../layout/AppButton';
 import { t } from '../i18n';
+import type { RecordingSegmentPlayback } from '../recording/useRecordingDetailPlayback';
+import { useTranscriptPanelPlayback } from './useTranscriptPanelPlayback';
 import TranscriptEvidenceItem from './TranscriptEvidenceItem';
 import TranscriptReviewHeader from './TranscriptReviewHeader';
 import TranscriptCorrectionEditor from './TranscriptCorrectionEditor';
@@ -24,6 +26,7 @@ interface TranscriptEvidencePanelProps {
   recordingSourceId?: string;
   service?: TranscriptEvidenceService;
   playSegment?: TranscriptEvidenceService['play'];
+  segmentPlayback?: RecordingSegmentPlayback;
   deletionBusy?: boolean;
   savedDetail?: boolean;
   automaticTranscriptionStatus?: 'running' | 'failed' | 'complete';
@@ -34,6 +37,7 @@ export default function TranscriptEvidencePanel({
   recordingSourceId,
   service = transcriptEvidenceService,
   playSegment = service.play,
+  segmentPlayback,
   deletionBusy = false,
   savedDetail = false,
   automaticTranscriptionStatus,
@@ -46,7 +50,12 @@ export default function TranscriptEvidencePanel({
   const [error, setError] = useState<TranscriptError | null>(null);
   const [editingSegmentId, setEditingSegmentId] = useState<string | null>(null);
   const [draft, setDraft] = useState('');
-  const [playingSegmentId, setPlayingSegmentId] = useState<string | null>(null);
+  const playback = useTranscriptPanelPlayback(
+    segmentPlayback,
+    playSegment,
+    setError,
+  );
+  const shownError = error ?? (playback.failed ? 'play' : null);
   const [expanded, setExpanded] = useState(false);
   const [collapsedIds, setCollapsedIds] = useState(() => new Set<string>());
   const isCollapsed = (id: string) =>
@@ -114,17 +123,6 @@ export default function TranscriptEvidencePanel({
       setBusy(false);
     }
   }
-  async function play(segment: TranscriptEvidenceSegment): Promise<void> {
-    setPlayingSegmentId(segment.id);
-    setError(null);
-    try {
-      await playSegment(segment);
-    } catch {
-      setError('play');
-    } finally {
-      setPlayingSegmentId(null);
-    }
-  }
   if (!loading && !view && !error) return null;
   return (
     <View style={styles.container} testID="transcript-panel">
@@ -151,13 +149,13 @@ export default function TranscriptEvidencePanel({
           {t('recording.transcript.autoProgress')}
         </Text>
       ) : null}
-      {error ? (
+      {shownError ? (
         <Text
           accessibilityRole="alert"
           style={styles.error}
           testID="transcript-error"
         >
-          {errorLabel(error)}
+          {errorLabel(shownError)}
         </Text>
       ) : null}
       {!view && !loading ? (
@@ -211,7 +209,7 @@ export default function TranscriptEvidencePanel({
                   collapsed={isCollapsed(segment.id)}
                   savedDetail={savedDetail}
                   busy={busy}
-                  playing={playingSegmentId === segment.id}
+                  {...playback.controls(segment)}
                   onToggleCollapsed={
                     savedDetail
                       ? undefined
@@ -224,7 +222,6 @@ export default function TranscriptEvidencePanel({
                           });
                         }
                   }
-                  onPlay={() => play(segment)}
                   onEdit={() => {
                     setDraft(segment.text);
                     setEditingSegmentId(segment.id);

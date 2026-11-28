@@ -1,10 +1,11 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { Pressable, View } from 'react-native';
+import { View } from 'react-native';
 import { AppSymbol } from '../layout/AppSymbol';
 import { appColors } from '../layout/appColors';
 import { AppText as Text } from '../layout/AppText';
 import { t } from '../i18n';
 import { RecordingPlaybackSeekSlider } from './RecordingPlaybackSeekSlider';
+import { RecordingPlaybackButton } from './RecordingPlaybackButton';
 import { recordingLibraryStyles as styles } from './RecordingLibraryPanel.styles';
 import {
   formatRecordingDuration,
@@ -163,29 +164,22 @@ export default function RecordingPlaybackControls({
   return (
     <View style={styles.playbackCard} testID="recording-playback-controls">
       <View style={styles.playbackRow}>
-        <Pressable
-          accessibilityRole="button"
-          accessibilityLabel={
+        <RecordingPlaybackButton
+          label={
             playing
               ? t('recording.library.stopAudio')
               : t('recording.library.playAudio')
           }
-          accessibilityState={{ disabled: playing ? !canStop : !canPlay }}
+          stop={playing}
           disabled={playing ? !canStop : !canPlay}
           onPress={() => {
             if (playing) stopRecording();
             else playRecording();
           }}
-          style={styles.playbackButton}
           testID={
             playing ? 'recording-playback-stop' : 'recording-playback-button'
           }
-        >
-          <AppSymbol
-            name={playing ? 'stop.fill' : 'play.fill'}
-            color={appColors.onPrimary}
-          />
-        </Pressable>
+        />
         <Text style={styles.playbackCopy}>
           {playing
             ? t('recording.library.playingAudio')

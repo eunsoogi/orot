@@ -107,14 +107,6 @@ export const recordingLibraryStyles = StyleSheet.create({
     backgroundColor: appColors.surface,
   },
   playbackRow: { alignItems: 'center', flexDirection: 'row', gap: 12 },
-  playbackButton: {
-    alignItems: 'center',
-    justifyContent: 'center',
-    width: 48,
-    height: 48,
-    borderRadius: 24,
-    backgroundColor: appColors.primaryAction,
-  },
   playbackCopy: {
     flex: 1,
     color: appColors.text,

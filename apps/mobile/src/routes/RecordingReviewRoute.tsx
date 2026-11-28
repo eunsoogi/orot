@@ -17,6 +17,7 @@ import { useRecordingSelection } from '../recording/RecordingSelectionContext';
 import RecordingPlaybackControls from '../recording/RecordingPlaybackControls';
 import RecordingExportPanel from '../recording/RecordingExportPanel';
 import { useRouteRecordingPlayback } from '../recording/useRouteRecordingPlayback';
+import { useRecordingDetailPlayback } from '../recording/useRecordingDetailPlayback';
 import { SavedRecordingDeleteAction } from '../recording/SavedRecordingDeleteAction';
 import { recordingService } from '../recording/recordingService';
 import TranscriptEvidencePanel from '../transcription/TranscriptEvidencePanel';
@@ -84,8 +85,13 @@ export function RecordingReviewRoute({
     revision: Number(busy),
     inputRevision: Number(dirty),
   });
-  const playback = useRouteRecordingPlayback(
+  const routePlayback = useRouteRecordingPlayback(
     recordingService,
+    source?.id,
+    focused,
+  );
+  const playback = useRecordingDetailPlayback(
+    routePlayback,
     source?.id,
     focused,
   );
@@ -151,20 +157,14 @@ export function RecordingReviewRoute({
                       ? presentation.durationMs
                       : selection.summary.durationMs
                   }
-                  playbackService={playback}
+                  playbackService={playback.whole}
                   autoPlay={selection.autoPlay && !autoPlayConsumed}
                   onAutoPlayConsumed={() => setAutoPlayConsumed(true)}
                 />
                 <TranscriptEvidencePanel
                   key={source.id}
                   savedDetail
-                  playSegment={segment =>
-                    playback.playRange(
-                      segment.recordingSourceId,
-                      segment.audioRange.startMs,
-                      segment.audioRange.endMs,
-                    )
-                  }
+                  segmentPlayback={playback.segments}
                   recordingSourceId={source.id}
                   deletionBusy={exportBusy || review.busy || deleteBusy}
                   onInteractionChange={setInteraction}
