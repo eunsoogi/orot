@@ -60,7 +60,7 @@ test('retains independent activity sensors and never substitutes latest amount f
   expect(text).toContain('측정 210건');
   expect(text).toContain('측정 출처 2: 기록일별 센서 샘플 합 평균 700 걸음');
   expect(text).toContain('측정 24건');
-  expect(text).toContain('합산하거나 전체 일일 걸음수로 해석할 수 없어요');
+  expect(text).not.toContain('합산하거나 전체 일일 걸음수로 해석할 수 없어요');
   expect(
     task.validateResult(
       { recordSummaries: { facts: { q0: 'latest' } } },
@@ -110,6 +110,7 @@ test('sleep mean and optional whole-period stages never imply absent complete-ni
     calendarDays: 30,
     sleep: {
       meanRecordedDailyMinutes: 420,
+      observedAsleepSeconds: 504000,
       recordedDays: 20,
       stageMinutes: { asleepCore: 5000, asleepREM: 2500 },
     },
@@ -118,7 +119,8 @@ test('sleep mean and optional whole-period stages never imply absent complete-ni
     const text = summary(topic, { sleep: mode });
     expect(text).toContain('평균 420분');
     expect(text).toContain('기록 20일 / 30일');
-    expect(text).toContain('완전한 하룻밤 수면 총량을 뜻하지는 않아요');
+    expect(text).toContain('잠든 것으로 기록된 구간은 총 8400분');
+    expect(text).not.toContain('완전한 하룻밤 수면 총량을 뜻하지는 않아요');
     expect(text).not.toContain('완전한 밤 수면 기록이 없');
     if (mode === 'mean_and_stages')
       expect(text).toContain(
@@ -194,4 +196,44 @@ test('does not require an unnamed medication registration as a fabricated source
       recordSummaries: { properties: { facts: { required: ['m0'] } } },
     },
   });
+});
+
+test('checked-empty sleep has no duration and actual awake conflicts retain a scoped notice', () => {
+  const sleep = { meanRecordedDailyMinutes: 90, recordedDays: 1 };
+  const result = task.validateResult(
+    { recordSummaries: { facts: { sleep: 'mean' } } },
+    input({
+      topic: 'sleep',
+      calendarDays: 1,
+      sleep,
+      limitations: [
+        'recorded_sleep_and_awake_intervals_overlap',
+        'unrecorded_days_are_unknown_not_zero_or_missed_doses',
+      ],
+    }),
+  );
+  expect(result.status).toBe('valid');
+  if (result.status !== 'valid') throw new Error('Expected source-bound sleep');
+  const section = result.value.hypotheses[0];
+  expect(section.summary).toContain('평균 90분');
+  expect(section.summary).not.toContain('잠든 것으로 기록된 구간은 총');
+  expect(section.uncertainty).toContain('모두 기록돼');
+  const empty = input({
+    topic: 'sleep',
+    calendarDays: 1,
+    sleep: { meanRecordedDailyMinutes: null, recordedDays: 0 },
+  });
+  expect(task.createResultSchema!(empty).properties).not.toHaveProperty(
+    'recordSummaries',
+  );
+  expect(
+    task.projectStreamedText!(
+      JSON.stringify({
+        type: 'result',
+        value: { recordSummaries: { facts: { sleep: 'mean' } } },
+        citations: ['facts'],
+      }),
+      empty,
+    ),
+  ).toBeUndefined();
 });

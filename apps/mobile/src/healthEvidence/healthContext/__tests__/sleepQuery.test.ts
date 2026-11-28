@@ -2,6 +2,9 @@ import { createRecordRepository, runMigrations } from '@orot/storage';
 import { healthObservation } from '../../../../../../packages/storage/__tests__/localQueryTestSupport';
 import { createHealthEvidenceTestDatabase } from '../../localEvidenceTestSupport';
 import { readHealthSleepContext } from '../sleepQuery';
+import { healthContextContent } from '../../../aiFeatures/integration/healthContextEvidence';
+import { createHealthContextReader } from '../reader';
+import { healthSleepAwakeConflict } from '../observationSemantics';
 import { healthContextDays } from '../window';
 
 test('unions duplicate/overlapping stages, excluding awake time from sleep duration', async () => {
@@ -84,6 +87,79 @@ test('clips cross-midnight intervals into local days without converting an unkno
     );
     expect(result.unsupportedCategories).toBe(true);
     expect(result.days.map(day => day.asleepSeconds)).toEqual([1800, 1800]);
+  } finally {
+    close();
+  }
+});
+
+test('stock scoped evidence emits recorded union once, and never invents an empty or disputed duration', async () => {
+  const { database, close } = createHealthEvidenceTestDatabase();
+  try {
+    await runMigrations(database);
+    const records = createRecordRepository(database);
+    const window = {
+      fromInclusive: '2026-10-01T00:00:00Z',
+      toExclusive: '2026-10-03T00:00:00Z',
+      timeZone: 'UTC',
+    };
+    const scope = {
+      kind: 'health_context_period',
+      version: 1,
+      topic: 'sleep',
+      window,
+    } as const;
+    const readContext = createHealthContextReader(database);
+    const read = async () => {
+      const report = await readContext(window, ['sleep']);
+      return JSON.parse(
+        healthContextContent(scope, report).slice('health_context: '.length),
+      );
+    };
+    const put = (id: string, from: string, to: string, text: string) =>
+      records.put('health_observation', {
+        ...healthObservation(
+          id,
+          'HKCategoryTypeIdentifierSleepAnalysis',
+          from,
+          'healthkit',
+          'imported',
+          to,
+        ),
+        ingestedAt: '2026-10-02T12:00:00Z',
+        value: { kind: 'text', text },
+      });
+    expect((await read()).sleep).toMatchObject({
+      recordedDays: 0,
+      meanRecordedDailyMinutes: null,
+    });
+    expect((await read()).sleep).not.toHaveProperty('observedAsleepSeconds');
+
+    await put('asleep', '2026-10-01T23:30:00Z', '2026-10-02T00:30:00Z', '3');
+    await put('stage', '2026-10-02T00:15:00Z', '2026-10-02T00:45:00Z', '4');
+    await put(
+      'awake-adjacent',
+      '2026-10-02T00:45:00Z',
+      '2026-10-02T01:00:00Z',
+      '2',
+    );
+    await put('in-bed', '2026-10-01T22:00:00Z', '2026-10-02T01:30:00Z', '0');
+    const recorded = await read();
+    expect(recorded.sleep).toMatchObject({
+      recordedDays: 2,
+      observedAsleepSeconds: 4500,
+      meanRecordedDailyMinutes: 37.5,
+    });
+    expect(recorded.limitations).not.toContain(healthSleepAwakeConflict);
+    await put(
+      'awake-crossing',
+      '2026-10-02T00:30:00Z',
+      '2026-10-02T01:00:00Z',
+      '2',
+    );
+    const disputed = await read();
+    expect(disputed.limitations).toContain(healthSleepAwakeConflict);
+    expect(disputed.sleep).not.toHaveProperty('observedAsleepSeconds');
+    expect(disputed.sleep.stageMinutes.awake).toBe(30);
   } finally {
     close();
   }

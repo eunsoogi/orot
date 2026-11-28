@@ -1,3 +1,4 @@
+import { observedRecordAnswerPolicy } from '../agent/execution/observedRecordAnswerPolicy';
 import {
   hasInternalSummaryTerminology,
   summaryCommunicationGuidance,
@@ -45,7 +46,7 @@ import { summaryCorrection } from './summaryCorrection';
 export const symptomSummaryTask: TaskResponderContract<DiseaseHypothesisAnalysis> =
   {
     taskType: 'symptom_record_summary',
-    taskVersion: '6',
+    taskVersion: '8',
     requiredToolEvidenceKinds: ['personal_record', 'external_medical'],
     // Every revised request below already includes all current facts; keep tool history as receipts.
     nativeToolResultMode: 'evidence_references',
@@ -56,13 +57,14 @@ export const symptomSummaryTask: TaskResponderContract<DiseaseHypothesisAnalysis
     allowPartialEvidence: true,
     systemPrompt:
       summaryCommunicationGuidance +
+      observedRecordAnswerPolicy +
+      ' ' +
       'Summarize explicit facts in saved medication, dose, activity, step-count, health-measurement and symptom records. This is a factual record summary, not a disease assessment. ' +
-      'For this broad summary prefer local-health-context with detail=summary across all available topics. Omit days/window unless the user requested a narrower period so all available imported history is included. It aggregates the whole period, not a few recent samples. If unavailable, use the personal-record tool with view=health_overview. Preserve dates, units and recorded-day coverage; describe only supplied comparisons. ' +
+      'For this broad summary prefer local-health-context with detail=summary across all available topics. Omit days/window unless the user requested a narrower period so all available imported history is included. Use the app-calculated window without auditing unobserved dates. If unavailable, use the personal-record tool with view=health_overview. Preserve actual dates and units; describe only supplied comparisons. ' +
       'Use a separate concise section for each available record topic, plus separate medical-context sections, up to eight total. Each cited topic must state concrete supplied facts: medication names, measurement values with units, activity counts, and sleep stages or individual intervals. Never substitute an empty heading or a promise that records follow. A missing source display does not make a normalized amount or unit unavailable. ' +
       'Convert clock times to displayTimeZone, or explicitly label the retained source time zone such as UTC. For step_count, count means steps, not occurrences. Express sleep interval durations readably in minutes and seconds. ' +
       'Medication, activity and measurement records are usable without symptom notes, transcripts or photographs. Present confirmed observations first; do not lead with an empty symptom section or claim all evidence is missing. State limits on subjective symptoms, causes and associations only where relevant. ' +
       'Search activity, steps, blood pressure, heart rate, body mass and sleep as well as medications. Do not make the summary medication-only when other relevant facts are available. ' +
-      'Use permitted follow-up searches for missing dates, values or sleep intervals. A partial search does not establish that the app lacks those records or that the user must enter them again. ' +
       'Distinguish current user-confirmed medication use, Health medication registration, prescription records and individual dose completion. Registration alone does not prove a prescription. Missing dose records never mean unknown medication use or missed doses. For health_context use its computed coverage, daily means and comparisons: no raw category codes, no adding sensor step series, and calendar-day sleep union is not a complete night. For raw sleep samples describe the individual interval. Keep evidence IDs in citation arrays, never prose. ' +
       'Use uncertaintyNotes only for actual interpretive limits, as an array of concise Korean notes; omit it or use an empty array when no limit applies. Do not return a scalar uncertainty field or an English placeholder. Include missingData only when it is necessary for this summary and could not be established through permitted searches; otherwise omit it or use an empty array. ' +
       'Do not create a standalone section that only states missing subjective-symptom coverage. When that limit matters and all supplied clinical records are typed non-symptom records, use coverageNotes=["no_symptom_entries_in_supplied_records"] instead; the app verifies this supplied-subset limit and places it in uncertainty. Omit coverageNotes otherwise. ' +

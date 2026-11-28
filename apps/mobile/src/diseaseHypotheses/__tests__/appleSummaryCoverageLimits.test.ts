@@ -96,9 +96,7 @@ test('does not invent limits or expose unknown internal codes as user text', () 
       topic: 'measurements',
       limitations: ['unknown_internal_limit'],
     }),
-  ).toEqual([
-    '이 집계에는 추가적인 범위 제한이 있어요. 근거에서 원본의 집계 범위를 확인해 주세요.',
-  ]);
+  ).toEqual([]);
   const notes = computedSummaryLimitations({
     topic: 'activity',
     limitations: [
@@ -106,7 +104,7 @@ test('does not invent limits or expose unknown internal codes as user text', () 
       'medication_registration_and_current_confirmation_are_distinct_from_individual_dose_completion',
     ],
   });
-  expect(notes.join(' ')).not.toMatch(/복약|복용|약의/u);
+  expect(notes).toEqual([]);
 });
 
 test('an exact midnight exclusive endpoint does not add the next calendar date', () => {
@@ -214,4 +212,39 @@ test('the task stream entry does not build calendars for incomplete selector pre
   } finally {
     build.mockRestore();
   }
+});
+
+test('a positive recorded sub-minute interval is never rounded to a zero-duration result', () => {
+  const input: TaskResponderInput = {
+    request: '수면 기록 요약',
+    resultPartition: { sourceKind: 'personal_record', index: 0, total: 2 },
+    evidence: {
+      items: [
+        {
+          ...reference,
+          evidenceId: 'facts',
+          content:
+            'health_context: ' +
+            JSON.stringify({
+              topic: 'sleep',
+              sleep: {
+                observedAsleepSeconds: 0.125,
+                meanRecordedDailyMinutes: 0,
+                recordedDays: 1,
+              },
+            }),
+        },
+      ],
+      conflicts: [],
+      coverage: [],
+    },
+  };
+  const result = task.validateResult(
+    { recordSummaries: { facts: { sleep: 'mean' } } },
+    input,
+  );
+  if (result.status !== 'valid')
+    throw new Error('Expected source-bound result');
+  expect(result.value.hypotheses[0].summary).toContain('총 0.125초');
+  expect(result.value.hypotheses[0].summary).not.toContain('0분');
 });

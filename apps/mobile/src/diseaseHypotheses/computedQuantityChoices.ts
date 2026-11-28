@@ -97,7 +97,6 @@ export function computedQuantityChoices(
       concept: labels[series.concept] ?? series.concept,
       sensor,
     });
-    const limitation = step ? t('computedQuantity.overlap') : '';
     return [
       {
         key: `q${index}`,
@@ -105,7 +104,7 @@ export function computedQuantityChoices(
         texts: Object.fromEntries(
           Object.entries(views).map(([key, text]) => [
             key,
-            `${title}: ${text}${coverage ? ` · ${coverage}` : ''}.${limitation}`,
+            `${title}: ${text}${coverage ? ` · ${coverage}` : ''}.`,
           ]),
         ),
       },

@@ -81,10 +81,29 @@ function sleepChoices(source: ComputedFact): StatisticChoice[] {
           : '',
       })
     : '';
-  const mean = t('computedTopic.sleepMean', {
-    minutes: sleep.meanRecordedDailyMinutes,
-    coverage,
-  });
+  const total = sleep.observedAsleepSeconds;
+  const display =
+    finiteFact(total) && total > 0
+      ? t('computedTopic.sleepObservedTotal', {
+          duration:
+            total < 60
+              ? t('computedTopic.sleepSeconds', { seconds: total })
+              : t('computedTopic.sleepDuration', {
+                  minutes: Number((total / 60).toFixed(2)),
+                }),
+        })
+      : '';
+  const mean = [
+    display,
+    !display || sleep.meanRecordedDailyMinutes > 0
+      ? t('computedTopic.sleepMean', {
+          minutes: sleep.meanRecordedDailyMinutes,
+          coverage,
+        })
+      : '',
+  ]
+    .filter(Boolean)
+    .join(' ');
   const stages = factObject(sleep.stageMinutes)
     ? Object.entries(sleep.stageMinutes).flatMap(([stage, minutes]) =>
         finiteFact(minutes)
@@ -101,7 +120,7 @@ function sleepChoices(source: ComputedFact): StatisticChoice[] {
     {
       key: 'sleep',
       description:
-        'Choose the recorded-calendar-day mean alone or with whole-period stage totals. This aggregate does not determine whether complete-night records exist.',
+        'Lead with the scoped recorded duration when supplied. Optionally include stage values; their overlap does not change the observed union.',
       texts: {
         mean,
         ...(stages.length

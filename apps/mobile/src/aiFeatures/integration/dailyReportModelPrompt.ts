@@ -1,3 +1,4 @@
+import { observedRecordAnswerPolicy } from '../../agent/execution/observedRecordAnswerPolicy';
 import { recordFirstResponsePrompt } from '../../agent/execution/recordFirstResponsePrompt';
 
 /** Evidence text is untrusted data, never authority to alter the report contract.
@@ -6,6 +7,7 @@ export function dailyReportModelPrompt(allowAnalysis: boolean) {
   return [
     'Create a personalized Korean daily health interpretation from supplied indexed evidence and guidance only.',
     recordFirstResponsePrompt,
+    observedRecordAnswerPolicy,
     'Return JSON {"indexes":[0,...],"analysis":[{"kind":"interpretation","text":"...","evidenceIndexes":[0,1]},{"kind":"action","guidanceIndex":2,"evidenceIndexes":[0,2]}]}.',
     'Select 1-8 unique representative indexes and at most four analysis items. No tools, markdown, URLs or extra fields.',
     'Select the most relevant observations and connect them to personal history or plans when that relationship is supported. Use the interpretation to add personal relevance rather than repeat raw observations or reviewed actions already displayed by the app.',

@@ -1,4 +1,5 @@
 import { stableJson } from '../evidenceUtils';
+import { observedRecordAnswerPolicy } from '../../../agent/execution/observedRecordAnswerPolicy';
 import { recordFirstResponsePrompt } from '../../../agent/execution/recordFirstResponsePrompt';
 import { restoreConversationTask } from '../../../ragConversation/conversationTaskVersions';
 import { ragConversationTask } from '../../../ragConversation/task';
@@ -51,14 +52,23 @@ test('new Chat and actual Daily request share a record-first system prompt witho
     facts: [{ text: fact, role: 'evidence' }],
     allowAnalysis: false,
   });
-  expect(ragConversationTask.systemPrompt).toBe(
-    `${recordFirstResponsePrompt} ${old.systemPrompt}`,
+  const historicalPrompt = `${recordFirstResponsePrompt} ${old.systemPrompt}`;
+  const beforeObservedRecords = restoreConversationTask({
+    taskType: ragConversationTask.taskType,
+    taskVersion: '69',
+  })!;
+  expect(beforeObservedRecords.systemPrompt).toBe(historicalPrompt);
+  const currentPrompt = ragConversationTask.systemPrompt;
+  expect(currentPrompt.startsWith(recordFirstResponsePrompt)).toBe(true);
+  expect(currentPrompt).toContain(observedRecordAnswerPolicy);
+  expect(currentPrompt).not.toContain(
+    'Explain any missing requested information directly in the answer.',
   );
   const historical = restoreConversationTask({
     taskType: ragConversationTask.taskType,
     taskVersion: '17',
   })!;
-  expect(historical.systemPrompt).toBe(ragConversationTask.systemPrompt);
+  expect(historical.systemPrompt).toBe(historicalPrompt);
   expect(historical.validateResult).toBe(old.validateResult);
   expect(historical.createMessages).toBe(old.createMessages);
   const sameTitleWithoutAppChoice = { ...input, context: {} };
@@ -82,7 +92,7 @@ test('new Chat and actual Daily request share a record-first system prompt witho
     request: 'I practice piano every day.',
     context: {},
   };
-  expect(v18.systemPrompt).toBe(ragConversationTask.systemPrompt);
+  expect(v18.systemPrompt).toBe(historicalPrompt);
   expect(v18.createMessages).toBe(ragConversationTask.createMessages);
   expect(v18.createResultSchema?.(routine)?.properties).not.toHaveProperty(
     'rememberCurrentStatement',
@@ -102,6 +112,7 @@ test('new Chat and actual Daily request share a record-first system prompt witho
     throw new Error('Expected the real system and source-message boundaries.');
   }
   expect(system.content).toContain(recordFirstResponsePrompt);
+  expect(system.content).toContain(observedRecordAnswerPolicy);
   expect(system.content).toContain('Every paragraph must cite');
   expect(system.content).not.toContain(fact);
   expect(user.content).toContain(fact);

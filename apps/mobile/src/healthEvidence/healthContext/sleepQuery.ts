@@ -23,6 +23,7 @@ export async function readHealthSleepContext(
 ): Promise<{
   days: readonly HealthSleepDay[];
   unsupportedCategories: boolean;
+  awakeConflict?: true;
 }> {
   if (!days.length) throw new RangeError('Invalid sleep context days.');
   if (signal?.aborted) throw new Error('Health context was cancelled.');
@@ -75,12 +76,20 @@ export async function readHealthSleepContext(
       SELECT *, sum(CASE WHEN previous_end IS NULL OR start > previous_end THEN 1 ELSE 0 END)
         OVER (PARTITION BY date, stage ORDER BY start, finish ROWS UNBOUNDED PRECEDING) AS island
       FROM previous
-    ), merged AS (
+    ), merged AS MATERIALIZED (
       SELECT date, stage, island, min(start) AS start, max(finish) AS finish, count(*) AS samples
       FROM numbered GROUP BY date, stage, island
     )
     SELECT date, stage, round(sum(finish - start), 3) AS seconds, sum(samples) AS samples
-    FROM merged GROUP BY date, stage ORDER BY date, stage
+    FROM merged GROUP BY date, stage
+    UNION ALL
+    SELECT sleep.date, 'awake_conflict', 0, 1
+    FROM merged sleep
+    WHERE sleep.stage = 'all_asleep' AND EXISTS (
+      SELECT 1 FROM merged awake WHERE awake.date = sleep.date
+        AND awake.stage = 'awake' AND awake.start < sleep.finish AND awake.finish > sleep.start
+    ) GROUP BY sleep.date
+    ORDER BY date, stage
   )`,
     parameters,
   );
@@ -96,6 +105,7 @@ export async function readHealthSleepContext(
     }
   >();
   let unsupportedCategories = false;
+  let awakeConflict = false;
   for (const row of result.rows) {
     if (
       typeof row.date !== 'string' ||
@@ -108,6 +118,12 @@ export async function readHealthSleepContext(
       row.samples < 1
     )
       throw new Error('Health context returned invalid sleep statistics.');
+    // Mark an actual overlap inside the same clipped SQL snapshot. Merely
+    // having awake records does not exclude a positive exact asleep total.
+    if (row.stage === 'awake_conflict') {
+      awakeConflict = true;
+      continue;
+    }
     const day = byDay.get(row.date) ?? {
       date: row.date,
       asleepSeconds: 0,
@@ -134,5 +150,9 @@ export async function readHealthSleepContext(
       Math.round((stageSeconds - day.asleepSeconds) * 1000) / 1000,
     );
   }
-  return { days: [...byDay.values()], unsupportedCategories };
+  return {
+    days: [...byDay.values()],
+    unsupportedCategories,
+    ...(awakeConflict ? { awakeConflict: true } : {}),
+  };
 }

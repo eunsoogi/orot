@@ -1,4 +1,4 @@
-/** Verbatim aggregation-scope cautions; no clinical interpretation or limitation-code mapping changes. */
+/** Localized notices describe limits the app actually observed, never clinical conclusions. */
 export const computedLimitsKo = {
   'computedLimits.measurementLimit':
     '집계할 수 있는 측정 출처 수를 넘어 일부 출처가 제외됐어요. 이 요약은 전체 측정 기록을 포함하지 않아요.',
@@ -6,6 +6,8 @@ export const computedLimitsKo = {
     '집계할 수 있는 복용약 목록 수를 넘어 일부 약이 제외됐어요. 이 요약은 전체 복용약 목록을 포함하지 않아요.',
   'computedLimits.unsupportedSleep':
     '해석할 수 없는 수면 분류는 시간 계산에서 제외됐어요. 수면 집계가 일부 기록을 포함하지 않을 수 있어요.',
+  'computedLimits.sleepAwakeConflict':
+    '같은 시간에 수면과 깨어 있음이 모두 기록돼 수면 시간을 합계로 표시하지 않았어요.',
   'computedLimits.unrecordedUnknown':
     '기록하지 않은 날짜의 값은 알 수 없으며, 0으로 해석하지 않아요.',
   'computedLimits.registrationNotDose':

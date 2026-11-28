@@ -61,6 +61,16 @@ export function summaryPeriodFacts(value: Fact): readonly Fact[] {
       aggregationScope: 'calendar_day_union_not_complete_night',
     });
   }
+  if (
+    object(value.sleep) &&
+    typeof value.sleep.observedAsleepSeconds === 'number'
+  )
+    facts.push({
+      kind: 'health_context_sleep',
+      minutes: value.sleep.observedAsleepSeconds / 60,
+      recordedDays: value.sleep.recordedDays,
+      aggregationScope: 'calendar_day_union_not_complete_night',
+    });
   if (object(value.symptoms)) {
     const latest = Array.isArray(value.symptoms.latest)
       ? value.symptoms.latest.filter(object)
