@@ -15,7 +15,10 @@ import { useNavigationContentInset } from '../../navigation/useNavigationContent
 /** Decorative light stays behind the widget stack and never receives input. */
 export function OverviewWidgetAmbient() {
   const dark = useColorScheme() === 'dark';
-  const strength = dark ? 0.26 : 0.17;
+  // The pale canvas needs higher chroma and alpha than black to show the glow.
+  const palette = dark
+    ? { blue: '#4356a8', plum: '#9d4274', strength: 0.26 }
+    : { blue: '#728de8', plum: '#b875c5', strength: 0.3 };
   const { right } = useNavigationRightScrollEdge();
   const contentInset = useNavigationContentInset();
   // The page gutter reaches the rail boundary. Borrow just a shallow strip
@@ -104,19 +107,15 @@ export function OverviewWidgetAmbient() {
           >
             <Stop
               offset="0"
-              stopColor={dark ? '#4356a8' : '#b3c7fa'}
-              stopOpacity={strength}
+              stopColor={palette.blue}
+              stopOpacity={palette.strength}
             />
             <Stop
               offset="0.58"
-              stopColor={dark ? '#4356a8' : '#b3c7fa'}
-              stopOpacity={strength * 0.7}
+              stopColor={palette.blue}
+              stopOpacity={palette.strength * 0.7}
             />
-            <Stop
-              offset="1"
-              stopColor={dark ? '#4356a8' : '#b3c7fa'}
-              stopOpacity={0}
-            />
+            <Stop offset="1" stopColor={palette.blue} stopOpacity={0} />
           </RadialGradient>
           <RadialGradient
             id="overview-widget-ambient-plum"
@@ -127,19 +126,15 @@ export function OverviewWidgetAmbient() {
           >
             <Stop
               offset="0"
-              stopColor={dark ? '#9d4274' : '#edb6d7'}
-              stopOpacity={strength}
+              stopColor={palette.plum}
+              stopOpacity={palette.strength}
             />
             <Stop
               offset="0.62"
-              stopColor={dark ? '#9d4274' : '#edb6d7'}
-              stopOpacity={strength * 0.7}
+              stopColor={palette.plum}
+              stopOpacity={palette.strength * 0.7}
             />
-            <Stop
-              offset="1"
-              stopColor={dark ? '#9d4274' : '#edb6d7'}
-              stopOpacity={0}
-            />
+            <Stop offset="1" stopColor={palette.plum} stopOpacity={0} />
           </RadialGradient>
         </Defs>
         <G mask="url(#overview-widget-ambient-mask)">
