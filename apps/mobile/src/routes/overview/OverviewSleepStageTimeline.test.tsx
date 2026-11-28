@@ -1,4 +1,4 @@
-import { act, render, screen } from '@testing-library/react-native';
+import { act, render, screen, within } from '@testing-library/react-native';
 import { StyleSheet } from 'react-native';
 import { createRecordRepository, runMigrations } from '@orot/storage';
 import { healthObservation } from '../../../../../packages/storage/__tests__/localQueryTestSupport';
@@ -91,8 +91,20 @@ test.each([230, 660] as const)(
         />,
       );
     });
-    const awake = screen.getByTestId('overview-sleep-interval-awake');
-    const rem = screen.getByTestId('overview-sleep-interval-rem');
+    const plot = within(screen.getByTestId('overview-sleep-stage-plot'));
+    const awake = plot.getByTestId('overview-sleep-interval-awake');
+    const rem = plot.getByTestId('overview-sleep-interval-rem');
+    const axis = plot.getByTestId('overview-sleep-stage-axis');
+    const clock = new Intl.DateTimeFormat(undefined, {
+      timeZone: metric.timeZone,
+      hour: 'numeric',
+      minute: '2-digit',
+    });
+    const start = within(axis).getByText(clock.format(samples[0]!.start));
+    const end = within(axis).getByText(clock.format(samples[3]!.end));
+    expect(StyleSheet.flatten(start.props.style).textAlign).toBe('left');
+    expect(StyleSheet.flatten(end.props.style).textAlign).toBe('right');
+    expect(within(axis).queryByText(/GMT|EST|EDT/)).toBeNull();
     expect(awake.props.accessibilityLabel).toMatch(/GMT-4/);
     expect(rem.props.accessibilityLabel).toMatch(/GMT-5/);
     expect(

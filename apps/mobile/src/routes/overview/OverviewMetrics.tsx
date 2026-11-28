@@ -87,6 +87,7 @@ export function OverviewMetrics({ onEdit }: { readonly onEdit?: () => void }) {
         available={canShowComparisons}
       />
       <View style={styles.section} testID="overview-health-overview-section">
+        {cards.length > 0 ? <OverviewWidgetAmbient /> : null}
         <View style={styles.heading} testID="overview-health-overview-heading">
           <Text accessibilityRole="header" style={styles.title}>
             {t('overview.healthOverview')}
@@ -122,7 +123,6 @@ export function OverviewMetrics({ onEdit }: { readonly onEdit?: () => void }) {
             setGridWidth(current => (current === width ? current : width));
           }}
         >
-          {cards.length > 0 ? <OverviewWidgetAmbient /> : null}
           {cards.map(metric =>
             metric === 'heartRate' ? (
               <OverviewHeartPanel

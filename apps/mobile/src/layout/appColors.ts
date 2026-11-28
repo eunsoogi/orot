@@ -22,6 +22,7 @@ export const appColorPalettes = {
     onDanger: '#ffffff',
     background: '#f2f4f6',
     surface: '#ffffff',
+    overviewWidgetSurface: '#ffffffe8',
     text: '#191f28',
     secondary: '#5e6875',
     border: '#e5e8eb',
@@ -47,6 +48,7 @@ export const appColorPalettes = {
     // Only the shared canvas turns black; cards and overlays retain their own fills.
     background: '#000000',
     surface: '#1c222a',
+    overviewWidgetSurface: '#1c222ae8',
     text: '#f2f4f6',
     secondary: '#a1acb8',
     border: '#38424e',
@@ -88,6 +90,8 @@ export const appColors = {
   onDanger: appColorPalettes.light.onDanger,
   background: systemColor('background'),
   surface: systemColor('surface'),
+  // Let the widget backdrop show through without dimming contents or controls.
+  overviewWidgetSurface: systemColor('overviewWidgetSurface'),
   text: systemColor('text'),
   secondary: systemColor('secondary'),
   border: systemColor('border'),

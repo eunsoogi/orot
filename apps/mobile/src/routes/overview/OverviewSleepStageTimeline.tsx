@@ -68,10 +68,15 @@ export function OverviewSleepStageTimeline({
     return (
       <Text style={styles.note}>{t('overview.sleepStagesUnavailable')}</Text>
     );
-  const intervalTime = new Intl.DateTimeFormat(undefined, {
+  const clockOptions = {
     timeZone,
     hour: 'numeric',
     minute: '2-digit',
+  } as const;
+  const axisTime = new Intl.DateTimeFormat(undefined, clockOptions);
+  // VoiceOver interval labels still disambiguate repeated local times at a DST fold.
+  const intervalTime = new Intl.DateTimeFormat(undefined, {
+    ...clockOptions,
     timeZoneName: 'shortOffset',
   });
   const shown = overviewSleepStages.filter(
@@ -90,65 +95,62 @@ export function OverviewSleepStageTimeline({
   const transitions = sleepStageTransitions(episode);
   const caption = (value: number) => intervalTime.format(value);
   return (
-    <View style={styles.timeline} testID="overview-sleep-stage-timeline">
-      <View style={styles.content}>
-        <Svg
-          width="100%"
-          height={shown.length * rowHeight}
-          style={StyleSheet.absoluteFill}
-          pointerEvents="none"
-          accessibilityElementsHidden
-        >
-          {shown.slice(0, -1).map(stage => {
-            const y = rowFor(stage) + rowHeight - 0.5;
-            return (
-              <Line
-                key={stage}
-                x1={0}
-                x2="100%"
-                y1={y}
-                y2={y}
-                stroke={scheme === 'dark' ? '#666f7b' : '#949da8'}
-                strokeWidth={1}
-                strokeDasharray="1 3"
-              />
-            );
-          })}
-        </Svg>
-        <View style={styles.labels}>
-          {shown.map(stage => (
-            <View
+    <View style={styles.content} testID="overview-sleep-stage-timeline">
+      <Svg
+        width="100%"
+        height={shown.length * rowHeight}
+        style={StyleSheet.absoluteFill}
+        pointerEvents="none"
+        accessibilityElementsHidden
+      >
+        {shown.slice(0, -1).map(stage => {
+          const y = rowFor(stage) + rowHeight - 0.5;
+          return (
+            <Line
               key={stage}
+              x1={0}
+              x2="100%"
+              y1={y}
+              y2={y}
+              stroke={scheme === 'dark' ? '#666f7b' : '#949da8'}
+              strokeWidth={1}
+              strokeDasharray="1 3"
+            />
+          );
+        })}
+      </Svg>
+      <View style={styles.labels}>
+        {shown.map(stage => (
+          <View
+            key={stage}
+            style={[
+              styles.labelRow,
+              !stacked && styles.labelRowInline,
+              { height: rowHeight },
+            ]}
+          >
+            <Text
               style={[
-                styles.labelRow,
-                !stacked && styles.labelRowInline,
-                { height: rowHeight },
+                styles.label,
+                !stacked && styles.labelName,
+                { color: colors[stage] },
               ]}
             >
+              {t(labels[stage])}
+            </Text>
+            {stageMinutes.has(stage) && (
               <Text
-                style={[
-                  styles.label,
-                  !stacked && styles.labelName,
-                  { color: colors[stage] },
-                ]}
+                testID={`overview-sleep-duration-${stage}`}
+                style={[styles.duration, !stacked && styles.labelDuration]}
               >
-                {t(labels[stage])}
+                {formatHealthDuration('sleep', stageMinutes.get(stage)!, 'min')}
               </Text>
-              {stageMinutes.has(stage) && (
-                <Text
-                  testID={`overview-sleep-duration-${stage}`}
-                  style={[styles.duration, !stacked && styles.labelDuration]}
-                >
-                  {formatHealthDuration(
-                    'sleep',
-                    stageMinutes.get(stage)!,
-                    'min',
-                  )}
-                </Text>
-              )}
-            </View>
-          ))}
-        </View>
+            )}
+          </View>
+        ))}
+      </View>
+      {/* The axis shares the plot column, not the legend's leading inset. */}
+      <View style={styles.plot} testID="overview-sleep-stage-plot">
         <View style={[styles.lanes, { height: shown.length * rowHeight }]}>
           {transitions.map(({ from, to, at }) => (
             <View
@@ -188,17 +190,21 @@ export function OverviewSleepStageTimeline({
             />
           ))}
         </View>
-      </View>
-      <View style={styles.times}>
-        <Text style={styles.note}>{caption(episode.from)}</Text>
-        <Text style={styles.note}>{caption(episode.to)}</Text>
+        <View style={styles.times} testID="overview-sleep-stage-axis">
+          <Text style={[styles.note, styles.endpoint]}>
+            {axisTime.format(episode.from)}
+          </Text>
+          <Text style={[styles.note, styles.endpoint, styles.trailing]}>
+            {axisTime.format(episode.to)}
+          </Text>
+        </View>
       </View>
     </View>
   );
 }
 const styles = StyleSheet.create({
-  timeline: { gap: 6, width: '100%' },
-  content: { flexDirection: 'row', gap: 8 },
+  content: { flexDirection: 'row', gap: 8, width: '100%' },
+  plot: { flex: 1, minWidth: 0, gap: 6 },
   labels: { flexBasis: '46%', maxWidth: 220 },
   labelRow: { justifyContent: 'center' },
   labelRowInline: {
@@ -216,7 +222,7 @@ const styles = StyleSheet.create({
     fontVariant: ['tabular-nums'],
   },
   note: { color: appColors.secondary, fontSize: 11 },
-  lanes: { flex: 1, minWidth: 0, position: 'relative', overflow: 'hidden' },
+  lanes: { position: 'relative', overflow: 'hidden' },
   connector: {
     position: 'absolute',
     width: 3,
@@ -224,10 +230,7 @@ const styles = StyleSheet.create({
     opacity: 0.48,
   },
   interval: { position: 'absolute', height: stageMarkHeight, borderRadius: 5 },
-  times: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    flexWrap: 'wrap',
-    gap: 4,
-  },
+  times: { flexDirection: 'row', gap: 4 },
+  endpoint: { flex: 1, minWidth: 0, textAlign: 'left' },
+  trailing: { textAlign: 'right' },
 });

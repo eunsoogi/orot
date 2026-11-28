@@ -170,7 +170,7 @@ const styles = StyleSheet.create({
   content: { gap: 8, minWidth: 0 },
   titleRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
   label: {
-    color: appColors.secondary,
+    color: appColors.text,
     flexShrink: 1,
     fontSize: 14,
     fontWeight: '600',

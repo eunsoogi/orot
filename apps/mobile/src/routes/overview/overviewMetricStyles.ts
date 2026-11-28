@@ -1,12 +1,12 @@
 import { StyleSheet } from 'react-native';
 import { appColors } from '../../layout/appColors';
-import { overviewMetricGridGap } from './overviewMetricLayout';
+import { overviewMetricGridColumnGap } from './overviewMetricLayout';
 
 const overviewMetricCardGap = 6;
 
 /** Shared card, summary, and chart geometry stays inside Home's single scroll owner. */
 export const overviewMetricStyles = StyleSheet.create({
-  sections: { gap: 24 },
+  sections: { gap: 16 },
   section: { gap: 12 },
   heading: {
     flexDirection: 'row',
@@ -35,7 +35,8 @@ export const overviewMetricStyles = StyleSheet.create({
     width: '100%',
     flexDirection: 'row',
     flexWrap: 'wrap',
-    gap: overviewMetricGridGap,
+    columnGap: overviewMetricGridColumnGap,
+    rowGap: 14,
   },
   card: {
     backgroundColor: appColors.surface,
@@ -44,6 +45,7 @@ export const overviewMetricStyles = StyleSheet.create({
     gap: overviewMetricCardGap,
   },
   widgetShell: {
+    backgroundColor: appColors.overviewWidgetSurface,
     borderRadius: 19,
     borderColor: appColors.border,
     borderWidth: StyleSheet.hairlineWidth,
