@@ -1,4 +1,4 @@
-import { act, render, screen } from '@testing-library/react-native';
+import { act, render, screen, waitFor } from '@testing-library/react-native';
 import { ConversationScreen } from '../ConversationScreen';
 import {
   ConversationSessionsProvider,
@@ -195,9 +195,20 @@ test.each([
         await sessions?.synchronizeModel();
       });
       await submitVisitFixturePrompt(prompt);
-      if (intent === 'visit-questions') {
+      if (lateVisit) {
+        await waitFor(() => expect(plan.calls()).toBe(1));
+        // Hold this exact native response beyond the former cutoff.
+        await act(async () => {
+          await new Promise(resolve => setTimeout(resolve, 2_600));
+          expect(rag).not.toHaveBeenCalled();
+          release();
+        });
+      }
+      if (intent === 'visit-questions' || lateVisit) {
         await screen.findByTestId('inline-visit-regenerate');
-        expect(visit.mock.calls[0]?.[4]).toMatchObject({ intent });
+        expect(visit.mock.calls[0]?.[4]).toMatchObject({
+          intent: 'visit-questions',
+        });
       } else {
         await screen.findByText(answer, undefined, { timeout: 6_000 });
         expect(screen.queryByTestId('inline-visit-regenerate')).toBeNull();
@@ -205,30 +216,17 @@ test.each([
       expect(
         [visit, daily, summary, rag].map(handler => handler.mock.calls.length),
       ).toEqual([
-        Number(intent === 'visit-questions'),
+        Number(intent === 'visit-questions' || lateVisit),
         Number(intent === 'daily-report'),
         Number(intent === 'health-summary'),
-        Number(
-          intent === 'ordinary' || intent === 'possibilities' || lateVisit,
-        ),
+        Number(intent === 'ordinary' || intent === 'possibilities'),
       ]);
       if (intent === 'possibilities')
         expect(rag.mock.calls[0]?.[4]).toMatchObject({
           intent,
           typedPossibilityReport: true,
         });
-      if (intent === 'ordinary' || lateVisit)
-        expect(rag.mock.calls[0]?.[4]).toBeUndefined();
-      if (lateVisit) {
-        // The native reply remained deliberately held until production had
-        // committed the ordinary fallback. A late enum cannot write a second row.
-        await act(async () => {
-          release();
-          await hold;
-        });
-        expect(visit).not.toHaveBeenCalled();
-        expect(screen.queryByTestId('inline-visit-regenerate')).toBeNull();
-      }
+      if (intent === 'ordinary') expect(rag.mock.calls[0]?.[4]).toBeUndefined();
       expect(loadAccount).toHaveBeenCalledTimes(1);
       expect(plan.calls()).toBe(1);
       plan.assertRequest(prompt);
