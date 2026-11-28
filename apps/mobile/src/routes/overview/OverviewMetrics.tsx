@@ -77,6 +77,7 @@ export function OverviewMetrics({ onEdit }: { readonly onEdit?: () => void }) {
       <OverviewMetricChartPlaceholder
         metric={metric}
         status={placeholderStatus}
+        initialPending={data.state === 'loading'}
         width={width}
         emptyMessage={
           data.state === 'ready'

@@ -4,6 +4,7 @@ import { AppText as Text } from '../layout/AppText';
 import { t } from '../i18n';
 import { formatCalendarEventRange } from './dateTime';
 import { calendarStyles as styles } from './calendarStyles';
+import { schedulePresentationStyles as scheduleStyles } from './schedulePresentationStyles';
 import { eventFromAppointment } from './calendarMonthEvents';
 import type { useCalendarLinking } from './useCalendarLinking';
 
@@ -66,15 +67,23 @@ export function CalendarSelectionSummary({
     </View>
   ) : showNextVisit && upcomingEvent ? (
     <View
-      style={flat ? styles.flatCard : styles.card}
+      style={flat ? scheduleStyles.flatNextVisit : styles.card}
       testID="schedule-next-visit-summary"
     >
-      <Text accessibilityRole="header">{t('calendar.nextVisit')}</Text>
+      <Text
+        accessibilityRole="header"
+        style={flat ? styles.calendarSelectedDate : undefined}
+      >
+        {t('calendar.nextVisit')}
+      </Text>
       <Text style={styles.eventTitle} testID="schedule-next-visit-title">
         {upcomingEvent.calendarEventSnapshot.title ||
           t('calendar.eventNoTitle')}
       </Text>
-      <Text testID="schedule-next-visit-time">
+      <Text
+        style={flat ? scheduleStyles.flatEventTime : undefined}
+        testID="schedule-next-visit-time"
+      >
         {formatCalendarEventRange(upcomingEvent)}
       </Text>
     </View>

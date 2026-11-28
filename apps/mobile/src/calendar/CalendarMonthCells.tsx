@@ -1,9 +1,10 @@
-import { Pressable, View } from 'react-native';
+import { Pressable, View, useWindowDimensions } from 'react-native';
 import { AppButton as Button } from '../layout/AppButton';
 import { AppText as Text } from '../layout/AppText';
 import { t } from '../i18n';
-import { formatCalendarEventRange } from './dateTime';
+import { formatCalendarAgendaTime, formatCalendarEventRange } from './dateTime';
 import { calendarStyles as styles } from './calendarStyles';
+import { schedulePresentationStyles as scheduleStyles } from './schedulePresentationStyles';
 import type { CalendarGridDay } from './calendarMonth';
 import { formatCalendarDate } from './calendarMonth';
 import type { CalendarMonthDisplayEvent } from './calendarMonthEvents';
@@ -41,6 +42,7 @@ export function calendarDayAccessibilityLabel(
 }
 
 interface CalendarDayCellProps {
+  flat?: boolean;
   day: CalendarGridDay;
   dayEvents: CalendarMonthDisplayEvent[];
   label: string;
@@ -50,6 +52,7 @@ interface CalendarDayCellProps {
 }
 
 export function CalendarDayCell({
+  flat = false,
   day,
   dayEvents,
   label,
@@ -75,15 +78,23 @@ export function CalendarDayCell({
       <View
         style={[
           styles.calendarDayFace,
-          selected && styles.calendarSelectedDay,
-          !selected && today && styles.calendarTodayDay,
+          selected &&
+            (flat
+              ? scheduleStyles.flatSelectedDay
+              : styles.calendarSelectedDay),
+          !selected &&
+            today &&
+            (flat ? scheduleStyles.flatTodayDay : styles.calendarTodayDay),
         ]}
         testID={`calendar-day-face-${day.dateKey}`}
       >
         <Text
           style={[
             styles.calendarDayNumber,
-            selected && styles.calendarSelectedDayNumber,
+            selected &&
+              (flat
+                ? scheduleStyles.flatSelectedDayNumber
+                : styles.calendarSelectedDayNumber),
             !selected && today && styles.calendarTodayDayNumber,
           ]}
         >
@@ -102,14 +113,21 @@ export function CalendarDayCell({
                   key={`${day.dateKey}-event-${index}`}
                   style={[
                     styles.calendarEventMarker,
-                    selected && styles.calendarSelectedEventMarker,
+                    hasNextVisit &&
+                      flat &&
+                      index === 0 &&
+                      scheduleStyles.flatVisitMarker,
+                    selected &&
+                      (flat
+                        ? scheduleStyles.flatSelectedEventMarker
+                        : styles.calendarSelectedEventMarker),
                   ]}
                 />
               ),
             )}
           </View>
         ) : null}
-        {hasNextVisit ? (
+        {hasNextVisit && !flat ? (
           <Text
             accessibilityElementsHidden
             style={styles.calendarVisitMarker}
@@ -127,6 +145,7 @@ export function CalendarDayCell({
 }
 
 interface CalendarMonthEventRowProps {
+  agendaDate?: string;
   item: CalendarMonthDisplayEvent;
   selected: boolean;
   selectionDisabled: boolean;
@@ -134,47 +153,65 @@ interface CalendarMonthEventRowProps {
 }
 
 export function CalendarMonthEventRow({
+  agendaDate,
   item,
   selected,
   selectionDisabled,
   onSelectEvent,
 }: CalendarMonthEventRowProps) {
-  // Selection uses explicit copy and accessibility state, not a saturated fill.
-  // The shared wrapper keeps the full event time readable in either appearance.
+  const { fontScale } = useWindowDimensions();
+  const flat = agendaDate !== undefined;
+  // Allow large text to reflow without squeezing the title against the action.
   const title =
     item.event.calendarEventSnapshot.title || t('calendar.eventNoTitle');
   const time = formatCalendarEventRange(item.event);
+  const visibleTime = agendaDate
+    ? formatCalendarAgendaTime(item.event, agendaDate)
+    : time;
   return (
     <View
-      style={styles.calendarEventRow}
+      style={
+        flat
+          ? [
+              scheduleStyles.flatEventRow,
+              fontScale > 1.5 && scheduleStyles.flatEventRowLargeText,
+            ]
+          : styles.calendarEventRow
+      }
       testID={
         item.isNextVisit
           ? 'calendar-next-visit'
           : `calendar-event-card-${item.rowKey}`
       }
     >
-      <View
-        style={styles.calendarEventHeading}
-        testID={`calendar-event-row-${item.rowKey}`}
-      >
-        <Text
-          style={styles.eventTitle}
-          testID={item.isNextVisit ? 'calendar-next-visit-title' : undefined}
+      <View style={flat ? scheduleStyles.flatEventCopy : undefined}>
+        <View
+          style={styles.calendarEventHeading}
+          testID={`calendar-event-row-${item.rowKey}`}
         >
-          {title}
-        </Text>
-        {item.isNextVisit ? (
-          <Text style={styles.calendarNextVisitBadge}>
-            {t('calendar.nextVisit')}
+          <Text
+            style={styles.eventTitle}
+            testID={item.isNextVisit ? 'calendar-next-visit-title' : undefined}
+          >
+            {title}
           </Text>
-        ) : null}
+          {item.isNextVisit && !flat ? (
+            <Text style={styles.calendarNextVisitBadge}>
+              {t('calendar.nextVisit')}
+            </Text>
+          ) : null}
+        </View>
+        <Text
+          accessibilityLabel={flat ? time : undefined}
+          style={[
+            styles.calendarEventTime,
+            flat && scheduleStyles.flatEventTime,
+          ]}
+          testID={item.isNextVisit ? 'calendar-next-visit-time' : undefined}
+        >
+          {visibleTime}
+        </Text>
       </View>
-      <Text
-        style={styles.calendarEventTime}
-        testID={item.isNextVisit ? 'calendar-next-visit-time' : undefined}
-      >
-        {time}
-      </Text>
       {item.canSelect ? (
         <Button
           accessibilityLabel={`${title}, ${time}, ${t(selected ? 'calendar.selectedEvent' : 'calendar.selectEvent')}`}
@@ -182,12 +219,15 @@ export function CalendarMonthEventRow({
           disabled={selectionDisabled}
           onPress={() => onSelectEvent(item.event)}
           size="compact"
-          style={styles.calendarSelectEventButton}
+          style={[
+            styles.calendarSelectEventButton,
+            flat && scheduleStyles.flatSelectEventButton,
+          ]}
           testID={`calendar-candidate-${item.event.calendarEventIdentifier}`}
           title={t(
             selected ? 'calendar.selectedEvent' : 'calendar.selectEvent',
           )}
-          variant="neutral"
+          variant={flat ? 'secondary' : 'neutral'}
         />
       ) : null}
     </View>

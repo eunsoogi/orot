@@ -1,5 +1,6 @@
 import { Pressable, View, useWindowDimensions } from 'react-native';
 import { AppText as Text } from '../layout/AppText';
+import { NativeGlassBackdrop } from '../layout/NativeGlassBackdrop';
 import { AppSymbol } from '../layout/AppSymbol';
 import { t } from '../i18n';
 import { appColors } from '../layout/appColors';
@@ -19,7 +20,7 @@ interface RecordsRouteEntriesProps {
   readonly onImportMedicalPhoto: () => void;
 }
 
-/** Keeps the primary recording action next to the page title, not in the library grid. */
+/** Keeps the primary action at the trailing edge, even when large type wraps the heading. */
 export function RecordsHeading({
   onOpenRecording,
 }: {
@@ -41,6 +42,7 @@ export function RecordsHeading({
           style={styles.captureAction}
           testID="records-new-recording"
         >
+          <NativeGlassBackdrop testID="recording-capture-glass" />
           <View
             style={styles.captureContent}
             testID="recording-capture-content"

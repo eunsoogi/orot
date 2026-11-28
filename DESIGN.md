@@ -96,7 +96,7 @@ Keep actual touch targets at least 44pt. The visible glyph size does not establi
 
 `AppButton` keeps `primary` as its default so existing primary actions retain their emphasis. New and migrated callers should set an explicit `variant` when the action is not the screen's main action:
 
-The Records heading puts the primary recording action next to its title. Records and its Schedule submenu share a subtle blue backdrop without changing the app-wide canvas.
+The Records heading puts the primary recording action next to its title. Records and its Schedule submenu use the default app canvas. The right-aligned recording button uses the native glass surface.
 
 - `primary` is the filled action for the clearest next step.
 - `secondary` is a borderless filled surface action with primary text; `neutral` uses the same surface with neutral text.

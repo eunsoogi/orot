@@ -202,8 +202,13 @@ test('shows loading feedback while the existing recording summary request is pen
   await render(<RecordsRoute {...props({ recordingState: 'loading' })} />);
 
   expect(
-    screen.getByTestId('records-recent-sources-loading'),
-  ).toHaveTextContent('최근 기록을 불러오는 중…');
+    screen.getByRole('progressbar', { name: '최근 기록을 불러오는 중…' }),
+  ).toBeTruthy();
+  expect(
+    screen.getByTestId('records-recent-skeleton', {
+      includeHiddenElements: true,
+    }),
+  ).toBeTruthy();
   expect(screen.queryByTestId('records-recent-sources-empty')).toBeNull();
 });
 

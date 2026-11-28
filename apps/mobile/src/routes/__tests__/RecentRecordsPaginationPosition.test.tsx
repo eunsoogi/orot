@@ -45,6 +45,11 @@ test('a pending next page keeps incumbent rows and More ahead of pagination feed
   await waitFor(() =>
     expect(screen.getByTestId('records-recent-sources-loading')).toBeTruthy(),
   );
+  expect(
+    screen.queryByTestId('records-recent-skeleton', {
+      includeHiddenElements: true,
+    }),
+  ).toBeNull();
   const beforeAppend = screen.getAllByTestId(
     /^records-recent-(?:source-visit:|show-more$|sources-loading$)/,
   );

@@ -1,4 +1,3 @@
-import { RecordsPageBackdrop } from './RecordsPageBackdrop';
 import { NavigationInlineTransition } from '../navigation/NavigationInlineTransition';
 import { useContext, useEffect } from 'react';
 import { View } from 'react-native';
@@ -167,7 +166,6 @@ export function RecordsRoute({
       style={styles.transition}
     >
       <View style={styles.container}>
-        {!showAllRecent ? <RecordsPageBackdrop /> : null}
         <View testID="records-layout" style={styles.page}>
           {!showAllRecent ? (
             <RecordsHeading onOpenRecording={onOpenRecording} />

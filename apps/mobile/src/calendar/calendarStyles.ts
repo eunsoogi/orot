@@ -16,7 +16,8 @@ export const calendarStyles = StyleSheet.create({
   flatMonth: {
     backgroundColor: 'transparent',
     paddingHorizontal: 0,
-    paddingVertical: 4,
+    gap: 8,
+    paddingVertical: 0,
   },
   flatCard: {
     gap: 10,

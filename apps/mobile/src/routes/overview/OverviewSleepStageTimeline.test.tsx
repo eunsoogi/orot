@@ -7,6 +7,7 @@ import { OverviewMetricCard } from './OverviewMetricCard';
 import type { OverviewMetricProjection } from './metricProjection';
 import {
   projectLatestSleepEpisode,
+  sleepStageTransitions,
   type SourcedSleepInterval,
 } from './overviewSleepEpisode';
 import { loadOverviewMetrics } from './metricLoader';
@@ -101,6 +102,12 @@ test.each([230, 660] as const)(
         parseFloat(StyleSheet.flatten(awake.props.style).width),
     );
     expect(screen.queryByText(/보통|수면 점수/)).toBeNull();
+    expect(
+      screen.getByTestId('overview-sleep-duration-core'),
+    ).toHaveTextContent('2시간 0분');
+    expect(
+      screen.getAllByTestId('overview-sleep-stage-connector'),
+    ).toHaveLength(2);
   },
 );
 
@@ -179,4 +186,14 @@ test('the existing SQLite owner sees actual HealthKit stages but not a second so
   } finally {
     fixture.close();
   }
+});
+
+test('does not imply a transition while a third stage is observed', () => {
+  const episode = projectLatestSleepEpisode([
+    ...samples,
+    row('deep', '2026-11-01T04:30:00Z', '2026-11-01T05:45:00Z'),
+  ])!;
+  expect(sleepStageTransitions(episode)).toEqual([
+    { from: 'rem', to: 'deep', at: Date.parse('2026-11-01T06:30:00Z') },
+  ]);
 });

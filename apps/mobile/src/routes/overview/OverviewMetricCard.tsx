@@ -5,6 +5,7 @@ import { ChartPlot } from '../../ui/charts';
 import { workoutRecordsChartKind } from '../../ui/charts/workoutRecordsChart';
 import { AppText as Text } from '../../layout/AppText';
 import { AppSymbol } from '../../layout/AppSymbol';
+import { OverviewReadingSkeleton } from './OverviewReadingSkeleton';
 import { appColors } from '../../layout/appColors';
 import { formatDateTime, t } from '../../i18n';
 import type { ChartData, ChartStatus } from '../../ui/charts';
@@ -140,12 +141,13 @@ export function OverviewMetricCard({
     metric.sleepEpisode?.asleepMinutes ?? metric.latest.value,
     metric.unit,
   );
+  const measuredAt = metric.measuredAt
+    ? formatDateTime(new Date(metric.measuredAt))
+    : t('overview.measurementUnknown');
   const accessibilityLabel = [
     overviewMetricTitle(metric.metric),
     `${metric.latest.date} ${statistic}: ${latestValue}`,
-    metric.measuredAt
-      ? formatDateTime(new Date(metric.measuredAt))
-      : t('overview.measurementUnknown'),
+    measuredAt,
   ].join('. ');
   return (
     <View
@@ -178,11 +180,7 @@ export function OverviewMetricCard({
         <Text style={styles.detail}>
           {metric.latest.date} · {statistic}
         </Text>
-        <Text style={styles.detail}>
-          {metric.measuredAt
-            ? formatDateTime(new Date(metric.measuredAt))
-            : t('overview.measurementUnknown')}
-        </Text>
+        <Text style={styles.detail}>{measuredAt}</Text>
       </View>
       {metric.metric === 'sleep' ? (
         <OverviewSleepStageTimeline
@@ -202,6 +200,7 @@ export function OverviewMetricChartPlaceholder({
   width,
   status,
   emptyMessage,
+  initialPending,
   heartPlacement,
 }: {
   readonly metric: OverviewMetric;
@@ -211,6 +210,7 @@ export function OverviewMetricChartPlaceholder({
     'loading' | 'stale' | 'error' | 'empty'
   >;
   readonly emptyMessage?: string;
+  readonly initialPending?: boolean;
   readonly heartPlacement?: HeartPlacement;
 }) {
   return (
@@ -233,8 +233,11 @@ export function OverviewMetricChartPlaceholder({
           quiet={Boolean(heartPlacement)}
         />
       </View>
-      {/* Keep the chart's vertical position stable while local metric values are unavailable. */}
-      <Text style={styles.number}>{'\u00a0'}</Text>
+      {initialPending ? (
+        <OverviewReadingSkeleton metric={metric} large />
+      ) : (
+        <Text style={styles.number}>{'\u00a0'}</Text>
+      )}
       <Text style={styles.detail}>{'\u00a0'}</Text>
       <Text style={styles.detail}>{'\u00a0'}</Text>
       <MeasuredOverviewMetricChart

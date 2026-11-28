@@ -12,6 +12,7 @@ import { AppButton } from '../layout/AppButton';
 import { t } from '../i18n';
 import { appColors } from '../layout/appColors';
 import { RecordsRecentSourceEntry } from './RecordsRecentSourceEntry';
+import { RecordsRecentSkeleton } from './RecordsRecentSkeleton';
 import { RecordsRecentSourceState } from './RecordsRecentSourceState';
 import type { RecentMaterialReadyLease } from '../generatedReports/certifiedRecentMaterialPage';
 import type { GeneratedReportRow } from '../generatedReports/types';
@@ -92,9 +93,12 @@ export function RecordsRecentSources(props: RecordsRecentSourcesProps) {
   const statusAtTail = hasRecords && showAll;
   const status = (
     <>
-      {isLoading ? (
-        <RecordsRecentSourceState state="loading" onRetry={retrySources} />
-      ) : null}
+      {isLoading &&
+        (hasRecords ? (
+          <RecordsRecentSourceState state="loading" onRetry={retrySources} />
+        ) : (
+          <RecordsRecentSkeleton />
+        ))}
       {!hasRecords && loadErrors.length > 0 ? (
         <RecordsRecentSourceState
           state="failed"

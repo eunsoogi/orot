@@ -125,7 +125,7 @@
                 remaining.append(contentsOf: view.subviews)
                 let isHost = view is NavigationRootGlassBar || view.accessibilityIdentifier == "navigation-toolbar"
                 // Fixed decorative/label IDs expose only geometry, without changing the button's accessibility grouping.
-                let isRecordingCapture = ["records-new-recording", "recording-capture-icon", "recording-capture-title"].contains(view.accessibilityIdentifier ?? "")
+                let isRecordingCapture = ["records-hub-header", "records-new-recording", "recording-capture-icon", "recording-capture-title"].contains(view.accessibilityIdentifier ?? "")
                 // Keep the original non-opted-in path from converting every descendant's frame.
                 guard identity != nil || isHost || isRecordingCapture else { continue }
                 let frame = view.convert(view.bounds, to: window)
