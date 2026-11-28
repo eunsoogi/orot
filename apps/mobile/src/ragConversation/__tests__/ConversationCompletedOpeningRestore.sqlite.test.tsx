@@ -1,4 +1,8 @@
-import { approveMountedContextualOpening } from '../testSupport/approveMountedContextualOpening';
+import {
+  approveMountedContextualOpening,
+  checkOpeningsRetireWithArchiveOwner,
+  replaceContextualOpeningTestSelection,
+} from '../testSupport/approveMountedContextualOpening';
 import {
   act,
   render,
@@ -41,6 +45,7 @@ test.each([
   'stale-apple',
   'malformed-apple',
   'plan',
+  'stale-plan',
 ] as const)(
   'reopens the owned completed turn with its exact opening, %s',
   async kind => {
@@ -51,10 +56,12 @@ test.each([
       kind === 'shortcut-apple' ||
       kind === 'stale-apple' ||
       kind === 'malformed-apple';
-    const contextual = apple || kind === 'plan';
+    const plan = kind === 'plan' || kind === 'stale-plan';
+    const contextual = apple || plan;
     const removed = contextual || kind === 'journal-revoked';
-    const writesV2 = kind === 'fresh-apple' || kind === 'malformed-apple';
-    const opened = kind !== 'absent' && kind !== 'stale-apple';
+    const writesV3 =
+      kind === 'fresh-apple' || kind === 'malformed-apple' || kind === 'plan';
+    const opened = kind !== 'absent' && !kind.startsWith('stale-');
     let savedOpening: typeof opening | undefined;
     try {
       const observe = (ui: RenderResult, expectedOpening: boolean) => {
@@ -119,8 +126,8 @@ test.each([
                 observer,
                 signal,
                 kind === 'shortcut-apple' ? 'shortcut' : 'composer',
-                kind === 'stale-apple',
-                kind === 'plan',
+                kind.startsWith('stale-'),
+                plan,
               );
             }
             const retention = createConversationRetentionBridge({
@@ -161,8 +168,8 @@ test.each([
             expect(
               JSON.parse(String(check.rows[0]?.reviewed_opening_json)).kind,
             ).toBe(
-              writesV2
-                ? 'reviewed-authored-local-opening-v2'
+              writesV3
+                ? 'reviewed-authored-contextual-opening-v3'
                 : 'reviewed-prompt-opening-v1',
             );
           }
@@ -181,6 +188,8 @@ test.each([
               reportObservation.id,
             ),
           ).toBe(true);
+        if (writesV3)
+          await replaceContextualOpeningTestSelection(kind === 'plan');
         if (kind === 'malformed-apple')
           await connection.database.execute(
             "UPDATE conversation_requests SET reviewed_opening_json = json_set(reviewed_opening_json, '$.unexpected', true)",
@@ -214,7 +223,7 @@ test.each([
             new AbortController().signal,
           );
           const expectedOpening =
-            opened && (!removed || kind === 'fresh-apple');
+            opened && (!removed || kind === 'fresh-apple' || kind === 'plan');
           expect(restored.rows).toEqual([
             expect.objectContaining({ kind: 'answer', answer }),
           ]);
@@ -223,17 +232,8 @@ test.each([
             row && 'initialResponse' in row ? row.initialResponse : undefined,
           ).toEqual(expectedOpening ? savedOpening : undefined);
           observe(ui, expectedOpening);
-          if (kind === 'fresh-apple') {
-            await expect(
-              storage.readSessionPresentationMany('foreign-owner', 0, [
-                'synthetic-turn',
-              ]),
-            ).rejects.toThrow();
-            await storage.deleteSession('synthetic-session');
-            await expect(
-              reader('synthetic-session', 0, new AbortController().signal),
-            ).rejects.toThrow();
-          }
+          if (kind === 'fresh-apple' || kind === 'plan')
+            await checkOpeningsRetireWithArchiveOwner(storage, reader);
         } finally {
           await ui.unmount();
           sessions.dispose();

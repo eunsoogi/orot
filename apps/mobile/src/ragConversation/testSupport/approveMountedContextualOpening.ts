@@ -1,3 +1,7 @@
+import * as keychain from 'react-native-keychain';
+import type { createConversationArtifactStorage } from '../../storage/conversationArtifactStorage';
+import type { ReadSavedHistoryDisplay } from '../conversationSavedHistoryDisplay';
+import { providerSelectionStore } from '../../providers/selection/keychainSelectionStore';
 import {
   AppleFoundationModelsProvider,
   type AppleFoundationModelsNativeBridge,
@@ -68,6 +72,18 @@ export async function approveMountedContextualOpening(
               ),
             ).toEqual(['system', 'user']);
             expect(request.tools).toBeUndefined();
+            expect(_account).toBe('synthetic-client');
+            const [_, user] = request.messages;
+            if (!user || !('role' in user) || user.role !== 'user')
+              throw new Error('Expected one authored input.');
+            if (planCalls === 0) expect(user.content).toBe(prompt);
+            else {
+              expect(JSON.parse(user.content)).toEqual({
+                request: prompt,
+                candidate: text,
+              });
+              if (revokeDuringReview) current = false;
+            }
             const response =
               ++planCalls === 1
                 ? JSON.stringify({ text, layout: 'plain' })
@@ -113,15 +129,16 @@ export async function approveMountedContextualOpening(
       },
       recipient: plan ? 'Inert Plan bridge' : 'on-device',
       remoteProcessing: plan,
-      onDeviceSelectionWitness: {
-        isCurrent: () => current,
-        subscribe: () => () => {},
-      },
     },
     prompt,
     {
       ...observer,
       inputOrigin: origin,
+      expectedConversationModel: {
+        providerId: provider.id,
+        modelId: option.modelId,
+        isCurrent: () => current,
+      },
     },
     { authorize: async () => 'authorized' },
     signal,
@@ -137,4 +154,57 @@ export async function approveMountedContextualOpening(
   }
   if (plan) expect(planCalls).toBe(2);
   else expect(generate).toHaveBeenCalledTimes(2);
+}
+
+/** A real stock selection write retires the previous generation. Archive
+ * restoration must not read or call that selection. Keychain is inert in Jest. */
+export async function replaceContextualOpeningTestSelection(wasPlan: boolean) {
+  const apple = {
+    providerId: 'apple-foundation-models',
+    modelId: 'apple-foundation-models-system-default',
+  };
+  const plan = {
+    providerId: 'chatgpt-plan:replacement:synthetic',
+    modelId: 'synthetic',
+  };
+  let saved = '';
+  const write = jest
+    .spyOn(keychain, 'setGenericPassword')
+    .mockImplementation(async (_user, value) => {
+      saved = value;
+      return { service: 'fixture', storage: keychain.STORAGE_TYPE.AES_GCM };
+    });
+  const read = jest
+    .spyOn(keychain, 'getGenericPassword')
+    .mockImplementation(async () => ({
+      service: 'fixture',
+      username: 'provider-selection',
+      password: saved,
+      storage: keychain.STORAGE_TYPE.AES_GCM,
+    }));
+  try {
+    await providerSelectionStore.save(wasPlan ? plan : apple);
+    expect(await providerSelectionStore.load()).toEqual(wasPlan ? plan : apple);
+    const before = providerSelectionStore.liveWitness();
+    expect(before?.()).toBe(true);
+    await providerSelectionStore.save(wasPlan ? apple : plan);
+    expect(before?.()).toBe(false);
+    expect(await providerSelectionStore.load()).toEqual(wasPlan ? apple : plan);
+  } finally {
+    read.mockRestore();
+    write.mockRestore();
+  }
+}
+
+export async function checkOpeningsRetireWithArchiveOwner(
+  storage: ReturnType<typeof createConversationArtifactStorage>,
+  reader: ReadSavedHistoryDisplay,
+) {
+  await expect(
+    storage.readSessionPresentationMany('foreign-owner', 0, ['synthetic-turn']),
+  ).rejects.toThrow();
+  await storage.deleteSession('synthetic-session');
+  await expect(
+    reader('synthetic-session', 0, new AbortController().signal),
+  ).rejects.toThrow();
 }

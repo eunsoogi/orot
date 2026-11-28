@@ -1,6 +1,7 @@
-import { approvedAuthoredContextualOpening } from '../../ragConversation/contextualOpeningApproval';
-import { APPLE_PROVIDER_ID } from '@orot/provider-apple';
-import { APPLE_FOUNDATION_MODEL_SELECTION_ID } from '../../providers/selection/options';
+import {
+  approvedAuthoredContextualOpening,
+  type AuthoredContextualOpeningProof,
+} from '../../ragConversation/contextualOpeningApproval';
 import { reportOpening } from './openingObservation';
 import type { Feature } from '../../providers/diagnosticTypes';
 import { evidenceConsentScope } from './evidenceConsentScope';
@@ -31,7 +32,7 @@ export function startContextualConversationOpening(input: {
   isEvidenceCurrent?: () => Promise<boolean>;
   diagnosticFeature?: Feature;
   allowA2UIPresentation?: boolean;
-  authoredLocalCurrent?: () => boolean;
+  authoredContext?: AuthoredContextualOpeningProof;
 }) {
   const controller = new AbortController();
   const stop = () => controller.abort();
@@ -91,13 +92,11 @@ export function startContextualConversationOpening(input: {
           ...opening,
           ...(presentation ? { presentation } : {}),
         };
-        // This capability is separately minted after ALLOW and only when the
-        // exact plain Apple contextual request could not inherit prior context.
-        const approved = input.authoredLocalCurrent
-          ? approvedAuthoredContextualOpening(display, {
-              input: input.request,
-              current: input.authoredLocalCurrent,
-            })
+        // This producer passes only the current authored input into the
+        // prompt-only runner and its independent review. Neither app history nor
+        // evidence/tools enter these payloads. The provider is not provenance.
+        const approved = input.authoredContext
+          ? approvedAuthoredContextualOpening(display, input.authoredContext)
           : display;
         const outcome = await deliverReviewedOpening(
           controller,
@@ -180,22 +179,31 @@ export function startRagConversationOpening(
   allowA2UIPresentation = false,
   ordinaryComposer = false,
 ) {
-  const authoredLocalCurrent =
+  const requestId = observer?.retentionRequestId;
+  const lease = observer?.retentionSession;
+  const expected = observer?.expectedConversationModel;
+  const authoredContext =
     ordinaryComposer &&
     observer?.inputOrigin === 'composer' &&
-    !!observer.retentionRequestId &&
+    requestId &&
+    lease &&
     !observer.photoInput &&
     !observer.selectedRecordingTranscript &&
     !observer.expectedVoiceSelection &&
     !observer.protectedLocalInput &&
-    !isEvidenceCurrent &&
-    !selected.remoteProcessing &&
-    selected.option.privacyBoundary === 'on-device' &&
-    selected.provider.id === APPLE_PROVIDER_ID &&
-    selected.selection.providerId === APPLE_PROVIDER_ID &&
-    selected.selection.modelId === selected.modelId &&
-    selected.modelId === APPLE_FOUNDATION_MODEL_SELECTION_ID
-      ? selected.onDeviceSelectionWitness?.isCurrent
+    !isEvidenceCurrent
+      ? {
+          input: request,
+          requestId,
+          sessionId: lease.id,
+          sessionVersion: lease.version,
+          current: () =>
+            !signal.aborted &&
+            (!expected ||
+              (expected.providerId === selected.selection.providerId &&
+                expected.modelId === selected.selection.modelId &&
+                expected.isCurrent?.() !== false)),
+        }
       : undefined;
   return startContextualConversationOpening({
     selected,
@@ -205,7 +213,7 @@ export function startRagConversationOpening(
     signal,
     isEvidenceCurrent,
     allowA2UIPresentation,
-    authoredLocalCurrent,
+    authoredContext,
     consentScope: evidenceConsentScope({
       purpose: 'record_conversation',
       generatedArtifacts: false,
