@@ -1,8 +1,8 @@
+import { SettingsPageHeading } from '../layout/SettingsPageHeading';
 import { settingsPageStyles } from '../layout/settingsPagePresentation';
 import { StyleSheet, View } from 'react-native';
 import { t } from '../i18n';
 import { AdaptiveColumns } from '../layout/AdaptiveColumns';
-import { AppText as Text } from '../layout/AppText';
 import { useNavigationLeaveStateRegistration } from '../navigation';
 import { NAVIGATION_CONTENT_GAP } from '../navigation/navigationLayout';
 import { NavigationRouteScrollView } from '../navigation/NavigationRouteScrollView';
@@ -27,13 +27,9 @@ export function SettingsNotificationsRoute() {
           testID="settings-notifications-layout"
           primary={
             <View style={styles.content} testID="settings-notifications">
-              <Text
-                accessibilityRole="header"
-                style={settingsPageStyles.title}
-                testID="settings-notifications-title"
-              >
+              <SettingsPageHeading testID="settings-notifications-title">
                 {t('settings.notifications')}
-              </Text>
+              </SettingsPageHeading>
               <SettingsDailyReminderSection />
               <SettingsReplyNotificationSection />
             </View>

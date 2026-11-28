@@ -1,4 +1,4 @@
-import { settingsPageStyles } from '../layout/settingsPagePresentation';
+import { SettingsPageHeading } from '../layout/SettingsPageHeading';
 import { StyleSheet, View } from 'react-native';
 import type { HealthKitAutoSyncFeature } from '../healthkit/autoSyncCheckpoint';
 import type { CalendarAutoSyncActions } from '../calendar/useCalendarAutoSync';
@@ -33,13 +33,9 @@ export function SettingsSyncStatusHealthPanel({
 }) {
   return (
     <View style={styles.panel} testID="settings-sync-status-primary">
-      <Text
-        accessibilityRole="header"
-        style={settingsPageStyles.title}
-        testID="settings-sync-status-title"
-      >
+      <SettingsPageHeading testID="settings-sync-status-title">
         {t('settings.syncStatus.title')}
-      </Text>
+      </SettingsPageHeading>
       <View style={styles.card}>
         <Text style={styles.sectionTitle}>
           {t('settings.healthData.lastSync')}

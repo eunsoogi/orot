@@ -1,9 +1,9 @@
+import { SettingsPageHeading } from '../layout/SettingsPageHeading';
 import { settingsPageStyles } from '../layout/settingsPagePresentation';
 import { StyleSheet, View } from 'react-native';
 import { AdaptiveColumns } from '../layout/AdaptiveColumns';
 import { settingsListColors } from './settingsListColors';
 import { t } from '../i18n';
-import { AppText } from '../layout/AppText';
 import { useNavigationLeaveStateRegistration } from '../navigation';
 import { NavigationRouteScrollView } from '../navigation/NavigationRouteScrollView';
 import type { NavigationRouteOwnership } from '../navigation/navigationRouteContracts';
@@ -30,13 +30,9 @@ export function SettingsMemoryRoute({
           testID="settings-memory-layout"
           primary={
             <View style={styles.page}>
-              <AppText
-                accessibilityRole="header"
-                style={settingsPageStyles.title}
-                testID="settings-memory-title"
-              >
+              <SettingsPageHeading testID="settings-memory-title">
                 {t('settings.memory')}
-              </AppText>
+              </SettingsPageHeading>
               <View style={styles.group} testID="settings-memory-controls">
                 <SettingsAutomaticMemorySection ownership={ownership} />
                 <View style={styles.divider} />
