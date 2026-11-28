@@ -25,6 +25,7 @@ export async function createMountedShortcutRoundTrip(
     dependencies: AiFeatureServiceDependencies;
     consent: ExecutionConsentPort;
   }>,
+  options: { readonly archiveOwner?: true } = {},
 ) {
   const folder = mkdtempSync(join(tmpdir(), 'orot-shortcut-round-trip-'));
   const file = join(folder, 'synthetic.sqlite');
@@ -40,6 +41,9 @@ export async function createMountedShortcutRoundTrip(
   let store!: ConversationSessions;
   let open: Awaited<ReturnType<typeof render>> | undefined;
   const route = {
+    ...(options.archiveOwner
+      ? { ownership: { isCurrent: () => true, subscribe: () => () => {} } }
+      : {}),
     route: { name: 'rag-conversation' as const, key: 'synthetic-route' },
     push: jest.fn(),
     replace: jest.fn(),
@@ -76,7 +80,7 @@ export async function createMountedShortcutRoundTrip(
     database: () => db.database,
     storage: () => storage,
     mount,
-    async reopen() {
+    async reopen(synchronize = true) {
       const [owner] = (await storage.listSessions()).items;
       if (!owner) throw new Error('The shortcut did not commit a session.');
       await open?.unmount();
@@ -84,9 +88,10 @@ export async function createMountedShortcutRoundTrip(
       db = openSqliteTestDatabase(file);
       storage = createConversationArtifactStorage(db.database);
       const reopened = await mount();
-      await act(async () => {
-        await store.synchronizeModel();
-      });
+      if (synchronize)
+        await act(async () => {
+          await store.synchronizeModel();
+        });
       expect(await storage.activeSessionVersion(owner.id)).toBe(owner.version);
       expect(route.push).not.toHaveBeenCalled();
       return reopened;
