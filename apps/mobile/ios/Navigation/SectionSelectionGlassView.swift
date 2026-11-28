@@ -28,7 +28,9 @@ final class SectionSelectionGlassView: UIView {
     deinit { NotificationCenter.default.removeObserver(self) }
 
     @objc private func reduceMotionChanged() {
-        if UIAccessibility.isReduceMotionEnabled { applyTarget(allowsAnimation: false) }
+        if UIAccessibility.isReduceMotionEnabled {
+            applyTarget(allowsAnimation: false)
+        }
     }
 
     /// Start at the in-flight presentation on interruption; never replace the
@@ -49,7 +51,9 @@ final class SectionSelectionGlassView: UIView {
         let animated = allowsAnimation && !UIAccessibility.isReduceMotionEnabled &&
             (selectionTarget["animated"] as? Bool == true) && !capsule.isHidden &&
             window != nil
-        if animated, capsule.frame == destination { return }
+        if animated, capsule.frame == destination {
+            return
+        }
         let from = capsule.layer.presentation()?.frame ?? capsule.frame
         capsule.layer.removeAllAnimations()
         UIView.performWithoutAnimation {
@@ -67,6 +71,11 @@ final class SectionSelectionGlassView: UIView {
 
 @objc(SectionSelectionGlassViewManager)
 final class SectionSelectionGlassViewManager: RCTViewManager {
-    override static func requiresMainQueueSetup() -> Bool { true }
-    override func view() -> UIView! { SectionSelectionGlassView() }
+    override static func requiresMainQueueSetup() -> Bool {
+        true
+    }
+
+    override func view() -> UIView! {
+        SectionSelectionGlassView()
+    }
 }
