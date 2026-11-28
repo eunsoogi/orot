@@ -202,8 +202,7 @@ final class RecordsHubUITests: OrotFailFastTestCase {
         XCTAssertTrue(recentSources.exists && recentSources.frame.intersects(app.frame))
         XCTAssertEqual(rail.toolbar.frame.width, 48, accuracy: 0.5)
 
-        // Recent states share the entry-card edges after scrolling; no nested card adds a second gutter.
-        XCTAssertEqual(primary.frame.minX, recentSources.frame.minX, accuracy: 1)
+        // The title action and recent panel share the content lane’s trailing inset, not a full-width button.
         XCTAssertEqual(primary.frame.maxX, recentSources.frame.maxX, accuracy: 1)
         XCTAssertLessThanOrEqual(primary.frame.maxX, rail.toolbar.frame.minX)
         XCTAssertLessThanOrEqual(recentSources.frame.maxX, rail.toolbar.frame.minX)

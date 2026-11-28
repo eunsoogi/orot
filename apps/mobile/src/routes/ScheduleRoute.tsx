@@ -8,7 +8,6 @@ import CalendarLinkingScreen from '../calendar/CalendarLinkingScreen';
 import type { CalendarBridge } from '../calendar/types';
 import type { CalendarAutoSyncState } from '../calendar/calendarAutoSync';
 import { useNavigationLeaveStateRegistration } from '../navigation';
-import { RecordsPageBackdrop } from './RecordsPageBackdrop';
 import { useNavigationRouteActions } from '../navigation/useNavigationRouteActions';
 
 interface ScheduleRouteProps {
@@ -51,7 +50,6 @@ export function ScheduleRoute({
   if (appointmentRepository) {
     return (
       <View style={styles.screen}>
-        <RecordsPageBackdrop />
         <CalendarLinkingScreen
           bridge={bridge}
           calendarSync={calendarSync}
@@ -70,7 +68,6 @@ export function ScheduleRoute({
 
   return (
     <View style={styles.container}>
-      <RecordsPageBackdrop />
       <ScheduleUnavailableGuard />
       <Text accessibilityRole="header" style={styles.title}>
         {t('schedule.title')}

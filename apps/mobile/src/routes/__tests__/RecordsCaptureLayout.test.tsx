@@ -19,7 +19,17 @@ test.each([1, 1.5, 3.571])(
     const onOpenRecording = jest.fn();
     await render(<RecordsHeading onOpenRecording={onOpenRecording} />);
     const action = screen.getByRole('button', { name: '새 상담 녹음' });
-    expect(action).toHaveStyle({ minHeight: 44, paddingHorizontal: 12 });
+    expect(action).toHaveStyle({
+      minHeight: 44,
+      minWidth: 44,
+      paddingHorizontal: 12,
+    });
+    expect(screen.getByTestId('records-capture-actions')).toHaveStyle({
+      marginStart: 'auto',
+    });
+    const glass = screen.getByTestId('recording-capture-glass');
+    expect(glass.type).toBe('ComposerGlassView');
+    expect(glass.props.pointerEvents).toBe('none');
     expect(screen.getByTestId('records-hub-header')).toHaveStyle({
       flexWrap: 'wrap',
       flexDirection: 'row',

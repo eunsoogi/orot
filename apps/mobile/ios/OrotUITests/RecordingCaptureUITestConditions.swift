@@ -22,7 +22,7 @@ enum RecordingCaptureUITestConditions {
                   let frames = controls["frames"] as? [[String: Any]]
             else { return false }
             var current: [String: CGRect] = [:]
-            for identifier in ["records-new-recording", "recording-capture-icon", "recording-capture-title"] {
+            for identifier in ["records-hub-header", "records-new-recording", "recording-capture-icon", "recording-capture-title"] {
                 let matches = frames.filter { $0["identifier"] as? String == identifier }
                 guard matches.count == 1, let frame = rect(matches[0]["frame"]), !frame.isEmpty else { return false }
                 current[identifier] = frame
@@ -37,6 +37,7 @@ enum RecordingCaptureUITestConditions {
         }, object: nil)
         XCTAssertEqual(UITestConditions.wait(for: [ready]), .completed)
         let frames = try XCTUnwrap(observed)
+        let header = try XCTUnwrap(frames["records-hub-header"])
         let target = try XCTUnwrap(frames["records-new-recording"])
         let icon = try XCTUnwrap(frames["recording-capture-icon"])
         let title = try XCTUnwrap(frames["recording-capture-title"])
@@ -63,12 +64,14 @@ enum RecordingCaptureUITestConditions {
         try NavigationUITestConditions.panelSnapshot(app, frames: frames, testCase: testCase)
         XCTAssertGreaterThanOrEqual(target.width, 44)
         XCTAssertGreaterThanOrEqual(target.height, 44)
+        XCTAssertEqual(target.maxX, header.maxX, accuracy: 1,
+                       "The recording action remains aligned to the heading’s trailing edge.")
         if target.minY >= heading.frame.maxY {
             XCTAssertEqual(target.minY - heading.frame.maxY, 12, accuracy: 1,
                            "Accessible wrapping preserves the heading gap.")
         } else {
-            XCTAssertEqual(target.minX - heading.frame.maxX, 12, accuracy: 1,
-                           "The recording pill sits beside the visible title.")
+            XCTAssertGreaterThanOrEqual(target.minX - heading.frame.maxX, 11,
+                                        "The trailing recording pill stays clear of the visible title.")
             XCTAssertEqual(target.midY, heading.frame.midY, accuracy: 1)
         }
         XCTAssertEqual(icon.minX - target.minX, 12, accuracy: 1,

@@ -9,8 +9,10 @@ import {
   shiftCalendarMonth,
 } from './calendarMonth';
 import { calendarStyles as styles } from './calendarStyles';
+import { schedulePresentationStyles as scheduleStyles } from './schedulePresentationStyles';
 
 interface CalendarMonthHeaderProps {
+  flat?: boolean;
   year: number;
   month: number;
   onMoveMonth: (amount: number) => void;
@@ -18,6 +20,7 @@ interface CalendarMonthHeaderProps {
 
 /** Keeps month navigation beside the heading while labels expose each control's direction and target. */
 export function CalendarMonthHeader({
+  flat = false,
   year,
   month,
   onMoveMonth,
@@ -41,7 +44,10 @@ export function CalendarMonthHeader({
           })}
           accessibilityRole="button"
           onPress={() => onMoveMonth(-1)}
-          style={styles.calendarMonthButton}
+          style={[
+            styles.calendarMonthButton,
+            flat && scheduleStyles.flatMonthButton,
+          ]}
           testID="calendar-previous-month"
         >
           <AppSymbol
@@ -56,7 +62,10 @@ export function CalendarMonthHeader({
           })}
           accessibilityRole="button"
           onPress={() => onMoveMonth(1)}
-          style={styles.calendarMonthButton}
+          style={[
+            styles.calendarMonthButton,
+            flat && scheduleStyles.flatMonthButton,
+          ]}
           testID="calendar-next-month"
         >
           <AppSymbol
@@ -71,7 +80,7 @@ export function CalendarMonthHeader({
 }
 
 /** Weekdays move with the date grid so narrow screens retain aligned columns. */
-export function CalendarWeekdayHeader() {
+export function CalendarWeekdayHeader({ flat = false }: { flat?: boolean }) {
   return (
     <View style={styles.calendarWeekdayRow} testID="calendar-weekday-row">
       {calendarWeekdays().map((weekday, index) => (
@@ -79,8 +88,8 @@ export function CalendarWeekdayHeader() {
           key={`${weekday}-${index}`}
           style={[
             styles.calendarWeekday,
-            index === 0 && styles.calendarSunday,
-            index === 6 && styles.calendarSaturday,
+            !flat && index === 0 && styles.calendarSunday,
+            !flat && index === 6 && styles.calendarSaturday,
           ]}
         >
           {weekday}

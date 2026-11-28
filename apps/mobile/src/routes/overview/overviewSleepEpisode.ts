@@ -115,3 +115,20 @@ export function projectLatestSleepEpisode(
   }
   return latest;
 }
+
+/** Connect only an unambiguous change at the same observed instant. The episode is
+ * ordered by start time; earlier overlapping observations must not imply a stage switch. */
+export function sleepStageTransitions({ intervals }: OverviewSleepEpisode) {
+  let earlierEnd = -Infinity;
+  return intervals.flatMap((interval, index) => {
+    const next = intervals[index + 1];
+    const singlyLinked =
+      interval.end === next?.start &&
+      earlierEnd < interval.end &&
+      intervals[index + 2]?.start !== next.start;
+    earlierEnd = Math.max(earlierEnd, interval.end);
+    return singlyLinked && next.stage !== interval.stage
+      ? [{ from: interval.stage, to: next.stage, at: interval.end }]
+      : [];
+  });
+}

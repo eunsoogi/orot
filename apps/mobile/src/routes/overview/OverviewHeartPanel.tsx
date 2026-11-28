@@ -2,6 +2,7 @@ import { useIsFocused } from '@react-navigation/native';
 import { StyleSheet, View } from 'react-native';
 import { AppText as Text } from '../../layout/AppText';
 import { AppSymbol } from '../../layout/AppSymbol';
+import { OverviewReadingSkeleton } from './OverviewReadingSkeleton';
 import { appColors } from '../../layout/appColors';
 import { t } from '../../i18n';
 import {
@@ -76,23 +77,33 @@ function HeartReadingValue({
     >
       <View style={!primary && styles.readingLine}>
         <Text style={overview.cardTitle}>{title(metric)}</Text>
-        <Text
-          onTextLayout={onTextLayout}
-          accessibilityLabel={
-            value
-              ? [amount, t('chart.source', { source: value.source })].join(', ')
-              : undefined
-          }
-          style={
-            value
-              ? primary
-                ? overview.heartNumber
-                : overview.heartSupportingNumber
-              : overview.detail
-          }
-        >
-          {amount}
-        </Text>
+        {!value && state === 'loading' ? (
+          <OverviewReadingSkeleton
+            metric={metric}
+            large={primary}
+            label={amount}
+          />
+        ) : (
+          <Text
+            onTextLayout={onTextLayout}
+            accessibilityLabel={
+              value
+                ? [amount, t('chart.source', { source: value.source })].join(
+                    ', ',
+                  )
+                : undefined
+            }
+            style={
+              value
+                ? primary
+                  ? overview.heartNumber
+                  : overview.heartSupportingNumber
+                : overview.detail
+            }
+          >
+            {amount}
+          </Text>
+        )}
       </View>
       {value ? <Text style={overview.detail}>{value.latest.date}</Text> : null}
       {value && range && range.minimum !== range.maximum ? (
@@ -111,6 +122,10 @@ function HeartReadingValue({
       ) : null}
     </View>
   );
+}
+
+function HeartPanelRule() {
+  return <View style={styles.rule} pointerEvents="none" />;
 }
 
 /** Each compact text reading keeps its own metric and original period; no charts or mixed sources. */
@@ -142,16 +157,19 @@ export function OverviewHeartPanel({
         state={state}
       />
       <View testID="overview-heart-subrows" style={styles.subrows}>
+        <HeartPanelRule />
         <HeartReadingValue
           metric="restingHeartRate"
           value={metrics.restingHeartRate}
           state={state}
         />
+        <HeartPanelRule />
         <HeartReadingValue
           metric="walkingHeartRate"
           value={metrics.walkingHeartRate}
           state={state}
         />
+        <HeartPanelRule />
         <OverviewWorkoutHeartRateCard
           width={undefined}
           active={focused}
@@ -180,5 +198,6 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     columnGap: 8,
   },
-  subrows: { width: '100%', gap: 12 },
+  subrows: { width: '100%', gap: 8 },
+  rule: { height: StyleSheet.hairlineWidth, backgroundColor: appColors.border },
 });

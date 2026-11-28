@@ -108,6 +108,11 @@ test('retains loaded documents while recordings load', async () => {
   expect(await screen.findByTestId('medical-document-source-0')).toBeTruthy();
   expect(screen.getByText('Clinic summary.pdf')).toBeTruthy();
   expect(screen.getByTestId('records-recent-view-all')).toBeTruthy();
+  expect(
+    screen.queryByTestId('records-recent-skeleton', {
+      includeHiddenElements: true,
+    }),
+  ).toBeNull();
   expect(screen.getByTestId('records-recent-sources-loading')).toBeTruthy();
 });
 

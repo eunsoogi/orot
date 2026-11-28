@@ -28,8 +28,10 @@ import {
   calendarDayAccessibilityLabel,
 } from './CalendarMonthCells';
 import { calendarStyles as styles } from './calendarStyles';
+import { schedulePresentationStyles as scheduleStyles } from './schedulePresentationStyles';
 import type { CalendarEvent } from './types';
 import { calendarEventsEqual } from './calendarSnapshot';
+import { formatCalendarAgendaDate } from './dateTime';
 interface CalendarMonthViewProps {
   flat?: boolean;
   appointmentsLoading: boolean;
@@ -99,21 +101,18 @@ export function CalendarMonthView({
     const [year, month] = dateKey.split('-').map(Number);
     setVisibleMonth({ year, month: month - 1 });
   }, []);
-
   useEffect(() => {
     if (appointmentsLoading || focusedAppointment.current) return;
     focusedAppointment.current = true;
     const range = linkedEvent ? calendarEventDayRange(linkedEvent) : null;
     if (range) focusDate(range.startDay);
   }, [appointmentsLoading, focusDate, linkedEvent]);
-
   useEffect(() => {
     if (!candidatesLoaded || focusedCandidateList.current) return;
     focusedCandidateList.current = true;
     if (linkedEvent || rangedEvents.length === 0) return;
     focusDate(rangedEvents[0].startDay);
   }, [candidatesLoaded, focusDate, linkedEvent, rangedEvents]);
-
   function moveMonth(amount: number) {
     const target = shiftCalendarMonth(
       visibleMonth.year,
@@ -131,7 +130,6 @@ export function CalendarMonthView({
       ),
     );
   }
-
   function eventsForDay(dateKey: string): CalendarMonthDisplayEvent[] {
     return rangedEvents.filter(
       item => item.startDay <= dateKey && dateKey <= item.endDay,
@@ -147,13 +145,13 @@ export function CalendarMonthView({
     !selectedDateOutsideQuery &&
     !resultsMayBeIncomplete &&
     eventsOnSelectedDate.length === 0;
-
   return (
     <View
       style={[styles.calendarMonth, flat && styles.flatMonth]}
       testID="calendar-month-view"
     >
       <CalendarMonthHeader
+        flat={flat}
         year={visibleMonth.year}
         month={visibleMonth.month}
         onMoveMonth={moveMonth}
@@ -172,12 +170,13 @@ export function CalendarMonthView({
           />
         ) : (
           <>
-            <CalendarWeekdayHeader />
+            <CalendarWeekdayHeader flat={flat} />
             <View style={styles.calendarGrid} testID="calendar-date-grid">
               {gridDays.map(day => {
                 const dayEvents = eventsForDay(day.dateKey);
                 return (
                   <CalendarDayCell
+                    flat={flat}
                     day={day}
                     dayEvents={dayEvents}
                     key={day.dateKey}
@@ -196,13 +195,20 @@ export function CalendarMonthView({
           </>
         )}
       </View>
-      <View style={styles.calendarSelectedDateEvents}>
+      <View
+        style={[
+          styles.calendarSelectedDateEvents,
+          flat && scheduleStyles.flatAgenda,
+        ]}
+      >
         <Text
           accessibilityRole="header"
           style={styles.calendarSelectedDate}
           testID="calendar-selected-date"
         >
-          {formatCalendarDate(selectedDate)}
+          {flat
+            ? formatCalendarAgendaDate(selectedDate)
+            : formatCalendarDate(selectedDate)}
         </Text>
         <CalendarDateCoverage
           selectedDateOutsideQuery={selectedDateOutsideQuery}
@@ -210,7 +216,10 @@ export function CalendarMonthView({
           empty={showNoReturnedEvents}
         />
         <View
-          style={styles.calendarSelectedEventList}
+          style={[
+            styles.calendarSelectedEventList,
+            flat && scheduleStyles.flatAgendaList,
+          ]}
           testID="calendar-events-for-selected-date"
         >
           {eventsOnSelectedDate.map(item => {
@@ -221,6 +230,7 @@ export function CalendarMonthView({
             return (
               <CalendarMonthEventRow
                 item={item}
+                agendaDate={flat ? selectedDate : undefined}
                 key={item.rowKey}
                 onSelectEvent={onSelectEvent}
                 selected={selected}
@@ -229,7 +239,8 @@ export function CalendarMonthView({
             );
           })}
         </View>
-        {candidatesLoaded &&
+        {!flat &&
+        candidatesLoaded &&
         eventsOnSelectedDate.some(item => item.canSelect) ? (
           <Text style={styles.message}>{t('calendar.candidateHint')}</Text>
         ) : null}

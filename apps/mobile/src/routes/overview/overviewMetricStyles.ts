@@ -46,8 +46,8 @@ export const overviewMetricStyles = StyleSheet.create({
   /** Preserve the card's spacing when headline content is grouped for accessibility. */
   metricSummary: { gap: overviewMetricCardGap },
   heartMetric: { gap: overviewMetricCardGap },
-  heartNumber: { fontSize: 26 },
-  heartSupportingNumber: { fontSize: 17 },
+  heartNumber: { color: appColors.text, fontSize: 35, fontWeight: '700' },
+  heartSupportingNumber: { fontSize: 18, fontVariant: ['tabular-nums'] },
   recentChange: { alignSelf: 'stretch', maxWidth: '100%' },
   recentChangeRow: {
     flexDirection: 'row',
@@ -196,14 +196,17 @@ export const overviewMetricStyles = StyleSheet.create({
     flexWrap: 'wrap',
   },
   metricIcon: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    backgroundColor: appColors.purpleSoft,
+    width: 22,
+    height: 24,
     alignItems: 'center',
     justifyContent: 'center',
   },
-  number: { color: appColors.text, fontSize: 20, fontWeight: '700' },
+  number: {
+    color: appColors.text,
+    fontSize: 32,
+    fontWeight: '700',
+    fontVariant: ['tabular-nums'],
+  },
   detail: { color: appColors.secondary, fontSize: 12 },
   chart: { width: '100%' },
 });

@@ -54,6 +54,15 @@ test.each([
       })),
     ).toEqual([{ metric: 'sleep', status: chartState, height: 176 }]);
 
+    for (const metric of ['sleep', 'heartRate']) {
+      const skeleton = screen.queryByTestId(
+        `overview-widget-skeleton-${metric}`,
+        { includeHiddenElements: true },
+      );
+      if (state === 'loading') expect(skeleton).toBeTruthy();
+      else expect(skeleton).toBeNull();
+    }
+
     if (state === 'failed') {
       expect(screen.getAllByRole('alert')[0]).toHaveTextContent(
         '건강 기록을 불러오지 못했어요.',
@@ -97,6 +106,11 @@ test.each([
     await render(<OverviewMetrics />);
 
     expect(screen.getByText('500걸음')).toBeTruthy();
+    expect(
+      screen.queryByTestId('overview-widget-skeleton-steps', {
+        includeHiddenElements: true,
+      }),
+    ).toBeNull();
     const chartProps = chartPlot.mock.calls.find(
       ([props]) => props.data.metric === 'steps',
     )?.[0];
