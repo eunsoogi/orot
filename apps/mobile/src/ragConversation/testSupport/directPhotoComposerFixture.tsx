@@ -15,19 +15,17 @@ import { ConversationSteeringComposer } from '../ConversationSteeringComposer';
 import { createConversationSessions } from '../conversationSessions';
 import { createConversationSessionRetention } from '../conversationSessionRetention';
 import { conversationSavedHistoryDisplayOption } from '../../aiFeatures/integration/conversationSavedHistoryDisplayOption';
-import { Transcript } from './savedHistoryDisplayFixture';
 import { conversationDirectPhotoPorts as ports } from '../conversationDirectPhotoPorts';
-import { DirectPhotoPresentationScope } from '../DirectPhotoPresentationScope';
-
+import { directPhotoComposerFixtureSurface } from './DirectPhotoComposerFixtureSurface';
 export const onSendText = jest.fn();
 export const onPickOCR = jest.fn();
 const date = '2026-10-05T00:00:00.000Z';
-
 export async function directPhotoComposerFixture({
   supported = true,
   hold = false,
   granted = true,
   holdGrant = false,
+  withWorkspace = false,
   beforeWrite,
   isEntryCurrent = () => true,
   ownsDraftRoute,
@@ -40,6 +38,7 @@ export async function directPhotoComposerFixture({
   hold?: boolean;
   granted?: boolean;
   holdGrant?: boolean;
+  withWorkspace?: boolean;
   beforeWrite?: () => Promise<void>;
   isEntryCurrent?: () => boolean;
   ownsDraftRoute?: () => boolean;
@@ -199,26 +198,27 @@ export async function directPhotoComposerFixture({
     const active = snapshot.sessions.find(
       item => item.id === snapshot.activeId,
     )!;
-    return (
-      <DirectPhotoPresentationScope
-        sessionId={active.id}
-        ownerKey={store.directPhotoDrafts}
-        available
-      >
-        <Transcript store={store} entryChoices={entryChoices} />
-        <ConversationSteeringComposer
-          store={store}
-          session={active}
-          isEntryCurrent={Object.assign(() => isEntryCurrent(), {
-            routeOwnsDraft: ownsDraftRoute,
-          })}
-          photo={{ status: 'empty', onSelect: onPickOCR, onRemove: jest.fn() }}
-          onSend={onSendText}
-          onCancel={jest.fn()}
-          onChangeText={text => store.setDraft(session().id, text)}
-        />
-      </DirectPhotoPresentationScope>
+    const composer = (
+      <ConversationSteeringComposer
+        store={store}
+        session={active}
+        isEntryCurrent={Object.assign(() => isEntryCurrent(), {
+          routeOwnsDraft: ownsDraftRoute,
+        })}
+        photo={{ status: 'empty', onSelect: onPickOCR, onRemove: jest.fn() }}
+        onSend={onSendText}
+        onCancel={jest.fn()}
+        onChangeText={text => store.setDraft(session().id, text)}
+      />
     );
+    return directPhotoComposerFixtureSurface({
+      store,
+      session: active,
+      composer,
+      entryChoices,
+      withWorkspace,
+      isEntryCurrent,
+    });
   }
   const renderView = () => <CurrentView />;
   return {

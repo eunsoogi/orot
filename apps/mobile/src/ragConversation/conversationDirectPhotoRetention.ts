@@ -1,3 +1,4 @@
+import { conversationSessionErrorState } from './conversationSessionErrorState';
 import { createConversationDurableIdentity } from './conversationDurableIdentity';
 import type {
   ConversationSession,
@@ -57,14 +58,24 @@ export function createConversationDirectPhotoRetention(
     return {
       id,
       current,
-      start(prompt: string) {
+      hasPending: ownsPending,
+      start(prompt: string, draftRevision: number | undefined) {
         if (!current() || pendingId !== undefined) return false;
         const session = live.find(sessionId)!;
-        // Freeze the authored draft, never later editor text or the provider's reply.
+        if (
+          session.draft !== prompt ||
+          session.draftEditRevision !== draftRevision
+        )
+          return false;
+        // Publish the pending row and consume precisely its own editor revision
+        // in one session update. The next draft is never part of this delivery.
         authoredCaption = prompt;
         pendingId = live.nextId();
         replyId = live.nextId();
         live.update(sessionId, {
+          ...(prompt
+            ? conversationSessionErrorState.editDraft(session, '')
+            : {}),
           currentDisplayMessages: [
             ...(session.currentDisplayMessages ?? []),
             {

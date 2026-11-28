@@ -131,7 +131,7 @@ export function ConversationScreen({
           sourceActions={sourceActions}
           isEntryCurrent={isEntryCurrent}
           routeKey={navigationRouteKey}
-          photoPresentationAllowed={canPaint}
+          photoPresentationAllowed={ownsConversationPresentation}
           photoOwnerKey={store.directPhotoDrafts}
           composer={
             <ConversationSteeringComposer

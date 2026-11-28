@@ -200,7 +200,7 @@ test.each([
           expect(f.cancel).toHaveBeenCalledWith('image-request');
         expect(screen.queryByText('합성 이미지 설명')).toBeNull();
         expect(Boolean(screen.queryByText('사진 전송이 중단됐어요.'))).toBe(
-          mode === 'expiry' || mode === 'single-denied',
+          mode === 'expiry' || mode === 'denied' || mode === 'single-denied',
         );
       }
       expect(f.start).toHaveBeenCalledTimes(1);

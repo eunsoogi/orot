@@ -1,3 +1,4 @@
+import { AppState } from 'react-native';
 import {
   createContext,
   type ReactNode,
@@ -18,6 +19,10 @@ import { acceptedPhotoPresentation } from './acceptedPhotoPresentation';
 
 const noAccepted = () => null;
 const noSubscription = () => () => {};
+const subscribeAppPhase = (listener: () => void) => {
+  const phase = AppState.addEventListener('change', listener);
+  return () => phase.remove();
+};
 const empty: readonly DirectPhotoPresentation[] = [];
 const Value = createContext(empty);
 const Publish = createContext<PublishDirectPhoto | undefined>(undefined);
@@ -25,15 +30,25 @@ const Publish = createContext<PublishDirectPhoto | undefined>(undefined);
 /** The active Conversation workspace alone owns the mounted image preview. */
 export function DirectPhotoPresentationScope({
   sessionId,
-  available,
+  available: sceneAvailable,
+  routeCurrent,
   ownerKey,
   children,
 }: {
   readonly sessionId: number;
   readonly available: boolean;
+  readonly routeCurrent?: () => boolean;
   readonly ownerKey?: object;
   readonly children: ReactNode;
 }) {
+  // The route predicate can depend on AppState even when the session snapshot
+  // never changes. Keep exactly that predicate and repaint on foreground only
+  // when its outcome changes; do not relax photo visibility in the switcher.
+  const currentRoute = useSyncExternalStore(
+    routeCurrent ? subscribeAppPhase : noSubscription,
+    () => routeCurrent?.() ?? true,
+  );
+  const available = sceneAvailable && currentRoute;
   const [value, setValue] = useState(empty);
   const accepted = ownerKey && acceptedPhotoPresentation(ownerKey);
   const outgoing = useSyncExternalStore(
