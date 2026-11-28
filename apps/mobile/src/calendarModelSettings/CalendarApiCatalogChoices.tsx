@@ -8,7 +8,10 @@ import type {
   ProviderSelectionOption,
 } from '../providers/selection/types';
 import ProviderSelectionOptionCard from '../providers/selection/ProviderSelectionOptionCard';
-import { calendarDecisionsModelLabel } from './calendarDecisionsPresentation';
+import {
+  calendarDecisionsBadge,
+  calendarDecisionsModelLabel,
+} from './calendarDecisionsPresentation';
 
 export const calendarModelRequirements = { inputTypes: ['text'] } as const;
 
@@ -46,12 +49,12 @@ export function CalendarApiCatalogChoices({
           {...{ connected, busy, refresh, onOpenAccounts }}
           refreshLabel={t('modelSettings.refreshModels')}
           testIDPrefix="calendar"
+          titleBadge={calendarDecisionsBadge}
         />
         {displayed.map((option, index) => (
           <ProviderSelectionOptionCard
             key={option.modelId}
-            option={option}
-            catalogModelLabel={calendarDecisionsModelLabel}
+            option={{ ...option, displayName: calendarDecisionsModelLabel }}
             index={rowStart + index}
             disabled={disabled || !fresh.includes(option)}
             requirements={calendarModelRequirements}

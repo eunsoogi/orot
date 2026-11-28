@@ -1,6 +1,6 @@
 import { t } from '../../i18n';
 import { useState } from 'react';
-import { Pressable, View } from 'react-native';
+import { Pressable, StyleSheet, View } from 'react-native';
 import { AppText as Text } from '../../layout/AppText';
 import { AppButton as Button } from '../../layout/AppButton';
 import { AppSymbol } from '../../layout/AppSymbol';
@@ -15,6 +15,7 @@ export function ApiCatalogAccount({
   refresh,
   refreshLabel,
   testIDPrefix,
+  titleBadge,
   onOpenAccounts,
 }: {
   readonly connected: boolean;
@@ -22,6 +23,7 @@ export function ApiCatalogAccount({
   readonly refresh: () => void;
   readonly refreshLabel: string;
   readonly testIDPrefix: string;
+  readonly titleBadge?: string;
   readonly onOpenAccounts?: () => void;
 }) {
   const [expanded, setExpanded] = useState(false);
@@ -34,12 +36,23 @@ export function ApiCatalogAccount({
         <Pressable
           style={styles.copy}
           accessibilityRole="button"
-          accessibilityLabel={t('modelSettings.apiAccountInfo')}
+          accessibilityLabel={
+            titleBadge
+              ? `${t('modelSettings.apiAccountInfo')}, ${titleBadge}`
+              : t('modelSettings.apiAccountInfo')
+          }
           accessibilityState={{ expanded }}
           onPress={() => setExpanded(value => !value)}
           testID={`${testIDPrefix}-account-details`}
         >
-          <Text style={styles.title}>OpenAI API</Text>
+          {titleBadge ? (
+            <View style={badgeStyles.titleLine}>
+              <Text style={styles.title}>OpenAI API</Text>
+              <Text style={badgeStyles.badge}>{titleBadge}</Text>
+            </View>
+          ) : (
+            <Text style={styles.title}>OpenAI API</Text>
+          )}
           <Text style={styles.secondary}>
             {connected
               ? t('modelSettings.apiConnected')
@@ -85,3 +98,23 @@ export function ApiCatalogAccount({
     </View>
   );
 }
+
+// Keep the provider badge next to the title, but let Dynamic Type wrap
+// within the copy lane rather than shrinking the account actions.
+const badgeStyles = StyleSheet.create({
+  titleLine: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    flexWrap: 'wrap',
+    gap: 6,
+  },
+  badge: {
+    backgroundColor: appColors.background,
+    borderRadius: 99,
+    color: appColors.secondary,
+    fontSize: 12,
+    fontWeight: '600',
+    paddingHorizontal: 8,
+    paddingVertical: 2,
+  },
+});
