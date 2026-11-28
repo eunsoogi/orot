@@ -17,7 +17,6 @@ export const overviewKo = {
 
   'overview.title': '한눈에',
   'overview.healthOverview': '내 건강 한눈에',
-  'overview.localTimeZone': '현지 시간 {zone}',
   'overview.metricEdit': '편집',
   'overview.metricSave': '저장',
   'overview.metricCancel': '취소',

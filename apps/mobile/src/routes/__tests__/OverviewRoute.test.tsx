@@ -1,8 +1,14 @@
-import { fireEvent, render, screen } from '@testing-library/react-native';
+import {
+  act,
+  fireEvent,
+  render,
+  screen,
+  within,
+} from '@testing-library/react-native';
 import { savedOverviewQuestions } from '../../../test-helpers/overviewFixtures';
 import OverviewRoute, { type OverviewRouteProps } from '../OverviewRoute';
-import { formatDate, t } from '../../i18n';
-import { StyleSheet } from 'react-native';
+import { Dimensions, StyleSheet, View } from 'react-native';
+import { appointmentTimeLabel } from '../nextAppointment';
 import { NavigationRouteScrollView } from '../../navigation/NavigationRouteScrollView';
 import { NavigationOcclusionContext } from '../../navigation/useNavigationContentInset';
 
@@ -67,11 +73,6 @@ test('keeps one home end gutter beyond the navigation overlap', async () => {
 test('shows saved questions without a symptom journal shortcut', async () => {
   const input = props();
   await render(<OverviewRoute {...input} />);
-  expect(
-    screen.getByText(
-      `${formatDate(new Date())} · ${t('overview.localTimeZone', { zone: Intl.DateTimeFormat().resolvedOptions().timeZone })}`,
-    ),
-  ).toBeTruthy();
   expect(screen.getByText('진료 당일 질문 보기')).toBeTruthy();
   expect(screen.queryByText('저장한 질문 1개')).toBeNull();
   expect(screen.queryByTestId('home-ongoing-symptoms')).toBeNull();
@@ -125,4 +126,72 @@ test('keeps the confirmed visit and preparation visible during a refresh and fai
   expect(screen.getByTestId('overview-next-appointment-clinic')).toBeTruthy();
   await fireEvent.press(screen.getByTestId('overview-appointments-retry'));
   expect(input.onRetryAppointments).toHaveBeenCalledTimes(1);
+});
+
+// Mount the actual route at compact/large text and expanded widths; layout geometry is native-only.
+test.each([
+  { width: 320, fontScale: 2 },
+  { width: 920, fontScale: 1 },
+])(
+  'keeps visit metadata and the action in the card at width $width',
+  async ({ width, fontScale }) => {
+    const initialWindow = Dimensions.get('window');
+    const initialScreen = Dimensions.get('screen');
+    const window = { ...initialWindow, width, fontScale };
+    const input = props();
+    if (!input.appointment) throw new Error('Missing synthetic visit');
+    const appointment = {
+      ...input.appointment,
+      clinicLabel: '긴 이름도 모두 표시하는 합성 병원 외래 진료 예약',
+    };
+    try {
+      await act(async () => Dimensions.set({ window, screen: window }));
+      await render(
+        <View style={{ width }}>
+          <OverviewRoute {...input} appointment={appointment} />
+        </View>,
+      );
+      const card = within(screen.getByTestId('overview-next-appointment'));
+      expect(
+        within(card.getByTestId('overview-next-visit-heading')).getByText(
+          '다음 진료',
+        ),
+      ).toBeVisible();
+      expect(
+        card.getByTestId('overview-next-visit-countdown'),
+      ).toHaveTextContent(/^D[-+]?[0-9]+$|^D-day$/);
+      const details = within(card.getByTestId('overview-next-visit-details'));
+      const clinic = details.getByTestId('overview-next-appointment-clinic');
+      const time = details.getByTestId('overview-next-visit-time');
+      expect(clinic).toHaveTextContent(appointment.clinicLabel);
+      expect(clinic.props.numberOfLines).toBeUndefined();
+      expect(time).toHaveTextContent(appointmentTimeLabel(appointment));
+      expect(time.props.numberOfLines).toBeUndefined();
+      expect(StyleSheet.flatten(clinic.props.style).fontSize).toBeGreaterThan(
+        StyleSheet.flatten(time.props.style).fontSize,
+      );
+      expect(screen.queryByText(/ · 현지 시간 /)).toBeNull();
+      const action = card.getByRole('button', { name: '진료 당일 질문 보기' });
+      await fireEvent.press(action);
+      expect(input.onPrepareVisit).toHaveBeenCalledTimes(1);
+      expect(input.onOpenSchedule).not.toHaveBeenCalled();
+    } finally {
+      await act(async () =>
+        Dimensions.set({ window: initialWindow, screen: initialScreen }),
+      );
+    }
+  },
+);
+
+test('keeps the empty card actionable without stale visit metadata', async () => {
+  const input = props({ appointment: null });
+  await render(<OverviewRoute {...input} />);
+  const card = within(screen.getByTestId('overview-next-visit-panel'));
+  expect(card.getByText('다음 진료')).toBeVisible();
+  expect(card.queryByTestId('overview-next-visit-countdown')).toBeNull();
+  expect(card.queryByTestId('overview-next-visit-time')).toBeNull();
+  expect(card.queryByTestId('overview-prepare-visit')).toBeNull();
+  await fireEvent.press(card.getByTestId('overview-open-schedule'));
+  expect(input.onOpenSchedule).toHaveBeenCalledTimes(1);
+  expect(input.onPrepareVisit).not.toHaveBeenCalled();
 });
