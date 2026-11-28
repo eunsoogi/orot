@@ -4,6 +4,7 @@ import {
   screen,
   waitFor,
 } from '@testing-library/react-native';
+import { StyleSheet } from 'react-native';
 import type { SourceRecord, TranscriptEvidenceSegment } from '@orot/domain';
 import type { RecordingService } from '../recordingTypes';
 import type { RecordingLibraryService } from '../recordingLibraryService';
@@ -100,6 +101,15 @@ test('shows saved audio review details, plays the recording and segment, and hid
   expect(card).not.toHaveTextContent(/저장된 전사/u);
   expect(card).not.toHaveTextContent(/검토 전 초안/u);
 
+  const listPlay = screen.getByTestId(
+    'recording-playback-list-button-recording-ui-1',
+  );
+  const listPlayStyle = StyleSheet.flatten(listPlay.props.style);
+  expect(listPlay.props).toMatchObject({
+    symbolName: 'play.fill',
+    visualScale: 1,
+  });
+
   await fireEvent.press(screen.getByTestId('recording-details-recording-ui-1'));
   expect(await screen.findByTestId('recording-playback-controls')).toBeTruthy();
   expect(screen.getByTestId('recording-detail-duration')).toHaveTextContent(
@@ -118,7 +128,13 @@ test('shows saved audio review details, plays the recording and segment, and hid
   expect(screen.queryByText('speech_transcriber')).toBeNull();
   expect(screen.queryByText('iOS 27')).toBeNull();
 
-  await fireEvent.press(screen.getByTestId('recording-playback-button'));
+  const detailPlay = screen.getByTestId('recording-playback-button');
+  expect(StyleSheet.flatten(detailPlay.props.style)).toEqual(listPlayStyle);
+  expect(detailPlay.props).toMatchObject({
+    symbolName: 'play.fill',
+    visualScale: 1,
+  });
+  await fireEvent(detailPlay, 'glassIconPress');
   expect(playback.playRange).toHaveBeenCalledWith(
     source.id,
     0,

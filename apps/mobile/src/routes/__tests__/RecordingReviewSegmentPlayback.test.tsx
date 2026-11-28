@@ -127,7 +127,7 @@ function capturedPress(ordinal: number): () => void {
     if (typeof node.memoizedProps?.onPress === 'function')
       return node.memoizedProps.onPress;
   }
-  throw new Error('Missing mounted Pressable handler');
+  throw new Error('Missing mounted playback action handler');
 }
 const expectPlaying = (ordinal: number, playing: boolean) =>
   expect(row(ordinal)).toHaveProp(
@@ -153,28 +153,27 @@ test.each([360, 1500])(
     await openDetail(width);
     const whole = screen.getByTestId('recording-playback-button');
     const shape = StyleSheet.flatten(whole.props.style);
-    expect(shape).toMatchObject({ width: 48, height: 48, borderRadius: 24 });
+    expect(shape).toMatchObject({ width: 44, height: 44 });
     expect(StyleSheet.flatten(row(0).props.style)).toEqual(shape);
-    const glyph = whole
-      .queryAll(node => node.props.symbolName === 'play.fill')
-      .at(-1)?.props;
-    const segmentGlyph = row(0)
-      .queryAll(node => node.props.symbolName === 'play.fill')
-      .at(-1)?.props;
-    expect(segmentGlyph?.pointSize).toBe(glyph?.pointSize);
-    expect(glyph?.pointSize).toBeGreaterThan(0);
+    for (const play of [whole, row(0)]) {
+      expect(play.props).toMatchObject({
+        symbolName: 'play.fill',
+        visualScale: 1,
+      });
+    }
     expect(row(0).props.accessibilityHint).toContain('00:00.250–00:01.801');
     expect(row(1).props.accessibilityHint).toBe(row(0).props.accessibilityHint);
-    await fireEvent.press(row(0));
+    await fireEvent(row(0), 'glassIconPress');
     expect(mockPlay).toHaveBeenCalledWith(mockSource.id, 250, 1801);
     expectPlaying(0, true);
     expectPlaying(1, false);
-    expect(
-      row(0).queryAll(node => node.props.symbolName === 'stop.fill').length,
-    ).toBeGreaterThan(0);
+    expect(row(0).props).toMatchObject({
+      symbolName: 'stop.fill',
+      visualScale: 1,
+    });
     expect(row(0)).toBeEnabled();
     expect(screen.queryByTestId('transcript-play-range-0')).toBeNull();
-    await fireEvent.press(row(0));
+    await fireEvent(row(0), 'glassIconPress');
     expect(mockStop).toHaveBeenCalledTimes(1);
     expectPlaying(0, false);
     await act(() =>
