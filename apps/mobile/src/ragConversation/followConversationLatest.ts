@@ -1,4 +1,5 @@
 import { conversationVisibleOffset } from './conversationVisibleOffset';
+import { canApplyConversationScrollGeometry } from './conversationHistoryScrollEvents';
 import type React from 'react';
 import type { ScrollView } from 'react-native';
 
@@ -33,7 +34,13 @@ export function followConversationLatest(input: {
     historyView,
     scrollGeometry,
   } = input;
-  if (!hasMessages || !followsBottom.current || focused) return;
+  if (
+    !canApplyConversationScrollGeometry() ||
+    !hasMessages ||
+    !followsBottom.current ||
+    focused
+  )
+    return;
   const geometry = scrollGeometry.current;
   const height = viewportHeight.current || geometry?.height || 0;
   const total = contentHeight ?? geometry?.contentHeight;

@@ -1,7 +1,31 @@
-import type { ScrollViewProps } from 'react-native';
+import {
+  AppState,
+  type LayoutChangeEvent,
+  type ScrollViewProps,
+} from 'react-native';
 import type { useConversationReadingPosition } from './useConversationReadingPosition';
 import type { useConversationJumpToLatest } from './useConversationJumpToLatest';
 import type { useConversationTranscriptWindow } from './useConversationTranscriptWindow';
+/** Ignore UIKit's snapshot/reflow geometry, not the live transcript or actual data changes. */
+export function canApplyConversationScrollGeometry() {
+  const phase = AppState.currentState;
+  return phase !== 'inactive' && phase !== 'background';
+}
+
+/** Keep background snapshots from moving the last-message anchor. */
+export function tailLayout(
+  messageEnd: { current: number | null },
+  refresh: () => void,
+  follow?: () => unknown,
+) {
+  return ({ nativeEvent }: LayoutChangeEvent) => {
+    if (!canApplyConversationScrollGeometry()) return;
+    messageEnd.current = nativeEvent.layout.y;
+    refresh();
+    follow?.();
+  };
+}
+
 /** Preserve event ordering: reader intent cancels restoration before paging or bottom-follow decisions. */
 export function conversationHistoryScrollEvents({
   reading,
@@ -34,11 +58,13 @@ export function conversationHistoryScrollEvents({
 > {
   return {
     onLayout: ({ nativeEvent }) => {
+      if (!canApplyConversationScrollGeometry()) return;
       viewportHeight.current = nativeEvent.layout.height;
       jumpControl.refresh({ height: nativeEvent.layout.height });
       followLatest();
     },
     onContentSizeChange: (_width, height) => {
+      if (!canApplyConversationScrollGeometry()) return;
       jumpControl.refresh({
         height: viewportHeight.current,
         contentHeight: height,
@@ -64,6 +90,7 @@ export function conversationHistoryScrollEvents({
       reading.save();
     },
     onScroll: event => {
+      if (!canApplyConversationScrollGeometry()) return;
       jumpControl.onScroll(event);
       window.onTopEdge(
         event.nativeEvent.contentOffset.y,
