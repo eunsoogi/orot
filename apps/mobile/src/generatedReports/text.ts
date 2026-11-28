@@ -23,6 +23,11 @@ export const generatedReportCopy = {
   moreComplete: '저장한 결과를 모두 불러왔어요.',
   back: '목록으로',
   close: '닫기',
+  catalogRemove: '이 목록에서 삭제',
+  catalogRemoveConfirmation:
+    '이 자료만 목록에서 삭제해요. 원래 대화와 답변은 남아요.',
+  catalogRemoveFailed: '이 목록에서 자료를 삭제하지 못했어요.',
+  catalogRemoveCancel: '취소',
   unavailable:
     '이전 버전이거나 출처의 변경·삭제로 현재 열람할 수 없는 저장 결과예요. 다른 버전으로 대신 열지 않아요.',
   changed:

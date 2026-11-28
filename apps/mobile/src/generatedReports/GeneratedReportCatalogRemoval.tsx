@@ -5,7 +5,7 @@ import { appColors } from '../layout/appColors';
 import { TrailingSwipeAction } from '../layout/TrailingSwipeAction';
 import type { GeneratedReportReader, GeneratedReportRow } from './types';
 
-const removeLabel = '이 목록에서 삭제';
+import { generatedReportCopy as copy } from './text';
 
 /** These tiles only remove the catalog projection, never the shared answer. */
 export function GeneratedReportCatalogRemoval({
@@ -36,7 +36,7 @@ export function GeneratedReportCatalogRemoval({
       action={
         <Pressable
           accessibilityRole="button"
-          accessibilityLabel={removeLabel}
+          accessibilityLabel={copy.catalogRemove}
           style={styles.delete}
           onPress={() => {
             setRevealed(false);
@@ -80,7 +80,7 @@ export async function requestGeneratedReportCatalogRemoval(
   if (!current()) return;
   const live = () => current() && !controller.signal.aborted;
   const failed = () => {
-    if (live()) Alert.alert('이 목록에서 자료를 삭제하지 못했어요.');
+    if (live()) Alert.alert(copy.catalogRemoveFailed);
   };
   let awaitingConfirmation = false;
   try {
@@ -97,12 +97,16 @@ export async function requestGeneratedReportCatalogRemoval(
       return;
     }
     Alert.alert(
-      removeLabel,
-      '이 자료만 목록에서 삭제해요. 원래 대화와 답변은 남아요.',
+      copy.catalogRemove,
+      copy.catalogRemoveConfirmation,
       [
-        { text: '취소', style: 'cancel', onPress: () => controller.abort() },
         {
-          text: removeLabel,
+          text: copy.catalogRemoveCancel,
+          style: 'cancel',
+          onPress: () => controller.abort(),
+        },
+        {
+          text: copy.catalogRemove,
           style: 'destructive',
           onPress: () => {
             if (!live()) {
