@@ -36,7 +36,7 @@ export const overviewMetricStyles = StyleSheet.create({
     flexDirection: 'row',
     flexWrap: 'wrap',
     columnGap: overviewMetricGridColumnGap,
-    rowGap: 14,
+    rowGap: 16,
   },
   card: {
     backgroundColor: appColors.surface,

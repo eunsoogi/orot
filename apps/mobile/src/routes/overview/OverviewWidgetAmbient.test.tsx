@@ -30,7 +30,7 @@ const railFrame: NavigationContentFrame = {
 };
 
 test.each([
-  ['expanded right rail', railFrame, 104],
+  ['expanded right rail', railFrame, 32],
   ['ordinary bottom tabs', { ...railFrame, side: 'bottom' as const }, 18],
   [
     'clipped split pane',

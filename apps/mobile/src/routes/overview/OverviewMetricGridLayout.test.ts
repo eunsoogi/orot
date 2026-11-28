@@ -1,6 +1,6 @@
 import { resolveOverviewMetricGridLayout } from './overviewMetricLayout';
 
-test.each([280, 348, 440, 600, 651])(
+test.each([280, 348, 440, 600, 653])(
   'keeps one full-width card at %ipt measured content width',
   width => {
     expect(resolveOverviewMetricGridLayout(width, 4, 1)).toEqual({
@@ -11,9 +11,9 @@ test.each([280, 348, 440, 600, 651])(
 );
 
 test.each([
-  [652, 1, 320],
-  [812, 1.25, 400],
-  [1292, 2, 640],
+  [654, 1, 320],
+  [814, 1.25, 400],
+  [1294, 2, 640],
 ])(
   'fits two readable cards at %ipt and %f scale',
   (width, scale, cardWidth) => {
@@ -30,7 +30,7 @@ test.each([
 test('uses available content rather than the device model or full window width', () => {
   expect(resolveOverviewMetricGridLayout(900, 2, 1)).toEqual({
     columns: 2,
-    cardWidth: 444,
+    cardWidth: 443,
   });
   expect(resolveOverviewMetricGridLayout(440, 2, 1)).toEqual({
     columns: 1,
