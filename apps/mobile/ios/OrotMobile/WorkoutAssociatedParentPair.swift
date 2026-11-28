@@ -1,3 +1,4 @@
+import CryptoKit
 import Foundation
 
 /// Concurrent only within one positively owned pair; the caller processes replies
@@ -76,3 +77,25 @@ enum WorkoutAssociatedParentPair {
         }
     }
 #endif
+
+/// Stable witness encoding shared by the parent traversal and final aggregate.
+enum WorkoutPeriodMembershipDigest {
+    nonisolated static func stableFields(_ fields: [String]) -> String {
+        fields.map { "\($0.utf8.count):\($0)" }.joined()
+    }
+
+    /// Stable, length-prefixed membership witness; its encoding must not change.
+    nonisolated static func digest(_ fields: [String]) -> String {
+        let hash = SHA256.hash(data: Data(stableFields(fields).utf8))
+        // Workouts can have thousands of associated parents. Encode the same
+        // lowercase hex without creating one Foundation formatting call per digest byte.
+        let digits = Array("0123456789abcdef".utf8)
+        var output: [UInt8] = []
+        output.reserveCapacity(SHA256.Digest.byteCount * 2)
+        for byte in hash {
+            output.append(digits[Int(byte >> 4)])
+            output.append(digits[Int(byte & 15)])
+        }
+        return String(decoding: output, as: UTF8.self)
+    }
+}
