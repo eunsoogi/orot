@@ -47,6 +47,7 @@ const settingFields = new Set([
   'OTHER_CFLAGS',
   'OTHER_LDFLAGS',
   'PRODUCT_BUNDLE_IDENTIFIER',
+  'REACT_NATIVE_PATH',
   'SWIFT_VERSION',
 ]);
 
