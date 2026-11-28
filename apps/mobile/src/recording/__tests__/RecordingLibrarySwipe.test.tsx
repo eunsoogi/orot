@@ -61,7 +61,13 @@ function touch(
   };
 }
 
-async function gesture(id: string, dx: number, dy = 0, cancelled = false) {
+async function gesture(
+  id: string,
+  dx: number,
+  dy = 0,
+  cancelled = false,
+  reverseX?: number,
+) {
   const row = screen.getByTestId(`recording-library-item-${id}`);
   // Feed the mounted responders a single native-style touch history, with no mock gesture state.
   const initial = touch(150, 150, 50, 50, 1);
@@ -75,6 +81,12 @@ async function gesture(id: string, dx: number, dy = 0, cancelled = false) {
     if (!claimed) return;
     row.props.onResponderGrant(early);
     row.props.onResponderMove(end);
+    if (reverseX !== undefined) {
+      const reversal = touch(150 + dx, 150 + reverseX, 50 + dy, 50, 4);
+      row.props.onResponderMove(reversal);
+      row.props.onResponderRelease(reversal);
+      return;
+    }
     if (cancelled) row.props.onResponderTerminate(end);
     else row.props.onResponderRelease(end);
   });
@@ -84,7 +96,12 @@ async function gesture(id: string, dx: number, dy = 0, cancelled = false) {
 const deleteAction = (id: string) =>
   screen.queryByTestId(`recording-delete-${id}`);
 
-afterEach(() => jest.restoreAllMocks());
+beforeEach(() => jest.useFakeTimers());
+
+afterEach(() => {
+  jest.useRealTimers();
+  jest.restoreAllMocks();
+});
 
 test('only a released horizontal swipe reveals Delete; even a full swipe never requests deletion', async () => {
   const service = library();
@@ -130,6 +147,48 @@ test('only a released horizontal swipe reveals Delete; even a full swipe never r
     false,
   );
   expect(deleteAction(first.id)).toBeNull();
+});
+
+test('a rightward reversal closes a dragged recording even when its net movement is left', async () => {
+  const service = library();
+  const alert = mockNativeDeletionAlert();
+  await render(<RecordingLibraryPanel service={service} />);
+  await screen.findByTestId(`recording-library-item-${first.id}`);
+
+  await gesture(first.id, -250);
+  expect(deleteAction(first.id)).toBeVisible();
+  await gesture(first.id, -235, 0, false, -165);
+  expect(deleteAction(first.id)).toBeNull();
+  expect(alert).not.toHaveBeenCalled();
+  expect(service.deleteRecording).not.toHaveBeenCalled();
+});
+
+test('a new gesture can stop an overswipe rebound before it lands', async () => {
+  const service = library();
+  const alert = mockNativeDeletionAlert();
+  const share = jest.fn();
+  const item = `recording-library-item-${first.id}`;
+  const card = () => screen.getByTestId(`${item}-content`);
+  await render(
+    <RecordingLibraryPanel service={service} onShareRecording={share} />,
+  );
+  await screen.findByTestId(item);
+
+  await gesture(first.id, -300);
+  expect(card()).toHaveStyle({ transform: [{ translateX: -152 }] });
+  expect(deleteAction(first.id)).toBeVisible();
+  expect(await gesture(first.id, 72)).toBe(true);
+  await act(() => jest.advanceTimersByTime(1_000));
+  expect(card()).toHaveStyle({ transform: [{ translateX: 0 }] });
+  expect(deleteAction(first.id)).toBeNull();
+
+  await gesture(first.id, -300);
+  await act(() => jest.advanceTimersByTime(1_000));
+  expect(card()).toHaveStyle({ transform: [{ translateX: -132 }] });
+  expect(screen.getByTestId(`${item}-action-clip`)).toHaveStyle({ width: 132 });
+  expect(share).not.toHaveBeenCalled();
+  expect(alert).not.toHaveBeenCalled();
+  expect(service.deleteRecording).not.toHaveBeenCalled();
 });
 
 test('tapping Delete after swipe or accessibility reveal uses the same exact confirmation', async () => {

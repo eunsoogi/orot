@@ -43,7 +43,10 @@ const clipId = `recording-library-item-${id}-action-clip`;
 const nativeModule = NativeModules.RecordingModule;
 const originalAppState = AppState.currentState;
 
+beforeEach(() => jest.useFakeTimers());
+
 afterEach(() => {
+  jest.useRealTimers();
   NativeModules.RecordingModule = nativeModule;
   AppState.currentState = originalAppState;
   jest.restoreAllMocks();
@@ -221,6 +224,7 @@ test('paints tiles progressively in a physical left drag without exposing action
   expect(clip()).toHaveProp('importantForAccessibility', 'no-hide-descendants');
   await fireEvent.press(screen.getByTestId(shareId, hidden));
   await short.release();
+  await act(() => jest.advanceTimersByTime(1_000));
   expect(card().parent).toHaveStyle({ transform: [{ translateX: 0 }] });
   expect(share).not.toHaveBeenCalled();
 
@@ -228,6 +232,7 @@ test('paints tiles progressively in a physical left drag without exposing action
   expect(card().parent).toHaveStyle({ transform: [{ translateX: -64 }] });
   expect(screen.queryByTestId(shareId)).toBeNull();
   await open.release();
+  await act(() => jest.advanceTimersByTime(1_000));
   expect(clip()).toHaveStyle({ width: 132 });
   expect(card().parent).toHaveStyle({ transform: [{ translateX: -132 }] });
   expect(screen.getByTestId(shareId)).toBeVisible();

@@ -1,4 +1,4 @@
-import { useLayoutEffect, useMemo, useState } from 'react';
+import { useLayoutEffect, useMemo, useRef, useState } from 'react';
 import type { ReactNode } from 'react';
 import {
   Animated,
@@ -12,6 +12,41 @@ import {
 const defaultRevealWidth = 88;
 const claimDistance = 12;
 const settleDistance = 36;
+const overswipeTravel = 20;
+type ContinuousDrag = {
+  dx: number;
+  x: number;
+  turn: number;
+  open: boolean;
+};
+
+function moveContinuousDrag(drag: ContinuousDrag, dx: number, width: number) {
+  const delta = dx - drag.dx;
+  drag.dx = dx;
+  // Resist further pull past the lane, but never make the finger traverse an
+  // invisible dead zone before the card responds to a rightward reversal.
+  const laneRemaining = Math.max(0, width + drag.x);
+  const resisted =
+    delta < 0
+      ? Math.max(delta, -laneRemaining) +
+        Math.min(0, delta + laneRemaining) * 0.24
+      : delta;
+  drag.x = Math.max(-width - overswipeTravel, Math.min(0, drag.x + resisted));
+  if (drag.open) {
+    drag.turn = Math.min(drag.turn, dx);
+    if (dx - drag.turn >= settleDistance) {
+      drag.open = false;
+      drag.turn = dx;
+    }
+  } else {
+    drag.turn = Math.max(drag.turn, dx);
+    if (drag.turn - dx >= settleDistance) {
+      drag.open = true;
+      drag.turn = dx;
+    }
+  }
+}
+
 type Motion = Pick<
   PanResponderGestureState,
   'dx' | 'dy' | 'numberActiveTouches'
@@ -31,6 +66,7 @@ export function TrailingSwipeAction({
   testID,
   revealWidth = defaultRevealWidth,
   revealDuringDrag = false,
+  springReveal = false,
 }: {
   readonly action: ReactNode;
   readonly children: ReactNode;
@@ -41,6 +77,8 @@ export function TrailingSwipeAction({
   readonly revealWidth?: number;
   /** Paint the covered lane during motion; only the settled reveal can expose actions. */
   readonly revealDuringDrag?: boolean;
+  /** Keep the reveal on one continuous responder and rebound after overswipe. */
+  readonly springReveal?: boolean;
 }) {
   const [offset] = useState(() => new Animated.Value(0));
   const uncovered = useMemo(
@@ -56,7 +94,19 @@ export function TrailingSwipeAction({
   const expanded = revealed && !disabled;
   const canUseActions = expanded && !dragging;
   const settled = expanded ? -revealWidth : 0;
-  useLayoutEffect(() => offset.setValue(settled), [offset, settled]);
+  const drag = useRef<ContinuousDrag | undefined>(undefined);
+  const target = useRef(0);
+  useLayoutEffect(() => {
+    // The parent acknowledges the same target on release; that re-render must
+    // not stop the spring. A different owner target (e.g. disabling) wins.
+    if (!disabled && target.current === settled) return;
+    target.current = settled;
+    drag.current = undefined;
+    offset.stopAnimation();
+    offset.setValue(settled);
+    setDragging(false);
+  }, [disabled, offset, settled]);
+  useLayoutEffect(() => () => offset.stopAnimation(), [offset]);
   const responder = useMemo(
     () =>
       PanResponder.create({
@@ -65,13 +115,25 @@ export function TrailingSwipeAction({
           gesture.numberActiveTouches === 1 &&
           horizontal(gesture) &&
           (gesture.dx <= -claimDistance ||
-            (expanded && gesture.dx >= claimDistance)),
+            ((springReveal ? target.current < 0 : expanded) &&
+              gesture.dx >= claimDistance)),
         onPanResponderGrant: () => {
-          if (revealDuringDrag) setDragging(true);
+          if (!springReveal) return;
+          offset.stopAnimation(x => {
+            drag.current = { dx: 0, x, turn: 0, open: target.current < 0 };
+          });
+          setDragging(true);
         },
         onPanResponderMove: (_event, gesture) => {
           if (disabled || gesture.numberActiveTouches !== 1) {
+            drag.current = undefined;
             offset.setValue(settled);
+            return;
+          }
+          if (springReveal) {
+            if (!drag.current) return;
+            moveContinuousDrag(drag.current, gesture.dx, revealWidth);
+            offset.setValue(drag.current.x);
             return;
           }
           offset.setValue(
@@ -79,18 +141,31 @@ export function TrailingSwipeAction({
           );
         },
         onPanResponderRelease: (_event, gesture) => {
-          let next = expanded;
-          if (!disabled && horizontal(gesture)) {
+          const previouslyOpen = springReveal ? target.current < 0 : expanded;
+          let next = previouslyOpen;
+          if (springReveal) {
+            if (!disabled && horizontal(gesture) && drag.current) {
+              next = drag.current.open;
+            }
+            drag.current = undefined;
+            target.current = next ? -revealWidth : 0;
+            Animated.spring(offset, {
+              toValue: target.current,
+              useNativeDriver: false, // The same value also drives lane width.
+              overshootClamping: true,
+            }).start();
+          } else if (!disabled && horizontal(gesture)) {
             if (gesture.dx <= -settleDistance) next = true;
             else if (gesture.dx >= settleDistance) next = false;
           }
-          offset.setValue(next ? -revealWidth : 0);
-          if (next !== expanded) onRevealedChange(next);
-          if (revealDuringDrag) setDragging(false);
+          if (!springReveal) offset.setValue(next ? -revealWidth : 0);
+          if (next !== previouslyOpen) onRevealedChange(next);
+          if (springReveal) setDragging(false);
         },
         onPanResponderTerminate: () => {
-          offset.setValue(settled);
-          if (revealDuringDrag) setDragging(false);
+          drag.current = undefined;
+          offset.setValue(springReveal ? target.current : settled);
+          if (springReveal) setDragging(false);
         },
         // The route must remain able to take over a vertical scroll.
         onPanResponderTerminationRequest: () => true,
@@ -100,7 +175,7 @@ export function TrailingSwipeAction({
       expanded,
       offset,
       onRevealedChange,
-      revealDuringDrag,
+      springReveal,
       revealWidth,
       settled,
     ],
