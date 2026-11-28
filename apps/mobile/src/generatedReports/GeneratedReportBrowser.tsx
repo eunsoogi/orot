@@ -1,5 +1,6 @@
 import { GeneratedReportBookmarkAction } from './GeneratedReportBookmarkAction';
 import { GeneratedReportContent } from './GeneratedReportContent';
+import { catalogRemovalAction } from './GeneratedReportCatalogRemoval';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useGeneratedReportAccess } from './useGeneratedReportAccess';
 import { AppText } from '../layout/AppText';
@@ -11,6 +12,7 @@ import {
   GeneratedReportFrame,
   GeneratedReportDescription,
   GeneratedReportRows,
+  GeneratedReportStatus,
   type GeneratedReportPagination,
 } from './GeneratedReportRows';
 import type {
@@ -49,8 +51,10 @@ export function GeneratedReportBrowser({
     useState<GeneratedReportPagination>('idle');
   const request = useRef<AbortController | null>(null);
   const inactiveOwner = useRef({});
+  const removal = useRef<AbortController | null>(null);
   const abort = useCallback(() => {
     request.current?.abort();
+    removal.current?.abort();
     request.current = null;
     inactiveOwner.current = {};
   }, []);
@@ -64,7 +68,6 @@ export function GeneratedReportBrowser({
     setExpanded(false);
   }, [abort]);
   const retainedList = Boolean(onOpenDestination);
-  // A covered native list retains metadata and its scroll extent, never detail prose.
   const { accessVersion, canAccess } = useGeneratedReportAccess(
     active,
     ownership,
@@ -78,6 +81,7 @@ export function GeneratedReportBrowser({
       const last = append ? rows.at(-1) : undefined;
       if (append && !last) return;
       request.current?.abort();
+      removal.current?.abort();
       const controller = new AbortController();
       request.current = controller;
       const current = () =>
@@ -164,8 +168,14 @@ export function GeneratedReportBrowser({
       canAccess(),
     );
   const metadataOwner = request.current ?? inactiveOwner.current;
-  const ownsMetadata = () =>
-    (request.current ?? inactiveOwner.current) === metadataOwner;
+  const metadataCurrent = () =>
+    canAccess() && (request.current ?? inactiveOwner.current) === metadataOwner;
+  const dropRow = (key: string) =>
+    setRows(previous => previous.filter(item => item.key !== key));
+  const remove =
+    destination && ownership
+      ? catalogRemovalAction(open, metadataCurrent, removal, dropRow)
+      : undefined;
   return (
     <GeneratedReportFrame destination={destination} selected={!!selected}>
       {!destination && !expanded ? (
@@ -200,24 +210,10 @@ export function GeneratedReportBrowser({
           ) : (
             <GeneratedReportDescription destination={destination} />
           )}
-          {state === 'loading' && (
-            <AppText accessibilityLiveRegion="polite">{copy.loading}</AppText>
-          )}
-          {state === 'failed' ? (
-            <>
-              <AppText accessibilityRole="alert">{copy.failed}</AppText>
-              <AppButton
-                title={copy.retry}
-                onPress={() => {
-                  if (selected) read(selected);
-                  else list();
-                }}
-              />
-            </>
-          ) : null}
-          {state === 'unavailable' && (
-            <AppText accessibilityRole="alert">{copy.unavailable}</AppText>
-          )}
+          <GeneratedReportStatus
+            state={state}
+            retry={() => (selected ? read(selected) : list())}
+          />
           {selected && detail && state === 'ready' ? (
             <>
               <GeneratedReportContent detail={detail.value} />
@@ -235,10 +231,14 @@ export function GeneratedReportBrowser({
               rows={rows}
               pagination={pagination}
               onOpen={row => {
-                if (ownsMetadata()) return read(row);
+                if (metadataCurrent()) return read(row);
               }}
+              onRemove={remove}
               onMore={() => {
-                if (ownsMetadata() && ['ready', 'failed'].includes(pagination))
+                if (
+                  metadataCurrent() &&
+                  ['ready', 'failed'].includes(pagination)
+                )
                   return list(true);
               }}
             />
