@@ -171,9 +171,7 @@ test('Schedule, Recording and Visit Questions bypass scene-owned columns', async
     screen.queryByTestId(`navigation-route-columns-${homeKey}`),
   ).toBeNull();
 
-  await act(async () => {
-    controller.push('schedule');
-  });
+  await act(async () => void controller.push('schedule'));
   expect(
     screen.queryByTestId(
       `navigation-route-columns-${controller.getSnapshot().currentRoute.key}`,

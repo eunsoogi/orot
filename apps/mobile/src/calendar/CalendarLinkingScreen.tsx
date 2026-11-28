@@ -7,7 +7,6 @@ import { ScrollView, View } from 'react-native';
 import type { AppointmentRepository } from '@orot/storage';
 import { t } from '../i18n';
 import { CalendarMonthView } from './CalendarMonthView';
-import { formatCalendarEventRange } from './dateTime';
 import { calendarQueryWindowFromCoverage } from './calendarMonth';
 import type { CalendarQueryWindow } from './calendarMonth';
 import { CalendarQuickActions } from './CalendarQuickActions';
@@ -17,7 +16,7 @@ import type { CalendarBridge } from './types';
 import { emptyCalendarAutoSyncState } from './calendarAutoSync';
 import type { CalendarAutoSyncState } from './calendarAutoSync';
 import { useCalendarLinking } from './useCalendarLinking';
-import { eventFromAppointment } from './calendarMonthEvents';
+import { CalendarSelectionSummary } from './CalendarSelectionSummary';
 import { CalendarRouteActions } from './CalendarRouteActions';
 import { useCalendarNavigationLeaveState } from './useCalendarNavigationLeaveState';
 
@@ -69,58 +68,13 @@ export default function CalendarLinkingScreen({
     selectedEventIdentifier,
     notice: calendar.notice,
   });
-  const upcomingEvent = eventFromAppointment(calendar.nextVisitAppointment);
-  // The saved-appointment panel belongs only to Schedule; other linking flows keep their prior layout.
-  const selectionSummary = calendar.selectedEvent ? (
-    <View
-      style={flatSchedulePresentation ? styles.flatCard : styles.card}
-      testID="calendar-selection"
-    >
-      <Text>
-        {calendar.linkedAppointment
-          ? t('calendar.reconfirmPrompt')
-          : t('calendar.confirmPrompt')}
-      </Text>
-      <Text style={styles.eventTitle} testID="calendar-selected-event-title">
-        {calendar.selectedEvent.calendarEventSnapshot.title ||
-          t('calendar.eventNoTitle')}
-      </Text>
-      <Text>{formatCalendarEventRange(calendar.selectedEvent)}</Text>
-      <Button
-        disabled={calendar.saving}
-        onPress={calendar.confirmSelectedEvent}
-        testID="calendar-confirm-selected"
-        title={
-          calendar.saving
-            ? t('calendar.saving')
-            : t(
-                calendar.linkedAppointment
-                  ? 'calendar.reconfirm'
-                  : 'calendar.confirm',
-              )
-        }
-      />
-      <Button
-        disabled={calendar.saving}
-        onPress={calendar.clearSelection}
-        title={t('calendar.cancelSelection')}
-      />
-    </View>
-  ) : adaptiveScheduleLayout && upcomingEvent ? (
-    <View
-      style={flatSchedulePresentation ? styles.flatCard : styles.card}
-      testID="schedule-next-visit-summary"
-    >
-      <Text accessibilityRole="header">{t('calendar.nextVisit')}</Text>
-      <Text style={styles.eventTitle} testID="schedule-next-visit-title">
-        {upcomingEvent.calendarEventSnapshot.title ||
-          t('calendar.eventNoTitle')}
-      </Text>
-      <Text testID="schedule-next-visit-time">
-        {formatCalendarEventRange(upcomingEvent)}
-      </Text>
-    </View>
-  ) : null;
+  const selectionSummary = (
+    <CalendarSelectionSummary
+      calendar={calendar}
+      showNextVisit={adaptiveScheduleLayout}
+      flat={flatSchedulePresentation}
+    />
+  );
 
   const calendarMonth = (
     <CalendarMonthView

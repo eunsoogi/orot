@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { View, useWindowDimensions } from 'react-native';
 import { CalendarAccessibleDates } from './CalendarAccessibleDates';
+import { CalendarDateCoverage } from './CalendarDateCoverage';
 import { AppText as Text } from '../layout/AppText';
 import type { Appointment } from '@orot/storage';
 import { t } from '../i18n';
@@ -203,27 +204,11 @@ export function CalendarMonthView({
         >
           {formatCalendarDate(selectedDate)}
         </Text>
-        {selectedDateOutsideQuery ? (
-          <Text style={styles.calendarNotice} testID="calendar-outside-query">
-            {t('calendar.outsideQueryRange')}
-          </Text>
-        ) : null}
-        {candidatesLoaded && resultsMayBeIncomplete ? (
-          <Text style={styles.calendarNotice} testID="calendar-result-limit">
-            {t('calendar.resultsMayBeIncomplete')}
-          </Text>
-        ) : null}
-        {showNoReturnedEvents ? (
-          <>
-            <Text testID="calendar-empty">{t('calendar.empty')}</Text>
-            <Text
-              style={styles.calendarNotice}
-              testID="calendar-empty-query-note"
-            >
-              {t('calendar.emptyQueryNote')}
-            </Text>
-          </>
-        ) : null}
+        <CalendarDateCoverage
+          selectedDateOutsideQuery={selectedDateOutsideQuery}
+          incomplete={candidatesLoaded && resultsMayBeIncomplete}
+          empty={showNoReturnedEvents}
+        />
         <View
           style={styles.calendarSelectedEventList}
           testID="calendar-events-for-selected-date"
